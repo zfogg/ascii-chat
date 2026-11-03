@@ -4,6 +4,9 @@
  * @ingroup util
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_PCRE2_TEMP_BUFFER_SIZE 64
+
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/common.h>
@@ -379,7 +382,7 @@ bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group
     return false;
   }
 
-  char temp[64];
+  char temp[UTIL_PCRE2_TEMP_BUFFER_SIZE];
   memcpy(temp, subject + start, len);
   temp[len] = '\0';
 

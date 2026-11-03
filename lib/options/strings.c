@@ -11,6 +11,9 @@
  * All mode and enum string conversions should use this module.
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MODE_NAME_CAPACITY 32
+
 #include <ascii-chat/options/options.h> // For asciichat_mode_t and MODE_ enums
 #include <ascii-chat/options/strings.h>
 #include <ascii-chat/options/levenshtein.h>
@@ -84,10 +87,10 @@ bool asciichat_is_valid_mode_string(const char *str) {
 }
 
 size_t asciichat_get_all_mode_strings(const char ***out_names) {
-  static const char *names[32]; // Max 32 modes
+  static const char *names[MODE_NAME_CAPACITY]; // Max 32 modes
   size_t count = 0;
 
-  for (size_t i = 0; mode_registry[i].name != NULL && count < 32; i++) {
+  for (size_t i = 0; mode_registry[i].name != NULL && count < MODE_NAME_CAPACITY; i++) {
     // Skip duplicates (like "acds" alias)
     bool duplicate = false;
     for (size_t j = 0; j < count; j++) {
@@ -116,8 +119,8 @@ const char *asciichat_suggest_mode(const char *input) {
   size_t count = asciichat_get_all_mode_strings(&names);
 
   // Create NULL-terminated array for levenshtein_find_similar
-  static const char *null_terminated[33]; // Max 32 modes + NULL
-  for (size_t i = 0; i < count && i < 32; i++) {
+  static const char *null_terminated[MODE_NAME_CAPACITY + 1]; // Max 32 modes + NULL
+  for (size_t i = 0; i < count && i < MODE_NAME_CAPACITY; i++) {
     null_terminated[i] = names[i];
   }
   null_terminated[count] = NULL;

@@ -3,6 +3,13 @@
  * @ingroup media
  * @brief FFmpeg video/image file encoder for render-file output
  */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MEDIA_FFMPEG_ENCODER_MESSAGE_BUFFER_SIZE 2048
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define FFMPEG_STDOUT_AVIO_BUFFER_SIZE 32768
+
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
@@ -590,7 +597,7 @@ static void encoder_log_callback(void *context, int level, const char *format, v
   (void)context;
   if (level > av_log_get_level())
     return;
-  char message[2048];
+  char message[MEDIA_FFMPEG_ENCODER_MESSAGE_BUFFER_SIZE];
   vsnprintf(message, sizeof(message), format, args);
   if (level <= AV_LOG_ERROR)
     log_error("ffmpeg: %s", message);
@@ -627,9 +634,10 @@ static asciichat_error_t encoder_open_output(ffmpeg_encoder_t *enc, const char *
         if (!enc->stdout_stream)
           platform_close(fd);
       }
-      uint8_t *buffer = av_malloc(32768);
+      uint8_t *buffer = av_malloc(FFMPEG_STDOUT_AVIO_BUFFER_SIZE);
       if (buffer && enc->stdout_stream)
-        enc->fmt_ctx->pb = avio_alloc_context(buffer, 32768, 1, enc->stdout_stream, NULL, encoder_stdout_write, NULL);
+        enc->fmt_ctx->pb = avio_alloc_context(buffer, FFMPEG_STDOUT_AVIO_BUFFER_SIZE, 1, enc->stdout_stream, NULL,
+                                              encoder_stdout_write, NULL);
       if (!enc->fmt_ctx->pb) {
         av_free(buffer);
         if (enc->stdout_stream) {

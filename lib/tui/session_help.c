@@ -1,3 +1,19 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SESSION_HELP_SETTINGS_COUNT 20
+#define TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE 32
+#define TUI_SESSION_HELP_KEY_STORAGE_COUNT 40
+#define TUI_SESSION_HELP_FOOTER_BUFFER_SIZE 128
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SESSION_HELP_SETTING_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SESSION_HELP_KEY_BUFFER_SIZE 48
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SESSION_HELP_ENTRY_CAPACITY 40
+
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/ui/help_menu.h>
 #include <ascii-chat/tui/session.h>
@@ -146,8 +162,8 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       browser ? NULL : "0      C code sync primitives TUI",
 #endif
   };
-  char settings[20][256] = {"Current Settings:", ""};
-  char volume_bar[32];
+  char settings[TUI_SESSION_HELP_SETTINGS_COUNT][SESSION_HELP_SETTING_BUFFER_SIZE] = {"Current Settings:", ""};
+  char volume_bar[TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE];
   format_volume_bar(GET_OPTION(speakers_volume), volume_bar, sizeof(volume_bar));
   snprintf(settings[2], sizeof(settings[2]), "Audio  : %s", status_indicator(GET_OPTION(audio_enabled)));
   snprintf(settings[3], sizeof(settings[3]), "Volume : %s", volume_bar);
@@ -171,8 +187,8 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
            status_indicator(GET_OPTION(fps_counter)));
   bool server = !browser && (GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_MCP_SERVER);
   bool discovery = !browser && GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
-  ui_help_entry_t entries[40];
-  char key_storage[40][48];
+  ui_help_entry_t entries[SESSION_HELP_ENTRY_CAPACITY];
+  char key_storage[TUI_SESSION_HELP_KEY_STORAGE_COUNT][SESSION_HELP_KEY_BUFFER_SIZE];
   size_t count = 0;
   for (size_t i = 0; i < sizeof(navigation) / sizeof(navigation[0]); ++i) {
     const char *line = navigation[i];
@@ -206,10 +222,10 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
     snprintf(settings[2], sizeof(settings[2]), "Status screen : %s", status_indicator(GET_OPTION(status_screen)));
     snprintf(settings[3], sizeof(settings[3]), "Log level : %d", GET_OPTION(log_level));
   }
-  const char *settings_text[20];
+  const char *settings_text[TUI_SESSION_HELP_SETTINGS_COUNT];
   for (int i = 0; i < settings_count; ++i)
     settings_text[i] = settings[i];
-  char footer[128];
+  char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];
   snprintf(footer, sizeof(footer), "Press %s to close", colored_string(LOG_COLOR_WARN, "?"));
   ui_help_menu_t menu = {.title = discovery ? "ascii-chat Discovery Service Keyboard Shortcuts"
                                   : server  ? "ascii-chat Server Keyboard Shortcuts"
@@ -324,7 +340,7 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
   default:
     return ui_session_help_render(size, GET_OPTION(media_file)[0] || GET_OPTION(media_url)[0], false, minimum);
   }
-  char footer[128];
+  char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];
   snprintf(footer, sizeof(footer), "Press %s to close", colored_string(LOG_COLOR_WARN, "?"));
   ui_help_menu_t menu = {.title = title, .entries = entries, .count = count, .footer = footer, .top_margin = 0};
   *minimum = ui_help_menu_measure(&menu);

@@ -9,6 +9,10 @@
  * to the database. WAL mode provides concurrent read access.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE 64
+
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
@@ -97,7 +101,8 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
  * @param participant_id Participant UUID
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16], const uint8_t participant_id[16]);
+asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t participant_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Find session by session_id
@@ -108,7 +113,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
  * @param session_id Session UUID to find
  * @return Allocated session entry (caller owns), or NULL if not found
  */
-session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[16]);
+session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Find session by session_string
@@ -146,9 +151,9 @@ void database_session_cleanup_expired(sqlite3 *db);
  * @param connection_type How to reach host (ACIP_CONNECTION_TYPE_*)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[16],
-                                               const uint8_t host_participant_id[16], const char *host_address,
-                                               uint16_t host_port, uint8_t connection_type);
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                               const uint8_t host_participant_id[SESSION_ID_SIZE],
+                                               const char *host_address, uint16_t host_port, uint8_t connection_type);
 
 /**
  * @brief Clear session host (discovery mode - host migration)
@@ -160,7 +165,7 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
  * @param session_id Session UUID
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[16]);
+asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Start host migration (discovery mode)
@@ -172,7 +177,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
  * @param session_id Session UUID
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[16]);
+asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Check if migration window has completed
@@ -185,7 +190,8 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
  * @param migration_window_ms Collection window duration in milliseconds
  * @return true if collection window has completed, false otherwise
  */
-bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms);
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                         uint64_t migration_window_ms);
 
 // ============================================================================
 // Multi-Key Management (for session key rotation and multiple identities)
@@ -200,7 +206,8 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
  * @param key_version Key version for tracking rotation
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string,
+                                           const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE],
                                            uint32_t key_version);
 
 /**
@@ -212,7 +219,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
-                                              const uint8_t identity_pubkey[32]);
+                                              const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Check if a key is valid for a session (exists and not revoked)
@@ -222,7 +229,8 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
  * @param identity_pubkey Ed25519 public key to check (32 bytes)
  * @return true if key is valid, false otherwise
  */
-bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32]);
+bool database_session_verify_key(sqlite3 *db, const char *session_string,
+                                 const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Get all active keys for a session
@@ -261,7 +269,7 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
 
 /** Active-session snapshot for statistics; rows are copied and truncated to capacity. */
 typedef struct {
-  char session_string[64];
+  char session_string[DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE];
   uint32_t participants;
   bool host_ready;
   bool migrating;

@@ -1,3 +1,4 @@
+#include <ascii-chat/common/limits.h>
 #include <emscripten.h>
 #include <ascii-chat/network/consensus/handoff.h>
 
@@ -10,8 +11,8 @@ EMSCRIPTEN_KEEPALIVE void browser_handoff_encode(int kind, const uint8_t *sessio
                                          .capabilities = (uint8_t)capabilities,
                                          .nat_tier = (uint8_t)nat_tier,
                                          .port = (uint16_t)port};
-  memcpy(message.session, session, 16);
-  memcpy(message.participant, id, 16);
+  memcpy(message.session, session, SESSION_ID_SIZE);
+  memcpy(message.participant, id, SESSION_ID_SIZE);
   consensus_handoff_encode(&message, out);
 }
 EM_JS(void, handoff_snapshot, (int kind, const uint8_t *id, uint32_t generation, uint32_t sequence),

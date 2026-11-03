@@ -4,6 +4,12 @@
  * @brief 📝 JSON structured logging output using yyjson
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_JSON_JSON_BUFFER_SIZE 2048
+#define LOG_JSON_ESCAPED_MESSAGE_BUFFER_SIZE 512
+#define LOG_JSON_ESCAPED_FILE_BUFFER_SIZE 256
+#define LOG_JSON_ESCAPED_FUNC_BUFFER_SIZE 128
+
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/log.h>
@@ -117,7 +123,7 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
     yyjson_mut_obj_add_val(doc, root, "header", header);
 
     /* Add timestamp (HH:MM:SS.microseconds) */
-    char timestamp_buf[32];
+    char timestamp_buf[LOG_TIMESTAMP_BUFFER_SIZE];
     size_t ts_len = format_timestamp_microseconds(time_nanoseconds, timestamp_buf, sizeof(timestamp_buf));
     if (ts_len > 0) {
       yyjson_mut_obj_add_strncpy(doc, header, "timestamp", timestamp_buf, ts_len);
@@ -269,11 +275,11 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
   }
 
   /* Format JSON manually on stack using only async-safe operations */
-  char json_buffer[2048];
-  char escaped_message[512];
-  char escaped_file[256];
-  char escaped_func[128];
-  char timestamp_buf[32];
+  char json_buffer[LOG_JSON_JSON_BUFFER_SIZE];
+  char escaped_message[LOG_JSON_ESCAPED_MESSAGE_BUFFER_SIZE];
+  char escaped_file[LOG_JSON_ESCAPED_FILE_BUFFER_SIZE];
+  char escaped_func[LOG_JSON_ESCAPED_FUNC_BUFFER_SIZE];
+  char timestamp_buf[LOG_TIMESTAMP_BUFFER_SIZE];
 
   /* Escape the strings (normalize file path to project-relative) */
   json_escape_async_safe(message, escaped_message, sizeof(escaped_message));

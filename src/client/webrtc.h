@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -71,7 +72,8 @@ void webrtc_set_acds_transport(acip_transport_t *transport);
  * @note This is called automatically when joining ACDS session.
  * @note Callbacks will fail with ERROR_INVALID_STATE if IDs are not set.
  */
-void webrtc_set_session_context(const uint8_t session_id[16], const uint8_t participant_id[16]);
+void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
+                                const uint8_t participant_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Set the WebRTC data channel transport

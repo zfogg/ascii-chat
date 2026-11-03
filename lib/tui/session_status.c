@@ -1,3 +1,17 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE 512
+#define TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE 512
+#define TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE 600
+#define TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE 12
+#define TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE 512
+#define TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE 512
+#define TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE 64
+#define TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE 64
+#define TUI_SESSION_STATUS_TEXT_BUFFER_SIZE 2048
+#define TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE 128
+#define TUI_SESSION_STATUS_KEYS_BUFFER_SIZE 96
+
 #include <ascii-chat/ui/scrollbar.h>
 #include <ascii-chat/ui/help_menu.h>
 /** Server status presentation shared by native and browser sessions. */
@@ -35,10 +49,10 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 
   // Line 2: Title + Stats (centered)
-  char status_line[512];
-  char status_line_truncated[512];
-  char status_line_colored[600];
-  char uptime_str[12];
+  char status_line[TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE];
+  char status_line_truncated[TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE];
+  char status_line_colored[TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE];
+  char uptime_str[TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE];
   format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
   if (status->detail)
     snprintf(status_line, sizeof(status_line), unicode ? "ascii-chat %s | ⏱️ %s" : "ascii-chat %s | uptime %s",
@@ -60,8 +74,8 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   frame_buffer_printf(buf, "%s\n", status_line_colored);
 
   // Line 3: Session + Addresses (centered)
-  char addr_line[512] = {0};
-  char addr_line_truncated[512];
+  char addr_line[TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE] = {0};
+  char addr_line_truncated[TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE];
   int pos = 0;
   if (status->session_string[0] != '\0') {
     pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, unicode ? "🔗 %s" : "Session %s", status->session_string);
@@ -71,7 +85,7 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
       pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
     }
     // Extract IP and get type
-    char ipv4_only[64];
+    char ipv4_only[TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE];
     if (extract_ip_from_address(status->ipv4_address, ipv4_only, sizeof(ipv4_only)) == 0) {
       const char *type = get_ip_type_string(ipv4_only);
       pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s (%s)", status->ipv4_address, type);
@@ -84,7 +98,7 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
       pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
     }
     // Extract IP and get type
-    char ipv6_only[64];
+    char ipv6_only[TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE];
     if (extract_ip_from_address(status->ipv6_address, ipv6_only, sizeof(ipv6_only)) == 0) {
       const char *type = get_ip_type_string(ipv6_only);
       snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s (%s)", status->ipv6_address, type);
@@ -244,7 +258,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
   const char *end = line + frame_buffer_get_length(body);
   for (const char *cursor = line; cursor < end; ++cursor) {
     if (*cursor == '\n') {
-      char text[2048];
+      char text[TUI_SESSION_STATUS_TEXT_BUFFER_SIZE];
       size_t length = (size_t)(cursor - line);
       if (length >= sizeof(text))
         length = sizeof(text) - 1;
@@ -361,7 +375,7 @@ void terminal_screen_logs_render_help(frame_buffer_t *output, terminal_size_t si
                                      {"k / Up", "older line"},
                                      {"Ctrl-D / Right", "half page newer"},
                                      {"Ctrl-U / Left", "half page older"}};
-  char footer[128], keys[96];
+  char footer[TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE], keys[TUI_SESSION_STATUS_KEYS_BUFFER_SIZE];
   ui_help_keys(keys, sizeof(keys), "? / Esc");
   snprintf(footer, sizeof(footer), "%s closes this help", keys);
   ui_help_menu_t menu = {.title = "Log Viewer Keyboard Controls",

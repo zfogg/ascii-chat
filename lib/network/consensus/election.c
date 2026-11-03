@@ -3,6 +3,7 @@
  * @brief Deterministic election algorithm
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
@@ -43,7 +44,7 @@ static bool ranks_before(const participant_metrics_t *metrics, const uint32_t *s
     return metrics[a].nat_tier < metrics[b].nat_tier;
   if (metrics[a].upload_kbps != metrics[b].upload_kbps)
     return metrics[a].upload_kbps > metrics[b].upload_kbps;
-  return memcmp(metrics[a].participant_id, metrics[b].participant_id, 16) < 0;
+  return memcmp(metrics[a].participant_id, metrics[b].participant_id, SESSION_ID_SIZE) < 0;
 }
 
 static void find_best_two(const participant_metrics_t *metrics, const uint32_t *scores, int count, int *best,
@@ -85,7 +86,7 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
     if (metrics[i].nat_tier > 4 || metrics[i].stun_probe_success_pct > 100)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed participant metrics");
     for (int j = 0; j < i; ++j)
-      if (!memcmp(metrics[i].participant_id, metrics[j].participant_id, 16))
+      if (!memcmp(metrics[i].participant_id, metrics[j].participant_id, SESSION_ID_SIZE))
         return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate election participant");
   }
 
@@ -104,8 +105,8 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
 }
 
 asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics,
-                                            const uint8_t announced_host_id[16], const uint8_t announced_backup_id[16],
-                                            bool *out_valid) {
+                                            const uint8_t announced_host_id[SESSION_ID_SIZE],
+                                            const uint8_t announced_backup_id[SESSION_ID_SIZE], bool *out_valid) {
   if (!metrics || !announced_host_id || !announced_backup_id || !out_valid) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid verification parameters");
   }
@@ -114,10 +115,10 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
   int host_idx = -1, backup_idx = -1;
 
   for (int i = 0; i < num_metrics; i++) {
-    if (memcmp(metrics[i].participant_id, announced_host_id, 16) == 0) {
+    if (memcmp(metrics[i].participant_id, announced_host_id, SESSION_ID_SIZE) == 0) {
       host_idx = i;
     }
-    if (memcmp(metrics[i].participant_id, announced_backup_id, 16) == 0) {
+    if (memcmp(metrics[i].participant_id, announced_backup_id, SESSION_ID_SIZE) == 0) {
       backup_idx = i;
     }
   }
@@ -137,7 +138,7 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
   }
 
   // Check if computed result matches announced
-  uint8_t no_backup[16] = {0};
+  uint8_t no_backup[SESSION_ID_SIZE] = {0};
   *out_valid =
       host_idx == computed_host && (computed_backup < 0 ? memcmp(announced_backup_id, no_backup, sizeof(no_backup)) == 0
                                                         : backup_idx == computed_backup);

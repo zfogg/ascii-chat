@@ -1,5 +1,10 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SESSION_SESSION_STRING_BUFFER_SIZE 256
+#define TUI_SESSION_UPDATE_NOTIFICATION_BUFFER_SIZE 1024
+#define TUI_SESSION_CONNECTION_TARGET_BUFFER_SIZE 512
+
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -9,15 +14,15 @@
 typedef struct {
   bool enabled;
   bool joining;
-  char session_string[256];
+  char session_string[TUI_SESSION_SESSION_STRING_BUFFER_SIZE];
 } ui_discovery_view_t;
 
 typedef struct {
   ui_discovery_view_t discovery;
   animation_sample_t animation;
   bool use_colors;
-  char update_notification[1024];
-  char connection_target[512];
+  char update_notification[TUI_SESSION_UPDATE_NOTIFICATION_BUFFER_SIZE];
+  char connection_target[TUI_SESSION_CONNECTION_TARGET_BUFFER_SIZE];
 } ui_splash_view_t;
 
 void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t size, void *view);

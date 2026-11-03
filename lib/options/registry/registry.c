@@ -38,7 +38,7 @@ category_builder_t g_category_builders[] = {{g_general_entries, "GENERAL"},
                                             {NULL, NULL}};
 
 // Unified view of all registry entries (for backward compatibility)
-registry_entry_t g_options_registry[2048];
+registry_entry_t g_options_registry[OPTIONS_REGISTRY_CAPACITY];
 
 size_t g_registry_size = 0;
 bool g_metadata_populated = false;

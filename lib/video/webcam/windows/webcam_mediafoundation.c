@@ -7,6 +7,10 @@
 #ifdef _WIN32
 
 #define COBJMACROS
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_WEBCAM_WINDOWS_WEBCAM_MEDIAFOUNDATION_DEVICE_NAME_BUFFER_SIZE 32
+
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/video/webcam/frame_clock.h>
 #include <ascii-chat/common.h>
@@ -417,7 +421,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   *ctx = cam;
 
   /* Register webcam context with named registry */
-  char device_name[32];
+  char device_name[VIDEO_WEBCAM_WINDOWS_WEBCAM_MEDIAFOUNDATION_DEVICE_NAME_BUFFER_SIZE];
   snprintf(device_name, sizeof(device_name), "device:%u", device_index);
   NAMED_REGISTER(cam, device_name, "webcam", "0x%tx", NULL);
 
@@ -529,7 +533,7 @@ read_latest:
   QueryPerformanceCounter(&end);
   double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
 
-  char duration_str[32];
+  char duration_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty((uint64_t)(elapsed_ms * 1e6), -1, duration_str, sizeof(duration_str));
   log_debug_every(5 * NS_PER_SEC_INT, "ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr,
                   flags, sample);

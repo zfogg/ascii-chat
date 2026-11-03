@@ -3,6 +3,10 @@
  * @brief 🌐 Generic TCP server with dual-stack IPv4/IPv6 support
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_TCP_SERVER_PORT_BUFFER_SIZE 16
+#define NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE 32
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +47,7 @@ static socket_t bind_and_listen(const char *address, int family, int port) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
 
-  char port_str[16];
+  char port_str[NETWORK_TCP_SERVER_PORT_BUFFER_SIZE];
   SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
 
   // Use provided address or NULL for wildcard
@@ -144,7 +148,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   }
 
   /* Register server with named registry, identified by port */
-  char port_name[32];
+  char port_name[NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE];
   snprintf(port_name, sizeof(port_name), "server:%d", server->config.port);
   NAMED_REGISTER(server, port_name, "tcp_server", "0x%tx", NULL);
 

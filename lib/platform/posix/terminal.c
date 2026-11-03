@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_POSIX_TERMINAL_SUMMARY_BUFFER_SIZE 256
+#define PLATFORM_POSIX_TERMINAL_RESPONSE_BUFFER_SIZE 256
+#define PLATFORM_POSIX_TERMINAL_SEQUENCE_BUFFER_SIZE 1024
+
 #include <ascii-chat/platform/keyboard.h>
 /**
  * @file platform/posix/terminal.c
@@ -693,7 +699,7 @@ const char *terminal_color_level_name(terminal_color_mode_t level) {
  * @return Static string with capabilities summary
  */
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
-  static char summary[256];
+  static char summary[PLATFORM_POSIX_TERMINAL_SUMMARY_BUFFER_SIZE];
   const char *render_mode_str;
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     render_mode_str = "half-block";
@@ -985,7 +991,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   }
 
   // Read response (format: ESC]11;rgb:RRRR/GGGG/BBBBESC\ or ESC]11;rgb:RRRR/GGGG/BBBBBEL)
-  char response[256];
+  char response[PLATFORM_POSIX_TERMINAL_RESPONSE_BUFFER_SIZE];
   ssize_t total = 0;
   ssize_t n;
 
@@ -1060,7 +1066,7 @@ static asciichat_error_t title_write(int fd, const char *text) {
 asciichat_error_t terminal_set_title_fd(int fd, const char *title) {
   if (!title)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title must not be NULL");
-  char sequence[1024];
+  char sequence[PLATFORM_POSIX_TERMINAL_SEQUENCE_BUFFER_SIZE];
   size_t used = 4, length = strlen(title);
   memcpy(sequence, "\033]0;", 4);
   if (length > sizeof(sequence) - 7)

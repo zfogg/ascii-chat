@@ -1,3 +1,4 @@
+import { AUDIO_SAMPLE_RATE, OPUS_FRAME_SAMPLES } from "./limits";
 export interface AudioCaptureOptions {
   bypass: boolean;
   onFrame: (payload: Uint8Array, samples: Float32Array) => void;
@@ -15,7 +16,7 @@ export class AudioCapture {
     context: AudioContext,
     options: AudioCaptureOptions,
   ): Promise<AudioCapture> {
-    if (context.sampleRate !== 48000)
+    if (context.sampleRate !== AUDIO_SAMPLE_RATE)
       throw new Error("Audio capture requires a 48 kHz AudioContext");
     if (!context.audioWorklet)
       throw new Error(
@@ -28,6 +29,7 @@ export class AudioCapture {
       numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [1],
+      processorOptions: { frameSamples: OPUS_FRAME_SAMPLES },
     });
     let worker: Worker;
     try {

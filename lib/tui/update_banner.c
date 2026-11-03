@@ -1,3 +1,18 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE 1024
+#define TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE 160
+#define TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE 160
+#define TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE 160
+#define TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE 128
+#define TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE 512
+#define TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE 128
+#define TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE 128
+#define TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE 256
+#define TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE 256
+#define TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE 2048
+#define TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE 1024
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/popup.h>
@@ -88,7 +103,7 @@ bool update_banner_has_update(void) {
 }
 
 static void update_center_line(frame_buffer_t *out, int row, int left, int width, const char *text, log_color_t color) {
-  char clipped[1024];
+  char clipped[TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE];
   truncate_with_ellipsis(text, clipped, sizeof(clipped), width);
   int padding = (width - display_width(clipped)) / 2;
   frame_buffer_printf(out, "\033[%d;%dH%s", row, left + padding, colored_string(color, clipped));
@@ -167,7 +182,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
                       : available               ? "Update available"
                       : result->check_succeeded ? "You're up to date"
                                                 : "Update check unavailable";
-  char heading[160];
+  char heading[TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE];
   snprintf(heading, sizeof(heading), "\033[1m%s", title);
   update_center_line(out, top + (checking ? 1 : 2), left + 2, width - 4, heading,
                      checking                  ? cyan
@@ -179,7 +194,8 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     update_center_line(out, top + 7, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
     update_center_line(out, top + 9, left + 2, width - 4, "Video chat in your terminal", muted);
   } else if (result->check_succeeded) {
-    char installed[160], latest[160], installed_version[128];
+    char installed[TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE], latest[TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE],
+        installed_version[TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE];
     snprintf(installed_version, sizeof(installed_version), "%s%s", result->current_version[0] == 'v' ? "" : "v",
              result->current_version);
     snprintf(installed, sizeof(installed), "Installed  %s",
@@ -189,7 +205,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     update_center_line(out, top + 5, left + 2, width - 4, latest, LOG_COLOR_RESET);
     if (available) {
       update_center_line(out, top + 6, left + 2, width - 4, "A new version of ascii-chat is available.", muted);
-      char command[512];
+      char command[TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE];
       update_check_get_upgrade_suggestion(update_check_detect_install_method(), result->latest_version, command,
                                           sizeof(command));
       int command_width = display_width(command) + 6;
@@ -203,10 +219,11 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
       update_center_line(out, top + 8, command_left + 2, command_width - 4, command, cyan);
       update_border(out, top + 9, command_left, command_width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+",
                     cyan);
-      char instructions[128];
+      char instructions[TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE];
       truncate_with_ellipsis("Full instructions on ascii-chat.com", instructions, sizeof(instructions), width - 4);
       int instructions_left = left + 2 + (width - 4 - display_width(instructions)) / 2;
-      char domain_link[128], styled_instructions[256];
+      char domain_link[TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE],
+          styled_instructions[TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE];
       (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com",
                                       !GET_OPTION(strip_ansi));
       char *domain = strstr(instructions, "ascii-chat.com");
@@ -309,11 +326,12 @@ void update_banner_print_instructions(void) {
   memcpy(&result, &g_update_result, sizeof(result));
   mutex_unlock(&g_update_result_mutex);
 
-  char domain_link[128], instructions[256];
+  char domain_link[TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE],
+      instructions[TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE];
   (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com",
                                   !GET_OPTION(strip_ansi));
   snprintf(instructions, sizeof(instructions), "Full instructions on %s", domain_link);
-  char output[2048];
+  char output[TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE];
   int len = snprintf(output, sizeof(output),
                      "\033[0m\033[2J\033[H\033[?25h"
                      "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
@@ -403,7 +421,7 @@ static void *update_check_thread_func(void *arg) {
   }
   if (err == ASCIICHAT_OK) {
     if (result.update_available) {
-      char notification[1024];
+      char notification[TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE];
       update_check_format_notification(&result, notification, sizeof(notification));
       log_info("%s", notification);
       splash_set_update_notification(notification);

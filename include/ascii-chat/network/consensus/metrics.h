@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <ascii-chat/common/limits.h>
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -31,16 +33,16 @@
  * bandwidth estimates, latency, and probe success rates.
  */
 typedef struct {
-  uint8_t participant_id[16];     ///< UUID of participant
-  uint8_t nat_tier;               ///< 0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN
-  uint32_t upload_kbps;           ///< Upload bandwidth in Kbps (network byte order)
-  uint32_t rtt_ns;                ///< RTT to current host in nanoseconds (network byte order)
-  uint8_t stun_probe_success_pct; ///< 0-100: percentage of successful STUN probes
-  char public_address[64];        ///< Detected public IP address
-  uint16_t public_port;           ///< Detected public port (network byte order)
-  uint8_t connection_type;        ///< Direct=0, UPnP=1, STUN=2, TURN=3
-  uint64_t measurement_time_ns;   ///< Unix ns when measured (network byte order)
-  uint64_t measurement_window_ns; ///< Duration of measurement in ns (network byte order)
+  uint8_t participant_id[SESSION_ID_SIZE];     ///< UUID of participant
+  uint8_t nat_tier;                            ///< 0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN
+  uint32_t upload_kbps;                        ///< Upload bandwidth in Kbps (network byte order)
+  uint32_t rtt_ns;                             ///< RTT to current host in nanoseconds (network byte order)
+  uint8_t stun_probe_success_pct;              ///< 0-100: percentage of successful STUN probes
+  char public_address[IP_ADDRESS_BUFFER_SIZE]; ///< Detected public IP address
+  uint16_t public_port;                        ///< Detected public port (network byte order)
+  uint8_t connection_type;                     ///< Direct=0, UPnP=1, STUN=2, TURN=3
+  uint64_t measurement_time_ns;                ///< Unix ns when measured (network byte order)
+  uint64_t measurement_window_ns;              ///< Duration of measurement in ns (network byte order)
 } __attribute__((packed)) participant_metrics_t;
 
 #ifdef _WIN32
@@ -75,7 +77,7 @@ typedef struct consensus_metrics_collection consensus_metrics_collection_t;
  * @note out_metrics must point to valid participant_metrics_t allocated by caller
  * @note Measurement window and timestamp are set automatically
  */
-asciichat_error_t consensus_metrics_measure(const uint8_t my_id[16], participant_metrics_t *out_metrics);
+asciichat_error_t consensus_metrics_measure(const uint8_t my_id[SESSION_ID_SIZE], participant_metrics_t *out_metrics);
 
 /**
  * @brief Serialize metrics to wire format with network byte order

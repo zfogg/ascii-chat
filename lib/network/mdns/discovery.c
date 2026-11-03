@@ -13,6 +13,8 @@
  * - UI wrapper: lan_discovery.c calls discovery_mdns_query() for interactive selection
  */
 
+#include <ascii-chat/common/limits.h>
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/network/mdns/discovery.h>
@@ -48,7 +50,7 @@ typedef struct {
 // Utility Functions
 // ============================================================================
 
-void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
+void pubkey_to_hex(const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE], char hex_out[HEX_STRING_SIZE_32]) {
   if (!pubkey || !hex_out)
     return;
   for (int i = 0; i < 32; i++) {
@@ -57,7 +59,7 @@ void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
   hex_out[64] = '\0';
 }
 
-asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]) {
+asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!hex_str || !pubkey_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hex_str or pubkey_out pointer");
     return ERROR_INVALID_PARAM;
@@ -432,7 +434,7 @@ static void *acds_thread_fn(void *arg) {
 
   // Verify pubkey if provided
   if (ctx->config->expected_pubkey) {
-    if (memcmp(lookup_result.host_pubkey, ctx->config->expected_pubkey, 32) != 0) {
+    if (memcmp(lookup_result.host_pubkey, ctx->config->expected_pubkey, ED25519_PUBLIC_KEY_SIZE) != 0) {
       NOTICE(DANGER, "DISCOVERED HOST KEY MISMATCH",
              "The discovered session host key does not match the expected key.\n"
              "Possible man-in-the-middle attack. This discovery result was rejected.");
@@ -452,10 +454,10 @@ static void *acds_thread_fn(void *arg) {
   join_params.session_string = ctx->session_string;
 
   if (ctx->config->client_pubkey) {
-    memcpy(join_params.identity_pubkey, ctx->config->client_pubkey, 32);
+    memcpy(join_params.identity_pubkey, ctx->config->client_pubkey, ED25519_PUBLIC_KEY_SIZE);
   }
   if (ctx->config->client_seckey) {
-    memcpy(join_params.identity_seckey, ctx->config->client_seckey, 64);
+    memcpy(join_params.identity_seckey, ctx->config->client_seckey, ED25519_PRIVATE_KEY_SIZE);
   }
   if (ctx->config->password) {
     join_params.has_password = true;
@@ -486,9 +488,9 @@ static void *acds_thread_fn(void *arg) {
       ctx->state->result->success = true;
       ctx->state->result->source = DISCOVERY_SOURCE_ACDS;
 
-      memcpy(ctx->state->result->host_pubkey, lookup_result.host_pubkey, 32);
-      memcpy(ctx->state->result->session_id, join_result.session_id, 16);
-      memcpy(ctx->state->result->participant_id, join_result.participant_id, 16);
+      memcpy(ctx->state->result->host_pubkey, lookup_result.host_pubkey, ED25519_PUBLIC_KEY_SIZE);
+      memcpy(ctx->state->result->session_id, join_result.session_id, SESSION_ID_SIZE);
+      memcpy(ctx->state->result->participant_id, join_result.participant_id, SESSION_ID_SIZE);
 
       SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address,
                    sizeof(ctx->state->result->server_address) - 1);

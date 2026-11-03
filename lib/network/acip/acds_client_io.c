@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_ACIP_ACDS_CLIENT_IO_ACDS_NAME_BUFFER_SIZE 64
+
 #include <ascii-chat/crypto/policy.h>
 /**
  * @file network/acip/client.c
@@ -116,7 +120,7 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
     network_connection_ready(client->connection);
 
     /* Register ACDS client with named registry */
-    char acds_name[64];
+    char acds_name[NETWORK_ACIP_ACDS_CLIENT_IO_ACDS_NAME_BUFFER_SIZE];
     snprintf(acds_name, sizeof(acds_name), "acds_client:%s:%d", config->server_address, config->server_port);
     NAMED_REGISTER(client, acds_name, "acds_client_t", "0x%tx", NULL);
 

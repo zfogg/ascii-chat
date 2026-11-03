@@ -428,7 +428,7 @@ asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *
   *matches = false;
 
   // Generate fingerprint for the key
-  uint8_t key_fingerprint[32];
+  uint8_t key_fingerprint[crypto_hash_sha256_BYTES];
   asciichat_error_t fingerprint_result = generate_key_fingerprint(key, key_fingerprint, 32);
   if (fingerprint_result != ASCIICHAT_OK) {
     return fingerprint_result;

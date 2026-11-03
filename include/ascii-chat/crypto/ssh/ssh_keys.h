@@ -23,6 +23,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include "../../common.h"
 #include "../../crypto/key_types.h" // Include the key type definitions
 #include <stdint.h>
@@ -57,7 +58,7 @@
  *
  * @ingroup keys
  */
-asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32]);
+asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Parse SSH Ed25519 private key from file
@@ -158,7 +159,8 @@ asciichat_error_t validate_ssh_key_file(const char *key_path);
  *
  * @ingroup keys
  */
-asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t x25519_pk[32]);
+asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                           uint8_t x25519_pk[X25519_KEY_SIZE]);
 
 /**
  * @brief Convert Ed25519 private key to X25519 for key exchange
@@ -186,7 +188,8 @@ asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t
  *
  * @ingroup keys
  */
-asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_t x25519_sk[32]);
+asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE],
+                                            uint8_t x25519_sk[X25519_KEY_SIZE]);
 
 /** @} */
 
@@ -219,7 +222,7 @@ asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_
  * @ingroup keys
  */
 asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[64]);
+                                       uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify an Ed25519 signature
@@ -242,7 +245,8 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
  *
  * @ingroup keys
  */
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64], const char *gpg_key_id);
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message,
+                                           size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
+                                           const char *gpg_key_id);
 
 /** @} */

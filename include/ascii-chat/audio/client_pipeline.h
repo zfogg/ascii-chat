@@ -46,6 +46,7 @@
 
 #pragma once
 
+#include <ascii-chat/audio/limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -78,28 +79,6 @@ typedef struct OpusDecoder OpusDecoder;
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @name Audio Pipeline Constants
- * @{
- */
-
-/** Default sample rate (48kHz, native for Opus) */
-#define CLIENT_AUDIO_PIPELINE_SAMPLE_RATE 48000
-
-/** Default frame size in milliseconds */
-#define CLIENT_AUDIO_PIPELINE_FRAME_MS 20
-
-/** Default frame size in samples at 48kHz */
-#define CLIENT_AUDIO_PIPELINE_FRAME_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE * CLIENT_AUDIO_PIPELINE_FRAME_MS / 1000)
-
-/** Echo reference ring buffer size (500ms at 48kHz) */
-#define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE / 2)
-
-/** Maximum Opus packet size */
-#define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000
-
-/** @} */
 
 /**
  * @brief Component enable/disable flags

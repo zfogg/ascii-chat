@@ -1,6 +1,10 @@
 /** @file video/ascii/render.c
  * Shared cell construction and terminal emission for scalar and SIMD kernels.
  */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE 16
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/render.h>
@@ -47,7 +51,7 @@ static void emit_color(outbuf_t *out, ascii_color_t mode, bool background, int v
     else
       emit_set_256_color_fg(out, (uint8_t)value);
   } else if (mode == ASCII_COLOR_16) {
-    char sequence[16];
+    char sequence[VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE];
     char *end = background ? append_16color_bg(sequence, (uint8_t)value) : append_16color_fg(sequence, (uint8_t)value);
     ob_write(out, sequence, (size_t)(end - sequence));
   }

@@ -1,3 +1,6 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
 #include <ascii-chat/video/ascii/render.h>
 /**
  * @file video/ascii.c
@@ -132,7 +135,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
                     const bool _aspect_ratio, const bool stretch, const char *palette_chars,
-                    const char luminance_palette[256]) {
+                    const char luminance_palette[ASCII_LUMINANCE_LEVELS]) {
   if (original == NULL || !palette_chars || !luminance_palette) {
     log_error("invalid parameters");
     return NULL;
@@ -432,7 +435,8 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
   uint64_t prof_pad_end_ns = time_get_ns();
 
   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
-  char alloc_str[32], resize_str[32], print_str[32], pad_str[32], total_str[32];
+  char alloc_str[TIME_DURATION_BUFFER_SIZE], resize_str[TIME_DURATION_BUFFER_SIZE],
+      print_str[TIME_DURATION_BUFFER_SIZE], pad_str[TIME_DURATION_BUFFER_SIZE], total_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
   time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
   time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));

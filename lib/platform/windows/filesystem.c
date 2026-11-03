@@ -5,6 +5,11 @@
 
 #ifdef _WIN32
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_FILESYSTEM_TMP_BUFFER_SIZE 512
+#define PLATFORM_WINDOWS_FILESYSTEM_UNIQUE_BUFFER_SIZE 32
+#define PLATFORM_WINDOWS_FILESYSTEM_BIN_WITH_SUFFIX_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/common.h>
@@ -105,7 +110,7 @@ asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
-  char tmp[512];
+  char tmp[PLATFORM_WINDOWS_FILESYSTEM_TMP_BUFFER_SIZE];
   size_t len = strlen(path);
   if (len >= sizeof(tmp)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long: %zu", len);
@@ -256,7 +261,7 @@ asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char 
 
   // Generate a unique directory name
   for (int attempt = 0; attempt < 100; attempt++) {
-    char unique[32];
+    char unique[PLATFORM_WINDOWS_FILESYSTEM_UNIQUE_BUFFER_SIZE];
     snprintf(unique, sizeof(unique), "%s%lu%d", prefix, GetTickCount(), attempt);
 
     int needed = snprintf(path_out, path_size, "%s%s", temp_dir, unique);
@@ -816,7 +821,7 @@ static bool convert_unix_path_to_windows(const char *unix_path, char *win_path, 
  * @brief Check if binary is in PATH (no caching) - Windows implementation
  */
 bool check_binary_in_path_uncached(const char *bin_name) {
-  char bin_with_suffix[512];
+  char bin_with_suffix[PLATFORM_WINDOWS_FILESYSTEM_BIN_WITH_SUFFIX_BUFFER_SIZE];
   char full_path[PLATFORM_MAX_PATH_LENGTH];
 
   if (strstr(bin_name, ".exe") == NULL) {

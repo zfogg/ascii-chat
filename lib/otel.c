@@ -1,5 +1,16 @@
 /** @file otel.c Native telemetry lifecycle and ascii-chat instrumentation. */
 #define ASCIICHAT_OTEL_IMPLEMENTATION
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OTEL_NAME_BUFFER_SIZE 256
+#define OTEL_VERSION_BUFFER_SIZE 32
+#define OTEL_BODY_BUFFER_SIZE 4096
+#define OTEL_URL_BUFFER_SIZE 2048
+#define OTEL_NAME_EXTENDED_BUFFER_SIZE 1200
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define OTEL_WAIT_SNAPSHOT_CAPACITY 256
+
 #include <ascii-chat/otel.h>
 #ifdef ASCIICHAT_WITH_OTEL
 #include <ascii-chat/common.h>
@@ -221,7 +232,7 @@ static void exporter_diagnostic(void *context, otlp_log_level_t level, const cha
 static mutex_wait_snapshot_t watchdog_detail;
 static bool watchdog_snapshot(void *context, gotel_watchdog_snapshot_t *out) {
   (void)context;
-  static mutex_wait_snapshot_t waits[256];
+  static mutex_wait_snapshot_t waits[OTEL_WAIT_SNAPSHOT_CAPACITY];
   size_t count = 0;
   if (!mutex_stack_try_snapshot(waits, 256, &count, &out->limited))
     return false;
@@ -438,7 +449,7 @@ void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_
   if (!scope->retained || !scope->scope.span)
     return;
   const char *packet = acip_packet_type_name(type);
-  char name[256], version[32];
+  char name[OTEL_NAME_BUFFER_SIZE], version[OTEL_VERSION_BUFFER_SIZE];
   safe_snprintf(name, sizeof(name), "%s.%s", operations[scope->scope.operation].name, packet);
   safe_snprintf(version, sizeof(version), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
                 PROTOCOL_VERSION_PATCH);
@@ -666,7 +677,7 @@ void ascii_otel_log(int level, const char *file, int line, const char *function,
   in_log = true;
   gotel_host_t *h = retain();
   if (h) {
-    char body[4096];
+    char body[OTEL_BODY_BUFFER_SIZE];
     int n = safe_vsnprintf(body, sizeof(body), format, args);
     if (n >= 0) {
       otlp_severity_t severity = level >= LOG_FATAL   ? OTLP_SEVERITY_FATAL
@@ -762,7 +773,7 @@ void ascii_otel_http(ascii_otel_scope_t *s, const char *hostname, const char *pa
   if (!s->retained || !hostname || !path)
     return;
   gotel_error(&s->scope, "http.transport", "HTTP operation did not complete");
-  char url[2048], name[1200];
+  char url[OTEL_URL_BUFFER_SIZE], name[OTEL_NAME_EXTENDED_BUFFER_SIZE];
   int n = safe_snprintf(url, sizeof(url), "https://%s%s", hostname, path);
   if (n >= 0 && (size_t)n < sizeof(url) &&
       otel_status(gotel_http_name(name, sizeof(name), "ascii-chat", false, "GET", url), "Name HTTP telemetry span") ==

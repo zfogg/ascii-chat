@@ -18,6 +18,11 @@
  * @date February 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_STATUS_SESSION_STRING_BUFFER_SIZE 64
+#define TUI_STATUS_IPV4_ADDRESS_BUFFER_SIZE 256
+#define TUI_STATUS_IPV6_ADDRESS_BUFFER_SIZE 256
+
 #include <time.h>
 #include "../common.h"
 #include <ascii-chat/ui/frame_buffer.h>
@@ -30,17 +35,17 @@ typedef struct network_server network_server_t;
  * Contains all data needed to display the status screen.
  */
 typedef struct {
-  char session_string[64];   ///< Memorable session string (e.g., "happy-sunset-ocean")
-  char ipv4_address[256];    ///< Formatted IPv4 bind address with port
-  char ipv6_address[256];    ///< Formatted IPv6 bind address with port
-  uint16_t port;             ///< TCP listen port
-  size_t connected_count;    ///< Number of connected clients/servers
-  bool ipv4_bound;           ///< Whether IPv4 socket is bound
-  bool ipv6_bound;           ///< Whether IPv6 socket is bound
-  bool session_is_mdns_only; ///< Whether session is mDNS-only or ACDS
-  time_t start_time;         ///< Server start time (for uptime calculation)
-  const char *detail;        ///< Optional client controls in the address row
-  const char *mode_name;     ///< Mode name (e.g., "Server", "Discovery Service")
+  char session_string[TUI_STATUS_SESSION_STRING_BUFFER_SIZE]; ///< Memorable session string (e.g., "happy-sunset-ocean")
+  char ipv4_address[TUI_STATUS_IPV4_ADDRESS_BUFFER_SIZE];     ///< Formatted IPv4 bind address with port
+  char ipv6_address[TUI_STATUS_IPV6_ADDRESS_BUFFER_SIZE];     ///< Formatted IPv6 bind address with port
+  uint16_t port;                                              ///< TCP listen port
+  size_t connected_count;                                     ///< Number of connected clients/servers
+  bool ipv4_bound;                                            ///< Whether IPv4 socket is bound
+  bool ipv6_bound;                                            ///< Whether IPv6 socket is bound
+  bool session_is_mdns_only;                                  ///< Whether session is mDNS-only or ACDS
+  time_t start_time;                                          ///< Server start time (for uptime calculation)
+  const char *detail;                                         ///< Optional client controls in the address row
+  const char *mode_name;                                      ///< Mode name (e.g., "Server", "Discovery Service")
 } ui_status_t;
 
 /** The same four-line status header in every host. */

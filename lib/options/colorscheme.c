@@ -8,6 +8,10 @@
  * before logging starts.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE 128
+#define OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE 8192
+
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
@@ -599,7 +603,7 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
   rgb_to_truecolor_ansi(foreground.r, foreground.g, foreground.b, compiled->foreground_truecolor,
                         sizeof(compiled->foreground_truecolor));
   /* Helper: allocate and format a color code string */
-  char temp_buf[128];
+  char temp_buf[OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE];
 
   /* Compile for 16-color mode */
   for (int i = 0; i < 8; i++) {
@@ -678,7 +682,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
   }
 
   /* Generate TOML content */
-  char toml_content[8192] = {0};
+  char toml_content[OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE] = {0};
   size_t offset = 0;
 
   /* Scheme header section */
@@ -933,7 +937,7 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
     return;
   }
   const color_scheme_t *active = colorscheme_get_active_scheme();
-  rgb_pixel_t colors[8];
+  rgb_pixel_t colors[COLORSCHEME_LOG_COLOR_COUNT];
   memcpy(colors,
          palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light
                                                                                    : active->log_colors_dark,
@@ -946,25 +950,25 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
     if (i < 8) {
       char *background = palette->background_codes[i];
       if (i == 7)
-        safe_snprintf(background, 32, "\033[49m");
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[49m");
       else if (mode >= TERM_COLOR_TRUECOLOR)
-        safe_snprintf(background, 32, "\033[48;2;%u;%u;%um", rgb.r, rgb.g, rgb.b);
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[48;2;%u;%u;%um", rgb.r, rgb.g, rgb.b);
       else if (mode >= TERM_COLOR_256)
-        safe_snprintf(background, 32, "\033[48;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[48;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
       else {
         unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
-        safe_snprintf(background, 32, "\033[%um", index < 8 ? 40 + index : 100 + index - 8);
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[%um", index < 8 ? 40 + index : 100 + index - 8);
       }
     }
     if (i == 7)
-      safe_snprintf(code, 32, "\033[0m");
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[0m");
     else if (mode >= TERM_COLOR_TRUECOLOR)
       rgb_to_truecolor_ansi(rgb.r, rgb.g, rgb.b, code, 32);
     else if (mode >= TERM_COLOR_256)
-      safe_snprintf(code, 32, "\033[38;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[38;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
     else {
       unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
-      safe_snprintf(code, 32, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
     }
   }
   cached = *palette;

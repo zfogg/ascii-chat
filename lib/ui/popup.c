@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UI_POPUP_RENDERED_BUFFER_SIZE 1024
+
 #include <ascii-chat/ui/popup.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -41,7 +45,7 @@ asciichat_error_t ui_popup_frame_titled(frame_buffer_t *out, int row, int col, i
   asciichat_error_t result = ui_popup_frame(out, row, col, width, height, color);
   if (result != ASCIICHAT_OK)
     return result;
-  char rendered[1024];
+  char rendered[UI_POPUP_RENDERED_BUFFER_SIZE];
   truncate_with_ellipsis(title, rendered, sizeof(rendered), width - 4);
   int title_width = display_width(rendered);
   frame_buffer_printf(out, "\033[%d;%dH %s ", row, col + (width - title_width - 2) / 2,
@@ -76,7 +80,7 @@ bool ui_popup_render(frame_buffer_t *output, terminal_size_t size, const ui_popu
   int top = box->top_margin + (size.rows - box->top_margin - height) / 2 + 1;
   if (ui_popup_frame(output, top, left, width, height, LOG_COLOR_RESET) != ASCIICHAT_OK)
     return false;
-  char rendered[1024];
+  char rendered[UI_POPUP_RENDERED_BUFFER_SIZE];
   truncate_with_ellipsis(box->title, rendered, sizeof(rendered), width - 4);
   const char *colored_title = colored_string(LOG_COLOR_RESET, rendered);
   frame_buffer_printf(output, "\033[%d;%dH\033[1m%s\033[0m", top + 1, left + 2, colored_title);

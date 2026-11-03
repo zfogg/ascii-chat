@@ -3,6 +3,9 @@
  * @brief Process titles with preserved application arguments and environment.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE 64
+
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/common.h>
 #include <stdbool.h>
@@ -263,7 +266,7 @@ asciichat_error_t platform_process_title_set_args(const char *mode, int argc, ch
     }
   }
   // Linux comm has only 15 visible bytes. Keep every native mode distinct.
-  char short_name[64];
+  char short_name[PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE];
   title_writer_t short_writer = {.data = short_name, .length = 0, .capacity = sizeof(short_name)};
   title_append(&short_writer, "ascii:");
   title_append(&short_writer, strcmp(mode, "discovery-service") == 0 ? "acds" : mode);

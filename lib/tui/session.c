@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SESSION_DETAIL_BUFFER_SIZE 256
+#define TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define PRESENTATION_TIME_HISTORY_COUNT 120
+
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/tui/status.h>
 #include <ascii-chat/tui/terminal_screen.h>
@@ -26,7 +34,7 @@ struct ui_session {
   terminal_size_t presented_size, minimum;
   uint64_t last_render_ns;
   double saved_volume;
-  uint64_t presentation_times[120];
+  uint64_t presentation_times[PRESENTATION_TIME_HISTORY_COUNT];
   unsigned presentation_index;
 };
 
@@ -229,9 +237,9 @@ void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_ses
   const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? "MCP Server"
                      : GET_OPTION(detected_mode) == MODE_MIRROR   ? "Mirror"
                                                                   : "Client";
-  char detail[256];
+  char detail[TUI_SESSION_DETAIL_BUFFER_SIZE];
   size_t offset = terminal_screen_logs_offset();
-  char offset_text[32];
+  char offset_text[TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE];
   snprintf(offset_text, sizeof(offset_text), "%zu", offset);
   const char *escape_key = colored_string(LOG_COLOR_WARN, "Esc");
   const char *search_key = colored_string(LOG_COLOR_WARN, "/");

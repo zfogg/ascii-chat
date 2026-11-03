@@ -1,3 +1,6 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/video/ascii/zalgo.h>
@@ -73,13 +76,13 @@ typedef struct session_display_ctx {
   terminal_capabilities_t caps;
 
   /** @brief Palette character string for rendering */
-  char palette_chars[256];
+  char palette_chars[ASCII_PALETTE_BUFFER_SIZE];
 
   /** @brief Number of characters in palette */
   size_t palette_len;
 
   /** @brief Luminance-to-character mapping table (256 entries) */
-  char luminance_palette[256];
+  char luminance_palette[ASCII_LUMINANCE_LEVELS];
 
   /** @brief Configured palette type */
   palette_type_t palette_type;
@@ -736,7 +739,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     }
 
     uint64_t t_color_replace_end = time_get_ns();
-    char color_replace_str[32];
+    char color_replace_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(t_color_replace_end - t_color_replace_start, -1, color_replace_str, sizeof(color_replace_str));
     log_dev("COLOR_REPLACE: %s", color_replace_str);
   }
@@ -759,7 +762,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     }
 
     uint64_t t_rain_end = time_get_ns();
-    char rain_str[32];
+    char rain_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
     log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
@@ -933,7 +936,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       frame_len = strnlen(rain_result, 1024 * 1024);
 
       uint64_t t_rain_end = time_get_ns();
-      char rain_str[32];
+      char rain_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
       log_debug("DIGITAL_RAIN (write_ascii): Effect applied (%s)", rain_str);
     }

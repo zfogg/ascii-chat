@@ -1,4 +1,8 @@
 /** Portable vectored sends and owned Linux copy-avoidance storage. */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
@@ -273,7 +277,7 @@ asciichat_error_t socket_zerocopy_poll(socket_t sock, bool *completed, bool *cop
 #if defined(__linux__) && defined(SO_ZEROCOPY) && defined(MSG_ZEROCOPY)
   union {
     struct cmsghdr align;
-    char bytes[512];
+    char bytes[PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE];
   } control;
   struct msghdr message = {0};
   message.msg_control = control.bytes;
@@ -367,7 +371,7 @@ asciichat_error_t socket_send_zerocopy(socket_t sock, const socket_send_buffer_t
         goto failed;
       union {
         struct cmsghdr align;
-        char bytes[512];
+        char bytes[PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE];
       } control;
       struct msghdr msg = {0};
       msg.msg_control = control.bytes;

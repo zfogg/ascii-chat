@@ -3,6 +3,9 @@
  * @brief Cross-platform filesystem utilities and binary PATH cache
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_FILESYSTEM_ERROR_MSG_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/common.h>
@@ -31,7 +34,7 @@ void platform_directory_list_destroy(platform_directory_list_t *list) {
 #endif
 
 // Thread-local storage for error messages (avoids allocation)
-static _Thread_local char error_msg_buffer[512];
+static _Thread_local char error_msg_buffer[PLATFORM_FILESYSTEM_ERROR_MSG_BUFFER_SIZE];
 
 const char *file_read_error_message(const char *path) {
   switch (errno) {

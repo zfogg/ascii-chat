@@ -22,6 +22,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/common/buffer_sizes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "../common/error_codes.h"
@@ -316,7 +317,7 @@ bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b);
 
 /** Incremental UTF-8 decoder. Zero-initialize; incomplete input never becomes text. */
 typedef struct {
-  uint8_t bytes[4];
+  uint8_t bytes[UTF8_MAX_BYTES];
   unsigned length, expected;
 } keyboard_text_decoder_t;
 
@@ -325,7 +326,7 @@ typedef struct {
 keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *state, int input);
 
 /** Encode a text key to NUL-terminated UTF-8. Returns 0 for non-text keys. */
-size_t keyboard_text_encode(keyboard_key_t key, char text[5]);
+size_t keyboard_text_encode(keyboard_key_t key, char text[UTF8_BUFFER_SIZE]);
 
 /** Decode native UTF-16 console text. An unmatched surrogate is discarded;
  * a following ordinary character is preserved. Zero-initialize pending_high. */

@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SERVER_CLIENT_PRETTY_BUFFER_SIZE 64
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SERVER_OPUS_BATCH_OVERHEAD 20
+
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include "session/server_like.h"
 #include <ascii-chat/network/errors.h>
@@ -1001,7 +1009,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   uint32_t total_received = client->frames_received_logged;
   mutex_unlock(&client->client_state_mutex);
   if (log_frame_count) {
-    char pretty[64];
+    char pretty[SERVER_CLIENT_PRETTY_BUFFER_SIZE];
     format_bytes_pretty(data_len, pretty, sizeof(pretty));
     log_debug("Client %s has sent %u IMAGE_FRAME packets (%s)", client->client_id, total_received, pretty);
   }
@@ -1303,9 +1311,10 @@ static void acip_server_on_audio_opus(const void *opus_data, size_t opus_len, vo
   // Reserved bytes at offset 8-15
   size_t actual_opus_size = opus_len - 16;
 
-  if (actual_opus_size > 0 && actual_opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
+  if (actual_opus_size > 0 && actual_opus_size <= AUDIO_OPUS_SERVER_PACKET_CAPACITY && sample_rate == 48000 &&
+      frame_duration == 20) {
     // Create a synthetic Opus batch packet (frame_count=1)
-    uint8_t batch_buffer[1024 + 20]; // Max Opus + header
+    uint8_t batch_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY + SERVER_OPUS_BATCH_OVERHEAD]; // Max Opus + header
     uint8_t *batch_ptr = batch_buffer;
 
     // Write batch header (batch_buffer is stack-aligned, writes are safe)

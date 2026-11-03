@@ -4,6 +4,13 @@
  * @brief Cross-platform path manipulation with normalization and Windows/Unix separator handling
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_PATH_TEMP_COMPONENT_BUFFER_SIZE 256
+#define UTIL_PATH_BUFFER_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define PATH_COMPONENT_BUFFER_SIZE 256
+
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/common.h>
@@ -100,7 +107,7 @@ static const char *normalize_path(const char *path) {
   /* Use thread-local storage to avoid buffer corruption when multiple threads
    * or rapid calls reuse the same static buffer. Each thread gets its own buffer. */
   static _Thread_local char normalized[PLATFORM_MAX_PATH_LENGTH];
-  static _Thread_local char components[PLATFORM_MAX_PATH_LENGTH][256];
+  static _Thread_local char components[PLATFORM_MAX_PATH_LENGTH][PATH_COMPONENT_BUFFER_SIZE];
   int component_count = 0;
   size_t path_len = strlen(path);
 
@@ -160,7 +167,7 @@ static const char *normalize_path(const char *path) {
             component_len = sizeof(components[0]) - 1;
           }
 
-          char temp_component[256];
+          char temp_component[UTIL_PATH_TEMP_COMPONENT_BUFFER_SIZE];
           memcpy(temp_component, pos + last_component_end, component_len);
           temp_component[component_len] = '\0';
 
@@ -830,7 +837,7 @@ static bool is_existing_ascii_chat_log(const char *path) {
     return false; // Can't read file
   }
 
-  char buffer[256];
+  char buffer[UTIL_PATH_BUFFER_BUFFER_SIZE];
   bool is_ascii_chat_log = false;
 
   // Read first line and check for ascii-chat log signature

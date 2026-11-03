@@ -1,3 +1,15 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_CAPTURE_LOAD_PATH_BUFFER_SIZE 8192
+#define SESSION_CAPTURE_LOAD_ERROR_BUFFER_SIZE 512
+#define SESSION_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE 32
+#define SESSION_CAPTURE_ERROR_BUFFER_SIZE 512
+#define SESSION_CAPTURE_PATH_BUFFER_SIZE 8192
+#define SESSION_CAPTURE_FAILURE_BUFFER_SIZE 512
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CAPTURE_TRACKER_NAME_BUFFER_SIZE 32
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
@@ -74,7 +86,7 @@ struct session_capture_ctx {
   media_source_t *loaded_source;
   image_t *loaded_frame, *initial_frame;
   bool initial_frame_pending;
-  char load_path[8192], load_error[512];
+  char load_path[SESSION_CAPTURE_LOAD_PATH_BUFFER_SIZE], load_error[SESSION_CAPTURE_LOAD_ERROR_BUFFER_SIZE];
 
   face_follow_image_t *face_follow;
   double face_media_position, face_media_tick;
@@ -246,12 +258,12 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
   ctx->source = NULL;
 
   // Initialize minimal FPS tracker (won't be used but keep structure consistent)
-  char *tracker_name = SAFE_MALLOC(32, char *);
+  char *tracker_name = SAFE_MALLOC(CAPTURE_TRACKER_NAME_BUFFER_SIZE, char *);
   if (!tracker_name) {
     SAFE_FREE(ctx);
     return NULL;
   }
-  safe_snprintf(tracker_name, 32, "NETWORK_CAPTURE");
+  safe_snprintf(tracker_name, CAPTURE_TRACKER_NAME_BUFFER_SIZE, "NETWORK_CAPTURE");
   fps_init(&ctx->fps_tracker, 60, tracker_name);
 
   ctx->start_time_ns = time_get_ns();
@@ -283,7 +295,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
       auto_config.path = NULL;
     } else {
       // Webcam mode (default)
-      static char webcam_index_str[32];
+      static char webcam_index_str[SESSION_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE];
       unsigned int idx = GET_OPTION(webcam_index);
       safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", idx);
       auto_config.type = MEDIA_SOURCE_WEBCAM;
@@ -426,7 +438,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
 
   // Initialize FPS tracker
   // Note: Must allocate tracker_name on heap since fps_init stores a pointer to it
-  char *tracker_name = SAFE_MALLOC(32, char *);
+  char *tracker_name = SAFE_MALLOC(CAPTURE_TRACKER_NAME_BUFFER_SIZE, char *);
   if (!tracker_name) {
     media_source_destroy(ctx->source);
     if (ctx->media_locks_ready) {
@@ -436,7 +448,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     SAFE_FREE(ctx);
     return NULL;
   }
-  safe_snprintf(tracker_name, 32, "CAPTURE_%u", ctx->target_fps);
+  safe_snprintf(tracker_name, CAPTURE_TRACKER_NAME_BUFFER_SIZE, "CAPTURE_%u", ctx->target_fps);
   fps_init(&ctx->fps_tracker, (int)ctx->target_fps, tracker_name);
 
   // Record start time for FPS calculation (nanoseconds)
@@ -553,7 +565,7 @@ static void *load_media_worker(void *data) {
     ascii_otel_error("Media transition could not prepare source");
 #endif
   asciichat_error_context_t failure;
-  char error[512] = "Could not open media";
+  char error[SESSION_CAPTURE_ERROR_BUFFER_SIZE] = "Could not open media";
   if (!source && errno_peek_since(scope, &failure))
     snprintf(error, sizeof(error), "%s", failure.context_message);
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
@@ -648,7 +660,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     log_error("Cannot join media loader; deferring replacement");
     return;
   }
-  char path[8192], failure[512];
+  char path[SESSION_CAPTURE_PATH_BUFFER_SIZE], failure[SESSION_CAPTURE_FAILURE_BUFFER_SIZE];
   snprintf(path, sizeof(path), "%s", ctx->load_path);
   snprintf(failure, sizeof(failure), "%s", ctx->load_error);
   ctx->loader_created = false;

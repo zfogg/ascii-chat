@@ -8,6 +8,13 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_MDNS_NAME_BUFFER_SIZE 256
+#define TUI_MDNS_SESSION_STRING_BUFFER_SIZE 256
+#define TUI_MDNS_ADDRESS_BUFFER_SIZE 256
+#define TUI_MDNS_IPV4_BUFFER_SIZE 16
+#define TUI_MDNS_IPV6_BUFFER_SIZE 46
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -55,13 +62,13 @@ void ui_mdns_log_append(const char *message);
  * @brief Discovered server information from mDNS
  */
 typedef struct {
-  char name[256];           ///< Service instance name (e.g., "swift-river-canyon")
-  char session_string[256]; ///< Session identity advertised in TXT metadata
-  char address[256];        ///< Server address (IPv4, IPv6, or hostname)
-  uint16_t port;            ///< Server port number
-  char ipv4[16];            ///< IPv4 address (if available)
-  char ipv6[46];            ///< IPv6 address (if available)
-  uint32_t ttl;             ///< TTL remaining (seconds)
+  char name[TUI_MDNS_NAME_BUFFER_SIZE];                     ///< Service instance name (e.g., "swift-river-canyon")
+  char session_string[TUI_MDNS_SESSION_STRING_BUFFER_SIZE]; ///< Session identity advertised in TXT metadata
+  char address[TUI_MDNS_ADDRESS_BUFFER_SIZE];               ///< Server address (IPv4, IPv6, or hostname)
+  uint16_t port;                                            ///< Server port number
+  char ipv4[TUI_MDNS_IPV4_BUFFER_SIZE];                     ///< IPv4 address (if available)
+  char ipv6[TUI_MDNS_IPV6_BUFFER_SIZE];                     ///< IPv6 address (if available)
+  uint32_t ttl;                                             ///< TTL remaining (seconds)
 } ui_mdns_server_t;
 
 /**

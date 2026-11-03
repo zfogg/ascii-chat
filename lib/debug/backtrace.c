@@ -4,6 +4,23 @@
  * @brief 📍 Backtrace capture, symbolization, and formatting implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_BACKTRACE_FRAME_NUM_BUFFER_SIZE 16
+#define DEBUG_BACKTRACE_COLORED_NUM_BUFFER_SIZE 256
+#define DEBUG_BACKTRACE_COLORED_SYMBOL_BUFFER_SIZE 2048
+#define DEBUG_BACKTRACE_BIN_NAME_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_BIN_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_FILE_PART_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_DESC_CONTENT_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_DESC_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_FILENAME_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_FILE_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_LINE_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_FUNC_NAME_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_FUNC_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_ADDR_BUFFER_SIZE 512
+#define DEBUG_BACKTRACE_COLORED_EXTERNAL_BUFFER_SIZE 256
+
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/backtrace.h>
@@ -97,17 +114,17 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
     }
 
     // Build frame number string
-    char frame_num_str[16];
+    char frame_num_str[DEBUG_BACKTRACE_FRAME_NUM_BUFFER_SIZE];
     safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
 
     // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
     const char *colored_num_ptr = colored_string(LOG_COLOR_ERROR, frame_num_str);
-    char colored_num_buf[256];
+    char colored_num_buf[DEBUG_BACKTRACE_COLORED_NUM_BUFFER_SIZE];
     SAFE_STRNCPY(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf));
 
     // Parse symbol to extract parts for selective coloring
     // Format: "[binary_name] function_name() (file:line)"
-    char colored_symbol[2048] = {0};
+    char colored_symbol[DEBUG_BACKTRACE_COLORED_SYMBOL_BUFFER_SIZE] = {0};
     const char *s = symbol;
     int colored_sym_offset = 0;
     bool external_source = strstr(symbol, " (external code)") != NULL;
@@ -122,12 +139,12 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
       const char *bracket_end = strchr(s, ']');
       if (bracket_end) {
         int bin_len = bracket_end - s;
-        char bin_name[512];
+        char bin_name[DEBUG_BACKTRACE_BIN_NAME_BUFFER_SIZE];
         size_t bin_copy_len = MIN((size_t)bin_len, sizeof(bin_name) - 1);
         SAFE_MEMCPY(bin_name, sizeof(bin_name), s, bin_copy_len);
         bin_name[bin_copy_len] = '\0';
         const char *colored_bin_ptr = colored_string(LOG_COLOR_RESET, bin_name);
-        char colored_bin_buf[512];
+        char colored_bin_buf[DEBUG_BACKTRACE_COLORED_BIN_BUFFER_SIZE];
         SAFE_STRNCPY(colored_bin_buf, colored_bin_ptr, sizeof(colored_bin_buf));
         colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
                                             sizeof(colored_symbol) - colored_sym_offset, "%s", colored_bin_buf);
@@ -152,7 +169,7 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
       int file_len = paren_start - s;
       while (file_len > 0 && s[file_len - 1] == ' ')
         file_len--;
-      char file_part[512];
+      char file_part[DEBUG_BACKTRACE_FILE_PART_BUFFER_SIZE];
       size_t file_copy_len = MIN((size_t)file_len, sizeof(file_part) - 1);
       SAFE_MEMCPY(file_part, sizeof(file_part), s, file_copy_len);
       file_part[file_copy_len] = '\0';
@@ -160,13 +177,13 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
       // Extract description content (without parens)
       const char *paren_end = strchr(paren_start, ')');
       int desc_content_len = paren_end ? (int)(paren_end - paren_start - 1) : 0;
-      char desc_content[512];
+      char desc_content[DEBUG_BACKTRACE_DESC_CONTENT_BUFFER_SIZE];
       size_t desc_copy_len = MIN((size_t)desc_content_len, sizeof(desc_content) - 1);
       SAFE_MEMCPY(desc_content, sizeof(desc_content), paren_start + 1, desc_copy_len);
       desc_content[desc_copy_len] = '\0';
 
       const char *colored_desc_ptr = colored_string(LOG_COLOR_ERROR, desc_content);
-      char colored_desc_buf[512];
+      char colored_desc_buf[DEBUG_BACKTRACE_COLORED_DESC_BUFFER_SIZE];
       SAFE_STRNCPY(colored_desc_buf, colored_desc_ptr, sizeof(colored_desc_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
                                           sizeof(colored_symbol) - colored_sym_offset, "(%s)", colored_desc_buf);
@@ -181,18 +198,18 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
       if (file_colon) {
         has_source_path = true;
         int filename_len = file_colon - file_start;
-        char filename[512];
+        char filename[DEBUG_BACKTRACE_FILENAME_BUFFER_SIZE];
         size_t filename_copy_len = MIN((size_t)filename_len, sizeof(filename) - 1);
         SAFE_MEMCPY(filename, sizeof(filename), file_start, filename_copy_len);
         filename[filename_copy_len] = '\0';
 
         const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
-        char colored_file_buf[512];
+        char colored_file_buf[DEBUG_BACKTRACE_COLORED_FILE_BUFFER_SIZE];
         SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
         const char *line_num = file_colon + 1;
         const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
-        char colored_line_buf[512];
+        char colored_line_buf[DEBUG_BACKTRACE_COLORED_LINE_BUFFER_SIZE];
         SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
         colored_sym_offset +=
@@ -202,13 +219,13 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
     } else if (paren_start) {
       // Format: "function() (file:line)"
       int func_len = paren_start - s;
-      char func_name[512];
+      char func_name[DEBUG_BACKTRACE_FUNC_NAME_BUFFER_SIZE];
       size_t func_copy_len = MIN((size_t)func_len, sizeof(func_name) - 1);
       SAFE_MEMCPY(func_name, sizeof(func_name), s, func_copy_len);
       func_name[func_copy_len] = '\0';
 
       const char *colored_func_ptr = colored_string(LOG_COLOR_DEV, func_name);
-      char colored_func_buf[512];
+      char colored_func_buf[DEBUG_BACKTRACE_COLORED_FUNC_BUFFER_SIZE];
       SAFE_STRNCPY(colored_func_buf, colored_func_ptr, sizeof(colored_func_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
                                           sizeof(colored_symbol) - colored_sym_offset, "%s()", colored_func_buf);
@@ -224,7 +241,7 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
           colored_sym_offset +=
               safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, " (");
           int file_len = file_paren_end - s - 1;
-          char file_part[512];
+          char file_part[DEBUG_BACKTRACE_FILE_PART_BUFFER_SIZE];
           size_t file_copy_len = MIN((size_t)file_len, sizeof(file_part) - 1);
           SAFE_MEMCPY(file_part, sizeof(file_part), s + 1, file_copy_len);
           file_part[file_copy_len] = '\0';
@@ -238,18 +255,18 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
           if (colon_pos) {
             has_source_path = true;
             int filename_len = colon_pos - file_start;
-            char filename[512];
+            char filename[DEBUG_BACKTRACE_FILENAME_BUFFER_SIZE];
             size_t filename_copy_len = MIN((size_t)filename_len, sizeof(filename) - 1);
             SAFE_MEMCPY(filename, sizeof(filename), file_start, filename_copy_len);
             filename[filename_copy_len] = '\0';
 
             const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
-            char colored_file_buf[512];
+            char colored_file_buf[DEBUG_BACKTRACE_COLORED_FILE_BUFFER_SIZE];
             SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
             const char *line_num = colon_pos + 1;
             const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
-            char colored_line_buf[512];
+            char colored_line_buf[DEBUG_BACKTRACE_COLORED_LINE_BUFFER_SIZE];
             SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
             colored_sym_offset +=
@@ -263,7 +280,7 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
     } else {
       // No parens, likely a hex address - color with FATAL
       const char *colored_addr_ptr = colored_string(LOG_COLOR_FATAL, s);
-      char colored_addr_buf[512];
+      char colored_addr_buf[DEBUG_BACKTRACE_COLORED_ADDR_BUFFER_SIZE];
       SAFE_STRNCPY(colored_addr_buf, colored_addr_ptr, sizeof(colored_addr_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
                                           sizeof(colored_symbol) - colored_sym_offset, "%s", colored_addr_buf);
@@ -271,7 +288,7 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
 
     if (external_source && has_source_path) {
       const char *colored_external_ptr = colored_string(LOG_COLOR_GREY, "(external code)");
-      char colored_external_buf[256];
+      char colored_external_buf[DEBUG_BACKTRACE_COLORED_EXTERNAL_BUFFER_SIZE];
       SAFE_STRNCPY(colored_external_buf, colored_external_ptr, sizeof(colored_external_buf));
       colored_sym_offset +=
           safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - (size_t)colored_sym_offset, " %s",

@@ -1,9 +1,14 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define FACE_WEB_OUTPUT_FIELD_COUNT 11
+
 #include <ascii-chat/video/face_follow.h>
 #include <emscripten/emscripten.h>
 
 static face_follow_state_t state;
-static unsigned char rgba[320 * 240 * 4], bgr[320 * 240 * 3], results[0x9000];
-static float output[11];
+static unsigned char rgba[FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT * 4],
+    bgr[FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT * 3], results[FACE_FOLLOW_RESULT_BUFFER_SIZE];
+static float output[FACE_WEB_OUTPUT_FIELD_COUNT];
 static size_t face_count;
 
 EMSCRIPTEN_KEEPALIVE void face_web_reset(void) {
@@ -16,15 +21,15 @@ EMSCRIPTEN_KEEPALIVE unsigned char *face_web_input(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE void face_web_detect(int width, int height, double now) {
-  if (width < 1 || height < 1 || width > 320 || height > 240)
+  if (width < 1 || height < 1 || width > FACE_FOLLOW_DETECT_WIDTH || height > FACE_FOLLOW_DETECT_HEIGHT)
     return;
   for (int i = 0; i < width * height; i++) {
     bgr[i * 3] = rgba[i * 4 + 2];
     bgr[i * 3 + 1] = rgba[i * 4 + 1];
     bgr[i * 3 + 2] = rgba[i * 4];
   }
-  face_follow_detection_t faces[32];
-  face_follow_detect(results, bgr, width, height, faces, 32, &face_count);
+  face_follow_detection_t faces[FACE_FOLLOW_MAX_DETECTIONS];
+  face_follow_detect(results, bgr, width, height, faces, FACE_FOLLOW_MAX_DETECTIONS, &face_count);
   face_follow_observe(&state, faces, face_count, now);
 }
 

@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UI_TABLE_CLIPPED_BUFFER_SIZE 8192
+#define UI_TABLE_LINE_BUFFER_SIZE 8192
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define UI_TABLE_CELL_CAPACITY 32
+
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/ui/table.h>
 #include <ascii-chat/util/string.h>
@@ -52,7 +60,7 @@ size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const 
     if (cell_width > available)
       cell_width = available;
     const char *text = cells ? cells[i] : cols[i].heading;
-    char clipped[8192];
+    char clipped[UI_TABLE_CLIPPED_BUFFER_SIZE];
     if (text && cols[i].ellipsis && display_width(text) > cell_width) {
       truncate_with_ellipsis_mode(text, clipped, sizeof(clipped), cell_width, terminal_should_use_utf8());
       text = clipped;
@@ -69,7 +77,7 @@ void ui_table_render(frame_buffer_t *out, ui_table_t *t, int row, int col, int w
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid table output, data source or geometry");
     return;
   }
-  char line[8192];
+  char line[UI_TABLE_LINE_BUFFER_SIZE];
   if (t->header) {
     ui_table_row(line, sizeof(line), t->columns, NULL, t->column_count, width - 1, t->selectable, false);
     frame_buffer_printf(out, "\033[%d;%dH%s%s%s", row++, col, ui_text_color_prefix(LOG_COLOR_DEBUG), line,
@@ -80,7 +88,7 @@ void ui_table_render(frame_buffer_t *out, ui_table_t *t, int row, int col, int w
     return;
   ui_viewport_range_t range = ui_viewport_update(&t->viewport, t->row_count, (size_t)height);
   for (int i = 0; i < height; ++i) {
-    const char *cells[32] = {0};
+    const char *cells[UI_TABLE_CELL_CAPACITY] = {0};
     if ((size_t)i < range.count) {
       t->cells(range.first + (size_t)i, cells, t->column_count, t->data);
       ui_table_row(line, sizeof(line), t->columns, cells, t->column_count, width - 1, t->selectable,

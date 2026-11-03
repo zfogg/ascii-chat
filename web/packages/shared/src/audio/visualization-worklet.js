@@ -1,9 +1,10 @@
+const VISUALIZATION_BATCH_SAMPLES = 1024;
 const { AudioWorkletProcessor, registerProcessor } = globalThis;
 // The audio render thread owns sample ordering; display cadence never samples audio.
 class VisualizationPcmProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.samples = new Float32Array(1024);
+    this.samples = new Float32Array(VISUALIZATION_BATCH_SAMPLES);
     this.used = 0;
   }
 
@@ -16,7 +17,7 @@ class VisualizationPcmProcessor extends AudioWorkletProcessor {
       this.samples[this.used++] = mono / channels.length;
       if (this.used === this.samples.length) {
         this.port.postMessage(this.samples, [this.samples.buffer]);
-        this.samples = new Float32Array(1024);
+        this.samples = new Float32Array(VISUALIZATION_BATCH_SAMPLES);
         this.used = 0;
       }
     }

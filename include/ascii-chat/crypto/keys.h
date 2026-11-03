@@ -26,6 +26,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -203,7 +204,7 @@ asciichat_error_t parse_private_key(const char *path, private_key_t *key_out);
  *
  * @ingroup keys
  */
-asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]);
+asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[X25519_KEY_SIZE]);
 
 /**
  * @brief Convert private key to X25519 for Diffie-Hellman key exchange
@@ -227,7 +228,7 @@ asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_p
  *
  * @ingroup keys
  */
-asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]);
+asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[X25519_KEY_SIZE]);
 
 /** @} */
 
@@ -265,7 +266,7 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
  * @ingroup keys
  */
 asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[64]);
+                                       uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify an Ed25519 signature
@@ -288,8 +289,9 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
  *
  * @ingroup keys
  */
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64], const char *gpg_key_id);
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message,
+                                           size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
+                                           const char *gpg_key_id);
 
 /** @} */
 

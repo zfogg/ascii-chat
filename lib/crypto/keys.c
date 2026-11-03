@@ -4,6 +4,10 @@
  * @brief 🔑 High-level key management interface with SSH, GPG, and HTTPS key support
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_KEYS_HEADER_BUFFER_SIZE 50
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/key_types.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
@@ -82,7 +86,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
               if (pubkey_len == 32 && blob_len >= 51) {
                 // Extract Ed25519 public key
                 key_out->type = KEY_TYPE_ED25519;
-                memcpy(key_out->key, blob + 19, 32);
+                memcpy(key_out->key, blob + 19, CRYPTO_PUBLIC_KEY_SIZE);
                 platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-base64",
                                  sizeof(key_out->comment) - 1);
                 SAFE_FREE(blob);
@@ -250,8 +254,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     }
 
     // Get public key and keygrip from GPG keyring
-    uint8_t public_key[32];
-    char keygrip[64];
+    uint8_t public_key[ED25519_PUBLIC_KEY_SIZE];
+    char keygrip[MAX_GPG_KEYGRIP_LEN];
     if (gpg_get_public_key(key_id, public_key, keygrip) != 0) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to get public key from GPG for key ID: %s", key_id);
     }
@@ -262,7 +266,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     key_out->use_ssh_agent = false;
 
     // Store public key (for handshake and verification)
-    memcpy(key_out->public_key, public_key, 32);
+    memcpy(key_out->public_key, public_key, ED25519_PUBLIC_KEY_SIZE);
 
     // Store keygrip (for GPG agent signing operations)
     platform_strncpy(key_out->gpg_keygrip, sizeof(key_out->gpg_keygrip), keygrip, sizeof(key_out->gpg_keygrip) - 1);
@@ -272,11 +276,11 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     // Clear the key.ed25519 field (we don't have the private key in memory)
     // The private key stays protected in GPG agent
-    memset(key_out->key.ed25519, 0, 64);
+    memset(key_out->key.ed25519, 0, ED25519_PRIVATE_KEY_SIZE);
 
     // Set the public key in the second half of ed25519 key (standard Ed25519 format)
     // This is for compatibility with code that expects the public key at offset 32
-    memcpy(key_out->key.ed25519 + 32, public_key, 32);
+    memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, public_key, ED25519_PUBLIC_KEY_SIZE);
 
     log_debug("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
     return ASCIICHAT_OK;
@@ -298,7 +302,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   // Read first 50 bytes to detect format
-  char header[50];
+  char header[CRYPTO_KEYS_HEADER_BUFFER_SIZE];
   size_t bytes_read = fread(header, 1, sizeof(header) - 1, f);
   header[bytes_read] = '\0';
   fclose(f);
@@ -332,8 +336,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     fclose(f);
 
     // Parse OpenPGP armored secret key
-    uint8_t ed25519_pk[32];
-    uint8_t ed25519_sk[32];
+    uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
+    uint8_t ed25519_sk[ED25519_SEED_SIZE];
     asciichat_error_t openpgp_result = openpgp_parse_armored_seckey(file_content, ed25519_pk, ed25519_sk);
     SAFE_FREE(file_content);
     SAFE_FREE(normalized_path);
@@ -349,9 +353,9 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     // Store keypair in Ed25519 format (64 bytes: 32-byte seed + 32-byte public key)
     // libsodium expects the seed in first 32 bytes and public key in second 32 bytes
-    memcpy(key_out->key.ed25519, ed25519_sk, 32);      // Secret key (seed)
-    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32); // Public key
-    memcpy(key_out->public_key, ed25519_pk, 32);       // Also store in public_key field
+    memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);                           // Secret key (seed)
+    memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, ed25519_pk, ED25519_PUBLIC_KEY_SIZE); // Public key
+    memcpy(key_out->public_key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE); // Also store in public_key field
 
     // Store comment
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
@@ -389,8 +393,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read binary OpenPGP key file: %s", key_path);
     }
 
-    uint8_t ed25519_pk[32];
-    uint8_t ed25519_sk[32];
+    uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
+    uint8_t ed25519_sk[ED25519_SEED_SIZE];
     asciichat_error_t openpgp_result = openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
     sodium_memzero(file_content, content_read);
     SAFE_FREE(file_content);
@@ -401,9 +405,9 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     key_out->type = KEY_TYPE_ED25519;
     key_out->use_gpg_agent = false;
     key_out->use_ssh_agent = false;
-    memcpy(key_out->key.ed25519, ed25519_sk, 32);
-    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32);
-    memcpy(key_out->public_key, ed25519_pk, 32);
+    memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);
+    memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
+    memcpy(key_out->public_key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
     sodium_memzero(ed25519_sk, sizeof(ed25519_sk));
     return ASCIICHAT_OK;
@@ -549,14 +553,14 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
 // Key Conversion Functions
 // =============================================================================
 
-asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]) {
+asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!key || !x25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (key->type == KEY_TYPE_X25519) {
     // Passthrough for X25519 keys
-    memcpy(x25519_pk, key->key, 32);
+    memcpy(x25519_pk, key->key, X25519_KEY_SIZE);
     return ASCIICHAT_OK;
   }
 
@@ -568,14 +572,14 @@ asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_p
   return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key type for X25519 conversion: %d", key->type);
 }
 
-asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]) {
+asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[X25519_KEY_SIZE]) {
   if (!key || !x25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (key->type == KEY_TYPE_X25519) {
     // Passthrough for X25519 keys
-    memcpy(x25519_sk, key->key.x25519, 32);
+    memcpy(x25519_sk, key->key.x25519, X25519_KEY_SIZE);
     return ASCIICHAT_OK;
   }
 
@@ -709,7 +713,7 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
     // Format as SSH Ed25519 public key
     // Simple base64 encoding for 32 bytes = 43 chars + padding
     // For now, just use hex encoding
-    char hex_key[65];
+    char hex_key[HEX_STRING_SIZE_32];
     for (size_t i = 0; i < 32; i++) {
       char hex_byte[3];
       safe_snprintf(hex_byte, sizeof(hex_byte), "%02x", key->key[i]);
@@ -720,7 +724,7 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
     safe_snprintf(output, output_size, "ssh-ed25519 %s %s", hex_key, key->comment);
   } else if (key->type == KEY_TYPE_X25519) {
     // Format as hex X25519 key
-    char hex_key[65];
+    char hex_key[HEX_STRING_SIZE_32];
     for (size_t i = 0; i < 32; i++) {
       char hex_byte[3];
       safe_snprintf(hex_byte, sizeof(hex_byte), "%02x", key->key[i]);

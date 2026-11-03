@@ -6,6 +6,19 @@
  * This implementation provides service advertisement and discovery for LAN-based sessions.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_MDNS_SERVICE_TYPE_BUFFER_SIZE 256
+#define NETWORK_MDNS_INSTANCE_BUFFER_SIZE 256
+#define NETWORK_MDNS_HOST_BUFFER_SIZE 256
+#define NETWORK_MDNS_QUERY_SERVICE_BUFFER_SIZE 256
+#define MDNS_MAX_TXT_RECORDS 16
+#define NETWORK_MDNS_REGTYPE_BUFFER_SIZE 256
+#define NETWORK_MDNS_KEY_BUFFER_SIZE 256
+#define NETWORK_MDNS_INSTANCE_NAME_BUFFER_SIZE 64
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MDNS_DISCOVERY_CAPACITY 64
+
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/socket.h>
@@ -30,7 +43,7 @@
 typedef struct {
   asciichat_mdns_t *owner;
   DNSServiceRef ref, address_ref;
-  char name[256];
+  char name[NETWORK_MDNS_NAME_BUFFER_SIZE];
   asciichat_mdns_discovery_t found;
 } bonjour_resolver_t;
 #endif
@@ -45,16 +58,17 @@ struct asciichat_mdns_t {
   bool advertising;
   _Atomic bool stop_advertising;
   asciichat_thread_t advertiser;
-  char service_type[256], instance[256], host[256], query_service[256];
-  char txt[16][512];
+  char service_type[NETWORK_MDNS_SERVICE_TYPE_BUFFER_SIZE], instance[NETWORK_MDNS_INSTANCE_BUFFER_SIZE],
+      host[NETWORK_MDNS_HOST_BUFFER_SIZE], query_service[NETWORK_MDNS_QUERY_SERVICE_BUFFER_SIZE];
+  char txt[MDNS_MAX_TXT_RECORDS][NETWORK_MDNS_TXT_BUFFER_SIZE];
   mdns_record_t ptr, additional[18];
   size_t additional_count;
-  asciichat_mdns_discovery_t discovered[64];
+  asciichat_mdns_discovery_t discovered[MDNS_DISCOVERY_CAPACITY];
   size_t discovered_count;
   uint16_t query_id; /**< Current query ID */
 #ifdef __APPLE__
   DNSServiceRef dns_service_ref, browser;
-  bonjour_resolver_t resolvers[64];
+  bonjour_resolver_t resolvers[MDNS_DISCOVERY_CAPACITY];
   size_t resolver_count;
   DNSServiceErrorType query_error;
 #endif
@@ -249,7 +263,7 @@ static int mdns_service_callback(int sock, const struct sockaddr *from, size_t a
   asciichat_mdns_t *mdns = user_data;
   if (entry != MDNS_ENTRYTYPE_QUESTION || (rtype != MDNS_RECORDTYPE_PTR && rtype != MDNS_RECORDTYPE_ANY))
     return 0;
-  char name[256] = {0};
+  char name[NETWORK_MDNS_NAME_BUFFER_SIZE] = {0};
   mdns_string_extract(data, size, &name_offset, name, sizeof(name) - 1);
   if (strcmp(name, mdns->service_type) != 0)
     return 0;
@@ -314,7 +328,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
 #ifdef __APPLE__
   TXTRecordRef txt_record;
   TXTRecordCreate(&txt_record, 0, NULL);
-  char regtype[256];
+  char regtype[NETWORK_MDNS_REGTYPE_BUFFER_SIZE];
   SAFE_STRNCPY(regtype, service->type, sizeof(regtype));
   char *local_suffix = strstr(regtype, ".local");
   if (local_suffix)
@@ -329,7 +343,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
       TXTRecordDeallocate(&txt_record);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record key");
     }
-    char key[256];
+    char key[NETWORK_MDNS_KEY_BUFFER_SIZE];
     safe_snprintf(key, sizeof(key), "%.*s", (int)key_length, service->txt_records[i]);
     const void *value = separator ? separator + 1 : NULL;
     size_t value_length = separator ? strlen(separator + 1) : 0;
@@ -339,7 +353,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record value");
     }
   }
-  char instance_name[64];
+  char instance_name[NETWORK_MDNS_INSTANCE_NAME_BUFFER_SIZE];
   safe_snprintf(instance_name, sizeof(instance_name), "%s-%u", service->name, service->port);
   DNSServiceErrorType error = DNSServiceRegister(
       &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, instance_name, regtype, NULL, NULL, htons(service->port),
@@ -456,7 +470,7 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
   }
   asciichat_mdns_discovery_t *cached = &mdns->discovered[index];
   if (rtype == MDNS_RECORDTYPE_TXT) {
-    mdns_record_txt_t records[16];
+    mdns_record_txt_t records[MDNS_MAX_TXT_RECORDS];
     size_t count = mdns_record_parse_txt(data, size, record_offset, record_length, records, 16);
     for (size_t i = 0; i < count; ++i) {
       if (records[i].key.length == strlen("session_string") &&
@@ -572,7 +586,7 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
 
 #ifdef __APPLE__
   bonjour_query_close(mdns);
-  char regtype[256];
+  char regtype[NETWORK_MDNS_REGTYPE_BUFFER_SIZE];
   SAFE_STRNCPY(regtype, service_type, sizeof(regtype));
   char *domain = strstr(regtype, ".local");
   if (domain)

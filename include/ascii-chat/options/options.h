@@ -202,6 +202,12 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_YT_DLP_OPTIONS_BUFFER_SIZE 512
+#define OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE 64
+#define OPTIONS_VIDEO_CODEC_BUFFER_SIZE 64
+#define OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE 256
+
 #include <stdbool.h>
 #include <ascii-chat/media/playlist.h>
 #include <stdio.h>
@@ -1047,7 +1053,8 @@ typedef struct options_state {
   bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
   double media_seek_timestamp;        ///< Seek to timestamp in seconds before playback
   bool pause;                         ///< Start playback paused (toggle with spacebar)
-  char yt_dlp_options[512];           ///< Arbitrary yt-dlp options (e.g., "--cookies-from-browser=chrome --embed-subs")
+  char yt_dlp_options[OPTIONS_YT_DLP_OPTIONS_BUFFER_SIZE]; ///< Arbitrary yt-dlp options (e.g.,
+                                                           ///< "--cookies-from-browser=chrome --embed-subs")
 
   // ============================================================================
   // Display Options
@@ -1055,19 +1062,19 @@ typedef struct options_state {
   int color;                        ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
   terminal_color_mode_t color_mode; ///< Color mode (auto/none/16/256/truecolor)
   color_filter_t color_filter;      ///< Monochromatic color filter (none/black/white/green/etc)
-  char color_scheme_name[64];       ///< Color scheme name (e.g., "pastel", "nord")
-  render_mode_t render_mode;        ///< Render mode (foreground/background/half-block)
-  bool show_capabilities;           ///< Show terminal capabilities and exit
-  int force_utf8;                   ///< UTF-8 support setting (auto/true/false)
-  int stats_interval;               ///< Periodic plain statistics on stdout; zero disables.
-  int fps;                          ///< Target framerate (1-144, default: 60)
-  bool fps_explicitly_set;          ///< True if FPS was explicitly configured by the user
-  bool face_follow;                 ///< Automatically frame and follow the selected face
-  bool face_follow_debug;           ///< Developer diagnostic face outline
-  bool flip_x;                      ///< Effective horizontal orientation
-  bool flip_x_explicit;             ///< User selected an orientation for this process lifetime
-  bool media_input;                 ///< Active input is a file/URL rather than the webcam
-  bool flip_y;                      ///< Flip video vertically (Y-axis)
+  char color_scheme_name[OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE]; ///< Color scheme name (e.g., "pastel", "nord")
+  render_mode_t render_mode;                                     ///< Render mode (foreground/background/half-block)
+  bool show_capabilities;                                        ///< Show terminal capabilities and exit
+  int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
+  int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
+  int fps;                 ///< Target framerate (1-144, default: 60)
+  bool fps_explicitly_set; ///< True if FPS was explicitly configured by the user
+  bool face_follow;        ///< Automatically frame and follow the selected face
+  bool face_follow_debug;  ///< Developer diagnostic face outline
+  bool flip_x;             ///< Effective horizontal orientation
+  bool flip_x_explicit;    ///< User selected an orientation for this process lifetime
+  bool media_input;        ///< Active input is a file/URL rather than the webcam
+  bool flip_y;             ///< Flip video vertically (Y-axis)
 
   // ============================================================================
   // Audio Configuration
@@ -1096,8 +1103,8 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
-  bool stretch;         ///< Allow aspect ratio distortion
-  char video_codec[64]; ///< Video codec (auto, hevc, h264, raw) - default: auto
+  bool stretch;                                      ///< Allow aspect ratio distortion
+  char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 
   // ============================================================================
   // Output Options
@@ -1183,9 +1190,9 @@ typedef struct options_state {
   // ============================================================================
   // Palette Configuration
   // ============================================================================
-  palette_type_t palette_type; ///< Selected palette type
-  char palette_custom[256];    ///< Custom palette characters
-  bool palette_custom_set;     ///< True if custom palette was set
+  palette_type_t palette_type;                             ///< Selected palette type
+  char palette_custom[OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE]; ///< Custom palette characters
+  bool palette_custom_set;                                 ///< True if custom palette was set
 
   // ============================================================================
   // Splash Screen Options

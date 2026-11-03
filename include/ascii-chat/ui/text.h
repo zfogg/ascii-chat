@@ -1,4 +1,8 @@
 #pragma once
+
+/** Extra clipping storage for ellipsis, ANSI resets, and the terminating NUL. */
+#define UI_CLIPPED_TEXT_OVERHEAD 32
+
 #include <stddef.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/frame_buffer.h>

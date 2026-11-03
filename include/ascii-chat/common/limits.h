@@ -11,6 +11,17 @@
  */
 
 #pragma once
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MAX_CONFIGURED_STUN_SERVERS 4
+#define MAX_CONFIGURED_TURN_SERVERS 4
+
+/** Existing IP text storage budget, including NUL and room for common scope IDs. */
+#define IP_ADDRESS_BUFFER_SIZE 64
+/** Decimal TCP/UDP port storage (65535 plus NUL). */
+#define PORT_STRING_BUFFER_SIZE 6
+
+/** Binary UUID width shared by discovery, participants, and session identities. */
+#define SESSION_ID_SIZE 16
 
 /** Maximum members supported by session storage, hosting and elections. */
 #define MAX_SESSION_PARTICIPANTS 128

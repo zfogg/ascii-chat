@@ -4,6 +4,10 @@
  * @ingroup platform
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_BACKTRACE_SYMBOL_BUFFER_SIZE 512
+#define PLATFORM_WINDOWS_BACKTRACE_SOURCE_PATH_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/util/path.h>
@@ -180,10 +184,10 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     const char *resolved_module = module_name_for_address(process, (DWORD64)addr, module_name, sizeof(module_name));
 
     // Format the result
-    char symbol_buffer[512];
+    char symbol_buffer[PLATFORM_WINDOWS_BACKTRACE_SYMBOL_BUFFER_SIZE];
     if (sym_result) {
       if (line_result) {
-        char source_path[512];
+        char source_path[PLATFORM_WINDOWS_BACKTRACE_SOURCE_PATH_BUFFER_SIZE];
         bool external = false;
         if (symbol_format_source_path(resolved_module, line_info.FileName, source_path, sizeof(source_path),
                                       &external) != ASCIICHAT_OK) {
@@ -231,8 +235,8 @@ void platform_backtrace_symbols_destroy(char **strings) {
 }
 
 void backtrace_print_simple(int skip_frames) {
-  void *buffer[64];
-  int depth = platform_backtrace(buffer, 64);
+  void *buffer[PLATFORM_BACKTRACE_FRAME_CAPACITY];
+  int depth = platform_backtrace(buffer, PLATFORM_BACKTRACE_FRAME_CAPACITY);
 
   if (depth > 0) {
     char **symbols = platform_backtrace_symbols((void *const *)buffer, depth);

@@ -4,6 +4,15 @@
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_CONFIG_QUESTION_BUFFER_SIZE 4096
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CONFIG_WRITTEN_FLAG_CAPACITY 64
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CONFIG_CATEGORY_CAPACITY 16
+
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/config.h>
@@ -1343,10 +1352,10 @@ asciichat_error_t config_create_default(const char *config_path) {
   }
 
   // Build list of unique categories in order of first appearance
-  const char *categories[16] = {0}; // Max expected categories
+  const char *categories[CONFIG_CATEGORY_CAPACITY] = {0}; // Max expected categories
   size_t category_count = 0;
 
-  for (size_t i = 0; i < metadata_count && category_count < 16; i++) {
+  for (size_t i = 0; i < metadata_count && category_count < CONFIG_CATEGORY_CAPACITY; i++) {
     const char *category = metadata[i].category;
     if (!category) {
       continue;
@@ -1387,7 +1396,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     }
 
     // Track which options we've written (to avoid duplicates)
-    bool written_flags[64] = {0}; // Max options per category
+    bool written_flags[CONFIG_WRITTEN_FLAG_CAPACITY] = {0}; // Max options per category
 
     // Add each option in this category
     for (size_t opt_idx = 0; opt_idx < cat_option_count && opt_idx < 64; opt_idx++) {
@@ -1520,7 +1529,7 @@ asciichat_error_t config_create_default(const char *config_path) {
       // File exists - ask user if they want to overwrite
       log_plain("Config file already exists: %s", config_path_expanded);
 
-      char question[4096];
+      char question[OPTIONS_CONFIG_QUESTION_BUFFER_SIZE];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", config_path_expanded);
       bool overwrite =
           ui_notice_confirm_kind(UI_PROMPT_CONFIG_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No

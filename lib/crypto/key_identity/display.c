@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
@@ -32,7 +33,7 @@ asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool un
   asciichat_error_t result = key_fingerprint_digest(key->key, digest);
   if (result != ASCIICHAT_OK)
     return result;
-  char hex[65];
+  char hex[HEX_STRING_SIZE_32];
   for (size_t i = 0; i < sizeof(digest); ++i) {
     hex[i * 2] = "0123456789abcdef"[digest[i] >> 4];
     hex[i * 2 + 1] = "0123456789abcdef"[digest[i] & 15];

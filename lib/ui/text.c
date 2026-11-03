@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UI_TEXT_NUMBER_BUFFER_SIZE 96
+#define UI_TEXT_STYLED_BUFFER_SIZE 4096
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define UI_TEXT_COLOR_BUFFER_SIZE 128
+
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
@@ -8,7 +16,7 @@
 #include <string.h>
 
 const char *ui_text_color_prefix(log_color_t color) {
-  static _Thread_local char buffers[LOG_COLOR_WHITE + 1][128];
+  static _Thread_local char buffers[LOG_COLOR_WHITE + 1][UI_TEXT_COLOR_BUFFER_SIZE];
   if (color < LOG_COLOR_DEV || color > LOG_COLOR_WHITE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI text color");
     return "";
@@ -105,7 +113,7 @@ void ui_text_values_style(char *out, size_t cap, const char *text, log_color_t z
     } else if (isdigit((unsigned char)*p)) {
       char *end;
       double value = p[0] == '0' && p[1] == 'x' ? (double)strtoull(p, &end, 16) : strtod(p, &end);
-      char number[96];
+      char number[UI_TEXT_NUMBER_BUFFER_SIZE];
       size_t length = (size_t)(end - p);
       if (length >= sizeof(number))
         length = sizeof(number) - 1;
@@ -136,7 +144,7 @@ void ui_text_values(char *out, size_t cap, const char *text) {
 }
 
 void ui_text_render_values(frame_buffer_t *out, const char *text) {
-  char styled[4096];
+  char styled[UI_TEXT_STYLED_BUFFER_SIZE];
   ui_text_values_style(styled, sizeof(styled), text, LOG_COLOR_FATAL);
   frame_buffer_append(out, styled, strlen(styled));
 }

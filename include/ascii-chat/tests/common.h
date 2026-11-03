@@ -41,6 +41,9 @@
  * @date August 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TESTS_COMMON_VERSION_BUFFER_SIZE 256
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -112,7 +115,7 @@ static inline bool test_is_in_headless_environment(void) {
   // Check for WSL (look for "microsoft" or "WSL" in /proc/version)
   FILE *version_file = fopen("/proc/version", "r");
   if (version_file) {
-    char version_buf[256];
+    char version_buf[TESTS_COMMON_VERSION_BUFFER_SIZE];
     if (fgets(version_buf, sizeof(version_buf), version_file)) {
       if (strstr(version_buf, "microsoft") || strstr(version_buf, "Microsoft") || strstr(version_buf, "WSL")) {
         (void)fclose(version_file);

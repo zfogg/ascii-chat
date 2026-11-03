@@ -108,14 +108,14 @@ extern "C" {
 
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
   return (client_audio_pipeline_config_t){
-      .sample_rate = CLIENT_AUDIO_PIPELINE_SAMPLE_RATE,
+      .sample_rate = AUDIO_SAMPLE_RATE,
       .frame_duration_ms = CLIENT_AUDIO_PIPELINE_FRAME_MS,
       .opus_bitrate = 32000,
       .opus_application = OPUS_APPLICATION_VOIP,
 
       .echo_filter_ms = 250,
 
-      .processor = audio_processor_default_config(CLIENT_AUDIO_PIPELINE_SAMPLE_RATE),
+      .processor = audio_processor_default_config(AUDIO_SAMPLE_RATE),
       .jitter_margin_ms = 60,
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,

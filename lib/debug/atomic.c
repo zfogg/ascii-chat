@@ -11,6 +11,12 @@
  * in lib/atomic.c alongside the wrapper functions they support.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_ATOMIC_LOAD_BUFFER_SIZE 64
+#define DEBUG_ATOMIC_STORE_BUFFER_SIZE 64
+#define DEBUG_ATOMIC_COUNT_BUFFER_SIZE 128
+#define DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE 64
+
 #include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
@@ -62,18 +68,18 @@ int debug_atomic_format_timing(const atomic_t *atomic, char *buffer, size_t size
   int offset = 0;
   uint64_t now_ns = time_get_ns();
 
-  char load_str[64] = "";
-  char store_str[64] = "";
-  char count_str[128] = "";
+  char load_str[DEBUG_ATOMIC_LOAD_BUFFER_SIZE] = "";
+  char store_str[DEBUG_ATOMIC_STORE_BUFFER_SIZE] = "";
+  char count_str[DEBUG_ATOMIC_COUNT_BUFFER_SIZE] = "";
 
   if (atomic->last_load_time_ns > 0 && atomic->last_load_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - atomic->last_load_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(load_str, sizeof(load_str), "load=%s", elapsed_str);
   }
 
   if (atomic->last_store_time_ns > 0 && atomic->last_store_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - atomic->last_store_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(store_str, sizeof(store_str), "store=%s", elapsed_str);
   }
@@ -108,18 +114,18 @@ int debug_atomic_ptr_format_timing(const atomic_ptr_t *atomic, char *buffer, siz
   int offset = 0;
   uint64_t now_ns = time_get_ns();
 
-  char load_str[64] = "";
-  char store_str[64] = "";
-  char count_str[128] = "";
+  char load_str[DEBUG_ATOMIC_LOAD_BUFFER_SIZE] = "";
+  char store_str[DEBUG_ATOMIC_STORE_BUFFER_SIZE] = "";
+  char count_str[DEBUG_ATOMIC_COUNT_BUFFER_SIZE] = "";
 
   if (atomic->last_load_time_ns > 0 && atomic->last_load_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - atomic->last_load_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(load_str, sizeof(load_str), "load=%s", elapsed_str);
   }
 
   if (atomic->last_store_time_ns > 0 && atomic->last_store_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - atomic->last_store_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(store_str, sizeof(store_str), "store=%s", elapsed_str);
   }

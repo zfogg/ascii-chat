@@ -1,6 +1,8 @@
 /* Discovery signaling through pinned connection-registry visits.
  * Sends run outside the registry mutex while participant state remains alive. */
 
+#include <ascii-chat/common/limits.h>
+#include <ascii-chat/crypto/sizes.h>
 #include "discovery-service/signaling.h"
 #include "discovery-service/server.h"
 #include <ascii-chat/discovery/database.h>
@@ -13,7 +15,7 @@
 /**
  * @brief Helper: Check if UUID is all zeros (broadcast indicator)
  */
-static bool is_broadcast_uuid(const uint8_t uuid[16]) {
+static bool is_broadcast_uuid(const uint8_t uuid[SESSION_ID_SIZE]) {
   for (int i = 0; i < 16; i++) {
     if (uuid[i] != 0) {
       return false;
@@ -25,8 +27,8 @@ static bool is_broadcast_uuid(const uint8_t uuid[16]) {
 /**
  * @brief Helper: Compare two UUIDs for equality
  */
-static bool uuid_equals(const uint8_t a[16], const uint8_t b[16]) {
-  return memcmp(a, b, 16) == 0;
+static bool uuid_equals(const uint8_t a[SESSION_ID_SIZE], const uint8_t b[SESSION_ID_SIZE]) {
+  return memcmp(a, b, SESSION_ID_SIZE) == 0;
 }
 
 /**
@@ -226,9 +228,9 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_ser
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server, const uint8_t session_id[16],
-                                      packet_type_t packet_type, const void *packet, size_t packet_len,
-                                      const uint8_t *exclude_participant_id) {
+asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server,
+                                      const uint8_t session_id[SESSION_ID_SIZE], packet_type_t packet_type,
+                                      const void *packet, size_t packet_len, const uint8_t *exclude_participant_id) {
   if (!db || !network_server || !session_id || !packet) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, session_id, or packet is NULL");
   }

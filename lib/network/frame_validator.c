@@ -4,6 +4,9 @@
  * @ingroup network
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_FRAME_VALIDATOR_SIZE_BUFFER_SIZE 32
+
 #include <ascii-chat/network/frame_validator.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -14,7 +17,7 @@
 
 asciichat_error_t frame_check_size_overflow(size_t header_size, size_t data_size) {
   if (data_size > SIZE_MAX - header_size) {
-    char size_str[32];
+    char size_str[NETWORK_FRAME_VALIDATOR_SIZE_BUFFER_SIZE];
     format_bytes_pretty(data_size, size_str, sizeof(size_str));
     SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Frame size overflow: %s", size_str);
     return ERROR_BUFFER_OVERFLOW;
@@ -58,7 +61,7 @@ asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compresse
 
   // Check data size against maximum
   if (data_size_sz > IMAGE_MAX_PIXELS_SIZE) {
-    char size_str[32];
+    char size_str[NETWORK_FRAME_VALIDATOR_SIZE_BUFFER_SIZE];
     format_bytes_pretty(data_size_sz, size_str, sizeof(size_str));
     SET_ERRNO(ERROR_INVALID_FRAME, "Frame data too large: %s", size_str);
     return ERROR_INVALID_FRAME;

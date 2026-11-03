@@ -4,6 +4,13 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_CONFIG_PRESETS_COMBINED_BUF1_BUFFER_SIZE 256
+#define OPTIONS_CONFIG_PRESETS_COMBINED_BUF2_BUFFER_SIZE 256
+#define OPTIONS_CONFIG_PRESETS_COMBINED_BUF3_BUFFER_SIZE 256
+#define OPTIONS_CONFIG_PRESETS_COMBINED_BUF4_BUFFER_SIZE 256
+#define OPTIONS_CONFIG_PRESETS_COMBINED_BUF5_BUFFER_SIZE 256
+
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/parsers.h>
@@ -231,11 +238,11 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_example(b, OPTION_MODE_BINARY, example_buf1, "Join a session using the session string", true);
 
   // Build combined examples with session string + flags
-  static char combined_buf1[256];
-  static char combined_buf2[256];
-  static char combined_buf3[256];
-  static char combined_buf4[256];
-  static char combined_buf5[256];
+  static char combined_buf1[OPTIONS_CONFIG_PRESETS_COMBINED_BUF1_BUFFER_SIZE];
+  static char combined_buf2[OPTIONS_CONFIG_PRESETS_COMBINED_BUF2_BUFFER_SIZE];
+  static char combined_buf3[OPTIONS_CONFIG_PRESETS_COMBINED_BUF3_BUFFER_SIZE];
+  static char combined_buf4[OPTIONS_CONFIG_PRESETS_COMBINED_BUF4_BUFFER_SIZE];
+  static char combined_buf5[OPTIONS_CONFIG_PRESETS_COMBINED_BUF5_BUFFER_SIZE];
   safe_snprintf(combined_buf1, sizeof(combined_buf1), "%s --file video.mp4", example_buf3);
   safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'",
                 example_buf4);

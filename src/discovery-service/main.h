@@ -56,6 +56,14 @@
  * @date December 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_SERVICE_MAIN_ADDRESS_BUFFER_SIZE 256
+#define DISCOVERY_SERVICE_MAIN_ADDRESS6_BUFFER_SIZE 256
+#define DISCOVERY_SERVICE_MAIN_DATABASE_PATH_BUFFER_SIZE 512
+#define DISCOVERY_SERVICE_MAIN_KEY_PATH_BUFFER_SIZE 512
+#define DISCOVERY_SERVICE_MAIN_LOG_FILE_BUFFER_SIZE 512
+#define DISCOVERY_SERVICE_MAIN_TURN_SECRET_BUFFER_SIZE 256
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <ascii-chat/common.h>
@@ -69,24 +77,25 @@
  * parsed from command-line arguments.
  */
 typedef struct {
-  int port;                     ///< TCP listen port (default 27225)
-  char address[256];            ///< IPv4 bind address (empty = all interfaces)
-  char address6[256];           ///< IPv6 bind address (empty = all interfaces)
-  char database_path[512];      ///< SQLite database path
-  char key_path[512];           ///< Ed25519 identity key file path
-  char log_file[512];           ///< Log file path (empty = stderr)
-  log_level_t log_level;        ///< Logging verbosity level
+  int port;                                                             ///< TCP listen port (default 27225)
+  char address[DISCOVERY_SERVICE_MAIN_ADDRESS_BUFFER_SIZE];             ///< IPv4 bind address (empty = all interfaces)
+  char address6[DISCOVERY_SERVICE_MAIN_ADDRESS6_BUFFER_SIZE];           ///< IPv6 bind address (empty = all interfaces)
+  char database_path[DISCOVERY_SERVICE_MAIN_DATABASE_PATH_BUFFER_SIZE]; ///< SQLite database path
+  char key_path[DISCOVERY_SERVICE_MAIN_KEY_PATH_BUFFER_SIZE];           ///< Ed25519 identity key file path
+  char log_file[DISCOVERY_SERVICE_MAIN_LOG_FILE_BUFFER_SIZE];           ///< Log file path (empty = stderr)
+  log_level_t log_level;                                                ///< Logging verbosity level
   bool require_server_identity; ///< Require servers to provide signed identity when creating sessions
   bool require_client_identity; ///< Require clients to provide signed identity when joining sessions
   bool require_server_verify;   ///< ACDS policy: require servers to verify client identity during handshake
   bool require_client_verify;   ///< ACDS policy: require clients to verify server identity during handshake
 
   // WebRTC connectivity servers
-  uint8_t stun_count;            ///< Number of configured STUN servers (0-4)
-  stun_server_t stun_servers[4]; ///< STUN server configurations
-  uint8_t turn_count;            ///< Number of configured TURN servers (0-4)
-  turn_server_t turn_servers[4]; ///< TURN server configurations
-  char turn_secret[256];         ///< Shared secret for TURN credential generation (HMAC-SHA1)
+  uint8_t stun_count;                                               ///< Number of configured STUN servers (0-4)
+  stun_server_t stun_servers[MAX_CONFIGURED_STUN_SERVERS];          ///< STUN server configurations
+  uint8_t turn_count;                                               ///< Number of configured TURN servers (0-4)
+  turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS];          ///< TURN server configurations
+  char turn_secret[DISCOVERY_SERVICE_MAIN_TURN_SECRET_BUFFER_SIZE]; ///< Shared secret for TURN credential generation
+                                                                    ///< (HMAC-SHA1)
 } acds_config_t;
 
 /**

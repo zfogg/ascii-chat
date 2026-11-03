@@ -3,6 +3,9 @@
  * @brief Unified media source implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE 64
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -441,7 +444,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
   }
 
   /* Register media source with named registry */
-  char media_type_str[64];
+  char media_type_str[MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE];
   switch (type) {
   case MEDIA_SOURCE_WEBCAM:
     snprintf(media_type_str, sizeof(media_type_str), "media_source:webcam");
@@ -916,7 +919,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source->video_decoder, timestamp_sec);
     double video_pos_after = ffmpeg_decoder_get_position(source->video_decoder);
     uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
-    char video_seek_str[32];
+    char video_seek_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(video_seek_ns, -1, video_seek_str, sizeof(video_seek_str));
     if (video_err != ASCIICHAT_OK) {
       log_warn("Video seek to %.2f failed %s (took %s)", timestamp_sec, asciichat_error_format(NULL, video_err),
@@ -938,7 +941,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
     log_debug("Audio position after seek: %.2f", audio_pos_after);
-    char audio_seek_str[32];
+    char audio_seek_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
     if (audio_err != ASCIICHAT_OK) {
       log_warn("Audio seek to %.2f failed %s (took %s)", timestamp_sec, asciichat_error_format(NULL, audio_err),

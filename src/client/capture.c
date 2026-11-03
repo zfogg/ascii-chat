@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CLIENT_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE 32
+
 #include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/errors.h>
@@ -423,7 +427,7 @@ int capture_init() {
     log_debug("Using test pattern mode");
   } else {
     // Webcam mode (default)
-    static char webcam_index_str[32];
+    static char webcam_index_str[CLIENT_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE];
     safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
     config.type = MEDIA_SOURCE_WEBCAM;
     config.path = webcam_index_str;

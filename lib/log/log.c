@@ -1,3 +1,12 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_BUFFER_BUFFER_SIZE 8192
+#define LOG_LOG_MSG_BUFFER_SIZE 256
+#define LOG_PARSE_TIMESTAMP_BUFFER_SIZE 64
+#define LOG_LEVEL_BUFFER_SIZE 16
+#define LOG_FILE_PATH_BUFFER_SIZE 256
+#define LOG_FUNC_NAME_BUFFER_SIZE 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/send.h>
 /**
@@ -73,7 +82,7 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 static void log_terminal_printf(int fd, const char *format, ...) {
   if (ui_controller_is_presenting())
     return;
-  char buffer[16384];
+  char buffer[LOG_TERMINAL_BUFFER_SIZE];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, sizeof(buffer), format, args);
@@ -459,7 +468,7 @@ static void rotate_log_locked(void) {
   }
 
   /* Copy tail to temp file */
-  char buffer[8192];
+  char buffer[LOG_BUFFER_BUFFER_SIZE];
   ssize_t bytes_read;
   size_t new_size = 0;
   while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
@@ -505,7 +514,7 @@ static void rotate_log_locked(void) {
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   get_current_time_formatted(time_buf);
 
-  char log_msg[256];
+  char log_msg[LOG_LOG_MSG_BUFFER_SIZE];
   int log_msg_len =
       safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
   if (log_msg_len > 0 && log_msg_len < (int)sizeof(log_msg)) {
@@ -943,8 +952,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   const char *clean_msg = msg_buffer;
 
   // Use format system to generate the complete log line
-  char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
-  char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
+  char colored_log_line[LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE];
+  char plain_log_line[LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE];
 
   /* Apply format without colors first (plain version for grep matching)
    * Load format pointer once to prevent TOCTOU race condition where another
@@ -1082,9 +1091,9 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
   // Match the same uncolored template as ordinary terminal logs, including metadata.
   // Keep the complete body for notices that span multiple file-log records.
-  size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + 512;
+  size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE;
   char *plain_log_line = SAFE_MALLOC(capacity, char *);
-  char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
+  char timestamp[LOG_PARSE_TIMESTAMP_BUFFER_SIZE];
   uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(timestamp);
   const log_template_t *format = g_log.format;
@@ -1241,7 +1250,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
       bool use_colors = terminal_should_color_output(fd);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
                                          use_colors, time_ns);
 
@@ -1406,8 +1415,8 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
   uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(time_buf);
 
-  char colored_header[512] = {0};
-  char plain_header[512] = {0};
+  char colored_header[LOG_HEADER_BUFFER_SIZE] = {0};
+  char plain_header[LOG_HEADER_BUFFER_SIZE] = {0};
   if (format_log_header(colored_header, sizeof(colored_header), level, time_buf, file, line, func, use_colors,
                         time_ns) < 0) {
     colored_header[0] = '\0';
@@ -1416,8 +1425,8 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
     plain_header[0] = '\0';
   }
 
-  char colored_entry[16896];
-  char plain_entry[16896];
+  char colored_entry[LOG_TERMINAL_ENTRY_BUFFER_SIZE];
+  char plain_entry[LOG_TERMINAL_ENTRY_BUFFER_SIZE];
   safe_snprintf(colored_entry, sizeof(colored_entry), "%s%s", colored_header, colored_message);
   safe_snprintf(plain_entry, sizeof(plain_entry), "%s%s", plain_header, plain_message);
 
@@ -1519,7 +1528,7 @@ void log_plain_msg(const char *fmt, ...) {
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
                                          0, "log_plain_msg", false, time_ns);
 
@@ -1599,7 +1608,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
                                          0, "log_plain_stderr_msg", false, time_ns);
 
@@ -1693,7 +1702,7 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
                                          0, "log_plain_stdout_msg", false, time_ns);
 
@@ -1884,7 +1893,7 @@ void log_redetect_terminal_capabilities(void) {
 
 /* Get the appropriate color array based on terminal capabilities */
 static _Thread_local colorscheme_palette_t live_log_palette;
-static _Thread_local const char *live_log_codes[8];
+static _Thread_local const char *live_log_codes[COLORSCHEME_LOG_COLOR_COUNT];
 
 const char **log_get_color_array(void) {
   init_terminal_capabilities();
@@ -2088,7 +2097,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   }
 
   size_t timestamp_len = p - timestamp_start;
-  char timestamp[64];
+  char timestamp[LOG_PARSE_TIMESTAMP_BUFFER_SIZE];
   if (timestamp_len >= sizeof(timestamp) || timestamp_len == 0) {
     return 0; // Invalid timestamp - empty or too long
   }
@@ -2114,7 +2123,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Missing closing bracket for level
   }
   size_t level_len = p - level_start;
-  char level_str[16];
+  char level_str[LOG_LEVEL_BUFFER_SIZE];
   if (level_len >= sizeof(level_str) || level_len == 0) {
     return 0; // Level string too long or empty
   }
@@ -2176,7 +2185,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Malformed
   }
   size_t file_len = p - file_start;
-  char file_path[256];
+  char file_path[LOG_FILE_PATH_BUFFER_SIZE];
   if (file_len >= sizeof(file_path)) {
     return 0;
   }
@@ -2229,7 +2238,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     func_len--;
   }
 
-  char func_name[256];
+  char func_name[LOG_FUNC_NAME_BUFFER_SIZE];
   if (func_len >= sizeof(func_name)) {
     func_len = sizeof(func_name) - 1;
   }

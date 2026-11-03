@@ -10,6 +10,15 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE 16
+#define OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE 512
+#define OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE 256
+#define OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE 1024
+#define OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE 256
+#define OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE 512
+#define OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE 2048
+
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/common.h>
@@ -168,7 +177,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     // Build option display string with separate coloring for short and long flags
     char opts_buf[BUFFER_SIZE_SMALL];
     if (desc->short_name && desc->short_name != '\0') {
-      char short_flag[16];
+      char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
       safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
       char long_flag[BUFFER_SIZE_SMALL];
       safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -369,7 +378,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       int option_len = 0;
 
       if (desc->short_name) {
-        char short_flag[16];
+        char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
         safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -693,7 +702,7 @@ static void print_mode_options_section(FILE *stream, int term_width, int max_col
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS"));
 
   // Build colored command with components
-  char usage_buf[512];
+  char usage_buf[OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE];
   int len = 0;
 
   // Binary name (no color)
@@ -795,7 +804,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
 
       // Short name and long name with separate coloring
       if (desc->short_name) {
-        char short_flag[16];
+        char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
         safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -833,7 +842,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        char default_buf[256];
+        char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
           desc_len +=
@@ -1025,7 +1034,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
       // Short name and long name with separate coloring
       if (desc->short_name) {
-        char short_flag[16];
+        char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
         safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
         safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -1051,7 +1060,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       }
 
       // Build description with defaults and env vars
-      char desc_str[1024] = "";
+      char desc_str[OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE] = "";
       int desc_len = 0;
 
       if (desc->help_text) {
@@ -1063,7 +1072,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        char default_buf[256];
+        char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
           desc_len +=
@@ -1312,9 +1321,9 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               desc_start = p;
             }
 
-            char colored_first_part[256];
+            char colored_first_part[OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE];
             safe_snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
-            char colored_result[512];
+            char colored_result[OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE];
             safe_snprintf(colored_result, sizeof(colored_result), "%s",
                           colored_string(LOG_COLOR_INFO, colored_first_part));
 
@@ -1349,7 +1358,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
         // Special handling for KEYBINDINGS section: colorize keybindings and wrap to 70 chars
         if (section->heading && strcmp(section->heading, "KEYBINDINGS") == 0) {
           // Build colored version with proper keybinding colorization
-          char colored_output[2048] = "";
+          char colored_output[OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE] = "";
           const char *src = section->content;
           char *dst = colored_output;
           size_t remaining = sizeof(colored_output) - 1;

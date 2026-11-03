@@ -10,6 +10,9 @@
 
 #ifdef __linux__
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_WEBCAM_LINUX_WEBCAM_V4L2_DEVICE_PATH_BUFFER_SIZE 32
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -406,7 +409,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   // Open V4L2 device
-  char device_path[32];
+  char device_path[VIDEO_WEBCAM_LINUX_WEBCAM_V4L2_DEVICE_PATH_BUFFER_SIZE];
   SAFE_SNPRINTF(device_path, sizeof(device_path), "/dev/video%d", device_index);
 
   // Check if device file exists before trying to open it
@@ -851,7 +854,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   // First pass: count valid video devices
   unsigned int device_count = 0;
   for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX; i++) {
-    char device_path[32];
+    char device_path[VIDEO_WEBCAM_LINUX_WEBCAM_V4L2_DEVICE_PATH_BUFFER_SIZE];
     safe_snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
 
     int fd = open(device_path, O_RDONLY);
@@ -880,7 +883,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   // Second pass: populate device info
   unsigned int idx = 0;
   for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX && idx < device_count; i++) {
-    char device_path[32];
+    char device_path[VIDEO_WEBCAM_LINUX_WEBCAM_V4L2_DEVICE_PATH_BUFFER_SIZE];
     safe_snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
 
     int fd = open(device_path, O_RDONLY);

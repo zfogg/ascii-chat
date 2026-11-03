@@ -19,6 +19,13 @@
  * @date February 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_UPDATE_CHECKER_LATEST_VERSION_BUFFER_SIZE 64
+#define NETWORK_UPDATE_CHECKER_LATEST_SHA_BUFFER_SIZE 41
+#define NETWORK_UPDATE_CHECKER_CURRENT_VERSION_BUFFER_SIZE 64
+#define NETWORK_UPDATE_CHECKER_CURRENT_SHA_BUFFER_SIZE 41
+#define NETWORK_UPDATE_CHECKER_RELEASE_URL_BUFFER_SIZE 512
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
@@ -28,15 +35,15 @@
  * @brief Update check result data
  */
 typedef struct {
-  bool update_available;    ///< True if newer version exists
-  char latest_version[64];  ///< Latest version tag (e.g., "v0.9.0")
-  char latest_sha[41];      ///< Latest release commit SHA (full 40 chars + null)
-  char current_version[64]; ///< Current version string
-  char current_sha[41];     ///< Current commit SHA
-  char release_url[512];    ///< GitHub release page URL
-  time_t last_check_time;   ///< Timestamp of last check
-  time_t dismissed_until;   ///< Suppress this available release until this time
-  bool check_succeeded;     ///< True if check completed (even if no update)
+  bool update_available;                                                  ///< True if newer version exists
+  char latest_version[NETWORK_UPDATE_CHECKER_LATEST_VERSION_BUFFER_SIZE]; ///< Latest version tag (e.g., "v0.9.0")
+  char latest_sha[NETWORK_UPDATE_CHECKER_LATEST_SHA_BUFFER_SIZE]; ///< Latest release commit SHA (full 40 chars + null)
+  char current_version[NETWORK_UPDATE_CHECKER_CURRENT_VERSION_BUFFER_SIZE]; ///< Current version string
+  char current_sha[NETWORK_UPDATE_CHECKER_CURRENT_SHA_BUFFER_SIZE];         ///< Current commit SHA
+  char release_url[NETWORK_UPDATE_CHECKER_RELEASE_URL_BUFFER_SIZE];         ///< GitHub release page URL
+  time_t last_check_time;                                                   ///< Timestamp of last check
+  time_t dismissed_until; ///< Suppress this available release until this time
+  bool check_succeeded;   ///< True if check completed (even if no update)
 } update_check_result_t;
 
 /**

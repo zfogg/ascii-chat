@@ -1,3 +1,9 @@
+const ED25519_PUBLIC_KEY_SIZE = 32;
+const ED25519_PRIVATE_KEY_SIZE = 64;
+const CRYPTO_ERROR_BUFFER_SIZE = 1024;
+const MAX_OPENPGP_KEY_FILE_BYTES = 1024 * 1024;
+/** Matches ASCIICHAT_ERRNO_MAX_DEPTH in the native snapshot API. */
+const ASCIICHAT_ERRNO_MAX_DEPTH = 64;
 import { createWasmModule } from "@ascii-chat/shared/wasm";
 import type { BrowserErrorFrame } from "../errors/errorBus";
 
@@ -37,7 +43,10 @@ interface ParserModule {
 }
 
 function getErrorFrames(module: ParserModule): BrowserErrorFrame[] {
-  const count = Math.min(module._wasm_error_snapshot(), 64);
+  const count = Math.min(
+    module._wasm_error_snapshot(),
+    ASCIICHAT_ERRNO_MAX_DEPTH,
+  );
   return Array.from({ length: count }, (_, index) => ({
     code: module._wasm_error_code(index),
     message: module.UTF8ToString(module._wasm_error_message(index)),
@@ -69,19 +78,27 @@ function allocateUtf8(module: ParserModule, value: string): number {
 }
 
 function getParserError(module: ParserModule): string {
-  const buffer = module._malloc(1024);
+  const buffer = module._malloc(CRYPTO_ERROR_BUFFER_SIZE);
   if (!buffer) return "Invalid SSH key";
   try {
-    module.HEAPU8.fill(0, buffer, buffer + 1024);
-    if (module._client_get_crypto_error_message(buffer, 1024) !== 0)
+    module.HEAPU8.fill(0, buffer, buffer + CRYPTO_ERROR_BUFFER_SIZE);
+    if (
+      module._client_get_crypto_error_message(
+        buffer,
+        CRYPTO_ERROR_BUFFER_SIZE,
+      ) !== 0
+    )
       return "Invalid SSH key";
-    const bytes = module.HEAPU8.subarray(buffer, buffer + 1024);
+    const bytes = module.HEAPU8.subarray(
+      buffer,
+      buffer + CRYPTO_ERROR_BUFFER_SIZE,
+    );
     const end = bytes.indexOf(0);
     const message = new Uint8Array(end >= 0 ? end : bytes.length);
     message.set(end >= 0 ? bytes.subarray(0, end) : bytes);
     return new TextDecoder().decode(message);
   } finally {
-    module.HEAPU8.fill(0, buffer, buffer + 1024);
+    module.HEAPU8.fill(0, buffer, buffer + CRYPTO_ERROR_BUFFER_SIZE);
     module._free(buffer);
   }
 }
@@ -103,32 +120,39 @@ self.onmessage = async (
     if (kind === "ssh-private") {
       path = `/tmp/ascii-chat-key-${crypto.randomUUID()}`;
       input = allocateUtf8(module, path);
-      output = module._malloc(64);
+      output = module._malloc(ED25519_PRIVATE_KEY_SIZE);
       if (!output) throw new Error("Unable to allocate SSH key output buffer");
       module.FS.writeFile(path, contents, { mode: 0o600 });
       if (module._client_parse_ssh_private_key(input, output) !== 0)
         throw new Error(getParserError(module));
-      const bytes = new Uint8Array(64);
-      bytes.set(module.HEAPU8.subarray(output, output + 64));
+      const bytes = new Uint8Array(ED25519_PRIVATE_KEY_SIZE);
+      bytes.set(
+        module.HEAPU8.subarray(output, output + ED25519_PRIVATE_KEY_SIZE),
+      );
       postMessageToWorker({ id, bytes: bytes.buffer }, [bytes.buffer]);
     } else if (kind === "ssh-public") {
       input = allocateUtf8(module, contents);
-      output = module._malloc(32);
+      output = module._malloc(ED25519_PUBLIC_KEY_SIZE);
       if (!output) throw new Error("Unable to allocate SSH key output buffer");
       if (module._client_parse_ssh_public_key(input, output) !== 0)
         throw new Error(getParserError(module));
-      const bytes = new Uint8Array(32);
-      bytes.set(module.HEAPU8.subarray(output, output + 32));
+      const bytes = new Uint8Array(ED25519_PUBLIC_KEY_SIZE);
+      bytes.set(
+        module.HEAPU8.subarray(output, output + ED25519_PUBLIC_KEY_SIZE),
+      );
       postMessageToWorker({ id, bytes: bytes.buffer }, [bytes.buffer]);
     } else {
-      const byteCount = kind === "gpg-private" ? 64 : 32;
+      const byteCount =
+        kind === "gpg-private"
+          ? ED25519_PRIVATE_KEY_SIZE
+          : ED25519_PUBLIC_KEY_SIZE;
       output = module._malloc(byteCount);
       if (!output)
         throw new Error("Unable to allocate OpenPGP key output buffer");
       let result: number;
       if (contents.startsWith(BINARY_OPENPGP_KEY_PREFIX)) {
         const binary = atob(contents.slice(BINARY_OPENPGP_KEY_PREFIX.length));
-        if (!binary.length || binary.length > 1024 * 1024)
+        if (!binary.length || binary.length > MAX_OPENPGP_KEY_FILE_BYTES)
           throw new Error(
             "Binary OpenPGP key file must be between 1 byte and 1 MiB",
           );
@@ -176,7 +200,9 @@ self.onmessage = async (
   } finally {
     const module = modulePromise ? await modulePromise.catch(() => null) : null;
     if (module && output) {
-      const byteCount = kind.endsWith("private") ? 64 : 32;
+      const byteCount = kind.endsWith("private")
+        ? ED25519_PRIVATE_KEY_SIZE
+        : ED25519_PUBLIC_KEY_SIZE;
       module.HEAPU8.fill(0, output, output + byteCount);
       module._free(output);
     }

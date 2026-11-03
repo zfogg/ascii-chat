@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_HTTP_CLIENT_SIZE_TEXT_BUFFER_SIZE 32
+
 #include <ascii-chat/util/url.h>
 /**
  * @file network/http_client.c
@@ -105,7 +109,7 @@ static char *extract_http_body(const char *response, size_t response_len) {
       return NULL;
     }
 
-    char size_text[32];
+    char size_text[NETWORK_HTTP_CLIENT_SIZE_TEXT_BUFFER_SIZE];
     size_t size_text_len = (size_t)(line_end - cursor);
     const char *extension = memchr(cursor, ';', size_text_len);
     if (extension) {

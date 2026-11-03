@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
@@ -52,9 +53,9 @@ extern const network_connection_callbacks_t acds_network_callbacks;
  * No session is persisted until the entire sequence has passed validation.
  */
 typedef struct {
-  uint8_t session_id[16];     ///< Session UUID (valid if joined_session)
-  uint8_t participant_id[16]; ///< Participant UUID (valid if joined_session)
-  bool joined_session;        ///< Whether client has successfully joined a session
+  uint8_t session_id[SESSION_ID_SIZE];     ///< Session UUID (valid if joined_session)
+  uint8_t participant_id[SESSION_ID_SIZE]; ///< Participant UUID (valid if joined_session)
+  bool joined_session;                     ///< Whether client has successfully joined a session
 
   // Crypto handshake state
   network_negotiation_t negotiation;
@@ -93,8 +94,8 @@ typedef struct {
   struct acds_handoff_entry *handoffs;
 
   // Identity
-  uint8_t identity_public[32]; ///< Ed25519 public key
-  uint8_t identity_secret[64]; ///< Ed25519 secret key
+  uint8_t identity_public[ED25519_PUBLIC_KEY_SIZE];  ///< Ed25519 public key
+  uint8_t identity_secret[ED25519_PRIVATE_KEY_SIZE]; ///< Ed25519 secret key
 
   // Persistence (SQLite as single source of truth for sessions)
   sqlite3 *db; ///< SQLite database handle

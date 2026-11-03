@@ -14,6 +14,9 @@
  * @date February 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE 1024
+
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
@@ -58,7 +61,7 @@
 // ============================================================================
 
 // Global update notification (set via splash_set_update_notification)
-static char g_update_notification[1024] = {0};
+static char g_update_notification[TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE] = {0};
 static mutex_t g_update_notification_mutex;
 static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_notification_mutex);
 

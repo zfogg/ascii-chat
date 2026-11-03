@@ -1,3 +1,5 @@
+#include <ascii-chat/common/limits.h>
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -27,7 +29,7 @@
 #include "queries.h"
 
 /** Generate a random RFC 4122 version 4 UUID. */
-static void generate_uuid(uint8_t uuid_out[16]) {
+static void generate_uuid(uint8_t uuid_out[SESSION_ID_SIZE]) {
   randombytes_buf(uuid_out, 16);
   uuid_out[6] = (uuid_out[6] & 0x0F) | 0x40; // Version 4
   uuid_out[8] = (uuid_out[8] & 0x3F) | 0x80; // RFC4122 variant
@@ -77,12 +79,12 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   const void *blob = sqlite3_column_blob(stmt, 1);
   if (blob) {
-    memcpy(session->session_id, blob, 16);
+    memcpy(session->session_id, blob, SESSION_ID_SIZE);
   }
 
   blob = sqlite3_column_blob(stmt, 2);
   if (blob) {
-    memcpy(session->host_pubkey, blob, 32);
+    memcpy(session->host_pubkey, blob, ED25519_PUBLIC_KEY_SIZE);
   }
 
   str = (const char *)sqlite3_column_text(stmt, 3);
@@ -110,14 +112,14 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
   // Discovery mode host negotiation fields
   blob = sqlite3_column_blob(stmt, 15);
   if (blob) {
-    memcpy(session->initiator_id, blob, 16);
+    memcpy(session->initiator_id, blob, SESSION_ID_SIZE);
   }
 
   session->host_established = sqlite3_column_int(stmt, 16) != 0;
 
   blob = sqlite3_column_blob(stmt, 17);
   if (blob) {
-    memcpy(session->host_participant_id, blob, 16);
+    memcpy(session->host_participant_id, blob, SESSION_ID_SIZE);
   }
 
   str = (const char *)sqlite3_column_text(stmt, 18);
@@ -158,12 +160,12 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
 
     const void *blob = sqlite3_column_blob(stmt, 0);
     if (blob) {
-      memcpy(p->participant_id, blob, 16);
+      memcpy(p->participant_id, blob, SESSION_ID_SIZE);
     }
 
     blob = sqlite3_column_blob(stmt, 1);
     if (blob) {
-      memcpy(p->identity_pubkey, blob, 32);
+      memcpy(p->identity_pubkey, blob, ED25519_PUBLIC_KEY_SIZE);
     }
 
     p->joined_at = (uint64_t)sqlite3_column_int64(stmt, 2);
@@ -339,7 +341,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   }
 
   // Generate session ID
-  uint8_t session_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
   generate_uuid(session_id);
 
   // Set timestamps
@@ -397,7 +399,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   // Fill response
   resp->session_string_len = (uint8_t)strlen(session_string);
   SAFE_STRNCPY(resp->session_string, session_string, sizeof(resp->session_string));
-  memcpy(resp->session_id, session_id, 16);
+  memcpy(resp->session_id, session_id, SESSION_ID_SIZE);
   resp->expires_at = expires_at;
   resp->stun_count = config->stun_count;
   resp->turn_count = config->turn_count;
@@ -516,12 +518,12 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
 
   const void *blob = sqlite3_column_blob(stmt, 1);
   if (blob) {
-    memcpy(resp->session_id, blob, 16);
+    memcpy(resp->session_id, blob, SESSION_ID_SIZE);
   }
 
   blob = sqlite3_column_blob(stmt, 2);
   if (blob) {
-    memcpy(resp->host_pubkey, blob, 32);
+    memcpy(resp->host_pubkey, blob, ED25519_PUBLIC_KEY_SIZE);
   }
 
   resp->max_participants = (uint8_t)sqlite3_column_int(stmt, 4);
@@ -581,7 +583,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
                                                       const acds_config_t *config, const session_entry_t *verified,
                                                       acip_session_joined_t *resp, session_entry_t **joined) {
   // Generate participant ID
-  uint8_t participant_id[16];
+  uint8_t participant_id[SESSION_ID_SIZE];
   generate_uuid(participant_id);
   uint64_t now = database_get_current_time_ms();
 
@@ -686,7 +688,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
       sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
       sqlite3_step(stmt);
       sqlite3_finalize(stmt);
-      memcpy(session->initiator_id, participant_id, 16);
+      memcpy(session->initiator_id, participant_id, SESSION_ID_SIZE);
       log_debug("Set initiator_id to new participant %02x%02x...", participant_id[0], participant_id[1]);
     }
   }
@@ -715,13 +717,13 @@ static void database_session_join_response(sqlite3 *db, session_entry_t *session
   // Fill response
   resp->success = 1;
   resp->error_code = ACIP_ERROR_NONE;
-  memcpy(resp->session_id, session->session_id, 16);
+  memcpy(resp->session_id, session->session_id, SESSION_ID_SIZE);
 
   // Discovery mode host negotiation fields
-  memcpy(resp->initiator_id, session->initiator_id, 16);
+  memcpy(resp->initiator_id, session->initiator_id, SESSION_ID_SIZE);
   resp->host_established = session->host_established ? 1 : 0;
   if (session->host_established) {
-    memcpy(resp->host_id, session->host_participant_id, 16);
+    memcpy(resp->host_id, session->host_participant_id, SESSION_ID_SIZE);
   }
   // peer_count = current_participants (excluding self) that need to negotiate
   resp->peer_count = session->current_participants; // Will be incremented after this returns
@@ -851,7 +853,8 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   return result;
 }
 
-asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16], const uint8_t participant_id[16]) {
+asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t participant_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_LEAVE);
   if (!db || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or participant_id is NULL");
@@ -985,7 +988,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   return ASCIICHAT_OK;
 }
 
-session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[16]) {
+session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]) {
   if (!db || !session_id) {
     return NULL;
   }
@@ -1080,9 +1083,9 @@ void database_session_cleanup_expired(sqlite3 *db) {
   database_telemetry_population(db);
 }
 
-asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[16],
-                                               const uint8_t host_participant_id[16], const char *host_address,
-                                               uint16_t host_port, uint8_t connection_type) {
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                               const uint8_t host_participant_id[SESSION_ID_SIZE],
+                                               const char *host_address, uint16_t host_port, uint8_t connection_type) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_UPDATE_HOST);
   if (!db || !session_id || !host_participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or host_participant_id is NULL");
@@ -1132,7 +1135,7 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[16]) {
+asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_CLEAR_HOST);
   if (!db || !session_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
@@ -1171,7 +1174,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[16]) {
+asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_START_MIGRATION);
   if (!db || !session_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
@@ -1214,7 +1217,8 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
   return ASCIICHAT_OK;
 }
 
-bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms) {
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                         uint64_t migration_window_ms) {
   ASCII_OTEL_SCOPE(DATABASE_MIGRATION_READY);
   if (!db || !session_id) {
     return false;
@@ -1254,7 +1258,8 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
 // Multi-Key Management Functions
 // ============================================================================
 
-asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string,
+                                           const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE],
                                            uint32_t key_version) {
   ASCII_OTEL_SCOPE(DATABASE_ADD_KEY);
   if (!db || !session_string || !identity_pubkey || sodium_is_zero(identity_pubkey, 32)) {
@@ -1287,7 +1292,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
 }
 
 asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
-                                              const uint8_t identity_pubkey[32]) {
+                                              const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_REVOKE_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for revoke_key");
@@ -1316,7 +1321,8 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
   return ASCIICHAT_OK;
 }
 
-bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32]) {
+bool database_session_verify_key(sqlite3 *db, const char *session_string,
+                                 const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_VERIFY_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return false;
@@ -1358,7 +1364,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
   while (sqlite3_step(stmt) == SQLITE_ROW && count < max_keys) {
     const void *blob = sqlite3_column_blob(stmt, 0);
     if (blob && sqlite3_column_bytes(stmt, 0) == 32) {
-      memcpy(keys_out[count], blob, 32);
+      memcpy(keys_out[count], blob, ED25519_PUBLIC_KEY_SIZE);
       count++;
     }
   }

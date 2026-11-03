@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UI_SCROLLBAR_CELL_BUFFER_SIZE 128
+
 #include <ascii-chat/ui/scrollbar.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/string.h>
@@ -38,7 +42,7 @@ void ui_scrollbar_render(frame_buffer_t *out, int row, int col, int height, size
   }
   frame_buffer_append(out, "\0337", 2);
   for (int i = 0; i < height; ++i) {
-    char cell[128];
+    char cell[UI_SCROLLBAR_CELL_BUFFER_SIZE];
     ui_scrollbar_cell(cell, sizeof(cell), (size_t)i, (size_t)height, total, visible, offset);
     frame_buffer_printf(out, "\033[%d;%dH%s", row + i, col, cell);
   }

@@ -41,9 +41,10 @@ with standalone_output_directory('upnp') as out:
         target = out / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(HERE / source, target)
-    public_header = out / 'ascii-chat/network/nat/upnp.h'
-    public_header.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(ROOT / 'include/ascii-chat/network/nat/upnp.h', public_header)
+    for name in ['ascii-chat/network/nat/upnp.h', 'ascii-chat/common/limits.h']:
+        public_header = out / name
+        public_header.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / 'include' / name, public_header)
     for variant, defines in [
         ('upnp-5arg', ['HAVE_MINIUPNPC']),
         ('upnp-7arg', ['HAVE_MINIUPNPC', 'MINIUPNPC_GETVALIDIGD_7ARG']),

@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE 32
+#define NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE 256
+
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/util/time.h>
 /**
@@ -36,7 +41,7 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
                                       uint32_t original_size, uint32_t compressed_size) {
   // Validate size before allocation to prevent excessive memory usage
   if (original_size > PACKET_MAX_FRAME_SIZE) {
-    char size_str[32];
+    char size_str[NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE];
     format_bytes_pretty(original_size, size_str, sizeof(size_str));
     SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s (max %d MB)", size_str,
               PACKET_MAX_FRAME_SIZE / (1024 * 1024));
@@ -189,7 +194,7 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
 
   // Validate final buffer size against maximum
   if (rgb_size > PACKET_MAX_FRAME_SIZE) {
-    char size_str[32];
+    char size_str[NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE];
     format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
     return SET_ERRNO(ERROR_MEMORY, "Frame buffer size exceeds maximum: %s (max %d MB)", size_str,
                      PACKET_MAX_FRAME_SIZE / (1024 * 1024));
@@ -215,7 +220,7 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
   const size_t header_size = 16;
   if (packet_len < header_size) {
     // DEBUG: Log first few bytes of corrupted packet to understand what's happening
-    char hex_buf[256];
+    char hex_buf[NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE];
     size_t bytes_to_show = (packet_len < 32) ? packet_len : 32;
     for (size_t i = 0; i < bytes_to_show; i++) {
       snprintf(hex_buf + i * 2, 3, "%02x", ((uint8_t *)packet_data)[i]);

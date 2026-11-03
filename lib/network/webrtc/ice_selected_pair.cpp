@@ -10,6 +10,10 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE 512
+#define NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE 512
+
 #include <rtc/rtc.hpp>
 #include <string>
 #include <cstring>
@@ -70,8 +74,8 @@ asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_c
 
     // Query selected candidate pair from libdatachannel
     // Note: This requires libdatachannel to have the selected candidate pair available
-    char local_buf[512];
-    char remote_buf[512];
+    char local_buf[NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE];
+    char remote_buf[NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE];
 
     // Try to get the selected local candidate
     if (rtcGetSelectedCandidatePair(rtc_id, local_buf, sizeof(local_buf), remote_buf, sizeof(remote_buf)) < 0) {

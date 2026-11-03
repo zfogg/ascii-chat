@@ -96,13 +96,13 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     if (recv_result != ASCIICHAT_OK) {
       if (recv_result != ERROR_NETWORK_TIMEOUT)
         stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
-      char recv_duration_str[32];
+      char recv_duration_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(recv_end_ns - recv_start_ns), -1, recv_duration_str, sizeof(recv_duration_str));
       log_warn("[ACIP_RECV_ERROR] recv() failed after %s (result=%d)", recv_duration_str, recv_result);
       return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
     }
 
-    char recv_duration_str[32];
+    char recv_duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)(recv_end_ns - recv_start_ns), -1, recv_duration_str, sizeof(recv_duration_str));
     log_info("[ACIP_RECV_SUCCESS] Received %zu bytes in %s", packet_len, recv_duration_str);
 
@@ -175,7 +175,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
       }
 
       uint64_t decrypt_end_ns = time_get_ns();
-      char decrypt_duration_str[32];
+      char decrypt_duration_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(decrypt_end_ns - decrypt_start_ns), -1, decrypt_duration_str,
                   sizeof(decrypt_duration_str));
       log_info("[WS_TIMING] Decrypt %zu bytes → %zu bytes in %s (inner_type=%d)", ciphertext_len, plaintext_len,
@@ -192,7 +192,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
   uint64_t dispatch_handler_end_ns = time_get_ns();
-  char handler_duration_str[32];
+  char handler_duration_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty((uint64_t)(dispatch_handler_end_ns - dispatch_handler_start_ns), -1, handler_duration_str,
               sizeof(handler_duration_str));
   log_info("[WS_TIMING] Handler for type=%d took %s (result=%d)", envelope.type, handler_duration_str, dispatch_result);
