@@ -2,6 +2,7 @@
 
 #include "stream.h"
 #include "tls.h"
+#include "security.h"
 
 #include <ascii-chat/platform/socket.h>
 #include <ngtcp2/ngtcp2.h>
@@ -47,6 +48,10 @@ asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *conn
 /** Permit media only after the application has completed and acknowledged the
  * ACIP handshake. The owner must separately coordinate later control barriers. */
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection);
+/** Enable authenticated ACIP framing after an acknowledged handshake barrier.
+ * The crypto context is borrowed until connection destruction. The endpoint
+ * must serialize every operation on it, including rekeying, with this engine. */
+asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto);
 /** Copy one complete ACIP wire packet to its reliable stream. Admission is
  * bounded; ERROR_BUFFER_FULL leaves the queue unchanged. The connection owns
  * submitted bytes until ngtcp2 acknowledges them or the connection is freed. */
@@ -56,6 +61,6 @@ size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connecti
 /* Queue FIN after all previously admitted data for an open stream. No further
  * packets may be submitted to that class. ngtcp2 retransmits the FIN on loss. */
 asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *connection,
-                                                    acip_traffic_class_t traffic_class);
+                                                     acip_traffic_class_t traffic_class);
 bool acip_quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class);
 void acip_quic_connection_destroy(acip_quic_connection_t **connection);

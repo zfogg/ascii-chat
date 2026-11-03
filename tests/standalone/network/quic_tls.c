@@ -325,7 +325,7 @@ static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *n
 
 static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connection_t *server,
                                 const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns,
-                                bool drop_control) {
+                                bool drop_control, crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
   uint8_t *packets[6];
   size_t lengths[6];
   packets[0] = make_packet(PACKET_TYPE_PING, 8, &lengths[0]);
@@ -342,6 +342,9 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
   CHECK(acip_quic_connection_set_receiver(client, capture_quic_packet, &at_client) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_set_receiver(server, capture_quic_packet, &at_server) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_AUDIO, packets[1], lengths[1]) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_connection_allow_media(client) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_connection_enable_security(client, client_crypto) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_enable_security(server, server_crypto) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_allow_media(client) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_allow_media(server) == ASCIICHAT_OK);
   acip_quic_connection_t *peers[] = {client, server};
@@ -446,7 +449,7 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
           at_server.order[1], at_server.order[2]);
   if (!drop_control) {
     size_t large_length = 0;
-    uint8_t *large = make_packet(PACKET_TYPE_IMAGE_FRAME, 1024 * 1024, &large_length);
+    uint8_t *large = make_packet(PACKET_TYPE_IMAGE_FRAME, 512 * 1024, &large_length);
     bool full = false;
     for (unsigned i = 0; i < 64; ++i) {
       size_t before = acip_quic_connection_pending_bytes(client);
@@ -552,10 +555,22 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
     }
   }
   bool success = !failed && server && acip_quic_connection_tls_ready(server) && acip_quic_connection_tls_ready(client);
-  if (success && !drop_first_server_packet)
-    quic_media_exchange(client, server, &client_path, &server_path, &now, drop_control);
+  crypto_context_t client_crypto = {0}, server_crypto = {0};
+  bool crypto_initialized = false;
+  if (success && !drop_first_server_packet) {
+    CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
+    CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
+    CHECK(crypto_set_peer_public_key(&server_crypto, client_crypto.public_key) == CRYPTO_OK);
+    client_crypto.handshake_complete = server_crypto.handshake_complete = true;
+    crypto_initialized = true;
+    quic_media_exchange(client, server, &client_path, &server_path, &now, drop_control, &client_crypto, &server_crypto);
+  }
   acip_quic_connection_destroy(&server);
   acip_quic_connection_destroy(&client);
+  if (crypto_initialized) {
+    crypto_destroy(&server_crypto);
+    crypto_destroy(&client_crypto);
+  }
   return success;
 }
 
@@ -590,7 +605,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
   udp_test_state_t server_state = {0}, client_state = {0};
   size_t length = 0;
-  uint8_t *packet = make_packet(PACKET_TYPE_PING, 64, &length);
+  uint8_t *packet = make_packet(PACKET_TYPE_CRYPTO_CAPABILITIES, 64, &length);
   server_state.packet = client_state.packet = packet;
   server_state.length = client_state.length = length;
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept,
@@ -616,6 +631,11 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
     if (!submitted && server_state.accepted == 2 && acip_quic_connection_tls_ready(clients[0]) &&
         acip_quic_connection_tls_ready(clients[1]) && acip_quic_connection_tls_ready(server_state.peers[0]) &&
         acip_quic_connection_tls_ready(server_state.peers[1])) {
+      size_t unauthenticated_length = 0;
+      uint8_t *unauthenticated = make_packet(PACKET_TYPE_PING, 8, &unauthenticated_length);
+      CHECK(acip_quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
+            ERROR_CRYPTO);
+      buffer_release(unauthenticated);
       for (size_t i = 0; i < 2; ++i) {
         CHECK(acip_quic_connection_submit(clients[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
         CHECK(acip_quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);

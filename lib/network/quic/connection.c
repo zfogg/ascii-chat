@@ -41,6 +41,7 @@ struct acip_quic_connection {
   ngtcp2_crypto_ossl_ctx *crypto;
   SSL *ssl;
   acip_quic_tls_t *tls;
+  acip_quic_security_t security;
   ngtcp2_cid initial_dcid;
   bool has_initial_dcid;
   uint64_t last_time_ns;
@@ -151,7 +152,22 @@ static asciichat_error_t emit_received_packet(acip_traffic_class_t traffic_class
     return result;
   if (!context->connection->emit || (traffic_class != ACIP_TRAFFIC_CONTROL && !context->connection->media_allowed))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC packet received before application readiness");
-  return context->connection->emit(traffic_class, packet, size, context->connection->emit_context);
+  if (!context->connection->security.crypto) {
+    packet_header_t header;
+    memcpy(&header, packet, sizeof(header));
+    packet_type_t type = NET_TO_HOST_U16(header.type);
+    if (!packet_is_handshake_type(type) && type != PACKET_TYPE_ERROR_MESSAGE)
+      return SET_ERRNO(ERROR_CRYPTO, "Non-handshake ACIP packet received before authentication");
+    return context->connection->emit(traffic_class, packet, size, context->connection->emit_context);
+  }
+  uint8_t *plaintext = NULL;
+  size_t plaintext_length = 0;
+  result = acip_quic_security_open(&context->connection->security, traffic_class, ACIP_DELIVERY_RELIABLE, packet, size,
+                                   &plaintext, &plaintext_length);
+  if (result == ASCIICHAT_OK)
+    result = context->connection->emit(traffic_class, plaintext, plaintext_length, context->connection->emit_context);
+  buffer_release(plaintext);
+  return result;
 }
 
 static int receive_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id, uint64_t offset,
@@ -441,14 +457,20 @@ asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *conn
 }
 
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection) {
-  if (!connection || !connection->conn || connection->failed || !connection->tls_ready)
-    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC TLS is not ready for ACIP media");
+  if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->security.crypto)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC and authenticated ACIP encryption are not ready for media");
   connection->media_allowed = true;
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
-                                              const void *packet, size_t length) {
+asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto) {
+  if (!connection || !connection->conn || connection->failed || !connection->tls_ready || connection->pending_bytes)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC is not ready for the ACIP security transition");
+  return acip_quic_security_init(&connection->security, crypto, connection->tls->server);
+}
+
+static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                           const void *packet, size_t length) {
   if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT ||
       !packet || length < sizeof(packet_header_t) || length - sizeof(packet_header_t) > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC outbound packet");
@@ -503,12 +525,39 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                              const void *packet, size_t length) {
+  if (connection && !connection->security.crypto && packet && length >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, packet, sizeof(header));
+    packet_type_t type = NET_TO_HOST_U16(header.type);
+    if (traffic_class == ACIP_TRAFFIC_CONTROL && !packet_is_handshake_type(type) && type != PACKET_TYPE_ERROR_MESSAGE)
+      return SET_ERRNO(ERROR_CRYPTO, "Non-handshake ACIP packet sent before authentication");
+  }
+  if (!connection || !connection->security.crypto)
+    return queue_wire_packet(connection, traffic_class, packet, length);
+  if (!connection->conn || connection->failed || !connection->tls_ready ||
+      (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT ||
+      (traffic_class != ACIP_TRAFFIC_CONTROL && !connection->media_allowed))
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC connection is not ready for this traffic");
+  if (connection->sends[traffic_class].fin_requested)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC traffic stream is closing");
+  uint8_t *wire = NULL;
+  size_t wire_length = 0;
+  asciichat_error_t result = acip_quic_security_seal(&connection->security, traffic_class, ACIP_DELIVERY_RELIABLE,
+                                                     packet, length, &wire, &wire_length);
+  if (result == ASCIICHAT_OK)
+    result = queue_wire_packet(connection, traffic_class, wire, wire_length);
+  buffer_release(wire);
+  return result;
+}
+
 size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connection) {
   return connection ? connection->pending_bytes : 0;
 }
 
 asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *connection,
-                                                    acip_traffic_class_t traffic_class) {
+                                                     acip_traffic_class_t traffic_class) {
   if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC traffic stream");
   send_stream_t *stream = &connection->sends[traffic_class];
@@ -569,9 +618,10 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
     if (chunk)
       vec = (ngtcp2_vec){.base = chunk->data + chunk->submitted, .len = chunk->length - chunk->submitted};
     ngtcp2_ssize consumed = -1;
-    ngtcp2_ssize written = ngtcp2_conn_writev_stream(connection->conn, path, info, packet, capacity, &consumed,
-                                                     send_fin ? NGTCP2_WRITE_STREAM_FLAG_FIN : NGTCP2_WRITE_STREAM_FLAG_NONE,
-                                                     stream->id, send_fin ? NULL : &vec, send_fin ? 0 : 1, now_ns);
+    ngtcp2_ssize written =
+        ngtcp2_conn_writev_stream(connection->conn, path, info, packet, capacity, &consumed,
+                                  send_fin ? NGTCP2_WRITE_STREAM_FLAG_FIN : NGTCP2_WRITE_STREAM_FLAG_NONE, stream->id,
+                                  send_fin ? NULL : &vec, send_fin ? 0 : 1, now_ns);
     if (written == NGTCP2_ERR_STREAM_DATA_BLOCKED)
       continue;
     if (written < 0)

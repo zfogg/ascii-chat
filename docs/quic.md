@@ -129,7 +129,12 @@ separate 64-packet replay windows. Authentication and packet validation happen
 before receive state changes, and the codec rejects use during rekey or after
 the borrowed crypto context changes key epoch. Its owner must serialize all
 access to that context, retain exactly one security state for the epoch, and
-establish an acknowledged barrier before replacing the state. This codec is
-not connected to the transport or negotiated with a peer yet; in particular,
-it does not by itself implement datagram fragmentation, handshake transitions,
-or end-to-end replay protection for existing connections.
+establish an acknowledged barrier before replacing the state. The private
+connection engine can enable it after TLS and a caller-confirmed ACIP handshake
+barrier; it accepts only handshake and error control packets before that point
+and requires this security layer before permitting media. Once enabled it seals
+and opens reliable packets before dispatch. The current fixture supplies
+X25519-derived contexts and simulates completion of the ACIP handshake; it does
+not exercise that handshake over the engine. This codec is not negotiated or
+connected to a public transport. It does not implement datagram fragmentation,
+rekey transitions, or replay protection for existing connections.
