@@ -483,13 +483,18 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
         CHECK(acip_quic_connection_submit(clients[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
         CHECK(acip_quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
       }
+      CHECK(acip_quic_connection_finish_stream(clients[0], ACIP_TRAFFIC_CONTROL) == ASCIICHAT_OK);
       submitted = true;
     }
-    if (submitted && client_state.received == 2 && server_state.received == 2)
+    if (submitted && client_state.received == 2 && server_state.received == 2 &&
+        (acip_quic_connection_received_fin(server_state.peers[0], ACIP_TRAFFIC_CONTROL) ||
+         acip_quic_connection_received_fin(server_state.peers[1], ACIP_TRAFFIC_CONTROL)))
       break;
     time_sleep_ns(NS_PER_MS_INT);
   }
   CHECK(submitted && client_state.received == 2 && server_state.received == 2);
+  CHECK(acip_quic_connection_received_fin(server_state.peers[0], ACIP_TRAFFIC_CONTROL) !=
+        acip_quic_connection_received_fin(server_state.peers[1], ACIP_TRAFFIC_CONTROL));
   CHECK(acip_quic_udp_remove(client, clients[0]) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_submit(clients[1], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
   for (size_t i = 0; i < 2; ++i)
