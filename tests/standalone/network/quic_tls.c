@@ -615,7 +615,8 @@ static asciichat_error_t udp_secure_accept(acip_quic_connection_t *connection, v
   return ASCIICHAT_OK;
 }
 
-static void quic_handshake_dispatch(acip_transport_t *transport, crypto_handshake_context_t *ctx, bool server) {
+static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, crypto_handshake_context_t *ctx,
+                                                 bool server) {
   while (acip_transport_has_pending_data(transport)) {
     void *packet = NULL, *allocation = NULL;
     size_t length = 0;
@@ -645,11 +646,13 @@ static void quic_handshake_dispatch(acip_transport_t *transport, crypto_handshak
       result = crypto_handshake_server_complete(ctx, transport, type, payload, payload_length);
     }
     buffer_release(allocation);
-    CHECK(result == ASCIICHAT_OK);
+    if (result != ASCIICHAT_OK)
+      return result;
   }
+  return ASCIICHAT_OK;
 }
 
-static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, bool wrong_password) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
@@ -665,7 +668,8 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     client_capture.lengths[i] = server_state.capture.lengths[i] = lengths[i];
   }
   crypto_handshake_context_t client_handshake, server_handshake;
-  CHECK(crypto_handshake_init_with_password("quic-client", &client_handshake, false, "test-password") == ASCIICHAT_OK);
+  CHECK(crypto_handshake_init_with_password("quic-client", &client_handshake, false,
+                                            wrong_password ? "wrong-password" : "test-password") == ASCIICHAT_OK);
   CHECK(crypto_handshake_init_with_password("quic-server", &server_handshake, true, "test-password") == ASCIICHAT_OK);
   SAFE_STRNCPY(client_handshake.server_ip, "127.0.0.1", sizeof(client_handshake.server_ip));
   client_handshake.server_port = 27224;
@@ -681,7 +685,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   uint64_t start = time_get_ns();
   CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
                               &client_connection) == ASCIICHAT_OK);
-  bool handshake_started = false, submitted = false;
+  bool handshake_started = false, submitted = false, rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
     acip_quic_connection_t *failed = NULL;
@@ -710,8 +714,13 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       handshake_started = true;
     }
     if (handshake_started && !submitted) {
-      quic_handshake_dispatch(client_transport, &client_handshake, false);
-      quic_handshake_dispatch(server_transport, &server_handshake, true);
+      asciichat_error_t client_result = quic_handshake_dispatch(client_transport, &client_handshake, false);
+      asciichat_error_t server_result = quic_handshake_dispatch(server_transport, &server_handshake, true);
+      if (client_result != ASCIICHAT_OK || server_result != ASCIICHAT_OK) {
+        CHECK(wrong_password && server_result == ERROR_NETWORK && client_result == ASCIICHAT_OK);
+        rejected = true;
+        break;
+      }
     }
     if (handshake_started && !submitted && crypto_handshake_is_ready(&client_handshake) &&
         crypto_handshake_is_ready(&server_handshake) && !acip_quic_connection_pending_bytes(client_connection) &&
@@ -755,7 +764,13 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       break;
     time_sleep_ns(NS_PER_MS_INT);
   }
-  CHECK(submitted && client_capture.count == 6 && server_state.capture.count == 6);
+  if (wrong_password) {
+    CHECK(rejected && !crypto_handshake_is_ready(&client_handshake) && !crypto_handshake_is_ready(&server_handshake));
+    CHECK(acip_quic_connection_allow_media(client_connection) == ERROR_INVALID_STATE);
+    CHECK(acip_quic_connection_allow_media(server_state.peer) == ERROR_INVALID_STATE);
+  } else {
+    CHECK(submitted && client_capture.count == 6 && server_state.capture.count == 6);
+  }
   CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
   CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
   CHECK(!acip_transport_is_connected(client_transport));
@@ -934,7 +949,8 @@ int main(int argc, char **argv) {
         quic_failure == ERROR_CRYPTO);
   quic_udp_exchange(server, client);
   quic_udp_bad_identity(server, client);
-  quic_udp_secure_exchange(server, client);
+  quic_udp_secure_exchange(server, client, false);
+  quic_udp_secure_exchange(server, client, true);
 
   acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;
   CHECK(acip_quic_tls_server_create("acip/1", argv[1], argv[4], &invalid) == ERROR_CRYPTO && !invalid);
