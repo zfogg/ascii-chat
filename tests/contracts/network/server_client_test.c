@@ -1,0 +1,320 @@
+#include <criterion/criterion.h>
+#include "server/main.h"
+#include "server/render.h"
+#include "server/protocol.h"
+#include "server/connections.h"
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/audio/opus.h>
+#include <ascii-chat/media/codecs.h>
+#include <ascii-chat/network/acip/server.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/video/rgba/video_frame.h>
+#include <ascii-chat/video/h265/encoder.h>
+#include <string.h>
+
+atomic_t g_should_exit;
+rate_limiter_t *g_rate_limiter;
+mixer_t *volatile g_audio_mixer;
+h265_server_context_t *volatile g_h265_server;
+bool g_server_encryption_enabled;
+
+static server_context_t server;
+static unsigned starts, stops, sends;
+static asciichat_error_t send_result;
+static packet_type_t last_type;
+static uint8_t last_payload[4096];
+static size_t last_length;
+static acip_transport_type_t transport_type;
+
+// Worker scheduling is outside these registry and packet contracts. State,
+// media buffers, codec work, crypto, packet parsing and serialization are real.
+int create_client_render_threads(server_context_t *context, client_info_t *client) {
+  cr_assert_eq(context, &server);
+  cr_assert(atomic_load_bool(&client->active));
+  ++starts;
+  return 0;
+}
+asciichat_error_t stop_client_render_threads(client_info_t *client) {
+  cr_assert_not(atomic_load_bool(&client->active));
+  ++stops;
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t capture_send(acip_transport_t *transport, const void *data, size_t length) {
+  (void)transport;
+  cr_assert_geq(length, sizeof(packet_header_t));
+  packet_header_t header;
+  memcpy(&header, data, sizeof(header));
+  last_type = NET_TO_HOST_U16(header.type);
+  last_length = length - sizeof(header);
+  cr_assert_leq(last_length, sizeof(last_payload));
+  memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
+  ++sends;
+  return send_result;
+}
+static acip_transport_type_t get_type(acip_transport_t *transport) {
+  (void)transport;
+  return transport_type;
+}
+static const acip_transport_methods_t methods = {.send = capture_send, .get_type = get_type};
+static acip_transport_t transport = {.methods = &methods};
+
+static void setup(void) {
+  log_init(NULL, LOG_FATAL, false, false);
+  log_set_terminal_output(false);
+  cr_assert_eq(options_state_init(), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("max_clients", 3), ASCIICHAT_OK);
+  cr_assert_eq(rwlock_init(&g_client_manager_rwlock, "client-registry-contract"), ASCIICHAT_OK);
+  g_client_manager_rwlock_initialized = true;
+  transport_type = ACIP_TRANSPORT_WEBRTC;
+  send_result = ASCIICHAT_OK;
+}
+static void teardown(void) {
+  for (int i = 0; i < MAX_CLIENTS; ++i) {
+    if (!g_client_manager.clients[i].client_id[0])
+      continue;
+    char id[MAX_CLIENT_ID_LEN];
+    SAFE_STRNCPY(id, g_client_manager.clients[i].client_id, sizeof(id));
+    atomic_store_bool(&g_client_manager.clients[i].shutting_down, false);
+    cr_assert_eq(remove_client(&server, id), 0);
+  }
+  cr_assert_eq(g_client_manager.client_count, 0);
+  cr_assert_null(g_client_manager.clients_by_id);
+  rwlock_destroy(&g_client_manager_rwlock);
+  g_client_manager_rwlock_initialized = false;
+  options_state_destroy();
+  CLEAR_ERRNO_ALL();
+  log_destroy();
+}
+TestSuite(server_client, .init = setup, .fini = teardown, .timeout = 20);
+
+static client_info_t *admit(void) {
+  client_info_t *client = add_transport_client(&server, &transport, "127.0.0.1");
+  cr_assert_not_null(client);
+  return client;
+}
+static void dispatch(client_info_t *client, packet_type_t type, const void *data, size_t length) {
+  cr_assert_eq(server_dispatch_packet(client, type, data, length), ASCIICHAT_OK);
+}
+Test(server_client, admission_limit_lookup_and_removal_reuse_the_slot_without_reusing_identity) {
+  client_info_t *first = admit();
+  char id[MAX_CLIENT_ID_LEN];
+  SAFE_STRNCPY(id, first->client_id, sizeof(id));
+  cr_assert_eq(find_client_by_id(id), first);
+  cr_assert(first->transport_encrypted && first->security_ready);
+  cr_assert_not(first->has_terminal_caps);
+  cr_assert_not_null(first->incoming_video_buffer);
+  cr_assert_not_null(first->incoming_audio_buffer);
+  admit();
+  admit();
+  cr_assert_eq(g_client_manager.client_count, 3);
+  cr_assert_null(add_transport_client(&server, &transport, "127.0.0.1"));
+  cr_assert_eq(g_client_manager.client_count, 3);
+  cr_assert_eq(remove_client(&server, id), 0);
+  cr_assert_null(find_client_by_id(id));
+  cr_assert_eq(stops, 1);
+  client_info_t *replacement = admit();
+  cr_assert_eq(replacement, first);
+  cr_assert_str_neq(replacement->client_id, id);
+  cr_assert_eq(g_client_manager.client_count, 3);
+  cr_assert_null(find_client_by_id(NULL));
+  cr_assert_null(find_client_by_id(""));
+}
+Test(server_client, worker_readiness_sends_state_before_start_and_counts_active_publishers) {
+  client_info_t *client = admit();
+  char id[MAX_CLIENT_ID_LEN];
+  SAFE_STRNCPY(id, client->client_id, sizeof(id));
+  cr_assert_eq(start_transport_client_threads(&server, id), 0);
+  cr_assert_eq(starts, 1);
+  cr_assert(atomic_load_bool(&client->event_ready));
+  cr_assert_eq(last_type, PACKET_TYPE_SERVER_STATE);
+  server_state_packet_t state;
+  memcpy(&state, last_payload, sizeof(state));
+  cr_assert_eq(NET_TO_HOST_U32(state.connected_client_count), 1);
+  uint32_t stream = HOST_TO_NET_U32(STREAM_TYPE_VIDEO);
+  dispatch(client, PACKET_TYPE_STREAM_START, &stream, sizeof(stream));
+  cr_assert(atomic_load_bool(&client->is_sending_video));
+  cr_assert_eq(server_send_state(&transport), ASCIICHAT_OK);
+  memcpy(&state, last_payload, sizeof(state));
+  cr_assert_eq(NET_TO_HOST_U32(state.active_client_count), 1);
+  dispatch(client, PACKET_TYPE_STREAM_STOP, &stream, sizeof(stream));
+  cr_assert_not(atomic_load_bool(&client->is_sending_video));
+  cr_assert_eq(start_transport_client_threads(&server, "missing"), -1);
+  cr_assert_eq(start_transport_client_threads(NULL, id), -1);
+}
+Test(server_client, raw_callback_owns_pixels_and_tracks_latest_frame_and_sequence) {
+  client_info_t *client = admit();
+  struct {
+    image_frame_packet_t header;
+    uint8_t pixels[12];
+  } packet = {.header = {.width = HOST_TO_NET_U32(2),
+                         .height = HOST_TO_NET_U32(2),
+                         .pixel_format = HOST_TO_NET_U32(PIXEL_FORMAT_RGB)},
+              .pixels = {255, 0, 0, 0, 255, 0, 0, 0, 255, 80, 80, 80}};
+  uint8_t expected[12];
+  memcpy(expected, packet.pixels, sizeof(expected));
+  dispatch(client, PACKET_TYPE_IMAGE_FRAME, &packet, sizeof(packet));
+  const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
+  cr_assert_not_null(frame);
+  cr_assert_eq(frame->width, 2);
+  cr_assert_eq(frame->height, 2);
+  cr_assert_eq(frame->sequence_number, 1);
+  cr_assert_arr_eq((uint8_t *)frame->data + 8, expected, sizeof(expected));
+  memset(packet.pixels, 0, sizeof(packet.pixels));
+  cr_assert_arr_eq((uint8_t *)frame->data + 8, expected, sizeof(expected));
+  dispatch(client, PACKET_TYPE_IMAGE_FRAME, &packet, sizeof(packet));
+  frame = video_frame_get_latest(client->incoming_video_buffer);
+  cr_assert_eq(frame->sequence_number, 2);
+  cr_assert_eq(client->frames_received, 2);
+}
+Test(server_client, audio_callbacks_ignore_unannounced_samples_then_deliver_to_capture_ring) {
+  client_info_t *client = admit();
+  float samples[8] = {0.125f, -0.25f, 0.5f, -0.75f};
+  struct {
+    audio_batch_packet_t header;
+    uint32_t samples[8];
+  } packet = {0};
+  packet.header.sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE);
+  packet.header.channels = HOST_TO_NET_U32(1);
+  packet.header.total_samples = HOST_TO_NET_U32(8);
+  packet.header.batch_count = HOST_TO_NET_U32(1);
+  for (size_t i = 0; i < 8; ++i)
+    packet.samples[i] = HOST_TO_NET_U32((uint32_t)(int32_t)((double)samples[i] * 2147483647.0));
+  dispatch(client, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet));
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  uint32_t stream = HOST_TO_NET_U32(STREAM_TYPE_AUDIO);
+  dispatch(client, PACKET_TYPE_STREAM_START, &stream, sizeof(stream));
+  dispatch(client, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet));
+  float actual[8];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 8), 8);
+  for (size_t i = 0; i < 8; ++i)
+    cr_assert_float_eq(actual[i], samples[i], 1e-4);
+}
+Test(server_client, ping_is_serialized_and_shutdown_suppresses_the_reply) {
+  client_info_t *client = admit();
+  sends = 0;
+  dispatch(client, PACKET_TYPE_PING, NULL, 0);
+  cr_assert_eq(sends, 1);
+  cr_assert_eq(last_type, PACKET_TYPE_PONG);
+  cr_assert_eq(last_length, 0);
+  send_result = ERROR_NETWORK;
+  dispatch(client, PACKET_TYPE_PING, NULL, 0);
+  cr_assert_eq(sends, 2);
+  atomic_store_bool(&client->shutting_down, true);
+  dispatch(client, PACKET_TYPE_PING, NULL, 0);
+  cr_assert_eq(sends, 2);
+  atomic_store_bool(&client->shutting_down, false);
+}
+
+Test(server_client, encoded_uploads_reuse_the_decoder_and_switch_between_hevc_and_h264) {
+  client_info_t *client = admit();
+  client->codec_capabilities_video = VIDEO_CODEC_CAP_H265 | VIDEO_CODEC_CAP_H264;
+  uint8_t rgb[64 * 32 * 3];
+  memset(rgb, 128, sizeof(rgb));
+  const video_codec_t codecs[] = {VIDEO_CODEC_H265, VIDEO_CODEC_H264, VIDEO_CODEC_H265};
+  unsigned received = 0;
+  for (size_t c = 0; c < sizeof(codecs) / sizeof(codecs[0]); ++c) {
+    h265_encoder_t *encoder = video_encoder_create(codecs[c], 64, 32);
+    cr_assert_not_null(encoder);
+    for (unsigned i = 0; i < 2; ++i) {
+      uint8_t encoded[65536];
+      size_t length = sizeof(encoded);
+      cr_assert_eq(h265_encode(encoder, 64, 32, rgb, encoded, &length), ASCIICHAT_OK);
+      cr_assert_gt(length, 5);
+      dispatch(client, codecs[c] == VIDEO_CODEC_H265 ? PACKET_TYPE_IMAGE_FRAME_H265 : PACKET_TYPE_IMAGE_FRAME_H264,
+               encoded, length);
+      const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
+      cr_assert_not_null(frame);
+      cr_assert_eq(frame->width, 64);
+      cr_assert_eq(frame->height, 32);
+      cr_assert_eq(frame->size, sizeof(rgb) + 8);
+      cr_assert_eq(frame->sequence_number, ++received);
+      const uint8_t *decoded = (const uint8_t *)frame->data + 8;
+      for (size_t p = 0; p < sizeof(rgb); ++p)
+        cr_assert(decoded[p] >= 123 && decoded[p] <= 133, "Unexpected RGB byte %zu: %u", p, decoded[p]);
+      cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
+    }
+    h265_encoder_destroy(encoder);
+  }
+  cr_assert_not_null(client->video_decoder_ctx);
+  cr_assert_not_null(client->video_decode_frame);
+  cr_assert_not_null(client->video_rgb_frame);
+  cr_assert_not_null(client->video_sws_ctx);
+  cleanup_client_media_buffers(client);
+  cr_assert_null(client->video_decoder_ctx);
+  cr_assert_null(client->video_decode_frame);
+  cr_assert_null(client->video_rgb_frame);
+  cr_assert_null(client->video_sws_ctx);
+  cleanup_client_media_buffers(client);
+}
+
+Test(server_client, unadvertised_encoded_upload_disconnects_without_creating_a_decoder) {
+  client_info_t *client = admit();
+  client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
+  uint8_t rgb[64 * 32 * 3] = {0}, packet[65536];
+  h265_encoder_t *encoder = h265_encoder_create(64, 32);
+  cr_assert_not_null(encoder);
+  size_t length = sizeof(packet);
+  cr_assert_eq(h265_encode(encoder, 64, 32, rgb, packet, &length), ASCIICHAT_OK);
+  dispatch(client, PACKET_TYPE_IMAGE_FRAME_H265, packet, length);
+  cr_assert(atomic_load_bool(&client->protocol_disconnect_requested));
+  cr_assert_not(atomic_load_bool(&client->active));
+  cr_assert_null(client->video_decoder_ctx);
+  cr_assert_null(video_frame_get_latest(client->incoming_video_buffer));
+  h265_encoder_destroy(encoder);
+}
+
+static void ready_crypto(crypto_handshake_context_t *local, crypto_handshake_context_t *peer) {
+  memset(local, 0, sizeof(*local));
+  memset(peer, 0, sizeof(*peer));
+  cr_assert_eq(crypto_init(&local->crypto_ctx), CRYPTO_OK);
+  cr_assert_eq(crypto_init(&peer->crypto_ctx), CRYPTO_OK);
+  cr_assert_eq(crypto_set_peer_public_key(&local->crypto_ctx, peer->crypto_ctx.public_key), CRYPTO_OK);
+  cr_assert_eq(crypto_set_peer_public_key(&peer->crypto_ctx, local->crypto_ctx.public_key), CRYPTO_OK);
+  local->state = peer->state = CRYPTO_HANDSHAKE_READY;
+  local->crypto_ctx.handshake_complete = peer->crypto_ctx.handshake_complete = true;
+  local->crypto_ctx.rekey_last_time = peer->crypto_ctx.rekey_last_time = 0;
+}
+Test(server_client, peer_initiated_rekey_changes_the_active_key_only_after_authenticated_completion) {
+  client_info_t *client = admit();
+  crypto_handshake_context_t local, peer;
+  ready_crypto(&local, &peer);
+  client->crypto_handshake_ctx = &local;
+  uint8_t old_key[32];
+  memcpy(old_key, local.crypto_ctx.shared_key, sizeof(old_key));
+  cr_assert_eq(crypto_rekey_init(&peer.crypto_ctx), CRYPTO_OK);
+  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_REQUEST, peer.crypto_ctx.temp_public_key, 32);
+  cr_assert_eq(last_type, PACKET_TYPE_CRYPTO_REKEY_RESPONSE);
+  cr_assert_eq(last_length, 32);
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, 32);
+  cr_assert_eq(crypto_handshake_process_rekey_response(&peer, last_payload, last_length), ASCIICHAT_OK);
+  cr_assert_arr_eq(local.crypto_ctx.temp_shared_key, peer.crypto_ctx.temp_shared_key, 32);
+  cr_assert_eq(crypto_rekey_commit(&peer.crypto_ctx), CRYPTO_OK);
+  uint8_t proof = 0, encrypted[128];
+  size_t encrypted_length = 0;
+  cr_assert_eq(crypto_encrypt(&peer.crypto_ctx, &proof, 1, encrypted, sizeof(encrypted), &encrypted_length), CRYPTO_OK);
+  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, encrypted, encrypted_length);
+  cr_assert_eq(local.crypto_ctx.rekey_count, 1);
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, peer.crypto_ctx.shared_key, 32);
+  cr_assert_neq(memcmp(local.crypto_ctx.shared_key, old_key, 32), 0);
+  client->crypto_handshake_ctx = NULL;
+  crypto_handshake_destroy(&local);
+  crypto_handshake_destroy(&peer);
+}
+Test(server_client, malformed_rekey_requests_leave_the_active_key_and_transport_intact) {
+  client_info_t *client = admit();
+  crypto_handshake_context_t local, peer;
+  ready_crypto(&local, &peer);
+  client->crypto_handshake_ctx = &local;
+  uint8_t old_key[32], invalid[32] = {0};
+  memcpy(old_key, local.crypto_ctx.shared_key, sizeof(old_key));
+  unsigned before = sends;
+  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_REQUEST, invalid, sizeof(invalid));
+  cr_assert_eq(sends, before);
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, sizeof(old_key));
+  cr_assert_not(local.crypto_ctx.rekey_in_progress);
+  cr_assert(atomic_load_bool(&client->active));
+  cr_assert_eq(client->transport, &transport);
+  client->crypto_handshake_ctx = NULL;
+  crypto_handshake_destroy(&local);
+  crypto_handshake_destroy(&peer);
+}

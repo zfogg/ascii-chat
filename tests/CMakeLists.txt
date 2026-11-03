@@ -1624,6 +1624,31 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(server-stream test-server-stream)
     set_property(TEST server-stream APPEND PROPERTY LABELS unit)
 
+    add_executable(test-session-h265-client contracts/session/h265_client_test.c
+        ${CMAKE_SOURCE_DIR}/src/session/h265/client.c)
+    asciichat_configure_contract(test-session-h265-client)
+    target_link_libraries(test-session-h265-client PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-session-h265-client PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-session-h265-client)
+    set_target_properties(test-session-h265-client PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(session-h265-client test-session-h265-client)
+    set_property(TEST session-h265-client APPEND PROPERTY LABELS unit)
+
+    add_executable(test-server-client contracts/network/server_client_test.c
+        ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/protocol.c
+        ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
+    asciichat_configure_contract(test-server-client)
+    target_link_libraries(test-server-client PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-server-client PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-server-client)
+    set_target_properties(test-server-client PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-client test-server-client)
+    set_property(TEST server-client APPEND PROPERTY LABELS unit)
+
     add_executable(test-server-protocol contracts/network/server_protocol_test.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
     asciichat_configure_contract(test-server-protocol)
@@ -1923,6 +1948,9 @@ if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
 endif()
 
 if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
+    asciichat_add_python_test(synthetic-audio-sessions
+        ${CMAKE_SOURCE_DIR}/tests/integration/synthetic_audio_sessions.py --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(synthetic-audio-sessions PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
     asciichat_add_python_test(kitty-output
         ${CMAKE_SOURCE_DIR}/tests/integration/kitty_output.py --binary $<TARGET_FILE:ascii-chat>)
     set_tests_properties(kitty-output PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
