@@ -384,6 +384,7 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/acip/traffic.c
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
+    ${LIB_ROOT}/network/quic/security.c
 )
 
 # Common WASM abstraction layer (shared between mirror and client)
@@ -660,6 +661,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _browser_host_set_local_client _browser_host_render_audio
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
     _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
+    _client_quic_security_init _client_quic_security_seal _client_quic_security_open
     _client_acds_handshake_begin _client_acds_handshake_receive
     _client_configure_crypto_options
     _client_parse_ssh_private_key

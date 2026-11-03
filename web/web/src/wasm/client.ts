@@ -142,6 +142,26 @@ interface ClientModuleExports {
     pt_size: number,
     out_len_ptr: number,
   ): number;
+  _client_quic_security_init(): number;
+  _client_quic_security_seal(
+    flow: number,
+    delivery: number,
+    input: number,
+    inputLength: number,
+    output: number,
+    capacity: number,
+    length: number,
+  ): number;
+  _client_quic_security_open(
+    flow: number,
+    delivery: number,
+    input: number,
+    inputLength: number,
+    output: number,
+    capacity: number,
+    length: number,
+    sequence: number,
+  ): number;
   _client_parse_packet(pkt_ptr: number, len: number): number;
   _client_serialize_packet(
     type: number,
@@ -243,6 +263,9 @@ interface ClientModule extends ClientModuleExports, RuntimeOptionsModule {
   _client_handle_handshake_complete: ClientModuleExports["_client_handle_handshake_complete"];
   _client_encrypt_packet: ClientModuleExports["_client_encrypt_packet"];
   _client_decrypt_packet: ClientModuleExports["_client_decrypt_packet"];
+  _client_quic_security_init: ClientModuleExports["_client_quic_security_init"];
+  _client_quic_security_seal: ClientModuleExports["_client_quic_security_seal"];
+  _client_quic_security_open: ClientModuleExports["_client_quic_security_open"];
   _client_parse_packet: ClientModuleExports["_client_parse_packet"];
   _client_serialize_packet: ClientModuleExports["_client_serialize_packet"];
   _client_send_video_frame: ClientModuleExports["_client_send_video_frame"];
@@ -1136,6 +1159,72 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     wasmModule._free(ctPtr);
     wasmModule._free(ptPtr);
     wasmModule._free(outLenPtr);
+  }
+}
+
+/** Initialize per-connection QUIC security after the authenticated handshake. */
+export function initQuicSecurity(): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const result = wasmModule._client_quic_security_init();
+  if (result !== 0)
+    throwWasmError(result, "QUIC security initialization failed");
+}
+
+/** Authenticate a complete packet and its QUIC flow and delivery metadata. */
+export function processQuicPacket(
+  operation: "seal" | "open",
+  flow: 0 | 1 | 2,
+  delivery: 0 | 1,
+  packet: Uint8Array,
+): { packet: Uint8Array; sequence: bigint } {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const capacity = packet.length + (operation === "seal" ? 78 : 0);
+  const input = wasmModule._malloc(packet.length);
+  const output = wasmModule._malloc(capacity);
+  const length = wasmModule._malloc(4);
+  const sequence = wasmModule._malloc(8);
+  if (!input || !output || !length || !sequence) {
+    if (input) wasmModule._free(input);
+    if (output) wasmModule._free(output);
+    if (length) wasmModule._free(length);
+    if (sequence) wasmModule._free(sequence);
+    throw new Error("Failed to allocate QUIC security buffers");
+  }
+  try {
+    wasmModule.HEAPU8.set(packet, input);
+    const result =
+      operation === "seal"
+        ? wasmModule._client_quic_security_seal(
+            flow,
+            delivery,
+            input,
+            packet.length,
+            output,
+            capacity,
+            length,
+          )
+        : wasmModule._client_quic_security_open(
+            flow,
+            delivery,
+            input,
+            packet.length,
+            output,
+            capacity,
+            length,
+            sequence,
+          );
+    if (result !== 0) throwWasmError(result, `QUIC packet ${operation} failed`);
+    const data = wasmModule.HEAPU8.slice(output, output + readI32(length));
+    const sequenceNumber =
+      operation === "open"
+        ? new DataView(wasmModule.HEAPU8.buffer).getBigUint64(sequence, true)
+        : 0n;
+    return { packet: data, sequence: sequenceNumber };
+  } finally {
+    wasmModule._free(input);
+    wasmModule._free(output);
+    wasmModule._free(length);
+    wasmModule._free(sequence);
   }
 }
 
