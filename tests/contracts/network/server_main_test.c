@@ -28,7 +28,7 @@ static asciichat_error_t contract_parse_public(const char *path, public_key_t *o
   return ASCIICHAT_OK;
 }
 static rate_limiter_t *contract_rate_create(void);
-static mixer_t *contract_mixer_create(int sources, int rate);
+static mixer_t *contract_mixer_create(int sources, int rate, int channels);
 static h265_server_context_t *contract_h265_create(void);
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/network/connection.h>
@@ -64,7 +64,7 @@ static asciichat_error_t contract_adopt(network_server_t *server, acip_transport
 #define parse_private_key contract_parse_private
 #define parse_public_keys contract_parse_public
 #define rate_limiter_create_memory contract_rate_create
-#define mixer_create contract_mixer_create
+#define mixer_create_channels contract_mixer_create
 #define h265_server_context_create contract_h265_create
 #include "../../../src/server/main.c"
 #undef webrtc_peer_manager_handle_sdp
@@ -74,17 +74,17 @@ static asciichat_error_t contract_adopt(network_server_t *server, acip_transport
 #undef parse_private_key
 #undef parse_public_keys
 #undef rate_limiter_create_memory
-#undef mixer_create
+#undef mixer_create_channels
 #undef h265_server_context_create
 static rate_limiter_t *contract_rate_create(void) {
   if (exit_during_resource)
     atomic_store_bool(&g_should_exit, true);
   return fail_resource ? NULL : rate_limiter_create_memory();
 }
-static mixer_t *contract_mixer_create(int sources, int rate) {
+static mixer_t *contract_mixer_create(int sources, int rate, int channels) {
   if (exit_during_resource)
     atomic_store_bool(&g_should_exit, true);
-  return fail_resource ? NULL : mixer_create(sources, rate);
+  return fail_resource ? NULL : mixer_create_channels(sources, rate, channels);
 }
 static h265_server_context_t *contract_h265_create(void) {
   if (exit_during_resource)

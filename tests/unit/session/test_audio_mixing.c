@@ -26,17 +26,18 @@ static void teardown(void) {
 TestSuite(session_audio_mixing, .init = setup, .fini = teardown);
 
 static void feed(uint32_t id, float value) {
-  float samples[4096];
-  for (size_t i = 0; i < 4096; ++i)
+  float samples[AUDIO_SAMPLE_RATE * AUDIO_CHANNELS / 10];
+  for (size_t i = 0; i < ARRAY_SIZE(samples); ++i)
     samples[i] = value;
-  cr_assert_eq(session_audio_write_source(host, id, samples, 4096), ASCIICHAT_OK);
+  cr_assert_eq(session_audio_write_source(host, id, samples, ARRAY_SIZE(samples)), ASCIICHAT_OK);
 }
 
 static void finish_startup_fade(void) {
   // Each source uses a network jitter buffer with a startup fade. Compare the
   // steady mix only after all fed sources have crossed that boundary.
-  float startup[AUDIO_CROSSFADE_SAMPLES];
-  cr_assert_eq(session_audio_mix_excluding(host, 0, startup, AUDIO_CROSSFADE_SAMPLES), AUDIO_CROSSFADE_SAMPLES);
+  float startup[(AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS)];
+  cr_assert_eq(session_audio_mix_excluding(host, 0, startup, (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS)),
+               (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS));
 }
 
 Test(session_audio_mixing, mix_minus_excludes_the_recipient_and_averages_only_nonempty_sources) {
@@ -119,7 +120,7 @@ Test(session_audio_mixing, capture_and_playback_use_the_owned_rings_without_open
   cr_assert_eq(session_audio_read_captured(participant, output, 3), 0);
   audio->playback_buffer->jitter_buffer_enabled = false;
   cr_assert_eq(session_audio_write_playback(participant, input, ARRAY_SIZE(input)), ASCIICHAT_OK);
-  cr_assert_eq(audio_ring_buffer_read(audio->playback_buffer, output, ARRAY_SIZE(output)), 3);
+  cr_assert_eq(audio_ring_buffer_read(audio->playback_buffer, output, ARRAY_SIZE(output)), ARRAY_SIZE(output));
   cr_assert_arr_eq(input, output, sizeof(input));
   int media_token;
   session_audio_set_capture_source(participant, &media_token);

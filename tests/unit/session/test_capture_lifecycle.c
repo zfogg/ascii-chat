@@ -96,9 +96,9 @@ Test(session_capture_lifecycle, microphone_fallback_borrows_context_and_preserve
   cr_assert_not_null(capture);
   cr_assert(session_capture_has_audio(capture));
   cr_assert_not(session_capture_using_file_audio(capture));
-  float input[] = {0.125f, -0.25f, 0.5f}, output[3];
-  cr_assert_eq(audio_ring_buffer_write(microphone.capture_buffer, input, 3), ASCIICHAT_OK);
-  cr_assert_eq(session_capture_read_audio(capture, output, 3), 3);
+  float input[] = {0.125f, -0.25f, 0.5f, -0.125f, 0.25f, -0.5f}, output[6];
+  cr_assert_eq(audio_ring_buffer_write(microphone.capture_buffer, input, ARRAY_SIZE(input)), ASCIICHAT_OK);
+  cr_assert_eq(session_capture_read_audio(capture, output, ARRAY_SIZE(output)), ARRAY_SIZE(output));
   cr_assert_arr_eq(input, output, sizeof(input));
   session_capture_set_audio_context(capture, &microphone);
   cr_assert_eq(session_capture_get_audio_context(capture), &microphone);

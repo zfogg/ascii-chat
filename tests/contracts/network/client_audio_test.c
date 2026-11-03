@@ -210,7 +210,7 @@ Test(client_audio_contract, received_pcm_checks_bounds_and_delivers_non_silent_a
   audio_connection.audio_context = audio_get_context();
   cr_assert(audio_connection.audio_context->initialized);
   cr_assert_eq(audio_client_init(), 0);
-  float samples[512];
+  float samples[512 * AUDIO_CHANNELS];
   for (unsigned i = 0; i < ARRAY_SIZE(samples); ++i)
     samples[i] = i & 1 ? 0.25f : -0.25f;
   audio_process_received_samples(NULL, samples, 512);
@@ -224,14 +224,16 @@ Test(client_audio_contract, received_pcm_checks_bounds_and_delivers_non_silent_a
   CLEAR_ERRNO_ALL();
   audio_process_received_samples(&audio_connection, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS + 2);
   cr_assert_eq(audio_ring_buffer_available_read(audio_connection.audio_context->playback_buffer), 0);
-  audio_ring_buffer_set_jitter_target(audio_connection.audio_context->playback_buffer, 960);
-  audio_process_received_samples(&audio_connection, samples, 512);
+  audio_ring_buffer_set_jitter_target(audio_connection.audio_context->playback_buffer,
+                                      OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
+  audio_process_received_samples(&audio_connection, samples, ARRAY_SIZE(samples));
   cr_assert_eq(audio_connection.audio_receive_count, 1);
-  audio_process_received_samples(&audio_connection, samples, 512);
+  audio_process_received_samples(&audio_connection, samples, ARRAY_SIZE(samples));
   cr_assert_eq(audio_connection.audio_receive_count, 2);
   cr_assert_gt(audio_ring_buffer_available_read(audio_connection.audio_context->playback_buffer), 0);
-  float actual[512];
-  cr_assert_eq(audio_ring_buffer_read(audio_connection.audio_context->playback_buffer, actual, 512), 512);
+  float actual[512 * AUDIO_CHANNELS];
+  cr_assert_eq(audio_ring_buffer_read(audio_connection.audio_context->playback_buffer, actual, ARRAY_SIZE(actual)),
+               ARRAY_SIZE(actual));
   double energy = 0;
   for (unsigned i = 0; i < ARRAY_SIZE(actual); ++i)
     energy += actual[i] * actual[i];
