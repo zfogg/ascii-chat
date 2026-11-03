@@ -37,6 +37,7 @@ coverage:
         paths:
           - "lib/crypto/"
           - "include/ascii-chat/crypto/"
+          - "src/client/crypto.c"
           - "lib/network/crc32.c"
     changes: false
 
@@ -91,7 +92,7 @@ component_management:
       paths: ["lib/network/", "include/ascii-chat/network/"]
     - component_id: crypto
       name: Cryptography
-      paths: ["lib/crypto/", "include/ascii-chat/crypto/"]
+      paths: ["lib/crypto/", "include/ascii-chat/crypto/", "src/client/crypto.c"]
     - component_id: media
       name: Media Sources and Output
       paths: ["lib/media/", "include/ascii-chat/media/"]
