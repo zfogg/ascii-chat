@@ -21,6 +21,11 @@ asciichat_error_t acip_quic_connection_client_create(acip_quic_tls_t *tls, const
 asciichat_error_t acip_quic_connection_server_create(acip_quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
                                                      size_t initial_length, uint64_t now_ns,
                                                      acip_quic_connection_t **out);
+/* As above, after validating the Retry token and recovering its original DCID. */
+asciichat_error_t acip_quic_connection_server_create_validated(acip_quic_tls_t *tls, const ngtcp2_path *path,
+                                                               const void *initial, size_t initial_length,
+                                                               const ngtcp2_cid *original_dcid, uint64_t now_ns,
+                                                               acip_quic_connection_t **out);
 asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connection, const ngtcp2_path *path,
                                                const void *packet, size_t length, uint64_t now_ns);
 /** Writes a single UDP payload, or sets length to zero if no packet is ready.

@@ -1,6 +1,8 @@
 #include "udp.h"
 
 #include <ascii-chat/common.h>
+#include <ngtcp2/ngtcp2_crypto.h>
+#include <sodium.h>
 #include <string.h>
 
 #define QUIC_UDP_CID_LENGTH 16
@@ -8,6 +10,8 @@
 #define QUIC_UDP_MAX_CONNECTIONS 64
 #define QUIC_UDP_READ_BATCH 128
 #define QUIC_UDP_WRITE_BATCH 16
+#define QUIC_RETRY_SECRET_LENGTH 32
+#define QUIC_RETRY_TOKEN_LIFETIME (10ULL * 1000000000ULL)
 
 typedef struct udp_peer {
   struct udp_peer *next;
@@ -22,6 +26,7 @@ struct acip_quic_udp_endpoint {
   struct sockaddr_storage local;
   socklen_t local_length;
   acip_quic_tls_t *server_tls;
+  uint8_t retry_secret[QUIC_RETRY_SECRET_LENGTH];
   acip_quic_udp_accept_fn accept;
   void *context;
   udp_peer_t *peers;
@@ -29,11 +34,11 @@ struct acip_quic_udp_endpoint {
 };
 
 static bool valid_address(const struct sockaddr *address, socklen_t length) {
-  if (!address || (size_t)length < sizeof(struct sockaddr) || (size_t)length > sizeof(struct sockaddr_storage))
+  if (!address || (size_t)length < sizeof(struct sockaddr) || (size_t)length > sizeof(ngtcp2_sockaddr_union))
     return false;
-  if (address->sa_family == AF_INET && (size_t)length >= sizeof(struct sockaddr_in))
+  if (address->sa_family == AF_INET && (size_t)length == sizeof(struct sockaddr_in))
     return ((const struct sockaddr_in *)address)->sin_addr.s_addr != 0;
-  if (address->sa_family == AF_INET6 && (size_t)length >= sizeof(struct sockaddr_in6)) {
+  if (address->sa_family == AF_INET6 && (size_t)length == sizeof(struct sockaddr_in6)) {
     static const uint8_t zero[16] = {0};
     return memcmp(&((const struct sockaddr_in6 *)address)->sin6_addr, zero, sizeof(zero)) != 0;
   }
@@ -76,6 +81,14 @@ asciichat_error_t acip_quic_udp_endpoint_create(const struct sockaddr *address, 
     return SET_ERRNO(ERROR_NETWORK, "Cannot obtain QUIC UDP endpoint address");
   }
   endpoint->server_tls = server_tls;
+  if (server_tls) {
+    if (sodium_init() < 0) {
+      socket_close(endpoint->socket);
+      SAFE_FREE(endpoint);
+      return SET_ERRNO(ERROR_CRYPTO, "Cannot initialize QUIC Retry token secret");
+    }
+    randombytes_buf(endpoint->retry_secret, sizeof(endpoint->retry_secret));
+  }
   endpoint->accept = accept;
   endpoint->context = context;
   *out = endpoint;
@@ -101,6 +114,23 @@ static void add_peer(acip_quic_udp_endpoint_t *endpoint, udp_peer_t *peer) {
   peer->next = endpoint->peers;
   endpoint->peers = peer;
   ++endpoint->count;
+}
+
+static void send_retry(acip_quic_udp_endpoint_t *endpoint, const ngtcp2_pkt_hd *initial, const struct sockaddr *remote,
+                       socklen_t remote_length, uint64_t now) {
+  ngtcp2_cid retry_scid = {.datalen = QUIC_UDP_CID_LENGTH};
+  randombytes_buf(retry_scid.data, retry_scid.datalen);
+  uint8_t token[NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN2];
+  ngtcp2_ssize token_length =
+      ngtcp2_crypto_generate_retry_token2(token, endpoint->retry_secret, sizeof(endpoint->retry_secret),
+                                          initial->version, remote, remote_length, &retry_scid, &initial->dcid, now);
+  if (token_length < 0)
+    return;
+  uint8_t packet[1200];
+  ngtcp2_ssize length = ngtcp2_crypto_write_retry(packet, sizeof(packet), initial->version, &initial->scid, &retry_scid,
+                                                  &initial->dcid, token, (size_t)token_length);
+  if (length > 0)
+    (void)socket_sendto(endpoint->socket, packet, (size_t)length, 0, remote, remote_length);
 }
 
 asciichat_error_t acip_quic_udp_connect(acip_quic_udp_endpoint_t *endpoint, acip_quic_tls_t *client_tls,
@@ -149,18 +179,30 @@ static asciichat_error_t receive_one(acip_quic_udp_endpoint_t *endpoint, const u
     if (!endpoint->server_tls)
       return ASCIICHAT_OK;
     ngtcp2_pkt_hd initial;
-    if (ngtcp2_accept(&initial, data, length) != 0 || initial.version != NGTCP2_PROTO_VER_V1)
+    if (length < NGTCP2_MAX_UDP_PAYLOAD_SIZE || ngtcp2_accept(&initial, data, length) != 0 ||
+        initial.version != NGTCP2_PROTO_VER_V1)
+      return ASCIICHAT_OK;
+    if (!initial.tokenlen) {
+      send_retry(endpoint, &initial, remote, remote_length, now);
+      return ASCIICHAT_OK;
+    }
+    ngtcp2_cid original_dcid;
+    if (ngtcp2_crypto_verify_retry_token2(&original_dcid, initial.token, initial.tokenlen, endpoint->retry_secret,
+                                          sizeof(endpoint->retry_secret), initial.version, remote, remote_length,
+                                          &initial.dcid, QUIC_RETRY_TOKEN_LIFETIME, now) != 0)
       return ASCIICHAT_OK;
     peer = new_peer(endpoint);
     if (!peer)
       return ASCIICHAT_OK;
-    asciichat_error_t result =
-        acip_quic_connection_server_create(endpoint->server_tls, &path, data, length, now, &peer->connection);
+    asciichat_error_t result = acip_quic_connection_server_create_validated(endpoint->server_tls, &path, data, length,
+                                                                            &original_dcid, now, &peer->connection);
     if (result == ASCIICHAT_OK)
       result = endpoint->accept(peer->connection, endpoint->context);
     if (result != ASCIICHAT_OK) {
       acip_quic_connection_destroy(&peer->connection);
       SAFE_FREE(peer);
+      if (result == ERROR_BUFFER_FULL)
+        return ASCIICHAT_OK;
       return result;
     }
     add_peer(endpoint, peer);
@@ -178,7 +220,7 @@ asciichat_error_t acip_quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_
   *failed = NULL;
   for (unsigned i = 0; i < QUIC_UDP_READ_BATCH; ++i) {
     uint8_t data[65536];
-    struct sockaddr_storage remote;
+    struct sockaddr_storage remote = {0};
     socklen_t remote_length = sizeof(remote);
     ssize_t received =
         socket_recvfrom(endpoint->socket, data, sizeof(data), 0, (struct sockaddr *)&remote, &remote_length);
@@ -307,6 +349,7 @@ void acip_quic_udp_endpoint_destroy(acip_quic_udp_endpoint_t **endpoint) {
   while ((*endpoint)->peers)
     (void)acip_quic_udp_remove(*endpoint, (*endpoint)->peers->connection);
   socket_close((*endpoint)->socket);
+  sodium_memzero((*endpoint)->retry_secret, sizeof((*endpoint)->retry_secret));
   SAFE_FREE(*endpoint);
   *endpoint = NULL;
 }

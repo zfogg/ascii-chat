@@ -6,7 +6,11 @@
  * them alive until after endpoint destruction. Accepted and connected handles
  * are borrowed from the endpoint and become invalid when removed or destroyed.
  * The accept callback runs on the pump lane before the Initial is processed;
- * it may install the packet receiver but must not reenter the endpoint. */
+ * it may install the packet receiver but must not reenter the endpoint.
+ * Returning ERROR_BUFFER_FULL drops that Initial without stopping the listener;
+ * other callback errors are reported to the endpoint owner. A callback must
+ * decide whether to reject before attaching a transport, and must release any
+ * other resources it created when returning an error. */
 typedef struct acip_quic_udp_endpoint acip_quic_udp_endpoint_t;
 typedef asciichat_error_t (*acip_quic_udp_accept_fn)(acip_quic_connection_t *, void *);
 

@@ -37,6 +37,9 @@ static void *quic_worker_main(void *arg) {
         if (!still_present)
           continue;
       }
+      asciichat_error_context_t error_context;
+      if (HAS_ERRNO(&error_context))
+        log_error("QUIC worker stopped: %s", error_context.context_message);
       worker->result = result;
       break;
     }

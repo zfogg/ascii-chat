@@ -101,8 +101,14 @@ sends a one-byte non-QUIC datagram to the bound local socket so another thread
 can interrupt that wait after publishing work. The owner must keep the endpoint
 alive until all wait and wake calls return, and pump after wakeup to drain it.
 
-This driver is not a public listener: it lacks address-validation Retry,
-production admission controls, wildcard-address destination selection,
+The listener sends QUIC Retry before allocating connection state. Its token is
+authenticated with an endpoint-local random secret, bound to the client
+address and Retry connection ID, and expires after ten seconds. Invalid tokens
+are dropped. An admission callback returning `ERROR_BUFFER_FULL` drops that
+attempt without stopping other connections.
+
+This driver is not a public listener: it lacks production admission controls,
+wildcard-address destination selection,
 version negotiation, a blocking wakeup mechanism, application authentication,
 and a graceful close. Its 64-connection cap bounds state but is not sufficient
 DoS protection. Do not expose it to untrusted networks yet. A socket loopback

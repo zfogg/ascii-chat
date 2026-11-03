@@ -13,6 +13,7 @@
 #include <network/quic/tls.h>
 #include <network/quic/udp.h>
 #include <network/quic/worker.h>
+#include <ngtcp2/ngtcp2_crypto.h>
 #include <network/quic/transport.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
@@ -613,10 +614,17 @@ typedef struct {
   mutex_t *lane;
   acip_quic_connection_t *connection;
   acip_transport_t *transport;
+  bool reject_once;
+  unsigned rejected;
 } quic_worker_accept_test_t;
 
 static asciichat_error_t quic_worker_accept(acip_quic_connection_t *connection, void *context) {
   quic_worker_accept_test_t *state = context;
+  if (state->reject_once) {
+    state->reject_once = false;
+    ++state->rejected;
+    return ERROR_BUFFER_FULL;
+  }
   if (state->connection)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC worker connection");
   asciichat_error_t result = acip_quic_transport_attach_on_lane(connection, NULL, state->lane, &state->transport);
@@ -631,7 +639,7 @@ static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t
   CHECK(mutex_init(&client_lane, "quic_accept_client") == 0);
   CHECK(mutex_init(&server_lane, "quic_accept_server") == 0);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  quic_worker_accept_test_t accepted = {.lane = &server_lane};
+  quic_worker_accept_test_t accepted = {.lane = &server_lane, .reject_once = true};
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, quic_worker_accept,
                                       &accepted, &server) == ASCIICHAT_OK);
@@ -664,7 +672,19 @@ static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t
       break;
     time_sleep_ns(NS_PER_MS_INT);
   }
-  CHECK(client_ready && server_ready && server_transport);
+  if (!client_ready || !server_ready || !server_transport) {
+    CHECK(acip_quic_transport_set_waker(client_transport, NULL, NULL) == ASCIICHAT_OK);
+    asciichat_error_t client_worker_result = acip_quic_worker_stop(&client_worker);
+    asciichat_error_t server_worker_result = acip_quic_worker_stop(&server_worker);
+    FATAL(ERROR_ASSERTION_FAILED,
+          "QUIC retry failed: client_ready=%d server_ready=%d accepted=%d rejected=%u "
+          "client_worker=%d server_worker=%d",
+          client_ready, server_ready, server_transport != NULL, accepted.rejected, client_worker_result,
+          server_worker_result);
+  }
+  mutex_lock(&server_lane);
+  CHECK(accepted.rejected == 1);
+  mutex_unlock(&server_lane);
   size_t packet_length = 0;
   uint8_t *packet = make_packet(PACKET_TYPE_CRYPTO_CAPABILITIES, 16, &packet_length);
   CHECK(acip_transport_send(client_transport, packet, packet_length) == ASCIICHAT_OK);
@@ -1149,6 +1169,9 @@ static void quic_udp_wakeup_test(void) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_udp_endpoint_t *endpoint = NULL;
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback) + 1, NULL, NULL, NULL,
+                                      &endpoint) == ERROR_INVALID_PARAM &&
+        !endpoint);
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &endpoint) ==
         ASCIICHAT_OK);
   uint64_t wait_ns = 0;
@@ -1170,6 +1193,44 @@ static void quic_udp_wakeup_test(void) {
   CHECK(acip_quic_udp_wait(endpoint, 0, false, &ready) == ASCIICHAT_OK && !ready);
   acip_quic_udp_endpoint_destroy(&endpoint);
   socket_cleanup();
+}
+
+static void quic_retry_token_test(void) {
+  uint8_t secret[32];
+  for (size_t i = 0; i < sizeof(secret); ++i)
+    secret[i] = (uint8_t)(i + 7);
+  ngtcp2_cid retry = {.datalen = 16}, original = {.datalen = 16}, recovered;
+  memset(retry.data, 0x31, retry.datalen);
+  memset(original.data, 0x42, original.datalen);
+  struct sockaddr_in address = {
+      .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(12345), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  uint8_t token[NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN2];
+  uint64_t now = 100 * NS_PER_SEC_INT;
+  ngtcp2_ssize token_length =
+      ngtcp2_crypto_generate_retry_token2(token, secret, sizeof(secret), NGTCP2_PROTO_VER_V1,
+                                          (struct sockaddr *)&address, sizeof(address), &retry, &original, now);
+  CHECK(token_length > 0);
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
+                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+                                          10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) == 0);
+  CHECK(recovered.datalen == original.datalen && memcmp(recovered.data, original.data, original.datalen) == 0);
+  struct sockaddr_in wrong_address = address;
+  wrong_address.sin_port = HOST_TO_NET_U16(12346);
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
+                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&wrong_address, sizeof(wrong_address),
+                                          &retry, 10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
+                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+                                          10 * NS_PER_SEC_INT, now + 11 * NS_PER_SEC_INT) != 0);
+  retry.data[0] ^= 1;
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
+                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+                                          10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
+  retry.data[0] ^= 1;
+  token[(size_t)token_length - 1] ^= 1;
+  CHECK(ngtcp2_crypto_verify_retry_token2(&recovered, token, (size_t)token_length, secret, sizeof(secret),
+                                          NGTCP2_PROTO_VER_V1, (struct sockaddr *)&address, sizeof(address), &retry,
+                                          10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
 }
 
 int main(int argc, char **argv) {
@@ -1221,6 +1282,7 @@ int main(int argc, char **argv) {
   quic_udp_exchange(server, client);
   quic_udp_bad_identity(server, client);
   quic_udp_wakeup_test();
+  quic_retry_token_test();
   quic_worker_accept_test(server, client);
   quic_udp_secure_exchange(server, client, false);
   quic_udp_secure_exchange(server, client, true);

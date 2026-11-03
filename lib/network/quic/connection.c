@@ -309,8 +309,8 @@ static bool valid_path(const ngtcp2_path *path) {
 }
 
 static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *server_name, const ngtcp2_path *path,
-                                           const ngtcp2_pkt_hd *initial, uint64_t now_ns,
-                                           acip_quic_connection_t **out) {
+                                           const ngtcp2_pkt_hd *initial, const ngtcp2_cid *original_dcid,
+                                           uint64_t now_ns, acip_quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC connection output");
   *out = NULL;
@@ -346,6 +346,11 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
   settings.initial_ts = now_ns;
+  if (original_dcid) {
+    settings.token = initial->token;
+    settings.tokenlen = initial->tokenlen;
+    settings.token_type = NGTCP2_TOKEN_TYPE_RETRY;
+  }
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
   params.initial_max_streams_uni = 3;
@@ -353,8 +358,12 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   params.initial_max_data = ACIP_QUIC_INITIAL_CONNECTION_WINDOW;
   params.max_idle_timeout = ACIP_QUIC_IDLE_TIMEOUT_NS;
   if (initial) {
-    params.original_dcid = initial->dcid;
+    params.original_dcid = original_dcid ? *original_dcid : initial->dcid;
     params.original_dcid_present = 1;
+    if (original_dcid) {
+      params.retry_scid = initial->dcid;
+      params.retry_scid_present = 1;
+    }
   }
   ngtcp2_callbacks callbacks = connection_callbacks(tls->server);
   int rc = initial ? ngtcp2_conn_server_new(&connection->conn, &dcid, &scid, path, initial->version, &callbacks,
@@ -385,7 +394,7 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
 asciichat_error_t acip_quic_connection_client_create(acip_quic_tls_t *tls, const char *server_name,
                                                      const ngtcp2_path *path, uint64_t now_ns,
                                                      acip_quic_connection_t **out) {
-  return connection_create(tls, server_name, path, NULL, now_ns, out);
+  return connection_create(tls, server_name, path, NULL, NULL, now_ns, out);
 }
 
 asciichat_error_t acip_quic_connection_server_create(acip_quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
@@ -400,7 +409,24 @@ asciichat_error_t acip_quic_connection_server_create(acip_quic_tls_t *tls, const
   int rc = ngtcp2_accept(&header, initial, initial_length);
   if (rc != 0 || header.version != NGTCP2_PROTO_VER_V1)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid or unsupported QUIC Initial packet");
-  return connection_create(tls, NULL, path, &header, now_ns, out);
+  return connection_create(tls, NULL, path, &header, NULL, now_ns, out);
+}
+
+asciichat_error_t acip_quic_connection_server_create_validated(acip_quic_tls_t *tls, const ngtcp2_path *path,
+                                                               const void *initial, size_t initial_length,
+                                                               const ngtcp2_cid *original_dcid, uint64_t now_ns,
+                                                               acip_quic_connection_t **out) {
+  if (!out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC connection output");
+  *out = NULL;
+  if (!initial || !initial_length || !original_dcid || !original_dcid->datalen ||
+      original_dcid->datalen > NGTCP2_MAX_CIDLEN)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing validated QUIC Initial parameters");
+  ngtcp2_pkt_hd header;
+  int rc = ngtcp2_accept(&header, initial, initial_length);
+  if (rc != 0 || header.version != NGTCP2_PROTO_VER_V1 || !header.tokenlen)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid validated QUIC Initial packet");
+  return connection_create(tls, NULL, path, &header, original_dcid, now_ns, out);
 }
 
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
