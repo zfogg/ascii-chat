@@ -1664,8 +1664,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     apply_sanitizers_to_target(test-server-lifecycle)
     set_target_properties(test-server-lifecycle PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    asciichat_add_contract_test(server-lifecycle test-server-lifecycle)
-    set_property(TEST server-lifecycle APPEND PROPERTY LABELS unit)
+    asciichat_add_contract_test(shared-server-lifecycle test-server-lifecycle)
+    set_property(TEST shared-server-lifecycle APPEND PROPERTY LABELS unit)
 
 
     add_executable(test-client-lifecycle contracts/session/client_lifecycle_test.c)
