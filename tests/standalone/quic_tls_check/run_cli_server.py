@@ -1,7 +1,8 @@
-"""Exercise the native QUIC listener in the real server process."""
+"""Exercise native QUIC participants against the real server process."""
 
 from pathlib import Path
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -76,6 +77,55 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                 sys.stderr.write(f"QUIC client exited {client.returncode}\n{client.stdout}\n{client.stderr}\n{client_logs}\n")
                 sys.stderr.write((root / "server.log").read_text(errors="replace"))
                 raise SystemExit(client.returncode or 1)
+            # Both clients stay connected long enough to send test-pattern video
+            # and receive server-rendered frames while the other is present.
+            server_log_offset = (root / "server.log").stat().st_size
+            participants = []
+            try:
+                for index in range(2):
+                    participant_log = root / f"participant-{index}.log"
+                    output = (root / f"participant-{index}.out").open("wb")
+                    error = (root / f"participant-{index}.err").open("wb")
+                    process = subprocess.Popen(
+                        [binary, "--log-file", str(participant_log), "client", f"quic://localhost:{udp_port}",
+                         "--quic-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
+                         "--audio=false", "--video-codec", "raw", "--snapshot", "--snapshot-delay", "8", "--splash-screen=false",
+                         "--color-mode", "none", "--reconnect-attempts", "0"],
+                        stdout=output, stderr=error, creationflags=flags, env=probe_env,
+                    )
+                    participants.append((process, participant_log, output, error))
+                deadline = time.monotonic() + 35
+                while time.monotonic() < deadline:
+                    with (root / "server.log").open("rb") as server_output:
+                        server_output.seek(server_log_offset)
+                        session_logs = server_output.read().decode(errors="replace")
+                    quic_clients = set(re.findall(r"Added new transport client (\S+).*type=5", session_logs))
+                    video_clients = set(re.findall(r"Server image ingress client=(\S+)", session_logs))
+                    if len(quic_clients & video_clients) >= 2 and all(p.poll() is None for p, _, _, _ in participants):
+                        break
+                    if any(p.poll() is not None for p, _, _, _ in participants):
+                        raise RuntimeError(f"A QUIC participant exited before both sent video:\n{session_logs}")
+                    time.sleep(0.05)
+                else:
+                    raise RuntimeError(f"Both QUIC participants did not send video:\n{session_logs}")
+                for process, _, _, _ in participants:
+                    process.wait(timeout=max(0.1, deadline - time.monotonic()))
+                for index, (process, participant_log, output, error) in enumerate(participants):
+                    output.close()
+                    error.close()
+                    participant_logs = participant_log.read_text(errors="replace") if participant_log.exists() else ""
+                    if (process.returncode or "using native QUIC" not in participant_logs or
+                            "CLIENT_CONNECTION_RUNNING" not in participant_logs or
+                            not (root / f"participant-{index}.out").read_bytes().strip()):
+                        raise RuntimeError(f"QUIC participant {index} failed: {participant_logs}\n"
+                                           f"{(root / f'participant-{index}.err').read_text(errors='replace')}")
+            finally:
+                for process, _, output, error in participants:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=10)
+                    output.close()
+                    error.close()
             rejected_log = root / "rejected-client.log"
             rejected = subprocess.run(
                 [binary, "--log-file", str(rejected_log), "client", f"quic://localhost:{udp_port}",
