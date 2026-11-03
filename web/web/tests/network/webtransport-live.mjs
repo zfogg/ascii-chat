@@ -7,6 +7,7 @@ import {
   mkdirSync,
   copyFileSync,
   rmSync,
+  existsSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -74,10 +75,15 @@ const vite = await createVite({
 });
 await vite.listen();
 const pagePort = vite.httpServer.address().port;
-const udp = createSocket("udp4");
-await new Promise((r) => udp.bind(0, "127.0.0.1", r));
-const udpPort = udp.address().port;
-await new Promise((r) => udp.close(r));
+async function freeUdp() {
+  const socket = createSocket("udp4");
+  await new Promise((resolve) => socket.bind(0, "127.0.0.1", resolve));
+  const port = socket.address().port;
+  await new Promise((resolve) => socket.close(resolve));
+  return port;
+}
+const udpPort = await freeUdp();
+const nativePort = await freeUdp();
 async function freeTcp() {
   const s = createTcp();
   await new Promise((r) => s.listen(0, "127.0.0.1", r));
@@ -104,6 +110,10 @@ const server = spawn(
     String(tcpPort),
     "--websocket-port",
     String(wsPort),
+    "--quic-bind-address",
+    "127.0.0.1",
+    "--quic-port",
+    String(nativePort),
     "--webtransport-bind-address",
     "127.0.0.1",
     "--webtransport-port",
@@ -126,6 +136,7 @@ let logs = "";
 server.stdout.on("data", (c) => (logs += c));
 server.stderr.on("data", (c) => (logs += c));
 let browser;
+const participants = [];
 try {
   const deadline = Date.now() + 20000;
   while (
@@ -136,6 +147,78 @@ try {
     await new Promise((r) => setTimeout(r, 50));
   if (!logs.includes("Server accepting connections"))
     throw new Error(`server not ready: ${logs}`);
+  for (let i = 0; i < 2; ++i) {
+    const logFile = join(dir, `native-${i}.log`);
+    const process = spawn(
+      resolve(binary),
+      [
+        "--log-file",
+        logFile,
+        "client",
+        `quic://localhost:${nativePort}`,
+        "--quic-ca-file",
+        cert,
+        "--server-key",
+        `${identity}.pub`,
+        "--password",
+        "test-password",
+        "--test-pattern",
+        "--volume",
+        "0",
+        "--audio=false",
+        "--video-codec",
+        "raw",
+        "--snapshot",
+        "--snapshot-delay",
+        "25",
+        "--splash-screen=false",
+        "--color-mode",
+        "none",
+        "--reconnect-attempts",
+        "0",
+      ],
+      {
+        env: { ...env, ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK: "1" },
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    const participant = { process, logFile, output: "", outputBytes: 0 };
+    process.stdout.on(
+      "data",
+      (data) => (participant.outputBytes += data.length),
+    );
+
+    process.stderr.on("data", (data) => (participant.output += data));
+    participants.push(participant);
+  }
+  const nativeDeadline = Date.now() + 20000;
+  while (Date.now() < nativeDeadline) {
+    const ingress = new Set(
+      [...logs.matchAll(/Server image ingress client=(\S+)/g)].map(
+        (match) => match[1],
+      ),
+    );
+    if (ingress.size >= 2) break;
+    if (participants.some(({ process }) => process.exitCode !== null))
+      throw new Error("native participant exited before media ingress");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  const nativeIngress = new Set(
+    [...logs.matchAll(/Server image ingress client=(\S+)/g)].map(
+      (match) => match[1],
+    ),
+  );
+  if (nativeIngress.size < 2)
+    throw new Error("both native participants must send media");
+  for (const { logFile } of participants) {
+    const clientLog = readFileSync(logFile, "utf8");
+    if (
+      !clientLog.includes("using native QUIC") ||
+      !clientLog.includes("Server identity key verified against --server-key")
+    )
+      throw new Error("native participant did not use authenticated QUIC");
+  }
   browser = await chromium.launch({
     headless: true,
     executablePath: process.env.CHROME_PATH || undefined,
@@ -299,7 +382,7 @@ try {
           rgba[i + 3] = 255;
         }
         const frame = buildImageFramePayload(rgba, 64, 48);
-        for (let i = 0; i < 8; ++i) {
+        for (let i = 0; i < 30; ++i) {
           session.sendPacket(3001, frame);
           await new Promise((r) => setTimeout(r, 50));
         }
@@ -319,13 +402,65 @@ try {
   );
   console.log("APPLICATION RESULT", JSON.stringify(result));
   if (!result.ok) throw new Error(result.error);
-  if (!logs.includes("first=3572a9"))
+  if (!result.packets.includes(3000))
+    throw new Error("browser received no server-rendered media");
+  if (participants.some(({ process }) => process.exitCode !== null))
+    throw new Error("native participant left while browser was connected");
+  const afterBrowserLeaves = logs.length;
+  const outputBefore = participants.map(({ outputBytes }) => outputBytes);
+  const continueDeadline = Date.now() + 6000;
+  while (Date.now() < continueDeadline) {
+    const laterIngress = new Set(
+      [
+        ...logs
+          .slice(afterBrowserLeaves)
+          .matchAll(/Server image ingress client=(\S+)/g),
+      ].map((match) => match[1]),
+    );
+    if (
+      [...nativeIngress].every((id) => laterIngress.has(id)) &&
+      participants.every((p, i) => p.outputBytes > outputBefore[i])
+    )
+      break;
+    if (participants.some(({ process }) => process.exitCode !== null))
+      throw new Error("native participant exited after browser left");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  const laterIngress = new Set(
+    [
+      ...logs
+        .slice(afterBrowserLeaves)
+        .matchAll(/Server image ingress client=(\S+)/g),
+    ].map((match) => match[1]),
+  );
+  if (
+    ![...nativeIngress].every((id) => laterIngress.has(id)) ||
+    !participants.every((p, i) => p.outputBytes > outputBefore[i])
+  )
+    throw new Error(
+      "native call did not continue exchanging media after browser left",
+    );
+  const allIngress = new Set(
+    [...logs.matchAll(/Server image ingress client=(\S+)/g)].map(
+      (match) => match[1],
+    ),
+  );
+  if (![...allIngress].some((client) => !nativeIngress.has(client)))
     throw new Error("server did not receive the browser's visual datagram");
 } catch (error) {
   console.error("SERVER LOG", logs.slice(-12000));
+  for (const participant of participants)
+    console.error(
+      "PARTICIPANT",
+      participant.output,
+      existsSync(participant.logFile)
+        ? readFileSync(participant.logFile, "utf8").slice(-12000)
+        : "no log",
+    );
   throw error;
 } finally {
   if (browser) await browser.close();
+  for (const { process } of participants) process.kill();
   server.kill();
   await vite.close();
   rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

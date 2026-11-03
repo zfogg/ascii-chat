@@ -49,7 +49,8 @@ stream ends the session. The live browser integration probe can be run from
 it needs OpenSSL, ssh-keygen, and a Playwright Chromium installation (or
 `CHROME_PATH`). This probe covers pinned identity, origin and path rejection,
 certificate rejection, encrypted control traffic, and fragmented browser-to-server
-visual datagrams. Mixed-client coverage remains separate work.
+visual datagrams. It also runs two native QUIC participants alongside the browser
+and checks media traffic continues after the browser disconnects.
 
 ## Reliable streams
 
