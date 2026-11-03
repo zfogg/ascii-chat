@@ -4,6 +4,9 @@
  * @brief 🎯 Lock-free circular buffer for audio streaming with atomic operations
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64
+
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
@@ -399,7 +402,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   SAFE_MEMCPY(data_copy, frame_size, frame_data, frame_size);
 
   // Convert client ID number to string for storage in frame metadata
-  char client_id_str[64];
+  char client_id_str[RINGBUFFER_CLIENT_ID_BUFFER_SIZE];
   snprintf(client_id_str, sizeof(client_id_str), "%u", source_client_id);
 
   // Create multi-source frame

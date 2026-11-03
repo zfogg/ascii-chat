@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/errors.h>
@@ -206,7 +210,7 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
 #ifdef ASCIICHAT_WITH_OTEL
   packet->telemetry_context = ascii_otel_context();
 #endif
-  for (int i = 0; i < frame_count && i < 8; i++) {
+  for (int i = 0; i < frame_count && i < MAX_BATCH_FRAMES; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
   connection->audio_send_queue_head = next_head;
@@ -277,7 +281,7 @@ static void *audio_sender_thread_func(void *arg) {
       errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     }
     if (send_result == ASCIICHAT_OK && send_count % 50 == 0) {
-      char duration_str[32];
+      char duration_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(send_time_ns), -1, duration_str, sizeof(duration_str));
       log_debug("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,
                 duration_str);
@@ -402,8 +406,9 @@ void audio_process_received_samples(client_connection_t *connection, const float
   }
 
   // Allow both single packets and batched packets
-  if (num_samples > 5760 * AUDIO_CHANNELS || num_samples % AUDIO_CHANNELS) {
-    log_warn("Invalid audio sample count: %d (maximum %d)", num_samples, 5760 * AUDIO_CHANNELS);
+  if (num_samples > AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS || num_samples % AUDIO_CHANNELS) {
+    log_warn("Invalid audio sample count: %d (maximum %d)", num_samples,
+             AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS);
     return;
   }
 
@@ -427,7 +432,7 @@ void audio_process_received_samples(client_connection_t *connection, const float
   }
 
   // Copy samples to playback buffer (no processing needed - mixer already handled clipping)
-  float audio_buffer[5760 * AUDIO_CHANNELS];
+  float audio_buffer[AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS];
   memcpy(audio_buffer, samples, (size_t)num_samples * sizeof(float));
 
   // DEBUG: Log what we're writing to playback buffer (with first 4 samples to verify audio integrity)
@@ -518,22 +523,20 @@ static void *audio_capture_thread_func(void *arg) {
   int batch_send_count = 0;
   int timeout_flush_count = 0;
 
-// Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
-#define OPUS_FRAME_SAMPLES (960 * AUDIO_CHANNELS)
+// Opus frame size: OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
 
   // Read enough samples per iteration to drain faster than we fill
   // Buffer holds multiple Opus frames worth to prevent overflow
   // 4 frames = 3840 samples = 80ms, but we'll read what's available up to this
-#define CAPTURE_READ_SIZE (OPUS_FRAME_SAMPLES * 4)
+#define CAPTURE_READ_SIZE ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * 4)
 
   float audio_buffer[CAPTURE_READ_SIZE];
   // Accumulator for building complete Opus frames
-  float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+  float opus_frame_buffer[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
   int opus_frame_samples_collected = 0;
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define MAX_BATCH_FRAMES 8
 #define BATCH_TIMEOUT_NS (40LL * NS_PER_MS_INT) // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
   uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
   uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
@@ -666,7 +669,7 @@ static void *audio_capture_thread_func(void *arg) {
 
       while (samples_to_process > 0) {
         // How many samples can we add to current frame?
-        int space_in_frame = OPUS_FRAME_SAMPLES - opus_frame_samples_collected;
+        int space_in_frame = (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_samples_collected;
         int samples_to_copy = (samples_to_process < space_in_frame) ? samples_to_process : space_in_frame;
 
         // Copy samples to frame buffer
@@ -678,22 +681,23 @@ static void *audio_capture_thread_func(void *arg) {
         samples_to_process -= samples_to_copy;
 
         // Do we have a complete frame?
-        if (opus_frame_samples_collected >= OPUS_FRAME_SAMPLES) {
+        if (opus_frame_samples_collected >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
           // Process through pipeline: AEC, filters, AGC, noise gate, Opus encode
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
 
           uint64_t opus_encode_start_ns = time_get_ns();
-          int opus_len = client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
-                                                       OPUS_FRAME_SAMPLES, opus_packet, OPUS_MAX_PACKET_SIZE);
+          int opus_len =
+              client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
+                                            (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), opus_packet, OPUS_MAX_PACKET_SIZE);
 
           encode_count++;
           double opus_elapsed_ns = (double)time_elapsed_ns(opus_encode_start_ns, time_get_ns());
           if (encode_count % 50 == 0) {
             if (opus_elapsed_ns >= 0.0) {
-              char _duration_str[32];
+              char _duration_str[TIME_DURATION_BUFFER_SIZE];
               time_pretty((uint64_t)(opus_elapsed_ns), -1, _duration_str, sizeof(_duration_str));
-              log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
-                      _duration_str);
+              log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count,
+                      (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), opus_len, _duration_str);
             }
           }
 
@@ -706,8 +710,8 @@ static void *audio_capture_thread_func(void *arg) {
           if (opus_len > 0) {
 
             log_debug_every(LOG_RATE_VERY_FAST, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)",
-                            OPUS_FRAME_SAMPLES, opus_len,
-                            (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
+                            (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), opus_len,
+                            (float)((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * sizeof(float)) / (float)opus_len);
 
             // Add to batch buffer
             if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
@@ -754,7 +758,7 @@ static void *audio_capture_thread_func(void *arg) {
           log_debug_every(LOG_RATE_VERY_FAST, "Failed to queue audio batch (queue full)");
         } else {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
-            char queue_duration_str[32];
+            char queue_duration_str[TIME_DURATION_BUFFER_SIZE];
             time_pretty((uint64_t)(queue_time_ns), -1, queue_duration_str, sizeof(queue_duration_str));
             log_debug("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes) in %s", batch_send_count, batch_frame_count,
                       batch_total_size, queue_duration_str);
@@ -777,10 +781,10 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Comprehensive timing report every 100 iterations (~2 seconds)
       if (timing_loop_count % 100 == 0) {
-        char avg_loop_str[32], max_loop_str[32];
-        char avg_read_str[32], max_read_str[32];
-        char avg_encode_str[32], max_encode_str[32];
-        char avg_queue_str[32], max_queue_str[32];
+        char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[TIME_DURATION_BUFFER_SIZE];
+        char avg_read_str[TIME_DURATION_BUFFER_SIZE], max_read_str[TIME_DURATION_BUFFER_SIZE];
+        char avg_encode_str[TIME_DURATION_BUFFER_SIZE], max_encode_str[TIME_DURATION_BUFFER_SIZE];
+        char avg_queue_str[TIME_DURATION_BUFFER_SIZE], max_queue_str[TIME_DURATION_BUFFER_SIZE];
 
         time_pretty((uint64_t)(total_loop_ns / timing_loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
         time_pretty((uint64_t)(max_loop_ns), -1, max_loop_str, sizeof(max_loop_str));
@@ -825,7 +829,7 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (960 samples @ 48kHz)
+      // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (OPUS_FRAME_SAMPLES samples @ 48kHz)
       // Without sleep, thread spins at 90-100% CPU constantly checking for new samples
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms

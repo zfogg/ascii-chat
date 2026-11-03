@@ -4,6 +4,9 @@
  * @ingroup platform
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE 32
+
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -286,14 +289,14 @@ asciichat_error_t terminal_move_cursor_relative(int offset) {
 
   if (offset > 0) {
     // Move right: \x1b[<n>C
-    char buf[32];
+    char buf[PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE];
     int len = snprintf(buf, sizeof(buf), "\033[%dC", offset);
     if (len > 0 && len < (int)sizeof(buf)) {
       write(STDOUT_FILENO, buf, len);
     }
   } else {
     // Move left: \x1b[<n>D
-    char buf[32];
+    char buf[PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE];
     int len = snprintf(buf, sizeof(buf), "\033[%dD", -offset);
     if (len > 0 && len < (int)sizeof(buf)) {
       write(STDOUT_FILENO, buf, len);

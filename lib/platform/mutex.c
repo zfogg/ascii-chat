@@ -8,6 +8,14 @@
  * All hooks are debug-only and disabled in release builds.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_MUTEX_LOCK_BUFFER_SIZE 64
+#define PLATFORM_MUTEX_UNLOCK_BUFFER_SIZE 64
+#define PLATFORM_MUTEX_HELD_BUFFER_SIZE 64
+#define PLATFORM_MUTEX_COUNT_BUFFER_SIZE 256
+#define PLATFORM_MUTEX_ELAPSED_BUFFER_SIZE 64
+#define PLATFORM_MUTEX_BUF_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
@@ -92,19 +100,19 @@ int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size) {
   uint64_t now_ns = time_get_ns();
 
   // Format timing information
-  char lock_str[64] = "";
-  char unlock_str[64] = "";
-  char held_str[64] = "";
-  char count_str[256] = "";
+  char lock_str[PLATFORM_MUTEX_LOCK_BUFFER_SIZE] = "";
+  char unlock_str[PLATFORM_MUTEX_UNLOCK_BUFFER_SIZE] = "";
+  char held_str[PLATFORM_MUTEX_HELD_BUFFER_SIZE] = "";
+  char count_str[PLATFORM_MUTEX_COUNT_BUFFER_SIZE] = "";
 
   if (mutex->last_lock_time_ns > 0 && mutex->last_lock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_MUTEX_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - mutex->last_lock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(lock_str, sizeof(lock_str), "lock=%s", elapsed_str);
   }
 
   if (mutex->last_unlock_time_ns > 0 && mutex->last_unlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_MUTEX_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - mutex->last_unlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
   }
@@ -137,7 +145,7 @@ int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size) {
 void mutex_log_state(const mutex_t *mutex, const char *file, int line, const char *func) {
   if (!mutex)
     return;
-  char buf[512];
+  char buf[PLATFORM_MUTEX_BUF_BUFFER_SIZE];
   mutex_format_state(mutex, buf, sizeof(buf));
   log_msg(LOG_DEBUG, file, line, func, "mutex/state %p: %s", (const void *)mutex, buf);
 }

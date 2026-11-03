@@ -5,6 +5,11 @@
  * @brief 🎨 Terminal color palette management with Unicode character width detection
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256
+
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -107,7 +112,7 @@ bool validate_palette_chars(const char *chars, size_t len) {
     } else {
       // Non-ASCII: use utf8_display_width to check character width
       // Create a temporary buffer with the UTF-8 encoded character
-      uint8_t utf8_buf[5] = {0};
+      uint8_t utf8_buf[UTF8_BUFFER_SIZE] = {0};
 
       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
       if (cp <= 0x7F) {
@@ -276,7 +281,8 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
 }
 
 // Build a per-client luminance palette without affecting global cache
-int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]) {
+int build_client_luminance_palette(const char *palette_chars, size_t palette_len,
+                                   char luminance_mapping[ASCII_LUMINANCE_LEVELS]) {
   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for client luminance palette");
     return -1;
@@ -296,8 +302,9 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
 }
 
 // Initialize a client's palette cache from their capabilities
-int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[256],
-                              size_t *client_palette_len, char client_luminance_palette[256]) {
+int initialize_client_palette(palette_type_t palette_type, const char *custom_chars,
+                              char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
+                              char client_luminance_palette[ASCII_LUMINANCE_LEVELS]) {
   const palette_def_t *palette = NULL;
   const char *chars_to_use = NULL;
   size_t len_to_use = 0;
@@ -428,7 +435,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   bytes_processed = 0;
 
   // Set locale for wcwidth - save a copy of the old locale
-  char old_locale[256] = {0};
+  char old_locale[VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE] = {0};
   char *current_locale = setlocale(LC_CTYPE, NULL);
   if (current_locale) {
     SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));

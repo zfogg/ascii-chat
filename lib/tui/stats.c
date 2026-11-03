@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_STATS_TITLE_BUFFER_SIZE 160
+#define TUI_STATS_FOOTER_BUFFER_SIZE 160
+#define TUI_STATS_TEXT_BUFFER_SIZE 4096
+
 #include <ascii-chat/ui/layout.h>
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/util/string.h>
@@ -40,7 +46,7 @@ static void stats_footer(const stats_view_t *view, char *footer, size_t capacity
 }
 
 terminal_size_t tui_stats_minimum(const stats_view_t *view) {
-  char title[160], footer[160];
+  char title[TUI_STATS_TITLE_BUFFER_SIZE], footer[TUI_STATS_FOOTER_BUFFER_SIZE];
   snprintf(title, sizeof(title), "  ASCII-CHAT / %-20s  LIVE STATS", view->mode);
   stats_footer(view, footer, sizeof(footer));
   size_t width = stats_body_width(view) + 4;
@@ -55,7 +61,7 @@ terminal_size_t tui_stats_minimum(const stats_view_t *view) {
 
 typedef struct {
   const stats_view_t *view;
-  char text[4096];
+  char text[TUI_STATS_TEXT_BUFFER_SIZE];
 } stats_table_context_t;
 static void stats_cells(size_t row, const char **cells, size_t count, void *data) {
   (void)count;
@@ -102,7 +108,7 @@ void tui_stats_render(terminal_size_t size, const void *data) {
   ui_table_render(buffer, &table, 4, 2, size.cols - 2, available);
   frame_buffer_printf(buffer, "\033[%d;1H", size.rows - 2);
   frame_buffer_render_border(buffer, size.cols, blue);
-  char footer[160];
+  char footer[TUI_STATS_FOOTER_BUFFER_SIZE];
   stats_footer(view, footer, sizeof(footer));
   frame_buffer_printf(buffer, "  ");
   ui_text_render_values(buffer, footer);

@@ -1,7 +1,7 @@
 # Audio channels
 
-Calls accept mono and stereo audio. Speech defaults to centered mono Opus at
-32 kbit/s; stereo microphones and media use stereo Opus at 128 kbit/s. Internal
+All call encoders and decoders use stereo Opus. Speech uses centered input at
+32 kbit/s; stereo microphones and media use 128 kbit/s. Internal
 PCM is interleaved stereo at 48 kHz, independent of device layouts and rates.
 PCM counts include both channels; codec frame durations are measured per channel.
 
@@ -38,18 +38,15 @@ inputs varies. A browser-provided single channel stays centered. Browser AEC
 runs on microphone capture; shared C/WASM enhancement processes the microphone
 before stereo screen/media audio is mixed in.
 
-## Playback, media, and compatibility
+## Playback and media
 
 - Mono microphones are centered in both playback channels. Stereo sources retain
   their left/right separation through resampling, mix-minus, encoding, and recording.
 - Mono-only speaker devices receive a downmix. Multichannel outputs use the first
   stereo pair and silence the other outputs.
-- Each recipient advertises stereo support with `AUDIO_CAP_STEREO` in the existing
-  audio capability bitmask. Missing support selects mono server output. Capability
-  updates also update an already-running recipient encoder.
-- Opus packets retain the existing batch format. Mono decoders can downmix stereo
-  packets, and stereo decoders center mono packets. New clients can therefore send
-  stereo to older mono servers, which mix their decoded mono signal.
+- Clients advertise stereo support with `AUDIO_CAP_STEREO`. Call encoders and
+  decoders default to two channels, and servers always send stereo output.
+  There is no legacy-peer mono fallback.
 - Speech filters maintain independent channel state. Stereo gain control,
   compression, and gating use a shared detector to preserve channel balance.
 - Recordings retain stereo. Waveform/FFT displays downmix only their analysis copy.
@@ -57,8 +54,8 @@ before stereo screen/media audio is mixed in.
 ## Hardware-free validation
 
 `tests/unit/audio/stereo_test.c` uses generated signals to check routing,
-resampling across callback boundaries, independent codec channels, legacy mono
-decoding, stereo dynamics, jitter frame alignment, mix-minus, AEC buffer sizing,
+resampling across callback boundaries, stereo codec defaults and explicit mono
+downmixing, stereo dynamics, jitter frame alignment, mix-minus, AEC buffer sizing,
 and recording timestamps. `tests/contracts/audio/device_test.c` simulates the
 PortAudio boundary while running the production callbacks and worker, including
 stereo-only microphones, mono speakers, and four-channel interface routing.

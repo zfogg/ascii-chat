@@ -72,6 +72,14 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_PACKET_TERM_TYPE_BUFFER_SIZE 32
+#define NETWORK_PACKET_COLORTERM_BUFFER_SIZE 32
+#define NETWORK_PACKET_PALETTE_CUSTOM_BUFFER_SIZE 64
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ACIP_OPUS_BATCH_HEADER_SIZE 16
+
 #include "../../platform/socket.h"
 #include "../../platform/abstraction.h"
 #include "../../crypto/crypto.h"
@@ -1032,9 +1040,9 @@ typedef struct {
   /** @brief Terminal height in characters */
   uint16_t height;
   /** @brief $TERM environment variable value (for debugging) */
-  char term_type[32];
+  char term_type[NETWORK_PACKET_TERM_TYPE_BUFFER_SIZE];
   /** @brief $COLORTERM environment variable value (for debugging) */
-  char colorterm[32];
+  char colorterm[NETWORK_PACKET_COLORTERM_BUFFER_SIZE];
   /** @brief Detection reliability flag (1=reliable detection, 0=best guess) */
   uint8_t detection_reliable;
   /** @brief UTF-8 support flag (0=no UTF-8, 1=UTF-8 supported) */
@@ -1042,7 +1050,7 @@ typedef struct {
   /** @brief Palette type enum value (palette_type_t) */
   uint32_t palette_type;
   /** @brief Custom palette characters (if palette_type == PALETTE_CUSTOM) */
-  char palette_custom[64];
+  char palette_custom[NETWORK_PACKET_PALETTE_CUSTOM_BUFFER_SIZE];
   /** @brief Client's desired frame rate (1-144 FPS) */
   uint8_t desired_fps;
   /** @brief Monochromatic color filter enum value (color_filter_t) */

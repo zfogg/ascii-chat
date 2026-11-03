@@ -4,6 +4,9 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COMPLETIONS_ZSH_NAME_BUFFER_SIZE 256
+
 #include <string.h>
 #include <stdio.h>
 #include <ascii-chat/options/completions/zsh.h>
@@ -57,7 +60,7 @@ static void zsh_write_combined_args(FILE *output, const option_descriptor_t *opt
   for (size_t i = 0; i < count; i++) {
     for (int spelling = 0; spelling < (opts[i].short_name ? 2 : 1); ++spelling) {
       fprintf(output, "    '");
-      char name[256];
+      char name[OPTIONS_COMPLETIONS_ZSH_NAME_BUFFER_SIZE];
       if (spelling == 0)
         SAFE_SNPRINTF(name, sizeof(name), "--%s", opts[i].long_name);
       else

@@ -37,6 +37,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include "../common.h"
 #include <stdbool.h>
@@ -88,13 +89,15 @@
  *
  * @ingroup crypto
  */
-asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]);
+asciichat_error_t check_known_host(const char *server_ip, uint16_t port,
+                                   const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]);
 
 /** Same trust decision; optionally return the first stored nonzero identity for diagnostics.
  * A mismatch can have multiple stored candidates. No fabricated key is returned for no-identity entries.
  */
-asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[32],
-                                            uint8_t expected_key[32], bool *has_expected_key);
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port,
+                                            const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE],
+                                            uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE], bool *has_expected_key);
 
 /**
  * @brief Check known_hosts for servers without identity key (no-identity entries)
@@ -168,7 +171,8 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
  *
  * @ingroup crypto
  */
-asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]);
+asciichat_error_t add_known_host(const char *server_ip, uint16_t port,
+                                 const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Remove server from known_hosts
@@ -262,8 +266,8 @@ const char *get_known_hosts_path(void);
  *
  * @ingroup crypto
  */
-bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[32],
-                          const uint8_t received_key[32]);
+bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE],
+                          const uint8_t received_key[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Interactive prompt for unknown host - returns true if user wants to add, false to abort
@@ -291,7 +295,7 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
  *
  * @ingroup crypto
  */
-bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]);
+bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Interactive prompt for unknown host without identity key - returns true if user wants to continue, false to
@@ -356,7 +360,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port);
  *
  * @ingroup crypto
  */
-void compute_key_fingerprint(const uint8_t key[32], char fingerprint[65]);
+void compute_key_fingerprint(const uint8_t key[ED25519_PUBLIC_KEY_SIZE], char fingerprint[HEX_STRING_SIZE_32]);
 
 /** @} */
 

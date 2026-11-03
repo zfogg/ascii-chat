@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE 256
+#define DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE 256
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/negotiation.h>
@@ -99,7 +105,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   // Explicit identity credentials apply to signaling as well as media authentication.
   const options_t *opts = options_get();
   bool explicit_identity = opts && opts->encrypt_key[0];
-  char identity_path[256];
+  char identity_path[DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE];
   asciichat_error_t id_result;
   if (explicit_identity) {
     SAFE_STRNCPY(identity_path, opts->encrypt_key, sizeof(identity_path));
@@ -129,7 +135,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     memset(session->identity_pubkey, 0, sizeof(session->identity_pubkey));
     memset(session->identity_seckey, 0, sizeof(session->identity_seckey));
   } else {
-    char fingerprint[65];
+    char fingerprint[HEX_STRING_SIZE_32];
     acds_identity_fingerprint(session->identity_pubkey, fingerprint);
     log_info("Using identity key with fingerprint: %.16s...", fingerprint);
   }
@@ -138,14 +144,14 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   if (opts && opts->num_identity_keys > 0) {
     // Load all identity keys from options
     for (size_t i = 0; i < opts->num_identity_keys && i < MAX_SESSION_KEYS; i++) {
-      uint8_t pubkey[32] = {0};
-      uint8_t seckey[64] = {0};
+      uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE] = {0};
+      uint8_t seckey[ED25519_PRIVATE_KEY_SIZE] = {0};
       asciichat_error_t key_result = acds_identity_load(opts->identity_keys[i], pubkey, seckey);
       if (key_result == ASCIICHAT_OK) {
         memcpy(session->identity_pubkeys[session->num_identity_keys], pubkey, sizeof(pubkey));
         memcpy(session->identity_seckeys[session->num_identity_keys++], seckey, sizeof(seckey));
         sodium_memzero(seckey, sizeof(seckey));
-        char fingerprint[65];
+        char fingerprint[HEX_STRING_SIZE_32];
         acds_identity_fingerprint(pubkey, fingerprint);
         log_info("Loaded identity key #%zu with fingerprint: %.16s...", i + 1, fingerprint);
       } else {
@@ -164,7 +170,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     log_info("Loaded %zu identity key(s) for multi-key protocol", session->num_identity_keys);
   } else {
     // Single-key mode: use only the primary identity key
-    memcpy(session->identity_pubkeys[0], session->identity_pubkey, 32);
+    memcpy(session->identity_pubkeys[0], session->identity_pubkey, ED25519_PUBLIC_KEY_SIZE);
     memcpy(session->identity_seckeys[0], session->identity_seckey, sizeof(session->identity_seckey));
     session->num_identity_keys = 1;
   }
@@ -527,12 +533,13 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   acds_protocol_destroy(&protocol);
 
   // Store session info
-  memcpy(session->session_id, created->session_id, 16);
+  memcpy(session->session_id, created->session_id, SESSION_ID_SIZE);
   SAFE_STRNCPY(session->session_string, created->session_string, sizeof(session->session_string));
 
   // We're also participant 0 (initiator)
-  memcpy(session->participant_id, created->session_id, 16); // Use session ID as participant ID for initiator
-  memcpy(session->initiator_id, session->participant_id, 16);
+  memcpy(session->participant_id, created->session_id,
+         SESSION_ID_SIZE); // Use session ID as participant ID for initiator
+  memcpy(session->initiator_id, session->participant_id, SESSION_ID_SIZE);
 
   log_info("Session created: %s", session->session_string);
 
@@ -556,8 +563,9 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 /**
  * @brief Send SDP via ACDS signaling
  */
-static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                     const char *sdp_type, const char *sdp, void *user_data) {
+static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SESSION_ID_SIZE],
+                                                     const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
+                                                     const char *sdp, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || !session->acds_transport) {
@@ -574,9 +582,9 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
   }
   acip_webrtc_sdp_t *sdp_msg = (acip_webrtc_sdp_t *)packet_data;
 
-  memcpy(sdp_msg->session_id, session_id, 16);
-  memcpy(sdp_msg->sender_id, session->participant_id, 16);
-  memcpy(sdp_msg->recipient_id, recipient_id, 16);
+  memcpy(sdp_msg->session_id, session_id, SESSION_ID_SIZE);
+  memcpy(sdp_msg->sender_id, session->participant_id, SESSION_ID_SIZE);
+  memcpy(sdp_msg->recipient_id, recipient_id, SESSION_ID_SIZE);
   sdp_msg->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   sdp_msg->sdp_len = HOST_TO_NET_U16(sdp_len);
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
@@ -599,8 +607,9 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
 /**
  * @brief Send ICE candidate via ACDS signaling
  */
-static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                     const char *candidate, const char *mid, void *user_data) {
+static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[SESSION_ID_SIZE],
+                                                     const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
+                                                     const char *mid, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || !session->acds_transport) {
@@ -621,9 +630,9 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
 
   // Fill header
   acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)packet_data;
-  memcpy(ice_msg->session_id, session_id, 16);
-  memcpy(ice_msg->sender_id, session->participant_id, 16);
-  memcpy(ice_msg->recipient_id, recipient_id, 16);
+  memcpy(ice_msg->session_id, session_id, SESSION_ID_SIZE);
+  memcpy(ice_msg->sender_id, session->participant_id, SESSION_ID_SIZE);
+  memcpy(ice_msg->recipient_id, recipient_id, SESSION_ID_SIZE);
   ice_msg->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len);
 
   // Copy candidate and mid after header
@@ -685,8 +694,8 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
  * the configured timeout. Trickle ICE can still establish a connection using
  * candidates gathered so far, so this is diagnostic rather than fatal.
  */
-static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uint32_t timeout_ms, uint64_t elapsed_ms,
-                                           void *user_data) {
+static void discovery_on_gathering_timeout(const uint8_t participant_id[SESSION_ID_SIZE], uint32_t timeout_ms,
+                                           uint64_t elapsed_ms, void *user_data) {
   (void)user_data; // Session context not needed for logging
 
   log_warn("ICE candidate gathering is slower than expected; continuing trickle ICE");
@@ -712,7 +721,7 @@ static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uin
  * - Security: DataChannel uses DTLS encryption (automatic from libdatachannel)
  * - Encryption: ACIP layer may add additional encryption on top if needed
  */
-static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16],
+static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE],
                                          void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
@@ -1094,13 +1103,13 @@ static void discovery_commit_host(discovery_session_t *session, const consensus_
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "queued");
   discovery_record_host_decision(session, message->generation, message->sequence);
   session->host_loss_detected_ms = session_get_current_time_ms();
-  if (memcmp(session->host_id, message->participant, 16))
+  if (memcmp(session->host_id, message->participant, SESSION_ID_SIZE))
     NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
-  memcpy(session->host_id, message->participant, 16);
+  memcpy(session->host_id, message->participant, SESSION_ID_SIZE);
   session->host_port = message->port;
   session->host_address[0] = 0;
-  session->handoff_pending =
-      session->session_type == SESSION_TYPE_WEBRTC || !memcmp(session->host_id, session->participant_id, 16);
+  session->handoff_pending = session->session_type == SESSION_TYPE_WEBRTC ||
+                             !memcmp(session->host_id, session->participant_id, SESSION_ID_SIZE);
   set_state(session, DISCOVERY_STATE_MIGRATING);
   log_info("Committed successor %02x%02x generation=%u", message->participant[0], message->participant[1],
            message->generation);
@@ -1114,12 +1123,12 @@ static void discovery_commit_host(discovery_session_t *session, const consensus_
 static void discovery_handoff_receive(discovery_session_t *session, const void *data, size_t length) {
   consensus_handoff_message_t message;
   if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK ||
-      memcmp(message.session, session->session_id, 16))
+      memcmp(message.session, session->session_id, SESSION_ID_SIZE))
     return;
   if (message.generation < session->handoff_generation)
     return;
   session->handoff_generation = message.generation;
-  if (message.kind == HANDOFF_PREPARE && !memcmp(message.participant, session->participant_id, 16)) {
+  if (message.kind == HANDOFF_PREPARE && !memcmp(message.participant, session->participant_id, SESSION_ID_SIZE)) {
     asciichat_error_t result = ASCIICHAT_OK;
     if (!session->host_ctx) {
       session_host_config_t config = {.port = GET_OPTION(port),
@@ -1165,7 +1174,7 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
     webrtc_peer_manager_destroy(session->peer_manager);
     session->peer_manager = NULL;
   }
-  session->is_host = !memcmp(session->host_id, session->participant_id, 16);
+  session->is_host = !memcmp(session->host_id, session->participant_id, SESSION_ID_SIZE);
   if (!session->is_host && session->host_ctx) {
     session_host_destroy(session->host_ctx);
     session->host_ctx = NULL;
@@ -1217,8 +1226,8 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
   mutex_unlock(&session->nat_quality_mutex);
-  memcpy(message.session, session->session_id, 16);
-  memcpy(message.participant, session->participant_id, 16);
+  memcpy(message.session, session->session_id, SESSION_ID_SIZE);
+  memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
   asciichat_error_t result = discovery_handoff_send(session, &message, false);
   if (result != ASCIICHAT_OK)
     return result;
@@ -1228,19 +1237,21 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
 
 static bool discovery_host_designation_is_current(const discovery_session_t *session,
                                                   const acip_host_designated_t *host, uint32_t generation) {
-  if (memcmp(host->session_id, session->session_id, 16) || !memchr(host->host_address, 0, sizeof(host->host_address)) ||
-      !host->host_port || host->connection_type > ACIP_CONNECTION_TYPE_TURN || generation < session->handoff_generation)
+  if (memcmp(host->session_id, session->session_id, SESSION_ID_SIZE) ||
+      !memchr(host->host_address, 0, sizeof(host->host_address)) || !host->host_port ||
+      host->connection_type > ACIP_CONNECTION_TYPE_TURN || generation < session->handoff_generation)
     return false;
   int order = discovery_compare_host_decision(session, generation, NET_TO_HOST_U32(host->sequence));
   if (order != 0)
     return order > 0;
   // The same authority may supply an endpoint that was not available at join time.
-  return !memcmp(session->host_id, host->host_id, 16) && !session->host_address[0] && host->host_address[0];
+  return !memcmp(session->host_id, host->host_id, SESSION_ID_SIZE) && !session->host_address[0] &&
+         host->host_address[0];
 }
 
 static bool discovery_host_endpoint_ready(const discovery_session_t *session, const acip_host_designated_t *host) {
   return session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] ||
-         !memcmp(host->host_id, session->participant_id, 16);
+         !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE);
 }
 
 static void discovery_receive_host_designated(discovery_session_t *session, const void *data, size_t len) {
@@ -1259,15 +1270,15 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
     return;
   }
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "accepted");
-  bool changed = memcmp(session->host_id, host->host_id, 16) != 0;
+  bool changed = memcmp(session->host_id, host->host_id, SESSION_ID_SIZE) != 0;
   ASCII_OTEL_ATTR_INT("host.update.changed", changed);
   ASCII_OTEL_ATTR_STRING("host.update.role",
-                         !memcmp(host->host_id, session->participant_id, 16) ? "host" : "participant");
+                         !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE) ? "host" : "participant");
   bool active = session->state == DISCOVERY_STATE_ACTIVE;
   bool connecting = session->state == DISCOVERY_STATE_CONNECTING_HOST;
   discovery_record_host_decision(session, generation, NET_TO_HOST_U32(host->sequence));
   session->handoff_generation = generation;
-  memcpy(session->host_id, host->host_id, 16);
+  memcpy(session->host_id, host->host_id, SESSION_ID_SIZE);
   if (changed)
     session->host_address[0] = 0;
   if (host->host_address[0])
@@ -1282,7 +1293,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
     session->handoff_pending = true;
     set_state(session, DISCOVERY_STATE_MIGRATING);
   } else if (session->state == DISCOVERY_STATE_NEGOTIATING && host->host_address[0]) {
-    session->is_host = !memcmp(host->host_id, session->participant_id, 16);
+    session->is_host = !memcmp(host->host_id, session->participant_id, SESSION_ID_SIZE);
     set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
   }
 }
@@ -1355,10 +1366,10 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   acds_protocol_destroy(&protocol);
 
   // Store session info
-  memcpy(session->session_id, joined->session_id, 16);
-  memcpy(session->participant_id, joined->participant_id, 16);
+  memcpy(session->session_id, joined->session_id, SESSION_ID_SIZE);
+  memcpy(session->participant_id, joined->participant_id, SESSION_ID_SIZE);
 
-  memcpy(session->host_id, joined->host_established ? joined->host_id : joined->initiator_id, 16);
+  memcpy(session->host_id, joined->host_established ? joined->host_id : joined->initiator_id, SESSION_ID_SIZE);
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
@@ -1482,12 +1493,12 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     return result;
   }
 
-  bool has_identity = memcmp(session->identity_pubkey, (uint8_t[32]){0}, 32) != 0;
+  bool has_identity = memcmp(session->identity_pubkey, (uint8_t[32]){0}, ED25519_PUBLIC_KEY_SIZE) != 0;
   // Store identity key in handshake context
   handshake_ctx->client_public_key.type = has_identity ? KEY_TYPE_ED25519 : KEY_TYPE_UNKNOWN;
   handshake_ctx->client_private_key.type = handshake_ctx->client_public_key.type;
-  memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, 32);
-  memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, 64);
+  memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, ED25519_PUBLIC_KEY_SIZE);
+  memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, ED25519_PRIVATE_KEY_SIZE);
   memcpy(handshake_ctx->client_private_key.public_key, session->identity_pubkey, sizeof(session->identity_pubkey));
 
   crypto_policy_t signaling_policy = {
@@ -1749,7 +1760,7 @@ static asciichat_error_t discovery_session_retry_webrtc(discovery_session_t *ses
   int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
   if (session->webrtc_retry_attempt >= max_attempts) {
     log_error("WebRTC connection failed after %d attempts (timeout: %dms)", max_attempts + 1, timeout_ms);
-    char error_msg[256];
+    char error_msg[DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE];
     snprintf(error_msg, sizeof(error_msg), "WebRTC connection failed after %d attempts (%dms timeout)",
              max_attempts + 1, timeout_ms);
     set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
@@ -2057,8 +2068,8 @@ void discovery_session_stop(discovery_session_t *session) {
   if (session->acds_transport && session->session_id[0] != 0) {
     acip_session_leave_t leave_msg;
     memset(&leave_msg, 0, sizeof(leave_msg));
-    memcpy(leave_msg.session_id, session->session_id, 16);
-    memcpy(leave_msg.participant_id, session->participant_id, 16);
+    memcpy(leave_msg.session_id, session->session_id, SESSION_ID_SIZE);
+    memcpy(leave_msg.participant_id, session->participant_id, SESSION_ID_SIZE);
 
     packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg),
                               0);
@@ -2221,9 +2232,9 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
 
   // Notify ACDS of host loss (lightweight notification, no NAT data exchanged!)
   acip_host_lost_t host_lost = {0};
-  memcpy(host_lost.session_id, session->session_id, 16);
-  memcpy(host_lost.participant_id, session->participant_id, 16);
-  memcpy(host_lost.last_host_id, session->host_id, 16);
+  memcpy(host_lost.session_id, session->session_id, SESSION_ID_SIZE);
+  memcpy(host_lost.participant_id, session->participant_id, SESSION_ID_SIZE);
+  memcpy(host_lost.last_host_id, session->host_id, SESSION_ID_SIZE);
   host_lost.disconnect_reason = disconnect_reason;
   host_lost.disconnect_time_ms = session->host_loss_detected_ms;
 

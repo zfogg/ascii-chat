@@ -3,6 +3,9 @@
  * @brief 🧵 Generic thread pool implementation for managing worker threads
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE 64
+
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -367,7 +370,7 @@ asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(vo
   // Create thread
   if (acthread_create(&entry->thread, entry->name, thread_func, thread_arg) != 0) {
     // Save name before freeing entry
-    char thread_name_copy[64];
+    char thread_name_copy[THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE];
     SAFE_STRNCPY(thread_name_copy, entry->name, sizeof(thread_name_copy));
     SAFE_FREE(entry);
     return SET_ERRNO(ERROR_THREAD, "Failed to create thread '%s' in pool '%s'", thread_name_copy, pool->name);

@@ -11,6 +11,12 @@
  * - Merger: Intelligently merging auto-generated with manual content
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_MANPAGE_MODE_BUFFER_SIZE 256
+#define OPTIONS_MANPAGE_CURRENT_AUTO_SECTION_BUFFER_SIZE 128
+#define OPTIONS_MANPAGE_CURRENT_MERGE_SECTION_BUFFER_SIZE 64
+#define OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE 4096
+
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/manpage.h>
@@ -61,7 +67,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return "all modes";
   }
 
-  static char mode_str[256];
+  static char mode_str[OPTIONS_MANPAGE_MODE_BUFFER_SIZE];
   mode_str[0] = '\0';
   int pos = 0;
 
@@ -234,11 +240,11 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
 
 typedef struct {
   bool in_auto_section;
-  char current_auto_section[128];
+  char current_auto_section[OPTIONS_MANPAGE_CURRENT_AUTO_SECTION_BUFFER_SIZE];
   bool found_section_header;
   bool in_merge_section;
   bool merge_content_generated;
-  char current_merge_section[64];
+  char current_merge_section[OPTIONS_MANPAGE_CURRENT_MERGE_SECTION_BUFFER_SIZE];
   const char **manual_env_vars;
   const char **manual_env_descs;
   size_t manual_env_count;
@@ -256,7 +262,7 @@ static asciichat_error_t manpage_open_merged_output(const char *output_path, FIL
       // File exists - ask user if they want to overwrite
       log_plain("Man page file already exists: %s", output_path);
 
-      char question[4096];
+      char question[OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
       bool overwrite =
           ui_notice_confirm_kind(UI_PROMPT_MANPAGE_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No

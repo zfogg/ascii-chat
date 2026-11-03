@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_POSIX_QUESTION_TEST_RESPONSE_BUFFER_SIZE 256
+#define PLATFORM_POSIX_QUESTION_RESPONSE_BUFFER_SIZE 16
+#define PLATFORM_POSIX_QUESTION_QUESTION_BUFFER_SIZE 4096
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 /**
  * @file platform/posix/question.c
@@ -31,7 +38,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
 
   // Consume explicit answers before checking terminal availability.
   {
-    char test_password[256];
+    char test_password[PASSWORD_BUFFER_SIZE];
     if (env_pop_prompt_response(test_password, sizeof(test_password))) {
       size_t len = strlen(test_password);
       if (len >= max_len) {
@@ -62,7 +69,7 @@ bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsign
   }
 
   // Check for testing environment variable override FIRST (before any TTY checks)
-  char test_response[256];
+  char test_response[PLATFORM_POSIX_QUESTION_TEST_RESPONSE_BUFFER_SIZE];
   if (env_pop_prompt_response(test_response, sizeof(test_response))) {
     if (strcasecmp(test_response, "yes") == 0 || strcasecmp(test_response, "y") == 0) {
       return true;
@@ -72,9 +79,9 @@ bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsign
     // Invalid response - fall through to interactive prompt
   }
 
-  char response[16] = {0};
+  char response[PLATFORM_POSIX_QUESTION_RESPONSE_BUFFER_SIZE] = {0};
   if (platform_is_interactive()) {
-    char question[4096];
+    char question[PLATFORM_POSIX_QUESTION_QUESTION_BUFFER_SIZE];
     snprintf(question, sizeof(question), "%s %s", prompt, default_yes ? "(Y/n)?" : "(y/N)?");
     prompt_opts_t opts = PROMPT_OPTS_INLINE;
     opts.kind = ui_notice_prompt_kind();

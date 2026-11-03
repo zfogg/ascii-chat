@@ -316,7 +316,7 @@ Test(server_protocol, raw_and_quantized_audio_are_stored_and_disabled_streams_re
 }
 
 Test(server_protocol, opus_single_and_large_batches_decode_into_the_capture_ring) {
-  client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
+  client->incoming_audio_buffer = audio_ring_buffer_create_format(2, true);
   client->opus_decoder = opus_codec_create_decoder(48000);
   opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
   cr_assert_not_null(client->incoming_audio_buffer);
@@ -324,11 +324,11 @@ Test(server_protocol, opus_single_and_large_batches_decode_into_the_capture_ring
   cr_assert_not_null(encoder);
   cr_assert_eq(opus_codec_set_dtx(encoder, 0), ASCIICHAT_OK);
   atomic_store_bool(&client->is_sending_audio, true);
-  float samples[960];
-  for (size_t i = 0; i < 960; ++i)
+  float samples[1920];
+  for (size_t i = 0; i < 1920; ++i)
     samples[i] = (i % 48 < 24) ? .2f : -.2f;
   uint8_t encoded[1500];
-  size_t encoded_size = opus_codec_encode(encoder, samples, 960, encoded, sizeof(encoded));
+  size_t encoded_size = opus_codec_encode(encoder, samples, 1920, encoded, sizeof(encoded));
   cr_assert_gt(encoded_size, 0);
   cr_assert_leq(encoded_size, sizeof(encoded));
   opus_codec_destroy(encoder);
@@ -338,16 +338,16 @@ Test(server_protocol, opus_single_and_large_batches_decode_into_the_capture_ring
   memcpy(single + 4, &duration, 4);
   memcpy(single + 16, encoded, encoded_size);
   handle_audio_opus_packet(client, single, 16 + encoded_size);
-  float *output = SAFE_CALLOC(33 * 960, sizeof(float), float *);
-  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 960), 960);
+  float *output = SAFE_CALLOC(33 * 1920, sizeof(float), float *);
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 1920), 1920);
   double energy = 0;
-  for (size_t i = 0; i < 960; ++i)
+  for (size_t i = 0; i < 1920; ++i)
     energy += output[i] * output[i];
   cr_assert_gt(energy, .01);
   opus_codec_t *reference = opus_codec_create_decoder(48000);
   cr_assert_not_null(reference);
-  float expected[960];
-  cr_assert_eq(opus_codec_decode(reference, encoded, encoded_size, expected, 960), 960);
+  float expected[1920];
+  cr_assert_eq(opus_codec_decode(reference, encoded, encoded_size, expected, 1920), 1920);
   const size_t counts[] = {2, 33};
   for (size_t n = 0; n < 2; ++n) {
     size_t count = counts[n], length = 16 + count * (2 + encoded_size);
@@ -363,12 +363,12 @@ Test(server_protocol, opus_single_and_large_batches_decode_into_the_capture_ring
     }
     handle_audio_opus_batch_packet(client, batch, length);
     cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
-    cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, count * 960), count * 960);
+    cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, count * 1920), count * 1920);
     energy = 0;
-    for (size_t i = 0; i < count * 960; ++i) {
-      if (i % 960 == 0)
-        cr_assert_eq(opus_codec_decode(reference, encoded, encoded_size, expected, 960), 960);
-      cr_assert_float_eq(output[i], expected[i % 960], 1e-6);
+    for (size_t i = 0; i < count * 1920; ++i) {
+      if (i % 1920 == 0)
+        cr_assert_eq(opus_codec_decode(reference, encoded, encoded_size, expected, 1920), 1920);
+      cr_assert_float_eq(output[i], expected[i % 1920], 1e-6);
       energy += output[i] * output[i];
     }
     cr_assert_gt(energy, .01);

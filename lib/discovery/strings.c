@@ -9,6 +9,11 @@
  * validation, ensuring session strings only contain real words.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_STRINGS_ADJ_BUFFER_SIZE 32
+#define DISCOVERY_STRINGS_NOUN1_BUFFER_SIZE 32
+#define DISCOVERY_STRINGS_NOUN2_BUFFER_SIZE 32
+
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/discovery/adjectives.h>
 #include <ascii-chat/discovery/nouns.h>
@@ -316,7 +321,8 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  char adj[32], noun1[32], noun2[32];
+  char adj[DISCOVERY_STRINGS_ADJ_BUFFER_SIZE], noun1[DISCOVERY_STRINGS_NOUN1_BUFFER_SIZE],
+      noun2[DISCOVERY_STRINGS_NOUN2_BUFFER_SIZE];
   memcpy(adj, str, adj_len);
   adj[adj_len] = '\0';
   memcpy(noun1, hyphen1 + 1, noun1_len);

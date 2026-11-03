@@ -9,6 +9,7 @@
  * Session existence is validated via SQLite lookups.
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
@@ -61,6 +62,6 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_ser
  * @param exclude_participant_id Participant to exclude (NULL = no exclusion, typically sender)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server, const uint8_t session_id[16],
-                                      packet_type_t packet_type, const void *packet, size_t packet_len,
-                                      const uint8_t *exclude_participant_id);
+asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server,
+                                      const uint8_t session_id[SESSION_ID_SIZE], packet_type_t packet_type,
+                                      const void *packet, size_t packet_len, const uint8_t *exclude_participant_id);

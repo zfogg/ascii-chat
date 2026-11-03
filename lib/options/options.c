@@ -45,6 +45,14 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_OPT_BUFFER_SIZE 64
+#define OPTIONS_LOG_FILENAME_BUFFER_SIZE 256
+#define OPTIONS_RESULT_BUFFER_SIZE 512
+#define OPTIONS_LONG_FORM_BUFFER_SIZE 256
+#define OPTIONS_LONG_FORM_EQ_BUFFER_SIZE 256
+#define OPTIONS_NORMALIZED_URL_BUFFER_SIZE 2048
+
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ctype.h>
@@ -159,7 +167,7 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   // For --option=value format, stop at the '=' sign
   const char *equals = strchr(opt_name, '=');
   size_t opt_len = equals ? (size_t)(equals - opt_name) : strlen(opt_name);
-  char opt_buffer[64];
+  char opt_buffer[OPTIONS_OPT_BUFFER_SIZE];
   if (opt_len >= sizeof(opt_buffer)) {
     opt_len = sizeof(opt_buffer) - 1;
   }
@@ -745,11 +753,11 @@ options_t options_t_new_preserve_binary(const options_t *source) {
 
 static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
   // Use static buffers to avoid SAFE_MALLOC and malloc before memory tracking is initialized
-  static char log_filename_buf[256];
+  static char log_filename_buf[OPTIONS_LOG_FILENAME_BUFFER_SIZE];
   static char default_log_path_buf[PLATFORM_MAX_PATH_LENGTH];
   static char tmp_dir_buf[PLATFORM_MAX_PATH_LENGTH];
   // Use a smaller static buffer to avoid WASM memory issues
-  static char result_buf[512]; // Reduced size for WASM compatibility
+  static char result_buf[OPTIONS_RESULT_BUFFER_SIZE]; // Reduced size for WASM compatibility
 
   // Determine log filename based on mode
   const char *log_filename_literal;
@@ -834,7 +842,7 @@ static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long
     return false;
 
   // Check long form: --long-name
-  char long_form[256];
+  char long_form[OPTIONS_LONG_FORM_BUFFER_SIZE];
   snprintf(long_form, sizeof(long_form), "--%s", long_name);
   if (strcmp(arg, long_form) == 0) {
     *field = true;
@@ -842,7 +850,7 @@ static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long
   }
 
   // Check long form with =value: --long-name=...
-  char long_form_eq[256];
+  char long_form_eq[OPTIONS_LONG_FORM_EQ_BUFFER_SIZE];
   snprintf(long_form_eq, sizeof(long_form_eq), "--%s=", long_name);
   if (strncmp(arg, long_form_eq, strlen(long_form_eq)) == 0) {
     const char *value = arg + strlen(long_form_eq);
@@ -2183,7 +2191,7 @@ static asciichat_error_t finalize_media_options(options_t *opts) {
     js_log_options("Before strstr check");
     if (!strstr(opts->media_url, "://")) {
       js_log_options("URL needs normalization");
-      char normalized_url[2048];
+      char normalized_url[OPTIONS_NORMALIZED_URL_BUFFER_SIZE];
       js_log_options("Before snprintf");
       int result = snprintf(normalized_url, sizeof(normalized_url), "http://%s", opts->media_url);
       js_log_options("After snprintf");

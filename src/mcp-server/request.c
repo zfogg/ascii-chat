@@ -1,3 +1,14 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MCP_SERVER_REQUEST_BUF_BUFFER_SIZE 4097
+#define MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE 16
+#define MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE 64
+#define MCP_SERVER_REQUEST_B_BUFFER_SIZE 16
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MCP_REQUEST_ARGV_CAPACITY 256
+#define MCP_REQUEST_RESERVED_ARGS 6
+
 #include "mcp.h"
 #include <ascii-chat/options/json.h>
 #include <ascii-chat/options/registry.h>
@@ -210,7 +221,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   return tools;
 }
 static asciichat_error_t arg(mcp_render_request_t *r, const char *value) {
-  if (r->argc >= 250 || strlen(value) > MCP_MAX_INPUT)
+  if (r->argc >= MCP_REQUEST_ARGV_CAPACITY - MCP_REQUEST_RESERVED_ARGS || strlen(value) > MCP_MAX_INPUT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Too many or oversized options");
   r->argv[r->argc++] = platform_strdup(value);
   r->argv[r->argc] = NULL;
@@ -354,7 +365,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
 asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, mcp_render_request_t *r) {
   memset(r, 0, sizeof(*r));
   r->timeout_ms = 45000;
-  r->argv = SAFE_CALLOC(256, sizeof(char *), char **);
+  r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
   static const char *const fields[] = {"path",         "data_base64",   "mime_type", "url",         "video_device",
                                        "audio",        "visualization", "options",   "output_path", "timeout_ms",
                                        "audio_device", "volume",        NULL};
@@ -404,7 +415,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       const registry_entry_t *e = exposed(p, name);
       if (strlen(name) != yyjson_get_len(k) || !e)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported option: %s", name);
-      char buf[4097];
+      char buf[MCP_SERVER_REQUEST_BUF_BUFFER_SIZE];
       bool omitted = false;
       err = options_json_parse_value(name, v, buf, sizeof(buf), &omitted);
       if (err)
@@ -425,7 +436,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (audio_device) {
     if (!yyjson_is_int(audio_device) || yyjson_get_sint(audio_device) < -1 || yyjson_get_sint(audio_device) > INT_MAX)
       return SET_ERRNO(ERROR_INVALID_PARAM, "audio_device must be -1 or a nonnegative device index");
-    char index[16];
+    char index[MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE];
     SAFE_SNPRINTF(index, sizeof(index), "%d", (int)yyjson_get_sint(audio_device));
     err = option(r, "microphone-index", index);
     if (err)
@@ -434,7 +445,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (volume) {
     if (!yyjson_is_num(volume) || yyjson_get_num(volume) < 0 || yyjson_get_num(volume) > 1)
       return SET_ERRNO(ERROR_INVALID_PARAM, "volume must be a number from 0 to 1");
-    char value[64];
+    char value[MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE];
     bool omitted = false;
     err = options_json_parse_value("microphone-volume", volume, value, sizeof(value), &omitted);
     if (err)
@@ -480,7 +491,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     if (dev) {
       if (!yyjson_is_int(dev) || yyjson_get_sint(dev) < 0 || yyjson_get_sint(dev) > 10)
         return SET_ERRNO(ERROR_INVALID_PARAM, "video_device must be 0–10");
-      char b[16];
+      char b[MCP_SERVER_REQUEST_B_BUFFER_SIZE];
       SAFE_SNPRINTF(b, sizeof(b), "%d", (int)yyjson_get_sint(dev));
       option(r, "webcam-index", b);
     }

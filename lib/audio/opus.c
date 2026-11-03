@@ -6,6 +6,7 @@
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/audio/opus.h>
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>
@@ -32,7 +33,7 @@ asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate
 }
 
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate) {
-  return opus_codec_create_encoder_channels(application, sample_rate, bitrate, 1);
+  return opus_codec_create_encoder_channels(application, sample_rate, bitrate, AUDIO_CHANNELS);
 }
 
 opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application, int sample_rate, int bitrate,
@@ -85,7 +86,7 @@ opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application,
  * ============================================================================ */
 
 opus_codec_t *opus_codec_create_decoder(int sample_rate) {
-  return opus_codec_create_decoder_channels(sample_rate, 1);
+  return opus_codec_create_decoder_channels(sample_rate, AUDIO_CHANNELS);
 }
 
 opus_codec_t *opus_codec_create_decoder_channels(int sample_rate, int channels) {

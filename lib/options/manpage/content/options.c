@@ -4,6 +4,9 @@
  * @ingroup options_manpage
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE 256
+
 #include <ascii-chat/options/manpage/content/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
@@ -161,7 +164,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
 
       // Add default value if present
       if (desc->default_value) {
-        char default_buf[256];
+        char default_buf[OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE];
         memset(default_buf, 0, sizeof(default_buf)); // Initialize buffer to prevent garbage
         int n = options_format_default_value(desc->type, desc->default_value, default_buf, sizeof(default_buf));
         // Skip empty strings (like --grep's default of "")

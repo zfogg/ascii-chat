@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/buffer.h>
 /**
@@ -31,12 +32,12 @@ typedef struct mixer_listener_buffer {
 // Called with the source write lock. Drain each input once and fan it out to
 // independent listener queues so one recipient cannot consume another's audio.
 static void mixer_distribute_samples(mixer_t *mixer) {
-  float samples[960];
+  float samples[OPUS_FRAME_SAMPLES];
   for (int source = 0; source < mixer->max_sources; source++) {
     if (!mixer->source_ids[source] || !mixer->source_buffers[source])
       continue;
     while (audio_ring_buffer_available_read(mixer->source_buffers[source]) > 0) {
-      size_t count = audio_ring_buffer_read(mixer->source_buffers[source], samples, 960);
+      size_t count = audio_ring_buffer_read(mixer->source_buffers[source], samples, OPUS_FRAME_SAMPLES);
       if (!count)
         break;
       for (int listener = 0; listener < mixer->max_sources; listener++) {
@@ -793,7 +794,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     uint64_t read_time_ns = time_elapsed_ns(read_start_ns, read_end_ns);
 
     if (read_time_ns > 10 * NS_PER_MS_INT) {
-      char read_time_str[32];
+      char read_time_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
       log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str,
                      source_count);

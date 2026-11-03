@@ -1,3 +1,4 @@
+const CAPTURE_FRAME_POOL_SIZE = 8;
 const { AudioWorkletProcessor, registerProcessor } = globalThis;
 /** Capture on the audio clock; transfer reusable frames directly to the DSP worker. */
 class PcmCapture extends AudioWorkletProcessor {
@@ -6,9 +7,10 @@ class PcmCapture extends AudioWorkletProcessor {
     const layout = options?.processorOptions || {};
     this.firstChannel = layout.firstChannel || 0;
     this.microphoneChannels = layout.microphoneChannels === 2 ? 2 : 1;
-    this.frames = Array.from({ length: 8 }, () => ({
-      microphone: new Float32Array(1920),
-      media: new Float32Array(1920),
+    this.frameSamples = layout.frameSamples * 2;
+    this.frames = Array.from({ length: CAPTURE_FRAME_POOL_SIZE }, () => ({
+      microphone: new Float32Array(this.frameSamples),
+      media: new Float32Array(this.frameSamples),
     }));
     this.pending = this.frames.pop();
     this.offset = 0;
@@ -58,7 +60,7 @@ class PcmCapture extends AudioWorkletProcessor {
       this.pending.media[this.offset] = mediaLeft;
       this.pending.media[this.offset + 1] = mediaRight;
       this.offset += 2;
-      if (this.offset === 1920) {
+      if (this.offset === this.frameSamples) {
         this.capturePort.postMessage(this.pending, [
           this.pending.microphone.buffer,
           this.pending.media.buffer,

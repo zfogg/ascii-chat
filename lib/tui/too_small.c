@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_TOO_SMALL_DIMENSIONS_BUFFER_SIZE 96
+#define TUI_TOO_SMALL_OUTPUT_BUFFER_SIZE 512
+
 #include <ascii-chat/tui/too_small.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,7 +14,7 @@ bool ui_too_small(terminal_size_t actual, terminal_size_t minimum) {
 size_t ui_too_small_format(char *output, size_t capacity, terminal_size_t actual, terminal_size_t minimum) {
   if (!output || !capacity || actual.cols <= 0 || actual.rows <= 0)
     return 0;
-  char dimensions[96];
+  char dimensions[TUI_TOO_SMALL_DIMENSIONS_BUFFER_SIZE];
   snprintf(dimensions, sizeof(dimensions), "%dx%d / need %dx%d", actual.cols, actual.rows, minimum.cols, minimum.rows);
   const char *lines[] = {"Terminal too small", dimensions, "Resize to continue"};
   int count = actual.rows >= 5 ? 3 : 1;
@@ -31,7 +36,7 @@ size_t ui_too_small_format(char *output, size_t capacity, terminal_size_t actual
 }
 
 void ui_too_small_render(frame_buffer_t *buffer, terminal_size_t actual, terminal_size_t minimum) {
-  char output[512];
+  char output[TUI_TOO_SMALL_OUTPUT_BUFFER_SIZE];
   size_t length = ui_too_small_format(output, sizeof(output), actual, minimum);
   frame_buffer_append(buffer, output, length);
 }

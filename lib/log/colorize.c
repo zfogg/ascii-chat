@@ -4,6 +4,17 @@
  * @brief Log message colorization for terminal output
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_COLORIZE_KEY_BUFFER_SIZE 256
+#define LOG_COLORIZE_VALUE_BUFFER_SIZE 512
+#define LOG_COLORIZE_PATTERN_BUFFER_SIZE 256
+#define LOG_COLORIZE_PATH_BUFFER_SIZE 512
+#define LOG_COLORIZE_VAR_BUFFER_SIZE 256
+#define LOG_COLORIZE_URL_BUFFER_SIZE 2048
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define LOG_COLORIZE_SLOT_COUNT 4
+
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
@@ -534,7 +545,7 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
   }
 
   // Keep concurrent report formatting separate while allowing nested calls.
-  static _Thread_local char buffers[4][4096];
+  static _Thread_local char buffers[LOG_COLORIZE_SLOT_COUNT][LOG_MSG_BUFFER_SIZE];
   static _Thread_local int buffer_index = 0;
 
   char *output = buffers[buffer_index];
@@ -557,11 +568,11 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
       size_t value_len = value_end - value_start;
 
       // Extract key
-      char key_buf[256];
+      char key_buf[LOG_COLORIZE_KEY_BUFFER_SIZE];
       safe_snprintf(key_buf, sizeof(key_buf), "%.*s", (int)key_len, message + i);
 
       // Extract value
-      char value_buf[512];
+      char value_buf[LOG_COLORIZE_VALUE_BUFFER_SIZE];
       safe_snprintf(value_buf, sizeof(value_buf), "%.*s", (int)value_len, message + value_start);
 
       // Check if we have enough space for key + equals + value
@@ -583,7 +594,7 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
     // Try numeric pattern
     if (can_colorize && is_numeric_pattern(message, i, &end_pos)) {
       size_t pattern_len = end_pos - i;
-      char pattern_buf[256];
+      char pattern_buf[LOG_COLORIZE_PATTERN_BUFFER_SIZE];
       safe_snprintf(pattern_buf, sizeof(pattern_buf), "%.*s", (int)pattern_len, message + i);
 
       append_colored_token(output, max_size, &out_pos, LOG_COLOR_GREY, pattern_buf);
@@ -594,7 +605,7 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
     // Try file path
     if (can_colorize && is_file_path(message, i, &end_pos)) {
       size_t path_len = end_pos - i;
-      char path_buf[512];
+      char path_buf[LOG_COLORIZE_PATH_BUFFER_SIZE];
       safe_snprintf(path_buf, sizeof(path_buf), "%.*s", (int)path_len, message + i);
 
       append_colored_token(output, max_size, &out_pos, LOG_COLOR_DEBUG, path_buf);
@@ -605,7 +616,7 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
     // Try environment variable
     if (can_colorize && is_env_var(message, i, &end_pos)) {
       size_t var_len = end_pos - i;
-      char var_buf[256];
+      char var_buf[LOG_COLORIZE_VAR_BUFFER_SIZE];
       safe_snprintf(var_buf, sizeof(var_buf), "%.*s", (int)var_len, message + i);
 
       append_colored_token(output, max_size, &out_pos, LOG_COLOR_GREY, var_buf);
@@ -616,7 +627,7 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
     // Try URL
     if (can_colorize && is_url(message, i, &end_pos)) {
       size_t url_len = end_pos - i;
-      char url_buf[2048];
+      char url_buf[LOG_COLORIZE_URL_BUFFER_SIZE];
       safe_snprintf(url_buf, sizeof(url_buf), "%.*s", (int)url_len, message + i);
 
       append_colored_token(output, max_size, &out_pos, LOG_COLOR_INFO, url_buf);

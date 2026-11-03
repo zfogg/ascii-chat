@@ -1,5 +1,9 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_HANDSHAKE_COMMON_EXPECTED_SERVER_KEY_BUFFER_SIZE 256
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common/limits.h>
 
 /**
@@ -84,16 +88,20 @@ typedef struct crypto_handshake_context_t {
   private_key_t server_private_key; /**< Server's long-term Ed25519 private key (for signing) */
 
   /** Client identity (client only) */
-  public_key_t client_public_key;        /**< Client's Ed25519 public key (for authentication) */
-  private_key_t client_private_key;      /**< Client's Ed25519 private key (for signing challenges) */
-  char expected_server_key[256];         /**< Expected server key fingerprint (client only, for known_hosts) */
-  uint8_t expected_server_key_bytes[32]; /**< Expected Ed25519 identity key supplied by a browser client */
-  bool expected_server_key_bytes_set;    /**< Whether expected_server_key_bytes is configured */
-  char client_gpg_key_id[41]; /**< Client's GPG key ID (8/16/40 hex chars + null terminator, for server verification) */
+  public_key_t client_public_key;   /**< Client's Ed25519 public key (for authentication) */
+  private_key_t client_private_key; /**< Client's Ed25519 private key (for signing challenges) */
+  char
+      expected_server_key[CRYPTO_HANDSHAKE_COMMON_EXPECTED_SERVER_KEY_BUFFER_SIZE]; /**< Expected server key fingerprint
+                                                                                       (client only, for known_hosts) */
+  uint8_t expected_server_key_bytes[ED25519_PUBLIC_KEY_SIZE]; /**< Expected Ed25519 identity key supplied by a browser
+                                                                 client */
+  bool expected_server_key_bytes_set;                         /**< Whether expected_server_key_bytes is configured */
+  char client_gpg_key_id[GPG_FINGERPRINT_HEX_BUFFER_SIZE];    /**< Client's GPG key ID (8/16/40 hex chars + null
+                                                                 terminator, for server verification) */
 
   /** Connection info for known_hosts */
   char server_hostname[HOSTNAME_BUFFER_SIZE]; /**< Server hostname (user-provided) */
-  char server_ip[256];                        /**< Server IP address (resolved from connection) */
+  char server_ip[HOSTNAME_BUFFER_SIZE];       /**< Server IP address (resolved from connection) */
   uint16_t server_port;                       /**< Server port */
 
   /** Authentication configuration */
@@ -112,11 +120,12 @@ typedef struct crypto_handshake_context_t {
   bool client_sent_identity;        /**< Whether client provided an identity key during handshake */
 
   /** Password authentication */
-  bool has_password;  /**< Whether password authentication is enabled */
-  char password[256]; /**< Password for authentication (temporary storage, cleared after use) */
+  bool has_password;                   /**< Whether password authentication is enabled */
+  char password[PASSWORD_BUFFER_SIZE]; /**< Password for authentication (temporary storage, cleared after use) */
 
   /** Mutual authentication (client challenges server) */
-  uint8_t client_challenge_nonce[32]; /**< Client-generated nonce for server to prove knowledge of shared secret */
+  uint8_t client_challenge_nonce[AUTH_CHALLENGE_SIZE]; /**< Client-generated nonce for server to prove knowledge of
+                                                          shared secret */
 
 } crypto_handshake_context_t;
 

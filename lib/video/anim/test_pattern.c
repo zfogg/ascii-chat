@@ -1,3 +1,7 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define TEST_PATTERN_GRADIENT_INTERVALS 4096
+
 #include <ascii-chat/video/anim/controller.h>
 #include "backends.h"
 #include <ascii-chat/video/anim/test_pattern.h>
@@ -211,14 +215,14 @@ asciichat_error_t test_pattern_render_at(test_pattern_t *p, int index, double ti
   } else {
     // A fixed-point ramp avoids three floating-point conversions per source
     // pixel. 4096 intervals keep rounding within one RGB level of Canvas.
-    rgb_pixel_t gradient[4097];
-    for (int i = 0; i <= 4096; i++) {
-      double t = i / 4096.0;
+    rgb_pixel_t gradient[TEST_PATTERN_GRADIENT_INTERVALS + 1];
+    for (int i = 0; i <= TEST_PATTERN_GRADIENT_INTERVALS; i++) {
+      double t = i / (double)TEST_PATTERN_GRADIENT_INTERVALS;
       gradient[i] = (rgb_pixel_t){(uint8_t)(first.r * (1 - t) + last.r * t + 0.5),
                                   (uint8_t)(first.g * (1 - t) + last.g * t + 0.5),
                                   (uint8_t)(first.b * (1 - t) + last.b * t + 0.5)};
     }
-    double scale = 4096.0 * 65536 / ((double)w * w + (double)h * h);
+    double scale = (double)TEST_PATTERN_GRADIENT_INTERVALS * 65536 / ((double)w * w + (double)h * h);
     uint32_t step = (uint32_t)(w * scale + 0.5);
     for (int y = 0; y < h; y++) {
       uint32_t position = (uint32_t)((0.5 * w + (y + 0.5) * h) * scale + 0.5);

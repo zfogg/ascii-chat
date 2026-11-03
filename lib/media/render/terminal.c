@@ -12,6 +12,12 @@
  * No platform-specific code (#if guards) needed — this code compiles on all platforms.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define RENDER_DEBUG_SIGNATURE_ROWS 52
+#define RENDER_DEBUG_SIGNATURE_COLUMNS 4
+#define RENDER_DEBUG_SIGNATURE_BUFFER_SIZE (RENDER_DEBUG_SIGNATURE_COLUMNS + 1)
+
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/platform/memory.h>
@@ -592,7 +598,7 @@ static void render_zalgo(terminal_renderer_t *r, int offset_x, int offset_y) {
       vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
       if (cell.chars[0] <= ' ' || cell.chars[0] >= 0x7f)
         continue;
-      uint16_t marks[10];
+      uint16_t marks[ZALGO_MAX_MARKS];
       unsigned count = zalgo_cell_marks((uint32_t)row, (uint32_t)col, r->zalgo_level, marks);
       VTermColor color = cell.fg;
       vterm_screen_convert_color_to_rgb(r->vts, &color);
@@ -701,20 +707,21 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   int offset_y = (r->height_px - grid_height_px) / 2;
 
   static int frame_count = 0;
-  static char prev_row_sigs[52][5] = {0}; // Store signatures of previous frame's rows
+  static char prev_row_sigs[RENDER_DEBUG_SIGNATURE_ROWS][RENDER_DEBUG_SIGNATURE_BUFFER_SIZE] = {
+      0}; // Store signatures of previous frame's rows
   frame_count++;
 
   // Log if any row signature changed to detect vertical shifts
   if (frame_count % 10 == 0) {
-    char curr_row_sigs[52][5];
-    for (int row = 0; row < r->rows && row < 52; row++) {
+    char curr_row_sigs[RENDER_DEBUG_SIGNATURE_ROWS][RENDER_DEBUG_SIGNATURE_BUFFER_SIZE];
+    for (int row = 0; row < r->rows && row < RENDER_DEBUG_SIGNATURE_ROWS; row++) {
       // Get first 4 chars as signature
-      for (int col = 0; col < 4 && col < r->cols; col++) {
+      for (int col = 0; col < RENDER_DEBUG_SIGNATURE_COLUMNS && col < r->cols; col++) {
         VTermScreenCell cell;
         vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
         curr_row_sigs[row][col] = (cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.';
       }
-      curr_row_sigs[row][4] = 0;
+      curr_row_sigs[row][RENDER_DEBUG_SIGNATURE_COLUMNS] = 0;
     }
     memcpy(prev_row_sigs, curr_row_sigs, sizeof(curr_row_sigs));
   }
@@ -725,8 +732,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   // ANSI 16/256 colors are indexed.  Converting them through libvterm for
   // every cell is especially expensive in the single-threaded WASM renderer.
   // A terminal palette has at most 256 entries and is stable for a frame.
-  uint32_t indexed_rgb[256] = {0};
-  bool indexed_rgb_valid[256] = {false};
+  uint32_t indexed_rgb[ASCII_LUMINANCE_LEVELS] = {0};
+  bool indexed_rgb_valid[ASCII_LUMINANCE_LEVELS] = {false};
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;

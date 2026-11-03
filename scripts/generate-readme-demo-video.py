@@ -40,6 +40,7 @@ from dataclasses import asdict, dataclass
 ROOT = Path(__file__).resolve().parents[1]
 FPS = 33
 CELL_W, CELL_H = 8, 16
+PTY_READ_CHUNK_CHARS = 64 * 1024
 CALL_SOURCES = (
     "https://media.xiph.org/video/derf/webm/Johnny_1280x720_60.webm",
     "https://media.xiph.org/video/derf/webm/vidyo4_720p_60fps.webm",
@@ -455,7 +456,11 @@ class Terminal:
         try:
             with gzip.open(self.capture, "wt", encoding="utf-8") as out:
                 while True:
-                    text = self.child.read(65536) if os.name == "nt" else self.child.read_nonblocking(65536, timeout=None)
+                    text = (
+                        self.child.read(PTY_READ_CHUNK_CHARS)
+                        if os.name == "nt"
+                        else self.child.read_nonblocking(PTY_READ_CHUNK_CHARS, timeout=None)
+                    )
                     if not text:
                         break
                     if "\ufffd" in text:

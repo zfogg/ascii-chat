@@ -4,6 +4,9 @@
  * @brief Common test utilities implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TESTS_COMMON_BINARY_PATH_BUFFER_SIZE 256
+
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -14,7 +17,7 @@
 #include <ascii-chat/common.h>
 
 const char *test_get_binary_path(void) {
-  static char binary_path[256];
+  static char binary_path[TESTS_COMMON_BINARY_PATH_BUFFER_SIZE];
   static bool initialized = false;
 
   if (initialized) {

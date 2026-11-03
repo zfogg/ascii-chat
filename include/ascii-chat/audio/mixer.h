@@ -347,7 +347,7 @@ typedef struct {
   /** @brief Bitset of active sources (bit i = source i is active, O(1) iteration) */
   uint64_t active_sources_mask[MIXER_MASK_WORDS];
   /** @brief Hash table mapping client_id → mixer source index (uses hash function for strings) */
-  uint8_t source_id_to_index[256];
+  uint8_t source_id_to_index[256]; // One entry for each possible uint8_t source ID.
   /** @brief Client ID strings stored at each hash index for collision detection */
   const char *source_id_at_hash[256];
 

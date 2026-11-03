@@ -6,6 +6,9 @@
  * Uses utf8proc library for accurate UTF-8 display width calculation.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_LAYOUT_BUF_BUFFER_SIZE 256
+
 #include <ascii-chat/options/layout.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/utf8.h>
@@ -69,7 +72,7 @@ static bool is_metadata_start(const char *p) {
     return false;
 
   // Strip ANSI codes to check the actual text
-  char buf[256];
+  char buf[OPTIONS_LAYOUT_BUF_BUFFER_SIZE];
   const char *src = p;
   char *dst = buf;
   int remaining = sizeof(buf) - 1;

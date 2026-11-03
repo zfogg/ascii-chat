@@ -109,16 +109,16 @@ extern "C" {
 
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
   return (client_audio_pipeline_config_t){
-      .channels = 1,
-      .encoder_channels = 1,
-      .sample_rate = CLIENT_AUDIO_PIPELINE_SAMPLE_RATE,
+      .channels = AUDIO_CHANNELS,
+      .encoder_channels = AUDIO_CHANNELS,
+      .sample_rate = AUDIO_SAMPLE_RATE,
       .frame_duration_ms = CLIENT_AUDIO_PIPELINE_FRAME_MS,
       .opus_bitrate = 32000,
       .opus_application = OPUS_APPLICATION_VOIP,
 
       .echo_filter_ms = 250,
 
-      .processor = audio_processor_default_config(CLIENT_AUDIO_PIPELINE_SAMPLE_RATE),
+      .processor = audio_processor_default_config(AUDIO_SAMPLE_RATE),
       .jitter_margin_ms = 60,
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
@@ -127,9 +127,8 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
 
 client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_media_audio) {
   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
-  config.channels = AUDIO_PCM_CHANNELS;
+  config.channels = AUDIO_CHANNELS;
   const options_t *options = options_get();
-  config.encoder_channels = has_media_audio || (options && options->microphone_channels == 2) ? 2 : 1;
   if (options) {
     config.processor.spectral_enabled = options->audio_spectral && !options->test_audio;
     config.processor.spectral.fft_size = options->audio_fft_size;
@@ -141,7 +140,6 @@ client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_
     bool media = options->test_audio || (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC &&
                                          options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
     bool stereo_microphone = options->microphone_channels == 2;
-    config.encoder_channels = media || stereo_microphone ? 2 : 1;
     config.opus_application = media || stereo_microphone ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
     config.opus_bitrate = media || stereo_microphone ? 128000 : 32000;
   }
@@ -176,7 +174,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   }
 
   if (p->config.channels == 0)
-    p->config.channels = 1;
+    p->config.channels = AUDIO_CHANNELS;
   if (p->config.encoder_channels == 0)
     p->config.encoder_channels = p->config.channels;
   if ((p->config.channels != 1 && p->config.channels != 2) ||
@@ -434,7 +432,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
   // Input is already processed by process_duplex() in full-duplex mode.
   // Just encode with Opus.
-  float converted[5760 * AUDIO_PCM_CHANNELS];
+  float converted[AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS];
   const float *pcm = input;
   const int frames = num_samples / pipeline->config.channels;
   if (pipeline->config.encoder_channels != pipeline->config.channels) {

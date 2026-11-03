@@ -4,6 +4,9 @@
  * @brief Font resolution for macOS: file paths, bundled fonts, and unresolved name passthrough
  */
 #ifdef __APPLE__
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/font.h>

@@ -8,6 +8,15 @@
  * All hooks are debug-only and disabled in release builds.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_RWLOCK_RDLOCK_BUFFER_SIZE 64
+#define PLATFORM_RWLOCK_WRLOCK_BUFFER_SIZE 64
+#define PLATFORM_RWLOCK_UNLOCK_BUFFER_SIZE 64
+#define PLATFORM_RWLOCK_HELD_BUFFER_SIZE 64
+#define PLATFORM_RWLOCK_COUNT_BUFFER_SIZE 256
+#define PLATFORM_RWLOCK_ELAPSED_BUFFER_SIZE 64
+#define PLATFORM_RWLOCK_BUF_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
@@ -92,26 +101,26 @@ int rwlock_format_state(const rwlock_t *rwlock, char *buffer, size_t size) {
   int offset = 0;
   uint64_t now_ns = time_get_ns();
 
-  char rdlock_str[64] = "";
-  char wrlock_str[64] = "";
-  char unlock_str[64] = "";
-  char held_str[64] = "";
-  char count_str[256] = "";
+  char rdlock_str[PLATFORM_RWLOCK_RDLOCK_BUFFER_SIZE] = "";
+  char wrlock_str[PLATFORM_RWLOCK_WRLOCK_BUFFER_SIZE] = "";
+  char unlock_str[PLATFORM_RWLOCK_UNLOCK_BUFFER_SIZE] = "";
+  char held_str[PLATFORM_RWLOCK_HELD_BUFFER_SIZE] = "";
+  char count_str[PLATFORM_RWLOCK_COUNT_BUFFER_SIZE] = "";
 
   if (rwlock->last_rdlock_time_ns > 0 && rwlock->last_rdlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_RWLOCK_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - rwlock->last_rdlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(rdlock_str, sizeof(rdlock_str), "rdlock=%s", elapsed_str);
   }
 
   if (rwlock->last_wrlock_time_ns > 0 && rwlock->last_wrlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_RWLOCK_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - rwlock->last_wrlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(wrlock_str, sizeof(wrlock_str), "wrlock=%s", elapsed_str);
   }
 
   if (rwlock->last_unlock_time_ns > 0 && rwlock->last_unlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_RWLOCK_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - rwlock->last_unlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
   }
@@ -148,7 +157,7 @@ int rwlock_format_state(const rwlock_t *rwlock, char *buffer, size_t size) {
 void rwlock_log_state(const rwlock_t *rwlock, const char *file, int line, const char *func) {
   if (!rwlock)
     return;
-  char buf[512];
+  char buf[PLATFORM_RWLOCK_BUF_BUFFER_SIZE];
   rwlock_format_state(rwlock, buf, sizeof(buf));
   log_msg(LOG_DEBUG, file, line, func, "rwlock/state %p: %s", (const void *)rwlock, buf);
 }

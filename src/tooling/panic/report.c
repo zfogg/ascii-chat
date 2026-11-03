@@ -11,6 +11,9 @@
 // SPDX-License-Identifier: MIT
 // Summarizer for ascii-chat instrumentation runtime logs
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE 8192
+
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
@@ -516,7 +519,7 @@ static bool process_file(const report_config_t *config, const char *path, thread
     return false;
   }
 
-  char buffer[8192];
+  char buffer[TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE];
   while (fgets(buffer, sizeof(buffer), handle) != NULL) {
     log_record_t record = {0};
     if (!parse_log_line(buffer, &record)) {

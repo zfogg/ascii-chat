@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define DISCOVERY_STATS_ROW_CAPACITY 64
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/discovery/database.h>
 /**
@@ -50,7 +58,7 @@ static void acds_interrupt_fn(int sig) {
 
 static void acds_stats_provider(stats_view_t *view, void *data) {
   acds_server_t *server = data;
-  database_session_stats_t rows[64];
+  database_session_stats_t rows[DISCOVERY_STATS_ROW_CAPACITY];
   size_t count = 0;
   uint64_t sessions = 0, participants = 0;
   if (database_stats_snapshot(server->db, rows, 64, &count, &sessions, &participants) != ASCIICHAT_OK) {
@@ -89,8 +97,8 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   }
 
   // Load or generate identity keys
-  uint8_t public_key[32];
-  uint8_t secret_key[64];
+  uint8_t public_key[ED25519_PUBLIC_KEY_SIZE];
+  uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE];
 
   const char *acds_key_path = GET_OPTION(encrypt_key);
   char default_key_path[PLATFORM_MAX_PATH_LENGTH] = {0};
@@ -131,10 +139,10 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   key_identity_announce("DISCOVERY SERVER PUBLIC IDENTITY", &identity);
 
   // Display server fingerprint
-  char fingerprint[65];
+  char fingerprint[HEX_STRING_SIZE_32];
   acds_identity_fingerprint(public_key, fingerprint);
   log_info("Discovery server identity: SHA256:%s", fingerprint);
-  char msg[256];
+  char msg[DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE];
   safe_snprintf(msg, sizeof(msg), "Server fingerprint: SHA256:%s", fingerprint);
   log_console(LOG_INFO, msg);
 

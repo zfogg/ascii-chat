@@ -1,3 +1,8 @@
+import {
+  AUDIO_CHANNELS,
+  AUDIO_SAMPLE_RATE,
+  OPUS_FRAME_SAMPLES,
+} from "./limits";
 export interface AudioCaptureOptions {
   bypass: boolean;
   microphoneChannels?: 1 | 2;
@@ -18,7 +23,7 @@ export class AudioCapture {
     context: AudioContext,
     options: AudioCaptureOptions,
   ): Promise<AudioCapture> {
-    if (context.sampleRate !== 48000)
+    if (context.sampleRate !== AUDIO_SAMPLE_RATE)
       throw new Error("Audio capture requires a 48 kHz AudioContext");
     if (!context.audioWorklet)
       throw new Error(
@@ -38,6 +43,7 @@ export class AudioCapture {
       channelCountMode: "max",
       channelInterpretation: "discrete",
       processorOptions: {
+        frameSamples: OPUS_FRAME_SAMPLES,
         microphoneChannels: options.microphoneChannels || 1,
         firstChannel: options.firstChannel || 0,
       },
@@ -82,8 +88,11 @@ export class AudioCapture {
             port: channel.port2,
             bypass: options.bypass,
             sampleRate: context.sampleRate,
-            encoderChannels:
-              options.media || options.microphoneChannels === 2 ? 2 : 1,
+            encoderChannels: AUDIO_CHANNELS,
+            bitrate:
+              options.media || options.microphoneChannels === 2
+                ? 128000
+                : 32000,
           },
           [channel.port2],
         );

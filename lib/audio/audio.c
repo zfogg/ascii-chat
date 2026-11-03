@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 
@@ -99,8 +103,6 @@ void audio_terminate_portaudio_final(void) {
 }
 
 // AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
-#define WORKER_BATCH_FRAMES 960
-#define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
 // Device callbacks signal after capture/consumption. The fallback follows the
 // 20 ms worker cadence for software sources and missed notifications.
 #define WORKER_TIMEOUT_MS 20
@@ -108,18 +110,18 @@ void audio_terminate_portaudio_final(void) {
 // Device callbacks remain 10 ms; publish two complete AEC frames per wake.
 // The bounded worker timeout also flushes partial batches and missed signals.
 static void audio_wake_capture_worker(audio_context_t *ctx) {
-  if (audio_ring_buffer_available_read(ctx->raw_capture_rb) >= WORKER_BATCH_SAMPLES)
+  if (audio_ring_buffer_available_read(ctx->raw_capture_rb) >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
     cond_signal(&ctx->audio_processing_wakeup);
 }
 
 static void audio_publish_local_capture(audio_context_t *ctx, float *samples, size_t count, bool use_media) {
   uint64_t now = time_get_ns();
-  uint64_t duration = count * 1000000000ULL / AUDIO_PCM_SAMPLES_PER_SECOND;
+  uint64_t duration = count * 1000000000ULL / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS);
   uint64_t block_start = now > duration ? now - duration : 0;
   audio_recording_submit(AUDIO_RECORDING_MIC, samples, count, block_start);
   audio_visualization_submit_stereo(AUDIO_VISUALIZATION_SOURCE_MIC, samples, count);
   if (use_media) {
-    float media[WORKER_BATCH_SAMPLES];
+    float media[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
     size_t read = media_source_read_audio(ctx->capture_media_source, media, count);
     audio_recording_submit(AUDIO_RECORDING_MEDIA, media, read, block_start);
     audio_visualization_submit_stereo(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, read);
@@ -170,8 +172,8 @@ static void *audio_worker_thread(void *arg) {
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     errno_notifications_suppress(notifications);
   }
-  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
-            WORKER_BATCH_SAMPLES);
+  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", OPUS_FRAME_SAMPLES,
+            (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
 
   // Check for AEC3 bypass (static, checked once)
   static int bypass_aec3_worker = -1;
@@ -254,9 +256,9 @@ static void *audio_worker_thread(void *arg) {
 
     // Log worker loop state every 100 iterations with detailed timing
     if (loop_count % 100 == 0) {
-      char avg_wait_str[32], max_wait_str[32];
-      char avg_capture_str[32], max_capture_str[32];
-      char avg_playback_str[32], max_playback_str[32];
+      char avg_wait_str[TIME_DURATION_BUFFER_SIZE], max_wait_str[TIME_DURATION_BUFFER_SIZE];
+      char avg_capture_str[TIME_DURATION_BUFFER_SIZE], max_capture_str[TIME_DURATION_BUFFER_SIZE];
+      char avg_playback_str[TIME_DURATION_BUFFER_SIZE], max_playback_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
       time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
       time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
@@ -271,7 +273,7 @@ static void *audio_worker_thread(void *arg) {
       log_debug("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str,
                 max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
       log_debug("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
-                render_available, playback_available, WORKER_BATCH_SAMPLES);
+                render_available, playback_available, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
     }
 
     if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source &&
@@ -297,12 +299,14 @@ static void *audio_worker_thread(void *arg) {
       bool local_playback = use_media && ctx->monitor_local_media && ctx->output_stream;
       size_t queued = local_playback ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0;
       size_t refill = queued < 7200 * AUDIO_CHANNELS ? 7200 * AUDIO_CHANNELS - queued : 0;
-      uint64_t due = local_playback ? media_samples + refill
-                                    : (now - media_start_ns) / (20 * NS_PER_MS_INT) * WORKER_BATCH_SAMPLES;
-      float media[WORKER_BATCH_SAMPLES];
+      uint64_t due = local_playback
+                         ? media_samples + refill
+                         : (now - media_start_ns) / (20 * NS_PER_MS_INT) * (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
+      float media[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
       while (media_samples < due) {
-        size_t count =
-            due - media_samples > WORKER_BATCH_SAMPLES ? WORKER_BATCH_SAMPLES : (size_t)(due - media_samples);
+        size_t count = due - media_samples > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                           ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                           : (size_t)(due - media_samples);
         size_t read = count;
         if (test_audio) {
           audio_test_pattern(media, count / AUDIO_CHANNELS, media_samples / AUDIO_CHANNELS, AUDIO_SAMPLE_RATE);
@@ -312,7 +316,7 @@ static void *audio_worker_thread(void *arg) {
         if (read < count)
           memset(media + read, 0, (count - read) * sizeof(float));
         audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count,
-                               media_start_ns + media_samples * 1000000000ULL / AUDIO_PCM_SAMPLES_PER_SECOND);
+                               media_start_ns + media_samples * 1000000000ULL / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS));
         audio_visualization_submit_stereo(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, count);
         // Keep transmission available, but avoid overrunning an undrained
         // local-monitor queue once it is full.
@@ -326,7 +330,8 @@ static void *audio_worker_thread(void *arg) {
       }
     }
     if (!use_mic && capture_available > 0) {
-      size_t drain = capture_available > WORKER_BATCH_SAMPLES ? WORKER_BATCH_SAMPLES : capture_available;
+      size_t drain = capture_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                                                                               : capture_available;
       audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, drain);
       capture_available = 0;
     }
@@ -338,7 +343,7 @@ static void *audio_worker_thread(void *arg) {
     // frames where both render and capture are available. Remainders stay in
     // the ring buffers and get processed next iteration - no zero-padding,
     // no data corruption, no skipped echo cancellation.
-    const size_t AEC3_FRAME_SIZE = 480 * AUDIO_CHANNELS;
+    const size_t AEC3_FRAME_SIZE = AUDIO_BUFFER_SIZE;
     bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline;
 
     if (want_aec3) {
@@ -347,8 +352,8 @@ static void *audio_worker_thread(void *arg) {
       // silent or has not produced a reference yet.
       size_t matched = (capture_available < render_available) ? capture_available : render_available;
       size_t aligned = (matched / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
-      if (aligned > WORKER_BATCH_SAMPLES)
-        aligned = (WORKER_BATCH_SAMPLES / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+      if (aligned > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
+        aligned = ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
 
       bool has_render_reference = aligned > 0;
       if (aligned == 0 && capture_available >= AEC3_FRAME_SIZE) {
@@ -356,10 +361,12 @@ static void *audio_worker_thread(void *arg) {
         // use a zero reference so an empty playback buffer cannot stall the
         // microphone ring buffer until it overflows.
         aligned = (capture_available / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
-        if (aligned > WORKER_BATCH_SAMPLES)
-          aligned = (WORKER_BATCH_SAMPLES / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
+        if (aligned > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
+          aligned = ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) / AEC3_FRAME_SIZE) * AEC3_FRAME_SIZE;
         if (render_available > 0) {
-          size_t discard = render_available > WORKER_BATCH_SAMPLES ? WORKER_BATCH_SAMPLES : render_available;
+          size_t discard = render_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                               ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                               : render_available;
           audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, discard);
         }
       }
@@ -397,7 +404,8 @@ static void *audio_worker_thread(void *arg) {
 
           if (aec3_count % 100 == 0) {
             long avg_ns = aec3_total_ns / aec3_count;
-            char avg_str[32], max_str[32], latest_str[32];
+            char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[TIME_DURATION_BUFFER_SIZE],
+                latest_str[TIME_DURATION_BUFFER_SIZE];
             time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
             time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
             time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
@@ -432,13 +440,17 @@ static void *audio_worker_thread(void *arg) {
       // No AEC3 (bypassed or no pipeline): process capture directly
       uint64_t capture_start_ns = time_get_ns();
 
-      size_t samples_to_process = (capture_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : capture_available;
+      size_t samples_to_process = (capture_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
+                                      ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                                      : capture_available;
       size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, samples_to_process);
 
       if (capture_read > 0) {
         // Drain render buffer to keep it from growing unbounded
         if (render_available > 0) {
-          size_t drain = (render_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : render_available;
+          size_t drain = (render_available > (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
+                             ? (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
+                             : render_available;
           audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, drain);
         }
 
@@ -485,7 +497,7 @@ static void *audio_worker_thread(void *arg) {
       max_loop_ns = loop_time_ns;
 
     if (loop_count % 100 == 0) {
-      char avg_loop_str[32], max_loop_str[32];
+      char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
       time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
       log_debug("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
@@ -516,10 +528,10 @@ static void *audio_worker_thread(void *arg) {
 static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count, uint32_t rate) {
   if (!GET_OPTION(test_audio) || !output)
     return;
-  float samples[480];
+  float samples[AUDIO_FRAMES_PER_BUFFER];
   float volume = fmaxf(0, fminf(1, GET_OPTION(speakers_volume)));
   for (size_t offset = 0; offset < count;) {
-    size_t block = count - offset > 480 ? 480 : count - offset;
+    size_t block = count - offset > ARRAY_SIZE(samples) ? ARRAY_SIZE(samples) : count - offset;
     audio_test_pattern(samples, block / AUDIO_CHANNELS, ctx->test_audio_playback_position / AUDIO_CHANNELS, rate);
     (void)audio_convert_channels(samples, block / AUDIO_CHANNELS, 1, samples, AUDIO_CHANNELS);
     for (size_t i = 0; i < block; ++i)
@@ -814,8 +826,8 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 void audio_ring_buffer_set_jitter_target(audio_ring_buffer_t *rb, uint32_t samples) {
   if (!rb)
     return;
-  if (samples < 960 * rb->channels)
-    samples = 960 * rb->channels;
+  if (samples < OPUS_FRAME_SAMPLES * rb->channels)
+    samples = OPUS_FRAME_SAMPLES * rb->channels;
   if (samples > 7680 * rb->channels)
     samples = 7680 * rb->channels;
   rb->jitter_initial_samples = samples;
@@ -1110,7 +1122,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     // One bounded refill after a real shortage avoids alternating tiny fragments
     // and silence when packets resume. Low occupancy alone is not an underrun.
     rb->jitter_target_samples = rb->jitter_target_samples < 6720 * rb->channels
-                                    ? rb->jitter_target_samples + 960 * rb->channels
+                                    ? rb->jitter_target_samples + OPUS_FRAME_SAMPLES * rb->channels
                                     : 7680 * rb->channels;
     rb->jitter_stable_samples = 0;
     rb->jitter_drift_phase = 0;
@@ -1369,7 +1381,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   }
 
   // Allocate pre-allocated worker buffers (avoid malloc in worker loop)
-  ctx->worker_capture_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
+  ctx->worker_capture_batch = SAFE_MALLOC((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * sizeof(float), float *);
   if (!ctx->worker_capture_batch) {
     cond_destroy(&ctx->audio_processing_wakeup);
     mutex_destroy(&ctx->audio_processing_wait_guard);
@@ -1382,7 +1394,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker capture batch buffer");
   }
 
-  ctx->worker_render_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
+  ctx->worker_render_batch = SAFE_MALLOC((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * sizeof(float), float *);
   if (!ctx->worker_render_batch) {
     SAFE_FREE(ctx->worker_capture_batch);
     cond_destroy(&ctx->audio_processing_wakeup);
@@ -1396,7 +1408,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker render batch buffer");
   }
 
-  ctx->worker_playback_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
+  ctx->worker_playback_batch = SAFE_MALLOC((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * sizeof(float), float *);
   if (!ctx->worker_playback_batch) {
     SAFE_FREE(ctx->worker_render_batch);
     SAFE_FREE(ctx->worker_capture_batch);

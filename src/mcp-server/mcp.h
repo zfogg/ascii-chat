@@ -1,5 +1,8 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MCP_SERVER_MCP_ERROR_BUFFER_SIZE 2048
+
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/otel.h>
@@ -48,7 +51,7 @@ typedef struct {
 typedef struct {
   char *text;
   size_t length;
-  char error[2048];
+  char error[MCP_SERVER_MCP_ERROR_BUFFER_SIZE];
   uint64_t elapsed_ms;
   bool timed_out;
   char output_path[PLATFORM_MAX_PATH_LENGTH];

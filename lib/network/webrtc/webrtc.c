@@ -1,3 +1,18 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE 512
+#define NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE 512
+#define NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE 64
+#define NETWORK_WEBRTC_LABEL_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define WEBRTC_AUTH_INPUT_BUFFER_SIZE 128
+#define WEBRTC_PERCENT_ESCAPE_EXPANSION 3
+#define WEBRTC_ESCAPED_AUTH_BUFFER_SIZE (WEBRTC_AUTH_INPUT_BUFFER_SIZE * WEBRTC_PERCENT_ESCAPE_EXPANSION)
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define WEBRTC_TURN_URL_BUFFER_SIZE 1024
+
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file networking/webrtc/webrtc.c
@@ -223,7 +238,8 @@ static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) 
     break;
   case RTC_CONNECTED:
     new_state = WEBRTC_STATE_CONNECTED;
-    char local_candidate[512], remote_candidate[512];
+    char local_candidate[NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE],
+        remote_candidate[NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE];
     if (rtcGetSelectedCandidatePair(pc_id, local_candidate, sizeof(local_candidate), remote_candidate,
                                     sizeof(remote_candidate)) >= 0) {
       log_info("WebRTC selected local candidate: %s", local_candidate);
@@ -575,7 +591,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
 
     // Add TURN servers
     if (config->turn_count > 0) {
-      turn_urls = SAFE_CALLOC(config->turn_count, 1024, char *);
+      turn_urls = SAFE_CALLOC(config->turn_count, WEBRTC_TURN_URL_BUFFER_SIZE, char *);
       if (!turn_urls) {
         SAFE_FREE(ice_servers);
         SAFE_FREE(pc);
@@ -584,8 +600,8 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     }
     for (size_t i = 0; i < config->turn_count; i++) {
       const turn_server_t *server = &config->turn_servers[i];
-      char username[128 * 3];
-      char credential[128 * 3];
+      char username[WEBRTC_ESCAPED_AUTH_BUFFER_SIZE];
+      char credential[WEBRTC_ESCAPED_AUTH_BUFFER_SIZE];
       encode_turn_userinfo(config->turn_username ? config->turn_username : server->username, username,
                            sizeof(username));
       encode_turn_userinfo(config->turn_credential ? config->turn_credential : server->credential, credential,
@@ -593,9 +609,9 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
       const char *address = strchr(server->url, ':') + 1;
       while (*address == '/')
         address++;
-      SAFE_SNPRINTF(turn_urls + i * 1024, 1024, "%.*s%s:%s@%s", (int)(strchr(server->url, ':') - server->url + 1),
-                    server->url, username, credential, address);
-      ice_servers[config->stun_count + i] = turn_urls + i * 1024;
+      SAFE_SNPRINTF(turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE, WEBRTC_TURN_URL_BUFFER_SIZE, "%.*s%s:%s@%s",
+                    (int)(strchr(server->url, ':') - server->url + 1), server->url, username, credential, address);
+      ice_servers[config->stun_count + i] = turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE;
     }
   }
 
@@ -645,7 +661,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   rtcSetDataChannelCallback(pc_id, on_datachannel_adapter);
 
   /* Register peer connection with named registry */
-  char pc_name[64];
+  char pc_name[NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE];
   snprintf(pc_name, sizeof(pc_name), "webrtc_peer_connection:%d", pc_id);
   NAMED_REGISTER(pc, pc_name, "webrtc_peer_connection_t", "0x%tx", NULL);
 
@@ -920,7 +936,7 @@ const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc) {
     return NULL;
   }
 
-  static char label[256];
+  static char label[NETWORK_WEBRTC_LABEL_BUFFER_SIZE];
   int result = rtcGetDataChannelLabel(dc->rtc_id, label, sizeof(label));
   if (result < 0) {
     return NULL;

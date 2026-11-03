@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SERVER_RENDER_THREAD_DISPLAY_NAME_BUFFER_SIZE 64
+#define SERVER_RENDER_THREAD_NAME_BUFFER_SIZE 64
+
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /* Per-client video conversion and audio mixing. Render workers submit media
@@ -392,7 +398,7 @@ void *client_video_render_thread(void *arg) {
     }
 
     if (frame_gen_count % 120 == 0) {
-      char sleep_str[32], create_str[32];
+      char sleep_str[TIME_DURATION_BUFFER_SIZE], create_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(after_sleep_ns - iter_start_ns), -1, sleep_str, sizeof(sleep_str));
       time_pretty((uint64_t)(frame_create_end_ns - frame_create_start_ns), -1, create_str, sizeof(create_str));
       log_dev("render timing: adaptive_sleep=%s frame_create=%s", sleep_str, create_str);
@@ -427,7 +433,7 @@ void *client_video_render_thread(void *arg) {
 
     uint64_t iter_end_ns = time_get_ns();
     if (frame_gen_count % 120 == 0) {
-      char total_str[32];
+      char total_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(iter_end_ns - iter_start_ns), -1, total_str, sizeof(total_str));
       log_warn_every(US_PER_SEC_INT, "  TIMING: TOTAL_ITERATION=%s", total_str);
     }
@@ -490,7 +496,7 @@ void *client_video_render_thread(void *arg) {
  *
  * TIMING PRECISION:
  * - Target: 100fps (10ms intervals, 480 samples @ 48kHz)
- * - Accumulates to 960 samples (20ms) for Opus encoding
+ * - Accumulates to OPUS_FRAME_SAMPLES samples (20ms) for Opus encoding
  * - Fixed timing (no dynamic rate adjustment)
  * - Low-latency audio delivery
  *
@@ -566,7 +572,7 @@ void *client_audio_render_thread(void *arg) {
   // Take snapshot of client ID and display name at start to avoid race conditions
   char thread_client_id[MAX_CLIENT_ID_LEN];
   SAFE_STRNCPY(thread_client_id, client->client_id, sizeof(thread_client_id) - 1);
-  char thread_display_name[64];
+  char thread_display_name[SERVER_RENDER_THREAD_DISPLAY_NAME_BUFFER_SIZE];
   bool is_webrtc = acip_transport_get_type(client->transport) == ACIP_TRANSPORT_WEBRTC;
   (void)is_webrtc; // May be unused in release builds
 
@@ -574,7 +580,6 @@ void *client_audio_render_thread(void *arg) {
   // We already have a stable client pointer
   mutex_lock(&client->client_state_mutex);
   SAFE_STRNCPY(thread_display_name, client->display_name, sizeof(thread_display_name));
-  int output_channels = (client->codec_capabilities_audio & AUDIO_CAP_STEREO) ? AUDIO_CHANNELS : 1;
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
@@ -582,20 +587,19 @@ void *client_audio_render_thread(void *arg) {
             is_webrtc);
 #endif
 
-  // Mix buffer: up to 960 samples for adaptive reading
+  // Mix buffer: up to OPUS_FRAME_SAMPLES samples for adaptive reading
   // Normal: 480 samples = 10ms @ 48kHz
-  // Catchup: 960 samples = 20ms when buffers are filling up
-  float mix_buffer[960 * AUDIO_CHANNELS];
+  // Catchup: OPUS_FRAME_SAMPLES samples = 20ms when buffers are filling up
+  float mix_buffer[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
 
-// Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
-// Opus requires minimum 480 samples, 960 is optimal for 20ms frames
-#define OPUS_FRAME_SAMPLES (960 * AUDIO_CHANNELS)
-  float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+  // Opus frame accumulation buffer (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
+  // Opus requires minimum 480 samples, OPUS_FRAME_SAMPLES is optimal for 20ms frames
+  float opus_frame_buffer[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
   int opus_frame_accumulated = 0;
 
-  // Create an Opus encoder matching this listener's mono/stereo capability.
+  // Create an Opus encoder for the interleaved stereo stream.
   opus_codec_t *opus_encoder =
-      opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, 48000, 128000, output_channels);
+      opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
   if (!opus_encoder) {
     log_error("Failed to create Opus encoder for audio render thread (client %s)", thread_client_id);
     return NULL;
@@ -630,18 +634,6 @@ void *client_audio_render_thread(void *arg) {
       break;
     }
 
-    mutex_lock(&client->client_state_mutex);
-    int desired_channels = (client->codec_capabilities_audio & AUDIO_CAP_STEREO) ? AUDIO_CHANNELS : 1;
-    mutex_unlock(&client->client_state_mutex);
-    if (desired_channels != opus_encoder->channels) {
-      opus_codec_t *replacement =
-          opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, 48000, 128000, desired_channels);
-      if (!replacement)
-        break;
-      opus_codec_destroy(opus_encoder);
-      opus_encoder = replacement;
-    }
-
     if (!g_audio_mixer) {
       log_dev_every(10 * NS_PER_MS_INT, "Audio render waiting for mixer (client %s)", thread_client_id);
       // Check shutdown flag while waiting
@@ -660,7 +652,7 @@ void *client_audio_render_thread(void *arg) {
 
     // ADAPTIVE READING: Read more samples when we're behind to catch up
     // Normal: 480 samples per 10ms iteration
-    // When behind: read up to 960 samples to catch up faster
+    // When behind: read up to OPUS_FRAME_SAMPLES samples to catch up faster
     // Check source buffer levels to decide
     int samples_to_read = 480 * AUDIO_CHANNELS; // Default: 10ms worth
 
@@ -679,13 +671,13 @@ void *client_audio_render_thread(void *arg) {
     // This maintains continuous stream without silence padding
     START_TIMER("accum_%s", client_id_snapshot);
 
-    int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
+    int space_available = (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated;
     int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
 
     // Only copy if we have samples, otherwise just wait for next frame
     if (samples_to_copy > 0) {
       SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
-                  (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
+                  ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated) * sizeof(float), mix_buffer,
                   samples_to_copy * sizeof(float));
       opus_frame_accumulated += samples_to_copy;
     }
@@ -694,21 +686,14 @@ void *client_audio_render_thread(void *arg) {
                              client_id_snapshot);
 
     // Only encode and send when we have accumulated a full Opus frame
-    if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
-      // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
-      uint8_t opus_buffer[1024]; // Max Opus frame size
+    if (opus_frame_accumulated >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
+      // Encode accumulated Opus frame (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
+      uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
       START_TIMER("opus_encode_%s", client_id_snapshot);
 
-      float mono[960];
-      const float *encode_pcm = opus_frame_buffer;
-      int encode_samples = OPUS_FRAME_SAMPLES;
-      if (opus_encoder->channels == 1) {
-        (void)audio_convert_channels(opus_frame_buffer, 960, AUDIO_CHANNELS, mono, 1);
-        encode_pcm = mono;
-        encode_samples = 960;
-      }
-      int opus_size = opus_codec_encode(opus_encoder, encode_pcm, encode_samples, opus_buffer, sizeof(opus_buffer));
+      int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS,
+                                        opus_buffer, sizeof(opus_buffer));
 
       STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, "opus_encode_%s",
                                "Opus encode for client %s: took", client_id_snapshot);
@@ -716,13 +701,13 @@ void *client_audio_render_thread(void *arg) {
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {
         float peak = 0.0f, rms = 0.0f;
-        for (int i = 0; i < OPUS_FRAME_SAMPLES; i++) {
+        for (int i = 0; i < (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); i++) {
           float abs_val = fabsf(opus_frame_buffer[i]);
           if (abs_val > peak)
             peak = abs_val;
           rms += opus_frame_buffer[i] * opus_frame_buffer[i];
         }
-        rms = sqrtf(rms / OPUS_FRAME_SAMPLES);
+        rms = sqrtf(rms / (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
         // NOTE: server_audio_frame_count is now per-thread (not static), so each client thread has its own counter
         server_audio_frame_count++;
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
@@ -748,9 +733,10 @@ void *client_audio_render_thread(void *arg) {
         // Frame sizes: frame_count * 2B (one uint16 per frame with Opus data size)
         // Opus data: raw encoded audio
 
-        // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame = 20ms)
-        const uint32_t sample_rate = 48000;
-        const uint32_t frame_duration = 20; // milliseconds (960 samples / 48kHz = 20ms)
+        // Fixed values for Opus encoding (standard 48kHz, OPUS_FRAME_SAMPLES samples per frame = 20ms)
+        const uint32_t sample_rate = AUDIO_SAMPLE_RATE;
+        const uint32_t frame_duration =
+            CLIENT_AUDIO_PIPELINE_FRAME_MS; // milliseconds (OPUS_FRAME_SAMPLES samples / 48kHz = 20ms)
         const uint32_t frame_count = 1;     // one Opus frame per packet
         const uint16_t frame_size = (uint16_t)opus_size;
 
@@ -942,7 +928,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   atomic_store_bool(&client->audio_render_thread_running, true);
 
   // Create video rendering thread (stop_id=2, stop after receive thread)
-  char thread_name[64];
+  char thread_name[SERVER_RENDER_THREAD_NAME_BUFFER_SIZE];
   safe_snprintf(thread_name, sizeof(thread_name), "video_render_%s", client->client_id);
   asciichat_error_t video_result;
 

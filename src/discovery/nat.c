@@ -4,6 +4,14 @@
  * @ingroup discovery
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_NAT_PORT_BUFFER_SIZE 16
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define STUN_BINDING_HEADER_SIZE 20
+#define STUN_PROBE_RESPONSE_BUFFER_SIZE 512
+
+#include <ascii-chat/common/limits.h>
 #include "nat.h"
 
 #include <ascii-chat/common.h>
@@ -142,8 +150,8 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
             ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
 
         // Convert to dotted quad notation
-        safe_snprintf(reflexive_addr, 64, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF,
-                      addr & 0xFF);
+        safe_snprintf(reflexive_addr, IP_ADDRESS_BUFFER_SIZE, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF,
+                      (addr >> 8) & 0xFF, addr & 0xFF);
         *reflexive_port = port;
         return ASCIICHAT_OK;
       }
@@ -210,7 +218,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   hints.ai_socktype = SOCK_DGRAM;
 
   struct addrinfo *result = NULL;
-  char port_str[16];
+  char port_str[DISCOVERY_NAT_PORT_BUFFER_SIZE];
   safe_snprintf(port_str, sizeof(port_str), "%u", stun_port);
 
   int ret = getaddrinfo(host_buf, port_str, &hints, &result);
@@ -222,7 +230,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
 
   // Build minimal STUN binding request (RFC 5389)
   // Header: Magic (0x2112A442) + Transaction ID (96 bits)
-  uint8_t stun_request[20];
+  uint8_t stun_request[STUN_BINDING_HEADER_SIZE];
   stun_request[0] = 0x00; // Message type: Binding Request (0x0001), bits split
   stun_request[1] = 0x01;
   stun_request[2] = 0x00; // Message length: 0 (no attributes for simple probe)
@@ -249,7 +257,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   }
 
   // Receive STUN response
-  uint8_t stun_response[512];
+  uint8_t stun_response[STUN_PROBE_RESPONSE_BUFFER_SIZE];
   struct sockaddr_in peer_addr;
   socklen_t peer_addr_len = sizeof(peer_addr);
 
@@ -268,7 +276,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   }
 
   // Parse STUN response to extract reflexive address
-  char reflexive_addr[64] = {0};
+  char reflexive_addr[IP_ADDRESS_BUFFER_SIZE] = {0};
   uint16_t reflexive_port = 0;
   asciichat_error_t parse_result =
       nat_parse_stun_response(stun_response, (size_t)recv_len, reflexive_addr, &reflexive_port);

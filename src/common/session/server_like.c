@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_SERVER_LIKE_PUBLIC_ADDR_BUFFER_SIZE 22
+
 #include <ascii-chat/crypto/policy.h>
 /**
  * @file server_like.c
@@ -308,7 +312,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       upnp_result = ERROR_NETWORK;
     }
     if (upnp_result == ASCIICHAT_OK && nat_upnp_is_active(g_upnp_ctx)) {
-      char public_addr[22];
+      char public_addr[SESSION_SERVER_LIKE_PUBLIC_ADDR_BUFFER_SIZE];
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
         log_info("UPnP status: mapped at %s (external reachability unverified)", public_addr);
       }

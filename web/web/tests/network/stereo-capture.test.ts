@@ -23,7 +23,11 @@ function capture(channels: 1 | 2, firstChannel = 0) {
   new Function(source)();
   const frames: Frame[] = [];
   const processor = new Processor({
-    processorOptions: { microphoneChannels: channels, firstChannel },
+    processorOptions: {
+      microphoneChannels: channels,
+      firstChannel,
+      frameSamples: 960,
+    },
   });
   processor.port.onmessage({
     data: {

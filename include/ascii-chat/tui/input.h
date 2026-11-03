@@ -3,6 +3,9 @@
 /** Poll debug controls without waiting for another input reader. */
 void ui_input_poll_sync(void);
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_INPUT_PASTE_BUFFER_SIZE 8192
+
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/tui/controller.h>
@@ -35,7 +38,7 @@ asciichat_error_t ui_input_password(const char *target, char *buffer, size_t cap
 /** Caller-serialized collection state; payloads never outlive this object. */
 typedef struct {
   bool pasting, invalid, ready;
-  char paste[8192];
+  char paste[TUI_INPUT_PASTE_BUFFER_SIZE];
   size_t length, head, count;
   keyboard_key_t keys[8192];
 } tui_input_events_t;

@@ -63,6 +63,10 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE 256
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common/limits.h>
 
 #include <stdint.h>
@@ -86,26 +90,26 @@ extern "C" {
  * Returned by `discover_session_parallel()` with connection info for the discovered server.
  */
 typedef struct {
-  bool success;             ///< Discovery succeeded
-  uint8_t host_pubkey[32];  ///< Ed25519 public key of discovered server
-  char server_address[256]; ///< Server IP or hostname
-  uint16_t server_port;     ///< Server port (typically 27224)
+  bool success;                                 ///< Discovery succeeded
+  uint8_t host_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key of discovered server
+  char server_address[HOSTNAME_BUFFER_SIZE];    ///< Server IP or hostname
+  uint16_t server_port;                         ///< Server port (typically 27224)
   enum {
     DISCOVERY_SOURCE_MDNS = 0, ///< Found via mDNS (local LAN)
     DISCOVERY_SOURCE_ACDS = 1, ///< Found via ACDS (internet)
   } source;                    ///< Which discovery method found the server
 
   // For mDNS results
-  char mdns_service_name[256];              ///< mDNS service instance name (e.g., "swift-river-mountain")
-  char mdns_hostname[HOSTNAME_BUFFER_SIZE]; ///< mDNS hostname (e.g., "mycomputer.local")
+  char mdns_service_name[HOSTNAME_BUFFER_SIZE]; ///< mDNS service instance name (e.g., "swift-river-mountain")
+  char mdns_hostname[HOSTNAME_BUFFER_SIZE];     ///< mDNS hostname (e.g., "mycomputer.local")
 
   // For ACDS results (if applicable)
-  uint8_t session_id[16];     ///< ACDS session UUID
-  uint8_t participant_id[16]; ///< Assigned participant ID (from SESSION_JOIN)
+  uint8_t session_id[SESSION_ID_SIZE];     ///< ACDS session UUID
+  uint8_t participant_id[SESSION_ID_SIZE]; ///< Assigned participant ID (from SESSION_JOIN)
 
   // Error details
-  asciichat_error_t error; ///< Error code if !success
-  char error_message[256]; ///< Human-readable error (if !success)
+  asciichat_error_t error;                                              ///< Error code if !success
+  char error_message[NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE]; ///< Human-readable error (if !success)
 } discovery_result_t;
 
 /**
@@ -117,8 +121,8 @@ typedef struct {
   bool insecure_mode;             ///< Allow no verification (--acds-insecure flag)
 
   // Connection details
-  char acds_server[256]; ///< ACDS server address (e.g., "localhost" or "discovery.ascii-chat.com")
-  uint16_t acds_port;    ///< ACDS server port (default: 27225)
+  char acds_server[HOSTNAME_BUFFER_SIZE]; ///< ACDS server address (e.g., "localhost" or "discovery.ascii-chat.com")
+  uint16_t acds_port;                     ///< ACDS server port (default: 27225)
 
   // Timeouts
   uint32_t mdns_timeout_ms; ///< mDNS search timeout (default: 2000ms)
@@ -224,7 +228,7 @@ void discovery_mdns_destroy(ui_mdns_server_t *servers);
  * @param pubkey Binary public key (32 bytes)
  * @param hex_out Output hex string buffer (must be at least 65 bytes)
  */
-void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]);
+void pubkey_to_hex(const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE], char hex_out[HEX_STRING_SIZE_32]);
 
 /**
  * @brief Convert hex string to Ed25519 public key
@@ -235,7 +239,7 @@ void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]);
  * @param pubkey_out Output binary pubkey (32 bytes)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid hex
  */
-asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]);
+asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]);
 
 #ifdef __cplusplus
 }

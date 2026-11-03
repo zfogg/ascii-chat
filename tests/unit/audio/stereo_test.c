@@ -82,13 +82,50 @@ Test(stereo, resampling_preserves_channels_and_is_independent_of_callback_partit
   cr_assert_eq(sentinel[0], 42);
 }
 
-Test(stereo, opus_preserves_distinct_tones_and_legacy_mono_decoder_compatibility) {
-  opus_codec_t *encoder = opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, 48000, 160000, 2);
-  opus_codec_t *decoder = opus_codec_create_decoder_channels(48000, 2);
-  opus_codec_t *legacy = opus_codec_create_decoder(48000);
+Test(stereo, invalid_resampler_arguments_set_errno_without_mutating_state_or_output) {
+  audio_resampler_t state = {.phase = 0.25, .previous = {0.2f, 0.3f}, .has_previous = true};
+  audio_resampler_t before = state;
+  const float input[] = {0.1f, 0.2f, 0.3f, 0.4f};
+  float output[] = {42, 43, 44, 45};
+  const float expected[] = {42, 43, 44, 45};
+  const struct {
+    audio_resampler_t *state;
+    const float *input;
+    float *output;
+    size_t frames;
+    double input_rate, output_rate;
+  } cases[] = {
+      {NULL, input, output, 2, 48000, 48000},  {&state, NULL, output, 2, 48000, 48000},
+      {&state, input, NULL, 2, 48000, 48000},  {&state, input, output, 0, 48000, 48000},
+      {&state, input, output, 2, NAN, 48000},  {&state, input, output, 2, INFINITY, 48000},
+      {&state, input, output, 2, 7999, 48000}, {&state, input, output, 2, 192001, 48000},
+      {&state, input, output, 2, 48000, NAN},  {&state, input, output, 2, 48000, INFINITY},
+      {&state, input, output, 2, 48000, 7999}, {&state, input, output, 2, 48000, 192001},
+  };
+  for (size_t i = 0; i < ARRAY_SIZE(cases); i++) {
+    CLEAR_ERRNO_ALL();
+    cr_assert_eq(audio_resample_stereo(cases[i].state, cases[i].input, cases[i].frames, cases[i].input_rate,
+                                       cases[i].output, ARRAY_SIZE(output) / 2, cases[i].output_rate),
+                 0);
+    asciichat_error_context_t error;
+    cr_assert(HAS_ERRNO(&error), "Missing resampler error for case %zu", i);
+    cr_assert_eq(error.code, ERROR_INVALID_PARAM);
+    cr_assert_not_null(strstr(error.context_message, "stereo resampling"));
+    cr_assert_arr_eq(&state, &before, sizeof(state));
+    cr_assert_arr_eq(output, expected, sizeof(output));
+  }
+  CLEAR_ERRNO_ALL();
+}
+
+Test(stereo, opus_preserves_distinct_tones_and_explicit_mono_decoder_downmix) {
+  opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 160000);
+  opus_codec_t *decoder = opus_codec_create_decoder(48000);
+  opus_codec_t *mono_decoder = opus_codec_create_decoder_channels(48000, 1);
   cr_assert_not_null(encoder);
   cr_assert_not_null(decoder);
-  cr_assert_not_null(legacy);
+  cr_assert_not_null(mono_decoder);
+  cr_assert_eq(encoder->channels, 2);
+  cr_assert_eq(decoder->channels, 2);
   float input[1920], output[1920], mono[960];
   uint8_t packet[4000];
   double left440 = 0, left880 = 0, right440 = 0, right880 = 0;
@@ -101,7 +138,7 @@ Test(stereo, opus_preserves_distinct_tones_and_legacy_mono_decoder_compatibility
     size_t bytes = opus_codec_encode(encoder, input, 1920, packet, sizeof(packet));
     cr_assert_gt(bytes, 0);
     cr_assert_eq(opus_codec_decode(decoder, packet, bytes, output, 1920), 1920);
-    cr_assert_eq(opus_codec_decode(legacy, packet, bytes, mono, 960), 960);
+    cr_assert_eq(opus_codec_decode(mono_decoder, packet, bytes, mono, 960), 960);
     if (block >= 10)
       for (int i = 0; i < 960; i++) {
         double t = (block * 960 + i) / 48000.0;
@@ -116,7 +153,7 @@ Test(stereo, opus_preserves_distinct_tones_and_legacy_mono_decoder_compatibility
   cr_assert_gt(fabs(right880), fabs(right440) * 8);
   opus_codec_destroy(encoder);
   opus_codec_destroy(decoder);
-  opus_codec_destroy(legacy);
+  opus_codec_destroy(mono_decoder);
 }
 
 Test(stereo, jitter_drift_and_fades_do_not_swap_or_mix_channels) {
@@ -282,6 +319,9 @@ Test(stereo, stereo_media_resampling_and_eof_preserve_duration_and_independent_c
 }
 
 Test(stereo, capture_and_transmission_layouts_are_independent) {
+  client_audio_pipeline_config_t defaults = client_audio_pipeline_default_config();
+  cr_assert_eq(defaults.channels, 2);
+  cr_assert_eq(defaults.encoder_channels, 2);
   for (int channels = 1; channels <= 2; channels++) {
     for (int encoded_channels = 1; encoded_channels <= 2; encoded_channels++) {
       client_audio_pipeline_config_t config = client_audio_pipeline_default_config();

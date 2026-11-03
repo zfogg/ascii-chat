@@ -16,7 +16,7 @@ struct spectral_processor {
   float input[SPECTRAL_MAX_SIZE], overlap[SPECTRAL_MAX_SIZE], ready[SPECTRAL_MAX_SIZE / 4];
   float window[SPECTRAL_MAX_SIZE], magnitude[SPECTRAL_MAX_BINS];
   float noise[SPECTRAL_MAX_BINS], smoothed[SPECTRAL_MAX_BINS], gains[SPECTRAL_MAX_BINS];
-  float band_gain[4], band_average[4], eq_gain[4];
+  float band_gain[SPECTRAL_BAND_COUNT], band_average[4], eq_gain[4];
   double previous_phase[SPECTRAL_MAX_BINS], synthesis_phase[SPECTRAL_MAX_BINS];
   double shifted_magnitude[SPECTRAL_MAX_BINS], shifted_frequency[SPECTRAL_MAX_BINS];
   float pitch_hz, auto_gain;
@@ -193,7 +193,7 @@ static void process_frame(spectral_processor_t *p) {
   for (int i = 0; i < n; ++i)
     p->time[i] = p->input[i] * p->window[i];
   fftw_execute(p->forward);
-  float energy[4] = {0};
+  float energy[SPECTRAL_BAND_COUNT] = {0};
   for (int k = 0; k <= n / 2; ++k) {
     double re = p->frequency[k][0], im = p->frequency[k][1];
     float power = (float)(re * re + im * im);

@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_ESTABLISH_TARGET_BUFFER_SIZE 320
+
 #include "session/connection.h"
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/tui/input.h>
@@ -34,7 +38,7 @@ asciichat_error_t session_connection_establish(const char *name, const char *add
     if (detach)
       detach(context);
     network_connection_destroy(owner);
-    char target[320];
+    char target[SESSION_ESTABLISH_TARGET_BUFFER_SIZE];
     snprintf(target, sizeof(target), "%s:%u", attempt.endpoint.host, attempt.endpoint.port);
     result = ui_input_password(target, password, capacity, attempt.password_failure & AUTH_FAIL_PASSWORD_INCORRECT);
     if (result != ASCIICHAT_OK)

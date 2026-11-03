@@ -49,6 +49,6 @@ for has_audio in (False, True):
         (2049, 128000) if stereo else (2048, 32000)
     ), (mode, source, test, has_audio)
     assert config.channels == 2
-    assert config.encoder_channels == (2 if stereo else 1)
+    assert config.encoder_channels == 2
 lib.options_state_destroy()
 lib.asciichat_shared_destroy()

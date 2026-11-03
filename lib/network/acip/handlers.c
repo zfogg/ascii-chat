@@ -10,6 +10,10 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE 512
+#define NETWORK_ACIP_HANDLERS_HEX_BUFFER_SIZE 512
+
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -406,7 +410,7 @@ static asciichat_error_t handle_client_remote_log(const void *payload, size_t pa
   size_t msg_len = payload_len - sizeof(remote_log_packet_t);
 
   // Ensure null-terminated message
-  char msg_buffer[512];
+  char msg_buffer[NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE];
   size_t copy_len = msg_len < sizeof(msg_buffer) - 1 ? msg_len : sizeof(msg_buffer) - 1;
   memcpy(msg_buffer, message, copy_len);
   msg_buffer[copy_len] = '\0';
@@ -873,7 +877,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   // Debug: Log raw payload bytes
   const uint8_t *payload_bytes = (const uint8_t *)payload;
   log_dev_every(4500 * US_PER_MS_INT, "IMAGE_FRAME payload (%zu bytes):", payload_len);
-  char hex_buf[512];
+  char hex_buf[NETWORK_ACIP_HANDLERS_HEX_BUFFER_SIZE];
   size_t hex_pos = 0;
   size_t max_bytes = (payload_len < 48) ? payload_len : 48;
   for (size_t i = 0; i < max_bytes && hex_pos < sizeof(hex_buf) - 4; i++) {
@@ -1162,7 +1166,7 @@ static asciichat_error_t handle_server_remote_log(const void *payload, size_t pa
   size_t msg_len = payload_len - sizeof(remote_log_packet_t);
 
   // Ensure null-terminated message
-  char msg_buffer[512];
+  char msg_buffer[NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE];
   size_t copy_len = msg_len < sizeof(msg_buffer) - 1 ? msg_len : sizeof(msg_buffer) - 1;
   memcpy(msg_buffer, message, copy_len);
   msg_buffer[copy_len] = '\0';

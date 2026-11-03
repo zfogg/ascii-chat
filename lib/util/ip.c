@@ -4,6 +4,12 @@
  * @brief 🌍 IPv4/IPv6 address parsing, validation, and formatting utilities
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_IP_IP_TEMP_BUFFER_SIZE 256
+#define UTIL_IP_NETWORK_BUFFER_SIZE 64
+#define UTIL_IP_IP2_BUFFER_SIZE 64
+
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/util/parsing.h>
@@ -644,7 +650,7 @@ int parse_cidr(const char *cidr, char *ip_out, size_t ip_out_size, int *prefix_o
     return -1;
   }
 
-  char ip_temp[256];
+  char ip_temp[UTIL_IP_IP_TEMP_BUFFER_SIZE];
   if (ip_len >= sizeof(ip_temp)) {
     return -1;
   }
@@ -787,7 +793,7 @@ int ip_in_cidr(const char *ip, const char *cidr) {
     return 0;
   }
 
-  char network[64];
+  char network[UTIL_IP_NETWORK_BUFFER_SIZE];
   int prefix;
 
   if (parse_cidr(cidr, network, sizeof(network), &prefix) != 0) {
@@ -1106,7 +1112,7 @@ int compare_ip_port_strings(const char *ip_port1, const char *ip_port2) {
   }
 
   // Parse both IP:port strings
-  char ip1[64], ip2[64];
+  char ip1[IP_ADDRESS_BUFFER_SIZE], ip2[UTIL_IP_IP2_BUFFER_SIZE];
   uint16_t port1 = 0, port2 = 0;
 
   if (parse_ip_with_port(ip_port1, ip1, sizeof(ip1), &port1) != 0) {

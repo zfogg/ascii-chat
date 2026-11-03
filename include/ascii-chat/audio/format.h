@@ -1,16 +1,12 @@
 #pragma once
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/audio/limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/** Internal PCM is interleaved stereo. Counts passed to PCM APIs are float samples. */
-#define AUDIO_PCM_CHANNELS 2
-#define AUDIO_PCM_RATE 48000
-#define AUDIO_PCM_SAMPLES_PER_SECOND (AUDIO_PCM_RATE * AUDIO_PCM_CHANNELS)
-#define AUDIO_DEVICE_MAX_CHANNELS 64
-
+/** Internal PCM is interleaved stereo. PCM sample counts include both channels. */
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,11 +23,12 @@ asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsi
 
 typedef struct {
   double phase;
-  float previous[AUDIO_PCM_CHANNELS];
+  float previous[AUDIO_CHANNELS];
   bool has_previous;
 } audio_resampler_t;
 
 /** Stateful interleaved resampling; capacities and return value are frames.
+ * Invalid arguments return zero and set ERROR_INVALID_PARAM.
  * On insufficient capacity the state and output are left unchanged.
  */
 size_t audio_resample_stereo(audio_resampler_t *state, const float *input, size_t frames, double input_rate,

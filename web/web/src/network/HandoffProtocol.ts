@@ -1,3 +1,7 @@
+const HANDOFF_FRAME_SIZE = 64;
+const HANDOFF_PROBE_PAYLOAD_SIZE = 65536;
+const SESSION_ID_SIZE = 16;
+const HANDOFF_ID_STORAGE_SIZE = 2 * SESSION_ID_SIZE;
 import { getClientModule } from "../wasm/client";
 import type { JoinedSession } from "./acdsProtocol";
 
@@ -48,22 +52,27 @@ export class HandoffProtocol {
     sequence: number,
   ): Uint8Array {
     const module = getClientModule() as Module;
-    const pointer = module._malloc(96);
+    const pointer = module._malloc(
+      HANDOFF_ID_STORAGE_SIZE + HANDOFF_FRAME_SIZE,
+    );
     try {
       module.HEAPU8.set(this.joined.sessionId, pointer);
-      module.HEAPU8.set(this.joined.participantId, pointer + 16);
+      module.HEAPU8.set(this.joined.participantId, pointer + SESSION_ID_SIZE);
       module._browser_handoff_encode(
         kind,
         pointer,
-        pointer + 16,
+        pointer + SESSION_ID_SIZE,
         generation,
         sequence,
         2,
         255,
         0,
-        pointer + 32,
+        pointer + HANDOFF_ID_STORAGE_SIZE,
       );
-      return module.HEAPU8.slice(pointer + 32, pointer + 96);
+      return module.HEAPU8.slice(
+        pointer + HANDOFF_ID_STORAGE_SIZE,
+        pointer + HANDOFF_ID_STORAGE_SIZE + HANDOFF_FRAME_SIZE,
+      );
     } finally {
       module._free(pointer);
     }
@@ -73,7 +82,9 @@ export class HandoffProtocol {
     const sequence = ++this.sequence;
     try {
       this.send(HANDOFF_PACKET, this.frame(1, 0, sequence));
-      const bytes = new Uint8Array(64 + 65536);
+      const bytes = new Uint8Array(
+        HANDOFF_FRAME_SIZE + HANDOFF_PROBE_PAYLOAD_SIZE,
+      );
       bytes.set(this.frame(2, 0, sequence));
       this.send(HANDOFF_PACKET, bytes);
     } catch (error) {
@@ -83,7 +94,7 @@ export class HandoffProtocol {
   receive(type: number, bytes: Uint8Array): boolean {
     if (type !== HANDOFF_PACKET) return false;
     if (
-      bytes.length < 64 ||
+      bytes.length < HANDOFF_FRAME_SIZE ||
       !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
     )
       return true;

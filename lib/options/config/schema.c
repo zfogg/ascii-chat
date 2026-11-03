@@ -4,6 +4,17 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_CONFIG_SCHEMA_CLI_FLAG_BUFFER_SIZE 256
+#define OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE 64
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SCHEMA_OPTION_CAPACITY 256
+#define SCHEMA_CATEGORY_OPTION_CAPACITY 64
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SCHEMA_INITIAL_STRING_CAPACITY 64
+
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/options.h>
@@ -216,7 +227,8 @@ static char *store_dynamic_string(const char *str) {
 
   // Grow string storage if needed
   if (g_dynamic_strings_count >= g_dynamic_strings_capacity) {
-    size_t new_capacity = g_dynamic_strings_capacity == 0 ? 64 : g_dynamic_strings_capacity * 2;
+    size_t new_capacity =
+        g_dynamic_strings_capacity == 0 ? SCHEMA_INITIAL_STRING_CAPACITY : g_dynamic_strings_capacity * 2;
     char **new_strings = SAFE_REALLOC(g_dynamic_strings, new_capacity * sizeof(char *), char **);
     if (!new_strings) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate new strings");
@@ -258,7 +270,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
 
   // Count total unique descriptors (by offset) across all configs
   // Use a simple approach: collect all descriptors, then deduplicate by offset
-  const option_descriptor_t *all_descriptors[256] = {0}; // Max expected options
+  const option_descriptor_t *all_descriptors[SCHEMA_OPTION_CAPACITY] = {0}; // Max expected options
   size_t descriptor_count = 0;
 
   // Collect descriptors from all configs
@@ -274,7 +286,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
       continue;
     }
 
-    for (size_t i = 0; i < config->num_descriptors && descriptor_count < 256; i++) {
+    for (size_t i = 0; i < config->num_descriptors && descriptor_count < SCHEMA_OPTION_CAPACITY; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
       if (!desc) {
         log_warn("Descriptor at index %zu in config %zu is NULL", i, cfg_idx);
@@ -295,8 +307,8 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
   // Build schema entries
   g_dynamic_schema_count = 0;
   char toml_key_buffer[BUFFER_SIZE_SMALL];
-  char cli_flag_buffer[256];
-  char category_buffer[64];
+  char cli_flag_buffer[OPTIONS_CONFIG_SCHEMA_CLI_FLAG_BUFFER_SIZE];
+  char category_buffer[OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE];
 
   for (size_t i = 0; i < descriptor_count; i++) {
     const option_descriptor_t *desc = all_descriptors[i];
@@ -402,7 +414,7 @@ const config_option_metadata_t *config_schema_get_by_toml_key(const char *toml_k
 }
 
 const config_option_metadata_t **config_schema_get_by_category(const char *category, size_t *count) {
-  static const config_option_metadata_t *results[64]; // Max options per category
+  static const config_option_metadata_t *results[SCHEMA_CATEGORY_OPTION_CAPACITY]; // Max options per category
   size_t result_count = 0;
 
   if (!category) {
@@ -421,7 +433,7 @@ const config_option_metadata_t **config_schema_get_by_category(const char *categ
     return NULL;
   }
 
-  for (size_t i = 0; i < g_dynamic_schema_count && result_count < 64; i++) {
+  for (size_t i = 0; i < g_dynamic_schema_count && result_count < SCHEMA_CATEGORY_OPTION_CAPACITY; i++) {
     if (g_dynamic_schema[i].category && strcmp(g_dynamic_schema[i].category, category) == 0) {
       results[result_count++] = &g_dynamic_schema[i];
     }

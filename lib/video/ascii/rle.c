@@ -4,6 +4,7 @@
  * @brief ANSI RLE (REP) sequence compression and expansion
  */
 
+#include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/common.h>
@@ -21,7 +22,7 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
 
   // Track the last character/grapheme for RLE expansion
   // UTF-8 characters can be up to 4 bytes
-  char last_char[5] = " ";
+  char last_char[UTF8_BUFFER_SIZE] = " ";
   size_t last_char_len = 1;
 
   size_t i = 0;

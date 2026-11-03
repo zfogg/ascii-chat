@@ -3,6 +3,10 @@
  * @brief Server-side H.265 decoding pipeline
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define H265_ASCII_SCRATCH_COLUMNS 256
+#define H265_ASCII_SCRATCH_ROWS 64
+
 #include "server.h"
 #include <ascii-chat/video/h265/decoder.h>
 #include <ascii-chat/common.h>
@@ -100,7 +104,7 @@ asciichat_error_t h265_server_decode_and_convert(h265_server_client_t *client, c
     return SET_ERRNO(ERROR_INTERNAL, "Invalid client decoder state");
   }
 
-  uint8_t ascii_buf[256 * 64];
+  uint8_t ascii_buf[H265_ASCII_SCRATCH_COLUMNS * H265_ASCII_SCRATCH_ROWS];
   size_t ascii_size = sizeof(ascii_buf);
 
   asciichat_error_t result =

@@ -3,6 +3,10 @@
  * @brief Ring consensus metrics collection and wire protocol implementation
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CONSENSUS_METRICS_INITIAL_CAPACITY 10
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
@@ -23,11 +27,11 @@ typedef struct consensus_metrics_collection {
   int capacity;                   ///< Allocated capacity
 } consensus_metrics_collection_t;
 
-asciichat_error_t consensus_metrics_measure(const uint8_t my_id[16], participant_metrics_t *out_metrics) {
+asciichat_error_t consensus_metrics_measure(const uint8_t my_id[SESSION_ID_SIZE], participant_metrics_t *out_metrics) {
   if (!my_id || !out_metrics)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid measurement parameters");
   memset(out_metrics, 0, sizeof(*out_metrics));
-  memcpy(out_metrics->participant_id, my_id, 16);
+  memcpy(out_metrics->participant_id, my_id, SESSION_ID_SIZE);
   out_metrics->nat_tier = 4;
   return SET_ERRNO(ERROR_INVALID_STATE, "Network measurements require a session measurement provider");
 }
@@ -77,7 +81,7 @@ asciichat_error_t consensus_metrics_collection_create(consensus_metrics_collecti
   consensus_metrics_collection_t *collection = SAFE_MALLOC(sizeof(*collection), consensus_metrics_collection_t *);
   memset(collection, 0, sizeof(*collection));
 
-  collection->capacity = 10; // Start with capacity for 10 participants
+  collection->capacity = CONSENSUS_METRICS_INITIAL_CAPACITY; // Start with capacity for 10 participants
   collection->metrics = SAFE_MALLOC(collection->capacity * sizeof(participant_metrics_t), participant_metrics_t *);
   collection->count = 0;
 

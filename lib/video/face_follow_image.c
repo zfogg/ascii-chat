@@ -5,7 +5,7 @@
 
 struct face_follow_image {
   face_follow_state_t state;
-  unsigned char bgr[320 * 240 * 3], results[0x9000];
+  unsigned char bgr[FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT * 3], results[FACE_FOLLOW_RESULT_BUFFER_SIZE];
   double last_detection;
   int source_width, source_height;
   image_t *output;
@@ -39,7 +39,7 @@ image_t *face_follow_image_process(face_follow_image_t **context, image_t *sourc
     ctx->source_height = source->h;
   }
   if ((enabled || debug) && now - ctx->last_detection >= 0.1) {
-    float scale = fminf(320.0f / source->w, 240.0f / source->h);
+    float scale = fminf((float)FACE_FOLLOW_DETECT_WIDTH / source->w, (float)FACE_FOLLOW_DETECT_HEIGHT / source->h);
     int width = (int)fmaxf(1, source->w * scale), height = (int)fmaxf(1, source->h * scale);
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
@@ -50,9 +50,9 @@ image_t *face_follow_image_process(face_follow_image_t **context, image_t *sourc
         ctx->bgr[offset + 2] = p.r;
       }
     }
-    face_follow_detection_t faces[32];
+    face_follow_detection_t faces[FACE_FOLLOW_MAX_DETECTIONS];
     size_t count;
-    face_follow_detect(ctx->results, ctx->bgr, width, height, faces, 32, &count);
+    face_follow_detect(ctx->results, ctx->bgr, width, height, faces, FACE_FOLLOW_MAX_DETECTIONS, &count);
     face_follow_observe(&ctx->state, faces, count, now);
     ctx->last_detection = now;
   }

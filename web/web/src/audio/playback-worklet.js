@@ -1,9 +1,13 @@
+const PLAYBACK_RING_SAMPLES = 32768;
 const { AudioWorkletProcessor, registerProcessor, sampleRate } = globalThis;
 
 class PcmPlaybackProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.channels = [new Float32Array(32768), new Float32Array(32768)];
+    this.channels = [
+      new Float32Array(PLAYBACK_RING_SAMPLES),
+      new Float32Array(PLAYBACK_RING_SAMPLES),
+    ];
     this.read = 0;
     this.count = 0;
     this.started = false;
@@ -29,13 +33,13 @@ class PcmPlaybackProcessor extends AudioWorkletProcessor {
       const discard = Math.max(0, this.count + frames - limit);
       const old = Math.min(discard, this.count);
       if (discard) {
-        this.read = (this.read + old) % 32768;
+        this.read = (this.read + old) % this.channels[0].length;
         this.count -= old;
         this.fade = 128;
       }
       const skip = discard - old;
       for (let i = skip; i < frames; i++) {
-        const index = (this.read + this.count) % 32768;
+        const index = (this.read + this.count) % this.channels[0].length;
         this.channels[0][index] = samples[i * channels];
         this.channels[1][index] =
           samples[i * channels + (channels === 2 ? 1 : 0)];
@@ -81,7 +85,7 @@ class PcmPlaybackProcessor extends AudioWorkletProcessor {
         output[channel][i] = value * gain;
         this.last[channel] = output[channel][i];
       }
-      this.read = (this.read + 1) % 32768;
+      this.read = (this.read + 1) % this.channels[0].length;
       this.count--;
     }
     return true;

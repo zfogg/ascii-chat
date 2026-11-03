@@ -21,6 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE 64
+
 #include "../process_title_internal.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <dlfcn.h>
@@ -32,7 +35,7 @@ asciichat_error_t platform_process_title_native_set(const char *title, const cha
   if (!pthread_main_np()) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Process title must be set by the main thread");
   }
-  char thread_name[64];
+  char thread_name[PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE];
   size_t length = strlen(short_name);
   if (length >= sizeof(thread_name)) {
     length = sizeof(thread_name) - 1;

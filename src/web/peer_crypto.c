@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
@@ -119,10 +120,10 @@ EMSCRIPTEN_KEEPALIVE browser_peer_crypto_t *peer_crypto_create(bool server, int 
     private_key_t *key = server ? &ctx->server_private_key : &ctx->client_private_key;
     public_key_t *public_key = server ? &ctx->server_public_key : &ctx->client_public_key;
     key->type = KEY_TYPE_ED25519;
-    memcpy(key->key.ed25519, identity, 64);
-    memcpy(key->public_key, identity + 32, 32);
+    memcpy(key->key.ed25519, identity, ED25519_PRIVATE_KEY_SIZE);
+    memcpy(key->public_key, identity + ED25519_SEED_SIZE, ED25519_PUBLIC_KEY_SIZE);
     public_key->type = KEY_TYPE_ED25519;
-    memcpy(public_key->key, identity + 32, 32);
+    memcpy(public_key->key, identity + ED25519_SEED_SIZE, ED25519_PUBLIC_KEY_SIZE);
   }
   if (expected_key && server) {
     ctx->client_whitelist = SAFE_CALLOC(1, sizeof(public_key_t), public_key_t *);
@@ -131,13 +132,13 @@ EMSCRIPTEN_KEEPALIVE browser_peer_crypto_t *peer_crypto_create(bool server, int 
       return NULL;
     }
     ctx->client_whitelist[0].type = KEY_TYPE_ED25519;
-    memcpy(ctx->client_whitelist[0].key, expected_key, 32);
+    memcpy(ctx->client_whitelist[0].key, expected_key, ED25519_PUBLIC_KEY_SIZE);
     ctx->num_whitelisted_clients = 1;
     ctx->require_client_auth = true;
   } else if (expected_key) {
     ctx->verify_server_key = true;
     ctx->expected_server_key_bytes_set = true;
-    memcpy(ctx->expected_server_key_bytes, expected_key, 32);
+    memcpy(ctx->expected_server_key_bytes, expected_key, ED25519_PUBLIC_KEY_SIZE);
   }
   peer->transport.methods = &peer_methods;
   peer->transport.impl_data = peer;

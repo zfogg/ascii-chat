@@ -52,8 +52,10 @@ asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsi
 size_t audio_resample_stereo(audio_resampler_t *state, const float *input, size_t frames, double input_rate,
                              float *output, size_t capacity, double output_rate) {
   if (!state || !input || !output || !frames || !isfinite(input_rate) || !isfinite(output_rate) || input_rate < 8000 ||
-      input_rate > 192000 || output_rate < 8000 || output_rate > 192000)
+      input_rate > 192000 || output_rate < 8000 || output_rate > 192000) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stereo resampling buffers, frame count, or sample rates");
     return 0;
+  }
   const double step = input_rate / output_rate;
   double position = state->phase;
   if (!state->has_previous && position < 0)

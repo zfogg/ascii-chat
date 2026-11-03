@@ -4,6 +4,9 @@
  * @ingroup video
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE 32
+
 #include <ascii-chat/video/anim/controller.h>
 #include "../anim/backends.h"
 #include <ascii-chat/video/rgba/color_filter.h>
@@ -369,7 +372,7 @@ char *rainbow_render_ansi_at(const char *ansi_string, float time_seconds) {
   color_filter_calculate_rainbow(time_seconds, &rainbow_r, &rainbow_g, &rainbow_b);
 
   // Build the replacement ANSI code string once
-  char rainbow_code[32];
+  char rainbow_code[VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE];
   snprintf(rainbow_code, sizeof(rainbow_code), "\x1b[38;2;%d;%d;%dm", rainbow_r, rainbow_g, rainbow_b);
   size_t rainbow_code_len = strlen(rainbow_code);
 

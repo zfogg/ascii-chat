@@ -4,6 +4,7 @@
  * @ingroup platform
  */
 
+#include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
@@ -19,7 +20,7 @@
  * ============================================================================ */
 
 static uint16_t g_pending_high;
-static char g_utf8[5];
+static char g_utf8[UTF8_BUFFER_SIZE];
 static size_t g_utf8_next, g_utf8_count;
 static keyboard_key_t g_repeat_key;
 static WORD g_repeat_count;

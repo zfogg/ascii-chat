@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UI_OUTPUT_TEXT_BUFFER_SIZE 4096
+
 #include <ascii-chat/ui/output.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <stdatomic.h>
@@ -20,7 +24,7 @@ asciichat_error_t ui_output_write(int fd, const char *data, size_t length) {
 asciichat_error_t ui_output_printf(int fd, const char *format, ...) {
   if (!format)
     return SET_ERRNO(ERROR_INVALID_PARAM, "UI output format is NULL");
-  char text[4096];
+  char text[UI_OUTPUT_TEXT_BUFFER_SIZE];
   va_list args;
   va_start(args, format);
   int n = vsnprintf(text, sizeof(text), format, args);

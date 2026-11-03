@@ -9,6 +9,7 @@
  * in the future when we add randomart and other features.
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stdbool.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
@@ -20,7 +21,8 @@
  * @param secret_key Output buffer for 64-byte secret key
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t acds_identity_generate(uint8_t public_key[32], uint8_t secret_key[64]);
+asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                         uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
 
 /**
  * @brief Load identity from file
@@ -29,7 +31,8 @@ asciichat_error_t acds_identity_generate(uint8_t public_key[32], uint8_t secret_
  * @param secret_key Output buffer for 64-byte secret key
  * @return ASCIICHAT_OK on success, ERROR_CONFIG if file doesn't exist
  */
-asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], uint8_t secret_key[64]);
+asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                     uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
 
 /**
  * @brief Save identity to file
@@ -38,14 +41,15 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], u
  * @param secret_key 64-byte secret key
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[32], const uint8_t secret_key[64]);
+asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                     const uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
 
 /**
  * @brief Compute SHA256 fingerprint of public key
  * @param public_key 32-byte Ed25519 public key
  * @param fingerprint Output buffer for 65 bytes (64 hex chars + null terminator)
  */
-void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65]);
+void acds_identity_fingerprint(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], char fingerprint[HEX_STRING_SIZE_32]);
 
 /**
  * @brief Get default identity file path for current platform
