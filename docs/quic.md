@@ -121,3 +121,15 @@ and lossy datagrams, and coordinated key epochs across control transitions.
 A single fixed window shared by all flows can reject an indefinitely delayed
 reliable control packet after enough media arrives. Media must not pass a rekey
 or setup barrier until the receiver has acknowledged the required state.
+
+An experimental private security codec binds sender direction, traffic class,
+delivery mode, and a per-flow sequence inside each ACIP-encrypted packet.
+Reliable flows track their own monotonic receive sequence; media datagrams use
+separate 64-packet replay windows. Authentication and packet validation happen
+before receive state changes, and the codec rejects use during rekey or after
+the borrowed crypto context changes key epoch. Its owner must serialize all
+access to that context, retain exactly one security state for the epoch, and
+establish an acknowledged barrier before replacing the state. This codec is
+not connected to the transport or negotiated with a peer yet; in particular,
+it does not by itself implement datagram fragmentation, handshake transitions,
+or end-to-end replay protection for existing connections.

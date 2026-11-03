@@ -6,6 +6,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/buffer.h>
 #include <network/quic/connection.h>
+#include <network/quic/security.h>
 #include <network/quic/tls.h>
 #include <network/quic/udp.h>
 #include <openssl/pem.h>
@@ -175,6 +176,142 @@ static uint8_t *make_packet(packet_type_t type, size_t payload_length, size_t *l
                                 HOST_TO_NET_U32(asciichat_crc32(packet + sizeof(packet_header_t), payload_length))};
   memcpy(packet, &header, sizeof(header));
   return packet;
+}
+
+static void quic_secure_framing(void) {
+  crypto_context_t client_crypto, server_crypto;
+  CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&server_crypto, client_crypto.public_key) == CRYPTO_OK);
+  CHECK(memcmp(server_crypto.shared_key, client_crypto.shared_key, sizeof(client_crypto.shared_key)) == 0);
+  acip_quic_security_t client = {0}, server = {0};
+  CHECK(acip_quic_security_init(&client, &client_crypto, false) == ERROR_INVALID_STATE);
+  client_crypto.handshake_complete = server_crypto.handshake_complete = true;
+  CHECK(acip_quic_security_init(&client, &client_crypto, false) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_init(&server, &server_crypto, true) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_init(&server, &server_crypto, true) == ERROR_INVALID_STATE);
+  size_t audio_length = 0, control_length = 0;
+  uint8_t *audio = make_packet(PACKET_TYPE_AUDIO_BATCH, 16, &audio_length);
+  uint8_t *control = make_packet(PACKET_TYPE_PING, 8, &control_length);
+  uint8_t *wire[3] = {NULL, NULL, NULL}, *plain = NULL;
+  size_t wire_length[3] = {0}, plain_length = 0;
+  for (size_t i = 0; i < 3; ++i)
+    CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, audio, audio_length, &wire[i],
+                                  &wire_length[i]) == ASCIICHAT_OK);
+  CHECK(memcmp(wire[0] + sizeof(packet_header_t), wire[1] + sizeof(packet_header_t), CRYPTO_NONCE_SIZE) != 0);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, wire[1], wire_length[1], &plain,
+                                &plain_length) == ERROR_NETWORK_PROTOCOL &&
+        !plain);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_RELIABLE, wire[1], wire_length[1], &plain,
+                                &plain_length) == ERROR_NETWORK_PROTOCOL &&
+        !plain);
+  CHECK(acip_quic_security_open(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire[1], wire_length[1], &plain,
+                                &plain_length) == ERROR_NETWORK_PROTOCOL &&
+        !plain);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire[1], wire_length[1], &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  CHECK(plain_length == audio_length && memcmp(plain, audio, audio_length) == 0);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire[0], wire_length[0], &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire[1], wire_length[1], &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  uint8_t *tampered = buffer_alloc(NULL, wire_length[2]);
+  CHECK(tampered);
+  memcpy(tampered, wire[2], wire_length[2]);
+  tampered[wire_length[2] - 1] ^= 1;
+  packet_header_t outer;
+  memcpy(&outer, tampered, sizeof(outer));
+  outer.crc32 = HOST_TO_NET_U32(asciichat_crc32(tampered + sizeof(outer), wire_length[2] - sizeof(outer)));
+  memcpy(tampered, &outer, sizeof(outer));
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, tampered, wire_length[2], &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire[2], wire_length[2], &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  buffer_release(tampered);
+  for (size_t i = 0; i < 3; ++i)
+    buffer_release(wire[i]);
+  wire[0] = NULL;
+  CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_DATAGRAM, control, control_length,
+                                &wire[0], &wire_length[0]) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, control, control_length,
+                                &wire[0], &wire_length[0]) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, wire[0], wire_length[0], &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, wire[0], wire_length[0], &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  uint8_t *reply = NULL;
+  size_t reply_length = 0;
+  CHECK(acip_quic_security_seal(&server, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, control, control_length, &reply,
+                                &reply_length) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_open(&client, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, reply, reply_length, &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  buffer_release(reply);
+  size_t visual_length = 0;
+  uint8_t *visual = make_packet(PACKET_TYPE_IMAGE_FRAME, 12, &visual_length);
+  uint8_t *first = NULL, *within_window = NULL, *last = NULL;
+  size_t first_length = 0, within_window_length = 0, last_length = 0;
+  for (unsigned i = 0; i < 65; ++i) {
+    uint8_t *next = NULL;
+    size_t next_length = 0;
+    CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, visual, visual_length, &next,
+                                  &next_length) == ASCIICHAT_OK);
+    if (i == 0) {
+      first = next;
+      first_length = next_length;
+    } else if (i == 1) {
+      within_window = next;
+      within_window_length = next_length;
+    } else if (i == 64) {
+      last = next;
+      last_length = next_length;
+    } else {
+      buffer_release(next);
+    }
+  }
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, last, last_length, &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, first, first_length, &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, within_window,
+                                within_window_length, &plain, &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, within_window,
+                                within_window_length, &plain, &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  buffer_release(first);
+  buffer_release(within_window);
+  buffer_release(last);
+  buffer_release(visual);
+  server_crypto.rekey_in_progress = true;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, wire[0], wire_length[0], &plain,
+                                &plain_length) == ERROR_INVALID_STATE &&
+        !plain);
+  server_crypto.rekey_in_progress = false;
+  ++server_crypto.rekey_count;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, wire[0], wire_length[0], &plain,
+                                &plain_length) == ERROR_INVALID_STATE &&
+        !plain);
+  buffer_release(wire[0]);
+  buffer_release(audio);
+  buffer_release(control);
+  crypto_destroy(&server_crypto);
+  crypto_destroy(&client_crypto);
 }
 
 static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *needle, size_t needle_length) {
@@ -431,7 +568,7 @@ typedef struct {
 } udp_test_state_t;
 
 static asciichat_error_t udp_capture(acip_traffic_class_t traffic_class, const void *packet, size_t length,
-                                      void *context) {
+                                     void *context) {
   udp_test_state_t *state = context;
   if (traffic_class != ACIP_TRAFFIC_CONTROL || length != state->length || memcmp(packet, state->packet, length))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected UDP test packet");
@@ -457,7 +594,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   server_state.packet = client_state.packet = packet;
   server_state.length = client_state.length = length;
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept,
-                                       &server_state, &server) == ASCIICHAT_OK);
+                                      &server_state, &server) == ASCIICHAT_OK);
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
         ASCIICHAT_OK);
   struct sockaddr_storage server_address;
@@ -467,7 +604,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   uint64_t start = time_get_ns();
   for (size_t i = 0; i < 2; ++i) {
     CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&server_address, server_length,
-                                 start, &clients[i]) == ASCIICHAT_OK);
+                                start, &clients[i]) == ASCIICHAT_OK);
     CHECK(acip_quic_connection_set_receiver(clients[i], udp_capture, &client_state) == ASCIICHAT_OK);
   }
   bool submitted = false;
@@ -520,7 +657,7 @@ static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
   udp_test_state_t state = {0};
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &state,
-                                       &server) == ASCIICHAT_OK);
+                                      &server) == ASCIICHAT_OK);
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
         ASCIICHAT_OK);
   struct sockaddr_storage address;
@@ -529,7 +666,7 @@ static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *
   acip_quic_connection_t *connection = NULL;
   uint64_t start = time_get_ns();
   CHECK(acip_quic_udp_connect(client, client_tls, "other.example", (struct sockaddr *)&address, address_length, start,
-                               &connection) == ASCIICHAT_OK);
+                              &connection) == ASCIICHAT_OK);
   bool rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
@@ -554,6 +691,7 @@ int main(int argc, char **argv) {
   CHECK(argc == 5);
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
+  quic_secure_framing();
   EVP_PKEY *key = make_key(), *other_key = make_key();
   X509 *cert = make_certificate(key), *other_cert = make_certificate(other_key);
   write_certificate(argv[1], cert);
