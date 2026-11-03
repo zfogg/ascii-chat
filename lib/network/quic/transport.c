@@ -169,6 +169,7 @@ static asciichat_error_t quic_close_locked(quic_transport_t *quic, asciichat_err
   if (quic->lane)
     cond_broadcast(&quic->received);
   asciichat_error_t result = acip_quic_connection_clear_receiver(quic->connection, quic);
+  quic->connection = NULL;
   while (quic->head) {
     received_packet_t *item = quic->head;
     quic->head = item->next;
@@ -226,7 +227,7 @@ static bool quic_pending(acip_transport_t *transport) {
 static size_t quic_queued(acip_transport_t *transport) {
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  size_t bytes = acip_quic_connection_pending_bytes(quic->connection);
+  size_t bytes = quic->connection ? acip_quic_connection_pending_bytes(quic->connection) : 0;
   lane_unlock(quic);
   return bytes;
 }

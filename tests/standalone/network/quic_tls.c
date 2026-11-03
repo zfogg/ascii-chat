@@ -881,6 +881,12 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     CHECK(acip_quic_transport_fail(server_transport, ERROR_CRYPTO) == ASCIICHAT_OK);
     CHECK(thread_join(&thread, NULL) == 0);
     CHECK(receiver.result == ERROR_CRYPTO && !receiver.allocation);
+    mutex_lock(&server_lane);
+    CHECK(acip_quic_udp_remove(server, server_state.peer) == ASCIICHAT_OK);
+    server_state.peer = NULL;
+    mutex_unlock(&server_lane);
+    CHECK(server_transport->methods->queued_bytes(server_transport) == 0);
+    CHECK(acip_transport_send(server_transport, packets[0], lengths[0]) == ERROR_CRYPTO);
     receiver = (quic_concurrent_receiver_t){.transport = client_transport};
     client_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
     CHECK(acthread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
