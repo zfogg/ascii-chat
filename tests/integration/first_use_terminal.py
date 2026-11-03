@@ -76,7 +76,8 @@ def main():
             dismissed.expect(lambda text: "Mirror previews your camera locally".lower() in text.lower(),
                              "Notice did not reopen after marker removal", timeout=30)
             dismissed.write("\x1b")
-            dismissed.pump(.5)
+            dismissed.expect(lambda text: "mirror previews your camera locally" not in text.lower(),
+                             "Escape did not dismiss the notice", timeout=10)
             assert not marker.exists(), "Escape marked the notice complete"
         finally:
             finish(dismissed)

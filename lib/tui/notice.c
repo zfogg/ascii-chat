@@ -178,6 +178,8 @@ typedef struct {
   atomic_int pages;
   atomic_int presented_page;
   int rendered_page;
+  int rendered_cols;
+  int rendered_rows;
   char text[];
 } notice_snapshot_t;
 
@@ -215,6 +217,11 @@ static void render_notice(terminal_size_t size, const void *data) {
   notice_snapshot_t *mutable_notice = (notice_snapshot_t *)notice;
   uint64_t page;
   if (notice->marker_offset) {
+    if (notice->rendered_cols != size.cols || notice->rendered_rows != size.rows) {
+      atomic_store(&mutable_notice->presented_page, -1);
+      mutable_notice->rendered_cols = size.cols;
+      mutable_notice->rendered_rows = size.rows;
+    }
     atomic_store(&mutable_notice->pages, pages);
     int requested = atomic_load(&mutable_notice->page);
     if (requested >= pages) {
@@ -280,6 +287,7 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
     atomic_init(&snapshot->pages, 0);
     atomic_init(&snapshot->presented_page, -1);
     snapshot->rendered_page = -1;
+    snapshot->rendered_cols = snapshot->rendered_rows = 0;
     memcpy(snapshot->text, text, text_bytes);
     asciichat_error_t result = ui_controller_submit(
         UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
@@ -321,6 +329,7 @@ asciichat_error_t ui_notice_present_first_use(const char *text, const char *mark
   atomic_init(&snapshot->pages, 0);
   atomic_init(&snapshot->presented_page, -1);
   snapshot->rendered_page = -1;
+  snapshot->rendered_cols = snapshot->rendered_rows = 0;
   memcpy(snapshot->text, text, text_bytes);
   memcpy(snapshot->text + text_bytes, marker_path, marker_bytes);
   asciichat_error_t result = ui_controller_submit(

@@ -1,5 +1,6 @@
 import { Modal, ModalTitle } from "@ascii-chat/shared/components/Modal";
 import { useUrlState } from "../hooks/useUrlState";
+import "./ModeInstructions.css";
 
 const instructions = {
   mirror: {
@@ -45,6 +46,7 @@ export function ModeInstructions({ mode }: { mode: InstructionMode }) {
       </button>
       <Modal
         open={open}
+        rootClassName="mode-instructions-dialog"
         onClose={() => setOpen(false)}
         className="max-w-lg rounded border border-terminal-8 bg-terminal-0 p-6 text-terminal-fg shadow-xl"
       >
