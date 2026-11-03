@@ -78,7 +78,8 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         if(APPLE)
             asciichat_check_freetype_hvf("${asciichat_freetype_BINARY_DIR}/include" "${asciichat_freetype_SOURCE_DIR}/include")
         endif()
-        set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_SOURCE_DIR}/include;${asciichat_freetype_BINARY_DIR}/include" PARENT_SCOPE)
+        # Generated options must precede the source tree's default ftoption.h.
+        set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_BINARY_DIR}/include;${asciichat_freetype_SOURCE_DIR}/include" PARENT_SCOPE)
         # Fontconfig's Autotools build consumes an installation, not CMake targets.
         add_custom_target(asciichat-freetype-stage
             COMMAND "${CMAKE_COMMAND}" --install "${asciichat_freetype_BINARY_DIR}" --prefix "${_prefix}"
