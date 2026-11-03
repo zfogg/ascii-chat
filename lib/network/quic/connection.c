@@ -63,6 +63,8 @@ struct acip_quic_connection {
   size_t pending_bytes;
   acip_quic_stream_emit_fn emit;
   void *emit_context;
+  void (*security_notify)(void *);
+  void *security_notify_context;
   asciichat_error_t callback_error;
   bool failed;
   bool tls_ready;
@@ -128,6 +130,8 @@ static asciichat_error_t open_security_packet(acip_quic_connection_t *connection
     } else if (connection->peer_ready_seen && !connection->peer_security_ready &&
                memcmp(payload, quic_ack_payload, sizeof(quic_ack_payload)) == 0) {
       connection->peer_security_ready = true;
+      if (connection->security_notify)
+        connection->security_notify(connection->security_notify_context);
     } else {
       result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC readiness barrier");
     }
@@ -617,7 +621,17 @@ asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC receive callback context");
   connection->emit = NULL;
   connection->emit_context = NULL;
+  connection->security_notify = NULL;
+  connection->security_notify_context = NULL;
   return ASCIICHAT_OK;
+}
+
+void acip_quic_connection_set_security_notifier(acip_quic_connection_t *connection, void (*notify)(void *),
+                                                void *context) {
+  if (connection) {
+    connection->security_notify = notify;
+    connection->security_notify_context = notify ? context : NULL;
+  }
 }
 
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection) {

@@ -3,6 +3,9 @@
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/network/acip/send.h>
+#ifndef __EMSCRIPTEN__
+#include <ascii-chat/network/acip/quic.h>
+#endif
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/keys.h>
@@ -13,6 +16,34 @@
 #include <ascii-chat/log/log.h>
 #include <sodium.h>
 #include <string.h>
+
+static bool is_quic(acip_transport_t *transport) {
+#ifdef __EMSCRIPTEN__
+  (void)transport;
+  return false;
+#else
+  return acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC;
+#endif
+}
+
+static asciichat_error_t finish_quic_security(acip_transport_t *transport, crypto_handshake_context_t *handshake) {
+#ifdef __EMSCRIPTEN__
+  (void)transport;
+  (void)handshake;
+  return ASCIICHAT_OK;
+#else
+  if (!is_quic(transport))
+    return ASCIICHAT_OK;
+  if (!handshake->crypto_ctx.encrypt_data || !crypto_handshake_is_ready(handshake))
+    return SET_ERRNO(ERROR_CRYPTO, "QUIC requires authenticated ACIP encryption");
+  asciichat_error_t result = acip_quic_transport_begin_security(transport, &handshake->crypto_ctx);
+  if (result == ASCIICHAT_OK)
+    result = acip_quic_transport_wait_security(transport, 30 * NS_PER_SEC_INT);
+  if (result == ASCIICHAT_OK)
+    result = acip_quic_transport_allow_media(transport);
+  return result;
+#endif
+}
 
 /** Advance one media-server handshake step without consuming application packets.
  * Version/policy admission (0) precedes algorithm selection (1), optional pinned
@@ -162,8 +193,22 @@ asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_tra
                                               const void *payload, size_t length) {
   if (!n || !n->handshake || !transport || n->ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid connection negotiation state");
-  if (n->protocol == NETWORK_PROTOCOL_MEDIA)
-    return media_receive(n, transport, type, payload, length);
+  if (is_quic(transport) && n->step == 0 && type == PACKET_TYPE_PROTOCOL_VERSION &&
+      length == sizeof(protocol_version_packet_t)) {
+    protocol_version_packet_t version;
+    memcpy(&version, payload, sizeof(version));
+    if (!ACIP_CRYPTO_HAS_ENCRYPT(version.supports_encryption))
+      return SET_ERRNO(ERROR_CRYPTO, "QUIC requires ACIP encryption");
+  }
+  if (n->protocol == NETWORK_PROTOCOL_MEDIA) {
+    asciichat_error_t result = media_receive(n, transport, type, payload, length);
+    if (result == ASCIICHAT_OK && n->ready) {
+      result = finish_quic_security(transport, n->handshake);
+      if (result != ASCIICHAT_OK)
+        n->ready = false;
+    }
+    return result;
+  }
   crypto_handshake_context_t *ctx = n->handshake;
   asciichat_error_t result;
   switch (n->step) {
@@ -204,7 +249,12 @@ asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_tra
   n->ready = ctx->state == CRYPTO_HANDSHAKE_READY;
   if (n->ready)
     transport->crypto_ctx = &ctx->crypto_ctx;
-  return ASCIICHAT_OK;
+  if (n->ready) {
+    result = finish_quic_security(transport, ctx);
+    if (result != ASCIICHAT_OK)
+      n->ready = false;
+  }
+  return result;
 }
 
 static asciichat_error_t negotiation_read(acip_transport_t *transport, uint64_t deadline, packet_type_t *type,
@@ -353,9 +403,13 @@ asciichat_error_t network_client_negotiate(acip_transport_t *transport, crypto_h
                                            network_protocol_t protocol) {
   if (!transport || !ctx || mode > ACIP_CRYPTO_FULL || protocol > NETWORK_PROTOCOL_DISCOVERY)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client negotiation");
+  if (is_quic(transport) && !ACIP_CRYPTO_HAS_ENCRYPT(mode))
+    return SET_ERRNO(ERROR_CRYPTO, "QUIC requires ACIP encryption");
   uint64_t timeout = transport->receive_timeout_ns;
   asciichat_error_t result = protocol == NETWORK_PROTOCOL_DISCOVERY ? discovery_client_negotiate(transport, ctx, mode)
                                                                     : client_negotiate(transport, ctx, mode);
   transport->receive_timeout_ns = timeout;
+  if (result == ASCIICHAT_OK)
+    result = finish_quic_security(transport, ctx);
   return result;
 }

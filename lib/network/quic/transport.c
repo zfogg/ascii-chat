@@ -21,6 +21,7 @@ typedef struct {
   acip_quic_connection_t *connection;
   mutex_t *lane;
   cond_t received;
+  cond_t security_changed;
   void (*wake)(void *);
   void *wake_context;
   void (*on_destroy)(acip_transport_t *, void *);
@@ -32,6 +33,12 @@ typedef struct {
 } quic_transport_t;
 
 static const acip_transport_methods_t quic_methods;
+
+static void security_ready_notify(void *context) {
+  quic_transport_t *quic = context;
+  if (quic->lane)
+    cond_broadcast(&quic->security_changed);
+}
 
 static void lane_lock(quic_transport_t *quic) {
   if (quic->lane)
@@ -178,8 +185,10 @@ static asciichat_error_t quic_close_locked(quic_transport_t *quic, asciichat_err
   quic->failure = reason;
   quic->wake = NULL;
   quic->wake_context = NULL;
-  if (quic->lane)
+  if (quic->lane) {
     cond_broadcast(&quic->received);
+    cond_broadcast(&quic->security_changed);
+  }
   asciichat_error_t result = acip_quic_connection_clear_receiver(quic->connection, quic);
   quic->connection = NULL;
   while (quic->head) {
@@ -228,6 +237,8 @@ asciichat_error_t acip_quic_transport_destroy_unclaimed_on_lane(acip_transport_t
     return result;
   if (quic->lane)
     cond_destroy(&quic->received);
+  if (quic->lane)
+    cond_destroy(&quic->security_changed);
   SAFE_FREE((*transport)->impl_data);
   SAFE_FREE(*transport);
   *transport = NULL;
@@ -280,6 +291,31 @@ bool acip_quic_transport_security_ready(acip_transport_t *transport) {
   bool ready = quic->connected && acip_quic_connection_security_ready(quic->connection);
   lane_unlock(quic);
   return ready;
+}
+
+asciichat_error_t acip_quic_transport_wait_security(acip_transport_t *transport, uint64_t timeout_ns) {
+  if (!transport || transport->methods != &quic_methods)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport");
+  quic_transport_t *quic = transport->impl_data;
+  if (!quic->lane)
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC security wait requires a serialized endpoint");
+  uint64_t start = time_get_ns();
+  lane_lock(quic);
+  while (quic->connected && !acip_quic_connection_security_ready(quic->connection)) {
+    uint64_t elapsed = time_get_ns() - start;
+    if (elapsed >= timeout_ns) {
+      lane_unlock(quic);
+      return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC security readiness timed out");
+    }
+    int rc = cond_timedwait(&quic->security_changed, quic->lane, timeout_ns - elapsed);
+    if (rc != 0 && rc != ETIMEDOUT) {
+      lane_unlock(quic);
+      return SET_ERRNO(ERROR_THREAD, "QUIC security readiness wait failed");
+    }
+  }
+  asciichat_error_t result = quic->connected ? ASCIICHAT_OK : SET_ERRNO(quic->failure, "QUIC transport is closed");
+  lane_unlock(quic);
+  return result;
 }
 
 asciichat_error_t acip_quic_transport_allow_media(acip_transport_t *transport) {
@@ -366,6 +402,8 @@ static void quic_destroy_impl(acip_transport_t *transport) {
     quic->on_destroy(transport, quic->destroy_context);
   if (quic->lane)
     cond_destroy(&quic->received);
+  if (quic->lane)
+    cond_destroy(&quic->security_changed);
 }
 static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .sendv_ex = quic_sendv_ex,
@@ -409,17 +447,27 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
     SAFE_FREE(transport);
     return SET_ERRNO(ERROR_MEMORY, "Cannot initialize QUIC receive wait");
   }
+  if (lane && cond_init(&quic->security_changed, "quic_security") != 0) {
+    cond_destroy(&quic->received);
+    SAFE_FREE(quic);
+    SAFE_FREE(transport);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot initialize QUIC security wait");
+  }
   transport->methods = &quic_methods;
   transport->impl_data = quic;
   transport->crypto_ctx = crypto;
   if (!lane_held)
     lane_lock(quic);
   asciichat_error_t result = acip_quic_connection_set_receiver(connection, queue_received_packet, quic);
+  if (result == ASCIICHAT_OK)
+    acip_quic_connection_set_security_notifier(connection, security_ready_notify, quic);
   if (!lane_held)
     lane_unlock(quic);
   if (result != ASCIICHAT_OK) {
-    if (lane)
+    if (lane) {
       cond_destroy(&quic->received);
+      cond_destroy(&quic->security_changed);
+    }
     SAFE_FREE(quic);
     SAFE_FREE(transport);
     return result;

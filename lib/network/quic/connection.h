@@ -52,6 +52,9 @@ asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *conn
                                                     void *context);
 /** Detach the current receiver on the connection lane before freeing its context. */
 asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context);
+/** The notifier runs on the serialized lane when the readiness exchange completes. */
+void acip_quic_connection_set_security_notifier(acip_quic_connection_t *connection, void (*notify)(void *),
+                                                void *context);
 /** Permit outbound media after the authenticated readiness exchange. The
  * owner must separately coordinate later application control barriers. */
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection);

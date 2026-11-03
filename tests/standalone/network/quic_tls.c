@@ -2,6 +2,7 @@
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/quic.h>
 #include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/platform/filesystem.h>
@@ -911,6 +912,19 @@ typedef struct {
   bool received;
 } quic_network_capture_t;
 
+typedef struct {
+  acip_transport_t *transport;
+  crypto_handshake_context_t *handshake;
+  asciichat_error_t result;
+} quic_client_negotiation_t;
+
+static void *quic_client_negotiate_thread(void *context) {
+  quic_client_negotiation_t *state = context;
+  state->result =
+      network_client_negotiate(state->transport, state->handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA);
+  return NULL;
+}
+
 static asciichat_error_t quic_network_packet(network_connection_t *connection, packet_type_t type, const void *payload,
                                              size_t length, void *context) {
   quic_network_capture_t *capture = context;
@@ -955,6 +969,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
     time_sleep_ns(NS_PER_MS_INT);
   }
   CHECK(ready && client_caps.datagrams && server_caps.datagrams);
+  CHECK(acip_quic_transport_wait_security(outbound, 0) == ERROR_NETWORK_TIMEOUT);
   CHECK(acip_quic_release(client, &inbound) == ERROR_INVALID_PARAM && inbound);
   crypto_handshake_context_t client_handshake, server_handshake;
   CHECK(crypto_handshake_init_with_password("public-client", &client_handshake, false, "test-password") ==
@@ -962,25 +977,45 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(crypto_handshake_init_with_password("public-server", &server_handshake, true, "test-password") == ASCIICHAT_OK);
   SAFE_STRNCPY(client_handshake.server_ip, "127.0.0.1", sizeof(client_handshake.server_ip));
   client_handshake.server_port = 27224;
-  CHECK(crypto_handshake_server_send_parameters(&server_handshake, inbound) == ASCIICHAT_OK);
-  CHECK(crypto_handshake_server_start(&server_handshake, inbound) == ASCIICHAT_OK);
+  CHECK(network_client_negotiate(outbound, &client_handshake, ACIP_CRYPTO_NONE, NETWORK_PROTOCOL_MEDIA) ==
+        ERROR_CRYPTO);
+  network_negotiation_t server_negotiation = {.protocol = NETWORK_PROTOCOL_MEDIA,
+                                              .handshake = &server_handshake,
+                                              .initialized = true,
+                                              .password = "test-password",
+                                              .require_auth = true,
+                                              .require_encryption = true};
+  protocol_version_packet_t insecure_version = {.protocol_version = HOST_TO_NET_U16(1),
+                                                .supports_encryption = ACIP_CRYPTO_NONE};
+  CHECK(network_negotiation_receive(&server_negotiation, inbound, PACKET_TYPE_PROTOCOL_VERSION, &insecure_version,
+                                    sizeof(insecure_version)) == ERROR_CRYPTO);
+  CHECK(!server_negotiation.ready && server_negotiation.step == 0);
+  quic_client_negotiation_t client_negotiation = {.transport = outbound, .handshake = &client_handshake};
+  asciichat_thread_t negotiation_thread;
+  CHECK(acthread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread, &client_negotiation) ==
+        ASCIICHAT_OK);
   start = time_get_ns();
-  while (time_get_ns() - start < 10 * NS_PER_SEC_INT &&
-         (!crypto_handshake_is_ready(&client_handshake) || !crypto_handshake_is_ready(&server_handshake))) {
-    CHECK(quic_handshake_dispatch(outbound, &client_handshake, false) == ASCIICHAT_OK);
-    CHECK(quic_handshake_dispatch(inbound, &server_handshake, true) == ASCIICHAT_OK);
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT && !server_negotiation.ready) {
+    if (acip_transport_has_pending_data(inbound)) {
+      void *packet = NULL, *packet_allocation = NULL;
+      size_t packet_length = 0;
+      CHECK(acip_transport_recv(inbound, &packet, &packet_length, &packet_allocation) == ASCIICHAT_OK);
+      CHECK(packet_length >= sizeof(packet_header_t));
+      packet_header_t header;
+      memcpy(&header, packet, sizeof(header));
+      asciichat_error_t result =
+          network_negotiation_receive(&server_negotiation, inbound, NET_TO_HOST_U16(header.type),
+                                      (const uint8_t *)packet + sizeof(header), packet_length - sizeof(header));
+      buffer_release(packet_allocation);
+      CHECK(result == ASCIICHAT_OK);
+    }
     time_sleep_ns(NS_PER_MS_INT);
   }
+  CHECK(thread_join(&negotiation_thread, NULL) == ASCIICHAT_OK);
+  CHECK(server_negotiation.ready && client_negotiation.result == ASCIICHAT_OK);
   CHECK(crypto_handshake_is_ready(&client_handshake) && crypto_handshake_is_ready(&server_handshake));
-  CHECK(acip_quic_transport_begin_security(outbound, &client_handshake.crypto_ctx) == ASCIICHAT_OK);
-  CHECK(acip_quic_transport_begin_security(inbound, &server_handshake.crypto_ctx) == ASCIICHAT_OK);
-  start = time_get_ns();
-  while (time_get_ns() - start < 10 * NS_PER_SEC_INT &&
-         (!acip_quic_transport_security_ready(outbound) || !acip_quic_transport_security_ready(inbound)))
-    time_sleep_ns(NS_PER_MS_INT);
   CHECK(acip_quic_transport_security_ready(outbound) && acip_quic_transport_security_ready(inbound));
-  CHECK(acip_quic_transport_allow_media(outbound) == ASCIICHAT_OK);
-  CHECK(acip_quic_transport_allow_media(inbound) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_wait_security(outbound, 0) == ASCIICHAT_OK);
   size_t audio_length = 0;
   uint8_t *audio = make_packet(PACKET_TYPE_AUDIO_BATCH, 48, &audio_length);
   socket_buffer_t slice = {audio, audio_length};
@@ -1021,6 +1056,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
     time_sleep_ns(NS_PER_MS_INT);
   CHECK(acip_transport_get_capabilities(unclaimed, &client_caps) == ASCIICHAT_OK);
   CHECK(acip_quic_endpoint_stop(server) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_wait_security(inbound, 0) == ERROR_NETWORK);
   CHECK(acip_quic_endpoint_destroy(&server) == ERROR_INVALID_STATE && server);
   CHECK(acip_quic_release(server, &inbound) == ASCIICHAT_OK && !inbound);
   CHECK(acip_quic_endpoint_destroy(&server) == ASCIICHAT_OK && !server);

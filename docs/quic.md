@@ -140,8 +140,11 @@ are owned by their caller and can be destroyed directly or released through the
 endpoint, which must outlive them. It accepts resolved IPv4 or IPv6
 addresses and requires a concrete local bind address. Accept is nonblocking and
 may return a transport before TLS completes; the caller waits for negotiated
-capabilities, runs the ACIP handshake, activates its security context, and
-waits for authenticated readiness before enabling media. Stop joins the worker,
+capabilities and runs the ACIP handshake. The shared client and server
+negotiation helpers activate the security context and wait for authenticated
+readiness before enabling media; direct low-level handshake users must perform
+those steps explicitly. QUIC negotiation rejects modes without ACIP encryption.
+Stop joins the worker,
 interrupts claimed transports, and discards unclaimed accepts; callers destroy
 claimed transports before destroying the endpoint. Endpoint lifecycle calls
 must be serialized, and callers stop transport users before release. Public

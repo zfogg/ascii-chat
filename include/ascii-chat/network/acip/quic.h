@@ -38,6 +38,8 @@ asciichat_error_t acip_quic_accept(acip_quic_endpoint_t *endpoint, acip_transpor
  * caller must not access or rekey it until the transport has been released. */
 asciichat_error_t acip_quic_transport_begin_security(acip_transport_t *transport, crypto_context_t *crypto);
 bool acip_quic_transport_security_ready(acip_transport_t *transport);
+/** Wait at most timeout_ns for the authenticated readiness exchange. */
+asciichat_error_t acip_quic_transport_wait_security(acip_transport_t *transport, uint64_t timeout_ns);
 asciichat_error_t acip_quic_transport_allow_media(acip_transport_t *transport);
 
 /** Stop all users, then release through the endpoint, or destroy the transport
