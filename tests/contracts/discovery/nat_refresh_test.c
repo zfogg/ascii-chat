@@ -1,12 +1,43 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/filesystem.h>
+#include "../../../src/discovery/session.h"
+#include <ascii-chat/network/webrtc/peer_manager.h>
+
+asciichat_error_t refresh_probe(nat_quality_t *quality, const char *host, uint16_t port);
 
 int refresh_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg);
 int refresh_join(asciichat_thread_t *thread, void **result, uint64_t timeout);
 
 /* Exercise the production worker lifecycle with deterministic network/thread
  * boundaries. No camera, public STUN server, or scheduler timing is required. */
+static bool fail_peer_manager;
+static unsigned forwarded_sdp, forwarded_ice;
+static const void *forwarded_message;
+static webrtc_peer_manager_t *forwarded_manager;
+static asciichat_error_t forwarded_result;
+static asciichat_error_t refresh_manager_create(const webrtc_peer_manager_config_t *config,
+                                                const webrtc_signaling_callbacks_t *signaling,
+                                                webrtc_peer_manager_t **out) {
+  if (fail_peer_manager)
+    return ERROR_MEMORY;
+  return webrtc_peer_manager_create(config, signaling, out);
+}
+static asciichat_error_t refresh_sdp(webrtc_peer_manager_t *manager, const acip_webrtc_sdp_t *message) {
+  ++forwarded_sdp;
+  forwarded_manager = manager;
+  forwarded_message = message;
+  return forwarded_result;
+}
+static asciichat_error_t refresh_ice(webrtc_peer_manager_t *manager, const acip_webrtc_ice_t *message) {
+  ++forwarded_ice;
+  forwarded_manager = manager;
+  forwarded_message = message;
+  return forwarded_result;
+}
+#define webrtc_peer_manager_create refresh_manager_create
+#define webrtc_peer_manager_handle_sdp refresh_sdp
+#define webrtc_peer_manager_handle_ice refresh_ice
 #define nat_detect_quality refresh_probe
 #define acthread_create refresh_create
 #define thread_join_timeout refresh_join
@@ -14,6 +45,9 @@ int refresh_join(asciichat_thread_t *thread, void **result, uint64_t timeout);
 #undef thread_join_timeout
 #undef acthread_create
 #undef nat_detect_quality
+#undef webrtc_peer_manager_create
+#undef webrtc_peer_manager_handle_sdp
+#undef webrtc_peer_manager_handle_ice
 
 static discovery_session_t session;
 static uint64_t clock_ms;
@@ -545,4 +579,122 @@ Test(nat_refresh, host_without_listener_rejects_a_ready_channel_and_frees_its_ow
   discovery_on_transport_ready(owned, peer, &session);
   cr_assert_eq(recovery_destroyed, 1);
   cr_assert_eq(session_host_get_client_count(session.host_ctx), 0);
+  cr_assert_not(session.webrtc_transport_ready);
+}
+
+static void signaling_options(void) {
+  options_t *v = recovery_options();
+  v->webrtc_skip_stun = true;
+  v->webrtc_disable_turn = true;
+  recovery_publish(v);
+}
+Test(nat_refresh, malformed_signaling_is_not_forwarded_and_valid_packets_preserve_the_peer_manager_target) {
+  struct {
+    acip_webrtc_sdp_t header;
+    char body[4];
+  } sdp = {.header = {.sdp_len = HOST_TO_NET_U16(3)}, .body = "v=0"};
+  struct {
+    acip_webrtc_ice_t header;
+    char body[8];
+  } ice = {.header = {.candidate_len = HOST_TO_NET_U16(3)}, .body = {'a', 'b', 'c', 0, 'm', 0}};
+  session.state = DISCOVERY_STATE_CONNECTING_HOST;
+  handle_discovery_webrtc_sdp(&session, NULL, sizeof(sdp.header) - 1);
+  CLEAR_ERRNO_ALL();
+  handle_discovery_webrtc_sdp(&session, &sdp, sizeof(sdp.header) + 2);
+  handle_discovery_webrtc_ice(&session, NULL, sizeof(ice.header) - 1);
+  handle_discovery_webrtc_ice(&session, &ice, sizeof(ice.header) + 2);
+  cr_assert_eq(forwarded_sdp, 0);
+  cr_assert_eq(forwarded_ice, 0);
+  handle_discovery_webrtc_sdp(&session, &sdp, sizeof(sdp.header) + 3);
+  handle_discovery_webrtc_ice(&session, &ice, sizeof(ice));
+  cr_assert_eq(forwarded_sdp, 0);
+  cr_assert_eq(forwarded_ice, 0);
+  signaling_options();
+  cr_assert_eq(initialize_webrtc_peer_manager(&session), ASCIICHAT_OK);
+  forwarded_result = ERROR_NETWORK;
+  handle_discovery_webrtc_sdp(&session, &sdp, sizeof(sdp.header) + 3);
+  cr_assert_eq(forwarded_sdp, 1);
+  cr_assert_eq(forwarded_manager, session.peer_manager);
+  cr_assert_eq(forwarded_message, &sdp);
+  handle_discovery_webrtc_ice(&session, &ice, sizeof(ice));
+  cr_assert_eq(forwarded_ice, 1);
+  cr_assert_eq(forwarded_message, &ice);
+  cr_assert_eq(session.state, DISCOVERY_STATE_CONNECTING_HOST);
+  cr_assert_not(session.webrtc_transport_ready);
+}
+Test(nat_refresh, peer_manager_creation_failure_releases_stun_and_turn_arrays_before_retry) {
+  options_t *v = recovery_options();
+  v->webrtc_skip_stun = false;
+  v->webrtc_disable_turn = false;
+  SAFE_STRNCPY(v->stun_servers, "stun:127.0.0.1:3478", sizeof(v->stun_servers));
+  SAFE_STRNCPY(v->turn_servers, "turn:127.0.0.1:3478", sizeof(v->turn_servers));
+  SAFE_STRNCPY(v->turn_username, "user", sizeof(v->turn_username));
+  SAFE_STRNCPY(v->turn_credential, "secret", sizeof(v->turn_credential));
+  recovery_publish(v);
+  fail_peer_manager = true;
+  cr_assert_eq(initialize_webrtc_peer_manager(&session), ERROR_MEMORY);
+  cr_assert_null(session.peer_manager);
+  cr_assert_null(session.stun_servers);
+  cr_assert_null(session.turn_servers);
+  cr_assert_eq(session.stun_count, 0);
+  cr_assert_eq(session.turn_count, 0);
+  fail_peer_manager = false;
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(initialize_webrtc_peer_manager(&session), ASCIICHAT_OK);
+  cr_assert_not_null(session.peer_manager);
+  cr_assert_eq(session.stun_count, 1);
+  cr_assert_eq(session.turn_count, 1);
+}
+Test(nat_refresh, webrtc_handoff_releases_old_host_and_peer_and_propagates_reinitialization_failure) {
+  signaling_options();
+  session_host_config_t config = {.max_clients = 1};
+  session.host_ctx = session_host_create(&config);
+  cr_assert_not_null(session.host_ctx);
+  cr_assert_eq(initialize_webrtc_peer_manager(&session), ASCIICHAT_OK);
+  session.session_type = SESSION_TYPE_WEBRTC;
+  session.state = DISCOVERY_STATE_ACTIVE;
+  session.participant_id[0] = 1;
+  session.host_id[0] = 2;
+  session.handoff_pending = true;
+  fail_peer_manager = true;
+  cr_assert_eq(discovery_session_apply_handoff(&session), ERROR_MEMORY);
+  cr_assert_null(session.host_ctx);
+  cr_assert_null(session.peer_manager);
+  cr_assert_not(session.handoff_pending);
+  cr_assert_not(session.is_host);
+  session.handoff_pending = true;
+  fail_peer_manager = false;
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(discovery_session_apply_handoff(&session), ASCIICHAT_OK);
+  cr_assert_not_null(session.peer_manager);
+  cr_assert_eq(session.state, DISCOVERY_STATE_CONNECTING_HOST);
+}
+Test(nat_refresh, signaling_send_failures_are_reported_and_successful_messages_preserve_identity_and_payload) {
+  uint8_t id[16] = {1}, peer[16] = {2};
+  session.participant_id[0] = 3;
+  cr_assert_eq(discovery_send_sdp_via_acds(id, peer, "offer", "v=0", NULL), ERROR_INVALID_PARAM);
+  cr_assert_eq(discovery_send_ice_via_acds(id, peer, "candidate", "m", &session), ERROR_INVALID_PARAM);
+  session.acds_transport = &recovery_transport;
+  recovery_send_result = ERROR_NETWORK;
+  cr_assert_eq(discovery_send_sdp_via_acds(id, peer, "offer", "v=0", &session), ERROR_NETWORK);
+  cr_assert_eq(discovery_send_ice_via_acds(id, peer, "candidate", "m", &session), ERROR_NETWORK);
+  recovery_send_result = ASCIICHAT_OK;
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(discovery_send_sdp_via_acds(id, peer, "answer", "v=0", &session), ASCIICHAT_OK);
+  cr_assert_eq(recovery_type, PACKET_TYPE_ACIP_WEBRTC_SDP);
+  acip_webrtc_sdp_t sdp;
+  memcpy(&sdp, recovery_payload, sizeof(sdp));
+  cr_assert_arr_eq(sdp.session_id, id, 16);
+  cr_assert_arr_eq(sdp.recipient_id, peer, 16);
+  cr_assert_arr_eq(sdp.sender_id, session.participant_id, 16);
+  cr_assert_eq(sdp.sdp_type, 1);
+  cr_assert_eq(NET_TO_HOST_U16(sdp.sdp_len), 3);
+  cr_assert_arr_eq(recovery_payload + sizeof(sdp), "v=0", 3);
+  cr_assert_eq(discovery_send_ice_via_acds(id, peer, "abc", "m", &session), ASCIICHAT_OK);
+  cr_assert_eq(recovery_type, PACKET_TYPE_ACIP_WEBRTC_ICE);
+  acip_webrtc_ice_t ice;
+  memcpy(&ice, recovery_payload, sizeof(ice));
+  cr_assert_eq(NET_TO_HOST_U16(ice.candidate_len), 3);
+  const char expected[] = {'a', 'b', 'c', 0, 'm', 0};
+  cr_assert_arr_eq(recovery_payload + sizeof(ice), expected, sizeof(expected));
 }

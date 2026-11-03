@@ -754,6 +754,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     if (result != ASCIICHAT_OK) {
       log_error("Cannot admit host peer: %s", asciichat_error_format(NULL, result));
       acip_transport_destroy(transport);
+      return;
     }
   } else if (session->participant_ctx) {
     // We are a participant - set transport for ourselves

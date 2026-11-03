@@ -1603,8 +1603,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(signaling test-signaling)
     set_property(TEST signaling APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c
-        ${CMAKE_SOURCE_DIR}/src/client/crypto.c)
+    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c)
     asciichat_configure_contract(test-client-rekey)
     target_link_libraries(test-client-rekey PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-client-rekey PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1691,6 +1690,17 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     asciichat_add_contract_test(mcp-requests test-mcp-requests)
     set_property(TEST mcp-requests APPEND PROPERTY LABELS unit)
+
+    add_executable(test-entry-signals contracts/entry/signals_test.c)
+    asciichat_configure_contract(test-entry-signals)
+    target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-entry-signals PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-entry-signals)
+    set_target_properties(test-entry-signals PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(entry-signals test-entry-signals)
+    set_property(TEST entry-signals APPEND PROPERTY LABELS unit)
 
     add_executable(test-host-faults contracts/session/host_faults_test.c)
     asciichat_configure_contract(test-host-faults)

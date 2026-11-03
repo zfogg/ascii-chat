@@ -273,7 +273,8 @@ static void handle_sigterm(int sig) {
   }
 
   if (sig == SIGTERM || sig == SIGHUP || sig == SIGINT) {
-    safe_snprintf(log_out, sizeof(log_out), "%s - shutting down", log_out);
+    size_t used = strlen(log_out);
+    safe_snprintf(log_out + used, sizeof(log_out) - used, " - shutting down");
   }
   // log_console() is async-signal-safe - uses atomic ops and platform_write_all()
   log_console(LOG_INFO, log_out);
