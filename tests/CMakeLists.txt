@@ -1715,6 +1715,17 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(entry-signals test-entry-signals)
     set_property(TEST entry-signals APPEND PROPERTY LABELS unit)
 
+    add_executable(test-participant-workers contracts/session/participant_workers_test.c)
+    asciichat_configure_contract(test-participant-workers)
+    target_link_libraries(test-participant-workers PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-participant-workers PRIVATE ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-participant-workers)
+    set_target_properties(test-participant-workers PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(participant-workers test-participant-workers)
+    set_property(TEST participant-workers APPEND PROPERTY LABELS unit)
+
     add_executable(test-host-faults contracts/session/host_faults_test.c)
     asciichat_configure_contract(test-host-faults)
     target_link_libraries(test-host-faults PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
@@ -1802,6 +1813,17 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     asciichat_add_contract_test(server-main test-server-main)
     set_property(TEST server-main APPEND PROPERTY LABELS unit)
+
+    add_executable(test-server-render contracts/network/server_render_test.c)
+    asciichat_configure_contract(test-server-render)
+    target_link_libraries(test-server-render PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-server-render PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-server-render)
+    set_target_properties(test-server-render PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-render test-server-render)
+    set_property(TEST server-render APPEND PROPERTY LABELS unit)
 
     add_executable(test-server-client contracts/network/server_client_test.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c
