@@ -53,4 +53,9 @@ asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *conne
 asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                               const void *packet, size_t length);
 size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connection);
+/* Queue FIN after all previously admitted data for an open stream. No further
+ * packets may be submitted to that class. ngtcp2 retransmits the FIN on loss. */
+asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *connection,
+                                                    acip_traffic_class_t traffic_class);
+bool acip_quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class);
 void acip_quic_connection_destroy(acip_quic_connection_t **connection);

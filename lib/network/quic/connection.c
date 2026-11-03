@@ -25,7 +25,7 @@ typedef struct {
   int64_t id;
   uint64_t queued_offset, acked_offset;
   send_chunk_t *head, *tail;
-  bool initialized;
+  bool initialized, fin_requested, fin_submitted;
 } send_stream_t;
 
 typedef struct {
@@ -462,6 +462,8 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC outbound ACIP packet or traffic class");
 
   send_stream_t *stream = &connection->sends[traffic_class];
+  if (stream->fin_requested)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC traffic stream is closing");
   size_t prefix_length = stream->initialized ? 0 : ACIP_QUIC_STREAM_PREAMBLE_SIZE;
   if (stream->queued_offset > NGTCP2_MAX_VARINT - length - prefix_length)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "QUIC stream offset exhausted");
@@ -505,6 +507,26 @@ size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connecti
   return connection ? connection->pending_bytes : 0;
 }
 
+asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *connection,
+                                                    acip_traffic_class_t traffic_class) {
+  if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC traffic stream");
+  send_stream_t *stream = &connection->sends[traffic_class];
+  if (!stream->initialized || stream->fin_requested)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC traffic stream is not open or is already closing");
+  stream->fin_requested = true;
+  return ASCIICHAT_OK;
+}
+
+bool acip_quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class) {
+  if (!connection || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
+    return false;
+  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
+    if (connection->receives[i].registered && connection->receives[i].reader.traffic_class == traffic_class)
+      return connection->receives[i].reader.finished;
+  return false;
+}
+
 asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connection, const ngtcp2_path *path,
                                                const void *packet, size_t length, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || !valid_path(path) || !packet || !length)
@@ -533,7 +555,8 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
     send_chunk_t *chunk = stream->head;
     while (chunk && chunk->submitted == chunk->length)
       chunk = chunk->next;
-    if (!chunk)
+    bool send_fin = !chunk && stream->fin_requested && !stream->fin_submitted;
+    if (!chunk && !send_fin)
       continue;
     if (stream->id < 0) {
       int rc = ngtcp2_conn_open_uni_stream(connection->conn, &stream->id, NULL);
@@ -542,16 +565,26 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
       if (rc != 0)
         return rc;
     }
-    ngtcp2_vec vec = {.base = chunk->data + chunk->submitted, .len = chunk->length - chunk->submitted};
+    ngtcp2_vec vec = {0};
+    if (chunk)
+      vec = (ngtcp2_vec){.base = chunk->data + chunk->submitted, .len = chunk->length - chunk->submitted};
     ngtcp2_ssize consumed = -1;
     ngtcp2_ssize written = ngtcp2_conn_writev_stream(connection->conn, path, info, packet, capacity, &consumed,
-                                                     NGTCP2_WRITE_STREAM_FLAG_NONE, stream->id, &vec, 1, now_ns);
+                                                     send_fin ? NGTCP2_WRITE_STREAM_FLAG_FIN : NGTCP2_WRITE_STREAM_FLAG_NONE,
+                                                     stream->id, send_fin ? NULL : &vec, send_fin ? 0 : 1, now_ns);
     if (written == NGTCP2_ERR_STREAM_DATA_BLOCKED)
       continue;
     if (written < 0)
       return written;
+    if (send_fin && consumed == 0) {
+      if (!written)
+        return NGTCP2_ERR_CALLBACK_FAILURE;
+      stream->fin_submitted = true;
+      connection->packet_has_stream_data = true;
+      connection->packet_traffic_class = (acip_traffic_class_t)i;
+    }
     if (consumed > 0) {
-      if ((size_t)consumed > vec.len || !written)
+      if (send_fin || (size_t)consumed > vec.len || !written)
         return NGTCP2_ERR_CALLBACK_FAILURE;
       chunk->submitted += (size_t)consumed;
       connection->packet_has_stream_data = true;

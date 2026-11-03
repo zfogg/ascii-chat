@@ -264,6 +264,40 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
   CHECK(audio_duplicated);
   CHECK(!drop_control || control_dropped);
   CHECK(!acip_quic_connection_pending_bytes(client) && !acip_quic_connection_pending_bytes(server));
+  CHECK(acip_quic_connection_finish_stream(server, ACIP_TRAFFIC_AUDIO) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_finish_stream(server, ACIP_TRAFFIC_AUDIO) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_connection_submit(server, ACIP_TRAFFIC_AUDIO, packets[1], lengths[1]) == ERROR_INVALID_STATE);
+  bool fin_dropped = false;
+  for (unsigned step = 0; step < 10000 && !acip_quic_connection_received_fin(client, ACIP_TRAFFIC_AUDIO);
+       ++step, *clock_ns += NS_PER_MS_INT) {
+    uint8_t datagram[1452];
+    size_t datagram_length;
+    ngtcp2_path_storage path;
+    CHECK(acip_quic_connection_write(client, &path, datagram, sizeof(datagram), &datagram_length, *clock_ns) ==
+          ASCIICHAT_OK);
+    if (datagram_length) {
+      CHECK(acip_quic_connection_packet_sent(client, *clock_ns) == ASCIICHAT_OK);
+      CHECK(acip_quic_connection_receive(server, server_path, datagram, datagram_length, *clock_ns) == ASCIICHAT_OK);
+    }
+    CHECK(acip_quic_connection_write(server, &path, datagram, sizeof(datagram), &datagram_length, *clock_ns) ==
+          ASCIICHAT_OK);
+    if (datagram_length) {
+      acip_traffic_class_t packet_class;
+      bool drop = !fin_dropped && acip_quic_connection_pending_packet_class(server, &packet_class) &&
+                  packet_class == ACIP_TRAFFIC_AUDIO;
+      CHECK(acip_quic_connection_packet_sent(server, *clock_ns) == ASCIICHAT_OK);
+      if (drop)
+        fin_dropped = true;
+      else
+        CHECK(acip_quic_connection_receive(client, client_path, datagram, datagram_length, *clock_ns) == ASCIICHAT_OK);
+    }
+    if (acip_quic_connection_expiry(client) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(client, *clock_ns) == ASCIICHAT_OK);
+    if (acip_quic_connection_expiry(server) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(server, *clock_ns) == ASCIICHAT_OK);
+  }
+  CHECK(fin_dropped && acip_quic_connection_received_fin(client, ACIP_TRAFFIC_AUDIO));
+  CHECK(!acip_quic_connection_received_fin(client, ACIP_TRAFFIC_CONTROL));
   for (size_t i = 0; i < 6; ++i) {
     acip_traffic_class_t expected = i < 2 ? (acip_traffic_class_t)i : ACIP_TRAFFIC_VISUAL;
     CHECK(at_client.order[i] == expected);
