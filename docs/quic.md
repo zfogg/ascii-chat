@@ -247,6 +247,11 @@ stream. The sender gives each packet a 100 ms deadline on the monotonic clock;
 this bounds local queues, not its age at the receiver. Visual packets remain
 reliable until codec recovery is implemented.
 
+Raw `AUDIO_BATCH` payloads use a network-order batch header followed by
+network-order signed 32-bit samples scaled from floating point. The native QUIC
+fixture sends samples through the production encoder and both ACIP audio
+handlers, exercising negotiated datagrams and reliable fallback.
+
 The private connection can opt into QUIC DATAGRAM transport parameters before
 the connection is created. It requires peer support and authenticated ACIP
 readiness before media admission. The private fragment codec defines the

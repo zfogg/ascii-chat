@@ -13,12 +13,14 @@
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/network.h>
+#include <ascii-chat/audio/audio.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #ifndef CHECK
 #define CHECK(expr)                                                                                                    \
@@ -382,12 +384,15 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
   CHECK(NET_TO_HOST_U32(packet.crc32) == asciichat_crc32(body, body_len));
   switch (NET_TO_HOST_U16(packet.type)) {
   case PACKET_TYPE_AUDIO_BATCH: {
-    float samples[] = {0.0f, 1.0f, -1.0f, 0.5f};
+    float decoded[4];
     audio_batch_packet_t header;
     memcpy(&header, body, sizeof(header));
-    CHECK(header.batch_count == 1 && header.total_samples == 4);
-    CHECK(body_len == sizeof(header) + sizeof(samples));
-    CHECK(memcmp(body + sizeof(header), samples, sizeof(samples)) == 0);
+    CHECK(NET_TO_HOST_U32(header.batch_count) == 1 && NET_TO_HOST_U32(header.total_samples) == 4);
+    CHECK(NET_TO_HOST_U32(header.sample_rate) == AUDIO_SAMPLE_RATE && NET_TO_HOST_U32(header.channels) == 1);
+    CHECK(body_len == sizeof(header) + sizeof(decoded));
+    CHECK(audio_dequantize_samples(body + sizeof(header), 4, decoded) == ASCIICHAT_OK);
+    CHECK(decoded[0] == 0.0f && decoded[1] > 0.999f && decoded[2] < -0.999f && decoded[3] > 0.499f &&
+          decoded[3] < 0.501f);
     break;
   }
   case PACKET_TYPE_AUDIO_OPUS_BATCH: {
@@ -436,11 +441,13 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
 static inline void media_wire_compatibility(void) {
   acip_transport_methods_t methods = {.send = check_media};
   acip_transport_t transport = {.methods = &methods};
-  float samples[] = {0.0f, 1.0f, -1.0f, 0.5f};
+  float samples[] = {0.0f, 2.0f, -2.0f, 0.5f};
   uint16_t sizes[] = {2, 4};
   char text[4096];
   memset(text, 'A', sizeof(text));
   CHECK(acip_send_audio_batch(&transport, samples, 4, 1) == ASCIICHAT_OK);
+  float invalid[] = {NAN};
+  CHECK(acip_send_audio_batch(&transport, invalid, 1, 1) == ERROR_INVALID_PARAM);
   CHECK(acip_send_audio_opus_batch(&transport, "abcdef", 6, sizes, 2, 48000, 20) == ASCIICHAT_OK);
   CHECK(acip_send_image_frame(&transport, "abcdefghijkl", 2, 2, 0) == ASCIICHAT_OK);
   acip_frame_workspace_t workspace = {0};

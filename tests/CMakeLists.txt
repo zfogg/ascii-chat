@@ -1512,6 +1512,14 @@ if(TARGET ascii-chat-static)
     target_include_directories(test-network-vectors PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-network-vectors PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
+        add_test(NAME network-media-wire COMMAND test-network-vectors --media-wire)
+        set_tests_properties(network-media-wire PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST network-media-wire PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
         if(TARGET tests)
             add_dependencies(tests test-network-vectors)
         endif()

@@ -12,6 +12,7 @@
 typedef struct {
   size_t frames, samples, decodes, pongs, controls;
   bool fail_audio;
+  bool expect_mono_upmix;
 } sink_t;
 
 static asciichat_error_t frame(const ascii_frame_packet_t *header, const char *text, void *context) {
@@ -34,7 +35,10 @@ static asciichat_error_t samples(const float *data, size_t count, void *context)
   sink_t *sink = context;
   if (sink->fail_audio)
     return SET_ERRNO(ERROR_AUDIO, "Injected playback failure");
-  cr_assert(count == 2 && data[0] > 0.99f && data[1] < -0.99f);
+  if (sink->expect_mono_upmix)
+    cr_assert(count == 4 && data[0] > 0.99f && data[1] > 0.99f && data[2] < -0.99f && data[3] < -0.99f);
+  else
+    cr_assert(count == 2 && data[0] > 0.99f && data[1] < -0.99f);
   sink->samples += count;
   return ASCIICHAT_OK;
 }
@@ -371,6 +375,7 @@ void test_session_protocol(void) {
   test_dimensions();
   test_participant_settings();
   sink_t sinks[2] = {0};
+  sinks[0].expect_mono_upmix = true;
   const acip_transport_methods_t methods = {.sendv = send_vectors};
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},
                                     {.methods = &methods, .impl_data = &sinks[1]}};
@@ -516,7 +521,7 @@ void test_session_protocol(void) {
   cr_assert_eq(
       session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)),
       ASCIICHAT_OK);
-  cr_assert(sinks[0].samples == 2 && sinks[1].samples == 0);
+  cr_assert(sinks[0].samples == 4 && sinks[1].samples == 0);
   sinks[0].fail_audio = true;
   cr_assert_eq(
       session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)),

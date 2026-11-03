@@ -2,6 +2,8 @@
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/quic.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/crypto/handshake/client.h>
@@ -939,10 +941,27 @@ static asciichat_error_t quic_network_packet(network_connection_t *connection, p
 
 typedef struct {
   network_negotiation_t negotiation;
-  const uint8_t *audio;
-  size_t audio_length;
   atomic_t received;
 } quic_server_fixture_t;
+
+static void check_audio_samples(const audio_batch_packet_t *header, const float *samples, size_t count) {
+  CHECK(header && header->batch_count == 1 && header->total_samples == 4 && header->sample_rate == AUDIO_SAMPLE_RATE &&
+        header->channels == 1 && count == 4);
+  CHECK(samples[0] == 0.0f && samples[1] > 0.999f && samples[2] < -0.999f && samples[3] > 0.499f &&
+        samples[3] < 0.501f);
+}
+
+static void quic_server_audio(const audio_batch_packet_t *header, const float *samples, size_t count, void *client,
+                              void *context) {
+  (void)client;
+  check_audio_samples(header, samples, count);
+  atomic_store_bool(&((quic_server_fixture_t *)context)->received, true);
+}
+
+static void quic_client_audio(const audio_batch_packet_t *header, const float *samples, size_t count, void *context) {
+  check_audio_samples(header, samples, count);
+  *(bool *)context = true;
+}
 
 typedef struct {
   network_server_t *server;
@@ -983,9 +1002,13 @@ static asciichat_error_t quic_server_packet(network_connection_t *connection, pa
       network_connection_ready(connection);
     return result;
   }
-  if (type != PACKET_TYPE_AUDIO_BATCH || length != fixture->audio_length || memcmp(payload, fixture->audio, length))
+  if (type != PACKET_TYPE_AUDIO_BATCH)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC server audio");
-  atomic_store_bool(&fixture->received, true);
+  acip_server_callbacks_t callbacks = {.on_audio_batch = quic_server_audio, .app_ctx = fixture};
+  asciichat_error_t result =
+      acip_handle_server_packet(network_connection_transport(connection), type, payload, length, NULL, &callbacks);
+  if (result != ASCIICHAT_OK)
+    return result;
   return packet_send_via_transport(network_connection_transport(connection), type, payload, length, 0);
 }
 
@@ -1018,10 +1041,8 @@ static void quic_network_server_test(const char *certificate, const char *privat
     time_sleep_ns(NS_PER_MS_INT);
   }
   CHECK(ready && capabilities.datagrams == datagrams);
-  size_t audio_length = 0;
-  uint8_t *audio = make_packet(PACKET_TYPE_AUDIO_BATCH, 48, &audio_length);
-  quic_server_fixture_t fixture = {.audio = audio + sizeof(packet_header_t),
-                                   .audio_length = audio_length - sizeof(packet_header_t)};
+  float samples[] = {0.0f, 1.0f, -1.0f, 0.5f};
+  quic_server_fixture_t fixture = {0};
   network_server_config_t config = {.port = 0,
                                     .ipv4_address = "127.0.0.1",
                                     .bind_ipv4 = true,
@@ -1042,15 +1063,19 @@ static void quic_network_server_test(const char *certificate, const char *privat
   CHECK(network_client_negotiate(outbound, &client_handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA) ==
         ASCIICHAT_OK);
   CHECK(outbound->prefer_audio_datagrams);
-  CHECK(packet_send_via_transport(outbound, PACKET_TYPE_AUDIO_BATCH, fixture.audio, fixture.audio_length, 0) ==
-        ASCIICHAT_OK);
+  CHECK(acip_send_audio_batch(outbound, samples, 4, 1) == ASCIICHAT_OK);
   outbound->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   void *echo = NULL, *allocation = NULL;
   size_t echo_length = 0;
   CHECK(acip_transport_recv(outbound, &echo, &echo_length, &allocation) == ASCIICHAT_OK);
-  CHECK(atomic_load_bool(&fixture.received) && echo_length == audio_length && memcmp(echo, audio, audio_length) == 0);
+  CHECK(atomic_load_bool(&fixture.received) &&
+        echo_length == sizeof(packet_header_t) + sizeof(audio_batch_packet_t) + sizeof(samples));
+  bool client_received = false;
+  acip_client_callbacks_t callbacks = {.on_audio_batch = quic_client_audio, .app_ctx = &client_received};
+  CHECK(acip_handle_client_packet(outbound, PACKET_TYPE_AUDIO_BATCH, (uint8_t *)echo + sizeof(packet_header_t),
+                                  echo_length - sizeof(packet_header_t), &callbacks) == ASCIICHAT_OK);
+  CHECK(client_received);
   buffer_release(allocation);
-  buffer_release(audio);
   network_server_request_stop(network_server);
   CHECK(thread_join(&server_thread, NULL) == ASCIICHAT_OK && runner.result == ASCIICHAT_OK);
   CHECK(network_server_stop(network_server) == ASCIICHAT_OK);

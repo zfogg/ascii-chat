@@ -260,16 +260,38 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   if (!transport || !samples || num_samples == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
-
-  // Build batch header
-  audio_batch_packet_t header;
-  header.batch_count = batch_count;
-  header.total_samples = (uint32_t)num_samples;
-  header.sample_rate = (uint32_t)AUDIO_SAMPLE_RATE;
-  header.channels = 1;
-
-  socket_buffer_t slices[] = {{&header, sizeof(header)}, {samples, (size_t)num_samples * sizeof(float)}};
-  return packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_BATCH, slices, 2, 0);
+  if (num_samples > (MAX_PACKET_SIZE - sizeof(audio_batch_packet_t)) / sizeof(uint32_t))
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Audio batch exceeds packet size limit");
+  size_t samples_size = (size_t)num_samples * sizeof(uint32_t);
+  uint8_t *encoded = buffer_alloc(NULL, samples_size);
+  if (!encoded)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate audio batch samples");
+  _Static_assert(sizeof(float) == sizeof(uint32_t), "ACIP audio requires 32-bit floats");
+  for (uint32_t i = 0; i < num_samples; ++i) {
+    // Check the IEEE-754 exponent before arithmetic; release builds may assume finite floats.
+    uint32_t sample_bits;
+    memcpy(&sample_bits, &samples[i], sizeof(sample_bits));
+    if ((sample_bits & UINT32_C(0x7f800000)) == UINT32_C(0x7f800000)) {
+      buffer_release(encoded);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch contains a non-finite sample");
+    }
+    double sample = samples[i];
+    if (sample > 1.0)
+      sample = 1.0;
+    else if (sample < -1.0)
+      sample = -1.0;
+    int32_t quantized = (int32_t)(sample * 2147483647.0);
+    uint32_t network_sample = HOST_TO_NET_U32((uint32_t)quantized);
+    memcpy(encoded + (size_t)i * sizeof(network_sample), &network_sample, sizeof(network_sample));
+  }
+  audio_batch_packet_t header = {.batch_count = HOST_TO_NET_U32(batch_count),
+                                 .total_samples = HOST_TO_NET_U32(num_samples),
+                                 .sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE),
+                                 .channels = HOST_TO_NET_U32(1)};
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, {encoded, samples_size}};
+  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_BATCH, slices, 2, 0);
+  buffer_release(encoded);
+  return result;
 }
 
 asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *opus_data, size_t opus_len) {
