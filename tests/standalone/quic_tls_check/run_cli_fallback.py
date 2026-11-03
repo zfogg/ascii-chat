@@ -17,7 +17,7 @@ def free_port(kind):
 
 binary, fixture = sys.argv[1:3]
 flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-fallback-") as temporary:
+with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-fallback-", dir=Path.home()) as temporary:
     root = Path(temporary)
     cert, tls_key, wrong_cert, wrong_tls_key = (
         root / name for name in ("server.pem", "server.key", "other.pem", "other.key")
