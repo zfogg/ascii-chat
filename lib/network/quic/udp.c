@@ -376,3 +376,26 @@ void acip_quic_udp_endpoint_destroy(acip_quic_udp_endpoint_t **endpoint) {
   SAFE_FREE(*endpoint);
   *endpoint = NULL;
 }
+
+asciichat_error_t acip_quic_udp_migrate(acip_quic_udp_endpoint_t *endpoint, const struct sockaddr *address,
+                                        socklen_t length, uint64_t now_ns) {
+  if (!endpoint || endpoint->server_tls || endpoint->count != 1 || !valid_address(address, length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC migration requires a single client connection and concrete address");
+  if (endpoint->peers->pending_length)
+    return SET_ERRNO(ERROR_BUFFER_FULL, "Flush the pending UDP packet before migrating");
+  acip_quic_udp_endpoint_t *candidate = NULL;
+  asciichat_error_t result = acip_quic_udp_endpoint_create(address, length, NULL, NULL, NULL, &candidate);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = acip_quic_connection_migrate(endpoint->peers->connection, (struct sockaddr *)&candidate->local,
+                                        candidate->local_length, now_ns);
+  if (result == ASCIICHAT_OK) {
+    socket_t old_socket = endpoint->socket;
+    endpoint->socket = candidate->socket;
+    candidate->socket = old_socket;
+    endpoint->local = candidate->local;
+    endpoint->local_length = candidate->local_length;
+  }
+  acip_quic_udp_endpoint_destroy(&candidate);
+  return result;
+}

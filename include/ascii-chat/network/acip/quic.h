@@ -58,3 +58,14 @@ asciichat_error_t acip_quic_endpoint_stop(acip_quic_endpoint_t *endpoint);
 /** Stop must succeed and all claimed transports must be destroyed first.
  * Lifecycle calls and destruction must not run concurrently with other calls. */
 asciichat_error_t acip_quic_endpoint_destroy(acip_quic_endpoint_t **endpoint);
+
+/** Move a single-connection client endpoint to a new concrete local address.
+ * Port zero requests a new ephemeral port. TLS, ACIP keys, and stream state
+ * survive; ngtcp2 validates the new path after the immediate switch. Migration
+ * requires handshake confirmation, a spare peer CID, and peer permission.
+ * Pause transport users first, as for endpoint lifecycle calls. This call stops
+ * and restarts the worker to avoid closing a socket under its readiness wait.
+ * A rejected migration retains the original socket and live connection.
+ * The new address must have the same family as the existing remote address. */
+asciichat_error_t acip_quic_endpoint_migrate(acip_quic_endpoint_t *endpoint, const struct sockaddr *local_address,
+                                             socklen_t length);

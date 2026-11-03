@@ -43,3 +43,8 @@ bool acip_quic_udp_contains(const acip_quic_udp_endpoint_t *endpoint, const acip
 asciichat_error_t acip_quic_udp_close_peer(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_udp_remove(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection);
 void acip_quic_udp_endpoint_destroy(acip_quic_udp_endpoint_t **endpoint);
+
+/* Requires a stopped worker and a single client connection. A rejected
+ * migration leaves the existing socket and endpoint address unchanged. */
+asciichat_error_t acip_quic_udp_migrate(acip_quic_udp_endpoint_t *endpoint, const struct sockaddr *address,
+                                        socklen_t length, uint64_t now_ns);

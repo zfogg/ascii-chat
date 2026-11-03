@@ -1266,6 +1266,48 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(acip_transport_recv(inbound, &received, &received_length, &allocation) == ASCIICHAT_OK);
   CHECK(received_length == audio_length && memcmp(received, audio, audio_length) == 0);
   buffer_release(allocation);
+  // An invalid migration keeps the old path and its authenticated state usable.
+  struct sockaddr invalid_local = {0};
+  CHECK(acip_quic_endpoint_migrate(server, (struct sockaddr *)&loopback, sizeof(loopback)) == ERROR_INVALID_PARAM);
+  CHECK(acip_quic_endpoint_migrate(client, &invalid_local, sizeof(invalid_local)) == ERROR_INVALID_PARAM);
+  CHECK(acip_quic_endpoint_migrate(client, (struct sockaddr *)&client_address, client_address_length) == ERROR_NETWORK);
+  struct sockaddr_storage unchanged_address;
+  socklen_t unchanged_length = 0;
+  CHECK(acip_quic_endpoint_address(client, &unchanged_address, &unchanged_length) == ASCIICHAT_OK);
+  CHECK(unchanged_length == client_address_length && !memcmp(&unchanged_address, &client_address, unchanged_length));
+  struct sockaddr_in new_local = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(0x7f000002)};
+  start = time_get_ns();
+  asciichat_error_t migration = ERROR_INVALID_STATE;
+  do {
+    migration = acip_quic_endpoint_migrate(client, (struct sockaddr *)&new_local, sizeof(new_local));
+    CHECK(migration == ASCIICHAT_OK || migration == ERROR_INVALID_STATE || migration == ERROR_BUFFER_FULL);
+    if (migration == ASCIICHAT_OK)
+      break;
+    time_sleep_ns(NS_PER_MS_INT);
+  } while (time_get_ns() - start < 5 * NS_PER_SEC_INT);
+  CHECK(migration == ASCIICHAT_OK);
+  CHECK(acip_quic_endpoint_address(client, &client_address, &client_address_length) == ASCIICHAT_OK);
+  CHECK(((struct sockaddr_in *)&client_address)->sin_addr.s_addr == new_local.sin_addr.s_addr);
+  CHECK(memcmp(&client_address, &unchanged_address, client_address_length) != 0);
+  start = time_get_ns();
+  bool migrated = false;
+  do {
+    CHECK(acip_quic_transport_peer_address(inbound, &observed_peer, &peer_length) == ASCIICHAT_OK);
+    migrated = peer_length == client_address_length && !memcmp(&observed_peer, &client_address, peer_length);
+    if (migrated)
+      break;
+    time_sleep_ns(NS_PER_MS_INT);
+  } while (time_get_ns() - start < 5 * NS_PER_SEC_INT);
+  CHECK(migrated && acip_quic_transport_security_ready(outbound) && acip_quic_transport_security_ready(inbound));
+  CHECK(acip_transport_sendv_ex(outbound, &slice, 1, &options) == ASCIICHAT_OK);
+  CHECK(acip_transport_recv(inbound, &received, &received_length, &allocation) == ASCIICHAT_OK);
+  CHECK(received_length == audio_length && memcmp(received, audio, audio_length) == 0);
+  buffer_release(allocation);
+  CHECK(acip_send_ping(outbound) == ASCIICHAT_OK);
+  CHECK(acip_transport_recv(inbound, &received, &received_length, &allocation) == ASCIICHAT_OK);
+  CHECK(received_length == sizeof(packet_header_t) &&
+        NET_TO_HOST_U16(((packet_header_t *)received)->type) == PACKET_TYPE_PING);
+  buffer_release(allocation);
   network_connection_ready(adopted);
   outbound = NULL;
   CHECK(acip_transport_get_type(network_connection_transport(adopted)) == ACIP_TRANSPORT_QUIC);

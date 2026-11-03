@@ -324,3 +324,26 @@ asciichat_error_t acip_quic_endpoint_destroy(acip_quic_endpoint_t **endpoint) {
   *endpoint = NULL;
   return ASCIICHAT_OK;
 }
+
+asciichat_error_t acip_quic_endpoint_migrate(acip_quic_endpoint_t *endpoint, const struct sockaddr *local_address,
+                                             socklen_t length) {
+  if (!endpoint || endpoint->listener || !local_address)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client endpoint migration");
+  mutex_lock(&endpoint->lane);
+  bool available = !endpoint->stopping && !endpoint->terminal_error && endpoint->count == 1 &&
+                   endpoint->transports->connection && endpoint->worker;
+  mutex_unlock(&endpoint->lane);
+  if (!available)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC migration requires one live client connection");
+  asciichat_error_t result = acip_quic_worker_stop(&endpoint->worker);
+  if (result != ASCIICHAT_OK)
+    return result;
+  mutex_lock(&endpoint->lane);
+  result = acip_quic_udp_migrate(endpoint->udp, local_address, length, time_get_ns());
+  asciichat_error_t restart = acip_quic_worker_start_locked_failure(endpoint->udp, &endpoint->lane, connection_failed,
+                                                                    endpoint, &endpoint->worker);
+  if (restart != ASCIICHAT_OK)
+    (void)connection_failed(NULL, restart, endpoint);
+  mutex_unlock(&endpoint->lane);
+  return restart != ASCIICHAT_OK ? restart : result;
+}

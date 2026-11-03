@@ -96,3 +96,8 @@ asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *con
                                                      acip_traffic_class_t traffic_class);
 bool acip_quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class);
 void acip_quic_connection_destroy(acip_quic_connection_t **connection);
+
+/* Client-only immediate migration after handshake confirmation. The new local
+ * socket must already be bound; its owner keeps it alive for the connection. */
+asciichat_error_t acip_quic_connection_migrate(acip_quic_connection_t *connection, const struct sockaddr *local,
+                                               socklen_t length, uint64_t now_ns);

@@ -1457,3 +1457,27 @@ void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
   ngtcp2_crypto_ossl_ctx_del((*connection)->crypto);
   SAFE_FREE(*connection);
 }
+
+asciichat_error_t acip_quic_connection_migrate(acip_quic_connection_t *connection, const struct sockaddr *local,
+                                               socklen_t length, uint64_t now_ns) {
+  if (!connection || !connection->conn || connection->failed || connection->tls->server || !local ||
+      (size_t)length > sizeof(ngtcp2_sockaddr_union))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client migration");
+  const ngtcp2_path *current = ngtcp2_conn_get_path2(connection->conn);
+  ngtcp2_path path = *current;
+  path.local.addr = (struct sockaddr *)local;
+  path.local.addrlen = length;
+  if (!valid_address(&path.local) || local->sa_family != current->remote.addr->sa_family)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC migration requires a concrete address in the peer address family");
+  asciichat_error_t result = update_time(connection, now_ns);
+  if (result != ASCIICHAT_OK)
+    return result;
+  int rc = ngtcp2_conn_initiate_immediate_migration(connection->conn, &path, now_ns);
+  if (rc == NGTCP2_ERR_INVALID_STATE)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC handshake is unconfirmed or peer disabled active migration");
+  if (rc == NGTCP2_ERR_CONN_ID_BLOCKED)
+    return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC migration requires an unused peer connection ID");
+  if (rc != 0)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot initiate QUIC migration: %s", ngtcp2_strerror(rc));
+  return ASCIICHAT_OK;
+}

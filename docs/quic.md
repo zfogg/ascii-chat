@@ -204,9 +204,24 @@ remove it while retaining the other connections.
 The UDP driver routes packets by connection ID, so a server can accept a
 client's NAT rebinding and ngtcp2 validates the new peer path.
 A process test changes the server-facing port of a loopback UDP proxy during a
-call and checks path validation and continued media. This covers rebinding on
-one address family; active client-initiated migration between local sockets
-and address families is not yet implemented.
+call and checks path validation and continued media. Native applications can
+also call `acip_quic_endpoint_migrate()` to move a single-connection client
+endpoint to another concrete local address in the same address family. Port
+zero binds a new ephemeral UDP port. Producers must be paused during this
+lifecycle operation; the endpoint stops and joins its worker before replacing
+the socket, then restarts it. The TLS session, ACIP identity, keys, stream
+positions, and replay state survive. ngtcp2 initiates immediate migration and
+validates the new path. A failed bind or rejected migration keeps the old
+socket and address. Worker restart failure instead closes the transports.
+Migration requires a confirmed handshake, an unused peer connection ID, and
+peer permission. Multi-connection client endpoints and cross-family migration
+are not supported by this API. Automatic interface-change detection is left
+to the application.
+
+The native endpoint fixture moves an authenticated client from 127.0.0.1 to
+127.0.0.2, verifies the server observes its new address, and exchanges media
+datagrams and reliable control after the move. It also checks invalid addresses,
+occupied local binds, listener rejection, and unchanged state after rejection.
 
 After pumping, an owner can calculate the earliest QUIC timer and pending socket
 write interest, then wait for UDP readiness outside the lane. A wake operation
