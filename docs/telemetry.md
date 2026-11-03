@@ -72,7 +72,9 @@ measurements below describe earlier manual runs; they are not test permissions.
 installs a private, in-process Gotel test host. It exercises bounded sampling,
 explicit worker contexts, retained errors, SQLite prepare/PROFILE behavior,
 schema migrations and rate limits. It does not call production initialization
-or start an exporter worker. `otel-trace-contract` captures actual OTLP protobuf
+or start an exporter worker. It links the actual static archive so production
+database calls share the fixture host in Debug builds too. `otel-trace-contract`
+captures actual OTLP protobuf
 with Gotel's optional test API and invokes the Spaniel-owned `spaniel-assert`
 CLI using `tests/integration/otel_contract.json`. The spec checks ancestry,
 query fingerprints, omitted-text reasons, one span per database operation,
@@ -84,6 +86,21 @@ Gotel's public `querynames.check_c` API. It reads CMake's compile database so
 Clang sees the same headers and definitions as the native build. Gotel owns
 source resolution and query identity checks; project code only supplies the
 executor list and compile configuration.
+
+After configuring the native build, run the checker in its pinned Python
+environment:
+
+```sh
+uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+```
+
+Install the matching Spaniel verifier at its immutable source revision and make
+`spaniel-assert` available on `PATH` before running both contract tests:
+
+```sh
+go install github.com/zfogg/spaniel/cmd/spaniel-assert@9e30a755503f956a38a4f3b743f802910ab04dbc
+ctest --test-dir build -R 'otel-(trace-)?contract' --no-tests=error --output-on-failure
+```
 
 ### Failure alerts and active-session scope
 
@@ -279,7 +296,8 @@ allocation or lock to parent selection. Crypto/protocol/discovery failures and
 invalid-frame observations use Gotel's retained-observation policy: sampled
 parents are inherited, while dropped operations get independent observations
 with links when context IDs are available. Independent retention has its own
-per-second budget using the configured realtime cap; it does not change an
+per-second budget using the configured realtime cap (10/s when that cap is zero).
+It does not change an
 already dropped media decision. Error counters still include dropped work.
 
 HTTP names use gotel's sanitized application-prefixed convention. DNS spans
@@ -297,6 +315,10 @@ supported Gotel DB-handle wrapper, which emits rejected preparations with the
 attached catalog/privacy options and leaves successful tracing to PROFILE.
 PROFILE callbacks do not infer potentially stale SQLite error state. Migration
 batches execute individually named statements inside the same transaction.
+The attachment opts into Sequel analysis with formatted safe text, numeric source
+maps and bind descriptors. Descriptors contain positions and slot identities;
+they do not contain bind names, types or values. Gotel copies the analysis options
+at attachment, so the application's temporary options do not outlive the call.
 
 The log sink runs before mmap/console routing and console filtering, with its
 own severity threshold. Span context correlates logs on the current thread.

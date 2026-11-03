@@ -2062,7 +2062,9 @@ endif()
 
 if(BUILD_TESTS AND TARGET gotel)
     add_executable(test-otel-contract standalone/media/otel_contract_test.c)
-    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static gotel::testing ${MIMALLOC_LIBRARIES})
+    # The Debug ascii-chat-static facade selects the shared library. This
+    # white-box host must share one link image with the exercised production code.
+    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib-with-deps gotel::testing ${MIMALLOC_LIBRARIES})
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
