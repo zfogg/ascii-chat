@@ -105,6 +105,14 @@ export class WebTransportBridge {
     return this.buffered;
   }
 
+  supportsDatagrams(): boolean {
+    return (
+      this.isConnected() &&
+      Number.isFinite(this.session.datagrams.maxDatagramSize) &&
+      this.session.datagrams.maxDatagramSize > HEADER
+    );
+  }
+
   /** No reliable fallback occurs after datagram admission. deadlineMs uses the
    * same monotonic clock as performance.now(), and zero disables expiry. */
   send(

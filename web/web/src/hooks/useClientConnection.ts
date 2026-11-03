@@ -16,6 +16,7 @@ import type { AsciiRendererHandle, BinarySettingsConfig } from "../components";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import { WebRTCSession, type DiscoveryOptions } from "../network/WebRTCSession";
+import { WebTransportClientSession } from "../network/WebTransportClientSession";
 
 const STATE_NAMES: Record<number, string> = {
   [ConnectionState.DISCONNECTED]: "Disconnected",
@@ -155,7 +156,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               width,
               height,
             )
-          : new ClientConnection({
+          : new (new URL(serverUrl).protocol === "https:"
+              ? WebTransportClientSession
+              : ClientConnection)({
               serverUrl,
               ...(applicationEncryption === undefined
                 ? {}

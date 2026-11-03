@@ -1524,10 +1524,10 @@ export function ClientPage({
                     }}
                   >
                     <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
-                      Server WebSocket URL
+                      Server URL (WebSocket or WebTransport)
                       <Tooltip text={disabledSettingsHelp} className="block">
                         <input
-                          aria-label="Server WebSocket URL"
+                          aria-label="Server URL"
                           disabled={settingsDisabled}
                           value={serverUrl}
                           onChange={(event) => setServerUrl(event.target.value)}

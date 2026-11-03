@@ -142,6 +142,9 @@ export class WebTransportAcipChannel {
   getBufferedAmount(): number {
     return this.bridge.getBufferedAmount();
   }
+  supportsDatagrams(): boolean {
+    return this.bridge.supportsDatagrams();
+  }
   send(
     type: number,
     payload: Uint8Array,
