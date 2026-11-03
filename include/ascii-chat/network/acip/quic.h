@@ -7,10 +7,12 @@
 typedef struct acip_quic_endpoint acip_quic_endpoint_t;
 
 typedef struct {
-  const char *alpn;             /**< NULL selects "acip/1". */
-  const char *certificate_file; /**< Required for listeners. */
-  const char *private_key_file; /**< Required for listeners. */
-  const char *ca_file;          /**< NULL selects system trust for clients. */
+  const char *alpn;                /**< NULL selects "acip/1". */
+  const char *certificate_file;    /**< Required for listeners. */
+  const char *private_key_file;    /**< Required for listeners. */
+  const char *ca_file;             /**< NULL selects system trust for clients. */
+  const char *webtransport_origin; /**< Exact HTTPS origin; enables the server HTTP/3 listener. */
+  const char *webtransport_path;   /**< CONNECT path, required for WebTransport. */
   bool enable_datagrams;
   bool prefer_visual_datagrams; /**< Prefer negotiated visual datagrams. */
   bool prefer_audio_datagrams;  /**< Send audio as datagrams when negotiated; otherwise use reliable streams. */

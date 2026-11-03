@@ -47,6 +47,8 @@ bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *con
 uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns);
 bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection);
+/* A WebTransport listener is admitted only after its CONNECT is authorized. */
+bool acip_quic_connection_webtransport_ready(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_peer_address(const acip_quic_connection_t *connection,
                                                     struct sockaddr_storage *address, socklen_t *length);
 /* Match an incoming destination CID, including the server's original Initial

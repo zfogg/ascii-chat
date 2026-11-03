@@ -1836,7 +1836,56 @@ static void quic_cli_probe(const char *certificate, const char *port_text) {
   socket_cleanup();
 }
 
+static void quic_http3_probe_server(const char *certificate, const char *key, const char *port_text,
+                                    const char *origin) {
+  char *end = NULL;
+  unsigned long port = strtoul(port_text, &end, 10);
+  CHECK(end && !*end && port > 0 && port <= 65535);
+  CHECK(socket_init() == ASCIICHAT_OK);
+  struct sockaddr_in local = {.sin_family = AF_INET,
+                              .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK),
+                              .sin_port = HOST_TO_NET_U16((uint16_t)port)};
+  acip_quic_config_t config = {.certificate_file = certificate,
+                               .private_key_file = key,
+                               .enable_datagrams = true,
+                               .webtransport_origin = origin,
+                               .webtransport_path = "/acip"};
+  acip_quic_endpoint_t *endpoint = NULL;
+  CHECK(acip_quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &config, &endpoint) == ASCIICHAT_OK);
+  log_info("HTTP/3 probe server ready");
+  uint64_t started = time_get_ns();
+  acip_transport_t *transport = NULL;
+  while (time_get_ns() - started < 30 * NS_PER_SEC_INT && !transport) {
+    asciichat_error_t result = acip_quic_accept(endpoint, &transport);
+    CHECK(result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT);
+    if (!transport)
+      time_sleep_ns(10 * NS_PER_MS_INT);
+  }
+  CHECK(transport);
+  void *packet = NULL, *allocation = NULL;
+  size_t length = 0;
+  while (time_get_ns() - started < 30 * NS_PER_SEC_INT && !packet) {
+    asciichat_error_t result = acip_transport_recv(transport, &packet, &length, &allocation);
+    CHECK(result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT);
+  }
+  CHECK(packet && acip_transport_send(transport, packet, length) == ASCIICHAT_OK);
+  buffer_release(allocation);
+  log_info("HTTP/3 probe echoed ACIP control packet");
+  while (time_get_ns() - started < 30 * NS_PER_SEC_INT)
+    time_sleep_ns(10 * NS_PER_MS_INT);
+  CHECK(acip_quic_endpoint_stop(endpoint) == ASCIICHAT_OK);
+  CHECK(acip_quic_release(endpoint, &transport) == ASCIICHAT_OK);
+  CHECK(acip_quic_endpoint_destroy(&endpoint) == ASCIICHAT_OK);
+  socket_cleanup();
+}
+
 int main(int argc, char **argv) {
+  if (argc == 6 && strcmp(argv[1], "--http3-server") == 0) {
+    log_init(NULL, LOG_DEBUG, false, false);
+    quic_http3_probe_server(argv[2], argv[3], argv[4], argv[5]);
+    log_destroy();
+    return 0;
+  }
   if (argc == 4 && strcmp(argv[1], "--cli-probe") == 0) {
     log_init(NULL, LOG_ERROR, false, false);
     errno_suppress(true);

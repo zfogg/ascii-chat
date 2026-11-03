@@ -13,7 +13,7 @@ function packet(type: number): Uint8Array {
   view.setBigUint64(0, 0xa5c11c4a1n);
   view.setUint16(8, type);
   view.setUint32(10, 1);
-  view.setUint32(14, 0xb8b2cf7f);
+  view.setUint32(14, 0xb048173d);
   bytes[22] = 17;
   return bytes;
 }

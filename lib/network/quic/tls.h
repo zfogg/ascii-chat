@@ -13,6 +13,9 @@ typedef struct {
   bool server;
   /* Set before creating connections; defaults to disabled. */
   bool enable_datagrams;
+  bool webtransport;
+  char webtransport_origin[512];
+  char webtransport_path[512];
 } acip_quic_tls_t;
 
 /** Create a TLS 1.3 server context. Certificate and key are copied by OpenSSL. */

@@ -109,7 +109,7 @@ describe("socket establishment ownership", () => {
     const header = new DataView(packet.buffer);
     header.setBigUint64(0, 0xa5c11c4a1n);
     header.setUint32(10, 1);
-    header.setUint32(14, 0xb8b2cf7f);
+    header.setUint32(14, 0xb048173d);
     packet[22] = 17;
     first.dispatchEvent(
       new MessageEvent("message", { data: packet.slice(0, 10).buffer }),

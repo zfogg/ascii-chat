@@ -5,7 +5,7 @@ const MAGIC = [0, 0, 0, 0x0a, 0x5c, 0x11, 0xc4, 0xa1];
 const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
   let value = index;
   for (let bit = 0; bit < 8; ++bit)
-    value = (value >>> 1) ^ (0xedb88320 & -(value & 1));
+    value = (value >>> 1) ^ (0x82f63b78 & -(value & 1));
   return value >>> 0;
 });
 

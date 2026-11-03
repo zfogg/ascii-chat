@@ -44,7 +44,7 @@ struct network_server {
   network_connection_t *connections;
   size_t count;
   atomic_t stopping, executing;
-  bool listener_initialized, websocket_initialized, websocket_started, quic_failed;
+  bool listener_initialized, websocket_initialized, websocket_started, quic_failed, webtransport_failed;
 };
 
 struct network_connection {
@@ -497,18 +497,22 @@ static void server_tick(void *arg) {
   mutex_unlock(&s->registry_mutex);
   for (size_t i = 0; i < count; ++i)
     platform_event_stream_close(closing[i], ASCIICHAT_OK);
-  if (!atomic_load_bool(&s->stopping) && s->config.quic_endpoint && !s->quic_failed) {
+  acip_quic_endpoint_t *listeners[] = {s->config.quic_endpoint, s->config.webtransport_endpoint};
+  bool *failed[] = {&s->quic_failed, &s->webtransport_failed};
+  for (size_t listener = 0; listener < 2 && !atomic_load_bool(&s->stopping); ++listener) {
+    if (!listeners[listener] || *failed[listener])
+      continue;
     for (unsigned i = 0; i < 16; ++i) {
       acip_transport_t *transport = NULL;
       asciichat_errno_scope_t scope = errno_scope_begin();
-      asciichat_error_t result = acip_quic_accept(s->config.quic_endpoint, &transport);
+      asciichat_error_t result = acip_quic_accept(listeners[listener], &transport);
       if (result == ERROR_NETWORK_TIMEOUT) {
         errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
         break;
       }
       if (result != ASCIICHAT_OK) {
         log_warn("QUIC listener stopped accepting: %s", asciichat_error_format(NULL, result));
-        s->quic_failed = true;
+        *failed[listener] = true;
         errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
         break;
       }

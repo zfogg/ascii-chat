@@ -1,0 +1,332 @@
+import { chromium } from "@playwright/test";
+import { createServer as createVite } from "vite";
+import { execFileSync, spawn } from "node:child_process";
+import {
+  mkdtempSync,
+  readFileSync,
+  mkdirSync,
+  copyFileSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { createSocket } from "node:dgram";
+import { createServer as createTcp } from "node:net";
+import { X509Certificate, createHash } from "node:crypto";
+// Run from web/web: node tests/network/webtransport-live.mjs <native-binary> <wasm-directory>.
+// Requires openssl, ssh-keygen, and Playwright Chromium (or CHROME_PATH).
+const [binary, wasmDir] = process.argv.slice(2);
+if (!binary || !wasmDir)
+  throw new Error(
+    "Usage: node tests/network/webtransport-live.mjs <native-binary> <wasm-directory>",
+  );
+const dir = mkdtempSync(join(tmpdir(), "acip-wt-app-")),
+  key = join(dir, "key.pem"),
+  cert = join(dir, "cert.pem");
+execFileSync(
+  process.env.OPENSSL || "openssl",
+  [
+    "req",
+    "-x509",
+    "-newkey",
+    "ec",
+    "-pkeyopt",
+    "ec_paramgen_curve:P-256",
+    "-nodes",
+    "-days",
+    "1",
+    "-subj",
+    "/CN=localhost",
+    "-addext",
+    "subjectAltName=DNS:localhost,IP:127.0.0.1",
+    "-keyout",
+    key,
+    "-out",
+    cert,
+  ],
+  { stdio: "ignore" },
+);
+const identity = join(dir, "identity");
+execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", identity]);
+const serverPublicKey = readFileSync(`${identity}.pub`, "utf8");
+const publicDir = join(dir, "public");
+mkdirSync(join(publicDir, "wasm"), { recursive: true });
+for (const file of ["client.js", "client.wasm"])
+  copyFileSync(join(resolve(wasmDir), file), join(publicDir, "wasm", file));
+const vite = await createVite({
+  configFile: false,
+  root: process.cwd(),
+  publicDir,
+  resolve: {
+    alias: { "@ascii-chat/shared": resolve("../packages/shared/src") },
+  },
+  server: {
+    host: "127.0.0.1",
+    port: 0,
+    strictPort: false,
+    hmr: false,
+    https: { key: readFileSync(key), cert: readFileSync(cert) },
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+  },
+});
+await vite.listen();
+const pagePort = vite.httpServer.address().port;
+const udp = createSocket("udp4");
+await new Promise((r) => udp.bind(0, "127.0.0.1", r));
+const udpPort = udp.address().port;
+await new Promise((r) => udp.close(r));
+async function freeTcp() {
+  const s = createTcp();
+  await new Promise((r) => s.listen(0, "127.0.0.1", r));
+  const p = s.address().port;
+  await new Promise((r) => s.close(r));
+  return p;
+}
+const tcpPort = await freeTcp(),
+  wsPort = await freeTcp();
+const hash = [
+  ...createHash("sha256")
+    .update(new X509Certificate(readFileSync(cert)).raw)
+    .digest(),
+];
+const env = { ...process.env };
+const server = spawn(
+  resolve(binary),
+  [
+    "--log-level",
+    "debug",
+    "server",
+    "127.0.0.1",
+    "--port",
+    String(tcpPort),
+    "--websocket-port",
+    String(wsPort),
+    "--webtransport-bind-address",
+    "127.0.0.1",
+    "--webtransport-port",
+    String(udpPort),
+    "--webtransport-origin",
+    `https://127.0.0.1:${pagePort}`,
+    "--quic-tls-cert",
+    cert,
+    "--quic-tls-key",
+    key,
+    "--password",
+    "test-password",
+    "--key",
+    identity,
+    "--status-screen=false",
+  ],
+  { env, windowsHide: true },
+);
+let logs = "";
+server.stdout.on("data", (c) => (logs += c));
+server.stderr.on("data", (c) => (logs += c));
+let browser;
+try {
+  const deadline = Date.now() + 20000;
+  while (
+    !logs.includes("Server accepting connections") &&
+    server.exitCode === null &&
+    Date.now() < deadline
+  )
+    await new Promise((r) => setTimeout(r, 50));
+  if (!logs.includes("Server accepting connections"))
+    throw new Error(`server not ready: ${logs}`);
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROME_PATH || undefined,
+    args: ["--enable-quic"],
+  });
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  const page = await context.newPage();
+  page.on("console", (message) => console.log("browser:", message.text()));
+  page.on("pageerror", (error) => console.log("pageerror:", String(error)));
+  await page.goto(
+    `https://localhost:${pagePort}/tests/network/crypto-policy.html`,
+  );
+  const rejectedOrigin = await page.evaluate(
+    async ({ udpPort, hash }) => {
+      const wt = new WebTransport(`https://127.0.0.1:${udpPort}/acip`, {
+        serverCertificateHashes: [
+          { algorithm: "sha-256", value: new Uint8Array(hash) },
+        ],
+      });
+      try {
+        await Promise.race([
+          wt.ready,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 8000),
+          ),
+        ]);
+        wt.close();
+        return false;
+      } catch (error) {
+        if (String(error).includes("timeout")) throw error;
+        return true;
+      }
+    },
+    { udpPort, hash },
+  );
+  if (!rejectedOrigin) throw new Error("incorrect origin was accepted");
+  await page.goto(
+    `https://127.0.0.1:${pagePort}/tests/network/crypto-policy.html`,
+  );
+  const rejectedPath = await page.evaluate(
+    async ({ udpPort, hash }) => {
+      const wt = new WebTransport(`https://127.0.0.1:${udpPort}/wrong`, {
+        serverCertificateHashes: [
+          { algorithm: "sha-256", value: new Uint8Array(hash) },
+        ],
+      });
+      try {
+        await Promise.race([
+          wt.ready,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 8000),
+          ),
+        ]);
+        wt.close();
+        return false;
+      } catch (error) {
+        if (String(error).includes("timeout")) throw error;
+        return true;
+      }
+    },
+    { udpPort, hash },
+  );
+  if (!rejectedPath) throw new Error("incorrect path was accepted");
+  const rejectedCertificate = await page.evaluate(
+    async ({ udpPort, hash }) => {
+      const badHash = new Uint8Array(hash);
+      badHash[0] ^= 1;
+      const wt = new WebTransport(`https://127.0.0.1:${udpPort}/acip`, {
+        serverCertificateHashes: [{ algorithm: "sha-256", value: badHash }],
+      });
+      try {
+        await Promise.race([
+          wt.ready,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 8000),
+          ),
+        ]);
+        wt.close();
+        return false;
+      } catch (error) {
+        if (String(error).includes("timeout")) throw error;
+        return true;
+      }
+    },
+    { udpPort, hash },
+  );
+  if (!rejectedCertificate)
+    throw new Error("incorrect certificate was accepted");
+  const result = await page.evaluate(
+    async ({ udpPort, hash, serverPublicKey }) => {
+      const Original = globalThis.WebTransport;
+      globalThis.WebTransport = class extends Original {
+        constructor(url, options) {
+          super(url, {
+            ...options,
+            serverCertificateHashes: [
+              { algorithm: "sha-256", value: new Uint8Array(hash) },
+            ],
+          });
+        }
+      };
+      const { WebTransportClientSession } = await import(
+        "/src/network/WebTransportClientSession.ts"
+      );
+      const {
+        buildCapabilitiesPacket,
+        buildStreamStartPacket,
+        buildImageFramePayload,
+      } = await import("/src/network/packetBuilders.ts");
+      const session = new WebTransportClientSession({
+        serverUrl: `https://127.0.0.1:${udpPort}/acip`,
+        cryptoOptions: {
+          password: "test-password",
+          expectedServerPublicKeyText: serverPublicKey,
+        },
+        width: 40,
+        height: 12,
+      });
+      const states = [];
+      const packets = [];
+      let resolveReady, rejectReady;
+      const ready = new Promise((resolve, reject) => {
+        resolveReady = resolve;
+        rejectReady = reject;
+      });
+      session.onStateChange((state) => {
+        states.push(state);
+        if (state === 3) resolveReady();
+        if (state === 4) rejectReady(new Error("session error"));
+      });
+      session.onPacketReceived((packet) => packets.push(packet.type));
+      try {
+        await session.connect();
+        await Promise.race([
+          ready,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("handshake timeout")), 15000),
+          ),
+        ]);
+        session.sendPacket(5000, buildCapabilitiesPacket(40, 12));
+        session.sendPacket(5005, buildStreamStartPacket(false));
+        session.sendPacket(5001, new Uint8Array());
+        const until = Date.now() + 8000;
+        while (
+          !packets.includes(5002) &&
+          !states.includes(4) &&
+          Date.now() < until
+        )
+          await new Promise((r) => setTimeout(r, 25));
+        if (!packets.includes(5002) || states.includes(4))
+          throw new Error(
+            `pong missing or disconnected: ${states} packets ${packets}`,
+          );
+        if (!session.channel.supportsDatagrams())
+          throw new Error("WebTransport datagrams not negotiated");
+        const rgba = new Uint8Array(64 * 48 * 4);
+        for (let i = 0; i < rgba.length; i += 4) {
+          rgba[i] = 0x35;
+          rgba[i + 1] = 0x72;
+          rgba[i + 2] = 0xa9;
+          rgba[i + 3] = 255;
+        }
+        const frame = buildImageFramePayload(rgba, 64, 48);
+        for (let i = 0; i < 8; ++i) {
+          session.sendPacket(3001, frame);
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return {
+          ok: true,
+          states,
+          packets,
+          feedback: session.getUploadFeedback(),
+        };
+      } catch (error) {
+        return { ok: false, states, packets, error: String(error) };
+      } finally {
+        session.disconnect();
+      }
+    },
+    { udpPort, hash, serverPublicKey },
+  );
+  console.log("APPLICATION RESULT", JSON.stringify(result));
+  if (!result.ok) throw new Error(result.error);
+  if (!logs.includes("first=3572a9"))
+    throw new Error("server did not receive the browser's visual datagram");
+} catch (error) {
+  console.error("SERVER LOG", logs.slice(-12000));
+  throw error;
+} finally {
+  if (browser) await browser.close();
+  server.kill();
+  await vite.close();
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}

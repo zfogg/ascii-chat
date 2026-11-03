@@ -2,8 +2,8 @@
 
 This document records the stream framing being implemented for issue #247.
 The native server has an opt-in listener and native clients can select it with
-an explicit `quic://` address. The WebTransport session protocol is not yet
-available.
+an explicit `quic://` address. A separate opt-in HTTP/3 listener serves
+browser WebTransport clients.
 
 The browser includes an incremental ACIP stream and ACQS preamble decoder,
 ACQD datagram fragmentation and bounded reassembly, and a WASM interface to
@@ -16,8 +16,7 @@ authenticate packets against their flow, enforce the READY/ACK barrier, and
 request keyframes after visual loss. Its owner must initialize the shared WASM
 client and configure credentials before starting the handshake. In the direct
 browser client, an `https://` server URL selects this channel; `ws://` and
-`wss://` continue to select WebSocket. The HTTP/3 server endpoint and automatic
-cross-transport fallback are not yet implemented.
+`wss://` continue to select WebSocket. Automatic browser cross-transport fallback is not yet implemented.
 
 For example, start a listener with `--quic-bind-address 127.0.0.1`,
 `--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with
@@ -31,16 +30,26 @@ key. Certificate, authentication, protocol, and cancellation errors do not
 trigger fallback, and no fallback happens after TLS is established. Hostname
 resolution currently uses IPv4; IPv6 literals are supported.
 
-## HTTP/3 session work
+## HTTP/3 WebTransport listener
 
-The server has a private nghttp3 CONNECT codec that advertises extended CONNECT,
-HTTP datagrams, and browser WebTransport settings. It requires an exact HTTPS
-Origin and configured request path, accepts one CONNECT session, and keeps the
-CONNECT stream open after a successful response. A rejected origin or path gets
-a 403 response. The codec is not yet attached to the QUIC endpoint; stream and
-datagram session mapping, listener configuration, and browser interoperability
-remain to be implemented and verified. The supplied origin must be explicitly
-configured; the codec does not treat TLS encryption as origin authorization.
+Enable the browser listener with `--webtransport-bind-address 127.0.0.1`,
+`--webtransport-port PORT`, `--webtransport-origin https://example.com`,
+`--quic-tls-cert CERT`, and `--quic-tls-key KEY`. The origin must exactly
+match the browser page origin, including its port. The CONNECT path defaults
+to `/acip` and can be set with `--webtransport-path`. Use a certificate trusted
+by the browser and matching the listener hostname. Native raw QUIC and HTTP/3
+use distinct UDP ports and ALPNs; both can run alongside TCP and WebSocket.
+
+The nghttp3 CONNECT endpoint checks origin and path, advertises HTTP datagrams
+and WebTransport draft settings, and maps unidirectional WebTransport streams
+and HTTP datagrams to ACIP flows. The application handshake and authenticated
+per-flow encryption remain required on this listener. Closing the CONNECT
+stream ends the session. The live browser integration probe can be run from
+`web/web` with `pnpm test:webtransport:live -- <native-binary> <wasm-directory>`;
+it needs OpenSSL, ssh-keygen, and a Playwright Chromium installation (or
+`CHROME_PATH`). This probe covers pinned identity, origin and path rejection,
+certificate rejection, encrypted control traffic, and fragmented browser-to-server
+visual datagrams. Mixed-client coverage remains separate work.
 
 ## Reliable streams
 

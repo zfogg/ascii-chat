@@ -8,7 +8,7 @@ function packet(type = 4000): Uint8Array {
   header.setBigUint64(0, 0xa5c11c4a1n);
   header.setUint16(8, type);
   header.setUint32(10, 1);
-  header.setUint32(14, 0xb8b2cf7f);
+  header.setUint32(14, 0xb048173d);
   bytes[22] = 17;
   return bytes;
 }

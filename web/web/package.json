@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --config playwright.ci.config.ts",
     "test:e2e:ui": "playwright test --ui",
+    "test:webtransport:live": "node tests/network/webtransport-live.mjs",
     "wasm:build": "node scripts/wasm-build.mjs",
     "wasm:build:mirror": "cd ../.. && cmake --build build --target mirror-web",
     "wasm:build:client": "cd ../.. && cmake --build build --target client-web",

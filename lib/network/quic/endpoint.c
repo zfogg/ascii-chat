@@ -134,12 +134,30 @@ asciichat_error_t acip_quic_endpoint_open(const struct sockaddr *address, sockle
     SAFE_FREE(endpoint);
     return SET_ERRNO(ERROR_THREAD, "Cannot initialize QUIC endpoint lane");
   }
-  const char *alpn = config->alpn ? config->alpn : "acip/1";
+  bool webtransport = config->webtransport_origin || config->webtransport_path;
+  if (webtransport &&
+      (!listener || !config->enable_datagrams || !config->webtransport_origin || !config->webtransport_path ||
+       strncmp(config->webtransport_origin, "https://", 8) != 0 || config->webtransport_path[0] != '/' ||
+       strnlen(config->webtransport_origin, sizeof(endpoint->tls->webtransport_origin)) >=
+           sizeof(endpoint->tls->webtransport_origin) ||
+       strnlen(config->webtransport_path, sizeof(endpoint->tls->webtransport_path)) >=
+           sizeof(endpoint->tls->webtransport_path) ||
+       (config->alpn && strcmp(config->alpn, "h3") != 0))) {
+    mutex_destroy(&endpoint->lane);
+    SAFE_FREE(endpoint);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid WebTransport listener configuration");
+  }
+  const char *alpn = config->alpn ? config->alpn : webtransport ? "h3" : "acip/1";
   asciichat_error_t result =
       listener ? acip_quic_tls_server_create(alpn, config->certificate_file, config->private_key_file, &endpoint->tls)
                : acip_quic_tls_client_create(alpn, config->ca_file, &endpoint->tls);
   if (result == ASCIICHAT_OK) {
     endpoint->tls->enable_datagrams = config->enable_datagrams;
+    endpoint->tls->webtransport = webtransport;
+    if (webtransport) {
+      memcpy(endpoint->tls->webtransport_origin, config->webtransport_origin, strlen(config->webtransport_origin) + 1);
+      memcpy(endpoint->tls->webtransport_path, config->webtransport_path, strlen(config->webtransport_path) + 1);
+    }
     endpoint->prefer_audio_datagrams = config->prefer_audio_datagrams;
     endpoint->prefer_visual_datagrams = config->prefer_visual_datagrams;
     endpoint->listener = listener;
@@ -205,7 +223,8 @@ asciichat_error_t acip_quic_accept(acip_quic_endpoint_t *endpoint, acip_transpor
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC listener");
   mutex_lock(&endpoint->lane);
   endpoint_transport_t *item = endpoint->transports;
-  while (item && item->claimed)
+  while (item &&
+         (item->claimed || (endpoint->tls->webtransport && !acip_quic_connection_webtransport_ready(item->connection))))
     item = item->next;
   asciichat_error_t result = ASCIICHAT_OK;
   if (item) {

@@ -41,6 +41,7 @@
 
 static network_server_t *g_network_server;
 static acip_quic_endpoint_t *g_quic_endpoint;
+static acip_quic_endpoint_t *g_webtransport_endpoint;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
@@ -278,7 +279,17 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   const char *quic_certificate = GET_OPTION(quic_tls_cert);
   const char *quic_key = GET_OPTION(quic_tls_key);
   int quic_port = GET_OPTION(quic_port);
-  if (*quic_address || *quic_certificate || *quic_key || quic_port) {
+  const char *webtransport_address = GET_OPTION(webtransport_bind_address);
+  const char *webtransport_origin = GET_OPTION(webtransport_origin);
+  const char *webtransport_path = GET_OPTION(webtransport_path);
+  int webtransport_port = GET_OPTION(webtransport_port);
+  bool native_quic_requested = *quic_address || quic_port;
+  bool webtransport_requested = *webtransport_address || *webtransport_origin || webtransport_port;
+  if ((*quic_certificate || *quic_key) && !native_quic_requested && !webtransport_requested) {
+    result = SET_ERRNO(ERROR_USAGE, "QUIC TLS credentials require a QUIC or WebTransport listener");
+    goto cleanup;
+  }
+  if (native_quic_requested) {
     if (quic_port < 0 || quic_port > 65535) {
       result = SET_ERRNO(ERROR_USAGE, "QUIC port must be between 0 and 65535");
       goto cleanup;
@@ -305,6 +316,34 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     log_info("Native QUIC listener initialized on %s UDP port %d", quic_address, quic_port ? quic_port : port);
   }
 
+  if (webtransport_requested) {
+    if (!*webtransport_address || !*webtransport_origin || !*webtransport_path || !*quic_certificate || !*quic_key ||
+        webtransport_port < 0 || webtransport_port > 65535) {
+      result = SET_ERRNO(ERROR_USAGE, "WebTransport requires --webtransport-bind-address, --webtransport-origin, "
+                                      "--quic-tls-cert, and --quic-tls-key");
+      goto cleanup;
+    }
+    struct sockaddr_storage bind_address;
+    socklen_t bind_length = 0;
+    result = parse_numeric_socket_address(
+        webtransport_address, (uint16_t)(webtransport_port ? webtransport_port : port), &bind_address, &bind_length);
+    if (result != ASCIICHAT_OK)
+      goto cleanup;
+    acip_quic_config_t config = {.certificate_file = quic_certificate,
+                                 .private_key_file = quic_key,
+                                 .webtransport_origin = webtransport_origin,
+                                 .webtransport_path = webtransport_path,
+                                 .enable_datagrams = true,
+                                 .prefer_audio_datagrams = GET_OPTION(quic_audio_datagrams),
+                                 .prefer_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
+    result = acip_quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &config,
+                                     &g_webtransport_endpoint);
+    if (result != ASCIICHAT_OK)
+      goto cleanup;
+    log_info("WebTransport listener initialized on %s UDP port %d", webtransport_address,
+             webtransport_port ? webtransport_port : port);
+  }
+
   network_server_config_t tcp_config = {
       .port = port,
       .ipv4_address = ipv4_has_value ? address : NULL,
@@ -323,6 +362,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       .tick_context = config->tick_user_data,
       .user_data = config->connection_user_data,
       .quic_endpoint = g_quic_endpoint,
+      .webtransport_endpoint = g_webtransport_endpoint,
   };
 
   result = network_server_create(&tcp_config, &g_network_server);
@@ -497,6 +537,14 @@ cleanup:
   }
 
   network_server_destroy(&g_network_server);
+  if (g_webtransport_endpoint) {
+    asciichat_error_t result = acip_quic_endpoint_stop(g_webtransport_endpoint);
+    if (result != ASCIICHAT_OK)
+      return result;
+    result = acip_quic_endpoint_destroy(&g_webtransport_endpoint);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
   if (g_quic_endpoint) {
     asciichat_error_t quic_result = acip_quic_endpoint_stop(g_quic_endpoint);
     if (quic_result != ASCIICHAT_OK)

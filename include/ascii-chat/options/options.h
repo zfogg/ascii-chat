@@ -992,6 +992,10 @@ typedef struct options_state {
   char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
   char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
   char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
+  char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
+  char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
+  int webtransport_port;                              ///< Browser HTTP/3 UDP port.
   char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
   char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
   char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
