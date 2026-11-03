@@ -74,6 +74,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
 if(NOT EMSCRIPTEN)
     include(${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
+    include(${CMAKE_SOURCE_DIR}/cmake/deps/QuicDependencies.cmake)
 endif()
 
 # BearSSL - SSL/TLS library for HTTPS key fetching

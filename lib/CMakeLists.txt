@@ -756,6 +756,9 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
+endif()
 # clang-cl disables C++ exceptions by default, but this adapter catches
 # exceptions from the libdatachannel C++ API.
 if(WIN32)
@@ -869,6 +872,9 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
+    if(NOT EMSCRIPTEN)
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
+    endif()
     target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES})
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
@@ -1583,6 +1589,9 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES} asciichat-icu)
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
+endif()
 
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library

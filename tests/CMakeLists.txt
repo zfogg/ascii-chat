@@ -60,6 +60,16 @@ if(BUILD_TESTS)
             --cmake ${CMAKE_COMMAND} --cc ${CMAKE_C_COMPILER}
             --module ${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
         set_tests_properties(quic-tls-configure PROPERTIES LABELS "unit;standalone" TIMEOUT 180)
+        add_executable(test-quic-dependencies EXCLUDE_FROM_ALL standalone/quic_tls_check/dependencies.c)
+        target_link_libraries(test-quic-dependencies PRIVATE asciichat-quic)
+        set_target_properties(test-quic-dependencies PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-dependencies COMMAND test-quic-dependencies)
+        set_tests_properties(quic-dependencies PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST quic-dependencies PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        endif()
     endif()
     if(UNIX)
         asciichat_add_python_test(standalone-log-io
@@ -1416,6 +1426,9 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
 endif()
 
 if(TARGET ascii-chat-static)
+    if(TARGET tests AND TARGET test-quic-dependencies)
+        add_dependencies(tests test-quic-dependencies)
+    endif()
     if(BUILD_TESTS AND NOT EMSCRIPTEN)
         add_executable(test-traffic-metadata EXCLUDE_FROM_ALL
             ${CMAKE_SOURCE_DIR}/tests/standalone/network/traffic_metadata.c)
