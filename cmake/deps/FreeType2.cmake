@@ -5,7 +5,7 @@
 #
 # For musl builds: Built from source
 # For iOS builds: Built from source with iOS cross-compilation
-# For native builds: Uses system package manager
+# For native builds: Uses system package manager unless HVF is required
 #
 # Outputs (variables set by this file):
 #   - FREETYPE_LIBRARIES: FreeType2 libraries to link
@@ -37,7 +37,7 @@ int main(void) { return 0; }" ASCIICHAT_FREETYPE_HAS_HVF)
         message(STATUS "Apple HVF fonts: available with a supported OS at runtime")
     else()
         if(ASCIICHAT_REQUIRE_HVF)
-            message(FATAL_ERROR "This build requires HVF support; use an SDK with hvf support (macOS 15.4+ or iOS 18.4+)")
+            message(FATAL_ERROR "This build requires HVF support; use an Apple SDK that provides the HVF headers and library")
         endif()
         message(STATUS "Apple HVF fonts: unavailable with this FreeType/SDK; standard fonts remain supported")
     endif()
