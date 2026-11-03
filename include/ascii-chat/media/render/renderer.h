@@ -8,12 +8,10 @@
  */
 #pragma once
 
-/* Storage capacities in elements; text buffers include the terminating NUL. */
-#define MEDIA_RENDER_RENDERER_FONT_SPEC_BUFFER_SIZE 512
-
 #include <stdint.h>
 #include <stddef.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/filesystem.h>
 
 // ── Platform renderer ─────────────────────────────────────────────────────
 
@@ -37,13 +35,13 @@ typedef struct {
   int rows;
   double font_size_pt; // point size, default 12.0 (fractional sizes supported)
   term_renderer_theme_t theme;
-  char font_spec[MEDIA_RENDER_RENDERER_FONT_SPEC_BUFFER_SIZE]; // resolved by platform_font_resolve()
-  bool font_is_path;                                           // true = file path, false = family name (macOS)
-  const uint8_t *font_data;                                    // non-NULL → load from memory (Linux only)
+  char font_spec[PLATFORM_MAX_PATH_LENGTH]; // resolved by platform_font_resolve()
+  bool font_is_path;                        // true = file path, false = name or bundled data
+  const uint8_t *font_data;                 // non-NULL → load from memory
   size_t font_data_size;
 } term_renderer_config_t;
 
-// Implemented in lib/platform/{linux,macos,windows}/terminal.{c,m}
+// Implemented in lib/media/render/terminal.c using FreeType on all platforms.
 asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, terminal_renderer_t **out);
 /** Enable raster Zalgo (1-10), or disable with zero. */
 asciichat_error_t term_renderer_set_zalgo(terminal_renderer_t *r, int level);

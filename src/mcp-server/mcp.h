@@ -1,16 +1,13 @@
 #pragma once
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define MCP_SERVER_MCP_UPLOAD_DIR_BUFFER_SIZE 4096
-#define MCP_SERVER_MCP_STAGE_DIR_BUFFER_SIZE 4096
-#define MCP_SERVER_MCP_STAGE_FILE_BUFFER_SIZE 4096
-#define MCP_SERVER_MCP_OUTPUT_PATH_BUFFER_SIZE 4096
 #define MCP_SERVER_MCP_ERROR_BUFFER_SIZE 2048
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <yyjson.h>
 #include <string.h>
 
@@ -43,10 +40,10 @@ typedef struct {
 typedef struct {
   char **argv;
   size_t argc;
-  char upload_dir[MCP_SERVER_MCP_UPLOAD_DIR_BUFFER_SIZE];
-  char stage_dir[MCP_SERVER_MCP_STAGE_DIR_BUFFER_SIZE];
-  char stage_file[MCP_SERVER_MCP_STAGE_FILE_BUFFER_SIZE];
-  char output_path[MCP_SERVER_MCP_OUTPUT_PATH_BUFFER_SIZE];
+  char upload_dir[PLATFORM_MAX_PATH_LENGTH];
+  char stage_dir[PLATFORM_MAX_PATH_LENGTH];
+  char stage_file[PLATFORM_MAX_PATH_LENGTH];
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
   unsigned timeout_ms;
   bool capture_webcam;
 } mcp_render_request_t;
@@ -57,7 +54,7 @@ typedef struct {
   char error[MCP_SERVER_MCP_ERROR_BUFFER_SIZE];
   uint64_t elapsed_ms;
   bool timed_out;
-  char output_path[MCP_SERVER_MCP_OUTPUT_PATH_BUFFER_SIZE];
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
 } mcp_render_result_t;
 
 typedef struct mcp_job {

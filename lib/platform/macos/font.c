@@ -6,10 +6,9 @@
 #ifdef __APPLE__
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define PLATFORM_MACOS_FONT_TMP_PATH_BUFFER_SIZE 4096
-#define PLATFORM_MACOS_FONT_TMP_PATH_DEFAULT_BUFFER_SIZE 4096
 
 #include <ascii-chat/platform/font.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -34,7 +33,10 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   if (out_font_data_size)
     *out_font_data_size = 0;
 
-  if (is_absolute_path(eff)) {
+  if (is_absolute_path(eff) || strchr(eff, '/') ||
+      (strcmp(eff, "default") != 0 && strcmp(eff, "matrix") != 0 && file_exists(eff))) {
+    if (strlen(eff) >= out_size)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "render-font: path exceeds output capacity");
     snprintf(out, out_size, "%s", eff);
     *out_is_path = true;
     return file_exists(out) ? ASCIICHAT_OK : SET_ERRNO(ERROR_NOT_FOUND, "render-font: not found: %s", out);
@@ -47,7 +49,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
     if (out_font_data_size)
       *out_font_data_size = g_font_matrix_resurrected_size;
     // Also provide a temporary file path for the bundled font.
-    static char tmp_path[PLATFORM_MACOS_FONT_TMP_PATH_BUFFER_SIZE] = {0};
+    static char tmp_path[PLATFORM_MAX_PATH_LENGTH] = {0};
     if (tmp_path[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path, "/tmp/ascii-chat-matrix-XXXXXX.ttf", sizeof(tmp_path));
       int fd = mkstemps(tmp_path, 4); // 4 = ".ttf" suffix
@@ -70,7 +72,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
     if (out_font_data_size)
       *out_font_data_size = g_font_default_size;
     // Also provide a temporary file path for the bundled font.
-    static char tmp_path_default[PLATFORM_MACOS_FONT_TMP_PATH_DEFAULT_BUFFER_SIZE] = {0};
+    static char tmp_path_default[PLATFORM_MAX_PATH_LENGTH] = {0};
     if (tmp_path_default[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path_default, "/tmp/ascii-chat-default-XXXXXX.ttf", sizeof(tmp_path_default));
       int fd = mkstemps(tmp_path_default, 4); // 4 = ".ttf" suffix

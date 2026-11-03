@@ -1,7 +1,5 @@
-/** WASM32 terminal renderer configuration layout from media/render/renderer.h. */
-const TERMINAL_FONT_SPEC_BUFFER_SIZE = 512;
-const TERMINAL_RENDER_CONFIG_SIZE = TERMINAL_FONT_SPEC_BUFFER_SIZE + 32;
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
+import { writeTerminalRendererConfig } from "../../wasm/terminalRenderer";
 import type { RasterWorkerRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
 import { createWasmModule, type ClientLikeKind } from "../../wasm/assetUrl";
@@ -44,28 +42,20 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
       if (signature !== nextSignature) {
         if (renderer) module._term_renderer_destroy(renderer);
         renderer = 0;
-        const config = module._malloc(TERMINAL_RENDER_CONFIG_SIZE),
+        const config = module._malloc(module._wasm_renderer_config_size()),
           out = module._malloc(4);
         try {
           if (module._set_matrix_rain?.(matrix ? 1 : 0) !== 0)
             throw new Error("Cannot select raster worker font");
-          module.HEAPU8.fill(0, config, config + TERMINAL_RENDER_CONFIG_SIZE);
-          const view = new DataView(
-            module.HEAPU8.buffer,
+          writeTerminalRendererConfig(
+            module,
             config,
-            TERMINAL_RENDER_CONFIG_SIZE,
+            cols,
+            rows,
+            browserRasterFontSize(matrix),
+            matrix,
+            0,
           );
-          view.setInt32(0, cols, true);
-          view.setInt32(4, rows, true);
-          view.setFloat64(8, browserRasterFontSize(matrix), true);
-          if (matrix)
-            module.stringToUTF8(
-              "Matrix",
-              config + 20,
-              TERMINAL_FONT_SPEC_BUFFER_SIZE,
-            );
-          view.setInt32(536, module._get_font_default_ptr(0), true);
-          view.setInt32(540, module._get_font_default_size(0), true);
           if (module._term_renderer_create(config, out))
             throw new Error("Cannot create raster worker renderer");
           renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(

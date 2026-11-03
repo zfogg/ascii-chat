@@ -366,6 +366,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
+  display_sync_entries(ctx, true);
+
   // Initialize render-file unless media setup needs to determine its timing first.
   const char *render_file_opt = GET_OPTION(render_file);
   log_debug("render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
@@ -374,6 +376,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
     if (render_err != ASCIICHAT_OK) {
       log_error("render-file: Initialization failed %s", asciichat_error_format(NULL, render_err));
+      asciichat_error_context_t error;
+      bool has_error = HAS_ERRNO(&error);
+      session_display_destroy(ctx);
+      SET_ERRNO(render_err, "%s", has_error ? error.context_message : "Render-file initialization failed");
+      return NULL;
     }
   }
 
@@ -385,7 +392,6 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
                                          initial, sizeof(initial) - 1);
   }
 
-  display_sync_entries(ctx, true);
   return ctx;
 }
 

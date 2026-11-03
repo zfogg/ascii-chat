@@ -114,7 +114,10 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
 
   // If spec is an absolute path, use it directly
   if (effective_spec[0] != '\0') {
-    if (is_absolute_path(effective_spec)) {
+    if (is_absolute_path(effective_spec) || strchr(effective_spec, '/') || strchr(effective_spec, '\\') ||
+        file_exists(effective_spec)) {
+      if (strlen(effective_spec) >= out_size)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "render-font: path exceeds output capacity");
       snprintf(out, out_size, "%s", effective_spec);
       return file_exists(out) ? ASCIICHAT_OK : SET_ERRNO(ERROR_NOT_FOUND, "render-font: not found: %s", out);
     }

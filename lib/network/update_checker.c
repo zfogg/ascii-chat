@@ -6,7 +6,6 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE 512
 #define NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE 64
-#define NETWORK_UPDATE_CHECKER_EXE_PATH_BUFFER_SIZE 1024
 #define NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE 256
 #define NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE 512
 
@@ -39,7 +38,6 @@
 #define UPDATE_CHECK_CACHE_MAX_AGE_SECONDS (7 * 24 * 60 * 60)
 
 // DNS timeout for connectivity check
-#define DNS_TIMEOUT_SECONDS 2
 
 // GitHub API endpoint
 #define GITHUB_API_HOSTNAME "api.github.com"
@@ -414,7 +412,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
 #ifndef _WIN32
 static bool is_homebrew_install(void) {
   // Check if binary is in Homebrew Cellar directory
-  char exe_path[NETWORK_UPDATE_CHECKER_EXE_PATH_BUFFER_SIZE];
+  char exe_path[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
     return false;
   }
