@@ -1,7 +1,10 @@
 #include <ascii-chat/common.h>
+#include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/buffer.h>
 #include <network/quic/connection.h>
 #include <network/quic/tls.h>
 #include <openssl/pem.h>
@@ -139,8 +142,163 @@ static ngtcp2_conn *unused_connection(ngtcp2_crypto_conn_ref *ref) {
   return NULL;
 }
 
+typedef struct {
+  const uint8_t *packets[6];
+  size_t lengths[6];
+  unsigned count, visual_count;
+  acip_traffic_class_t order[6];
+} media_capture_t;
+
+static asciichat_error_t capture_quic_packet(acip_traffic_class_t traffic_class, const void *packet, size_t length,
+                                             void *arg) {
+  media_capture_t *capture = arg;
+  if ((unsigned)traffic_class >= 3 || capture->count >= 6)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC stream packet");
+  size_t index = traffic_class == ACIP_TRAFFIC_VISUAL ? 2 + capture->visual_count++ : (size_t)traffic_class;
+  if (index >= 6 || length != capture->lengths[index] || memcmp(packet, capture->packets[index], length) != 0)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC stream packet");
+  capture->order[capture->count++] = traffic_class;
+  return ASCIICHAT_OK;
+}
+
+static uint8_t *make_packet(packet_type_t type, size_t payload_length, size_t *length) {
+  *length = sizeof(packet_header_t) + payload_length;
+  uint8_t *packet = buffer_alloc(NULL, *length);
+  CHECK(packet);
+  for (size_t i = 0; i < payload_length; ++i)
+    packet[sizeof(packet_header_t) + i] = (uint8_t)(i * 37U + (unsigned)type);
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16(type),
+                            .length = HOST_TO_NET_U32((uint32_t)payload_length),
+                            .crc32 =
+                                HOST_TO_NET_U32(asciichat_crc32(packet + sizeof(packet_header_t), payload_length))};
+  memcpy(packet, &header, sizeof(header));
+  return packet;
+}
+
+static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *needle, size_t needle_length) {
+  if (needle_length > length)
+    return false;
+  for (size_t i = 0; i <= length - needle_length; ++i)
+    if (memcmp(bytes + i, needle, needle_length) == 0)
+      return true;
+  return false;
+}
+
+static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connection_t *server,
+                                const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns,
+                                bool drop_control) {
+  uint8_t *packets[6];
+  size_t lengths[6];
+  packets[0] = make_packet(PACKET_TYPE_PING, 8, &lengths[0]);
+  packets[1] = make_packet(PACKET_TYPE_AUDIO_BATCH, 48, &lengths[1]);
+  packets[2] = make_packet(PACKET_TYPE_IMAGE_FRAME, 65536, &lengths[2]);
+  packets[3] = make_packet(PACKET_TYPE_ASCII_FRAME, 256, &lengths[3]);
+  packets[4] = make_packet(PACKET_TYPE_IMAGE_FRAME_H264, 1024, &lengths[4]);
+  packets[5] = make_packet(PACKET_TYPE_IMAGE_FRAME_H265, 1024, &lengths[5]);
+  media_capture_t at_client = {0}, at_server = {0};
+  for (size_t i = 0; i < 6; ++i) {
+    at_client.packets[i] = at_server.packets[i] = packets[i];
+    at_client.lengths[i] = at_server.lengths[i] = lengths[i];
+  }
+  CHECK(acip_quic_connection_set_receiver(client, capture_quic_packet, &at_client) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_set_receiver(server, capture_quic_packet, &at_server) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_AUDIO, packets[1], lengths[1]) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_connection_allow_media(client) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_allow_media(server) == ASCIICHAT_OK);
+  acip_quic_connection_t *peers[] = {client, server};
+  for (size_t peer = 0; peer < 2; ++peer) {
+    for (size_t visual = 2; visual < 6; ++visual)
+      CHECK(acip_quic_connection_submit(peers[peer], ACIP_TRAFFIC_VISUAL, packets[visual], lengths[visual]) ==
+            ASCIICHAT_OK);
+    CHECK(acip_quic_connection_submit(peers[peer], ACIP_TRAFFIC_AUDIO, packets[1], lengths[1]) == ASCIICHAT_OK);
+    CHECK(acip_quic_connection_submit(peers[peer], ACIP_TRAFFIC_CONTROL, packets[0], lengths[0]) == ASCIICHAT_OK);
+    CHECK(acip_quic_connection_submit(peers[peer], ACIP_TRAFFIC_CONTROL, packets[2], lengths[2]) ==
+          ERROR_NETWORK_PROTOCOL);
+  }
+
+  bool control_dropped = false, audio_duplicated = false;
+  for (unsigned step = 0; step < 30000; ++step, *clock_ns += NS_PER_MS_INT) {
+    uint8_t packet[1452];
+    size_t length;
+    ngtcp2_path_storage path;
+    CHECK(acip_quic_connection_write(client, &path, packet, sizeof(packet), &length, *clock_ns) == ASCIICHAT_OK);
+    if (length) {
+      CHECK(!contains_bytes(packet, length, packets[0], lengths[0]));
+      CHECK(!contains_bytes(packet, length, packets[2] + sizeof(packet_header_t), 32));
+      acip_traffic_class_t packet_class;
+      bool has_class = acip_quic_connection_pending_packet_class(client, &packet_class);
+      bool drop = drop_control && !control_dropped && has_class && packet_class == ACIP_TRAFFIC_CONTROL;
+      CHECK(acip_quic_connection_packet_sent(client, *clock_ns) == ASCIICHAT_OK);
+      if (drop)
+        control_dropped = true;
+      else {
+        CHECK(acip_quic_connection_receive(server, server_path, packet, length, *clock_ns) == ASCIICHAT_OK);
+        if (!audio_duplicated && has_class && packet_class == ACIP_TRAFFIC_AUDIO) {
+          CHECK(acip_quic_connection_receive(server, server_path, packet, length, *clock_ns) == ASCIICHAT_OK);
+          audio_duplicated = true;
+        }
+      }
+    }
+    /* Hold server packets until an independent stream arrives, so their ACKs
+     * cannot trigger control retransmission before the assertion is observed. */
+    if (!drop_control || !control_dropped || at_server.count) {
+      CHECK(acip_quic_connection_write(server, &path, packet, sizeof(packet), &length, *clock_ns) == ASCIICHAT_OK);
+      if (length) {
+        CHECK(!contains_bytes(packet, length, packets[0], lengths[0]));
+        CHECK(!contains_bytes(packet, length, packets[2] + sizeof(packet_header_t), 32));
+        CHECK(acip_quic_connection_packet_sent(server, *clock_ns) == ASCIICHAT_OK);
+        CHECK(acip_quic_connection_receive(client, client_path, packet, length, *clock_ns) == ASCIICHAT_OK);
+      }
+    }
+    if (at_client.count == 6 && at_server.count == 6 && !acip_quic_connection_pending_bytes(client) &&
+        !acip_quic_connection_pending_bytes(server))
+      break;
+    if (acip_quic_connection_expiry(client) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(client, *clock_ns) == ASCIICHAT_OK);
+    if (acip_quic_connection_expiry(server) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(server, *clock_ns) == ASCIICHAT_OK);
+  }
+  CHECK(at_client.count == 6 && at_server.count == 6);
+  CHECK(audio_duplicated);
+  CHECK(!drop_control || control_dropped);
+  CHECK(!acip_quic_connection_pending_bytes(client) && !acip_quic_connection_pending_bytes(server));
+  for (size_t i = 0; i < 6; ++i) {
+    acip_traffic_class_t expected = i < 2 ? (acip_traffic_class_t)i : ACIP_TRAFFIC_VISUAL;
+    CHECK(at_client.order[i] == expected);
+    if (!drop_control)
+      CHECK(at_server.order[i] == expected);
+  }
+  if (drop_control && at_server.order[0] != ACIP_TRAFFIC_AUDIO)
+    FATAL(ERROR_ASSERTION_FAILED, "Unexpected receive order %d, %d, %d after dropping control", at_server.order[0],
+          at_server.order[1], at_server.order[2]);
+  if (!drop_control) {
+    size_t large_length = 0;
+    uint8_t *large = make_packet(PACKET_TYPE_IMAGE_FRAME, 1024 * 1024, &large_length);
+    bool full = false;
+    for (unsigned i = 0; i < 64; ++i) {
+      size_t before = acip_quic_connection_pending_bytes(client);
+      asciichat_error_t result = acip_quic_connection_submit(client, ACIP_TRAFFIC_VISUAL, large, large_length);
+      if (result == ERROR_BUFFER_FULL) {
+        CHECK(acip_quic_connection_pending_bytes(client) == before);
+        full = true;
+        break;
+      }
+      CHECK(result == ASCIICHAT_OK);
+    }
+    CHECK(full);
+    CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_AUDIO, at_client.packets[1], lengths[1]) == ASCIICHAT_OK);
+    CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_CONTROL, at_client.packets[0], lengths[0]) == ASCIICHAT_OK);
+    CHECK(acip_quic_connection_pending_bytes(client) <= ACIP_OUTBOUND_BUDGET);
+    buffer_release(large);
+  }
+  for (size_t i = 0; i < 6; ++i)
+    buffer_release(packets[i]);
+}
+
 static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, const char *server_name,
-                           bool drop_first_server_packet, bool *dropped, asciichat_error_t *failure) {
+                           bool drop_first_server_packet, bool drop_control, bool *dropped,
+                           asciichat_error_t *failure) {
   struct sockaddr_in client_address = {
       .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(23456), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   struct sockaddr_in server_address = {
@@ -222,6 +380,8 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
     }
   }
   bool success = !failed && server && acip_quic_connection_tls_ready(server) && acip_quic_connection_tls_ready(client);
+  if (success && !drop_first_server_packet)
+    quic_media_exchange(client, server, &client_path, &server_path, &now, drop_control);
   acip_quic_connection_destroy(&server);
   acip_quic_connection_destroy(&client);
   return success;
@@ -260,14 +420,17 @@ int main(int argc, char **argv) {
   CHECK(!handshake(server, client, "localhost", false, false, true));
   asciichat_error_t quic_failure = ASCIICHAT_OK;
   bool dropped = false;
-  CHECK(quic_handshake(server, client, "localhost", false, &dropped, &quic_failure) && quic_failure == ASCIICHAT_OK);
-  CHECK(quic_handshake(server, client, "localhost", true, &dropped, &quic_failure) && dropped &&
+  CHECK(quic_handshake(server, client, "localhost", false, false, &dropped, &quic_failure) &&
         quic_failure == ASCIICHAT_OK);
-  CHECK(!quic_handshake(server, client, "other.example", false, &dropped, &quic_failure) &&
+  CHECK(quic_handshake(server, client, "localhost", false, true, &dropped, &quic_failure) &&
+        quic_failure == ASCIICHAT_OK);
+  CHECK(quic_handshake(server, client, "localhost", true, false, &dropped, &quic_failure) && dropped &&
+        quic_failure == ASCIICHAT_OK);
+  CHECK(!quic_handshake(server, client, "other.example", false, false, &dropped, &quic_failure) &&
         quic_failure == ERROR_CRYPTO);
-  CHECK(!quic_handshake(server, untrusted, "localhost", false, &dropped, &quic_failure) &&
+  CHECK(!quic_handshake(server, untrusted, "localhost", false, false, &dropped, &quic_failure) &&
         quic_failure == ERROR_CRYPTO);
-  CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, &dropped, &quic_failure) &&
+  CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, false, &dropped, &quic_failure) &&
         quic_failure == ERROR_CRYPTO);
 
   acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;

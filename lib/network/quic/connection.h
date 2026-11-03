@@ -1,5 +1,6 @@
 #pragma once
 
+#include "stream.h"
 #include "tls.h"
 
 #include <ascii-chat/platform/socket.h>
@@ -28,7 +29,24 @@ asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connectio
 asciichat_error_t acip_quic_connection_write(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
                                              void *packet, size_t capacity, size_t *length, uint64_t now_ns);
 asciichat_error_t acip_quic_connection_packet_sent(acip_quic_connection_t *connection, uint64_t now_ns);
+/** Reports the class of newly submitted stream data in the pending packet.
+ * Retransmissions from other streams may also be present in that packet. */
+bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *connection,
+                                               acip_traffic_class_t *traffic_class);
 uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns);
 bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection);
+/** Install a serialized receive callback. It borrows complete wire packets;
+ * the callback must copy what it retains and must not reenter the connection. */
+asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *connection, acip_quic_stream_emit_fn emit,
+                                                    void *context);
+/** Permit media only after the application has completed and acknowledged the
+ * ACIP handshake. The owner must separately coordinate later control barriers. */
+asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection);
+/** Copy one complete ACIP wire packet to its reliable stream. Admission is
+ * bounded; ERROR_BUFFER_FULL leaves the queue unchanged. The connection owns
+ * submitted bytes until ngtcp2 acknowledges them or the connection is freed. */
+asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                              const void *packet, size_t length);
+size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connection);
 void acip_quic_connection_destroy(acip_quic_connection_t **connection);

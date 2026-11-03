@@ -58,3 +58,21 @@ rejects timestamps that move backwards. Once it produces a packet, its owner
 must retain that packet if the socket cannot accept it and report successful
 transmission before requesting another packet; this updates ngtcp2's pacing
 state. TLS readiness from this engine does not imply ACIP authentication.
+
+Reliable packets are copied into a per-connection queue and retained until
+ngtcp2 reports their bytes acknowledged. The queue charges buffer capacity
+and queue metadata against an 8 MiB budget. Visual traffic leaves 512 KiB
+each for audio and control; audio leaves 512 KiB for control. The scheduler
+selects pending control, then audio, then visual data, and can use another
+stream when one is flow-control blocked. Congestion returns an explicit error
+without admitting the packet. The owner must bound its receive queue and copy
+each borrowed packet before the callback returns; a rejected callback fails
+the connection instead of silently losing reliable data. Flow-control credit
+is extended after that callback succeeds.
+
+The current engine rejects stream resets and STOP_SENDING as connection
+errors. A clean FIN closes that traffic stream at a packet boundary, and a
+replacement stream with the same class is rejected. Socket shutdown,
+reconnection, and replay of application operations are not yet implemented;
+a future reconnect must establish new TLS and ACIP sessions before admitting
+media and must not automatically replay state-changing operations.
