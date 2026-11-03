@@ -20,17 +20,34 @@
 
 # Global list to store sanitizer flags (applied only to project targets, not dependencies)
 # Use CACHE variables so they're accessible across all function scopes
+option(ASCIICHAT_ENABLE_SANITIZERS "Enable build-type sanitizers (disable for source branch coverage)" ON)
 set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "" CACHE INTERNAL "Sanitizer compile flags")
 set(ASCIICHAT_SANITIZER_LINK_FLAGS "" CACHE INTERNAL "Sanitizer link flags")
 set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "" CACHE INTERNAL "Windows ASan DLL import library")
 set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "" CACHE INTERNAL "Windows ASan runtime thunk library")
 set(ASCIICHAT_SANITIZER_RUNTIME_DIR "" CACHE INTERNAL "Sanitizer runtime directory")
 
+if(NOT ASCIICHAT_ENABLE_SANITIZERS)
+    # A reused build can still contain Debug sanitizer flags even when its new
+    # build type does not call configure_sanitizers().
+    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "" CACHE INTERNAL "Sanitizer compile flags" FORCE)
+    set(ASCIICHAT_SANITIZER_LINK_FLAGS "" CACHE INTERNAL "Sanitizer link flags" FORCE)
+    set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "" CACHE INTERNAL "Windows ASan DLL import library" FORCE)
+    set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "" CACHE INTERNAL "Windows ASan runtime thunk library" FORCE)
+    set(ASCIICHAT_SANITIZER_RUNTIME_DIR "" CACHE INTERNAL "Sanitizer runtime directory" FORCE)
+endif()
+
 # Configure sanitizers based on platform, compiler, and options
 # Args:
 #   USE_MIMALLOC - Whether mimalloc is enabled (disables all sanitizers if true)
 #   BUILD_TYPE - The build type (Debug, Sanitize, TSan, etc.)
 function(configure_sanitizers USE_MIMALLOC_ARG BUILD_TYPE_ARG)
+    if(NOT ASCIICHAT_ENABLE_SANITIZERS)
+        # gcov records sanitizer-generated guards as source branches. CI runs
+        # sanitizers separately so coverage describes the program's own paths.
+        message(STATUS "${BUILD_TYPE_ARG} build: sanitizers explicitly disabled")
+        return()
+    endif()
     # CRITICAL: mimalloc conflicts with sanitizers in two ways:
     # 1. Malloc override: mimalloc's MI_MALLOC_OVERRIDE conflicts with ASan/LeakSan malloc interception
     # 2. Spinlock instrumentation: UBSan instruments mimalloc's spinlocks, causing infinite sched_yield() loops
