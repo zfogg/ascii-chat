@@ -1656,6 +1656,42 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         target_include_directories(test_unit_session_test_api_boundaries PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
     endif()
 
+    add_executable(test-server-lifecycle contracts/session/server_lifecycle_test.c)
+    asciichat_configure_contract(test-server-lifecycle)
+    target_link_libraries(test-server-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-server-lifecycle PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-server-lifecycle)
+    set_target_properties(test-server-lifecycle PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-lifecycle test-server-lifecycle)
+    set_property(TEST server-lifecycle APPEND PROPERTY LABELS unit)
+
+
+    add_executable(test-client-lifecycle contracts/session/client_lifecycle_test.c)
+    asciichat_configure_contract(test-client-lifecycle)
+    target_link_libraries(test-client-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-lifecycle PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-lifecycle)
+    set_target_properties(test-client-lifecycle PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-lifecycle test-client-lifecycle)
+    set_property(TEST client-lifecycle APPEND PROPERTY LABELS unit)
+
+    add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
+    asciichat_configure_contract(test-mcp-requests)
+    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+        ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-mcp-requests PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include}
+        ${YYJSON_INCLUDE_DIRS} ${LIBWEBSOCKETS_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-mcp-requests)
+    set_target_properties(test-mcp-requests PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(mcp-requests test-mcp-requests)
+    set_property(TEST mcp-requests APPEND PROPERTY LABELS unit)
+
     add_executable(test-client-video contracts/network/client_video_test.c
         ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/crypto.c
         ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)
@@ -2265,4 +2301,10 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|R
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_tui.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/Testing/mcp-tui)
     set_tests_properties(mcp-tui PROPERTIES LABELS "integration;mcp;tui" TIMEOUT 90 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    asciichat_add_python_test(cli-logging-contract
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_logging_contract.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(cli-logging-contract PROPERTIES LABELS "integration" TIMEOUT 120)
 endif()

@@ -748,9 +748,10 @@ int main(int argc, char *argv[]) {
     }
   }
   for (int i = 1; i < max_search; i++) {
-    if (strcmp(argv[i], "--log-format-console-only") == 0) {
+    if (strcmp(argv[i], "--log-format-console") == 0 || strcmp(argv[i], "--log-format-console=true") == 0) {
       early_log_template_console_only = true;
-      break;
+    } else if (strcmp(argv[i], "--log-format-console=false") == 0) {
+      early_log_template_console_only = false;
     }
   }
 
@@ -900,7 +901,9 @@ int main(int argc, char *argv[]) {
 
   // Configure JSON output if requested
   if (use_json_logging) {
-    // Open the JSON file for output
+    // Close the text sink before truncating the destination for JSON records.
+    // The two descriptors must not write different formats at independent offsets.
+    log_disable_file_output();
     int json_fd = platform_open("main_log_file", final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     if (json_fd >= 0) {
       log_set_json_output(json_fd);
