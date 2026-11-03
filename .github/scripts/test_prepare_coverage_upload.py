@@ -62,6 +62,25 @@ class CompleteCoverageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "found 2"):
             upload.prepare(self.root)
 
+    def test_application_summary_unions_src_separately_from_library_and_tests(self):
+        for index, name in enumerate(upload.EXPECTED_ARTIFACTS):
+            report = self.write_shard(name)
+            content = report.read_text().replace('</classes>',
+                '<class filename="src/client/main.c"><lines>'
+                f'<line number="10" hits="{int(index == 0)}"/>'
+                f'<line number="11" hits="{int(index == 1)}"/>'
+                '<line number="12" hits="0"/>'
+                '</lines></class>'
+                '<class filename="tests/fixture.c"><lines><line number="1" hits="1"/>'
+                '</lines></class></classes>')
+            report.write_text(content)
+        _, summary = upload.prepare(self.root)
+        self.assertEqual(summary["application"]["covered"], 2)
+        self.assertEqual(summary["application"]["valid"], 3)
+        self.assertAlmostEqual(summary["application"]["executed_line_percent"], 200 / 3)
+        self.assertEqual(summary["production"]["valid"], 5)
+        self.assertEqual(summary["all"]["valid"], 6)
+
     def test_counters_without_completed_test_run_are_rejected(self):
         for name in upload.EXPECTED_ARTIFACTS:
             self.write_shard(name)

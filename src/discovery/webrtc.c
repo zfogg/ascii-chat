@@ -133,7 +133,7 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_
   memcpy(sdp_msg->sender_id, g_session_context.participant_id, SESSION_ID_SIZE);
   memset(sdp_msg->recipient_id, 0, SESSION_ID_SIZE);             // Broadcast to all
   sdp_msg->sdp_type = (strcmp(sdp_type, "answer") == 0) ? 1 : 0; // 0=offer, 1=answer
-  sdp_msg->sdp_len = (uint16_t)sdp_len;
+  sdp_msg->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
   memcpy(sdp_msg_buf + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 

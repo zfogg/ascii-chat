@@ -5,7 +5,7 @@
 #
 # For musl builds: Built from source
 # For iOS builds: Built from source with iOS cross-compilation
-# For native builds: Uses system package manager
+# For native builds: Uses system package manager unless HVF is required
 #
 # Outputs (variables set by this file):
 #   - FREETYPE_LIBRARIES: FreeType2 libraries to link
@@ -14,6 +14,10 @@
 
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+option(ASCIICHAT_REQUIRE_HVF "Build FreeType from source and require Apple HVF support" OFF)
+if(ASCIICHAT_REQUIRE_HVF AND NOT APPLE)
+    message(FATAL_ERROR "ASCIICHAT_REQUIRE_HVF requires an Apple platform")
+endif()
 function(asciichat_check_freetype_hvf)
     include(CheckCSourceCompiles)
     set(CMAKE_REQUIRED_INCLUDES ${ARGN})
@@ -32,11 +36,14 @@ int main(void) { return 0; }" ASCIICHAT_FREETYPE_HAS_HVF)
     if(ASCIICHAT_FREETYPE_HAS_HVF)
         message(STATUS "Apple HVF fonts: available with a supported OS at runtime")
     else()
+        if(ASCIICHAT_REQUIRE_HVF)
+            message(FATAL_ERROR "This build requires HVF support; use an Apple SDK that provides the HVF headers and library")
+        endif()
         message(STATUS "Apple HVF fonts: unavailable with this FreeType/SDK; standard fonts remain supported")
     endif()
 endfunction()
 
-if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQUIRE_HVF)
     function(asciichat_build_freetype)
         asciichat_dependency_defaults()
         set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/freetype")
@@ -71,7 +78,8 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         if(APPLE)
             asciichat_check_freetype_hvf("${asciichat_freetype_BINARY_DIR}/include" "${asciichat_freetype_SOURCE_DIR}/include")
         endif()
-        set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_SOURCE_DIR}/include;${asciichat_freetype_BINARY_DIR}/include" PARENT_SCOPE)
+        # Generated options must precede the source tree's default ftoption.h.
+        set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_BINARY_DIR}/include;${asciichat_freetype_SOURCE_DIR}/include" PARENT_SCOPE)
         # Fontconfig's Autotools build consumes an installation, not CMake targets.
         add_custom_target(asciichat-freetype-stage
             COMMAND "${CMAKE_COMMAND}" --install "${asciichat_freetype_BINARY_DIR}" --prefix "${_prefix}"

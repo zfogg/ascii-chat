@@ -542,7 +542,9 @@ jobs:
           LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
-          CMAKE_ARGS="--preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
+          # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
+          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"

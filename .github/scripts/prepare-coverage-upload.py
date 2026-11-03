@@ -53,10 +53,13 @@ def prepare(directory):
 
     summary = {"shards": shards}
     for label, prefixes in (("all", ("lib/", "src/", "include/", "tests/")),
-                            ("production", ("lib/", "src/", "include/"))):
+                            ("production", ("lib/", "src/", "include/")),
+                            ("application", ("src/",))):
         values = [hit for (filename, _), hit in lines.items() if filename.startswith(prefixes)]
         covered = sum(values)
         valid = len(values)
+        if not valid and label == "application":
+            continue
         if not valid:
             raise ValueError(f"No {label} source lines in coverage reports")
         summary[label] = {"covered": covered, "valid": valid, "executed_line_percent": 100 * covered / valid}
@@ -79,7 +82,9 @@ def main():
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
             output.write("## Complete coverage upload\n\nAll seven coverage shards are present.\n\n")
-            for label in ("production", "all"):
+            for label in ("production", "application", "all"):
+                if label not in summary:
+                    continue
                 result = summary[label]
                 output.write(f"- {label}: {result['covered']}/{result['valid']} executed lines "
                              f"({result['executed_line_percent']:.2f}%)\n")
