@@ -16,7 +16,7 @@
 typedef struct {
   atomic_t count;
   atomic_t traffic_class;
-  atomic_t delivery, deadline, datagrams, fail_datagram, blocked;
+  atomic_t delivery, deadline, datagrams, fail_datagram, blocked, request_keyframe;
 } capture_t;
 
 static asciichat_error_t capture_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
@@ -48,6 +48,11 @@ static asciichat_error_t capture_validate(acip_transport_t *transport, const aci
   return ASCIICHAT_OK;
 }
 
+static bool capture_keyframe_request(acip_transport_t *transport, uint16_t type, uint32_t id) {
+  capture_t *capture = transport->impl_data;
+  return type == PACKET_TYPE_IMAGE_FRAME_H264 && id == 42 && atomic_exchange_bool(&capture->request_keyframe, false);
+}
+
 static asciichat_error_t capture_close(acip_transport_t *transport) {
   (void)transport;
   return ASCIICHAT_OK;
@@ -65,7 +70,8 @@ int main(void) {
                                                    .close = capture_close,
                                                    .get_capabilities = capture_capabilities,
                                                    .validate_send_options = capture_validate,
-                                                   .queued_bytes = capture_queued};
+                                                   .queued_bytes = capture_queued,
+                                                   .consume_keyframe_request = capture_keyframe_request};
   capture_t capture = {0};
   acip_transport_t transport = {.methods = &methods, .impl_data = &capture};
   CHECK(acip_outbound_create(&transport) == ASCIICHAT_OK);
@@ -148,25 +154,38 @@ int main(void) {
     CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
+  options.deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT;
+  CHECK(acip_transport_sendv_ex(&transport, encoded, 2, &options) == ASCIICHAT_OK);
+  const uint8_t encoded_delta = 0;
+  encoded[1].data = &encoded_delta;
+  CHECK(acip_transport_sendv_ex(&transport, encoded, 2, &options) == ASCIICHAT_OK);
+  CHECK(acip_outbound_snapshot(&transport, &stats) == ASCIICHAT_OK);
+  uint64_t dropped_before_request = stats.dropped;
+  atomic_store_bool(&capture.request_keyframe, true);
+  CHECK(acip_outbound_needs_keyframe(&transport, PACKET_TYPE_IMAGE_FRAME_H264, 42));
+  CHECK(acip_outbound_snapshot(&transport, &stats) == ASCIICHAT_OK);
+  CHECK(stats.dropped == dropped_before_request + 2);
   atomic_store_bool(&capture.blocked, false);
   acip_outbound_destroy(&transport);
 
-  /* Production packet helpers prefer datagrams only for audio, and fall back
-   * to reliable delivery when the peer did not negotiate datagrams. */
+  /* Media datagrams require negotiated support; other traffic stays reliable. */
   capture_t preferred = {0};
-  acip_transport_t preferred_transport = {.methods = &methods, .impl_data = &preferred, .prefer_audio_datagrams = true};
+  acip_transport_t preferred_transport = {
+      .methods = &methods, .impl_data = &preferred, .prefer_audio_datagrams = true, .prefer_visual_datagrams = true};
   CHECK(acip_outbound_create(&preferred_transport) == ASCIICHAT_OK);
-  for (unsigned i = 0; i < 3; ++i) {
-    atomic_store_bool(&preferred.datagrams, i != 0);
-    packet_type_t type = i == 2 ? PACKET_TYPE_PING : PACKET_TYPE_AUDIO_BATCH;
-    CHECK(packet_send_via_transport(&preferred_transport, type, &keyframe, 1, 0) == ASCIICHAT_OK);
+  for (unsigned i = 0; i < 6; ++i) {
+    atomic_store_bool(&preferred.datagrams, i != 0 && i != 3);
+    packet_type_t type = i == 2 ? PACKET_TYPE_PING : i >= 3 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_AUDIO_BATCH;
+    uint32_t client_id = i == 5 ? 42 : 0;
+    CHECK(packet_send_via_transport(&preferred_transport, type, &keyframe, 1, client_id) == ASCIICHAT_OK);
     uint64_t before = time_get_ns();
     while (atomic_load_u64(&preferred.count) <= i) {
       CHECK(time_get_ns() - before < 2 * NS_PER_SEC_INT);
       platform_sleep_ms(1);
     }
-    CHECK(atomic_load_u64(&preferred.delivery) == (i == 1 ? ACIP_DELIVERY_DATAGRAM : ACIP_DELIVERY_RELIABLE));
-    CHECK((atomic_load_u64(&preferred.deadline) != 0) == (i == 1));
+    bool datagram = i == 1 || i == 4;
+    CHECK(atomic_load_u64(&preferred.delivery) == (datagram ? ACIP_DELIVERY_DATAGRAM : ACIP_DELIVERY_RELIABLE));
+    CHECK((atomic_load_u64(&preferred.deadline) != 0) == datagram);
   }
   acip_outbound_destroy(&preferred_transport);
   buffer_system_cleanup();

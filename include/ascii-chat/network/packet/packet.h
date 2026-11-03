@@ -333,6 +333,8 @@ typedef enum {
   PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 1109,
   /** @brief Internal authenticated readiness barrier for ACIP over QUIC */
   PACKET_TYPE_QUIC_READY = 1110,
+  /** @brief Internal authenticated request for a QUIC encoded-video keyframe */
+  PACKET_TYPE_QUIC_KEYFRAME_REQUEST = 1111,
 
   // ============================================================================
   // Cryptographic Rekeying (Types 1200-1299)

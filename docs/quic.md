@@ -240,12 +240,13 @@ replay protection for existing connections.
 ## Experimental datagram fragments
 
 Native clients and servers can opt into outgoing audio datagrams with
-`--quic-audio-datagrams`. Each endpoint makes this choice independently. If the
-peer did not negotiate DATAGRAM support, audio uses its reliable stream. Once a
-datagram is selected, congestion or expiry does not retry it on the reliable
-stream. The sender gives each packet a 100 ms deadline on the monotonic clock;
-this bounds local queues, not its age at the receiver. Visual packets remain
-reliable until codec recovery is implemented.
+`--quic-audio-datagrams` and visual datagrams with `--quic-visual-datagrams`.
+Each endpoint makes these choices independently. If the peer did not negotiate
+DATAGRAM support, media uses its reliable stream. Encoded visual packets with
+a nonzero stream ID also use reliable delivery. Once a datagram is selected,
+congestion or expiry does not retry it on the reliable stream. The sender gives
+each packet a 100 ms deadline on the monotonic clock; this bounds local queues,
+not its age at the receiver.
 
 Raw `AUDIO_BATCH` payloads use a network-order batch header followed by
 network-order signed 32-bit samples scaled from floating point. The native QUIC
@@ -290,13 +291,16 @@ The adapter exposes a negotiated capability snapshot, including a current-path
 datagram size; callers must query it again after a path change. The outbound
 scheduler preserves requested delivery and deadlines, discards expired media,
 and marks an encoded stream as needing a keyframe if it drops a queued encoded
-packet. This does not yet detect datagrams lost after submission or request a
-keyframe from the receiver.
+packet. The receiver drops older visual packets and detects gaps in the
+authenticated visual sequence. After a gap, it suppresses encoded predictive
+frames and sends a reliable authenticated keyframe request (packet type 1111,
+containing a network-order 16-bit codec packet type and 32-bit stream ID).
+The sender discards queued frames for that stream and requests an encoder
+keyframe. Reordering can conservatively trigger the same recovery.
 
 The envelope is protected by QUIC between transport endpoints, but it is not
 authenticated across a terminating intermediary. Reassembly output must pass
 the ACIP datagram security codec before dispatch or replay state changes.
 Expiry bounds retained resources; it does not establish the age of a packet
-whose first fragment arrives late. Media sequence and codec recovery policy,
-including suppressing stale or damaged frames and requesting keyframes, remain
-to be integrated with the application.
+whose first fragment arrives late. A missing final datagram is detected only
+when a later visual packet arrives.

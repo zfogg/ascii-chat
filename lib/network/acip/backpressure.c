@@ -598,6 +598,14 @@ bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t type, ui
   if (!transport || !transport->outbound)
     return false;
   acip_outbound_t *out = transport->outbound;
+  if (transport->methods->consume_keyframe_request &&
+      transport->methods->consume_keyframe_request(transport, type, id)) {
+    outbound_packet_t stream = {.type = type, .stream = id, .video = true, .encoded = true};
+    mutex_lock(&out->mutex);
+    discard_stream(out, &stream);
+    mutex_unlock(&out->mutex);
+    return true;
+  }
   size_t count = out->stream_count;
   for (size_t i = 0; i < count; ++i)
     if (out->streams[i].type == type && out->streams[i].stream == id)

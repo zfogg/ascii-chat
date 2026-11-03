@@ -92,7 +92,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
     command = [binary, "server", "127.0.0.1", "--port", str(tcp_port),
                "--quic-bind-address", "127.0.0.1", "--quic-port", str(udp_port),
                "--quic-tls-cert", str(certificate), "--quic-tls-key", str(key),
-               "--quic-audio-datagrams",
+               "--quic-audio-datagrams", "--quic-visual-datagrams",
                "--websocket-port", str(websocket_port), "--password", "test-password", "--status-screen=false"]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     incomplete = subprocess.run([binary, "server", "127.0.0.1", "--quic-bind-address", "127.0.0.1",
@@ -151,7 +151,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                     process = subprocess.Popen(
                         [binary, "--log-file", str(participant_log), "client", f"quic://localhost:{udp_port}",
                          "--quic-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
-                         "--audio=false", "--quic-audio-datagrams", "--video-codec", "raw", "--snapshot", "--snapshot-delay", "8", "--splash-screen=false",
+                         "--audio=false", "--quic-audio-datagrams", "--quic-visual-datagrams", "--video-codec", "raw", "--snapshot", "--snapshot-delay", "8", "--splash-screen=false",
                          "--color-mode", "none", "--reconnect-attempts", "0"],
                         stdout=output, stderr=error, creationflags=flags, env=probe_env,
                     )

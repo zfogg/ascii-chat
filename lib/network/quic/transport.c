@@ -2,6 +2,7 @@
 #include "datagram.h"
 
 #include <ascii-chat/buffer.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/endian.h>
@@ -30,6 +31,7 @@ typedef struct {
   void *destroy_context;
   received_packet_t *head, *tail;
   size_t bytes;
+  atomic_t request_h264, request_h265;
   asciichat_error_t failure;
   bool connected;
 } quic_transport_t;
@@ -54,6 +56,25 @@ static void security_ready_notify(void *context) {
   quic_transport_t *quic = context;
   if (quic->lane)
     cond_broadcast(&quic->security_changed);
+}
+
+static void keyframe_notify(uint16_t type, uint32_t id, void *context) {
+  quic_transport_t *quic = context;
+  if (id == 0 && type == PACKET_TYPE_IMAGE_FRAME_H264)
+    atomic_store_bool(&quic->request_h264, true);
+  else if (id == 0 && type == PACKET_TYPE_IMAGE_FRAME_H265)
+    atomic_store_bool(&quic->request_h265, true);
+}
+
+static bool quic_consume_keyframe_request(acip_transport_t *transport, uint16_t type, uint32_t id) {
+  quic_transport_t *quic = transport->impl_data;
+  if (id != 0)
+    return false;
+  if (type == PACKET_TYPE_IMAGE_FRAME_H264)
+    return atomic_exchange_bool(&quic->request_h264, false);
+  if (type == PACKET_TYPE_IMAGE_FRAME_H265)
+    return atomic_exchange_bool(&quic->request_h265, false);
+  return false;
 }
 
 static void lane_lock(quic_transport_t *quic) {
@@ -441,6 +462,7 @@ static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .has_pending_data = quic_pending,
                                                       .queued_bytes = quic_queued,
                                                       .get_capabilities = quic_capabilities,
+                                                      .consume_keyframe_request = quic_consume_keyframe_request,
                                                       .validate_send_options = quic_validate_options,
                                                       .destroy_impl = quic_destroy_impl};
 
@@ -484,8 +506,10 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   if (!lane_held)
     lane_lock(quic);
   asciichat_error_t result = acip_quic_connection_set_receiver(connection, queue_received_packet, quic);
-  if (result == ASCIICHAT_OK)
+  if (result == ASCIICHAT_OK) {
     acip_quic_connection_set_security_notifier(connection, security_ready_notify, quic);
+    acip_quic_connection_set_keyframe_notifier(connection, keyframe_notify, quic);
+  }
   if (!lane_held)
     lane_unlock(quic);
   if (result != ASCIICHAT_OK) {

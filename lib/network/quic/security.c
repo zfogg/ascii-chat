@@ -95,13 +95,15 @@ asciichat_error_t acip_quic_security_seal(acip_quic_security_t *state, acip_traf
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_open(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
-                                          acip_delivery_t delivery, const void *packet, size_t length, uint8_t **out,
-                                          size_t *out_length) {
+asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+                                                   acip_delivery_t delivery, const void *packet, size_t length,
+                                                   uint8_t **out, size_t *out_length, uint64_t *sequence_out) {
   if (!out || !out_length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC decrypted packet output");
   *out = NULL;
   *out_length = 0;
+  if (sequence_out)
+    *sequence_out = 0;
   if (!ready(state) || !valid_flow(traffic_class, delivery))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC ACIP decryption is not ready for this flow");
   if (!packet || length < sizeof(packet_header_t) + state->crypto->nonce_size + state->crypto->mac_size ||
@@ -164,5 +166,13 @@ asciichat_error_t acip_quic_security_open(acip_quic_security_t *state, acip_traf
   memmove(plain, plain + QUIC_SECURE_PREFIX_SIZE, inner_length);
   *out = plain;
   *out_length = inner_length;
+  if (sequence_out)
+    *sequence_out = sequence;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t acip_quic_security_open(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+                                          acip_delivery_t delivery, const void *packet, size_t length, uint8_t **out,
+                                          size_t *out_length) {
+  return acip_quic_security_open_sequence(state, traffic_class, delivery, packet, length, out, out_length, NULL);
 }

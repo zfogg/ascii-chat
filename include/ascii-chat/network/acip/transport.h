@@ -240,6 +240,8 @@ typedef struct {
   asciichat_error_t (*get_capabilities)(acip_transport_t *transport, acip_transport_capabilities_t *out);
   /** Validate optional delivery semantics without enqueuing data. */
   asciichat_error_t (*validate_send_options)(acip_transport_t *transport, const acip_send_options_t *options);
+  /** Consume a peer request to restart an encoded stream with a keyframe. */
+  bool (*consume_keyframe_request)(acip_transport_t *transport, uint16_t type, uint32_t stream_id);
 } acip_transport_methods_t;
 
 /**
@@ -253,10 +255,11 @@ struct acip_transport {
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
-  uint64_t receive_timeout_ns; ///< Optional TCP receive timeout override; zero uses the normal polling timeout
-  bool prefer_audio_datagrams; ///< Select negotiated datagrams for audio, otherwise reliable delivery.
-  void *impl_data;             ///< Transport-specific state
-  void *user_data;             ///< Application-specific context (e.g., per-client data)
+  uint64_t receive_timeout_ns;  ///< Optional TCP receive timeout override; zero uses the normal polling timeout
+  bool prefer_visual_datagrams; ///< Select negotiated visual datagrams when supported.
+  bool prefer_audio_datagrams;  ///< Select negotiated datagrams for audio, otherwise reliable delivery.
+  void *impl_data;              ///< Transport-specific state
+  void *user_data;              ///< Application-specific context (e.g., per-client data)
 };
 
 // =============================================================================

@@ -736,7 +736,8 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
     return SET_ERRNO(ERROR_NETWORK, "Unsupported QUIC local route");
   acip_quic_config_t config = {.ca_file = settings ? settings->quic_ca_file : NULL,
                                .enable_datagrams = true,
-                               .prefer_audio_datagrams = settings && settings->quic_audio_datagrams};
+                               .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
+                               .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};
   result = acip_quic_endpoint_open((struct sockaddr *)&local, local_length, false, &config, owner);
   if (result == ASCIICHAT_OK)
     result = acip_quic_connect(*owner, (struct sockaddr *)&remote, remote_length, endpoint->host, transport);

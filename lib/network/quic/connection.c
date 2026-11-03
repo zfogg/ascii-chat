@@ -65,6 +65,8 @@ struct acip_quic_connection {
   void *emit_context;
   void (*security_notify)(void *);
   void *security_notify_context;
+  void (*keyframe_notify)(uint16_t, uint32_t, void *);
+  void *keyframe_notify_context;
   asciichat_error_t callback_error;
   bool failed;
   bool tls_ready;
@@ -80,6 +82,9 @@ struct acip_quic_connection {
   acip_quic_datagram_reader_t datagram_reader;
   datagram_send_t *datagram_head[ACIP_QUIC_FLOW_COUNT], *datagram_tail[ACIP_QUIC_FLOW_COUNT];
   uint64_t datagram_id[ACIP_QUIC_FLOW_COUNT];
+  uint64_t last_visual_sequence;
+  uint16_t visual_codec;
+  bool visual_waiting_keyframe, visual_keyframe_requested;
 };
 
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection);
@@ -87,6 +92,29 @@ static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, a
                                            const void *packet, size_t length);
 static const uint8_t quic_ready_payload[] = {'A', 'C', 'Q', 'R', 1};
 static const uint8_t quic_ack_payload[] = {'A', 'C', 'Q', 'A', 1};
+
+static asciichat_error_t queue_keyframe_request(acip_quic_connection_t *connection, uint16_t type, uint32_t id) {
+  uint8_t payload[6];
+  uint16_t network_type = HOST_TO_NET_U16(type);
+  uint32_t network_id = HOST_TO_NET_U32(id);
+  memcpy(payload, &network_type, sizeof(network_type));
+  memcpy(payload + sizeof(network_type), &network_id, sizeof(network_id));
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16(PACKET_TYPE_QUIC_KEYFRAME_REQUEST),
+                            .length = HOST_TO_NET_U32(sizeof(payload)),
+                            .crc32 = HOST_TO_NET_U32(asciichat_crc32(payload, sizeof(payload)))};
+  uint8_t packet[sizeof(header) + sizeof(payload)];
+  memcpy(packet, &header, sizeof(header));
+  memcpy(packet + sizeof(header), payload, sizeof(payload));
+  uint8_t *wire = NULL;
+  size_t wire_length = 0;
+  asciichat_error_t result = acip_quic_security_seal(
+      &connection->security, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, packet, sizeof(packet), &wire, &wire_length);
+  if (result == ASCIICHAT_OK)
+    result = queue_wire_packet(connection, ACIP_TRAFFIC_CONTROL, wire, wire_length);
+  buffer_release(wire);
+  return result;
+}
 
 static asciichat_error_t queue_security_barrier(acip_quic_connection_t *connection, const uint8_t *payload,
                                                 size_t payload_length) {
@@ -137,6 +165,22 @@ static asciichat_error_t open_security_packet(acip_quic_connection_t *connection
     }
   } else if (!connection->peer_ready_seen) {
     result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Missing authenticated QUIC readiness barrier");
+  } else if (type == PACKET_TYPE_QUIC_KEYFRAME_REQUEST) {
+    uint16_t requested_type;
+    uint32_t stream_id;
+    if (traffic_class != ACIP_TRAFFIC_CONTROL || plaintext_length != sizeof(header) + 6) {
+      result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC keyframe request");
+    } else {
+      memcpy(&requested_type, plaintext + sizeof(header), sizeof(requested_type));
+      memcpy(&stream_id, plaintext + sizeof(header) + sizeof(requested_type), sizeof(stream_id));
+      requested_type = NET_TO_HOST_U16(requested_type);
+      stream_id = NET_TO_HOST_U32(stream_id);
+      if ((requested_type != PACKET_TYPE_IMAGE_FRAME_H264 && requested_type != PACKET_TYPE_IMAGE_FRAME_H265) ||
+          stream_id != 0)
+        result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported QUIC keyframe request");
+      else if (connection->keyframe_notify)
+        connection->keyframe_notify(requested_type, stream_id, connection->keyframe_notify_context);
+    }
   } else {
     result = connection->emit(traffic_class, plaintext, plaintext_length, connection->emit_context);
   }
@@ -341,14 +385,55 @@ static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *da
     return 0;
   uint8_t *wire = NULL, *plain = NULL;
   size_t wire_length = 0, plain_length = 0;
+  uint64_t sequence = 0;
   acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
   asciichat_error_t result = acip_quic_datagram_read(&connection->datagram_reader, data, length,
                                                      connection->last_time_ns, &flow, &wire, &wire_length);
   if (result == ASCIICHAT_OK && wire)
-    result = acip_quic_security_open(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, wire, wire_length, &plain,
-                                     &plain_length);
-  if (result == ASCIICHAT_OK && plain)
+    result = acip_quic_security_open_sequence(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, wire, wire_length,
+                                              &plain, &plain_length, &sequence);
+  if (result == ASCIICHAT_OK && plain && flow == ACIP_TRAFFIC_VISUAL) {
+    if (sequence <= connection->last_visual_sequence)
+      goto done;
+    bool gap = connection->last_visual_sequence && sequence != connection->last_visual_sequence + 1;
+    connection->last_visual_sequence = sequence;
+    packet_header_t header;
+    memcpy(&header, plain, sizeof(header));
+    uint16_t type = NET_TO_HOST_U16(header.type);
+    uint32_t id = NET_TO_HOST_U32(header.client_id);
+    bool encoded = type == PACKET_TYPE_IMAGE_FRAME_H264 || type == PACKET_TYPE_IMAGE_FRAME_H265;
+    if (encoded) {
+      bool keyframe = plain_length > sizeof(header) && (plain[sizeof(header)] & 1) != 0;
+      if (gap || connection->visual_codec != type)
+        connection->visual_waiting_keyframe = true;
+      connection->visual_codec = type;
+      if (keyframe) {
+        connection->visual_waiting_keyframe = false;
+        connection->visual_keyframe_requested = false;
+      }
+      if (connection->visual_waiting_keyframe) {
+        if (!connection->visual_keyframe_requested && connection->peer_security_ready && id == 0) {
+          asciichat_errno_scope_t scope = errno_scope_begin();
+          if (queue_keyframe_request(connection, type, id) == ASCIICHAT_OK)
+            connection->visual_keyframe_requested = true;
+          errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+        }
+        goto done;
+      }
+      if (connection->emit(flow, plain, plain_length, connection->emit_context) != ASCIICHAT_OK) {
+        connection->visual_waiting_keyframe = true;
+        connection->visual_keyframe_requested = false;
+      }
+    } else {
+      connection->visual_codec = 0;
+      connection->visual_waiting_keyframe = false;
+      connection->visual_keyframe_requested = false;
+      (void)connection->emit(flow, plain, plain_length, connection->emit_context);
+    }
+  } else if (result == ASCIICHAT_OK && plain) {
     (void)connection->emit(flow, plain, plain_length, connection->emit_context);
+  }
+done:
   buffer_release(plain);
   buffer_release(wire);
   return 0;
@@ -641,7 +726,17 @@ asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *co
   connection->emit_context = NULL;
   connection->security_notify = NULL;
   connection->security_notify_context = NULL;
+  connection->keyframe_notify = NULL;
+  connection->keyframe_notify_context = NULL;
   return ASCIICHAT_OK;
+}
+
+void acip_quic_connection_set_keyframe_notifier(acip_quic_connection_t *connection,
+                                                void (*notify)(uint16_t, uint32_t, void *), void *context) {
+  if (connection) {
+    connection->keyframe_notify = notify;
+    connection->keyframe_notify_context = notify ? context : NULL;
+  }
 }
 
 void acip_quic_connection_set_security_notifier(acip_quic_connection_t *connection, void (*notify)(void *),
@@ -718,6 +813,13 @@ asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *c
   asciichat_error_t validation = acip_quic_connection_validate_datagram(connection, flow, deadline_ns);
   if (validation != ASCIICHAT_OK)
     return validation;
+  if (flow == ACIP_TRAFFIC_VISUAL && packet && length >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, packet, sizeof(header));
+    uint16_t type = NET_TO_HOST_U16(header.type);
+    if ((type == PACKET_TYPE_IMAGE_FRAME_H264 || type == PACKET_TYPE_IMAGE_FRAME_H265) && header.client_id != 0)
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC encoded datagrams require stream ID zero");
+  }
   size_t unit = acip_quic_connection_datagram_payload(connection);
   if (connection->datagram_id[flow] == UINT64_MAX)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "QUIC datagram ID exhausted");
@@ -842,7 +944,8 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
   if (packet && length >= sizeof(packet_header_t)) {
     packet_header_t header;
     memcpy(&header, packet, sizeof(header));
-    if (NET_TO_HOST_U16(header.type) == PACKET_TYPE_QUIC_READY)
+    if (NET_TO_HOST_U16(header.type) == PACKET_TYPE_QUIC_READY ||
+        NET_TO_HOST_U16(header.type) == PACKET_TYPE_QUIC_KEYFRAME_REQUEST)
       return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC readiness marker is reserved");
   }
   if (!connection->conn || connection->failed || !connection->tls_ready ||

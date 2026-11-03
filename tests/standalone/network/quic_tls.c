@@ -363,6 +363,34 @@ static void drive_barrier_step(acip_quic_connection_t *client, acip_quic_connect
   }
 }
 
+typedef struct {
+  unsigned received, requests;
+} visual_recovery_capture_t;
+
+static asciichat_error_t capture_recovery_packet(acip_traffic_class_t flow, const void *packet, size_t length,
+                                                 void *context) {
+  visual_recovery_capture_t *capture = context;
+  if (flow != ACIP_TRAFFIC_VISUAL || length < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected recovery packet");
+  (void)packet;
+  ++capture->received;
+  return ASCIICHAT_OK;
+}
+
+static void capture_keyframe_request(uint16_t type, uint32_t id, void *context) {
+  visual_recovery_capture_t *capture = context;
+  if (type == PACKET_TYPE_IMAGE_FRAME_H264 && id == 0)
+    ++capture->requests;
+}
+
+static void set_recovery_keyframe(uint8_t *packet, size_t length, bool keyframe) {
+  packet_header_t header;
+  memcpy(&header, packet, sizeof(header));
+  packet[sizeof(header)] = keyframe ? 1 : 0;
+  header.crc32 = HOST_TO_NET_U32(asciichat_crc32(packet + sizeof(header), length - sizeof(header)));
+  memcpy(packet, &header, sizeof(header));
+}
+
 static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connection_t *server,
                                 const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns,
                                 bool drop_control, crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
@@ -562,6 +590,52 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
   CHECK(datagram_server.count == 2 && datagram_server.order[1] == ACIP_TRAFFIC_VISUAL);
   CHECK(acip_quic_connection_clear_receiver(client, &datagram_client) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_clear_receiver(server, &datagram_server) == ASCIICHAT_OK);
+  visual_recovery_capture_t recovery = {0};
+  CHECK(acip_quic_connection_set_receiver(server, capture_recovery_packet, &recovery) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_set_receiver(client, capture_recovery_packet, &recovery) == ASCIICHAT_OK);
+  acip_quic_connection_set_keyframe_notifier(client, capture_keyframe_request, &recovery);
+  size_t encoded_length = 0;
+  uint8_t *encoded = make_packet(PACKET_TYPE_IMAGE_FRAME_H264, 32, &encoded_length);
+  set_recovery_keyframe(encoded, encoded_length, true);
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_VISUAL, encoded, encoded_length, 0) == ASCIICHAT_OK);
+  for (unsigned step = 0; step < 10000 && recovery.received < 1; ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, NULL);
+  CHECK(recovery.received == 1);
+  set_recovery_keyframe(encoded, encoded_length, false);
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_VISUAL, encoded, encoded_length, 0) == ASCIICHAT_OK);
+  bool dropped_encoded = false;
+  for (unsigned step = 0; step < 10000 && !dropped_encoded; ++step, *clock_ns += NS_PER_MS_INT) {
+    uint8_t output[1452];
+    size_t output_length = 0;
+    ngtcp2_path_storage output_path;
+    CHECK(acip_quic_connection_write(client, &output_path, output, sizeof(output), &output_length, *clock_ns) ==
+          ASCIICHAT_OK);
+    if (output_length) {
+      acip_traffic_class_t flow;
+      bool drop = acip_quic_connection_pending_packet_class(client, &flow) && flow == ACIP_TRAFFIC_VISUAL;
+      CHECK(acip_quic_connection_packet_sent(client, *clock_ns) == ASCIICHAT_OK);
+      if (drop)
+        dropped_encoded = true;
+      else
+        CHECK(acip_quic_connection_receive(server, server_path, output, output_length, *clock_ns) == ASCIICHAT_OK);
+    }
+    if (acip_quic_connection_expiry(client) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(client, *clock_ns) == ASCIICHAT_OK);
+  }
+  CHECK(dropped_encoded);
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_VISUAL, encoded, encoded_length, 0) == ASCIICHAT_OK);
+  for (unsigned step = 0; step < 10000 && recovery.requests < 1; ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, NULL);
+  CHECK(recovery.requests == 1 && recovery.received == 1);
+  set_recovery_keyframe(encoded, encoded_length, true);
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_VISUAL, encoded, encoded_length, 0) == ASCIICHAT_OK);
+  for (unsigned step = 0; step < 10000 && recovery.received < 2; ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, NULL);
+  CHECK(recovery.received == 2);
+  buffer_release(encoded);
+  acip_quic_connection_set_keyframe_notifier(client, NULL, NULL);
+  CHECK(acip_quic_connection_clear_receiver(client, &recovery) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_clear_receiver(server, &recovery) == ASCIICHAT_OK);
   if (!drop_control) {
     size_t large_length = 0;
     uint8_t *large = make_packet(PACKET_TYPE_IMAGE_FRAME, 512 * 1024, &large_length);

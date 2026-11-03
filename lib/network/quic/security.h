@@ -29,3 +29,7 @@ asciichat_error_t acip_quic_security_seal(acip_quic_security_t *state, acip_traf
 asciichat_error_t acip_quic_security_open(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
                                           acip_delivery_t delivery, const void *packet, size_t length, uint8_t **out,
                                           size_t *out_length);
+/* As above, also return the authenticated per-flow sequence after validation. */
+asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+                                                   acip_delivery_t delivery, const void *packet, size_t length,
+                                                   uint8_t **out, size_t *out_length, uint64_t *sequence_out);

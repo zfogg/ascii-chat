@@ -159,7 +159,11 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
   socket_buffer_t slices[SOCKET_IOV_MAX] = {{&header, sizeof(header)}};
   memcpy(slices + 1, payload, count * sizeof(*payload));
   acip_send_options_t options = {.traffic_class = acip_packet_traffic_class(type), .delivery = ACIP_DELIVERY_RELIABLE};
-  if (transport->prefer_audio_datagrams && options.traffic_class == ACIP_TRAFFIC_AUDIO) {
+  bool encoded = type == PACKET_TYPE_IMAGE_FRAME_H264 || type == PACKET_TYPE_IMAGE_FRAME_H265;
+  bool prefer_datagram = (transport->prefer_audio_datagrams && options.traffic_class == ACIP_TRAFFIC_AUDIO) ||
+                         (transport->prefer_visual_datagrams && options.traffic_class == ACIP_TRAFFIC_VISUAL &&
+                          (!encoded || client_id == 0));
+  if (prefer_datagram) {
     acip_transport_capabilities_t caps;
     asciichat_error_t result = acip_transport_get_capabilities(transport, &caps);
     if (result != ASCIICHAT_OK)
