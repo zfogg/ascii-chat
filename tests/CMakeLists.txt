@@ -134,7 +134,7 @@ set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 function(asciichat_configure_contract target)
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
     target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
-    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS})
+    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
