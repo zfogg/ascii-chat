@@ -29,10 +29,11 @@ until the receiver has acknowledged the state on which that media depends.
 The endpoint must implement these readiness barriers before it sends media.
 
 The class identifies a delivery flow and is not an authenticated assertion
-about the packet inside it. Where ACIP encryption is active, classification is
-performed before encryption, and the receiver must validate the decrypted
-packet against the flow. Authentication, replay handling, datagrams, and
-fallback are not defined by this framing alone and remain implementation work.
+about the packet inside it. Plaintext packet types are checked against the flow
+before dispatch. Where ACIP encryption is active, classification is performed
+before encryption, and the receiver must validate the decrypted packet against
+the flow. Authentication, replay handling, datagrams, and fallback are not
+defined by this framing alone and remain implementation work.
 
 ## TLS policy
 

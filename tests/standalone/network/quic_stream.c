@@ -42,6 +42,11 @@ int main(void) {
 
   for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
     uint8_t wire[ACIP_QUIC_STREAM_PREAMBLE_SIZE + 2 * sizeof(packet)];
+    packet_type_t type = traffic == ACIP_TRAFFIC_CONTROL ? PACKET_TYPE_PING
+                         : traffic == ACIP_TRAFFIC_AUDIO ? PACKET_TYPE_AUDIO_BATCH
+                                                         : PACKET_TYPE_IMAGE_FRAME;
+    header.type = HOST_TO_NET_U16(type);
+    memcpy(packet, &header, sizeof(header));
     CHECK(acip_quic_stream_preamble((acip_traffic_class_t)traffic, wire) == ASCIICHAT_OK);
     memcpy(wire + ACIP_QUIC_STREAM_PREAMBLE_SIZE, packet, sizeof(packet));
     memcpy(wire + ACIP_QUIC_STREAM_PREAMBLE_SIZE + sizeof(packet), packet, sizeof(packet));
@@ -60,19 +65,51 @@ int main(void) {
     }
   }
 
+  header.type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME);
+  memcpy(packet, &header, sizeof(header));
   uint8_t preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
-  CHECK(acip_quic_stream_preamble(ACIP_TRAFFIC_AUDIO, preamble) == ASCIICHAT_OK);
+  CHECK(acip_quic_stream_preamble(ACIP_TRAFFIC_VISUAL, preamble) == ASCIICHAT_OK);
   CHECK(acip_quic_stream_preamble((acip_traffic_class_t)99, preamble) == ERROR_INVALID_PARAM);
-  capture_t state = {.expected = ACIP_TRAFFIC_AUDIO, .packet = packet, .size = sizeof(packet)};
+  capture_t state = {.expected = ACIP_TRAFFIC_VISUAL, .packet = packet, .size = sizeof(packet)};
   {
     acip_quic_stream_reader_t reader = {0};
     packet_header_t empty = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
-    capture_t empty_state = {.expected = ACIP_TRAFFIC_AUDIO, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
-    CHECK(acip_quic_stream_read(&reader, preamble, sizeof(preamble), capture, &empty_state) == ASCIICHAT_OK);
+    uint8_t control_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
+    CHECK(acip_quic_stream_preamble(ACIP_TRAFFIC_CONTROL, control_preamble) == ASCIICHAT_OK);
+    capture_t empty_state = {
+        .expected = ACIP_TRAFFIC_CONTROL, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
+    CHECK(acip_quic_stream_read(&reader, control_preamble, sizeof(control_preamble), capture, &empty_state) ==
+          ASCIICHAT_OK);
     CHECK(acip_quic_stream_read(&reader, &empty, sizeof(empty), capture, &empty_state) == ASCIICHAT_OK);
     CHECK(empty_state.count == 1 && acip_quic_stream_finish(&reader) == ASCIICHAT_OK);
     acip_quic_stream_reset(&reader);
   }
+  for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
+    acip_quic_stream_reader_t reader = {0};
+    uint8_t wrong_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
+    CHECK(acip_quic_stream_preamble((acip_traffic_class_t)traffic, wrong_preamble) == ASCIICHAT_OK);
+    header.type = HOST_TO_NET_U16(traffic == ACIP_TRAFFIC_VISUAL ? PACKET_TYPE_PING : PACKET_TYPE_IMAGE_FRAME);
+    memcpy(packet, &header, sizeof(header));
+    CHECK(acip_quic_stream_read(&reader, wrong_preamble, sizeof(wrong_preamble), capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, packet, sizeof(packet), capture, &state) == ERROR_NETWORK_PROTOCOL);
+    CHECK(!state.count);
+    acip_quic_stream_reset(&reader);
+  }
+  header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
+  memcpy(packet, &header, sizeof(header));
+  for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
+    acip_quic_stream_reader_t reader = {0};
+    uint8_t encrypted_preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
+    capture_t encrypted_state = {.expected = (acip_traffic_class_t)traffic, .packet = packet, .size = sizeof(packet)};
+    CHECK(acip_quic_stream_preamble((acip_traffic_class_t)traffic, encrypted_preamble) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, encrypted_preamble, sizeof(encrypted_preamble), capture, &encrypted_state) ==
+          ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, packet, sizeof(packet), capture, &encrypted_state) == ASCIICHAT_OK);
+    CHECK(encrypted_state.count == 1);
+    acip_quic_stream_reset(&reader);
+  }
+  header.type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME);
+  memcpy(packet, &header, sizeof(header));
   for (size_t i = 0; i < sizeof(preamble); ++i) {
     acip_quic_stream_reader_t reader = {0};
     uint8_t invalid[sizeof(preamble)];

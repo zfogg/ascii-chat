@@ -7,7 +7,8 @@
  * reserved bytes. It then carries complete ACIP packets in their existing
  * header+payload framing. The connection owns one stream per class and
  * direction; accepting duplicate classes is the endpoint's responsibility.
- * Stream class is routing metadata, not proof of an authenticated packet type.
+ * Plaintext types must match the stream class. Encrypted packet types must be
+ * checked against that class after decryption by the application transport.
  */
 #define ACIP_QUIC_STREAM_PREAMBLE_SIZE 8
 

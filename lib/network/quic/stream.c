@@ -1,5 +1,7 @@
 #include "stream.h"
 
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/util/endian.h>
 #include <string.h>
 
 static const uint8_t stream_magic[4] = {'A', 'C', 'Q', 'S'};
@@ -23,6 +25,13 @@ typedef struct {
 
 static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg) {
   emit_context_t *context = arg;
+  if (size < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated ACIP packet on QUIC stream");
+  packet_header_t header;
+  memcpy(&header, packet, sizeof(header));
+  uint16_t type = NET_TO_HOST_U16(header.type);
+  if (type != PACKET_TYPE_ENCRYPTED && acip_packet_traffic_class(type) != context->reader->traffic_class)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "ACIP packet does not match QUIC stream class");
   return context->emit(context->reader->traffic_class, packet, size, context->context);
 }
 
