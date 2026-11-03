@@ -552,8 +552,12 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
     atomic_store_bool_impl(&g_onboarding_wait, true);
     bool shown = show_first_use_instructions();
-    while (shown && ui_controller_screen_live(UI_SCREEN_NOTICE) && !shutdown_is_requested())
+    while (shown && ui_controller_screen_live(UI_SCREEN_NOTICE) && !shutdown_is_requested()) {
+      ui_presentation_state_t state = ui_controller_state();
+      if (state.screen == UI_SCREEN_NOTICE && state.covered)
+        break;
       platform_sleep_ms(10);
+    }
     atomic_store_bool_impl(&g_onboarding_wait, false);
     return ASCIICHAT_OK;
   }

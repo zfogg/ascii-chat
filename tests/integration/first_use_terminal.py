@@ -8,6 +8,7 @@ import argparse
 import importlib.util
 import os
 import re
+import socket
 import subprocess
 import tempfile
 import time
@@ -67,6 +68,33 @@ def main():
                 finish(term)
 
         marker = root / "first-use-mirror"
+        tiny_port = free_port()
+        tiny_marker = root / "first-use-server"
+        tiny = Terminal(base + ["server", "--port", str(tiny_port), "--websocket-port", str(free_port()),
+                                "--status-screen=false"], rows=7, cols=19, environment=env)
+        try:
+            deadline = time.monotonic() + 30
+            while True:
+                tiny.pump(.1)
+                try:
+                    with socket.create_connection(("127.0.0.1", tiny_port), timeout=.2):
+                        break
+                except OSError:
+                    assert time.monotonic() < deadline, "Server did not start in a too-small terminal"
+            tiny.write("\x1b")
+            tiny.pump(.5)
+            assert not tiny_marker.exists(), "Covered notice was marked as seen"
+            tiny.resize(40, 120)
+            tiny.expect(lambda text: "Server mode" in text and "Enter done" in text,
+                        "Covered notice was dismissed or lost", timeout=15)
+            tiny.write("\r")
+            deadline = time.monotonic() + 10
+            while not tiny_marker.exists() and time.monotonic() < deadline:
+                tiny.pump(.1)
+            assert tiny_marker.exists(), "Resized notice could not be acknowledged"
+        finally:
+            finish(tiny)
+        tiny_marker.unlink()
         small = Terminal(base + mirror, rows=8, cols=25, environment=env)
         try:
             first = small.expect(lambda text: re.search(r"1/(\d+) Enter next", text) is not None,
