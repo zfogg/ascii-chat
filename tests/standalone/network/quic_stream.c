@@ -1,0 +1,126 @@
+#include <ascii-chat/network/crc32.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/buffer.h>
+#include <ascii-chat/common.h>
+#include <network/quic/stream.h>
+#include <string.h>
+
+#define CHECK(expression)                                                                                              \
+  do {                                                                                                                 \
+    if (!(expression))                                                                                                 \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                             \
+  } while (0)
+
+typedef struct {
+  acip_traffic_class_t expected;
+  const uint8_t *packet;
+  size_t size;
+  unsigned count;
+  bool reject;
+} capture_t;
+
+static asciichat_error_t capture(acip_traffic_class_t traffic_class, const void *packet, size_t size, void *arg) {
+  capture_t *state = arg;
+  if (traffic_class != state->expected || size != state->size || memcmp(packet, state->packet, size) != 0)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incorrect stream packet");
+  ++state->count;
+  return state->reject ? SET_ERRNO(ERROR_BUFFER_FULL, "Receiver rejected packet") : ASCIICHAT_OK;
+}
+
+int main(void) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  const char payload[] = "video";
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME),
+                            .length = HOST_TO_NET_U32(sizeof(payload)),
+                            .crc32 = HOST_TO_NET_U32(asciichat_crc32(payload, sizeof(payload)))};
+  uint8_t packet[sizeof(header) + sizeof(payload)];
+  memcpy(packet, &header, sizeof(header));
+  memcpy(packet + sizeof(header), payload, sizeof(payload));
+
+  for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {
+    uint8_t wire[ACIP_QUIC_STREAM_PREAMBLE_SIZE + 2 * sizeof(packet)];
+    CHECK(acip_quic_stream_preamble((acip_traffic_class_t)traffic, wire) == ASCIICHAT_OK);
+    memcpy(wire + ACIP_QUIC_STREAM_PREAMBLE_SIZE, packet, sizeof(packet));
+    memcpy(wire + ACIP_QUIC_STREAM_PREAMBLE_SIZE + sizeof(packet), packet, sizeof(packet));
+    for (size_t split = 1; split <= sizeof(wire); ++split) {
+      acip_quic_stream_reader_t reader = {0};
+      capture_t state = {.expected = (acip_traffic_class_t)traffic, .packet = packet, .size = sizeof(packet)};
+      for (size_t offset = 0; offset < sizeof(wire);) {
+        size_t count = sizeof(wire) - offset < split ? sizeof(wire) - offset : split;
+        CHECK(acip_quic_stream_read(&reader, wire + offset, count, capture, &state) == ASCIICHAT_OK);
+        offset += count;
+      }
+      CHECK(state.count == 2);
+      CHECK(acip_quic_stream_finish(&reader) == ASCIICHAT_OK);
+      CHECK(acip_quic_stream_read(&reader, NULL, 0, capture, &state) == ERROR_INVALID_PARAM);
+      acip_quic_stream_reset(&reader);
+    }
+  }
+
+  uint8_t preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE];
+  CHECK(acip_quic_stream_preamble(ACIP_TRAFFIC_AUDIO, preamble) == ASCIICHAT_OK);
+  CHECK(acip_quic_stream_preamble((acip_traffic_class_t)99, preamble) == ERROR_INVALID_PARAM);
+  capture_t state = {.expected = ACIP_TRAFFIC_AUDIO, .packet = packet, .size = sizeof(packet)};
+  {
+    acip_quic_stream_reader_t reader = {0};
+    packet_header_t empty = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
+    capture_t empty_state = {.expected = ACIP_TRAFFIC_AUDIO, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
+    CHECK(acip_quic_stream_read(&reader, preamble, sizeof(preamble), capture, &empty_state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, &empty, sizeof(empty), capture, &empty_state) == ASCIICHAT_OK);
+    CHECK(empty_state.count == 1 && acip_quic_stream_finish(&reader) == ASCIICHAT_OK);
+    acip_quic_stream_reset(&reader);
+  }
+  for (size_t i = 0; i < sizeof(preamble); ++i) {
+    acip_quic_stream_reader_t reader = {0};
+    uint8_t invalid[sizeof(preamble)];
+    memcpy(invalid, preamble, sizeof(invalid));
+    invalid[i] = i == 5 ? 99 : (uint8_t)(invalid[i] ^ 0xff);
+    CHECK(acip_quic_stream_read(&reader, invalid, sizeof(invalid), capture, &state) == ERROR_NETWORK_PROTOCOL);
+    CHECK(acip_quic_stream_finish(&reader) == ERROR_INVALID_PARAM);
+    acip_quic_stream_reset(&reader);
+  }
+
+  for (size_t length = 0; length < sizeof(preamble); ++length) {
+    acip_quic_stream_reader_t reader = {0};
+    CHECK(acip_quic_stream_read(&reader, preamble, length, capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_finish(&reader) == ERROR_NETWORK_PROTOCOL);
+    acip_quic_stream_reset(&reader);
+  }
+  for (size_t length = 1; length < sizeof(packet); ++length) {
+    acip_quic_stream_reader_t reader = {0};
+    CHECK(acip_quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, packet, length, capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_finish(&reader) == ERROR_NETWORK_PROTOCOL);
+    acip_quic_stream_reset(&reader);
+  }
+  {
+    acip_quic_stream_reader_t reader = {0};
+    reader.packets.max_payload = sizeof(payload) - 1;
+    CHECK(acip_quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, packet, sizeof(packet), capture, &state) == ERROR_NETWORK_PROTOCOL);
+    acip_quic_stream_reset(&reader);
+  }
+  {
+    acip_quic_stream_reader_t reader = {0};
+    uint8_t corrupt[sizeof(packet)];
+    memcpy(corrupt, packet, sizeof(corrupt));
+    corrupt[sizeof(corrupt) - 1] ^= 1;
+    CHECK(acip_quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, corrupt, sizeof(corrupt), capture, &state) == ERROR_NETWORK_PROTOCOL);
+    acip_quic_stream_reset(&reader);
+  }
+  {
+    acip_quic_stream_reader_t reader = {0};
+    state.reject = true;
+    CHECK(acip_quic_stream_read(&reader, preamble, sizeof(preamble), capture, &state) == ASCIICHAT_OK);
+    CHECK(acip_quic_stream_read(&reader, packet, sizeof(packet), capture, &state) == ERROR_BUFFER_FULL);
+    CHECK(acip_quic_stream_finish(&reader) == ERROR_INVALID_PARAM);
+    acip_quic_stream_reset(&reader);
+  }
+  buffer_system_cleanup();
+  log_destroy();
+  return 0;
+}
