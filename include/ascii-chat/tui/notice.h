@@ -24,12 +24,13 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
 asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *text);
 
 /** Show a first-use notice until the user dismisses it. */
-asciichat_error_t ui_notice_present_first_use(const char *text, const char *marker_path);
+asciichat_error_t ui_notice_present_first_use(const char *title, const char *text, const char *marker_path);
 /** Record which first-use page reached the terminal after a successful frame. */
 void ui_notice_frame_presented(const void *snapshot);
 typedef enum {
   UI_NOTICE_KEY_ORDINARY,
   UI_NOTICE_KEY_HANDLED,
+  UI_NOTICE_KEY_HELP,
   UI_NOTICE_KEY_DISMISS,
   UI_NOTICE_KEY_COMPLETE
 } ui_notice_key_result_t;

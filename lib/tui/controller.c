@@ -1488,6 +1488,8 @@ bool ui_controller_first_use_key(int key) {
   if (!owned)
     return false;
   ui_notice_key_result_t result = ui_notice_first_use_key(owned->data, key);
+  if (result == UI_NOTICE_KEY_HELP)
+    keyboard_help_toggle_terminal(ui_controller_active_fd());
   if (result == UI_NOTICE_KEY_COMPLETE)
     ui_notice_first_use_complete(owned->data);
   if (result == UI_NOTICE_KEY_COMPLETE || result == UI_NOTICE_KEY_DISMISS)

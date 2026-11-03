@@ -25,7 +25,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ascii-first-use-") as temp:
         root = Path(temp)
         env = {"ASCII_CHAT_DISABLE_FIRST_USE": "0", "ASCII_CHAT_FIRST_USE_DIR": str(root)}
-        base = [binary, "--no-check-update", "--log-file", str(root / "app.log")]
+        base = [binary, "--no-check-update", "--utf8=true", "--color=true", "--color-mode=truecolor",
+                "--log-file", str(root / "app.log")]
         mirror = ["mirror", "--test-pattern", "--audio=false", "--splash-screen=false"]
 
         def finish(term):
@@ -37,12 +38,30 @@ def main():
         def run(args, expected, marker):
             term = Terminal(base + args, rows=40, cols=120, environment=env)
             try:
-                term.expect(lambda text: expected.lower() in text.lower(), "First-use instructions missing", timeout=30)
+                term.expect(lambda text: expected in text and "Enter done" in text,
+                            "First-use instructions missing", timeout=30)
                 assert not marker.exists(), "Notice was marked before acknowledgement"
-                term.write("\r")
-                deadline = time.monotonic() + 5
+                if expected == "Mirror mode":
+                    lines = term.screen.display
+                    top = next(i for i, line in enumerate(lines) if "┌" in line and "┐" in line)
+                    bottom = next(i for i, line in enumerate(lines) if "└" in line and "┘" in line)
+                    left, right = lines[top].index("┌"), lines[top].index("┐")
+                    assert abs(left - (term.screen.columns - right - 1)) <= 1, "Popup is not horizontally centered"
+                    assert abs(top - (term.screen.lines - bottom - 1)) <= 1, "Popup is not vertically centered"
+                    assert any("│" in line for line in lines[top + 1:bottom]), "UTF-8 side borders missing"
+                    row = next(i for i, line in enumerate(lines) if "?" in line and "keyboard shortcuts" in line)
+                    col = lines[row].index("?")
+                    assert term.screen.buffer[row][col].fg != "default", "Shortcut is not colorized"
+                    term.write("?")
+                    term.expect(lambda text: "Keyboard Shortcuts" in text, "Help did not open", timeout=10)
+                    term.write("?")
+                    term.expect(lambda text: expected in text and "Enter done" in text,
+                                "First-use notice did not return from help", timeout=10)
+                deadline = time.monotonic() + 8
                 while not marker.exists() and time.monotonic() < deadline:
-                    term.pump(.1)
+                    text = term.pump(.25)
+                    if expected in text and "Enter done" in text:
+                        term.write("\r")
                 assert marker.exists(), "Notice was not marked after acknowledgement"
             finally:
                 finish(term)
@@ -50,17 +69,17 @@ def main():
         marker = root / "first-use-mirror"
         small = Terminal(base + mirror, rows=8, cols=25, environment=env)
         try:
-            first = small.expect(lambda text: re.search(r"1/(\d+) Enter:next", text) is not None,
+            first = small.expect(lambda text: re.search(r"1/(\d+) Enter next", text) is not None,
                                  "Small terminal did not show a paged notice", timeout=30)
-            pages = int(re.search(r"1/(\d+) Enter:next", first).group(1))
+            pages = int(re.search(r"1/(\d+) Enter next", first).group(1))
             assert pages > 1
             time.sleep(11)
             text = small.pump(.5)
-            assert re.search(r"1/\d+ Enter:next", text), "Notice advanced without input"
+            assert re.search(r"1/\d+ Enter next", text), "Notice advanced without input"
             assert not marker.exists(), "Incomplete notice was marked as seen"
             for page in range(2, pages + 1):
                 small.write("\r")
-                small.expect(lambda text, page=page: f"{page}/{pages} Enter:" in text,
+                small.expect(lambda text, page=page: f"{page}/{pages} Enter " in text,
                              f"Page {page} did not appear", timeout=10)
                 assert not marker.exists(), "Notice was marked before final acknowledgement"
             small.write("\r")
@@ -73,34 +92,34 @@ def main():
         marker.unlink()
         dismissed = Terminal(base + mirror, rows=40, cols=120, environment=env)
         try:
-            dismissed.expect(lambda text: "Mirror previews your camera locally".lower() in text.lower(),
+            dismissed.expect(lambda text: "Mirror mode" in text,
                              "Notice did not reopen after marker removal", timeout=30)
             dismissed.write("\x1b")
-            dismissed.expect(lambda text: "mirror previews your camera locally" not in text.lower(),
+            dismissed.expect(lambda text: "Mirror mode" not in text,
                              "Escape did not dismiss the notice", timeout=10)
             assert not marker.exists(), "Escape marked the notice complete"
         finally:
             finish(dismissed)
-        run(mirror, "Mirror previews your camera locally", marker)
+        run(mirror, "Mirror mode", marker)
         assert not (root / "first-use-server").exists()
         run(["server", "--port", str(free_port()), "--websocket-port", str(free_port()), "--status-screen"],
-            "Server accepts connections from clients", root / "first-use-server")
+            "Server mode", root / "first-use-server")
         (root / "first-use-server").unlink()
         run(["server", "--port", str(free_port()), "--websocket-port", str(free_port()), "--status-screen=false"],
-            "Server accepts connections from clients", root / "first-use-server")
+            "Server mode", root / "first-use-server")
         run(["client", "127.0.0.1", "--port", str(free_port()), "--test-pattern", "--audio=false"],
-            "Client connects to a server", root / "first-use-client")
+            "Client mode", root / "first-use-client")
         run(["--discovery-service", "127.0.0.1", "--discovery-service-port", str(free_port()), "--test-pattern", "--audio=false"],
-            "Discovery creates a session", root / "first-use-discovery")
+            "Discovery mode", root / "first-use-discovery")
         run(["discovery-service", "--port", str(free_port()), "--websocket-port", str(free_port()),
              "--database", str(root / "discovery.db"), "--status-screen"],
-            "The discovery service helps participants", root / "first-use-discovery-service")
+            "Discovery service mode", root / "first-use-discovery-service")
         run(["mcp-server", "--transport", "http", "--address", "127.0.0.1", "--port", str(free_port())],
-            "MCP server exposes rendering tools", root / "first-use-mcp-server")
+            "MCP server mode", root / "first-use-mcp-server")
         term = Terminal(base + mirror, rows=40, cols=120, environment=env)
         try:
             text = term.pump(3)
-            assert "mirror previews your camera locally" not in text.lower(), "Notice repeated on subsequent use"
+            assert "Mirror mode" not in text, "Notice repeated on subsequent use"
         finally:
             finish(term)
         marker.unlink()
