@@ -1443,6 +1443,12 @@ if(TARGET ascii-chat-static)
         asciichat_add_python_test(quic-tls-identity
             ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_handshake.py $<TARGET_FILE:test-quic-tls>)
         set_tests_properties(quic-tls-identity PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+        if(TARGET ascii-chat)
+            asciichat_add_python_test(quic-cli-server
+                ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_server.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(quic-cli-server PROPERTIES LABELS "integration;standalone" TIMEOUT 100)
+        endif()
         target_link_libraries(test-quic-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
         if(WIN32)
             target_link_libraries(test-quic-stream PRIVATE ws2_32)
@@ -1474,6 +1480,12 @@ if(TARGET ascii-chat-static)
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            if(TEST quic-cli-server)
+                set_property(TEST quic-cli-server PROPERTY ENVIRONMENT_MODIFICATION
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                    "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            endif()
         endif()
         if(TARGET tests)
             add_dependencies(tests test-traffic-metadata)

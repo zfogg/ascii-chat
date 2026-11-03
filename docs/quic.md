@@ -1,8 +1,8 @@
 # ACIP over QUIC
 
 This document records the stream framing being implemented for issue #247.
-The native endpoint API is available for integration; the application does not
-yet select it, and the WebTransport session protocol is not yet available.
+The native server has an opt-in listener; native client selection and the
+WebTransport session protocol are not yet available.
 
 ## Reliable streams
 
@@ -135,6 +135,12 @@ clear their wakers, join the worker, and then destroy its borrowed resources.
 The worker and adapter are not yet integrated into the production lifecycle or
 connection selection.
 
+The server can opt into a native listener with `--quic-bind-address`,
+`--quic-tls-cert`, and `--quic-tls-key`. The bind address must be a concrete
+numeric IPv4 or IPv6 address. `--quic-port` selects the UDP port; zero uses
+the TCP server port. The TCP listener remains available. These flags configure
+raw ACIP-over-QUIC, not browser WebTransport.
+
 The native endpoint API wraps the UDP driver and worker. Returned transports
 are owned by their caller and can be destroyed directly or released through the
 endpoint, which must outlive them. It accepts resolved IPv4 or IPv6
@@ -149,7 +155,7 @@ interrupts claimed transports, and discards unclaimed accepts; callers destroy
 claimed transports before destroying the endpoint. Endpoint lifecycle calls
 must be serialized, and callers stop transport users before release. Public
 hostname resolution, wildcard destination selection, graceful close, production
-admission policy, and integration into client/server selection remain open.
+admission policy, and native client selection remain open.
 
 ## ACIP encryption audit
 

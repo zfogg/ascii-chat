@@ -18,6 +18,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/network/acip/quic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/buffer.h>
@@ -39,6 +40,7 @@
  * ============================================================================ */
 
 static network_server_t *g_network_server;
+static acip_quic_endpoint_t *g_quic_endpoint;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
@@ -234,6 +236,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   }
 
   asciichat_error_t result = ASCIICHAT_OK;
+  bool mode_init_started = false;
 
   /* === 1. Keepawake === */
 
@@ -271,6 +274,34 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   bool ipv4_has_value = (address && strlen(address) > 0);
   bool ipv6_has_value = (address6 && strlen(address6) > 0);
 
+  const char *quic_address = GET_OPTION(quic_bind_address);
+  const char *quic_certificate = GET_OPTION(quic_tls_cert);
+  const char *quic_key = GET_OPTION(quic_tls_key);
+  int quic_port = GET_OPTION(quic_port);
+  if (*quic_address || *quic_certificate || *quic_key || quic_port) {
+    if (quic_port < 0 || quic_port > 65535) {
+      result = SET_ERRNO(ERROR_USAGE, "QUIC port must be between 0 and 65535");
+      goto cleanup;
+    }
+    if (!*quic_address || !*quic_certificate || !*quic_key) {
+      result = SET_ERRNO(ERROR_USAGE, "QUIC requires --quic-bind-address, --quic-tls-cert, and --quic-tls-key");
+      goto cleanup;
+    }
+    struct sockaddr_storage bind_address;
+    socklen_t bind_length = 0;
+    result = parse_numeric_socket_address(quic_address, (uint16_t)(quic_port ? quic_port : port), &bind_address,
+                                          &bind_length);
+    if (result != ASCIICHAT_OK)
+      goto cleanup;
+    acip_quic_config_t quic_config = {
+        .certificate_file = quic_certificate, .private_key_file = quic_key, .enable_datagrams = true};
+    result = acip_quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config,
+                                     &g_quic_endpoint);
+    if (result != ASCIICHAT_OK)
+      goto cleanup;
+    log_info("Native QUIC listener initialized on %s UDP port %d", quic_address, quic_port ? quic_port : port);
+  }
+
   network_server_config_t tcp_config = {
       .port = port,
       .ipv4_address = ipv4_has_value ? address : NULL,
@@ -288,6 +319,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       .tick = config->tick_fn,
       .tick_context = config->tick_user_data,
       .user_data = config->connection_user_data,
+      .quic_endpoint = g_quic_endpoint,
   };
 
   result = network_server_create(&tcp_config, &g_network_server);
@@ -347,6 +379,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   /* === 8. Mode-specific init === */
 
+  mode_init_started = true;
   result = config->init_fn(config->init_user_data);
   if (result != ASCIICHAT_OK) {
     log_error("Mode initialization failed");
@@ -456,11 +489,19 @@ cleanup:
     return stopped;
 
   /* 13. Mode-specific cleanup (only call if config provided) */
-  if (config && config->cleanup_fn) {
+  if (mode_init_started && config && config->cleanup_fn) {
     config->cleanup_fn(config->cleanup_user_data);
   }
 
   network_server_destroy(&g_network_server);
+  if (g_quic_endpoint) {
+    asciichat_error_t quic_result = acip_quic_endpoint_stop(g_quic_endpoint);
+    if (quic_result != ASCIICHAT_OK)
+      return quic_result;
+    quic_result = acip_quic_endpoint_destroy(&g_quic_endpoint);
+    if (quic_result != ASCIICHAT_OK)
+      return quic_result;
+  }
 
   /* 17. mDNS cleanup */
   if (g_mdns_ctx) {

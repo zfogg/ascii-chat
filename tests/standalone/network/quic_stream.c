@@ -1,6 +1,7 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <network/quic/stream.h>
@@ -96,6 +97,16 @@ static void test_datagrams(void) {
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
+  struct sockaddr_storage address;
+  socklen_t address_length = 0;
+  CHECK(parse_numeric_socket_address("127.0.0.1", 23456, &address, &address_length) == ASCIICHAT_OK);
+  CHECK(address.ss_family == AF_INET && address_length == sizeof(struct sockaddr_in) &&
+        NET_TO_HOST_U16(((struct sockaddr_in *)&address)->sin_port) == 23456);
+  CHECK(parse_numeric_socket_address("::1", 23456, &address, &address_length) == ASCIICHAT_OK);
+  CHECK(address.ss_family == AF_INET6 && address_length == sizeof(struct sockaddr_in6) &&
+        NET_TO_HOST_U16(((struct sockaddr_in6 *)&address)->sin6_port) == 23456);
+  CHECK(parse_numeric_socket_address("localhost", 23456, &address, &address_length) == ERROR_INVALID_PARAM &&
+        address_length == 0);
   test_datagrams();
   const char payload[] = "video";
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),

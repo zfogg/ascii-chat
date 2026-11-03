@@ -21,6 +21,7 @@
 #include <network/quic/transport.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define CHECK(expression)                                                                                              \
@@ -1693,7 +1694,55 @@ static void quic_retry_token_test(void) {
                                           10 * NS_PER_SEC_INT, now + NS_PER_SEC_INT) != 0);
 }
 
+static void quic_cli_probe(const char *certificate, const char *port_text) {
+  char *end = NULL;
+  unsigned long port = strtoul(port_text, &end, 10);
+  CHECK(end && !*end && port > 0 && port <= 65535);
+  CHECK(socket_init() == ASCIICHAT_OK);
+  struct sockaddr_in local = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  struct sockaddr_in remote = local;
+  remote.sin_port = HOST_TO_NET_U16((uint16_t)port);
+  acip_quic_config_t config = {.ca_file = certificate, .enable_datagrams = true};
+  acip_quic_endpoint_t *endpoint = NULL;
+  acip_transport_t *transport = NULL;
+  CHECK(acip_quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &config, &endpoint) == ASCIICHAT_OK);
+  CHECK(acip_quic_connect(endpoint, (struct sockaddr *)&remote, sizeof(remote), "localhost", &transport) ==
+        ASCIICHAT_OK);
+  uint64_t start = time_get_ns();
+  acip_transport_capabilities_t caps;
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT &&
+         acip_transport_get_capabilities(transport, &caps) != ASCIICHAT_OK)
+    time_sleep_ns(NS_PER_MS_INT);
+  CHECK(acip_transport_get_capabilities(transport, &caps) == ASCIICHAT_OK);
+  crypto_handshake_context_t handshake;
+  CHECK(crypto_handshake_init_with_password("quic-cli-probe", &handshake, false, "test-password") == ASCIICHAT_OK);
+  SAFE_STRNCPY(handshake.server_ip, "127.0.0.1", sizeof(handshake.server_ip));
+  handshake.server_port = (uint16_t)port;
+  CHECK(network_client_negotiate(transport, &handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA) == ASCIICHAT_OK);
+  transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
+  void *packet = NULL, *allocation = NULL;
+  size_t length = 0;
+  CHECK(acip_transport_recv(transport, &packet, &length, &allocation) == ASCIICHAT_OK);
+  CHECK(length >= sizeof(packet_header_t));
+  packet_header_t header;
+  memcpy(&header, packet, sizeof(header));
+  CHECK(NET_TO_HOST_U16(header.type) == PACKET_TYPE_SERVER_STATE);
+  buffer_release(allocation);
+  CHECK(acip_quic_endpoint_stop(endpoint) == ASCIICHAT_OK);
+  CHECK(acip_quic_release(endpoint, &transport) == ASCIICHAT_OK);
+  CHECK(acip_quic_endpoint_destroy(&endpoint) == ASCIICHAT_OK);
+  crypto_handshake_destroy(&handshake);
+  socket_cleanup();
+}
+
 int main(int argc, char **argv) {
+  if (argc == 4 && strcmp(argv[1], "--cli-probe") == 0) {
+    log_init(NULL, LOG_ERROR, false, false);
+    errno_suppress(true);
+    quic_cli_probe(argv[2], argv[3]);
+    log_destroy();
+    return 0;
+  }
   CHECK(argc == 5);
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);

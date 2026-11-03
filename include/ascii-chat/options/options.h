@@ -992,6 +992,10 @@ typedef struct options_state {
   char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
   char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
   char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
+  char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
+  char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
+  int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
   int max_clients;                                    ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
