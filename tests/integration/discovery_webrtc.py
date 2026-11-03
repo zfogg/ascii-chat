@@ -7,14 +7,16 @@ _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().paren
 import _environment  # noqa: F401
 
 from pathlib import Path
+import argparse
+import contextlib
 import re
-import sys
 import tempfile
 import time
 from server_lifecycle import Service, free_port
 
 
-def exercise(binary, directory, audio=False):
+def exercise(binary, directory, audio=False, debug_ice=False, ipv6=False):
+    ice_address = '::1' if ipv6 else '127.0.0.1'
     for suffix in ['ascii-chat', '.config/ascii-chat']:
         (directory/suffix).mkdir(parents=True, exist_ok=True)
     identity = directory/'identity'
@@ -29,16 +31,25 @@ def exercise(binary, directory, audio=False):
         services.append(acds)
         acds.wait_for('Server accepting connections')
         common = ['--discovery-service', '127.0.0.1', '--discovery-service-port', str(ap),
-                  '--width','40','--height','12','--color-mode','none','--splash-screen=false','--webrtc-skip-stun','--webrtc-disable-turn']
+                  '--width','40','--height','12','--color-mode','none','--splash-screen=false','--webrtc-skip-stun','--webrtc-disable-turn',
+                  '--webrtc-bind-address', ice_address]
         common += (['--audio=true', '--test-audio', '--no-audio-playback'] if audio else ['--audio=false'])
-        host = Service(binary, directory, 'host', '--test-pattern', common + ['--port',str(hp)], env)
+        level = 'dev' if debug_ice else 'debug'
+        host = Service(binary, directory, 'host', '--test-pattern', common + ['--port',str(hp)], env, log_level=level)
         services.append(host)
         host.wait_for('Session created:', timeout=25)
         name = re.search(r'Session created: ([a-z]+-[a-z]+-[a-z]+)', host.text())[1]
         print('Session',name, flush=True)
-        client = Service(binary, directory, 'client', name, common + ['--test-pattern'], env)
+        client = Service(binary, directory, 'client', name, common + ['--test-pattern'], env, log_level=level)
         services.append(client)
         client.wait_for('WebRTC Media Channel ACTIVE', timeout=35)
+        for peer in (host, client):
+            # The selected bind must reach ICE itself, not only the TCP listener.
+            peer.wait_for(f'Binding WebRTC ICE sockets to {ice_address}')
+            for side in ('local', 'remote'):
+                peer.wait_for(f'WebRTC selected {side} candidate:')
+                selected = re.findall(rf'WebRTC selected {side} candidate: (.+)', peer.text())
+                assert selected and all(f' {ice_address} ' in candidate for candidate in selected), selected
         host.wait_for('Frame received from client', timeout=20)
         if audio:
             client.wait_for('Discovery decoded remote audio: blocks=25', timeout=30)
@@ -74,8 +85,18 @@ def exercise(binary, directory, audio=False):
             raise AssertionError('Discovery service cleanup failed: ' + '; '.join(map(str, failures)))
 
 
-
-
 if __name__ == '__main__':
-    with tempfile.TemporaryDirectory(prefix='ascii-discovery-webrtc-') as tmp:
-        exercise(Path(sys.argv[1]).resolve(), Path(tmp), audio='--audio' in sys.argv[2:])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('binary', type=Path)
+    parser.add_argument('--audio', action='store_true')
+    parser.add_argument('--ipv6', action='store_true', help='Use IPv6 loopback for ICE with IPv4 signaling')
+    parser.add_argument('--debug-ice', action='store_true')
+    parser.add_argument('--artifacts-dir', type=Path)
+    args = parser.parse_args()
+    if args.artifacts_dir:
+        args.artifacts_dir = args.artifacts_dir.resolve()
+        args.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    artifacts = (contextlib.nullcontext(args.artifacts_dir) if args.artifacts_dir else
+                 tempfile.TemporaryDirectory(prefix='ascii-discovery-webrtc-'))
+    with artifacts as tmp:
+        exercise(args.binary.resolve(), Path(tmp), audio=args.audio, debug_ice=args.debug_ice, ipv6=args.ipv6)

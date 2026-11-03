@@ -27,6 +27,24 @@ static void teardown(void) {
 
 TestSuite(rcu_validation, .init = setup, .fini = teardown);
 
+Test(rcu_validation, webrtc_bind_address_accepts_numeric_interfaces) {
+  cr_assert_str_empty(GET_OPTION(webrtc_bind_address));
+  const char *addresses[] = {"127.0.0.1", "::1", "192.0.2.1", "2001:db8::1", "0.0.0.0", "::", ""};
+  for (size_t i = 0; i < sizeof(addresses) / sizeof(*addresses); ++i) {
+    cr_assert_eq(options_set_string("webrtc_bind_address", addresses[i]), ASCIICHAT_OK);
+    cr_assert_str_eq(GET_OPTION(webrtc_bind_address), addresses[i]);
+  }
+}
+
+Test(rcu_validation, webrtc_bind_address_rejects_invalid_values_without_publishing) {
+  cr_assert_eq(options_set_string("webrtc_bind_address", "127.0.0.1"), ASCIICHAT_OK);
+  const char *invalid[] = {"localhost", "127.0.0.1:5000", "[::1]", "::not-an-ip", "256.0.0.1"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+    cr_assert_neq(options_set_string("webrtc_bind_address", invalid[i]), ASCIICHAT_OK);
+    cr_assert_str_eq(GET_OPTION(webrtc_bind_address), "127.0.0.1");
+  }
+}
+
 Test(rcu_validation, face_follow_and_zalgo_keyboard_round_trip) {
   double volume = 1.0;
   cr_assert_eq(options_set_bool("face_follow", false), ASCIICHAT_OK);

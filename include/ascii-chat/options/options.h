@@ -1170,12 +1170,13 @@ typedef struct options_state {
   // ============================================================================
   // WebRTC Connection Strategy Options (client-side fallback control)
   // ============================================================================
-  bool prefer_webrtc;            ///< --prefer-webrtc: Try WebRTC before Direct TCP
-  bool no_webrtc;                ///< --no-webrtc: Disable WebRTC, use Direct TCP only
-  bool webrtc_skip_stun;         ///< --webrtc-skip-stun: Skip Stage 2 (STUN), go to TURN
-  bool webrtc_relay_only;        ///< --webrtc-relay-only: Require TURN relay candidates
-  bool webrtc_disable_turn;      ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
-  bool webrtc_skip_host;         ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
+  bool prefer_webrtc;                          ///< --prefer-webrtc: Try WebRTC before Direct TCP
+  bool no_webrtc;                              ///< --no-webrtc: Disable WebRTC, use Direct TCP only
+  char webrtc_bind_address[OPTIONS_BUFF_SIZE]; ///< Optional numeric local address for WebRTC ICE sockets
+  bool webrtc_skip_stun;                       ///< --webrtc-skip-stun: Skip Stage 2 (STUN), go to TURN
+  bool webrtc_relay_only;                      ///< --webrtc-relay-only: Require TURN relay candidates
+  bool webrtc_disable_turn;                    ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
+  bool webrtc_skip_host;                       ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
   int webrtc_ice_timeout_ms;     ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
   int webrtc_reconnect_attempts; ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
 

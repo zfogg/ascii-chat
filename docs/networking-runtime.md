@@ -58,6 +58,18 @@ Discovery participants use the same media path after either TCP establishment or
 authenticated WebRTC adoption. Initial capabilities precede stream startup for
 both; there is no separate client-join announcement or TCP-only wait loop.
 
+Native clients, discovery participants, and servers accept
+`--webrtc-bind-address IP` (`ASCII_CHAT_WEBRTC_BIND_ADDRESS`) to select the local
+IPv4 or unbracketed IPv6 address for ICE UDP sockets. Discovery gathers all
+interfaces when this option is empty. Servers otherwise use their selected TCP
+interface. The signaling service's address does not select the ICE interface.
+For a call between two processes on the same machine, set this option to
+`127.0.0.1` on both peers to keep connectivity checks on loopback. This also
+avoids host firewall or local-network permissions affecting loopback tests.
+`tests/integration/discovery_webrtc.py` verifies both selected ICE candidates
+and received media; `--audio` additionally verifies stereo packet sizes, and
+`--ipv6` selects IPv6 loopback for ICE while signaling stays on IPv4.
+
 Server render workers submit media directly to the ACIP outbound scheduler.
 That scheduler owns congestion admission, ordered control traffic, media dropping,
 and encryption sequencing for every transport. There is no second mode-owned

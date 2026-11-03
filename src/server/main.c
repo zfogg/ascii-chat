@@ -1606,13 +1606,15 @@ static void server_init_webrtc(void) {
 
     // Configure peer_manager
     const char *server_address = GET_OPTION(address);
+    const char *ice_bind_address = GET_OPTION(webrtc_bind_address);
     bool bind_webrtc_to_server_address = server_address && server_address[0] &&
                                          strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
     webrtc_peer_manager_config_t pm_config = {
         .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
                                      // Honor an explicitly selected server interface for ICE. With a
                                      // wildcard bind, let libdatachannel gather candidates on all interfaces.
-        .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
+        .bind_address =
+            ice_bind_address[0] ? ice_bind_address : (bind_webrtc_to_server_address ? server_address : NULL),
         .stun_servers = stun_servers,
         .stun_count = stun_count,
         .turn_servers = turn_servers,
