@@ -41,6 +41,8 @@ struct acip_quic_connection {
   ngtcp2_crypto_ossl_ctx *crypto;
   SSL *ssl;
   acip_quic_tls_t *tls;
+  ngtcp2_cid initial_dcid;
+  bool has_initial_dcid;
   uint64_t last_time_ns;
   send_stream_t sends[ACIP_QUIC_FLOW_COUNT];
   receive_stream_t receives[ACIP_QUIC_FLOW_COUNT];
@@ -300,6 +302,10 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   if (!connection)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC connection");
   connection->tls = tls;
+  if (initial) {
+    connection->initial_dcid = initial->dcid;
+    connection->has_initial_dcid = true;
+  }
   connection->last_time_ns = now_ns;
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
     connection->sends[i].id = -1;
@@ -391,6 +397,37 @@ static asciichat_error_t update_time(acip_quic_connection_t *connection, uint64_
   if (now_ns < connection->last_time_ns || now_ns == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC monotonic time moved backwards or is invalid");
   connection->last_time_ns = now_ns;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t acip_quic_connection_matches_cid(const acip_quic_connection_t *connection, const uint8_t *cid,
+                                                   size_t length, bool *matches) {
+  if (!connection || !connection->conn || !cid || !matches)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC connection ID lookup");
+  *matches = false;
+  if (!length || length > NGTCP2_MAX_CIDLEN)
+    return ASCIICHAT_OK;
+  if (connection->has_initial_dcid && length == connection->initial_dcid.datalen &&
+      memcmp(cid, connection->initial_dcid.data, length) == 0) {
+    *matches = true;
+    return ASCIICHAT_OK;
+  }
+  size_t count = ngtcp2_conn_get_scid2(connection->conn, NULL);
+  if (!count)
+    return ASCIICHAT_OK;
+  if (count > SIZE_MAX / sizeof(ngtcp2_cid))
+    return SET_ERRNO(ERROR_MEMORY, "QUIC connection ID count overflow");
+  ngtcp2_cid *ids = SAFE_CALLOC(count, sizeof(*ids), ngtcp2_cid *);
+  if (!ids)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC connection ID list");
+  size_t actual = ngtcp2_conn_get_scid2(connection->conn, ids);
+  for (size_t i = 0; i < actual; ++i) {
+    if (ids[i].datalen == length && memcmp(ids[i].data, cid, length) == 0) {
+      *matches = true;
+      break;
+    }
+  }
+  SAFE_FREE(ids);
   return ASCIICHAT_OK;
 }
 

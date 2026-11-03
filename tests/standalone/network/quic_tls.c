@@ -7,6 +7,7 @@
 #include <ascii-chat/buffer.h>
 #include <network/quic/connection.h>
 #include <network/quic/tls.h>
+#include <network/quic/udp.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <string.h>
@@ -387,6 +388,93 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
   return success;
 }
 
+typedef struct {
+  acip_quic_connection_t *peers[2];
+  unsigned accepted;
+  unsigned received;
+  const uint8_t *packet;
+  size_t length;
+} udp_test_state_t;
+
+static asciichat_error_t udp_capture(acip_traffic_class_t traffic_class, const void *packet, size_t length,
+                                      void *context) {
+  udp_test_state_t *state = context;
+  if (traffic_class != ACIP_TRAFFIC_CONTROL || length != state->length || memcmp(packet, state->packet, length))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected UDP test packet");
+  ++state->received;
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t udp_accept(acip_quic_connection_t *connection, void *context) {
+  udp_test_state_t *state = context;
+  if (state->accepted >= 2)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected UDP test connection");
+  state->peers[state->accepted++] = connection;
+  return acip_quic_connection_set_receiver(connection, udp_capture, state);
+}
+
+static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  udp_test_state_t server_state = {0}, client_state = {0};
+  size_t length = 0;
+  uint8_t *packet = make_packet(PACKET_TYPE_PING, 64, &length);
+  server_state.packet = client_state.packet = packet;
+  server_state.length = client_state.length = length;
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept,
+                                       &server_state, &server) == ASCIICHAT_OK);
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
+        ASCIICHAT_OK);
+  struct sockaddr_storage server_address;
+  socklen_t server_length = 0;
+  CHECK(acip_quic_udp_endpoint_address(server, &server_address, &server_length) == ASCIICHAT_OK);
+  acip_quic_connection_t *clients[2] = {NULL, NULL};
+  uint64_t start = time_get_ns();
+  for (size_t i = 0; i < 2; ++i) {
+    CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&server_address, server_length,
+                                 start, &clients[i]) == ASCIICHAT_OK);
+    CHECK(acip_quic_connection_set_receiver(clients[i], udp_capture, &client_state) == ASCIICHAT_OK);
+  }
+  bool submitted = false;
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
+    uint64_t now = time_get_ns();
+    acip_quic_connection_t *failed = NULL;
+    CHECK(acip_quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
+    CHECK(acip_quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
+    if (!submitted && server_state.accepted == 2 && acip_quic_connection_tls_ready(clients[0]) &&
+        acip_quic_connection_tls_ready(clients[1]) && acip_quic_connection_tls_ready(server_state.peers[0]) &&
+        acip_quic_connection_tls_ready(server_state.peers[1])) {
+      for (size_t i = 0; i < 2; ++i) {
+        CHECK(acip_quic_connection_submit(clients[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
+        CHECK(acip_quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
+      }
+      submitted = true;
+    }
+    if (submitted && client_state.received == 2 && server_state.received == 2)
+      break;
+    time_sleep_ns(NS_PER_MS_INT);
+  }
+  CHECK(submitted && client_state.received == 2 && server_state.received == 2);
+  CHECK(acip_quic_udp_remove(client, clients[0]) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_submit(clients[1], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
+  for (size_t i = 0; i < 2; ++i)
+    CHECK(acip_quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
+  start = time_get_ns();
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT && (client_state.received < 3 || server_state.received < 3)) {
+    uint64_t now = time_get_ns();
+    acip_quic_connection_t *failed = NULL;
+    CHECK(acip_quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
+    CHECK(acip_quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
+    time_sleep_ns(NS_PER_MS_INT);
+  }
+  CHECK(client_state.received == 3 && server_state.received == 3);
+  acip_quic_udp_endpoint_destroy(&client);
+  acip_quic_udp_endpoint_destroy(&server);
+  buffer_release(packet);
+  socket_cleanup();
+}
+
 int main(int argc, char **argv) {
   CHECK(argc == 5);
   log_init(NULL, LOG_ERROR, false, false);
@@ -432,6 +520,7 @@ int main(int argc, char **argv) {
         quic_failure == ERROR_CRYPTO);
   CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, false, &dropped, &quic_failure) &&
         quic_failure == ERROR_CRYPTO);
+  quic_udp_exchange(server, client);
 
   acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;
   CHECK(acip_quic_tls_server_create("acip/1", argv[1], argv[4], &invalid) == ERROR_CRYPTO && !invalid);

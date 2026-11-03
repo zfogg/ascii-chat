@@ -36,6 +36,10 @@ bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *con
 uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns);
 bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection);
+/* Match an incoming destination CID, including the server's original Initial
+ * CID. Called only on the connection lane. */
+asciichat_error_t acip_quic_connection_matches_cid(const acip_quic_connection_t *connection, const uint8_t *cid,
+                                                   size_t length, bool *matches);
 /** Install a serialized receive callback. It borrows complete wire packets;
  * the callback must copy what it retains and must not reenter the connection. */
 asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *connection, acip_quic_stream_emit_fn emit,

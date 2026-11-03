@@ -1,7 +1,7 @@
 # ACIP over QUIC
 
 This document records the stream framing being implemented for issue #247.
-The QUIC endpoints and WebTransport session protocol are not yet available.
+The public QUIC transport and WebTransport session protocol are not yet available.
 
 ## Reliable streams
 
@@ -76,3 +76,24 @@ replacement stream with the same class is rejected. Socket shutdown,
 reconnection, and replay of application operations are not yet implemented;
 a future reconnect must establish new TLS and ACIP sessions before admitting
 media and must not automatically replay state-changing operations.
+
+## Private UDP driver
+
+The experimental driver binds a concrete IPv4 or IPv6 address and uses one
+nonblocking UDP socket for up to 64 connections. It routes by destination
+connection ID, including the original Initial ID and active IDs issued by
+ngtcp2, rather than by peer address. The application drives it on one lane;
+TLS contexts outlive the endpoint, the endpoint owns connections and its socket,
+and callers must discard borrowed connection handles when removed or destroyed.
+An accept callback can install a receiver before the Initial is processed.
+The pump bounds work per call and retains a generated datagram when the socket
+would block. A connection error identifies the affected handle so its owner can
+remove it while retaining the other connections.
+
+This driver is not a public listener: it lacks address-validation Retry,
+production admission controls, wildcard-address destination selection,
+version negotiation, a blocking wakeup mechanism, application authentication,
+and a graceful close. Its 64-connection cap bounds state but is not sufficient
+DoS protection. Do not expose it to untrusted networks yet. A socket loopback
+fixture exercises two simultaneous connections and continued routing after one
+is removed; it does not prove ACIP authentication or the public call flow.
