@@ -13,6 +13,28 @@ static network_server_t *service_network;
 static bool fail_rate_create, fail_pool_create;
 static unsigned rate_mode, broadcasts;
 static asciichat_error_t broadcast_result;
+static acds_server_t *cleanup_owner;
+static unsigned cleanup_sleeps, cleanup_prunes, cleanup_sessions;
+static bool fail_prune;
+static void service_cleanup_sleep(unsigned ms) {
+  if (!cleanup_owner) {
+    platform_sleep_ms(ms);
+    return;
+  }
+  cr_assert_eq(ms, 100);
+  ++cleanup_sleeps;
+}
+static asciichat_error_t service_prune(rate_limiter_t *limiter, uint32_t age) {
+  ++cleanup_prunes;
+  cr_assert_eq(age, 3600);
+  return fail_prune ? ERROR_INVALID_STATE : rate_limiter_prune(limiter, age);
+}
+static void service_expire(sqlite3 *db) {
+  ++cleanup_sessions;
+  database_session_cleanup_expired(db);
+  if (cleanup_owner)
+    atomic_store_bool(&cleanup_owner->shutdown, true);
+}
 static network_server_t *service_network_get(void) {
   return service_network;
 }
@@ -106,6 +128,9 @@ static void service_ready(network_connection_t *c) {
 #define thread_pool_create service_pool_create
 #define thread_pool_spawn service_spawn
 #define signaling_broadcast service_broadcast
+#define platform_sleep_ms service_cleanup_sleep
+#define rate_limiter_prune service_prune
+#define database_session_cleanup_expired service_expire
 #include "../../../src/discovery-service/server.c"
 #undef session_server_like_get_network_server
 #undef rate_limiter_create_sqlite
@@ -113,6 +138,9 @@ static void service_ready(network_connection_t *c) {
 #undef thread_pool_create
 #undef thread_pool_spawn
 #undef signaling_broadcast
+#undef platform_sleep_ms
+#undef rate_limiter_prune
+#undef database_session_cleanup_expired
 #undef network_connection_context
 #undef network_connection_set_context
 #undef network_connection_transport
@@ -576,4 +604,74 @@ Test(discovery_service_callbacks, database_statistics_report_rows_totals_and_una
   acds_stats_provider(&view, &absent);
   cr_assert_eq(view.count, 1);
   cr_assert(strstr(view.lines[0], "unavailable"));
+}
+
+static void run_periodic_cleanup(bool prune_failure) {
+  initialize();
+  create_session_fixture();
+  cr_assert_eq(sqlite3_exec(authority.db, "UPDATE sessions SET last_activity_at=1", NULL, NULL, NULL), SQLITE_OK);
+  cleanup_owner = &authority;
+  fail_prune = prune_failure;
+  cr_assert_null(cleanup_thread_func(NULL));
+  cr_assert_null(cleanup_thread_func(&authority));
+  cr_assert_eq(cleanup_sleeps, 3000);
+  cr_assert_eq(cleanup_prunes, 1);
+  cr_assert_eq(cleanup_sessions, 1);
+  cr_assert(atomic_load_bool(&authority.shutdown));
+  cr_assert_null(database_session_find_by_id(authority.db, created.session_id));
+  cleanup_owner = NULL;
+}
+Test(discovery_service_callbacks, periodic_cleanup_expires_inactive_sessions_after_the_complete_poll_interval) {
+  run_periodic_cleanup(false);
+}
+Test(discovery_service_callbacks, rate_cleanup_failure_does_not_prevent_expiring_inactive_sessions) {
+  run_periodic_cleanup(true);
+}
+Test(discovery_service_callbacks, host_loss_requires_matching_transport_membership_before_mutating_handoff_state) {
+  initialize();
+  create_session_fixture();
+  consensus_handoff_t *state = acds_handoff_find(&authority, created.session_id, true);
+  cr_assert_not_null(state);
+  acip_host_lost_t lost = {0};
+  memcpy(lost.session_id, created.session_id, sizeof(lost.session_id));
+  memcpy(lost.participant_id, creator_data.participant_id, sizeof(lost.participant_id));
+  memcpy(lost.last_host_id, state->host, sizeof(lost.last_host_id));
+  lost.participant_id[0] ^= 1;
+  acds_on_host_lost(&lost, &creator_transport, "127.0.0.1", &authority);
+  cr_assert_eq(response_type, PACKET_TYPE_ERROR_MESSAGE);
+  cr_assert_not(state->host_lost);
+  lost.participant_id[0] ^= 1;
+  lost.session_id[0] ^= 1;
+  acds_on_host_lost(&lost, &creator_transport, "127.0.0.1", &authority);
+  cr_assert_not(state->host_lost);
+  lost.session_id[0] ^= 1;
+  creator_data.joined_session = false;
+  acds_on_host_lost(&lost, &creator_transport, "127.0.0.1", &authority);
+  cr_assert_not(state->host_lost);
+  creator_data.joined_session = true;
+  acds_on_host_lost(&lost, &creator_transport, "127.0.0.1", &authority);
+  cr_assert(state->host_lost);
+  cr_assert_eq(creator_data.joined_session, true);
+}
+Test(discovery_service_callbacks, malformed_handoff_and_signaling_requests_reply_without_changing_membership) {
+  initialize();
+  create_session_fixture();
+  uint8_t bytes[CONSENSUS_HANDOFF_HEADER] = {0};
+  consensus_handoff_message_t handoff = {.kind = HANDOFF_READY};
+  memcpy(handoff.session, created.session_id, sizeof(handoff.session));
+  memcpy(handoff.participant, creator_data.participant_id, sizeof(handoff.participant));
+  cr_assert_neq(acds_on_handoff(bytes, 1, &creator_transport, &authority), ASCIICHAT_OK);
+  handoff.participant[0] ^= 1;
+  consensus_handoff_encode(&handoff, bytes);
+  cr_assert_eq(acds_on_handoff(bytes, sizeof(bytes), &creator_transport, &authority), ERROR_NETWORK_PROTOCOL);
+  acip_webrtc_sdp_t sdp = {0};
+  acds_on_webrtc_sdp(&sdp, sizeof(sdp), &creator_transport, "127.0.0.1", &authority);
+  cr_assert_eq(response_type, PACKET_TYPE_ERROR_MESSAGE);
+  acip_webrtc_ice_t ice = {0};
+  acds_on_webrtc_ice(&ice, sizeof(ice), &creator_transport, "127.0.0.1", &authority);
+  cr_assert_eq(response_type, PACKET_TYPE_ERROR_MESSAGE);
+  cr_assert(creator_data.joined_session);
+  cr_assert_arr_eq(creator_data.session_id, created.session_id, sizeof(created.session_id));
+  acds_server_shutdown(NULL);
+  cr_assert_eq(acds_server_init(NULL, NULL), ERROR_INVALID_PARAM);
 }
