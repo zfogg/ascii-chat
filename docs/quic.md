@@ -84,8 +84,12 @@ The current engine rejects stream resets and STOP_SENDING as connection
 errors. A sender can queue FIN after the admitted packets on an open stream;
 it must not submit further packets to that class. ngtcp2 retransmits a lost
 FIN. A clean FIN closes that traffic stream at a packet boundary, and a
-replacement stream with the same class is rejected. Graceful connection shutdown,
-reconnection, and replay of application operations are not yet implemented;
+replacement stream with the same class is rejected. On local transport shutdown,
+the endpoint sends a best-effort CONNECTION_CLOSE before detaching the receiver.
+It does not retain the connection for close retransmission or wait for a draining
+period, so loss or a blocked UDP socket can leave the peer until its idle timeout.
+Full graceful shutdown, reconnection, and replay of application operations are
+not yet implemented;
 a future reconnect must establish new TLS and ACIP sessions before admitting
 media and must not automatically replay state-changing operations.
 

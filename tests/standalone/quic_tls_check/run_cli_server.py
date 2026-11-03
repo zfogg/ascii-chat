@@ -101,7 +101,8 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                         session_logs = server_output.read().decode(errors="replace")
                     quic_clients = set(re.findall(r"Added new transport client (\S+).*type=5", session_logs))
                     video_clients = set(re.findall(r"Server image ingress client=(\S+)", session_logs))
-                    if len(quic_clients & video_clients) >= 2 and all(p.poll() is None for p, _, _, _ in participants):
+                    active_video_clients = quic_clients & video_clients
+                    if len(active_video_clients) >= 2 and all(p.poll() is None for p, _, _, _ in participants):
                         break
                     if any(p.poll() is not None for p, _, _, _ in participants):
                         raise RuntimeError(f"A QUIC participant exited before both sent video:\n{session_logs}")
@@ -110,6 +111,19 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                     raise RuntimeError(f"Both QUIC participants did not send video:\n{session_logs}")
                 for process, _, _, _ in participants:
                     process.wait(timeout=max(0.1, deadline - time.monotonic()))
+                close_deadline = time.monotonic() + 8
+                while time.monotonic() < close_deadline:
+                    with (root / "server.log").open("rb") as server_output:
+                        server_output.seek(server_log_offset)
+                        session_logs = server_output.read().decode(errors="replace")
+                    removed = set(re.findall(r"Removing client (\S+) - marking inactive", session_logs))
+                    if active_video_clients <= removed:
+                        break
+                    time.sleep(0.05)
+                else:
+                    client_logs = "\n".join(log.read_text(errors="replace")[-12000:] for _, log, _, _ in participants)
+                    raise RuntimeError(f"Server did not promptly remove QUIC participants:\n{client_logs}\n"
+                                       f"{session_logs[-12000:]}")
                 for index, (process, participant_log, output, error) in enumerate(participants):
                     output.close()
                     error.close()

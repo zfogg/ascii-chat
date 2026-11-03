@@ -881,6 +881,7 @@ asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connectio
     connection->failed = true;
     asciichat_error_t code = connection->callback_error != ASCIICHAT_OK ? connection->callback_error
                              : rc == NGTCP2_ERR_CRYPTO                  ? ERROR_CRYPTO
+                             : rc == NGTCP2_ERR_DRAINING                ? ERROR_NETWORK
                                                                         : ERROR_NETWORK_PROTOCOL;
     return SET_ERRNO(code, "QUIC receive failed: %s", ngtcp2_strerror(rc));
   }
@@ -966,6 +967,29 @@ bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *con
     return false;
   *traffic_class = connection->packet_traffic_class;
   return true;
+}
+
+asciichat_error_t acip_quic_connection_write_close(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
+                                                   void *packet, size_t capacity, size_t *length, uint64_t now_ns) {
+  if (!connection || !connection->conn || !path || !packet || capacity < 1200 || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC close packet output");
+  *length = 0;
+  if (connection->failed || ngtcp2_conn_in_closing_period2(connection->conn) ||
+      ngtcp2_conn_in_draining_period2(connection->conn))
+    return ASCIICHAT_OK;
+  asciichat_error_t result = update_time(connection, now_ns);
+  if (result != ASCIICHAT_OK)
+    return result;
+  ngtcp2_path_storage_zero(path);
+  ngtcp2_pkt_info info = {0};
+  ngtcp2_ccerr close_error;
+  ngtcp2_ccerr_default(&close_error);
+  ngtcp2_ssize written =
+      ngtcp2_conn_write_connection_close(connection->conn, &path->path, &info, packet, capacity, &close_error, now_ns);
+  if (written < 0)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot write QUIC close packet: %s", ngtcp2_strerror((int)written));
+  *length = (size_t)written;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t acip_quic_connection_write(acip_quic_connection_t *connection, ngtcp2_path_storage *path,

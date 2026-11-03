@@ -40,5 +40,6 @@ asciichat_error_t acip_quic_udp_wake(acip_quic_udp_endpoint_t *endpoint);
 /* Test endpoint membership on its serialized lane without dereferencing the
  * supplied handle. Useful after an application failure callback removes it. */
 bool acip_quic_udp_contains(const acip_quic_udp_endpoint_t *endpoint, const acip_quic_connection_t *connection);
+asciichat_error_t acip_quic_udp_close_peer(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_udp_remove(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection);
 void acip_quic_udp_endpoint_destroy(acip_quic_udp_endpoint_t **endpoint);

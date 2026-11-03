@@ -13,6 +13,11 @@
  * backwards. The TLS context and callback reference outlive the connection. */
 typedef struct acip_quic_connection acip_quic_connection_t;
 
+/* Produce a best-effort CONNECTION_CLOSE before an owned connection is
+ * discarded. A zero-length result means that no close can be sent. */
+asciichat_error_t acip_quic_connection_write_close(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
+                                                   void *packet, size_t capacity, size_t *length, uint64_t now_ns);
+
 asciichat_error_t acip_quic_connection_client_create(acip_quic_tls_t *tls, const char *server_name,
                                                      const ngtcp2_path *path, uint64_t now_ns,
                                                      acip_quic_connection_t **out);

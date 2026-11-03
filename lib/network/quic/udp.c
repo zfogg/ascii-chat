@@ -1,6 +1,7 @@
 #include "udp.h"
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/time.h>
 #include <ngtcp2/ngtcp2_crypto.h>
 #include <sodium.h>
 #include <string.h>
@@ -330,6 +331,23 @@ bool acip_quic_udp_contains(const acip_quic_udp_endpoint_t *endpoint, const acip
     if (peer->connection == connection)
       return true;
   return false;
+}
+
+asciichat_error_t acip_quic_udp_close_peer(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection) {
+  if (!acip_quic_udp_contains(endpoint, connection))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC UDP connection is not owned by endpoint");
+  uint8_t packet[QUIC_UDP_PACKET_CAPACITY];
+  ngtcp2_path_storage path;
+  size_t length = 0;
+  asciichat_error_t result =
+      acip_quic_connection_write_close(connection, &path, packet, sizeof(packet), &length, time_get_ns());
+  if (result != ASCIICHAT_OK || !length)
+    return result;
+  ngtcp2_addr *remote = &path.path.remote;
+  ssize_t sent = socket_sendto(endpoint->socket, packet, length, 0, remote->addr, (socklen_t)remote->addrlen);
+  if (sent < 0 || (size_t)sent != length)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot send QUIC close packet");
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t acip_quic_udp_remove(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection) {

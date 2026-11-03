@@ -37,6 +37,9 @@ asciichat_error_t acip_quic_transport_fail_on_lane(acip_transport_t *transport, 
 asciichat_error_t acip_quic_transport_destroy_unclaimed_on_lane(acip_transport_t **transport, asciichat_error_t reason);
 asciichat_error_t acip_quic_transport_set_waker_on_lane(acip_transport_t *transport, void (*wake)(void *),
                                                         void *context);
+/* Called on the lane before a locally initiated close detaches its receiver. */
+void acip_quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(acip_quic_connection_t *, void *),
+                                           void *context);
 /* Configure while the transport is live. Called under the lane lock after a
  * packet is admitted; the callback must not block or reenter transport APIs.
  * Clear it and stop producers before destroying its context. */

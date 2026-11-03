@@ -29,6 +29,13 @@ static void wake_endpoint(void *context) {
   (void)acip_quic_udp_wake(endpoint->udp);
 }
 
+static void close_connection(acip_quic_connection_t *connection, void *context) {
+  acip_quic_endpoint_t *endpoint = context;
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  (void)acip_quic_udp_close_peer(endpoint->udp, connection);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+}
+
 /* The transport has already detached its receiver. Destroy may be called by
  * the normal network connection owner after an authenticated transport is adopted. */
 static void transport_destroyed(acip_transport_t *transport, void *context) {
@@ -39,8 +46,9 @@ static void transport_destroyed(acip_transport_t *transport, void *context) {
     link = &(*link)->next;
   endpoint_transport_t *item = *link;
   if (item) {
-    if (item->connection && acip_quic_udp_contains(endpoint->udp, item->connection))
+    if (item->connection && acip_quic_udp_contains(endpoint->udp, item->connection)) {
       (void)acip_quic_udp_remove(endpoint->udp, item->connection);
+    }
     *link = item->next;
     --endpoint->count;
   }
@@ -62,6 +70,7 @@ static asciichat_error_t attach(acip_quic_endpoint_t *endpoint, acip_quic_connec
     SAFE_FREE(item);
     return result;
   }
+  acip_quic_transport_set_close_on_lane(item->transport, close_connection, endpoint);
   item->connection = connection;
   item->claimed = claimed;
   item->next = endpoint->transports;

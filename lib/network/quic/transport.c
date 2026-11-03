@@ -24,6 +24,8 @@ typedef struct {
   cond_t security_changed;
   void (*wake)(void *);
   void *wake_context;
+  void (*on_close)(acip_quic_connection_t *, void *);
+  void *close_context;
   void (*on_destroy)(acip_transport_t *, void *);
   void *destroy_context;
   received_packet_t *head, *tail;
@@ -219,9 +221,18 @@ static asciichat_error_t quic_close_locked(quic_transport_t *quic, asciichat_err
 static asciichat_error_t quic_close(acip_transport_t *transport) {
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
+  if (quic->connected && quic->on_close)
+    quic->on_close(quic->connection, quic->close_context);
   asciichat_error_t result = quic_close_locked(quic, ERROR_NETWORK);
   lane_unlock(quic);
   return result;
+}
+
+void acip_quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(acip_quic_connection_t *, void *),
+                                           void *context) {
+  quic_transport_t *quic = transport->impl_data;
+  quic->on_close = close;
+  quic->close_context = context;
 }
 
 asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason) {
