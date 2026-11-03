@@ -25,7 +25,7 @@
  *
  * @note Encryption: XSalsa20-Poly1305 provides authenticated encryption with
  *       automatic MAC verification. Nonces are generated as session_id || counter
- *       to prevent replay attacks.
+ *       to avoid nonce reuse; this alone does not detect replayed ciphertext.
  *
  * @note Password Authentication: Optional password-based encryption using Argon2id
  *       for memory-hard key derivation. Passwords are bound to DH shared secrets
@@ -92,10 +92,10 @@
  *
  * @note Nonce generation: Nonces are constructed as `session_id || counter`
  *       where session_id is 16 bytes and counter fills the remaining bytes.
- *       This prevents both within-session and cross-session replay attacks.
+ *       This construction aims to avoid nonce reuse, not to detect replays.
  *
- * @note Session ID: Generated once per connection and remains constant.
- *       Used to prevent cross-session replay attacks.
+ * @note Session ID: Randomly generated for each connection and again on rekey.
+ *       It contributes to nonce uniqueness; the decryptor does not check it.
  *
  * @note Nonce counter: Starts at 1 (0 is reserved for testing) and increments
  *       for each encryption operation. Prevents nonce reuse within a session.
@@ -149,7 +149,7 @@ typedef struct crypto_context_t {
 
   /** Security parameters */
   uint64_t nonce_counter;              /**< Nonce counter (starts at 1, increments per encryption) */
-  uint8_t session_id[SESSION_ID_SIZE]; /**< Unique session ID (16 bytes, prevents cross-session replay) */
+  uint8_t session_id[SESSION_ID_SIZE]; /**< Random 16-byte nonce prefix, regenerated on rekey */
 
   /** Session rekeying state */
   uint64_t rekey_packet_count;    /**< Packets encrypted since last rekey/handshake */

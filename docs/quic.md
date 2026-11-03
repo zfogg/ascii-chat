@@ -99,3 +99,24 @@ and a graceful close. Its 64-connection cap bounds state but is not sufficient
 DoS protection. Do not expose it to untrusted networks yet. A socket loopback
 fixture exercises two simultaneous connections and continued routing after one
 is removed; it does not prove ACIP authentication or the public call flow.
+
+## ACIP encryption audit
+
+The current ACIP `crypto_encrypt` uses a random 16-byte sender prefix followed
+by a big-endian counter. Its counter, keys, rekey state, and accounting fields
+are mutable and have no internal lock, so an integrating transport must
+serialize access to a shared context, including rekey operations. The prefix
+and counter avoid reuse when used correctly; they do not by themselves prevent
+replay. `crypto_decrypt` authenticates the supplied nonce and ciphertext but
+does not remember received nonces or validate a sender prefix. Replaying the
+same valid encrypted ACIP packet can therefore succeed at this layer.
+
+QUIC packet protection rejects QUIC-level replay between its endpoints, but a
+QUIC terminator that forwards ACIP ciphertext is a different trust boundary.
+The current ACIP encryption must be retained where end-to-end policy requires
+it. Before enabling this driver as an ACIP transport, the protocol needs
+authenticated per-flow replay state that tolerates independent reliable streams
+and lossy datagrams, and coordinated key epochs across control transitions.
+A single fixed window shared by all flows can reject an indefinitely delayed
+reliable control packet after enough media arrives. Media must not pass a rekey
+or setup barrier until the receiver has acknowledged the required state.

@@ -63,9 +63,8 @@ static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
   // - Bytes 0-15: Session ID (constant per connection, random across connections)
   // - Bytes 16+: Counter (increments per packet, prevents reuse within session)
   //
-  // This prevents replay attacks both within and across sessions:
-  // - Different session_id prevents cross-session replay
-  // - Counter prevents within-session replay
+  // The prefix and counter avoid nonce reuse when calls are serialized.
+  // Replay detection requires separate authenticated receive state.
 
   SAFE_MEMCPY(nonce_out, 16, ctx->session_id, 16);
 
@@ -131,7 +130,7 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   // signature_size and auth_public_key_size remain 0 until set by CRYPTO_PARAMETERS
   // (must be 0 for unauthenticated format detection in crypto_handshake_client_key_exchange)
 
-  // Generate unique session ID to prevent replay attacks across connections
+  // Generate a random nonce prefix for this connection.
   randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
 
   // Initialize rekeying state
@@ -1305,7 +1304,7 @@ crypto_result_t crypto_rekey_commit(crypto_context_t *ctx) {
   // Reset nonce counter to 1 (fresh start with new key)
   ctx->nonce_counter = 1;
 
-  // Generate new session ID to prevent cross-session replay
+  // Generate a new random nonce prefix for this key epoch.
   randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
 
   // Reset rekey tracking
