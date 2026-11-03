@@ -8,10 +8,13 @@
 struct audio_processor {
   audio_processor_config_t config;
   spectral_processor_t *spectral;
+  spectral_processor_t *spectral_right;
   compressor_t compressor;
   noise_gate_t gate;
   highpass_filter_t highpass;
   lowpass_filter_t lowpass;
+  highpass_filter_t highpass_right;
+  lowpass_filter_t lowpass_right;
   double energy;
   size_t level_samples;
   float gain, target_gain, max_gain, gain_attack, gain_release;
@@ -43,6 +46,7 @@ void audio_processor_reset(audio_processor_t *p) {
   if (!p)
     return;
   spectral_reset(p->spectral);
+  spectral_reset(p->spectral_right);
   const audio_processor_config_t *c = &p->config;
   compressor_init(&p->compressor, (float)c->sample_rate);
   compressor_set_params(&p->compressor, c->comp_threshold_db, c->comp_ratio, c->comp_attack_ns, c->comp_release_ns,
@@ -51,6 +55,8 @@ void audio_processor_reset(audio_processor_t *p) {
   noise_gate_set_params(&p->gate, c->gate_threshold, c->gate_attack_ns, c->gate_release_ns, c->gate_hysteresis);
   highpass_filter_init(&p->highpass, c->highpass_hz, (float)c->sample_rate);
   lowpass_filter_init(&p->lowpass, c->lowpass_hz, (float)c->sample_rate);
+  highpass_filter_init(&p->highpass_right, c->highpass_hz, (float)c->sample_rate);
+  lowpass_filter_init(&p->lowpass_right, c->lowpass_hz, (float)c->sample_rate);
   p->energy = 0;
   p->level_samples = 0;
   p->gain = p->target_gain = 1;
@@ -60,24 +66,41 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing audio processor output");
   *out = NULL;
-  if (!c || c->sample_rate < 16000 || c->sample_rate > 192000 || c->spectral.sample_rate != c->sample_rate ||
-      c->agc_level < 1 || c->agc_level > 32767 || c->agc_max_gain < 0 || c->agc_max_gain > 36 ||
-      !isfinite(c->highpass_hz) || c->highpass_hz <= 0 || c->highpass_hz >= c->sample_rate / 2.0f ||
-      !isfinite(c->lowpass_hz) || c->lowpass_hz <= 0 || c->lowpass_hz > c->sample_rate / 2.0f ||
-      !isfinite(c->comp_ratio) || c->comp_ratio < 1 || c->comp_ratio > 20 || !isfinite(c->comp_threshold_db) ||
-      !isfinite(c->comp_makeup_db) || !isfinite(c->gate_threshold) || c->gate_threshold < 0 || c->gate_threshold > 1 ||
-      !isfinite(c->gate_hysteresis) || c->gate_hysteresis < 0 || c->gate_hysteresis > 1)
+  if (!c || c->channels < 0 || c->channels > 2 || c->sample_rate < 16000 || c->sample_rate > 192000 ||
+      c->spectral.sample_rate != c->sample_rate || c->agc_level < 1 || c->agc_level > 32767 || c->agc_max_gain < 0 ||
+      c->agc_max_gain > 36 || !isfinite(c->highpass_hz) || c->highpass_hz <= 0 ||
+      c->highpass_hz >= c->sample_rate / 2.0f || !isfinite(c->lowpass_hz) || c->lowpass_hz <= 0 ||
+      c->lowpass_hz > c->sample_rate / 2.0f || !isfinite(c->comp_ratio) || c->comp_ratio < 1 || c->comp_ratio > 20 ||
+      !isfinite(c->comp_threshold_db) || !isfinite(c->comp_makeup_db) || !isfinite(c->gate_threshold) ||
+      c->gate_threshold < 0 || c->gate_threshold > 1 || !isfinite(c->gate_hysteresis) || c->gate_hysteresis < 0 ||
+      c->gate_hysteresis > 1)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor configuration");
   audio_processor_t *p = SAFE_CALLOC(1, sizeof(*p), audio_processor_t *);
   p->config = *c;
+  if (p->config.channels == 0)
+    p->config.channels = 1;
+  if (p->config.channels == 2) {
+    // Stereo dynamics share one detector after the independent channel filters.
+    p->config.spectral.auto_gain = false;
+    p->config.spectral.compressor = false;
+    p->config.spectral.noise_gate = false;
+  }
   p->max_gain = powf(10, c->agc_max_gain / 20.0f);
   p->gain_attack = 1 - powf(0.75f, 100.0f / c->sample_rate);
   p->gain_release = 1 - powf(0.95f, 100.0f / c->sample_rate);
   if (c->spectral_enabled) {
-    asciichat_error_t result = spectral_create(&c->spectral, &p->spectral);
+    asciichat_error_t result = spectral_create(&p->config.spectral, &p->spectral);
     if (result != ASCIICHAT_OK) {
       SAFE_FREE(p);
       return result;
+    }
+    if (p->config.channels == 2) {
+      result = spectral_create(&p->config.spectral, &p->spectral_right);
+      if (result != ASCIICHAT_OK) {
+        spectral_destroy(p->spectral);
+        SAFE_FREE(p);
+        return result;
+      }
     }
   }
   audio_processor_reset(p);
@@ -95,6 +118,65 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor buffers");
   if (!count)
     return ASCIICHAT_OK;
+  if (p->config.channels == 2) {
+    if (count % 2)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Incomplete stereo PCM frame");
+    const audio_processor_config_t *c = &p->config;
+    for (size_t base = 0; base < count;) {
+      size_t frames = (count - base) / 2;
+      if (frames > 480)
+        frames = 480;
+      float left[480], right[480];
+      for (size_t i = 0; i < frames; i++) {
+        left[i] = input[base + i * 2];
+        right[i] = input[base + i * 2 + 1];
+      }
+      if (p->spectral) {
+        asciichat_error_t result = spectral_process(p->spectral, left, left, frames);
+        if (result == ASCIICHAT_OK)
+          result = spectral_process(p->spectral_right, right, right, frames);
+        if (result != ASCIICHAT_OK)
+          return result;
+      }
+      for (size_t i = 0; i < frames; i++) {
+        float l = isfinite(left[i]) ? left[i] : 0;
+        float r = isfinite(right[i]) ? right[i] : 0;
+        if (c->flags.highpass) {
+          l = highpass_filter_process_sample(&p->highpass, l);
+          r = highpass_filter_process_sample(&p->highpass_right, r);
+        }
+        if (c->flags.lowpass) {
+          l = lowpass_filter_process_sample(&p->lowpass, l);
+          r = lowpass_filter_process_sample(&p->lowpass_right, r);
+        }
+        float gain = 1;
+        float peak = fmaxf(fabsf(l), fabsf(r));
+        if (c->flags.agc) {
+          p->energy += ((double)l * l + (double)r * r) * 0.5;
+          if (++p->level_samples == (size_t)c->sample_rate / 100) {
+            float rms = (float)sqrt(p->energy / p->level_samples);
+            float target = fminf(0.5f, fmaxf(0.05f, c->agc_level / 32768.0f));
+            p->target_gain = rms > 1e-5f ? fminf(p->max_gain, fmaxf(1, target / rms)) : 1;
+            p->energy = 0;
+            p->level_samples = 0;
+          }
+          float coefficient = p->target_gain < p->gain ? p->gain_attack : p->gain_release;
+          p->gain += coefficient * (p->target_gain - p->gain);
+          gain *= p->gain;
+        }
+        if (c->flags.noise_gate)
+          gain *= noise_gate_process_sample(&p->gate, 1, peak * gain);
+        if (c->flags.compressor)
+          gain *= compressor_process_sample(&p->compressor, peak * gain);
+        if (peak > 0)
+          gain = fminf(gain, 1.0f / peak);
+        output[base + i * 2] = l * gain;
+        output[base + i * 2 + 1] = r * gain;
+      }
+      base += frames * 2;
+    }
+    return ASCIICHAT_OK;
+  }
   if (p->spectral) {
     asciichat_error_t result = spectral_process(p->spectral, input, output, count);
     if (result != ASCIICHAT_OK)
@@ -139,6 +221,7 @@ void audio_processor_destroy(audio_processor_t *p) {
   if (!p)
     return;
   spectral_destroy(p->spectral);
+  spectral_destroy(p->spectral_right);
   p->spectral = NULL;
   SAFE_FREE(p);
 }

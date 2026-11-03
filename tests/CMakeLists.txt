@@ -1641,7 +1641,10 @@ endif()
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-audio-device contracts/audio/device_test.c)
     asciichat_configure_contract(test-audio-device)
-    target_link_libraries(test-audio-device PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    # Bind device calls to the executable's deterministic PortAudio boundary.
+    # Mach-O's two-level namespace cannot interpose calls from our shared library.
+    target_link_libraries(test-audio-device PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
+    add_dependencies(test-audio-device build-ascii-chat-static-lib)
     target_include_directories(test-audio-device PRIVATE
         ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${PORTAUDIO_INCLUDE_DIRS})
     apply_sanitizers_to_target(test-audio-device)
@@ -1956,6 +1959,10 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
         ${CMAKE_SOURCE_DIR}/tests/integration/discovery_webrtc.py
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(discovery-webrtc PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
+    asciichat_add_python_test(discovery-stereo-audio
+        ${CMAKE_SOURCE_DIR}/tests/integration/discovery_webrtc.py
+            $<TARGET_FILE:ascii-chat> --audio)
+    set_tests_properties(discovery-stereo-audio PROPERTIES LABELS "integration;audio" TIMEOUT 120 RUN_SERIAL TRUE)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
@@ -2029,6 +2036,10 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
+    asciichat_add_python_test(audio-stereo-call
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/audio_channels.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(audio-stereo-call PROPERTIES LABELS "integration;audio" TIMEOUT 120
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
     asciichat_add_python_test(terminal-logs
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_logs.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/terminal-logs --search-regression-only)

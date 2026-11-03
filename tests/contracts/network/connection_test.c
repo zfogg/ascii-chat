@@ -258,6 +258,15 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
     rtc_cleanup(endpoints);
     return;
   }
+  if (websocket && corrupt == 2) {
+    // The raw peer has no WebSocket service loop to acknowledge the server's
+    // close frame. Verify the application deadline fired before completing
+    // peer teardown, so cleanup does not wait for LWS's close-handshake timer.
+    wait_count(&f.closing, 1);
+    cr_assert(time_get_ns() - partial_started >= 200 * NS_PER_MS_INT);
+    socket_close(fragmented);
+    fragmented = INVALID_SOCKET_VALUE;
+  }
   wait_count(&f.closed, 1);
   if (corrupt == 2)
     cr_assert(time_get_ns() - partial_started >= 200 * NS_PER_MS_INT);

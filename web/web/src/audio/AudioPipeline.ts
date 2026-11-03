@@ -1,3 +1,4 @@
+import { getMicrophoneLayout } from "@ascii-chat/shared/devices/microphoneLayout";
 import { applyAudioOutputDevice } from "@ascii-chat/shared/devices/mediaDevicePreferences";
 import { AVState } from "../wasm/AVState";
 import { OpusEncoder } from "./OpusEncoder";
@@ -9,6 +10,14 @@ import {
   type TestPatternAudioSource,
 } from "@ascii-chat/shared";
 import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
+
+function monoSamples(input: Float32Array, channels: number): Float32Array {
+  if (channels === 1) return input;
+  const mono = new Float32Array(input.length / 2);
+  for (let i = 0; i < mono.length; i++)
+    mono[i] = (input[i * 2]! + input[i * 2 + 1]!) * 0.5;
+  return mono;
+}
 
 export interface AudioPipelineOptions {
   /** Local capture/visualization only; never decode or monitor captured audio. */
@@ -109,8 +118,7 @@ export class AudioPipeline {
       throw new Error("Audio pipeline is closed");
     if (!this.recording) {
       this.recording = this.context.createMediaStreamDestination();
-      this.source?.connect(this.recording);
-      this.displaySource?.connect(this.recording);
+      this.processor?.node.connect(this.recording, 1);
       this.playback?.connect(this.recording);
       for (const source of this.sources) source.connect(this.recording);
     }
@@ -125,8 +133,7 @@ export class AudioPipeline {
     const bus = this.recording;
     if (!bus) return;
     this.recording = null;
-    this.source?.disconnect(bus);
-    this.displaySource?.disconnect(bus);
+    this.processor?.node.disconnect(bus, 1);
     this.playback?.disconnect(bus);
     for (const source of this.sources) source.disconnect(bus);
     bus.stream.getTracks().forEach((track) => track.stop());
@@ -232,7 +239,7 @@ export class AudioPipeline {
     if (!this.codec && !this.options.localOnly) {
       const module = getClientModule();
       if (!module) throw new Error("Connect before enabling audio");
-      this.codec = new OpusEncoder({ sampleRate: 48000, channelCount: 1 });
+      this.codec = new OpusEncoder({ sampleRate: 48000, channelCount: 2 });
       await this.codec.init(module);
     }
   }
@@ -286,7 +293,13 @@ export class AudioPipeline {
         })()
       : await (async () => {
           const audio: MediaTrackConstraints = {
-            channelCount: 1,
+            channelCount: {
+              ideal: Math.max(
+                1,
+                getMicrophoneLayout().firstChannel +
+                  getMicrophoneLayout().channels,
+              ),
+            },
             sampleRate: 48000,
             echoCancellation: true,
             noiseSuppression: false,
@@ -306,7 +319,13 @@ export class AudioPipeline {
             );
             return navigator.mediaDevices.getUserMedia({
               audio: {
-                channelCount: 1,
+                channelCount: {
+                  ideal: Math.max(
+                    1,
+                    getMicrophoneLayout().firstChannel +
+                      getMicrophoneLayout().channels,
+                  ),
+                },
                 sampleRate: 48000,
                 echoCancellation: true,
                 noiseSuppression: false,
@@ -324,7 +343,6 @@ export class AudioPipeline {
     }
     this.stream = stream;
     this.source = this.context.createMediaStreamSource(stream);
-    if (this.recording) this.source.connect(this.recording);
     // A display transition may retire an in-flight processor. Rejoin the
     // current graph instead of treating that transition as microphone failure.
     do {
@@ -340,10 +358,13 @@ export class AudioPipeline {
     if (this.processorInit) return this.processorInit;
     const generation = ++this.processorGeneration;
     const pending = AudioCapture.create(this.context!, {
-      bypass: isTestMode() || !!this.displayStream,
+      bypass: isTestMode(),
+      microphoneChannels: getMicrophoneLayout().channels,
+      firstChannel: getMicrophoneLayout().firstChannel,
+      media: !!this.displayStream,
       onFrame: (payload, input) => {
         if (generation !== this.processorGeneration) return;
-        this.options.onMicrophoneSamples?.(input);
+        this.options.onMicrophoneSamples?.(monoSamples(input, 2));
         this.microphoneLevel = Math.sqrt(
           input.reduce((sum, value) => sum + value * value, 0) / input.length,
         );
@@ -362,7 +383,10 @@ export class AudioPipeline {
       .then((processor) => {
         if (generation !== this.processorGeneration || this.closed)
           processor.close();
-        else this.processor = processor;
+        else {
+          this.processor = processor;
+          if (this.recording) processor.node.connect(this.recording, 1);
+        }
       })
       .finally(() => {
         if (this.processorInit === pending) this.processorInit = null;
@@ -401,7 +425,6 @@ export class AudioPipeline {
       if (!hadDisplayAudio || isTestMode()) return;
       // Restore microphone-only enhancement after the display/music mix ends.
       this.source.disconnect();
-      if (this.recording) this.source.connect(this.recording);
       this.releaseCaptureGraph();
       await this.ensureCaptureGraph();
       if (
@@ -419,7 +442,6 @@ export class AudioPipeline {
     // Screen/music samples must bypass microphone-only enhancement. Reconnect
     // the retained microphone into that same processor instead of duplicating it.
     this.source?.disconnect();
-    if (this.recording) this.source?.connect(this.recording);
     this.releaseCaptureGraph();
     await this.ensureCaptureGraph();
     if (generation !== this.displayGeneration || this.closed || !this.processor)
@@ -428,8 +450,7 @@ export class AudioPipeline {
     this.displaySource = this.context.createMediaStreamSource(
       new MediaStream(this.displayStream!.getAudioTracks()),
     );
-    this.displaySource.connect(this.processor.node);
-    if (this.recording) this.displaySource.connect(this.recording);
+    this.displaySource.connect(this.processor.node, 0, 1);
   }
   async replaceMicrophone(deviceId: string): Promise<void> {
     if (
@@ -443,7 +464,12 @@ export class AudioPipeline {
     const generation = this.avState.generation;
     const requestGeneration = ++this.microphoneChangeGeneration;
     const audio: MediaTrackConstraints = {
-      channelCount: 1,
+      channelCount: {
+        ideal: Math.max(
+          1,
+          getMicrophoneLayout().firstChannel + getMicrophoneLayout().channels,
+        ),
+      },
       sampleRate: 48000,
       echoCancellation: true,
       noiseSuppression: false,
@@ -464,7 +490,13 @@ export class AudioPipeline {
       );
       nextStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          channelCount: 1,
+          channelCount: {
+            ideal: Math.max(
+              1,
+              getMicrophoneLayout().firstChannel +
+                getMicrophoneLayout().channels,
+            ),
+          },
           sampleRate: 48000,
           echoCancellation: true,
           noiseSuppression: false,
@@ -483,9 +515,19 @@ export class AudioPipeline {
       return;
     }
 
+    this.releaseCaptureGraph();
+    await this.ensureCaptureGraph();
+    if (
+      !this.avState.current(generation) ||
+      requestGeneration !== this.microphoneChangeGeneration ||
+      !this.processor
+    ) {
+      nextStream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.displaySource?.connect(this.processor.node, 0, 1);
     const nextSource = this.context.createMediaStreamSource(nextStream);
     nextSource.connect(this.processor.node);
-    if (this.recording) nextSource.connect(this.recording);
     const previousSource = this.source;
     const previousStream = this.stream;
     this.source = nextSource;
@@ -541,7 +583,7 @@ export class AudioPipeline {
         this.schedule(
           Float32Array.from(pcm, (sample) => sample / 32768),
           48000,
-          1,
+          2,
         );
         offset += size;
       }
@@ -572,7 +614,7 @@ export class AudioPipeline {
     channels: number,
   ): void {
     const context = this.context!;
-    this.options.onPlaybackSamples?.(samples);
+    this.options.onPlaybackSamples?.(monoSamples(samples, channels));
     if (this.playback && sampleRate === context.sampleRate) {
       this.playbackLevel = Math.sqrt(
         samples.reduce((sum, value) => sum + value * value, 0) / samples.length,

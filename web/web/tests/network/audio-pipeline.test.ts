@@ -55,7 +55,13 @@ vi.mock("../../src/audio/AudioCapture", () => ({
           view.setUint32(8, 1);
           view.setUint16(16, 3);
           payload.set([1, 2, 3], 18);
-          options.onFrame(payload, input.subarray(offset, offset + 960));
+          options.onFrame(
+            payload,
+            Float32Array.from(
+              { length: 1920 },
+              (_, i) => input[offset + Math.floor(i / 2)] ?? 0,
+            ),
+          );
         }
       };
       return {
@@ -71,7 +77,7 @@ vi.mock("../../src/audio/OpusEncoder", () => ({
   OpusEncoder: class {
     init = vi.fn().mockResolvedValue(undefined);
     encode = vi.fn(() => new Uint8Array([1, 2, 3]));
-    decode = vi.fn(() => new Int16Array(960).fill(8192));
+    decode = vi.fn(() => new Int16Array(1920).fill(8192));
     cleanup = vi.fn();
   },
 }));
@@ -160,13 +166,17 @@ describe("AudioPipeline", () => {
     const source = captureSources[0]!;
     await pipeline.startRecording();
     await pipeline.startRecording();
+    expect(source.connect).not.toHaveBeenCalledWith(recordingBus);
     expect(
-      source.connect.mock.calls.filter(([target]) => target === recordingBus),
+      processor.connect.mock.calls.filter(
+        ([target]) => target === recordingBus,
+      ),
     ).toHaveLength(1);
+    expect(processor.connect).toHaveBeenCalledWith(recordingBus, 1);
     expect(getUserMedia).toHaveBeenCalledOnce();
     pipeline.stopRecording();
     expect(stopTrack).not.toHaveBeenCalled();
-    expect(source.disconnect).toHaveBeenCalledWith(recordingBus);
+    expect(processor.disconnect).toHaveBeenCalledWith(recordingBus, 1);
     await pipeline.startRecording();
     pipeline.stopCapture();
     expect(stopTrack).toHaveBeenCalledOnce();
@@ -284,7 +294,8 @@ describe("AudioPipeline", () => {
     await pipeline.setDisplayStream({
       getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }],
     } as unknown as MediaStream);
-    expect(create.mock.calls.at(-1)![1].bypass).toBe(true);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    expect(create.mock.calls.at(-1)![1].media).toBe(true);
     await pipeline.setDisplayStream(null);
     expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
     expect(pipeline.captureActive).toBe(true);
@@ -377,7 +388,7 @@ describe("AudioPipeline", () => {
     await pipeline.startCapture();
     expect(getUserMedia).toHaveBeenCalledWith({
       audio: {
-        channelCount: 1,
+        channelCount: { ideal: 1 },
         sampleRate: 48000,
         echoCancellation: true,
         noiseSuppression: false,

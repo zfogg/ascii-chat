@@ -10,6 +10,7 @@
 
 struct audio_recording {
   float *mix;
+  unsigned channels;
   uint64_t epoch_ns;
   uint64_t read_position;
   uint64_t source_position[AUDIO_RECORDING_SOURCE_COUNT];
@@ -22,6 +23,12 @@ static audio_recording_t *active_recording;
 static _Atomic bool recording_accepts_samples;
 
 asciichat_error_t audio_recording_create(audio_recording_t **out) {
+  return audio_recording_create_channels(out, 1);
+}
+
+asciichat_error_t audio_recording_create_channels(audio_recording_t **out, unsigned channels) {
+  if (channels != 1 && channels != 2)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid recording channel count");
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing recording output");
   *out = NULL;
@@ -31,7 +38,8 @@ asciichat_error_t audio_recording_create(audio_recording_t **out) {
     return SET_ERRNO(ERROR_INVALID_STATE, "A session recording is already active");
   }
   audio_recording_t *recording = SAFE_CALLOC(1, sizeof(*recording), audio_recording_t *);
-  recording->mix = SAFE_CALLOC(RECORDING_CAPACITY, sizeof(float), float *);
+  recording->channels = channels;
+  recording->mix = SAFE_CALLOC(RECORDING_CAPACITY * channels, sizeof(float), float *);
   active_recording = recording;
   *out = recording;
   static_mutex_unlock(&recording_mutex);
@@ -76,17 +84,19 @@ void audio_recording_submit(audio_recording_source_t source, const float *sample
   }
   uint64_t delta = start_ns > recording->epoch_ns ? start_ns - recording->epoch_ns : 0;
   uint64_t position = delta / 1000000000ULL * RECORDING_RATE + delta % 1000000000ULL * RECORDING_RATE / 1000000000ULL;
+  position *= recording->channels;
   /* Smooth callback jitter while preserving gaps longer than 100 ms. */
-  if (recording->source_started[source] && position < recording->source_position[source] + RECORDING_RATE / 10)
+  if (recording->source_started[source] &&
+      position < recording->source_position[source] + RECORDING_RATE * recording->channels / 10)
     position = recording->source_position[source];
   if (position < recording->read_position)
     position = recording->read_position;
   recording->source_started[source] = true;
   recording->source_position[source] = position + count;
   for (size_t i = 0; i < count; i++, position++) {
-    if (position >= recording->read_position && position - recording->read_position < RECORDING_CAPACITY &&
-        isfinite(samples[i]))
-      recording->mix[position % RECORDING_CAPACITY] += samples[i];
+    if (position >= recording->read_position &&
+        position - recording->read_position < RECORDING_CAPACITY * recording->channels && isfinite(samples[i]))
+      recording->mix[position % (RECORDING_CAPACITY * recording->channels)] += samples[i];
   }
   static_mutex_unlock(&recording_mutex);
 }
@@ -96,7 +106,7 @@ void audio_recording_read(audio_recording_t *recording, float *samples, size_t c
     return;
   static_mutex_lock_named(&recording_mutex, "audio_recording");
   for (size_t i = 0; i < count; i++) {
-    size_t slot = recording->read_position++ % RECORDING_CAPACITY;
+    size_t slot = recording->read_position++ % (RECORDING_CAPACITY * recording->channels);
     float sample = recording->mix[slot];
     samples[i] = fmaxf(-1.0f, fminf(1.0f, sample));
     recording->mix[slot] = 0;

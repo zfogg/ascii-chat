@@ -17,6 +17,7 @@ import numpy as np
 from test_spectral import load
 
 lib = load(Path(sys.argv[1]).resolve())
+channels = 2 if "--stereo" in sys.argv[2:] else 1
 
 
 from pipeline_ctypes import Config, Flags
@@ -57,6 +58,10 @@ with tempfile.TemporaryDirectory() as directory:
         * (np.sin(pitch) + 0.4 * np.sin(2 * pitch) + 0.2 * np.sin(3 * pitch))
     ).astype("float32")
     near[: 12 * rate] = 0
+    if channels == 2:
+        independent = np.convolve(rng.normal(0, 0.2, size), np.ones(8) / 8, "same").astype("float32")
+        far = np.column_stack((far, independent))
+        near = np.column_stack((near, near * 0.8))
     for delay_ms, level in [(40, 0.4), (100, 0.8)]:
         config = lib.client_audio_pipeline_default_config()
         assert (
@@ -67,33 +72,35 @@ with tempfile.TemporaryDirectory() as directory:
             config.jitter_margin_ms,
         ) == (48000, 20, 32000, 2048, 60)
         config.flags = Flags(echo_cancel=True)
+        config.channels = config.encoder_channels = channels
         pipeline = lib.client_audio_pipeline_create(c.byref(config))
         assert pipeline
         delay = delay_ms * 48
-        echo = np.zeros(size, dtype="float32")
+        echo = np.zeros_like(far)
         echo[delay:] = far[:-delay] * level
         echo[delay + 960 :] += far[: -delay - 960] * level * 0.2
         mic = echo + near
-        out = np.zeros(size, dtype="float32")
+        out = np.zeros_like(far)
         for start in range(0, size, 480):
             lib.client_audio_pipeline_process_duplex(
                 pipeline,
                 far[start:].ctypes.data,
-                480,
+                480 * channels,
                 mic[start:].ctypes.data,
-                480,
+                480 * channels,
                 out[start:].ctypes.data,
             )
         assert np.isfinite(out).all()
-        erle = 10 * np.log10(
-            np.mean(echo[8 * rate : 11 * rate] ** 2)
-            / max(1e-12, np.mean(out[8 * rate : 11 * rate] ** 2))
-        )
+        # Require echo reduction on every capture channel independently.
+        erle = np.min(10 * np.log10(
+            np.mean(echo[8 * rate : 11 * rate] ** 2, axis=0)
+            / np.maximum(1e-12, np.mean(out[8 * rate : 11 * rate] ** 2, axis=0))
+        ))
         # Find the analysis/synthesis filterbank delay without assuming zero latency.
-        reference = near[14 * rate : 17 * rate]
+        reference = near[14 * rate : 17 * rate].reshape(-1)
         best = (-1, 0, 0)
         for lag in range(0, 2049):
-            actual = out[14 * rate + lag : 17 * rate + lag]
+            actual = out[14 * rate + lag : 17 * rate + lag].reshape(-1)
             gain = float(reference @ actual / (reference @ reference))
             corr = float(
                 reference
@@ -103,6 +110,7 @@ with tempfile.TemporaryDirectory() as directory:
             if corr > best[0]:
                 best = (corr, lag, gain)
         result = dict(
+            channels=channels,
             delay_ms=delay_ms,
             echo_gain=level,
             erle_db=float(erle),

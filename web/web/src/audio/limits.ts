@@ -1,5 +1,6 @@
-/** Native audio/limits.h framing contract, in samples per mono channel. */
+/** Native audio/limits.h framing contract, in samples per channel. */
 export const AUDIO_SAMPLE_RATE = 48000;
+export const AUDIO_CHANNELS = 2;
 export const OPUS_FRAME_MS = 20;
 export const OPUS_FRAME_SAMPLES = (AUDIO_SAMPLE_RATE * OPUS_FRAME_MS) / 1000;
 /** Existing encoder scratch budget, in encoded bytes. */

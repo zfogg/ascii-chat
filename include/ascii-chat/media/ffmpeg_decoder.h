@@ -15,7 +15,7 @@
  * ==============
  * - Multi-format container support (mp4, avi, mkv, webm, etc.)
  * - Video decoding to RGB24 format
- * - Audio decoding to 48kHz mono float
+ * - Audio decoding to 48kHz interleaved stereo float
  * - Stdin input support via custom AVIOContext
  * - Seeking for loop support
  * - Automatic stream detection
@@ -26,7 +26,7 @@
  * - libavcodec: Video/audio codec decoding
  * - libavutil: Utilities and error handling
  * - libswscale: Video format conversion (YUV -> RGB)
- * - libswresample: Audio resampling (any rate -> 48kHz mono)
+ * - libswresample: Audio resampling (any rate -> 48kHz stereo)
  *
  * SUPPORTED CODECS:
  * =================
@@ -275,11 +275,11 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder);
  * @return Number of samples actually read (0 to num_samples)
  *
  * Decodes audio samples from the media stream. Samples are resampled to
- * 48kHz mono float format, compatible with ascii-chat's Opus encoding.
+ * 48kHz interleaved stereo float format, compatible with ascii-chat's Opus encoding.
  *
  * **Audio format:**
  * - Format: 32-bit float
- * - Channels: Mono (1 channel)
+ * - Channels: Stereo (2 channels); sample counts include both channels
  * - Sample rate: 48000 Hz
  * - Range: -1.0 to 1.0
  *
@@ -287,7 +287,7 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder);
  * 1. Read packet from format context
  * 2. Send packet to audio decoder
  * 3. Receive decoded frame
- * 4. Resample to 48kHz mono using swresample
+ * 4. Resample to 48kHz stereo using swresample
  * 5. Copy to output buffer
  *
  * @note Skips non-audio packets automatically

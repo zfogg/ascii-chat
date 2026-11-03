@@ -78,9 +78,9 @@ def main():
                 try:
                     pixels = (c.c_uint8 * (64 * 48 * 4))(*([128, 128, 128, 255] * (64 * 48)))
                     assert api.ffmpeg_encoder_write_frame(enc, pixels, 64 * 4, 1_000_000_000) == 0
-                    samples = (c.c_float * count)(*(0.2 * math.sin(2 * math.pi * 440 * i / 48000)
-                                                   for i in range(count)))
-                    assert api.ffmpeg_encoder_write_audio(enc, samples, count) == 0
+                    samples = (c.c_float * (count * 2))(*(0.2 * math.sin(2 * math.pi * 440 * (i // 2) / 48000)
+                                                         for i in range(count * 2)))
+                    assert api.ffmpeg_encoder_write_audio(enc, samples, count * 2) == 0
                 finally:
                     result = api.ffmpeg_encoder_destroy(enc)
                 assert result == 0, f"{extension}/{count}: finalization returned {result}"
@@ -89,6 +89,7 @@ def main():
                                        check=True, capture_output=True)
                 audio = next(s for s in json.loads(probe.stdout)["streams"] if s["codec_type"] == "audio")
                 assert audio["codec_name"] == codec, audio
+                assert audio["channels"] == 2, audio
                 decoded = subprocess.run(["ffmpeg", "-v", "error", "-xerror", "-i", str(path), "-vn",
                                           "-ac", "1", "-ar", "48000", "-f", "f32le", "pipe:1"],
                                          check=True, capture_output=True)

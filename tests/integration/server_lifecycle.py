@@ -53,7 +53,7 @@ kernel.FreeConsole()
 
 
 class Service:
-    def __init__(self, binary, directory, name, mode, options, environment=None):
+    def __init__(self, binary, directory, name, mode, options, environment=None, log_level="debug"):
         self.log = directory / (name + ".log")
         self.output = directory / (name + ".txt")
         # A reused output directory must not satisfy readiness from an older run.
@@ -71,7 +71,7 @@ class Service:
                    ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
         env.update(environment or {})
         self.process = subprocess.Popen(
-            [str(binary), "--no-check-update", "--log-file", str(self.log), "--log-level", "debug", mode, *options],
+            [str(binary), "--no-check-update", "--log-file", str(self.log), "--log-level", log_level, mode, *options],
             cwd=directory, stdout=self.stream, stderr=subprocess.STDOUT, env=env, **flags,
         )
 

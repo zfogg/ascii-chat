@@ -22,7 +22,7 @@
  *
  * **Parameters**:
  * - Sample rate: 44100 Hz
- * - Channels: 1 (mono)
+ * - Channels: 2 (interleaved stereo)
  * - Format: 32-bit float samples
  * - Opus bitrate: Variable (16-48 kbps)
  * - Batch size: 256 samples (~5.8ms at 44.1kHz)
@@ -54,7 +54,7 @@
  * The samples are queued in a ring buffer that smooths out timing
  * variations. The playback thread drains this buffer at a constant rate.
  *
- * @param samples Audio sample data from server (32-bit float, mono)
+ * @param samples Audio sample data from server (32-bit float, interleaved stereo)
  * @param num_samples Number of samples in buffer
  *
  * @note This is called by the protocol thread - must be thread-safe.

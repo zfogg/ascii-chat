@@ -136,17 +136,21 @@ static const size_t g_utf8_heap_capacity = 2048;  // Max heap size (matching uth
 
 // Initialize UTF-8 cache system with min-heap (thread-safe)
 static void init_utf8_cache_system(void) {
-  // Lock-free init: lifecycle handles synchronization
+  if (!lifecycle_init_once(&g_utf8_cache_lc)) {
+    // A competing renderer must wait for both the lock and heap to exist.
+    while (atomic_load_u64(&g_utf8_cache_lc.state) == LIFECYCLE_INITIALIZING)
+      platform_sleep_us(1);
+    return;
+  }
   g_utf8_cache_lc.sync_type = LIFECYCLE_SYNC_RWLOCK;
   g_utf8_cache_lc.sync.rwlock = &g_utf8_cache_rwlock;
-  if (!lifecycle_init(&g_utf8_cache_lc, "utf8_cache")) {
-    return; // Already initialized by another thread
-  }
+  rwlock_init(&g_utf8_cache_rwlock, "utf8_cache");
 
   // Initialize uthash head to NULL (required)
   g_utf8_cache_table = NULL;
   g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
   g_utf8_heap_size = 0;
+  lifecycle_init_commit(&g_utf8_cache_lc);
 }
 
 // Min-heap management functions for UTF-8 cache

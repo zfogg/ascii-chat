@@ -1278,7 +1278,7 @@ static asciichat_error_t server_init_audio_mixer(void) {
   // Initialize audio mixer (always enabled on server)
   if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing audio mixer for per-client audio rendering...");
-    g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
+    g_audio_mixer = mixer_create_channels(MAX_CLIENTS, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
     if (!g_audio_mixer) {
       LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
       if (!atomic_load_bool(&g_should_exit)) {
@@ -1606,13 +1606,15 @@ static void server_init_webrtc(void) {
 
     // Configure peer_manager
     const char *server_address = GET_OPTION(address);
+    const char *ice_bind_address = GET_OPTION(webrtc_bind_address);
     bool bind_webrtc_to_server_address = server_address && server_address[0] &&
                                          strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
     webrtc_peer_manager_config_t pm_config = {
         .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
                                      // Honor an explicitly selected server interface for ICE. With a
                                      // wildcard bind, let libdatachannel gather candidates on all interfaces.
-        .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
+        .bind_address =
+            ice_bind_address[0] ? ice_bind_address : (bind_webrtc_to_server_address ? server_address : NULL),
         .stun_servers = stun_servers,
         .stun_count = stun_count,
         .turn_servers = turn_servers,

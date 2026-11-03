@@ -103,6 +103,7 @@ typedef struct {
   OpusEncoder *encoder; ///< Encoder state (NULL if decoder)
   OpusDecoder *decoder; ///< Decoder state (NULL if encoder)
   int sample_rate;      ///< Sample rate in Hz (e.g., 44100)
+  int channels;         ///< PCM channels (1 or 2); sample counts include all channels
   int bitrate;          ///< Bitrate in bits per second (encoder only)
   uint8_t *tmp_buffer;  ///< Temporary buffer for internal use
 } opus_codec_t;
@@ -118,7 +119,7 @@ typedef struct {
  * @param bitrate Target bitrate in bits per second (6000-128000 typical)
  * @return Pointer to new encoder, NULL on error
  *
- * Creates a new Opus encoder instance for compressing audio.
+ * Creates a stereo Opus encoder. The explicit-channel variant accepts mono or stereo.
  *
  * @note Common bitrates:
  *   - 16 kbps: Good quality voice
@@ -130,25 +131,28 @@ typedef struct {
  * @ingroup audio
  */
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate);
+opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application, int sample_rate, int bitrate,
+                                                 int channels);
 
 /**
  * @brief Create an Opus decoder
  * @param sample_rate Sample rate in Hz (must match encoder)
  * @return Pointer to new decoder, NULL on error
  *
- * Creates a new Opus decoder instance for decompressing audio.
+ * Creates a stereo Opus decoder. The explicit-channel variant accepts mono or stereo.
  *
  * @warning Returned pointer must be freed with opus_codec_destroy()
  *
  * @ingroup audio
  */
 opus_codec_t *opus_codec_create_decoder(int sample_rate);
+opus_codec_t *opus_codec_create_decoder_channels(int sample_rate, int channels);
 
 /**
  * @brief Encode audio frame with Opus
  * @param codec Opus encoder (created with opus_codec_create_encoder)
  * @param samples Input audio samples (float, -1.0 to 1.0 range)
- * @param num_samples Number of input samples (882 for 20ms @ 44.1kHz)
+ * @param num_samples Total interleaved input samples (1920 for 20ms of stereo at 48kHz)
  * @param out_data Output buffer for compressed audio
  * @param out_size Maximum output buffer size in bytes
  * @return Number of bytes written to out_data, negative on error

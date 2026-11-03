@@ -76,7 +76,8 @@ typedef enum {
  * @brief Default audio codec capabilities (all codecs supported)
  * @ingroup media
  */
-#define AUDIO_CODEC_CAP_ALL (AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS)
+#define AUDIO_CAP_STEREO ((uint32_t)(1u << 8)) ///< Interleaved stereo PCM and stereo Opus output
+#define AUDIO_CODEC_CAP_ALL (AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS | AUDIO_CAP_STEREO)
 
 /**
  * @brief Check if a video codec is supported in capabilities bitmask

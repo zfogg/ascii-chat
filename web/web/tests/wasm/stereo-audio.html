@@ -1,0 +1,117 @@
+<!doctype html>
+<title>Stereo audio regression</title>
+<pre>
+Running generated stereo audio through the real worklet and C/WASM codec…</pre>
+<script type="module">
+  import { AudioCapture } from "../../src/audio/AudioCapture.ts";
+  import { OpusEncoder } from "../../src/audio/OpusEncoder.ts";
+  import { createWasmModule } from "@ascii-chat/shared/wasm";
+
+  const report = document.querySelector("pre");
+  let capture, codec;
+  try {
+    const frames = 3840;
+    const context = new OfflineAudioContext(2, frames, 48000);
+    const module = await createWasmModule("client");
+    codec = new OpusEncoder({ sampleRate: 48000, channelCount: 2 });
+    await codec.init(module);
+    let packets = 0;
+    const decoded = [];
+    let largestError = 0;
+    const complete = new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Only ${packets} stereo packets`)),
+        30000,
+      );
+      AudioCapture.create(context, {
+        bypass: true,
+        microphoneChannels: 2,
+        media: true,
+        onError: reject,
+        onFrame(payload, samples) {
+          const start = packets * 960;
+          for (let frame = 0; frame < 960; frame++) {
+            const t = (start + frame) / 48000;
+            const left =
+              0.2 * Math.sin(2 * Math.PI * 440 * t) +
+              0.1 * Math.sin(2 * Math.PI * 1100 * t);
+            const right =
+              0.2 * Math.sin(2 * Math.PI * 880 * t) +
+              0.1 * Math.sin(2 * Math.PI * 2200 * t);
+            largestError = Math.max(
+              largestError,
+              Math.abs(samples[frame * 2] - left),
+              Math.abs(samples[frame * 2 + 1] - right),
+            );
+          }
+          decoded.push(...codec.decode(payload.subarray(18)));
+          if (++packets === 4) {
+            clearTimeout(timer);
+            resolve();
+          }
+        },
+      })
+        .then(async (processor) => {
+          capture = processor;
+          for (const [input, frequencies, amplitude] of [
+            [0, [440, 880], 0.2],
+            [1, [1100, 2200], 0.1],
+          ]) {
+            const buffer = context.createBuffer(2, frames, 48000);
+            for (let channel = 0; channel < 2; channel++)
+              for (let frame = 0; frame < frames; frame++)
+                buffer.getChannelData(channel)[frame] =
+                  amplitude *
+                  Math.sin(
+                    (2 * Math.PI * frequencies[channel] * frame) / 48000,
+                  );
+            const source = context.createBufferSource();
+            source.buffer = buffer;
+            source.connect(processor.node, 0, input);
+            source.start();
+          }
+          const silent = await context.startRendering();
+          for (let channel = 0; channel < silent.numberOfChannels; channel++)
+            if (silent.getChannelData(channel).some((sample) => sample !== 0))
+              throw new Error(
+                "Microphone capture leaked into speaker monitoring",
+              );
+        })
+        .catch(reject);
+    });
+    await complete;
+    if (largestError > 1e-5)
+      throw new Error(
+        `Capture changed channel routing or timing: ${largestError}`,
+      );
+    if (decoded.length !== frames * 2)
+      throw new Error("Codec changed stereo frame duration");
+    const amplitude = (channel, frequency) => {
+      let real = 0,
+        imag = 0;
+      for (let i = 960; i < frames; i++) {
+        const value = decoded[i * 2 + channel] / 32768;
+        real += value * Math.cos((2 * Math.PI * frequency * i) / 48000);
+        imag += value * Math.sin((2 * Math.PI * frequency * i) / 48000);
+      }
+      return (2 * Math.hypot(real, imag)) / (frames - 960);
+    };
+    const left = amplitude(0, 440),
+      right = amplitude(1, 880);
+    if (
+      left < 0.08 ||
+      right < 0.08 ||
+      left < 6 * amplitude(0, 880) ||
+      right < 6 * amplitude(1, 440)
+    )
+      throw new Error("Stereo codec mixed the left/right signals");
+    window.stereoProof = { passed: true, packets, largestError, left, right };
+    report.textContent = JSON.stringify(window.stereoProof);
+  } catch (error) {
+    window.stereoProof = { passed: false, error: String(error) };
+    report.textContent = String(error);
+  } finally {
+    capture?.close();
+    codec?.cleanup();
+  }
+</script>

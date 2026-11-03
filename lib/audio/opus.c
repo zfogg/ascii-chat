@@ -6,6 +6,7 @@
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/audio/opus.h>
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>
@@ -32,10 +33,15 @@ asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate
 }
 
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate) {
+  return opus_codec_create_encoder_channels(application, sample_rate, bitrate, AUDIO_CHANNELS);
+}
+
+opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application, int sample_rate, int bitrate,
+                                                 int channels) {
   ASCII_OTEL_SCOPE(OPUS_ENCODER_CREATE);
   ASCII_OTEL_ATTR_INT("audio.sample_rate", sample_rate);
   ASCII_OTEL_ATTR_INT("audio.bitrate", bitrate);
-  if (sample_rate <= 0 || bitrate <= 0) {
+  if (sample_rate <= 0 || bitrate <= 0 || (channels != 1 && channels != 2)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid codec parameters: sample_rate=%d, bitrate=%d", sample_rate, bitrate);
     return NULL;
   }
@@ -48,7 +54,7 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
 
   // Create encoder
   int error = OPUS_OK;
-  codec->encoder = opus_encoder_create(sample_rate, 1, (int)application, &error);
+  codec->encoder = opus_encoder_create(sample_rate, channels, (int)application, &error);
   if (error != OPUS_OK || !codec->encoder) {
     SET_ERRNO(ERROR_AUDIO, "Failed to create Opus encoder: %s", opus_strerror(error));
     SAFE_FREE(codec);
@@ -63,6 +69,7 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
 
   codec->decoder = NULL;
   codec->sample_rate = sample_rate;
+  codec->channels = channels;
   codec->bitrate = bitrate;
   codec->tmp_buffer = NULL;
 
@@ -79,9 +86,13 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
  * ============================================================================ */
 
 opus_codec_t *opus_codec_create_decoder(int sample_rate) {
+  return opus_codec_create_decoder_channels(sample_rate, AUDIO_CHANNELS);
+}
+
+opus_codec_t *opus_codec_create_decoder_channels(int sample_rate, int channels) {
   ASCII_OTEL_SCOPE(OPUS_DECODER_CREATE);
   ASCII_OTEL_ATTR_INT("audio.sample_rate", sample_rate);
-  if (sample_rate <= 0) {
+  if (sample_rate <= 0 || (channels != 1 && channels != 2)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid sample rate: %d", sample_rate);
     return NULL;
   }
@@ -94,7 +105,7 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
 
   // Create decoder
   int error = OPUS_OK;
-  codec->decoder = opus_decoder_create(sample_rate, 1, &error);
+  codec->decoder = opus_decoder_create(sample_rate, channels, &error);
   if (error != OPUS_OK || !codec->decoder) {
     SET_ERRNO(ERROR_AUDIO, "Failed to create Opus decoder: %s", opus_strerror(error));
     SAFE_FREE(codec);
@@ -103,6 +114,7 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
 
   codec->encoder = NULL;
   codec->sample_rate = sample_rate;
+  codec->channels = channels;
   codec->bitrate = 0; // N/A for decoder
   codec->tmp_buffer = NULL;
 
@@ -124,7 +136,8 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
   ASCII_OTEL_ATTR_STRING("audio.codec", "opus");
   ASCII_OTEL_ATTR_INT("audio.frame.samples", num_samples);
   ASCII_OTEL_ATTR_INT("audio.output.capacity", (int64_t)out_size);
-  if (!codec || !codec->encoder || !samples || num_samples <= 0 || !out_data || out_size == 0) {
+  if (!codec || !codec->encoder || !samples || num_samples <= 0 || !out_data || out_size == 0 ||
+      num_samples % codec->channels != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid encode parameters: codec=%p, encoder=%p, samples=%p, num_samples=%d, out_data=%p, "
               "out_size=%zu",
@@ -135,9 +148,10 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
 
   ASCII_OTEL_ATTR_INT("audio.sample_rate", codec->sample_rate);
   ASCII_OTEL_ATTR_INT("audio.bitrate", codec->bitrate);
-  ASCII_OTEL_ATTR_INT("audio.channels", 1);
+  ASCII_OTEL_ATTR_INT("audio.channels", codec->channels);
   // Encode frame
-  opus_int32 encoded_bytes = opus_encode_float(codec->encoder, samples, num_samples, out_data, (opus_int32)out_size);
+  opus_int32 encoded_bytes =
+      opus_encode_float(codec->encoder, samples, num_samples / codec->channels, out_data, (opus_int32)out_size);
 
   if (encoded_bytes < 0) {
     SET_ERRNO(ERROR_AUDIO, "Opus encoding failed: %s", opus_strerror((int)encoded_bytes));
@@ -165,7 +179,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
   ASCII_OTEL_ATTR_STRING("audio.codec", "opus");
   ASCII_OTEL_ATTR_INT("audio.packet.size", (int64_t)data_len);
   ASCII_OTEL_ATTR_INT("audio.packet_loss_concealment", !data || !data_len);
-  if (!codec || !codec->decoder || !out_samples || out_num_samples <= 0) {
+  if (!codec || !codec->decoder || !out_samples || out_num_samples <= 0 || out_num_samples % codec->channels != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid decode parameters: codec=%p, decoder=%p, out_samples=%p, out_num_samples=%d", (void *)codec,
               (void *)(codec ? codec->decoder : NULL), (void *)out_samples, out_num_samples);
@@ -173,12 +187,12 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
   }
 
   ASCII_OTEL_ATTR_INT("audio.sample_rate", codec->sample_rate);
-  ASCII_OTEL_ATTR_INT("audio.channels", 1);
+  ASCII_OTEL_ATTR_INT("audio.channels", codec->channels);
   ASCII_OTEL_ATTR_INT("audio.output.capacity_samples", out_num_samples);
   // If data is NULL, use PLC (Packet Loss Concealment)
   if (!data || data_len == 0) {
     log_debug_every(LOG_RATE_VERY_FAST, "Opus PLC (Packet Loss Concealment)");
-    int samples = opus_decode_float(codec->decoder, NULL, 0, out_samples, out_num_samples, 0);
+    int samples = opus_decode_float(codec->decoder, NULL, 0, out_samples, out_num_samples / codec->channels, 0);
     if (samples < 0) {
       SET_ERRNO(ERROR_AUDIO, "Opus PLC failed: %s", opus_strerror(samples));
       return -1;
@@ -186,11 +200,12 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
     ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_SAMPLES, samples);
     ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_PLC_FRAMES, 1);
     ASCII_OTEL_ATTR_INT("audio.frame.samples", samples);
-    return samples;
+    return samples * codec->channels;
   }
 
   // Decode frame
-  int samples = opus_decode_float(codec->decoder, data, (opus_int32)data_len, out_samples, out_num_samples, 0);
+  int samples =
+      opus_decode_float(codec->decoder, data, (opus_int32)data_len, out_samples, out_num_samples / codec->channels, 0);
 
   if (samples < 0) {
     SET_ERRNO(ERROR_AUDIO, "Opus decoding failed: %s", opus_strerror(samples));
@@ -200,7 +215,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
   ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_BYTES, (double)data_len);
   ASCII_OTEL_ATTR_INT("audio.frame.samples", samples);
   ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_SAMPLES, samples);
-  return samples;
+  return samples * codec->channels;
 }
 
 /* ============================================================================
