@@ -21,7 +21,7 @@ coverage:
         target: auto
         threshold: 1%
       application:
-        target: 50%
+        target: 75%
         threshold: 0%
         paths:
           - "src/"
