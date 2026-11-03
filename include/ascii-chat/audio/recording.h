@@ -15,6 +15,7 @@ typedef enum {
 
 /* One session recording subscribes to PCM copies; playback and capture retain ownership. */
 asciichat_error_t audio_recording_create(audio_recording_t **out);
+asciichat_error_t audio_recording_create_channels(audio_recording_t **out, unsigned channels);
 void audio_recording_destroy(audio_recording_t *recording);
 void audio_recording_start(audio_recording_t *recording, uint64_t epoch_ns);
 void audio_recording_submit(audio_recording_source_t source, const float *samples, size_t count, uint64_t start_ns);

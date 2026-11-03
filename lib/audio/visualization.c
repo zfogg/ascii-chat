@@ -97,6 +97,21 @@ static float waveform_spectral_centroid(const float *samples, size_t sample_coun
   return total_weight > 0.0001f ? expf(weighted_log_frequency / total_weight) : 900.0f;
 }
 
+void audio_visualization_submit_stereo(audio_visualization_source_t source, const float *samples, size_t count) {
+  if (!samples || count % 2)
+    return;
+  float mono[480];
+  for (size_t offset = 0; offset < count;) {
+    size_t frames = (count - offset) / 2;
+    if (frames > 480)
+      frames = 480;
+    for (size_t i = 0; i < frames; i++)
+      mono[i] = samples[offset + i * 2] * 0.5f + samples[offset + i * 2 + 1] * 0.5f;
+    audio_visualization_submit(source, mono, frames);
+    offset += frames * 2;
+  }
+}
+
 void audio_visualization_submit(audio_visualization_source_t source, const float *samples, size_t count) {
   if ((!GET_OPTION(waveform) && !GET_OPTION(fft)) || !samples || source < AUDIO_VISUALIZATION_SOURCE_MIC ||
       source > AUDIO_VISUALIZATION_SOURCE_REMOTE)

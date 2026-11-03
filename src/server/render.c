@@ -496,7 +496,7 @@ void *client_video_render_thread(void *arg) {
  *
  * TIMING PRECISION:
  * - Target: 100fps (10ms intervals, 480 samples @ 48kHz)
- * - Accumulates to 960 samples (20ms) for Opus encoding
+ * - Accumulates to OPUS_FRAME_SAMPLES samples (20ms) for Opus encoding
  * - Fixed timing (no dynamic rate adjustment)
  * - Low-latency audio delivery
  *
@@ -587,18 +587,19 @@ void *client_audio_render_thread(void *arg) {
             is_webrtc);
 #endif
 
-  // Mix buffer: up to 960 samples for adaptive reading
+  // Mix buffer: up to OPUS_FRAME_SAMPLES samples for adaptive reading
   // Normal: 480 samples = 10ms @ 48kHz
-  // Catchup: 960 samples = 20ms when buffers are filling up
-  float mix_buffer[OPUS_FRAME_SAMPLES];
+  // Catchup: OPUS_FRAME_SAMPLES samples = 20ms when buffers are filling up
+  float mix_buffer[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
 
-  // Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
-  // Opus requires minimum 480 samples, 960 is optimal for 20ms frames
-  float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+  // Opus frame accumulation buffer (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
+  // Opus requires minimum 480 samples, OPUS_FRAME_SAMPLES is optimal for 20ms frames
+  float opus_frame_buffer[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
   int opus_frame_accumulated = 0;
 
-  // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
-  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000);
+  // Create an Opus encoder for the interleaved stereo stream.
+  opus_codec_t *opus_encoder =
+      opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
   if (!opus_encoder) {
     log_error("Failed to create Opus encoder for audio render thread (client %s)", thread_client_id);
     return NULL;
@@ -651,9 +652,9 @@ void *client_audio_render_thread(void *arg) {
 
     // ADAPTIVE READING: Read more samples when we're behind to catch up
     // Normal: 480 samples per 10ms iteration
-    // When behind: read up to 960 samples to catch up faster
+    // When behind: read up to OPUS_FRAME_SAMPLES samples to catch up faster
     // Check source buffer levels to decide
-    int samples_to_read = 480; // Default: 10ms worth
+    int samples_to_read = 480 * AUDIO_CHANNELS; // Default: 10ms worth
 
     int samples_mixed = 0;
     uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
@@ -670,13 +671,13 @@ void *client_audio_render_thread(void *arg) {
     // This maintains continuous stream without silence padding
     START_TIMER("accum_%s", client_id_snapshot);
 
-    int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
+    int space_available = (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated;
     int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
 
     // Only copy if we have samples, otherwise just wait for next frame
     if (samples_to_copy > 0) {
       SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
-                  (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
+                  ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_accumulated) * sizeof(float), mix_buffer,
                   samples_to_copy * sizeof(float));
       opus_frame_accumulated += samples_to_copy;
     }
@@ -685,14 +686,14 @@ void *client_audio_render_thread(void *arg) {
                              client_id_snapshot);
 
     // Only encode and send when we have accumulated a full Opus frame
-    if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
-      // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
+    if (opus_frame_accumulated >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
+      // Encode accumulated Opus frame (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
       uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
       START_TIMER("opus_encode_%s", client_id_snapshot);
 
-      int opus_size =
-          opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
+      int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS,
+                                        opus_buffer, sizeof(opus_buffer));
 
       STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, "opus_encode_%s",
                                "Opus encode for client %s: took", client_id_snapshot);
@@ -700,13 +701,13 @@ void *client_audio_render_thread(void *arg) {
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {
         float peak = 0.0f, rms = 0.0f;
-        for (int i = 0; i < OPUS_FRAME_SAMPLES; i++) {
+        for (int i = 0; i < (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); i++) {
           float abs_val = fabsf(opus_frame_buffer[i]);
           if (abs_val > peak)
             peak = abs_val;
           rms += opus_frame_buffer[i] * opus_frame_buffer[i];
         }
-        rms = sqrtf(rms / OPUS_FRAME_SAMPLES);
+        rms = sqrtf(rms / (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
         // NOTE: server_audio_frame_count is now per-thread (not static), so each client thread has its own counter
         server_audio_frame_count++;
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
@@ -732,10 +733,11 @@ void *client_audio_render_thread(void *arg) {
         // Frame sizes: frame_count * 2B (one uint16 per frame with Opus data size)
         // Opus data: raw encoded audio
 
-        // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame = 20ms)
+        // Fixed values for Opus encoding (standard 48kHz, OPUS_FRAME_SAMPLES samples per frame = 20ms)
         const uint32_t sample_rate = AUDIO_SAMPLE_RATE;
-        const uint32_t frame_duration = CLIENT_AUDIO_PIPELINE_FRAME_MS; // milliseconds (960 samples / 48kHz = 20ms)
-        const uint32_t frame_count = 1;                                 // one Opus frame per packet
+        const uint32_t frame_duration =
+            CLIENT_AUDIO_PIPELINE_FRAME_MS; // milliseconds (OPUS_FRAME_SAMPLES samples / 48kHz = 20ms)
+        const uint32_t frame_count = 1;     // one Opus frame per packet
         const uint16_t frame_size = (uint16_t)opus_size;
 
         // Calculate total packet size: 16-byte header + frame_sizes + opus data

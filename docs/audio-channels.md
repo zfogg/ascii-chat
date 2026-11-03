@@ -1,0 +1,76 @@
+# Audio channels
+
+All call encoders and decoders use stereo Opus. Speech uses centered input at
+32 kbit/s; stereo microphones and media use 128 kbit/s. Internal
+PCM is interleaved stereo at 48 kHz, independent of device layouts and rates.
+PCM counts include both channels; codec frame durations are measured per channel.
+
+## Microphones
+
+Use `--list-microphones` to choose a device. A multichannel device can still be
+used for mono speech. The device opener tries supported layouts and routes the
+selected input before resampling, echo cancellation, and microphone enhancement.
+
+```sh
+# Stereo microphone, or the first pair on an audio interface
+ascii-chat client --microphone-index 2 --microphone-channels 2
+
+# A single microphone connected to input 3 (indices start at zero)
+ascii-chat client --microphone-index 2 --microphone-channel 2
+
+# Interface inputs 3 and 4 as a stereo pair
+ascii-chat client --microphone-index 2 --microphone-channel 2 --microphone-channels 2
+
+# Explicitly average all available inputs to centered mono
+ascii-chat client --microphone-index 2 --microphone-channel -1
+```
+
+The same options apply to mirror and discovery modes and have corresponding
+`ASCII_CHAT_MICROPHONE_CHANNEL` and `ASCII_CHAT_MICROPHONE_CHANNELS` environment
+variables. The default selects input zero as mono speech. A microphone array's
+physical channels are not automatically treated as a stereo pair. Prefer its
+processed speech endpoint when available. Invalid selected pairs fail before
+opening a stream.
+
+The browser device dialog offers **Mono speech**, **Stereo pair**, and a first
+input number starting at one. Browser support for exposing individual interface
+inputs varies. A browser-provided single channel stays centered. Browser AEC
+runs on microphone capture; shared C/WASM enhancement processes the microphone
+before stereo screen/media audio is mixed in.
+
+## Playback and media
+
+- Mono microphones are centered in both playback channels. Stereo sources retain
+  their left/right separation through resampling, mix-minus, encoding, and recording.
+- Mono-only speaker devices receive a downmix. Multichannel outputs use the first
+  stereo pair and silence the other outputs.
+- Clients advertise stereo support with `AUDIO_CAP_STEREO`. Call encoders and
+  decoders default to two channels, and servers always send stereo output.
+  There is no legacy-peer mono fallback.
+- Speech filters maintain independent channel state. Stereo gain control,
+  compression, and gating use a shared detector to preserve channel balance.
+- Recordings retain stereo. Waveform/FFT displays downmix only their analysis copy.
+
+## Hardware-free validation
+
+`tests/unit/audio/stereo_test.c` uses generated signals to check routing,
+resampling across callback boundaries, stereo codec defaults and explicit mono
+downmixing, stereo dynamics, jitter frame alignment, mix-minus, AEC buffer sizing,
+and recording timestamps. `tests/contracts/audio/device_test.c` simulates the
+PortAudio boundary while running the production callbacks and worker, including
+stereo-only microphones, mono speakers, and four-channel interface routing.
+Browser worklet tests generate independent microphone and media inputs.
+
+`tests/integration/audio_channels.py` generates different tones in each channel
+and checks a real client/server call, including the received stereo WAV. Pass
+`--artifacts-dir DIRECTORY` to retain its logs and audio. The Chromium proof at
+`web/web/tests/wasm/stereo-audio.mjs` runs the real worklet, worker, C/WASM DSP,
+and Opus codec with generated microphone and media tracks. Run it against a
+local Vite server after rebuilding the WASM artifacts.
+
+`tests/audio/test_aec3_echo.py LIBRARY --stereo` checks independent playback
+channels, delayed synthetic echoes, and near-end speech while echo is present.
+The default invocation retains the mono regression.
+
+These checks do not require a stereo microphone. Physical driver behavior and
+speaker-to-microphone acoustics still need hardware validation.

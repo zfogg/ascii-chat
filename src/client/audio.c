@@ -145,6 +145,15 @@ static wav_writer_t *g_wav_capture_processed = NULL;
 /** WAV writer for received audio (from server, before playback) */
 static wav_writer_t *g_wav_playback_received = NULL;
 
+static bool audio_dump_directory(char *directory, size_t capacity) {
+  const char *selected = SAFE_GETENV("ASCIICHAT_DUMP_AUDIO_DIR");
+  if (selected && selected[0]) {
+    int written = safe_snprintf(directory, capacity, "%s", selected);
+    return written >= 0 && (size_t)written < capacity;
+  }
+  return platform_get_temp_dir(directory, capacity);
+}
+
 /* ============================================================================
  * Audio Capture Thread Management
  * ============================================================================ */
@@ -397,8 +406,9 @@ void audio_process_received_samples(client_connection_t *connection, const float
   }
 
   // Allow both single packets and batched packets
-  if (num_samples > AUDIO_BATCH_SAMPLES) {
-    log_warn("Audio packet too large: %d samples (max %d)", num_samples, AUDIO_BATCH_SAMPLES);
+  if (num_samples > AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS || num_samples % AUDIO_CHANNELS) {
+    log_warn("Invalid audio sample count: %d (maximum %d)", num_samples,
+             AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS);
     return;
   }
 
@@ -416,13 +426,13 @@ void audio_process_received_samples(client_connection_t *connection, const float
 
   // Track samples for analysis
   if (GET_OPTION(audio_analysis_enabled)) {
-    for (int i = 0; i < num_samples; i++) {
-      audio_analysis_track_received_sample(samples[i]);
+    for (int i = 0; i < num_samples; i += AUDIO_CHANNELS) {
+      audio_analysis_track_received_sample((samples[i] + samples[i + 1]) * 0.5f);
     }
   }
 
   // Copy samples to playback buffer (no processing needed - mixer already handled clipping)
-  float audio_buffer[AUDIO_BATCH_SAMPLES];
+  float audio_buffer[AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS];
   memcpy(audio_buffer, samples, (size_t)num_samples * sizeof(float));
 
   // DEBUG: Log what we're writing to playback buffer (with first 4 samples to verify audio integrity)
@@ -513,17 +523,17 @@ static void *audio_capture_thread_func(void *arg) {
   int batch_send_count = 0;
   int timeout_flush_count = 0;
 
-// Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
+// Opus frame size: OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
 
   // Read enough samples per iteration to drain faster than we fill
   // Buffer holds multiple Opus frames worth to prevent overflow
   // 4 frames = 3840 samples = 80ms, but we'll read what's available up to this
-#define CAPTURE_READ_SIZE (OPUS_FRAME_SAMPLES * 4)
+#define CAPTURE_READ_SIZE ((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * 4)
 
   float audio_buffer[CAPTURE_READ_SIZE];
   // Accumulator for building complete Opus frames
-  float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+  float opus_frame_buffer[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
   int opus_frame_samples_collected = 0;
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
@@ -648,8 +658,8 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Track sent samples for analysis
       if (GET_OPTION(audio_analysis_enabled)) {
-        for (int i = 0; i < samples_read; i++) {
-          audio_analysis_track_sent_sample(audio_buffer[i]);
+        for (int i = 0; i < samples_read; i += AUDIO_CHANNELS) {
+          audio_analysis_track_sent_sample((audio_buffer[i] + audio_buffer[i + 1]) * 0.5f);
         }
       }
 
@@ -659,7 +669,7 @@ static void *audio_capture_thread_func(void *arg) {
 
       while (samples_to_process > 0) {
         // How many samples can we add to current frame?
-        int space_in_frame = OPUS_FRAME_SAMPLES - opus_frame_samples_collected;
+        int space_in_frame = (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) - opus_frame_samples_collected;
         int samples_to_copy = (samples_to_process < space_in_frame) ? samples_to_process : space_in_frame;
 
         // Copy samples to frame buffer
@@ -671,13 +681,14 @@ static void *audio_capture_thread_func(void *arg) {
         samples_to_process -= samples_to_copy;
 
         // Do we have a complete frame?
-        if (opus_frame_samples_collected >= OPUS_FRAME_SAMPLES) {
+        if (opus_frame_samples_collected >= (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
           // Process through pipeline: AEC, filters, AGC, noise gate, Opus encode
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
 
           uint64_t opus_encode_start_ns = time_get_ns();
-          int opus_len = client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
-                                                       OPUS_FRAME_SAMPLES, opus_packet, OPUS_MAX_PACKET_SIZE);
+          int opus_len =
+              client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
+                                            (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), opus_packet, OPUS_MAX_PACKET_SIZE);
 
           encode_count++;
           double opus_elapsed_ns = (double)time_elapsed_ns(opus_encode_start_ns, time_get_ns());
@@ -685,8 +696,8 @@ static void *audio_capture_thread_func(void *arg) {
             if (opus_elapsed_ns >= 0.0) {
               char _duration_str[TIME_DURATION_BUFFER_SIZE];
               time_pretty((uint64_t)(opus_elapsed_ns), -1, _duration_str, sizeof(_duration_str));
-              log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
-                      _duration_str);
+              log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count,
+                      (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), opus_len, _duration_str);
             }
           }
 
@@ -699,8 +710,8 @@ static void *audio_capture_thread_func(void *arg) {
           if (opus_len > 0) {
 
             log_debug_every(LOG_RATE_VERY_FAST, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)",
-                            OPUS_FRAME_SAMPLES, opus_len,
-                            (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
+                            (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), opus_len,
+                            (float)((OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * sizeof(float)) / (float)opus_len);
 
             // Add to batch buffer
             if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
@@ -818,7 +829,7 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (960 samples @ 48kHz)
+      // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (OPUS_FRAME_SAMPLES samples @ 48kHz)
       // Without sleep, thread spins at 90-100% CPU constantly checking for new samples
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms
@@ -898,10 +909,10 @@ int audio_client_init() {
   // Initialize WAV dumper for received audio if debugging enabled
   if (wav_dump_enabled()) {
     char tmp[PLATFORM_MAX_PATH_LENGTH];
-    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+    if (audio_dump_directory(tmp, sizeof(tmp))) {
       char path[PLATFORM_MAX_PATH_LENGTH];
       safe_snprintf(path, sizeof(path), "%s/audio_playback_received.wav", tmp);
-      g_wav_playback_received = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      g_wav_playback_received = wav_writer_open(path, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
       if (g_wav_playback_received) {
         log_debug("Audio debugging enabled: dumping received audio to %s", path);
       }
@@ -925,12 +936,12 @@ int audio_client_init() {
   // Initialize WAV dumpers only once (file handles persist)
   if (wav_dump_enabled()) {
     char tmp[PLATFORM_MAX_PATH_LENGTH];
-    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+    if (audio_dump_directory(tmp, sizeof(tmp))) {
       char path[PLATFORM_MAX_PATH_LENGTH];
       safe_snprintf(path, sizeof(path), "%s/audio_capture_raw.wav", tmp);
-      g_wav_capture_raw = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      g_wav_capture_raw = wav_writer_open(path, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
       safe_snprintf(path, sizeof(path), "%s/audio_capture_processed.wav", tmp);
-      g_wav_capture_processed = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      g_wav_capture_processed = wav_writer_open(path, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
       log_debug("Audio debugging enabled: dumping to %s/audio_capture_*.wav", tmp);
     }
   }
@@ -961,7 +972,7 @@ asciichat_error_t audio_connection_init(client_connection_t *connection) {
 
   // Applied before streams start; actual underflows increase this bounded target.
   audio_ring_buffer_set_jitter_target(connection->audio_context->playback_buffer,
-                                      (uint32_t)pipeline_config.jitter_margin_ms * 48);
+                                      (uint32_t)pipeline_config.jitter_margin_ms * 48 * AUDIO_CHANNELS);
 
   log_debug("About to create audio pipeline...");
   connection->audio_pipeline = client_audio_pipeline_create(&pipeline_config);

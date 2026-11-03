@@ -949,12 +949,12 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
   log_info("Initializing WebRTC peer manager (role=%s, stun_count=%zu, turn_count=%zu)",
            role == WEBRTC_ROLE_JOINER ? "JOINER" : "CREATOR", session->stun_count, session->turn_count);
 
+  // ICE needs its own interface selection: the TCP listener and signaling
+  // service addresses do not determine where a peer can receive UDP.
+  const char *ice_bind_address = GET_OPTION(webrtc_bind_address);
   // Create peer manager configuration
   webrtc_peer_manager_config_t pm_config = {.role = role,
-                                            // The host TCP listener can be loopback-only while WebRTC still needs
-                                            // candidates for every usable local interface. Do not reuse the TCP
-                                            // bind address for libdatachannel's ICE sockets.
-                                            .bind_address = NULL,
+                                            .bind_address = ice_bind_address[0] ? ice_bind_address : NULL,
                                             .stun_servers = session->stun_servers,
                                             .stun_count = session->stun_count,
                                             .turn_servers = session->turn_servers,

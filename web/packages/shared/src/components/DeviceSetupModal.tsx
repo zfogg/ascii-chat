@@ -1,3 +1,7 @@
+import {
+  getMicrophoneLayout,
+  saveMicrophoneLayout,
+} from "../devices/microphoneLayout";
 import { acquireMediaStream } from "../devices/acquireMediaStream";
 import { playMedia } from "../devices/playMedia";
 import {
@@ -154,13 +158,17 @@ export function DeviceSetupModal({
   const previewGenerationRef = useRef({ cameraId: 0, microphoneId: 0 });
   const previewOwnersRef = useRef<
     Record<InputDeviceKey, AbortController | null>
-  >({ cameraId: null, microphoneId: null });
+  >({
+    cameraId: null,
+    microphoneId: null,
+  });
   const isOpenRef = useRef(open);
   const [choices, setChoices] = useState<DeviceChoices>(EMPTY_CHOICES);
   const [localPreferences, setLocalPreferences] = useState(readPreferences);
   const preferences = controlledPreferences ?? localPreferences;
   const setPreferences = onPreferencesChange ?? setLocalPreferences;
   const [level, setLevel] = useState(0);
+  const [microphoneLayout, setMicrophoneLayout] = useState(getMicrophoneLayout);
   const [testingMicrophone, setTestingMicrophone] = useState(false);
   const [testingSpeakers, setTestingSpeakers] = useState(false);
   const [audioReady, setAudioReady] = useState(false);
@@ -840,6 +848,51 @@ export function DeviceSetupModal({
           </button>
 
           <div>
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium">Microphone layout</span>
+              <select
+                className="w-full rounded border border-gray-500 bg-gray-950 px-3 py-2 text-gray-100"
+                value={microphoneLayout.channels}
+                onChange={(event) => {
+                  const next = {
+                    ...microphoneLayout,
+                    channels:
+                      Number(event.target.value) === 2
+                        ? (2 as const)
+                        : (1 as const),
+                  };
+                  setMicrophoneLayout(next);
+                  saveMicrophoneLayout(next);
+                }}
+              >
+                <option value={1}>Mono speech</option>
+                <option value={2}>Stereo pair</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium">
+                First microphone input
+              </span>
+              <input
+                className="w-full rounded border border-gray-500 bg-gray-950 px-3 py-2 text-gray-100"
+                type="number"
+                min={1}
+                max={31}
+                value={microphoneLayout.firstChannel + 1}
+                onChange={(event) => {
+                  const firstChannel = Number(event.target.value) - 1;
+                  if (
+                    !Number.isInteger(firstChannel) ||
+                    firstChannel < 0 ||
+                    firstChannel > 30
+                  )
+                    return;
+                  const next = { ...microphoneLayout, firstChannel };
+                  setMicrophoneLayout(next);
+                  saveMicrophoneLayout(next);
+                }}
+              />
+            </label>
             <label className="block text-sm">
               <span className="mb-2 block font-medium">Microphone</span>
               <select

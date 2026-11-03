@@ -54,8 +54,8 @@ static void ffmpeg_silent_log_callback(void *avcl, int level, const char *fmt, v
 /** Target audio sample rate (48kHz for Opus compatibility) */
 #define TARGET_SAMPLE_RATE 48000
 
-/** Target audio channels (mono) */
-#define TARGET_CHANNELS 1
+/** Target audio channels (interleaved stereo) */
+#define TARGET_CHANNELS 2
 
 /** AVIO buffer size for stdin reading (64KB) */
 #define AVIO_BUFFER_SIZE (64 * 1024)
@@ -935,11 +935,16 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     av_opt_set_int(decoder->swr_ctx, "in_sample_rate", decoder->audio_codec_ctx->sample_rate, 0);
     av_opt_set_sample_fmt(decoder->swr_ctx, "in_sample_fmt", decoder->audio_codec_ctx->sample_fmt, 0);
 
-    AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+    AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_STEREO;
     av_opt_set_chlayout(decoder->swr_ctx, "out_chlayout", &out_ch_layout, 0);
     av_opt_set_int(decoder->swr_ctx, "out_sample_rate", TARGET_SAMPLE_RATE, 0);
     av_opt_set_sample_fmt(decoder->swr_ctx, "out_sample_fmt", AV_SAMPLE_FMT_FLT, 0);
 
+    // A mono source stays centered at unity gain in the stereo pipeline.
+    if (decoder->audio_codec_ctx->ch_layout.nb_channels == 1) {
+      const double matrix[] = {1.0, 1.0};
+      swr_set_matrix(decoder->swr_ctx, matrix, 1);
+    }
     // Initialize
     if (swr_init(decoder->swr_ctx) < 0) {
       SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to initialize swresample context");
@@ -948,7 +953,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     }
 
     // Allocate audio buffer (10 seconds worth)
-    decoder->audio_buffer_size = TARGET_SAMPLE_RATE * 10;
+    decoder->audio_buffer_size = TARGET_SAMPLE_RATE * TARGET_CHANNELS * 10;
     decoder->audio_buffer = SAFE_MALLOC(decoder->audio_buffer_size * sizeof(float), float *);
     if (!decoder->audio_buffer) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio buffer");
@@ -1191,10 +1196,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     av_opt_set_int(decoder->swr_ctx, "in_sample_rate", decoder->audio_codec_ctx->sample_rate, 0);
     av_opt_set_sample_fmt(decoder->swr_ctx, "in_sample_fmt", decoder->audio_codec_ctx->sample_fmt, 0);
 
-    AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+    AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_STEREO;
     av_opt_set_chlayout(decoder->swr_ctx, "out_chlayout", &out_ch_layout, 0);
     av_opt_set_int(decoder->swr_ctx, "out_sample_rate", TARGET_SAMPLE_RATE, 0);
     av_opt_set_sample_fmt(decoder->swr_ctx, "out_sample_fmt", AV_SAMPLE_FMT_FLT, 0);
+    if (decoder->audio_codec_ctx->ch_layout.nb_channels == 1) {
+      const double matrix[] = {1.0, 1.0};
+      swr_set_matrix(decoder->swr_ctx, matrix, 1);
+    }
 
     if (swr_init(decoder->swr_ctx) < 0) {
       SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to initialize swresample context");
@@ -1202,7 +1211,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
       return NULL;
     }
 
-    decoder->audio_buffer_size = TARGET_SAMPLE_RATE * 10;
+    decoder->audio_buffer_size = TARGET_SAMPLE_RATE * TARGET_CHANNELS * 10;
     decoder->audio_buffer = SAFE_MALLOC(decoder->audio_buffer_size * sizeof(float), float *);
     if (!decoder->audio_buffer) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio buffer");
@@ -1534,6 +1543,8 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder) {
 
 size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffer, size_t num_samples) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_READ_AUDIO_SAMPLES);
+  // Keep channels and the playback clock aligned even with odd caller capacity.
+  num_samples -= num_samples % TARGET_CHANNELS;
   if (!decoder || decoder->audio_stream_idx < 0 || !buffer || num_samples == 0) {
     return 0;
   }
@@ -1556,7 +1567,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     decoder->audio_buffer_offset -= to_copy;
 
     if (samples_written >= num_samples) {
-      decoder->audio_samples_read += samples_written;
+      decoder->audio_samples_read += samples_written / TARGET_CHANNELS;
       mutex_unlock(&decoder->read_frame_mutex);
       return samples_written;
     }
@@ -1614,11 +1625,12 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       // requested block. Flushing the resampler between packets would insert
       // padding into inputs whose sample rate differs from the output rate.
       uint8_t *out_ptr = (uint8_t *)decoder->audio_buffer;
-      int converted = traced_audio_resample(decoder->swr_ctx, &out_ptr, (int)decoder->audio_buffer_size,
-                                            (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
+      int converted =
+          traced_audio_resample(decoder->swr_ctx, &out_ptr, (int)(decoder->audio_buffer_size / TARGET_CHANNELS),
+                                (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
 
       if (converted > 0) {
-        size_t available = (size_t)converted;
+        size_t available = (size_t)converted * TARGET_CHANNELS;
         size_t remaining = num_samples - samples_written;
         size_t to_copy = available < remaining ? available : remaining;
         memcpy(buffer + samples_written, decoder->audio_buffer, to_copy * sizeof(float));
@@ -1638,16 +1650,16 @@ audio_read_done:
   // Flush resampler buffer if we haven't filled the full request
   // The resampler may have buffered samples that need to be output
   if (samples_written < num_samples && atomic_load_bool(&decoder->eof_reached)) {
-    int remaining_space = (int)(num_samples - samples_written);
+    int remaining_space = (int)((num_samples - samples_written) / TARGET_CHANNELS);
     uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
     int flushed = traced_audio_resample(decoder->swr_ctx, &out_ptr, remaining_space, NULL, 0);
     if (flushed > 0) {
-      samples_written += (size_t)flushed;
+      samples_written += (size_t)flushed * TARGET_CHANNELS;
     }
   }
 
   // Update sample-based position tracking
-  decoder->audio_samples_read += samples_written;
+  decoder->audio_samples_read += samples_written / TARGET_CHANNELS;
   mutex_unlock(&decoder->read_frame_mutex);
 
   return samples_written;

@@ -251,7 +251,7 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
 
   // Configure audio codec context
   enc->audio_codec_ctx->sample_rate = 48000; // 48kHz (from audio pipeline)
-  AVChannelLayout ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  AVChannelLayout ch_layout = AV_CHANNEL_LAYOUT_STEREO;
   av_channel_layout_copy(&enc->audio_codec_ctx->ch_layout, &ch_layout);
   enc->audio_codec_ctx->sample_fmt = target_sample_fmt;
   enc->audio_codec_ctx->time_base = (AVRational){1, 48000};
@@ -286,7 +286,7 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
   }
 
   enc->audio_frame->sample_rate = 48000;
-  AVChannelLayout frame_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  AVChannelLayout frame_ch_layout = AV_CHANNEL_LAYOUT_STEREO;
   av_channel_layout_copy(&enc->audio_frame->ch_layout, &frame_ch_layout);
   enc->audio_frame->format = target_sample_fmt;
 
@@ -298,10 +298,10 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
   }
 
   // Allocate buffer for partial frames (accumulator)
-  enc->audio_partial_buf = SAFE_MALLOC(enc->audio_frame_size * sizeof(float), float *);
+  enc->audio_partial_buf = SAFE_MALLOC(enc->audio_frame_size * 2 * sizeof(float), float *);
   enc->audio_partial_len = 0;
 
-  // Create resampler from input format (AV_SAMPLE_FMT_FLT mono 48kHz) to target format
+  // Create resampler from input format (AV_SAMPLE_FMT_FLT interleaved stereo 48kHz) to target format
   enc->audio_swr_ctx = swr_alloc();
   if (!enc->audio_swr_ctx) {
     log_warn("swr_alloc failed");
@@ -312,14 +312,14 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
     return ASCIICHAT_OK;
   }
 
-  // Set input format (mono 48kHz float32)
-  AVChannelLayout in_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  // Set input format (interleaved stereo 48kHz float32)
+  AVChannelLayout in_ch_layout = AV_CHANNEL_LAYOUT_STEREO;
   av_opt_set_chlayout(enc->audio_swr_ctx, "in_chlayout", &in_ch_layout, 0);
   av_opt_set_int(enc->audio_swr_ctx, "in_sample_rate", 48000, 0);
   av_opt_set_sample_fmt(enc->audio_swr_ctx, "in_sample_fmt", AV_SAMPLE_FMT_FLT, 0);
 
   // Set output format
-  AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_STEREO;
   av_opt_set_chlayout(enc->audio_swr_ctx, "out_chlayout", &out_ch_layout, 0);
   av_opt_set_int(enc->audio_swr_ctx, "out_sample_rate", 48000, 0);
   av_opt_set_sample_fmt(enc->audio_swr_ctx, "out_sample_fmt", target_sample_fmt, 0);
@@ -980,7 +980,7 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
 
   while (samples_to_process > 0) {
     // How many samples can we add to the partial buffer?
-    int space_in_buffer = enc->audio_frame_size - enc->audio_partial_len;
+    int space_in_buffer = enc->audio_frame_size * 2 - enc->audio_partial_len;
     int samples_to_copy = (samples_to_process < space_in_buffer) ? samples_to_process : space_in_buffer;
 
     // Copy samples to partial buffer
@@ -990,7 +990,7 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
     samples_to_process -= samples_to_copy;
 
     // If buffer is full, encode and write frame
-    if (enc->audio_partial_len >= enc->audio_frame_size) {
+    if (enc->audio_partial_len >= enc->audio_frame_size * 2) {
       // Set up audio frame with accumulated samples
       asciichat_error_t prepare_result = encoder_prepare_audio_frame(enc);
       if (prepare_result != ASCIICHAT_OK)
@@ -1151,7 +1151,7 @@ static asciichat_error_t encoder_flush_audio(ffmpeg_encoder_t *enc) {
     if (enc->audio_partial_len > 0) {
       // Zero-pad the remaining samples
       memset(&enc->audio_partial_buf[enc->audio_partial_len], 0,
-             (enc->audio_frame_size - enc->audio_partial_len) * sizeof(float));
+             (enc->audio_frame_size * 2 - enc->audio_partial_len) * sizeof(float));
       asciichat_error_t pad_result = encoder_prepare_audio_frame(enc);
       if (pad_result == ASCIICHAT_OK)
         pad_result = finish_audio_frame(enc, enc->audio_frame);

@@ -32,6 +32,7 @@ def main():
         "client_audio_pipeline_config_t": Config,
     }
     checks = [
+        "#define _GNU_SOURCE",
         "#define WIN32_LEAN_AND_MEAN",
         "#define NOMINMAX",
         "#include <ascii-chat/audio/client_pipeline.h>",

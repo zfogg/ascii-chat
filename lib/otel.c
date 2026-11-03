@@ -26,7 +26,6 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/tests/test_env.h>
-#include <gotel/sql.h>
 #include <stdatomic.h>
 #include <math.h>
 #include <stdio.h>
@@ -388,25 +387,36 @@ void ascii_otel_scope_parent(ascii_otel_scope_t *s, ascii_otel_operation_t op, c
   gotel_host_t *h = retain();
   s->retained = h != NULL;
   if (h) {
-    gotel_context_t root = {0};
     gotel_context_t context = gotel_current_context();
     bool lifetime_parent = current_scope && (current_scope->scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN ||
                                              current_scope->scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
     // Lifetime spans finish only at shutdown. Completed operations must remain
     // inspectable while a server is running, including after abrupt termination.
     if (!parent && context.valid) {
-      if (lifetime_parent || memcmp(context.span_id, command_scope.context.span_id, sizeof(context.span_id)) == 0) {
-        parent = &root;
-      } else {
-        // A bounded operation owns one sampling decision for all its stages.
-        context.realtime = true;
-        parent = &context;
-      }
+      gotel_parent_mode_t mode =
+          lifetime_parent || memcmp(context.span_id, command_scope.context.span_id, sizeof(context.span_id)) == 0
+              ? GOTEL_PARENT_INDEPENDENT
+              : GOTEL_PARENT_BOUNDED;
+      context = gotel_operation_parent(context, mode);
+      parent = &context;
     }
     gotel_begin(h, &s->scope, (size_t)op, parent);
     s->previous = current_scope;
     current_scope = s;
   }
+}
+static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, const gotel_context_t *parent) {
+  gotel_host_t *h = retain();
+  if (!h)
+    return false;
+  if (!gotel_begin_retained(h, &s->scope, op, parent)) {
+    release();
+    return false;
+  }
+  s->retained = true;
+  s->previous = current_scope;
+  current_scope = s;
+  return true;
 }
 void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
@@ -707,10 +717,9 @@ void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t
                                asciichat_error_t code) {
   ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_REJECTED, 1);
   gotel_context_t parent = ascii_otel_context();
-  // Rejections must remain inspectable even when the media operation was sampled out.
-  if (!parent.sampled)
-    parent = (gotel_context_t){0};
-  ASCII_OTEL_SCOPE_PARENT(FRAME_VALIDATION_REJECTED, &parent);
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};
+  if (!scope_retained(&otel_scope, ASCII_OTEL_FRAME_VALIDATION_REJECTED, &parent))
+    return;
   ASCII_OTEL_ATTR_STRING("frame.validation.validator", validator);
   ASCII_OTEL_ATTR_STRING("frame.validation.reason", reason);
   ASCII_OTEL_ATTR_INT("frame.size_bytes", (int64_t)bytes);
@@ -748,10 +757,9 @@ void ascii_otel_error_code(asciichat_error_t code, const char *message) {
                          : operation == ASCII_OTEL_FAILURE_PROTOCOL ? "protocol"
                                                                     : "discovery";
   gotel_context_t parent = ascii_otel_context();
-  if (!parent.sampled)
-    parent = (gotel_context_t){0};
   ascii_otel_scope_t report __attribute__((cleanup(ascii_otel_scope_end))) = {0};
-  ascii_otel_scope_parent(&report, operation, &parent);
+  if (!scope_retained(&report, operation, &parent))
+    return;
   gotel_attr_string(&report.scope, "ascii_chat.failure.category", category);
   gotel_attr_string(&report.scope, "ascii_chat.failure.operation", origin);
   gotel_attr_int(&report.scope, "asciichat_errno.code", code);
@@ -790,24 +798,7 @@ void ascii_otel_http_status(ascii_otel_scope_t *s, int status) {
   }
 }
 int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **statement) {
-  int result = sqlite3_prepare_v2(db, sql, -1, statement, NULL);
-  // PROFILE never runs when SQLite rejects a statement during preparation.
-  if (result != SQLITE_OK) {
-    ASCII_OTEL_SCOPE(DATABASE_PREPARE_FAILURE);
-    if (otel_scope.retained) {
-      otlp_span_set_kind(otel_scope.scope.span, OTLP_SPAN_KIND_CLIENT);
-      sequel_options_t options = {.dialect = SEQUEL_SQLITE};
-      sequel_metadata_t metadata = {0};
-      if (sql && sequel_inspect(sql, &options, &metadata) == SEQUEL_OK)
-        gotel_sql_attributes(otel_scope.scope.span, &metadata, "sqlite", "", 0);
-      sequel_metadata_free(&metadata);
-      gotel_sql_diagnostics(otel_scope.scope.span, sql, SEQUEL_SQLITE);
-      gotel_attr_string(&otel_scope.scope, "db.system.name", "sqlite");
-      gotel_attr_int(&otel_scope.scope, "db.response.status_code", result);
-      gotel_error(&otel_scope.scope, "sqlite.prepare", "SQLite statement preparation failed");
-    }
-  }
-  return result;
+  return gotel_sqlite_prepare_db(db, sql, statement);
 }
 
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) {
@@ -815,8 +806,10 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
   if (!h)
     return;
   gotel_sqlite_t *a = NULL;
-  if (otel_status(gotel_sqlite_attach(h, db, "ascii-chat.storage", queries, count, &a), "Attach SQLite telemetry") !=
-      ASCIICHAT_OK)
+  sequel_analysis_options_t analysis = {.format = true};
+  gotel_sqlite_options_t options = {.analysis = &analysis};
+  if (otel_status(gotel_sqlite_attach_with_options(h, db, "ascii-chat.storage", queries, count, &options, &a),
+                  "Attach SQLite telemetry") != ASCIICHAT_OK)
     log_warn("Could not attach SQLite telemetry");
   release();
 }

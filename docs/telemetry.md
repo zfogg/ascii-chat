@@ -68,6 +68,40 @@ network I/O. `test_otel_disabled.py` runs real native media with explicit collec
 and signal overrides and asserts zero received requests. Historical exported-load
 measurements below describe earlier manual runs; they are not test permissions.
 
+`otel-contract` compiles the application adapter into a process fixture and
+installs a private, in-process Gotel test host. It exercises bounded sampling,
+explicit worker contexts, retained errors, SQLite prepare/PROFILE behavior,
+schema migrations and rate limits. It does not call production initialization
+or start an exporter worker. It links the actual static archive so production
+database calls share the fixture host in Debug builds too. `otel-trace-contract`
+captures actual OTLP protobuf
+with Gotel's optional test API and invokes the Spaniel-owned `spaniel-assert`
+CLI using `tests/integration/otel_contract.json`. The spec checks ancestry,
+query fingerprints, omitted-text reasons, one span per database operation,
+registered query names and redaction. The CLI must be installed to run this
+second check; its absence produces an explicit CTest skip.
+
+`tests/scripts/check_query_names.py` checks production SQLite calls with
+Gotel's public `querynames.check_c` API. It reads CMake's compile database so
+Clang sees the same headers and definitions as the native build. Gotel owns
+source resolution and query identity checks; project code only supplies the
+executor list and compile configuration.
+
+After configuring the native build, run the checker in its pinned Python
+environment:
+
+```sh
+uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+```
+
+Install the matching Spaniel verifier at its immutable source revision and make
+`spaniel-assert` available on `PATH` before running both contract tests:
+
+```sh
+go install github.com/zfogg/spaniel/cmd/spaniel-assert@9e30a755503f956a38a4f3b743f802910ab04dbc
+ctest --test-dir build -R 'otel-(trace-)?contract' --no-tests=error --output-on-failure
+```
+
 ### Failure alerts and active-session scope
 
 All repository dashboard panels and alert SQL use Spaniel's built-in
@@ -256,14 +290,35 @@ Child spans share their root's sampling decision. Low-frequency lifecycle
 operations remain fully sampled. Frame context crosses local worker queues by
 value; this change does not add trace metadata to the network protocol.
 
+The Gotel copied-context policy detaches bounded operations from command/session
+lifetime spans and shares one sampling decision across nested stages. It adds no
+allocation or lock to parent selection. Crypto/protocol/discovery failures and
+invalid-frame observations use Gotel's retained-observation policy: sampled
+parents are inherited, while dropped operations get independent observations
+with links when context IDs are available. Independent retention has its own
+per-second budget using the configured realtime cap (10/s when that cap is zero).
+It does not change an
+already dropped media decision. Error counters still include dropped work.
+
 HTTP names use gotel's sanitized application-prefixed convention. DNS spans
 include question names. Named SQL templates live in `lib/discovery/queries.def`;
-ordinary SQLite prepare/bind/step/reset/finalize calls remain unchanged. c-gotel
+rate-limit templates are shared through `lib/network/rate_limit/queries.def`.
+SQLite bind/step/reset/finalize calls retain their driver semantics. Gotel
 owns the trace callback slot and matches original templates, emits completed
 PROFILE spans, and records database duration histogram observations. Unknown
-statements use `UnknownQuery`. SQL text, expanded bind values and database file
-paths are excluded. Prepare failures are recorded by the existing error checks;
-PROFILE callbacks do not infer potentially stale SQLite error state.
+statements use `UnknownQuery`. Query text is sanitized by Sequel; expanded bind
+values and database file paths are excluded. Versioned fingerprints describe
+query shapes without literal or bind values. Missing text carries
+`gotel.db.query.text_reason` (policy, malformed, analysis_limit, analysis_error,
+empty or cancelled); present text has no omission reason. Preparation uses the
+supported Gotel DB-handle wrapper, which emits rejected preparations with the
+attached catalog/privacy options and leaves successful tracing to PROFILE.
+PROFILE callbacks do not infer potentially stale SQLite error state. Migration
+batches execute individually named statements inside the same transaction.
+The attachment opts into Sequel analysis with formatted safe text, numeric source
+maps and bind descriptors. Descriptors contain positions and slot identities;
+they do not contain bind names, types or values. Gotel copies the analysis options
+at attachment, so the application's temporary options do not outlive the call.
 
 The log sink runs before mmap/console routing and console filtering, with its
 own severity threshold. Span context correlates logs on the current thread.

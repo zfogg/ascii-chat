@@ -8,6 +8,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/audio/opus.h>
+#include <ascii-chat/media/source.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
@@ -53,6 +54,10 @@ static void test_sleep(session_capture_ctx_t *ctx) {
 static void *test_media_source(session_capture_ctx_t *ctx) {
   return ctx;
 }
+static bool test_media_has_audio(media_source_t *source) {
+  cr_assert_not_null(source);
+  return false;
+}
 static session_audio_ctx_t *test_audio_create(bool host) {
   (void)host;
   if (fail_stage == 3) {
@@ -81,12 +86,13 @@ static size_t test_audio_read(session_audio_ctx_t *ctx, float *samples, size_t c
   platform_sleep_ms(1);
   return count;
 }
-static opus_codec_t *test_codec_create(opus_application_t app, int rate, int bitrate) {
+static opus_codec_t *test_codec_create(opus_application_t app, int rate, int bitrate, int channels) {
   if (fail_stage == 5) {
     SET_ERRNO(ERROR_MEMORY, "Injected allocation failure");
     return NULL;
   }
-  opus_codec_t *codec = opus_codec_create_encoder(app, rate, bitrate);
+  cr_assert_eq(channels, 2);
+  opus_codec_t *codec = opus_codec_create_encoder_channels(app, rate, bitrate, channels);
   cr_assert(codec);
   codec_count++;
   return codec;
@@ -157,12 +163,13 @@ static void test_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoc
 #define session_capture_process_for_transmission test_process
 #define session_capture_sleep_for_fps test_sleep
 #define session_capture_get_media_source test_media_source
+#define media_source_has_audio test_media_has_audio
 #define session_audio_create test_audio_create
 #define session_audio_destroy test_audio_destroy
 #define session_audio_set_capture_source test_audio_source
 #define session_audio_start_duplex test_audio_start
 #define session_audio_read_captured test_audio_read
-#define opus_codec_create_encoder test_codec_create
+#define opus_codec_create_encoder_channels test_codec_create
 #define opus_codec_destroy test_codec_destroy
 #define acthread_create test_thread_create
 #define thread_join test_thread_join

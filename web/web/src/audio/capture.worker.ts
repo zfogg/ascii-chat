@@ -1,4 +1,5 @@
 import {
+  AUDIO_CHANNELS,
   OPUS_FRAME_SAMPLES,
   OPUS_FRAME_MS,
   OPUS_BATCH_HEADER_SIZE,
@@ -12,7 +13,7 @@ const send = (message: unknown, transfer: Transferable[] = []) =>
 
 type DspModule = Parameters<OpusEncoder["init"]>[0] & {
   HEAPF32: Float32Array;
-  _wasm_audio_processor_create(rate: number, bypass: boolean): number;
+  _wasm_audio_processor_create_stereo(rate: number, bypass: boolean): number;
   _wasm_audio_processor_process(
     handle: number,
     samples: number,
@@ -27,15 +28,17 @@ self.onmessage = async ({
   port: MessagePort;
   bypass: boolean;
   sampleRate: number;
+  encoderChannels: 1 | 2;
+  bitrate: number;
 }>) => {
-  const { port, bypass, sampleRate } = data;
+  const { port, bypass, sampleRate, encoderChannels, bitrate } = data;
   let module: DspModule | undefined;
   let handle = 0;
   let scratch = 0;
   const codec = new OpusEncoder({
     sampleRate,
-    channelCount: 1,
-    bitrate: 32000,
+    channelCount: encoderChannels,
+    bitrate,
   });
   const fail = (error: unknown) => {
     port.onmessage = null;
@@ -50,17 +53,23 @@ self.onmessage = async ({
   try {
     module = await createWasmModule<DspModule>("client");
     if (!module) throw new Error("Audio WASM did not initialize");
-    handle = module._wasm_audio_processor_create(sampleRate, bypass);
+    handle = module._wasm_audio_processor_create_stereo(sampleRate, bypass);
     if (!handle) throw new Error("Cannot create shared audio processor");
     scratch = module._malloc(
-      OPUS_FRAME_SAMPLES * Float32Array.BYTES_PER_ELEMENT,
+      OPUS_FRAME_SAMPLES * AUDIO_CHANNELS * Float32Array.BYTES_PER_ELEMENT,
     );
     if (!scratch) throw new Error("Cannot allocate audio processing buffer");
     await codec.init(module);
-    const pcm = new Int16Array(OPUS_FRAME_SAMPLES);
-    port.onmessage = ({ data: input }: MessageEvent<Float32Array>) => {
+    const pcm = new Int16Array(OPUS_FRAME_SAMPLES * encoderChannels);
+    port.onmessage = ({
+      data: frame,
+    }: MessageEvent<{ microphone: Float32Array; media: Float32Array }>) => {
       try {
-        if (input.length !== OPUS_FRAME_SAMPLES)
+        const input = frame.microphone;
+        if (
+          input.length !== OPUS_FRAME_SAMPLES * AUDIO_CHANNELS ||
+          frame.media.length !== OPUS_FRAME_SAMPLES * AUDIO_CHANNELS
+        )
           throw new Error("Invalid microphone frame size");
         module!.HEAPF32.set(input, scratch >> 2);
         const result = module!._wasm_audio_processor_process(
@@ -74,8 +83,13 @@ self.onmessage = async ({
           scratch >> 2,
           (scratch >> 2) + input.length,
         );
+        for (let i = 0; i < samples.length; i++)
+          samples[i] = Math.max(-1, Math.min(1, samples[i]! + frame.media[i]!));
         for (let i = 0; i < pcm.length; ++i) {
-          const sample = Math.max(-1, Math.min(1, samples[i]!));
+          const sample =
+            encoderChannels === 2
+              ? samples[i]!
+              : (samples[i * 2]! + samples[i * 2 + 1]!) * 0.5;
           pcm[i] = Math.round(sample * (sample < 0 ? 32768 : 32767));
         }
         const opus = codec.encode(pcm);
@@ -89,7 +103,7 @@ self.onmessage = async ({
         view.setUint16(OPUS_BATCH_HEADER_SIZE, opus.length, false);
         payload.set(opus, OPUS_SINGLE_FRAME_HEADER_SIZE);
         send({ payload, samples }, [payload.buffer, samples.buffer]);
-        port.postMessage(input, [input.buffer]);
+        port.postMessage(frame, [frame.microphone.buffer, frame.media.buffer]);
       } catch (error) {
         fail(error);
       }

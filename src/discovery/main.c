@@ -144,9 +144,9 @@ typedef struct {
 
 static void *discovery_host_audio_capture(void *user_data) {
   discovery_host_audio_capture_t *capture = user_data;
-  float samples[OPUS_FRAME_SAMPLES];
+  float samples[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
   while (atomic_load_bool(&capture->running) && !should_exit()) {
-    size_t count = session_audio_read_captured(capture->audio, samples, OPUS_FRAME_SAMPLES);
+    size_t count = session_audio_read_captured(capture->audio, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
     if (!count) {
       platform_sleep_ns(NS_PER_MS_INT);
       continue;
@@ -174,22 +174,24 @@ static void discovery_host_audio_join(discovery_host_audio_capture_t *capture) {
 
 static void *discovery_audio_send_thread(void *user_data) {
   discovery_video_receiver_t *ctx = user_data;
-  float samples[OPUS_FRAME_SAMPLES];
+  float samples[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
   uint8_t encoded[CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET];
   while (atomic_load_bool(&ctx->running) && !should_exit()) {
-    if (audio_ring_buffer_available_read(ctx->audio->capture_buffer) < OPUS_FRAME_SAMPLES) {
+    if (audio_ring_buffer_available_read(ctx->audio->capture_buffer) < (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) {
       platform_sleep_ns(NS_PER_MS_INT);
       continue;
     }
-    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, OPUS_FRAME_SAMPLES) != OPUS_FRAME_SAMPLES)
+    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)) !=
+        (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS))
       continue;
     ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
-    int size =
-        client_audio_pipeline_capture(ctx->audio_pipeline, samples, OPUS_FRAME_SAMPLES, encoded, sizeof(encoded));
+    int size = client_audio_pipeline_capture(ctx->audio_pipeline, samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS),
+                                             encoded, sizeof(encoded));
     if (size <= 0)
       continue;
     uint16_t frame_size = (uint16_t)size;
-    asciichat_error_t result = acip_send_audio_opus_batch(ctx->transport, encoded, size, &frame_size, 1, 48000, 20);
+    asciichat_error_t result = acip_send_audio_opus_batch(ctx->transport, encoded, size, &frame_size, 1,
+                                                          AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
     if (result != ASCIICHAT_OK) {
       log_warn("Discovery audio send failed %s", asciichat_error_format(NULL, result));
       atomic_store_bool(&ctx->running, false);
@@ -221,7 +223,9 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
     for (size_t i = 0; i < count; ++i)
       energy += (double)samples[i] * samples[i];
   while (count) {
-    size_t chunk = count > AUDIO_OPUS_MAX_DECODE_SAMPLES ? AUDIO_OPUS_MAX_DECODE_SAMPLES : count;
+    size_t chunk = count > (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS)
+                       ? (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS)
+                       : count;
     asciichat_error_t result = audio_write_samples(receiver->audio, samples, (int)chunk);
     if (result != ASCIICHAT_OK)
       return result;

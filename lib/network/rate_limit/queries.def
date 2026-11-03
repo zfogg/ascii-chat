@@ -1,0 +1,14 @@
+/* Templates registered on the discovery service SQLite connection. */
+RATE_LIMIT_QUERY(CountRateEvents, "SELECT\n"
+                                  "  COUNT(*)\n"
+                                  "FROM rate_events\n"
+                                  "WHERE\n"
+                                  "  ip_address = ?\n"
+                                  "  AND event_type = ?\n"
+                                  "  AND timestamp >= ?")
+RATE_LIMIT_QUERY(InsertRateEvent, "INSERT INTO rate_events (ip_address, event_type, timestamp)\n"
+                                  "VALUES\n"
+                                  "  (?, ?, ?)")
+RATE_LIMIT_QUERY(DeleteRateEvents, "DELETE FROM rate_events\n"
+                                   "WHERE\n"
+                                   "  timestamp < ?")

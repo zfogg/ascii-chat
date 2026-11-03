@@ -577,6 +577,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(prefer_webrtc, OPTIONS_VALUE_BOOL, "prefer-webrtc"),
     FIELD(no_webrtc, OPTIONS_VALUE_BOOL, "no-webrtc"),
     FIELD(webrtc_skip_stun, OPTIONS_VALUE_BOOL, "webrtc-skip-stun"),
+    FIELD(webrtc_bind_address, OPTIONS_VALUE_STRING, "webrtc-bind-address"),
     FIELD(webrtc_relay_only, OPTIONS_VALUE_BOOL, "webrtc-relay-only"),
     FIELD(webrtc_disable_turn, OPTIONS_VALUE_BOOL, "webrtc-disable-turn"),
     FIELD(enable_upnp, OPTIONS_VALUE_BOOL, "enable-upnp"),

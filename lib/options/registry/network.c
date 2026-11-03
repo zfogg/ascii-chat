@@ -14,6 +14,7 @@
 #include <ascii-chat/options/registry/mode_defaults.h>
 
 #include <ascii-chat/options/parsers.h>
+#include <ascii-chat/util/ip.h>
 
 // ============================================================================
 // NETWORK CATEGORY - Network protocol options
@@ -26,6 +27,14 @@ static bool parse_mcp_bind6(const char *arg, void *field, char **error) {
   options_t *opts = (options_t *)((char *)field - offsetof(options_t, address6));
   return parse_server_bind_address(arg, opts, NULL, 0, error) == 1;
 }
+static bool validate_webrtc_bind_address(const void *data) {
+  const char *address = ((const options_t *)data)->webrtc_bind_address;
+  if (!address[0] || is_valid_ipv4(address) || (address[0] != '[' && is_valid_ipv6(address)))
+    return true;
+  SET_ERRNO(ERROR_USAGE, "--webrtc-bind-address must be a numeric IPv4 or unbracketed IPv6 address");
+  return false;
+}
+
 const registry_entry_t g_network_entries[] = {
     {.long_name = "address",
      .type = OPTION_TYPE_STRING,
@@ -373,6 +382,16 @@ const registry_entry_t g_network_entries[] = {
      NULL},
 
     // NETWORK GROUP - WebRTC options
+    {.long_name = "webrtc-bind-address",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, webrtc_bind_address),
+     .default_value = "",
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "Bind WebRTC ICE sockets to a local IPv4 or IPv6 address (default: all interfaces).",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_WEBRTC_BIND_ADDRESS",
+     .validate_fn = validate_webrtc_bind_address,
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"webrtc",
      '\0',
      OPTION_TYPE_BOOL,

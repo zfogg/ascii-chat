@@ -102,25 +102,35 @@ done:
 
 static void receive_samples(const audio_batch_packet_t *header, const float *samples, size_t count, void *context) {
   session_protocol_t *protocol = context;
-  if (header && (header->sample_rate != AUDIO_SAMPLE_RATE || header->channels != 1)) {
+  if (header && (header->sample_rate != AUDIO_SAMPLE_RATE || (header->channels != 1 && header->channels != 2) ||
+                 count % header->channels)) {
     protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported participant audio format");
     return;
   }
-  if (protocol->media.on_samples)
-    protocol->callback_result = protocol->media.on_samples(samples, count, protocol->media.context);
+  if (protocol->media.on_samples) {
+    if (header && header->channels == 1) {
+      float *stereo = SAFE_MALLOC(count * AUDIO_CHANNELS * sizeof(float), float *);
+      protocol->callback_result = audio_convert_channels(samples, count, 1, stereo, AUDIO_CHANNELS);
+      if (protocol->callback_result == ASCIICHAT_OK)
+        protocol->callback_result = protocol->media.on_samples(stereo, count * AUDIO_CHANNELS, protocol->media.context);
+      SAFE_FREE(stereo);
+    } else {
+      protocol->callback_result = protocol->media.on_samples(samples, count, protocol->media.context);
+    }
+  }
 }
 
 static void receive_opus(const void *data, size_t length, void *context) {
   session_protocol_t *protocol = context;
   if (!protocol->media.decode_opus || !protocol->media.on_samples)
     return;
-  float samples[AUDIO_OPUS_MAX_DECODE_SAMPLES]; // 120 ms at 48 kHz.
+  float samples[AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS]; // 120 ms at 48 kHz.
   size_t decoded = 0;
-  protocol->callback_result = protocol->media.decode_opus(data, length, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES,
-                                                          &decoded, protocol->media.context);
+  protocol->callback_result = protocol->media.decode_opus(
+      data, length, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS, &decoded, protocol->media.context);
   if (protocol->callback_result != ASCIICHAT_OK)
     return;
-  if (decoded > AUDIO_OPUS_MAX_DECODE_SAMPLES) {
+  if (decoded > AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS) {
     protocol->callback_result = SET_ERRNO(ERROR_AUDIO, "Participant decoder exceeded sample capacity");
     return;
   }
