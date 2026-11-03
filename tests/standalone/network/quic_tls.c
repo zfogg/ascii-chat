@@ -716,6 +716,14 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
       CHECK(acip_quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
             ERROR_CRYPTO);
       buffer_release(unauthenticated);
+      unauthenticated = make_packet(PACKET_TYPE_CRYPTO_NO_ENCRYPTION, 8, &unauthenticated_length);
+      CHECK(acip_quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
+            ERROR_CRYPTO);
+      buffer_release(unauthenticated);
+      unauthenticated = make_packet(PACKET_TYPE_CRYPTO_REKEY_REQUEST, 8, &unauthenticated_length);
+      CHECK(acip_quic_connection_submit(clients[0], ACIP_TRAFFIC_CONTROL, unauthenticated, unauthenticated_length) ==
+            ERROR_CRYPTO);
+      buffer_release(unauthenticated);
       for (size_t i = 0; i < 2; ++i) {
         CHECK(acip_quic_connection_submit(clients[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
         CHECK(acip_quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);

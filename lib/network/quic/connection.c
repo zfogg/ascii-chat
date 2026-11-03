@@ -62,6 +62,11 @@ struct acip_quic_connection {
 
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection);
 
+static bool initial_handshake_packet(packet_type_t type) {
+  return type == PACKET_TYPE_ERROR_MESSAGE || type == PACKET_TYPE_CRYPTO_CLIENT_HELLO ||
+         (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type < PACKET_TYPE_CRYPTO_NO_ENCRYPTION);
+}
+
 static void free_chunk(acip_quic_connection_t *connection, send_chunk_t *chunk) {
   connection->pending_bytes -= chunk->cost;
   buffer_release(chunk->data);
@@ -156,7 +161,7 @@ static asciichat_error_t emit_received_packet(acip_traffic_class_t traffic_class
     packet_header_t header;
     memcpy(&header, packet, sizeof(header));
     packet_type_t type = NET_TO_HOST_U16(header.type);
-    if (!packet_is_handshake_type(type) && type != PACKET_TYPE_ERROR_MESSAGE)
+    if (!initial_handshake_packet(type))
       return SET_ERRNO(ERROR_CRYPTO, "Non-handshake ACIP packet received before authentication");
     return context->connection->emit(traffic_class, packet, size, context->connection->emit_context);
   }
@@ -531,7 +536,7 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
     packet_header_t header;
     memcpy(&header, packet, sizeof(header));
     packet_type_t type = NET_TO_HOST_U16(header.type);
-    if (traffic_class == ACIP_TRAFFIC_CONTROL && !packet_is_handshake_type(type) && type != PACKET_TYPE_ERROR_MESSAGE)
+    if (traffic_class == ACIP_TRAFFIC_CONTROL && !initial_handshake_packet(type))
       return SET_ERRNO(ERROR_CRYPTO, "Non-handshake ACIP packet sent before authentication");
   }
   if (!connection || !connection->security.crypto)

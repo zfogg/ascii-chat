@@ -131,8 +131,9 @@ the borrowed crypto context changes key epoch. Its owner must serialize all
 access to that context, retain exactly one security state for the epoch, and
 establish an acknowledged barrier before replacing the state. The private
 connection engine can enable it after TLS and a caller-confirmed ACIP handshake
-barrier; it accepts only handshake and error control packets before that point
-and requires this security layer before permitting media. Once enabled it seals
+barrier; it accepts only initial handshake and error control packets before that
+point, rejects no-encryption and premature rekey messages, and requires this
+security layer before permitting media. Once enabled it seals
 and opens reliable packets before dispatch. The current fixture supplies
 X25519-derived contexts and simulates completion of the ACIP handshake; it does
 not exercise that handshake over the engine. This codec is not negotiated or
