@@ -19,6 +19,8 @@ import { browserRasterFontSize } from "./rasterConfig";
 import { writeTerminalRendererConfig } from "../../wasm/terminalRenderer";
 
 const rendererFontSelection = (matrix: boolean) => (matrix ? 2 : 1);
+/** Existing scratch budget for the renderer's pointer output. */
+const RENDERER_OUT_BUFFER_SIZE = 8;
 
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
@@ -528,7 +530,9 @@ export function useInitAsciiRenderer({
                 recoveryHeight,
                 recoveryIsMatrixMode,
               );
-              const retryOutPtr = moduleRef.current?._malloc(8);
+              const retryOutPtr = moduleRef.current?._malloc(
+                RENDERER_OUT_BUFFER_SIZE,
+              );
               if (retryOutPtr) {
                 const retryRendererPtr = callRendererCreate(
                   retryConfigPtr,
@@ -625,7 +629,7 @@ export function useInitAsciiRenderer({
         containerHeight,
         isMatrixMode,
       );
-      const outPtr = moduleRef.current._malloc(8);
+      const outPtr = moduleRef.current._malloc(RENDERER_OUT_BUFFER_SIZE);
 
       const rendererPtr = callRendererCreate(configPtr, outPtr);
       rendererPtrRef.current = rendererPtr;

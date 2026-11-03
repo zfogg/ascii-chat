@@ -1,4 +1,5 @@
 const VISUALIZATION_READ_SAMPLES = 1024;
+const MATRIX_PLACEHOLDER_DIMENSION = 32;
 import {
   useEffect,
   useLayoutEffect,
@@ -306,9 +307,15 @@ export function useMirrorRenderLoop({
       ) {
         // Neutral pixels let the existing C rain effect run before the first
         // camera frame. Replace them with live capture as soon as it is ready.
-        const data = new Uint8Array(32 * 32 * 4).fill(160);
+        const data = new Uint8Array(
+          MATRIX_PLACEHOLDER_DIMENSION * MATRIX_PLACEHOLDER_DIMENSION * 4,
+        ).fill(160);
         for (let i = 3; i < data.length; i += 4) data[i] = 255;
-        frame = { data, width: 32, height: 32 };
+        frame = {
+          data,
+          width: MATRIX_PLACEHOLDER_DIMENSION,
+          height: MATRIX_PLACEHOLDER_DIMENSION,
+        };
       }
       if (!asciiArt && !frame) {
         return;
