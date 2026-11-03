@@ -108,6 +108,11 @@ static void setup(void) {
   app_callbacks_register(&callbacks);
 }
 static void teardown(void) {
+  // Retry attempts may start the splash monitor even without a display context.
+  // Join it before releasing options, logging, or callback-owned fixture data.
+  splash_intro_done();
+  splash_wait_for_animation();
+  ui_controller_shutdown();
   session_display_set_global_context(NULL);
   if (state.display)
     session_display_destroy(state.display);
