@@ -8,6 +8,9 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_ICE_CANDIDATE_LINE_BUFFER_SIZE 512
+
 #include <ascii-chat/network/webrtc/ice.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/log/log.h>
@@ -432,7 +435,7 @@ asciichat_error_t ice_add_remote_candidate(webrtc_peer_connection_t *pc, const i
             candidate->port, ice_candidate_type_name(candidate->type), candidate->foundation, mid);
 
   // Format candidate to SDP attribute line for libdatachannel
-  char candidate_line[512];
+  char candidate_line[NETWORK_WEBRTC_ICE_CANDIDATE_LINE_BUFFER_SIZE];
   asciichat_error_t err = ice_format_candidate(candidate, candidate_line, sizeof(candidate_line));
   if (err != ASCIICHAT_OK) {
     return err;

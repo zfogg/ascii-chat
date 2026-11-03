@@ -88,8 +88,8 @@ void platform_backtrace_symbols_destroy(char **strings) {
 }
 
 void backtrace_print_simple(int skip_frames) {
-  void *buffer[64];
-  int depth = platform_backtrace(buffer, 64);
+  void *buffer[PLATFORM_BACKTRACE_FRAME_CAPACITY];
+  int depth = platform_backtrace(buffer, PLATFORM_BACKTRACE_FRAME_CAPACITY);
 
   if (depth > 0) {
     char **symbols = platform_backtrace_symbols((void *const *)buffer, depth);

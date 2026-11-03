@@ -311,7 +311,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
         double keyboard_elapsed_ns = (double)time_elapsed_ns(keyboard_start_ns, time_get_ns());
         if (keyboard_elapsed_ns >= 0.0) {
-          char _duration_str[32];
+          char _duration_str[TIME_DURATION_BUFFER_SIZE];
           time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
           log_dev_every(1 * NS_PER_SEC_INT, "RENDER[%lu] Keyboard read complete (key=%d) in %s",
                         (unsigned long)frame_count, key, _duration_str);

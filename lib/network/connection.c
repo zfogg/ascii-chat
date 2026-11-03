@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_CONNECTION_PEER_BUFFER_SIZE 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/tcp/server.h>
@@ -54,7 +58,7 @@ struct network_connection {
   acip_security_t *adopted_security; // Owned through the adopted transport.
   bool security_claimed, security_options;
   atomic_ptr_t context;
-  char peer[256];
+  char peer[NETWORK_CONNECTION_PEER_BUFFER_SIZE];
   uint16_t port;
   atomic_t state, pins;
   bool secure, opened, authenticated_peer, cleanup_failed;

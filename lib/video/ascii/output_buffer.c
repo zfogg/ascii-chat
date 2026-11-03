@@ -4,6 +4,9 @@
  * @brief 📝 Output buffer helpers for efficient string building in ASCII rendering pipeline
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_OUTPUT_BUFFER_TMP_BUFFER_SIZE 10
+
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -93,7 +96,7 @@ void ob_u8(outbuf_t *ob, uint8_t v) {
 void ob_u32(outbuf_t *ob, uint32_t v) {
   if (!ob)
     return;
-  char tmp[10];
+  char tmp[VIDEO_ASCII_OUTPUT_BUFFER_TMP_BUFFER_SIZE];
   int i = 0;
   do {
     tmp[i++] = '0' + (v % 10u);

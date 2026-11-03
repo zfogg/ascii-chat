@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_PARTICIPANT_WEBCAM_INDEX_BUFFER_SIZE 32
+
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/util/password.h>
 #include <sodium.h>
 #include <ascii-chat/network/acip/settings.h>
@@ -460,12 +465,12 @@ static void *participant_audio_capture_thread(void *arg) {
 
   log_info("Audio capture thread started");
 
-  float sample_buffer[960]; // 20ms @ 48kHz
-  uint8_t opus_buffer[1000];
+  float sample_buffer[OPUS_FRAME_SAMPLES]; // 20ms @ 48kHz
+  uint8_t opus_buffer[AUDIO_OPUS_SESSION_PACKET_CAPACITY];
 
   while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
-    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, 960);
+    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, OPUS_FRAME_SAMPLES);
     if (samples_read <= 0) {
       APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);
@@ -477,8 +482,8 @@ static void *participant_audio_capture_thread(void *arg) {
         opus_codec_encode(p->opus_encoder, sample_buffer, (int)samples_read, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-      asciichat_error_t err =
-          acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+      asciichat_error_t err = acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1,
+                                                         AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send audio packet: %d", err);
       }
@@ -528,7 +533,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
     };
     const char *file = GET_OPTION(media_file);
     const char *url = GET_OPTION(media_url);
-    char webcam_index[32];
+    char webcam_index[SESSION_PARTICIPANT_WEBCAM_INDEX_BUFFER_SIZE];
     safe_snprintf(webcam_index, sizeof(webcam_index), "%u", GET_OPTION(webcam_index));
     config.path = webcam_index;
     if (url && url[0]) {
@@ -628,7 +633,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
   if (!p->opus_encoder) {
     asciichat_errno_scope_t checkpoint = errno_checkpoint();
-    p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+    p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, AUDIO_SAMPLE_RATE, 24000);
     if (!p->opus_encoder) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create Opus encoder");
       session_participant_stop_audio(p);

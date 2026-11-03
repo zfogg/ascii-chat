@@ -1,7 +1,11 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SHORTCUT_MAX_KEYS 3
+
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/asciichat_errno.h>
 typedef struct {
-  keyboard_key_t keys[3];
+  keyboard_key_t keys[SHORTCUT_MAX_KEYS];
   tui_shortcut_t action;
   const char *label, *description;
   bool native, media;

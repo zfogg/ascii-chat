@@ -7,6 +7,9 @@
  * (AUTO-generated, MANUAL, or MERGE sections).
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MANPAGE_INITIAL_PARSE_CAPACITY 16
+
 #include <ascii-chat/options/manpage/parser.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
@@ -196,7 +199,7 @@ static asciichat_error_t parse_sections_internal(FILE *f, parsed_section_t **out
   }
 
   parsed_section_t *sections = NULL;
-  size_t capacity = 16;
+  size_t capacity = MANPAGE_INITIAL_PARSE_CAPACITY;
   size_t count = 0;
   // NOLINTNEXTLINE(clang-analyzer-unix.Errno) - SAFE_MALLOC handles error
   sections = SAFE_MALLOC(capacity * sizeof(parsed_section_t), parsed_section_t *);

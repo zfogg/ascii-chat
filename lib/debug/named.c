@@ -8,6 +8,10 @@
  * Rwlock protects the hash table with minimal critical section.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_NAMED_FINAL_BASE_NAME_BUFFER_SIZE 256
+
+#include <ascii-chat/debug/named.h>
 #include "ascii-chat/debug/named.h"
 #include "ascii-chat/platform/rwlock.h"
 #include "ascii-chat/platform/string.h"
@@ -325,7 +329,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   }
 
   // If parent_key provided, look up parent name and create hierarchical name
-  char final_base_name[256];
+  char final_base_name[DEBUG_NAMED_FINAL_BASE_NAME_BUFFER_SIZE];
   if (parent_key != 0) {
     rwlock_rdlock(&g_named_registry.entries_lock);
     const char *parent_name = named_lookup_name_unlocked(parent_key);
@@ -342,7 +346,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   }
 
   // Generate unique name using atomic counters (only for non-hierarchical names)
-  char name_buffer[256];
+  char name_buffer[DEBUG_NAMED_NAME_BUFFER_SIZE];
   if (parent_key == 0) {
     uint64_t counter = 0;
     if (strcmp(type, "mutex") == 0) {
@@ -710,7 +714,7 @@ const char *named_register_fd(int fd, const char *name, const char *file, int li
     return "?";
   }
 
-  char name_buffer[256];
+  char name_buffer[DEBUG_NAMED_NAME_BUFFER_SIZE];
   if (name) {
     snprintf(name_buffer, sizeof(name_buffer), "%s", name);
   } else {
@@ -779,7 +783,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
     return "?";
   }
 
-  char name_buffer[256];
+  char name_buffer[DEBUG_NAMED_NAME_BUFFER_SIZE];
   snprintf(name_buffer, sizeof(name_buffer), "PACKET_TYPE=%d", pkt_type);
 
   // Allocate entry BEFORE acquiring lock

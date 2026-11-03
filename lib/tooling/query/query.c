@@ -10,6 +10,11 @@
  * - Windows: Uses CreateProcess to spawn controller
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TOOLING_QUERY_CMDLINE_BUFFER_SIZE 2048
+#define TOOLING_QUERY_PORT_BUFFER_SIZE 16
+#define TOOLING_QUERY_PID_BUFFER_SIZE 16
+
 #include <ascii-chat/tooling/query/query.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
@@ -230,7 +235,7 @@ int query_init(int preferred_port) {
   // Windows implementation using CreateProcess
   // Winsock is already initialized by platform_init()
 
-  char cmdline[2048];
+  char cmdline[TOOLING_QUERY_CMDLINE_BUFFER_SIZE];
   safe_snprintf(cmdline, sizeof(cmdline), "\"%s\" --attach %lu --port %d", server_path,
                 (unsigned long)GetCurrentProcessId(), preferred_port);
 
@@ -265,8 +270,8 @@ int query_init(int preferred_port) {
   // Unix implementation using fork/exec
   pid_t self_pid = getpid();
 
-  char port_str[16];
-  char pid_str[16];
+  char port_str[TOOLING_QUERY_PORT_BUFFER_SIZE];
+  char pid_str[TOOLING_QUERY_PID_BUFFER_SIZE];
   safe_snprintf(port_str, sizeof(port_str), "%d", preferred_port);
   safe_snprintf(pid_str, sizeof(pid_str), "%d", self_pid);
 

@@ -4,6 +4,11 @@
  * @brief GPG signing operations implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_SIGNING_ESCAPED_KEY_ID_BUFFER_SIZE 64
+#define CRYPTO_GPG_SIGNING_HEX_S_BUFFER_SIZE 65
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/signing.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
@@ -80,7 +85,7 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
   }
 
   // Escape key ID for shell command (prevent injection)
-  char escaped_key_id[64];
+  char escaped_key_id[CRYPTO_GPG_SIGNING_ESCAPED_KEY_ID_BUFFER_SIZE];
   if (!escape_path_for_shell(key_id, escaped_key_id, sizeof(escaped_key_id))) {
     log_error("Failed to escape GPG key ID for shell command");
     goto cleanup;
@@ -138,11 +143,11 @@ cleanup:
 }
 
 int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                              uint8_t signature_out[64]) {
+                              uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   log_debug("Signing with key ID %s (fallback mode)", key_id);
 
   // Get OpenPGP signature packet from gpg --detach-sign
-  uint8_t openpgp_signature[512];
+  uint8_t openpgp_signature[GPG_SIGNATURE_PACKET_CAPACITY];
   size_t openpgp_len = 0;
 
   int result = gpg_sign_with_key(key_id, message, message_len, openpgp_signature, &openpgp_len);
@@ -281,7 +286,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
   }
 
   // OpenPGP MPIs omit leading zero bytes; raw signatures retain fixed-width components.
-  memset(signature_out, 0, 64);
+  memset(signature_out, 0, ED25519_SIGNATURE_SIZE);
   memcpy(signature_out + 32 - r_bytes, &openpgp_signature[offset], r_bytes);
   offset += r_bytes;
 
@@ -312,7 +317,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
   log_debug("Successfully extracted 64-byte Ed25519 signature from OpenPGP packet");
 
   // Debug: Log signature components
-  char hex_r[65], hex_s[65];
+  char hex_r[HEX_STRING_SIZE_32], hex_s[CRYPTO_GPG_SIGNING_HEX_S_BUFFER_SIZE];
   for (int i = 0; i < 32; i++) {
     safe_snprintf(hex_r + i * 2, 3, "%02x", signature_out[i]);
     safe_snprintf(hex_s + i * 2, 3, "%02x", signature_out[i + 32]);

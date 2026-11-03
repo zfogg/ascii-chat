@@ -63,6 +63,12 @@
  * @date 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE 32
+#define VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE 16
+
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -140,9 +146,9 @@ typedef struct {
   /** @brief True if user forced UTF-8 via --utf8 flag */
   bool forced_utf8;
   /** @brief $TERM environment variable value (for detection) */
-  char terminal_type[32];
+  char terminal_type[VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE];
   /** @brief Current locale encoding (e.g., "UTF-8") */
-  char locale_encoding[16];
+  char locale_encoding[VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE];
 } utf8_capabilities_t;
 
 /**
@@ -212,7 +218,7 @@ typedef struct {
  */
 typedef struct {
   /** @brief UTF-8 byte sequence (max 4 bytes per character) */
-  char bytes[4];
+  char bytes[UTF8_MAX_BYTES];
   /** @brief Number of bytes in UTF-8 encoding (1-4) */
   uint8_t byte_len;
   /** @brief Terminal display width in character cells (1-2) */
@@ -398,7 +404,8 @@ int apply_palette_config(palette_type_t type, const char *custom_chars);
  *
  * @ingroup palette
  */
-int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]);
+int build_client_luminance_palette(const char *palette_chars, size_t palette_len,
+                                   char luminance_mapping[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Initialize client palette with full configuration
@@ -420,8 +427,9 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
  *
  * @ingroup palette
  */
-int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[256],
-                              size_t *client_palette_len, char client_luminance_palette[256]);
+int initialize_client_palette(palette_type_t palette_type, const char *custom_chars,
+                              char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
+                              char client_luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @name UTF-8 Palette Functions

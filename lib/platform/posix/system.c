@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_POSIX_SYSTEM_CHUNK_BUFFER_SIZE 4096
+
 #include <ascii-chat/util/url.h>
 /**
  * @file platform/posix/system.c
@@ -1174,7 +1178,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   if (capture) {
     close(output_pipe[1]);
     size_t position = 0;
-    char chunk[4096];
+    char chunk[PLATFORM_POSIX_SYSTEM_CHUNK_BUFFER_SIZE];
     for (;;) {
       ssize_t count = read(output_pipe[0], chunk, sizeof(chunk));
       if (count < 0 && errno == EINTR)

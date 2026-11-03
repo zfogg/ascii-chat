@@ -15,7 +15,7 @@ static uint32_t zalgo_hash(uint32_t value) {
 
 static const unsigned zalgo_maximum[] = {1, 1, 1, 1, 2, 3, 4, 5, 7, 10};
 
-unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[10]) {
+unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[ZALGO_MAX_MARKS]) {
   if (level < 1 || level > 10 || !marks)
     return 0;
   static const unsigned coverage[] = {3, 6, 10, 18, 28, 40, 55, 70, 85, 100};
@@ -148,7 +148,7 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
     } else if (c == '\t') {
       col = (col / 8 + 1) * 8;
     } else if (c >= 0x20 && c < 0x7f) {
-      uint16_t marks[10];
+      uint16_t marks[ZALGO_MAX_MARKS];
       unsigned count = c == ' ' ? 0 : zalgo_cell_marks(row, col, level, marks);
       col++;
       if (count * 2 > mark_budget) {

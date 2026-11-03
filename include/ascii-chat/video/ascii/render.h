@@ -1,5 +1,9 @@
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ASCII_INLINE_SCRATCH_COLUMNS 512
+#define ASCII_SCRATCH_PLANES 6
+
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
@@ -29,7 +33,7 @@ typedef struct {
   uint8_t *luma;
   // A terminal row normally fits on the stack; unusually wide images retain
   // the heap fallback. Each invocation owns its scratch, including reentry.
-  _Alignas(64) uint32_t inline_scratch[512 * 6];
+  _Alignas(64) uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];
 } ascii_frame_t;
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,

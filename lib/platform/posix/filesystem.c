@@ -6,6 +6,10 @@
 
 #ifndef _WIN32
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_POSIX_FILESYSTEM_TMP_BUFFER_SIZE 512
+#define PLATFORM_POSIX_FILESYSTEM_BIN_WITH_SUFFIX_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/platform/system.h>
@@ -57,7 +61,7 @@ asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
-  char tmp[512];
+  char tmp[PLATFORM_POSIX_FILESYSTEM_TMP_BUFFER_SIZE];
   size_t len = strlen(path);
   if (len >= sizeof(tmp)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long: %zu", len);
@@ -777,7 +781,7 @@ static bool is_executable_file(const char *path) {
  * @brief Check if binary is in PATH (no caching) - POSIX implementation
  */
 bool check_binary_in_path_uncached(const char *bin_name) {
-  char bin_with_suffix[512];
+  char bin_with_suffix[PLATFORM_POSIX_FILESYSTEM_BIN_WITH_SUFFIX_BUFFER_SIZE];
   char full_path[PLATFORM_MAX_PATH_LENGTH];
 
   SAFE_STRNCPY(bin_with_suffix, bin_name, sizeof(bin_with_suffix));

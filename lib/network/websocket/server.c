@@ -7,6 +7,13 @@
  * @date February 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE 64
+#define NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE 16
+#define NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE 256
+#define NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE 32
+
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/network/websocket/server.h>
@@ -137,7 +144,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   conn_data->has_pending_send = false;
 
   // Get client address
-  char client_ip[64] = {0};
+  char client_ip[IP_ADDRESS_BUFFER_SIZE] = {0};
   if (!lws_get_peer_simple(wsi, client_ip, sizeof(client_ip)) || client_ip[0] == '\0') {
     safe_snprintf(client_ip, sizeof(client_ip), "unknown");
     log_warn("Could not determine WebSocket client IP address");
@@ -151,7 +158,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   // Create ACIP WebSocket server transport for this connection
   // Note: We pass NULL for crypto_ctx here - crypto handshake happens at ACIP level
   log_debug("[LWS_CALLBACK_ESTABLISHED] Creating ACIP WebSocket transport...");
-  char ws_transport_name[64];
+  char ws_transport_name[NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE];
   snprintf(ws_transport_name, sizeof(ws_transport_name), "server_%p", (void *)wsi);
   conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
   if (!conn_data->transport) {
@@ -300,7 +307,7 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   }
 
   uint64_t close_callback_end_ns = time_get_ns();
-  char total_duration_str[32];
+  char total_duration_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str, sizeof(total_duration_str));
   log_debug("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
 }
@@ -495,7 +502,7 @@ static bool websocket_serve_health(struct lws *wsi) {
   yyjson_mut_doc_set_root(doc, root);
   yyjson_mut_obj_add_str(doc, root, "status", "ok");
   yyjson_mut_obj_add_str(doc, root, "version", ASCII_CHAT_VERSION_FULL);
-  char proto_ver[16];
+  char proto_ver[NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE];
   snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
            PROTOCOL_VERSION_PATCH);
   yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
@@ -824,7 +831,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   if (!server->context) {
     // Capture any OpenSSL errors that may have occurred during context creation
     unsigned long ssl_err = 0;
-    char ssl_err_str[256] = "no OpenSSL errors in queue";
+    char ssl_err_str[NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE] = "no OpenSSL errors in queue";
 
     // Extract all errors from OpenSSL error queue
     while ((ssl_err = ERR_get_error()) != 0) {
@@ -846,7 +853,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   }
 
   /* Register WebSocket server with named registry */
-  char ws_port_name[32];
+  char ws_port_name[NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE];
   snprintf(ws_port_name, sizeof(ws_port_name), "ws:%d", server->port);
   NAMED_REGISTER(server, ws_port_name, "websocket_server", "0x%tx", NULL);
 

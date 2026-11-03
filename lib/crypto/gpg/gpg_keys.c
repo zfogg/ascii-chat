@@ -4,6 +4,13 @@
  * @brief 🔑 GPG public key extraction and validation from GPG keyrings
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE 17
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define GPG_COLON_FIELD_CAPACITY 12
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/gpg_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h> // For openpgp_parse_armored_pubkey()
 #include <ascii-chat/crypto/keys_validation.h>
@@ -51,7 +58,7 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_id, public_key_t *key_out) {
   }
 
   // Extract Ed25519 public key from GPG keyring using gpg --list-keys
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t extract_result = extract_ed25519_from_gpg(key_id, ed25519_pk);
   if (extract_result != ASCIICHAT_OK) {
     return extract_result;
@@ -60,7 +67,7 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_id, public_key_t *key_out) {
   // Initialize the public key structure
   memset(key_out, 0, sizeof(public_key_t));
   key_out->type = KEY_TYPE_GPG;
-  memcpy(key_out->key, ed25519_pk, 32);
+  memcpy(key_out->key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
 
   // Set comment for display
   safe_snprintf(key_out->comment, sizeof(key_out->comment), "GPG key %s", key_id);
@@ -79,7 +86,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
     return ERROR_INVALID_PARAM;
   }
 
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t result;
   if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
       memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----", strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) ==
@@ -100,7 +107,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   // Initialize the public key structure
   memset(key_out, 0, sizeof(public_key_t));
   key_out->type = KEY_TYPE_GPG;
-  memcpy(key_out->key, ed25519_pk, 32);
+  memcpy(key_out->key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
 
   // Set comment for display
   safe_snprintf(key_out->comment, sizeof(key_out->comment), "GPG Ed25519 key");
@@ -108,7 +115,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed25519_pk[32]) {
+asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!gpg_key_id || !ed25519_pk) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_id=%p, ed25519_pk=%p", gpg_key_id, ed25519_pk);
     return ERROR_INVALID_PARAM;
@@ -116,7 +123,7 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed255
 
   // Use gpg_get_public_key() to extract Ed25519 public key from GPG keyring
   // Note: gpg_key_id should be the key ID (e.g., "7FE90A79F2E80ED3")
-  char keygrip[64];
+  char keygrip[MAX_GPG_KEYGRIP_LEN];
   if (gpg_get_public_key(gpg_key_id, ed25519_pk, keygrip) != 0) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to extract Ed25519 public key from GPG for key ID: %s", gpg_key_id);
   }
@@ -124,14 +131,14 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed255
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[32]) {
+asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!gpg_key_text || !x25519_pk) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, x25519_pk=%p", gpg_key_text, x25519_pk);
     return ERROR_INVALID_PARAM;
   }
 
   // First extract the Ed25519 public key from the GPG key
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t extract_result = extract_ed25519_from_gpg(gpg_key_text, ed25519_pk);
   if (extract_result != ASCIICHAT_OK) {
     return extract_result;
@@ -150,7 +157,7 @@ asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_
 // GPG Key Operations
 // =============================================================================
 
-asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[20]) {
+asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[GPG_FINGERPRINT_SIZE]) {
   if (!gpg_key_text || !fingerprint_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, fingerprint_out=%p", gpg_key_text,
               fingerprint_out);
@@ -164,7 +171,7 @@ asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerpr
   return ERROR_CRYPTO_KEY;
 }
 
-asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]) {
+asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[GPG_KEY_ID_SIZE]) {
   if (!gpg_key_text || !key_id_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_id_out=%p", gpg_key_text, key_id_out);
     return ERROR_INVALID_PARAM;
@@ -229,12 +236,12 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
       found_pub = true;
 
       // Split line by colons
-      char *fields[12];
+      char *fields[GPG_COLON_FIELD_CAPACITY];
       int field_count = 0;
       char *ptr = line;
       char *field_start = ptr;
 
-      while (*ptr && field_count < 12) {
+      while (*ptr && field_count < GPG_COLON_FIELD_CAPACITY) {
         if (*ptr == ':' || *ptr == '\n') {
           *ptr = '\0';
           fields[field_count++] = field_start;
@@ -291,7 +298,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
   }
 
   // Extract key ID for display
-  uint8_t key_id[8];
+  uint8_t key_id[GPG_KEY_ID_SIZE];
   asciichat_error_t key_id_result = get_gpg_key_id(gpg_key_text, key_id);
   if (key_id_result != ASCIICHAT_OK) {
     // Fallback to generic GPG key display
@@ -300,7 +307,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
   }
 
   // Format as hex key ID
-  char hex_key_id[17];
+  char hex_key_id[CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE];
   for (int i = 0; i < 8; i++) {
     safe_snprintf(hex_key_id + i * 2, 3, "%02x", key_id[i]);
   }

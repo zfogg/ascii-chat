@@ -97,6 +97,10 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_BACKTRACE_COLORED_BUFFER_SIZE 16384
+#define DEBUG_BACKTRACE_PLAIN_BUFFER_SIZE 16384
+
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -126,8 +130,8 @@ typedef bool (*backtrace_frame_filter_t)(const char *frame);
  */
 /** Shared semantic formatting for terminal logs and TUI backtraces. No output or ownership transfer. */
 typedef struct {
-  char colored[16384];
-  char plain[16384];
+  char colored[DEBUG_BACKTRACE_COLORED_BUFFER_SIZE];
+  char plain[DEBUG_BACKTRACE_PLAIN_BUFFER_SIZE];
 } backtrace_text_t;
 void backtrace_format_styled(backtrace_text_t *text, const char *label, const backtrace_t *bt, int skip_frames,
                              int max_frames, backtrace_frame_filter_t filter);

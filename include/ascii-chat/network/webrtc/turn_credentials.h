@@ -16,6 +16,10 @@
 #ifndef ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 #define ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE 128
+#define NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE 128
+
 #include "../../common/error_codes.h"
 
 #include <stdbool.h>
@@ -26,9 +30,10 @@
  * @brief TURN server credentials (username + password)
  */
 typedef struct {
-  char username[128]; /**< Format: "timestamp:session_id" */
-  char password[128]; /**< Base64-encoded HMAC-SHA1(secret, username) */
-  time_t expires_at;  /**< Unix timestamp when credentials expire */
+  char username[NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE]; /**< Format: "timestamp:session_id" */
+  char
+      password[NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE]; /**< Base64-encoded HMAC-SHA1(secret, username) */
+  time_t expires_at;                                                  /**< Unix timestamp when credentials expire */
 } turn_credentials_t;
 
 /**

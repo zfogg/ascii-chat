@@ -35,6 +35,11 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_SDP_SESSION_ID_BUFFER_SIZE 32
+#define NETWORK_WEBRTC_SDP_SESSION_VERSION_BUFFER_SIZE 16
+#define NETWORK_WEBRTC_SDP_SDP_STRING_BUFFER_SIZE 4096
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -114,8 +119,8 @@ typedef struct {
  */
 typedef struct {
   /* Session-level attributes */
-  char session_id[32];      ///< Session identifier
-  char session_version[16]; ///< Session version (timestamp)
+  char session_id[NETWORK_WEBRTC_SDP_SESSION_ID_BUFFER_SIZE];           ///< Session identifier
+  char session_version[NETWORK_WEBRTC_SDP_SESSION_VERSION_BUFFER_SIZE]; ///< Session version (timestamp)
 
   /* Audio media section */
   bool has_audio;                    ///< Audio media included
@@ -130,8 +135,8 @@ typedef struct {
   uint32_t codec_capabilities_video;     ///< VIDEO_CODEC_CAP_* bitmask (which video codecs peer supports)
 
   /* Raw SDP string (generated from above) */
-  char sdp_string[4096]; ///< Complete SDP as null-terminated string
-  size_t sdp_length;     ///< Length of SDP string (excluding null)
+  char sdp_string[NETWORK_WEBRTC_SDP_SDP_STRING_BUFFER_SIZE]; ///< Complete SDP as null-terminated string
+  size_t sdp_length;                                          ///< Length of SDP string (excluding null)
 } sdp_session_t;
 
 /* ============================================================================

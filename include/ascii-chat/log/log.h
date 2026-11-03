@@ -97,6 +97,12 @@ typedef struct session_log_buffer session_log_buffer_t;
 /** @brief Maximum size of a timestamp string */
 #define LOG_TIMESTAMP_BUFFER_SIZE 32
 
+/** Terminal formatting budget, including NUL; distinct from persisted message storage. */
+#define LOG_TERMINAL_BUFFER_SIZE 16384
+
+/** Header plus terminal formatting budget, including NUL. */
+#define LOG_TERMINAL_ENTRY_BUFFER_SIZE (LOG_HEADER_BUFFER_SIZE + LOG_TERMINAL_BUFFER_SIZE)
+
 /* ============================================================================
  * Compile-Time Log Level Stripping
  * ============================================================================

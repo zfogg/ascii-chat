@@ -1,3 +1,21 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE 65536
+#define TUI_ERROR_POPUP_STYLE_BUFFER_SIZE 128
+#define TUI_ERROR_POPUP_THREAD_BUFFER_SIZE 160
+#define TUI_ERROR_POPUP_FILE_BUFFER_SIZE 1024
+#define TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE 256
+#define TUI_ERROR_POPUP_LINE_BUFFER_SIZE 24
+#define TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE 40
+#define TUI_ERROR_POPUP_TITLE_BUFFER_SIZE 128
+#define TUI_ERROR_POPUP_HEADING_BUFFER_SIZE 256
+#define TUI_ERROR_POPUP_CODE_BUFFER_SIZE 512
+#define TUI_ERROR_POPUP_CELL_BUFFER_SIZE 1024
+#define TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE 65536
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ERROR_POPUP_LINE_CAPACITY 2048
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/tui/notice.h>
@@ -122,8 +140,8 @@ void ui_error_popup_key(keyboard_key_t key) {
 static uint64_t g_cached_id;
 static int g_cached_width;
 static bool g_cached_color;
-static char g_wrapped[65536];
-static size_t g_lines[2048], g_line_count, g_trace_start;
+static char g_wrapped[TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE];
+static size_t g_lines[ERROR_POPUP_LINE_CAPACITY], g_line_count, g_trace_start;
 #ifdef ASCIICHAT_DIAGNOSTIC_UI
 static backtrace_text_t g_trace;
 #endif
@@ -157,7 +175,7 @@ static void append_bytes(size_t *used, const char *text, size_t bytes) {
 static void wrap_body(const char *text, int width) {
   size_t used = 0;
   int cells = 0;
-  char style[128] = "";
+  char style[TUI_ERROR_POPUP_STYLE_BUFFER_SIZE] = "";
   g_line_count = 1;
   g_lines[0] = 0;
   g_wrapped[0] = '\0';
@@ -202,7 +220,9 @@ static void wrap_body(const char *text, int width) {
 
 static void build_body(const asciichat_error_context_t *error, int width, bool colors) {
   g_trace_start = 0;
-  char message[ASCIICHAT_ERRNO_MESSAGE_MAX], thread[160], file[1024], function[256], line[24];
+  char message[ASCIICHAT_ERRNO_MESSAGE_MAX], thread[TUI_ERROR_POPUP_THREAD_BUFFER_SIZE],
+      file[TUI_ERROR_POPUP_FILE_BUFFER_SIZE], function[TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE],
+      line[TUI_ERROR_POPUP_LINE_BUFFER_SIZE];
   sanitize(message, sizeof(message), error->context_message);
   named_metadata_t metadata = {0};
   bool named = named_metadata_copy((uintptr_t)error->thread_id, &metadata) && metadata.name[0];
@@ -221,7 +241,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
                       error->message_truncated ? " [truncated]" : "", grey,
                       colors ? colored_string(named ? LOG_COLOR_WARN : LOG_COLOR_FATAL, thread) : thread);
   if (named) {
-    char address[40];
+    char address[TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE];
     safe_snprintf(address, sizeof(address), "0x%llx", (unsigned long long)error->thread_id);
     frame_buffer_printf(body, " (%s)", colors ? colored_string(LOG_COLOR_FATAL, address) : address);
   }
@@ -308,14 +328,14 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   size_t scroll = g_scroll;
   unlock_state();
   ui_popup_frame(out, top, left, width, height, LOG_COLOR_RESET);
-  char title[128];
+  char title[TUI_ERROR_POPUP_TITLE_BUFFER_SIZE];
   safe_snprintf(title, sizeof(title), "Error (%zu)   %zu of %zu%s", count, selected + 1, count,
                 dropped ? " [older errors dropped]" : "");
-  char heading[256];
+  char heading[TUI_ERROR_POPUP_HEADING_BUFFER_SIZE];
   ui_text_cell(heading, sizeof(heading), title, width - 4, UI_ALIGN_LEFT);
   frame_buffer_printf(out, "\033[%d;%dH%s", top + 1, left + 2,
                       colors ? colored_string(LOG_COLOR_ERROR, heading) : heading);
-  char code[512], cell[1024];
+  char code[TUI_ERROR_POPUP_CODE_BUFFER_SIZE], cell[TUI_ERROR_POPUP_CELL_BUFFER_SIZE];
   safe_snprintf(code, sizeof(code), "%s (%d): %s", asciichat_error_name(error.code), error.code,
                 asciichat_error_string(error.code));
   ui_text_cell(cell, sizeof(cell), code, width - 4, UI_ALIGN_LEFT);
@@ -345,7 +365,7 @@ void ui_error_popup_reset(void) {
   g_cached_id = 0;
 }
 
-static char g_final_output[65536];
+static char g_final_output[TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE];
 static size_t g_final_length;
 static int g_final_fd;
 

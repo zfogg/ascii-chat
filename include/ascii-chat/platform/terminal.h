@@ -69,6 +69,11 @@
  * @date September 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_TERMINAL_TERM_TYPE_BUFFER_SIZE 64
+#define PLATFORM_TERMINAL_COLORTERM_BUFFER_SIZE 64
+#define PLATFORM_TERMINAL_PALETTE_CUSTOM_BUFFER_SIZE 64
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "../common.h"
@@ -742,15 +747,15 @@ typedef struct {
   /** @brief Preferred rendering mode (render_mode_t) */
   render_mode_t render_mode;
   /** @brief $TERM environment variable value (for debugging) */
-  char term_type[64];
+  char term_type[PLATFORM_TERMINAL_TERM_TYPE_BUFFER_SIZE];
   /** @brief $COLORTERM environment variable value (for debugging) */
-  char colorterm[64];
+  char colorterm[PLATFORM_TERMINAL_COLORTERM_BUFFER_SIZE];
   /** @brief True if background colors are preferred */
   bool wants_background;
   /** @brief Palette type enum value (palette_type_t) */
   int palette_type;
   /** @brief Custom palette characters (if palette_type == PALETTE_CUSTOM) */
-  char palette_custom[64];
+  char palette_custom[PLATFORM_TERMINAL_PALETTE_CUSTOM_BUFFER_SIZE];
   /** @brief Client's desired frame rate (1-144 FPS) */
   uint8_t desired_fps;
   /** @brief Monochromatic color filter enum value (color_filter_t) */

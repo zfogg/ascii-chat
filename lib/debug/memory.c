@@ -1,3 +1,21 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE 256
+#define DEBUG_MEMORY_MISMATCH_DETAILS_BUFFER_SIZE 256
+#define DEBUG_MEMORY_PRETTY_TOTAL_BUFFER_SIZE 64
+#define DEBUG_MEMORY_PRETTY_FREED_BUFFER_SIZE 64
+#define DEBUG_MEMORY_PRETTY_CURRENT_BUFFER_SIZE 64
+#define DEBUG_MEMORY_PRETTY_PEAK_BUFFER_SIZE 64
+#define DEBUG_MEMORY_MALLOC_BUFFER_SIZE 32
+#define DEBUG_MEMORY_CALLOC_BUFFER_SIZE 32
+#define DEBUG_MEMORY_FREE_BUFFER_SIZE 32
+#define DEBUG_MEMORY_PRETTY_SUPPRESSED_BUFFER_SIZE 64
+#define DEBUG_MEMORY_SUPPRESSIONS_BUFFER_SIZE 128
+#define DEBUG_MEMORY_DIFF_BUFFER_SIZE 32
+#define DEBUG_MEMORY_PRETTY_BYTES_BUFFER_SIZE 64
+#define DEBUG_MEMORY_LINE_BUFFER_SIZE 32
+#define DEBUG_MEMORY_COUNT_BUFFER_SIZE 32
+
 #include <ascii-chat/debug/stats.h>
 /**
  * @file memory.c
@@ -47,20 +65,20 @@ typedef struct mem_block {
   size_t size;
   char file[BUFFER_SIZE_SMALL];
   int line;
-  uint64_t tid;          // Allocating thread ID (for site lookup)
-  char thread_name[256]; // Thread name from named registry
+  uint64_t tid;                                           // Allocating thread ID (for site lookup)
+  char thread_name[DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE]; // Thread name from named registry
   bool is_aligned;
   struct mem_block *next;
 } mem_block_t;
 
 // Allocation site cache - tracks per-site backtraces
 typedef struct alloc_site {
-  char key[BUFFER_SIZE_SMALL + 32]; // "file:line:tid" - uthash key
-  size_t live_count;                // Live (unfreed) allocations from this site
-  size_t live_bytes;                // Live bytes from this site
-  size_t total_count;               // Total ever allocated from this site
-  backtrace_t backtrace;            // Captured+symbolized once on first alloc from site
-  char thread_name[256];            // Thread name for this site (cached at first alloc)
+  char key[BUFFER_SIZE_SMALL + 32];                       // "file:line:tid" - uthash key
+  size_t live_count;                                      // Live (unfreed) allocations from this site
+  size_t live_bytes;                                      // Live bytes from this site
+  size_t total_count;                                     // Total ever allocated from this site
+  backtrace_t backtrace;                                  // Captured+symbolized once on first alloc from site
+  char thread_name[DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE]; // Thread name for this site (cached at first alloc)
   UT_hash_handle hh;
 } alloc_site_t;
 
@@ -1010,7 +1028,7 @@ void debug_memory_report(void) {
         // the site, there is nothing to suppress and no mismatch to report.
         if (total_count > 0 && (total_count != g_suppression_config[i].expected_count ||
                                 total_bytes != g_suppression_config[i].expected_bytes)) {
-          char mismatch_details[256] = {0};
+          char mismatch_details[DEBUG_MEMORY_MISMATCH_DETAILS_BUFFER_SIZE] = {0};
           if (total_count != g_suppression_config[i].expected_count) {
             snprintf(mismatch_details, sizeof(mismatch_details), "Count mismatch: expected %d, found %d",
                      g_suppression_config[i].expected_count, total_count);
@@ -1031,10 +1049,10 @@ void debug_memory_report(void) {
       }
     }
 
-    char pretty_total[64];
-    char pretty_freed[64];
-    char pretty_current[64];
-    char pretty_peak[64];
+    char pretty_total[DEBUG_MEMORY_PRETTY_TOTAL_BUFFER_SIZE];
+    char pretty_freed[DEBUG_MEMORY_PRETTY_FREED_BUFFER_SIZE];
+    char pretty_current[DEBUG_MEMORY_PRETTY_CURRENT_BUFFER_SIZE];
+    char pretty_peak[DEBUG_MEMORY_PRETTY_PEAK_BUFFER_SIZE];
     format_bytes_pretty(adjusted_total_allocated, pretty_total, sizeof(pretty_total));
     format_bytes_pretty(total_freed, pretty_freed, sizeof(pretty_freed));
     format_bytes_pretty(adjusted_current_usage, pretty_current, sizeof(pretty_current));
@@ -1103,23 +1121,23 @@ void debug_memory_report(void) {
 
     // Colorize malloc/calloc/free calls: green if unfreed == 0, red if unfreed != 0
     log_color_t calls_color = (unfreed_count == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
-    char malloc_str[32];
+    char malloc_str[DEBUG_MEMORY_MALLOC_BUFFER_SIZE];
     safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
     APPEND_MEM_LINE_COLORED(label_malloc, malloc_str, calls_color);
 
-    char calloc_str[32];
+    char calloc_str[DEBUG_MEMORY_CALLOC_BUFFER_SIZE];
     safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
     APPEND_MEM_LINE_COLORED(label_calloc, calloc_str, calls_color);
 
-    char free_str[32];
+    char free_str[DEBUG_MEMORY_FREE_BUFFER_SIZE];
     safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
     APPEND_MEM_LINE_COLORED(label_free, free_str, calls_color);
 
     // Colorize suppressions: green if working properly, red if >= 1MB or >= 100 allocations
     if (suppressed_count > 0) {
-      char pretty_suppressed[64];
+      char pretty_suppressed[DEBUG_MEMORY_PRETTY_SUPPRESSED_BUFFER_SIZE];
       format_bytes_pretty(suppressed_bytes, pretty_suppressed, sizeof(pretty_suppressed));
-      char suppressions_str[128];
+      char suppressions_str[DEBUG_MEMORY_SUPPRESSIONS_BUFFER_SIZE];
       safe_snprintf(suppressions_str, sizeof(suppressions_str), "%zu (%s)", suppressed_count, pretty_suppressed);
 
       log_color_t suppressions_color = LOG_COLOR_INFO; // Green by default (working properly)
@@ -1129,7 +1147,7 @@ void debug_memory_report(void) {
       APPEND_MEM_LINE_COLORED(label_suppressions, suppressions_str, suppressions_color);
     }
 
-    char diff_str[32];
+    char diff_str[DEBUG_MEMORY_DIFF_BUFFER_SIZE];
     safe_snprintf(diff_str, sizeof(diff_str), "%zu", unfreed_count);
     APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label_diff));
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
@@ -1202,15 +1220,15 @@ void debug_memory_report(void) {
             continue;
           }
 
-          char pretty_bytes[64];
+          char pretty_bytes[DEBUG_MEMORY_PRETTY_BYTES_BUFFER_SIZE];
           format_bytes_pretty(site->live_bytes, pretty_bytes, sizeof(pretty_bytes));
 
-          char line_str[32];
+          char line_str[DEBUG_MEMORY_LINE_BUFFER_SIZE];
           line_str[0] = '\0';
           if (parse_success) {
             safe_snprintf(line_str, sizeof(line_str), ":%d", line);
           }
-          char count_str[32];
+          char count_str[DEBUG_MEMORY_COUNT_BUFFER_SIZE];
           safe_snprintf(count_str, sizeof(count_str), "%zu", site->live_count);
 
           // Determine color based on byte size (1 MB and over=red, KB=yellow, B=light blue)

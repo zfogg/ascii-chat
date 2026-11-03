@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE 8192
+#define SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE 8192
+
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
 /**
@@ -206,7 +211,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       ui_prompt_remove();
       return;
     }
-    char input[8192] = {0}, normalized[8192];
+    char input[SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE] = {0},
+         normalized[SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE];
     asciichat_error_t result = ASCIICHAT_OK;
     if (key == KEY_MEDIA_SUBMIT)
       result = ui_input_media_take(input, sizeof(input));

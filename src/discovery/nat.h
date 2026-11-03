@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/platform/socket.h>
@@ -26,14 +27,14 @@ extern "C" {
  */
 typedef struct {
   // NAT detection results
-  bool has_public_ip;        ///< STUN reflexive == local IP
-  bool upnp_available;       ///< UPnP/NAT-PMP mapping succeeded
-  uint16_t upnp_mapped_port; ///< Mapped external port (if upnp_available)
-  acip_nat_type_t nat_type;  ///< NAT classification
-  bool lan_reachable;        ///< Same subnet as peer
-  uint64_t stun_latency_ns;  ///< RTT to STUN server in nanoseconds
-  char public_address[64];   ///< Public IP address
-  uint16_t public_port;      ///< Public port
+  bool has_public_ip;                          ///< STUN reflexive == local IP
+  bool upnp_available;                         ///< UPnP/NAT-PMP mapping succeeded
+  uint16_t upnp_mapped_port;                   ///< Mapped external port (if upnp_available)
+  acip_nat_type_t nat_type;                    ///< NAT classification
+  bool lan_reachable;                          ///< Same subnet as peer
+  uint64_t stun_latency_ns;                    ///< RTT to STUN server in nanoseconds
+  char public_address[IP_ADDRESS_BUFFER_SIZE]; ///< Public IP address
+  uint16_t public_port;                        ///< Public port
 
   // Bandwidth measurements
   uint32_t upload_kbps;    ///< Upload bandwidth in Kbps

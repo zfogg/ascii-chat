@@ -33,6 +33,9 @@
  * @date December 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_NUMBER_TEMP_BUFFER_SIZE 10
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -173,7 +176,7 @@ static inline size_t write_decimal(int value, char *dst) {
     return 0;
   }
 
-  char temp[10]; // Enough for 32-bit int
+  char temp[UTIL_NUMBER_TEMP_BUFFER_SIZE]; // Enough for 32-bit int
   int pos = 0;
   int v = value;
 
@@ -292,7 +295,7 @@ static inline char *write_u16(char *p, uint16_t n) {
  * @ingroup util
  */
 static inline char *write_u32(char *p, uint32_t n) {
-  char temp[10];
+  char temp[UTIL_NUMBER_TEMP_BUFFER_SIZE];
   int pos = 0;
   uint32_t v = n;
 

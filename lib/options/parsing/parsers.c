@@ -4,6 +4,12 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE 32
+#define OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE 256
+#define OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE 512
+#define OPTIONS_PARSING_PARSERS_BUF_BUFFER_SIZE 256
+
 #include <ascii-chat/options/parsers.h>
 #include <string.h>
 #include <stdlib.h>
@@ -96,7 +102,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   }
 
   // Convert to lowercase
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Get compiled regex (lazy initialization)
@@ -216,7 +222,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   terminal_color_mode_t *color_mode = (terminal_color_mode_t *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Auto-detect
@@ -254,7 +260,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value - suggest closest match
   if (error_msg) {
-    char msg[256];
+    char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
     const char *suggestion = asciichat_suggest_enum_value("color-mode", arg);
     if (suggestion) {
       safe_snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Did you mean '%s'?", arg, suggestion);
@@ -275,7 +281,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
   }
 
   color_filter_t *color_filter = (color_filter_t *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Try to match against all known color filters
@@ -287,7 +293,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char msg[256];
+    char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
     safe_snprintf(msg, sizeof(msg),
                   "Invalid color filter '%s'. Valid values: none, black, white, green, magenta, fuchsia, "
                   "orange, teal, cyan, pink, red, yellow",
@@ -306,7 +312,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   render_mode_t *render_mode = (render_mode_t *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Foreground mode
@@ -331,7 +337,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value - suggest closest match
   if (error_msg) {
-    char msg[256];
+    char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
     const char *suggestion = asciichat_suggest_enum_value("render-mode", arg);
     if (suggestion) {
       safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Did you mean '%s'?", arg, suggestion);
@@ -353,7 +359,7 @@ bool parse_render_theme(const char *arg, void *dest, char **error_msg) {
   }
 
   int *theme = (int *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Dark theme
@@ -376,7 +382,7 @@ bool parse_render_theme(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char msg[256];
+    char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
     safe_snprintf(msg, sizeof(msg), "Invalid render theme '%s'. Valid values: dark, light, auto", arg);
     *error_msg = platform_strdup(msg);
   }
@@ -392,7 +398,7 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
   }
 
   palette_type_t *palette_type = (palette_type_t *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Standard palette
@@ -433,7 +439,7 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value - suggest closest match
   if (error_msg) {
-    char msg[256];
+    char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
     const char *suggestion = asciichat_suggest_enum_value("palette", arg);
     if (suggestion) {
       safe_snprintf(msg, sizeof(msg), "Invalid palette type '%s'. Did you mean '%s'?", arg, suggestion);
@@ -462,7 +468,7 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
     return true;
   }
 
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   // Development level
@@ -503,7 +509,7 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char msg[256];
+    char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
     safe_snprintf(msg, sizeof(msg), "Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal", arg);
     *error_msg = platform_strdup(msg);
   }
@@ -525,7 +531,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
   asciichat_error_t err = parse_port(arg, &port_num);
   if (err != ASCIICHAT_OK) {
     if (error_msg) {
-      char msg[256];
+      char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
       safe_snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 0 and 65535 (0 = auto-assign).",
                     arg);
       *error_msg = platform_strdup(msg);
@@ -590,7 +596,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
     if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 &&
         strcmp(address, "0.0.0.0") != 0) {
       if (error_msg) {
-        char msg[256];
+        char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
         safe_snprintf(msg, sizeof(msg),
                       "Cannot specify multiple IPv4 addresses.\n"
                       "Already have: %s\n"
@@ -607,7 +613,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
     // Allow overwriting default (::1)
     if (address6[0] != '\0' && !is_localhost_ipv6(address6)) {
       if (error_msg) {
-        char msg[256];
+        char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
         safe_snprintf(msg, sizeof(msg),
                       "Cannot specify multiple IPv6 addresses.\n"
                       "Already have: %s\n"
@@ -621,7 +627,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
     consumed = 1;
   } else {
     if (error_msg) {
-      char msg[512];
+      char msg[OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE];
       safe_snprintf(msg, sizeof(msg),
                     "Invalid IP address '%s'.\n"
                     "Server bind addresses must be valid IPv4 or IPv6 addresses.\n"
@@ -762,7 +768,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
         long port_num = strtol(port_str, &endptr, 10);
         if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
           if (error_msg) {
-            char msg[256];
+            char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
             safe_snprintf(msg, sizeof(msg), "Invalid port number '%s'. Must be 1-65535.", port_str);
             *error_msg = platform_strdup(msg);
           }
@@ -796,7 +802,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
         long port_num = strtol(port_str, &endptr, 10);
         if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
           if (error_msg) {
-            char msg[256];
+            char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
             safe_snprintf(msg, sizeof(msg), "Invalid port number '%s'. Must be 1-65535.", port_str);
             *error_msg = platform_strdup(msg);
           }
@@ -822,7 +828,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   if (has_colon) {
     if (!is_valid_ipv6(address)) {
       if (error_msg) {
-        char msg[512];
+        char msg[OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE];
         safe_snprintf(msg, sizeof(msg),
                       "Invalid IPv6 address '%s'.\n"
                       "IPv6 addresses must be valid hex notation with colons.\n"
@@ -837,7 +843,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     // Potential IPv4 address (has dots and starts with digit) - validate strictly
     if (!is_valid_ipv4(address)) {
       if (error_msg) {
-        char msg[512];
+        char msg[OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE];
         safe_snprintf(msg, sizeof(msg),
                       "Invalid IPv4 address '%s'.\n"
                       "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n"
@@ -945,9 +951,9 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  if (len >= 256) {
+  if (len >= OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE) {
     if (error_msg) {
-      char msg[256];
+      char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
       safe_snprintf(msg, sizeof(msg), "Invalid palette-chars: too long (%zu chars, max 255)", len);
       *error_msg = platform_strdup(msg);
     }
@@ -955,8 +961,8 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   }
 
   // Copy the palette characters
-  SAFE_STRNCPY(palette_custom, arg, 256);
-  palette_custom[255] = '\0';
+  SAFE_STRNCPY(palette_custom, arg, OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE);
+  palette_custom[OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE - 1] = '\0';
 
   // Also set the palette type to custom by calculating back to options_t pointer
   // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic
@@ -1110,7 +1116,7 @@ bool parse_volume(const char *arg, void *dest, char **error_msg) {
 
   if (val < 0.0f || val > 1.0f) {
     if (error_msg) {
-      char buf[256];
+      char buf[OPTIONS_PARSING_PARSERS_BUF_BUFFER_SIZE];
       SAFE_SNPRINTF(buf, sizeof(buf), "Volume must be between 0.0 and 1.0 (got %.2f)", val);
       *error_msg = platform_strdup(buf);
     }
@@ -1164,7 +1170,7 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   }
 
   audio_source_t *audio_source = (audio_source_t *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
   if (strcmp(lower, OPT_AUDIO_SOURCE_ALL) == 0 || strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0 ||
@@ -1199,7 +1205,7 @@ bool parse_audio_capture_source(const char *arg, void *dest, char **error_msg) {
   }
 
   audio_capture_source_t *source = (audio_capture_source_t *)dest;
-  char lower[32];
+  char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
   if (strcmp(lower, OPT_AUDIO_CAPTURE_SOURCE_AUTO) == 0)
     *source = AUDIO_CAPTURE_SOURCE_AUTO;

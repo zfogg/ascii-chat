@@ -7,6 +7,10 @@
  * for man pages.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_MANPAGE_FORMATTER_DATE_BUFFER_SIZE 32
+#define OPTIONS_MANPAGE_FORMATTER_FULL_NAME_BUFFER_SIZE 256
+
 #include <ascii-chat/options/manpage/formatter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
@@ -80,11 +84,11 @@ void manpage_fmt_write_title(FILE *f, const char *program_name, const char *mode
   time_t now = time(NULL);
   struct tm tm_buf;
   platform_localtime(&now, &tm_buf);
-  char date_str[32];
+  char date_str[OPTIONS_MANPAGE_FORMATTER_DATE_BUFFER_SIZE];
   strftime(date_str, sizeof(date_str), "%B %Y", &tm_buf);
 
   // Build full program name (e.g., "ascii-chat-server" or just "ascii-chat")
-  char full_name[256];
+  char full_name[OPTIONS_MANPAGE_FORMATTER_FULL_NAME_BUFFER_SIZE];
   if (mode_name) {
     safe_snprintf(full_name, sizeof(full_name), "%s-%s", program_name, mode_name);
   } else {

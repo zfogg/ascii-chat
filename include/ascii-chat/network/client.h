@@ -1,3 +1,4 @@
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/network/acip/settings.h>
 #pragma once
 /** Server media state. The network runtime owns establishment, security,
@@ -75,11 +76,11 @@ typedef struct client_info {
   bool has_terminal_caps; // Whether we've received terminal capabilities from this client
 
   // Per-client palette cache
-  char client_palette_chars[256];     // Client's palette characters
-  size_t client_palette_len;          // Length of client's palette
-  char client_luminance_palette[256]; // Client's luminance-to-character mapping
-  palette_type_t client_palette_type; // Client's palette type
-  bool client_palette_initialized;    // Whether client's palette is set up
+  char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE];  // Client's palette characters
+  size_t client_palette_len;                             // Length of client's palette
+  char client_luminance_palette[ASCII_LUMINANCE_LEVELS]; // Client's luminance-to-character mapping
+  palette_type_t client_palette_type;                    // Client's palette type
+  bool client_palette_initialized;                       // Whether client's palette is set up
 
   // Per-client state for Matrix Rain post-processing of generated ASCII.
   digital_rain_t *digital_rain;

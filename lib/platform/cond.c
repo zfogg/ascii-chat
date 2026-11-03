@@ -8,6 +8,15 @@
  * All hooks are debug-only and disabled in release builds.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_COND_WAIT_BUFFER_SIZE 64
+#define PLATFORM_COND_SIGNAL_BUFFER_SIZE 64
+#define PLATFORM_COND_BROADCAST_BUFFER_SIZE 64
+#define PLATFORM_COND_WAITING_BUFFER_SIZE 64
+#define PLATFORM_COND_COUNT_BUFFER_SIZE 256
+#define PLATFORM_COND_ELAPSED_BUFFER_SIZE 64
+#define PLATFORM_COND_BUF_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
@@ -130,26 +139,26 @@ int cond_format_state(const cond_t *cond, char *buffer, size_t size) {
   int offset = 0;
   uint64_t now_ns = time_get_ns();
 
-  char wait_str[64] = "";
-  char signal_str[64] = "";
-  char broadcast_str[64] = "";
-  char waiting_str[64] = "";
-  char count_str[256] = "";
+  char wait_str[PLATFORM_COND_WAIT_BUFFER_SIZE] = "";
+  char signal_str[PLATFORM_COND_SIGNAL_BUFFER_SIZE] = "";
+  char broadcast_str[PLATFORM_COND_BROADCAST_BUFFER_SIZE] = "";
+  char waiting_str[PLATFORM_COND_WAITING_BUFFER_SIZE] = "";
+  char count_str[PLATFORM_COND_COUNT_BUFFER_SIZE] = "";
 
   if (cond->last_wait_time_ns > 0 && cond->last_wait_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_COND_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - cond->last_wait_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(wait_str, sizeof(wait_str), "wait=%s", elapsed_str);
   }
 
   if (cond->last_signal_time_ns > 0 && cond->last_signal_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_COND_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - cond->last_signal_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(signal_str, sizeof(signal_str), "signal=%s", elapsed_str);
   }
 
   if (cond->last_broadcast_time_ns > 0 && cond->last_broadcast_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[PLATFORM_COND_ELAPSED_BUFFER_SIZE];
     time_pretty(now_ns - cond->last_broadcast_time_ns, -1, elapsed_str, sizeof(elapsed_str));
     snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
   }
@@ -184,7 +193,7 @@ int cond_format_state(const cond_t *cond, char *buffer, size_t size) {
 void cond_log_state(const cond_t *cond, const char *file, int line, const char *func) {
   if (!cond)
     return;
-  char buf[512];
+  char buf[PLATFORM_COND_BUF_BUFFER_SIZE];
   cond_format_state(cond, buf, sizeof(buf));
   log_msg(LOG_DEBUG, file, line, func, "cond/state %p: %s", (const void *)cond, buf);
 }

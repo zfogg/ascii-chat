@@ -4,6 +4,11 @@
  * @brief 🔐 Core cryptography: encryption/decryption, key exchange, authentication, and session rekeying with BearSSL
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_ENCRYPTED_BUFFER_SIZE 32
+#define CRYPTO_DECRYPTED_BUFFER_SIZE 32
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
@@ -144,14 +149,14 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   if (is_test_environment()) {
     ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
-    char duration_str[32];
+    char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // already in nanoseconds (3600 * NS_PER_SEC_INT)
-    char duration_str[32];
+    char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
@@ -200,7 +205,7 @@ void crypto_destroy(crypto_context_t *ctx) {
   secure_memzero(ctx->password_key, sizeof(ctx->password_key));
   secure_memzero(ctx->password_salt, sizeof(ctx->password_salt));
 
-  char encrypted_str[32], decrypted_str[32];
+  char encrypted_str[CRYPTO_ENCRYPTED_BUFFER_SIZE], decrypted_str[CRYPTO_DECRYPTED_BUFFER_SIZE];
   format_bytes_pretty(ctx->bytes_encrypted, encrypted_str, sizeof(encrypted_str));
   format_bytes_pretty(ctx->bytes_decrypted, decrypted_str, sizeof(decrypted_str));
 
@@ -804,7 +809,7 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
 // Authentication and handshake functions
 // =============================================================================
 
-crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
+crypto_result_t crypto_generate_nonce(uint8_t nonce[AUTH_CHALLENGE_SIZE]) {
   if (!nonce) {
     SET_ERRNO(ERROR_INVALID_PARAM, "NULL nonce buffer");
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -819,8 +824,8 @@ crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32], const uint8_t data[32],
-                                    uint8_t hmac[32]) {
+crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
+                                    const uint8_t data[AUTH_CHALLENGE_SIZE], uint8_t hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !key || !data || !hmac) {
     return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)", ctx,
                                       key, data, hmac);
@@ -835,8 +840,8 @@ crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32]
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[32], const uint8_t *data,
-                                       size_t data_len, uint8_t hmac[32]) {
+crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
+                                       const uint8_t *data, size_t data_len, uint8_t hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !key || !data || !hmac || data_len == 0) {
     return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM,
                                       "Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx, key,
@@ -852,13 +857,14 @@ crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_
   return CRYPTO_OK;
 }
 
-bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]) {
+bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE],
+                        const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!key || !data || !expected_hmac) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, expected_hmac=%p)", key, data, expected_hmac);
     return false;
   }
 
-  uint8_t computed_hmac[32];
+  uint8_t computed_hmac[HMAC_SHA256_SIZE];
   if (crypto_auth_hmacsha256(computed_hmac, data, 32, key) != 0) {
     return false;
   }
@@ -866,15 +872,15 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
 }
 
-bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len,
-                           const uint8_t expected_hmac[32]) {
+bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len,
+                           const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!key || !data || !expected_hmac || data_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)", key, data,
               data_len, expected_hmac);
     return false;
   }
 
-  uint8_t computed_hmac[32];
+  uint8_t computed_hmac[HMAC_SHA256_SIZE];
   if (crypto_auth_hmacsha256(computed_hmac, data, data_len, key) != 0) {
     return false;
   }
@@ -886,8 +892,8 @@ bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t da
 // High-level authentication helpers (shared between client and server)
 // =============================================================================
 
-crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
-                                             uint8_t hmac_out[32]) {
+crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
+                                             uint8_t hmac_out[HMAC_SHA256_SIZE]) {
   if (!ctx || !nonce || !hmac_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, hmac_out=%p)", ctx, nonce, hmac_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -902,9 +908,9 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
-  uint8_t combined_data[64];
-  memcpy(combined_data, nonce, 32);
-  memcpy(combined_data + 32, ctx->shared_key, 32);
+  uint8_t combined_data[AUTH_CHALLENGE_SIZE + CRYPTO_SHARED_KEY_SIZE];
+  memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
+  memcpy(combined_data + AUTH_CHALLENGE_SIZE, ctx->shared_key, CRYPTO_SHARED_KEY_SIZE);
 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
@@ -917,8 +923,8 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
   return result;
 }
 
-bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
-                                 const uint8_t expected_hmac[32]) {
+bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
+                                 const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !nonce || !expected_hmac) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)", ctx, nonce,
               expected_hmac);
@@ -934,9 +940,9 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
-  uint8_t combined_data[64];
-  memcpy(combined_data, nonce, 32);
-  memcpy(combined_data + 32, ctx->shared_key, 32);
+  uint8_t combined_data[AUTH_CHALLENGE_SIZE + CRYPTO_SHARED_KEY_SIZE];
+  memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
+  memcpy(combined_data + AUTH_CHALLENGE_SIZE, ctx->shared_key, CRYPTO_SHARED_KEY_SIZE);
 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
@@ -1061,9 +1067,9 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
 
   // Combine nonce and shared_secret for HMAC computation
   // This binds the password to the DH shared secret, preventing MITM attacks
-  uint8_t combined_data[64];
-  memcpy(combined_data, nonce, 32);
-  memcpy(combined_data + 32, shared_secret, 32);
+  uint8_t combined_data[AUTH_CHALLENGE_SIZE + CRYPTO_SHARED_KEY_SIZE];
+  memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
+  memcpy(combined_data + AUTH_CHALLENGE_SIZE, shared_secret, CRYPTO_SHARED_KEY_SIZE);
 
   // Compute HMAC using the password-derived key
   if (crypto_compute_hmac_ex(ctx, password_key, combined_data, 64, hmac_out) != 0) {
@@ -1129,8 +1135,8 @@ void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonc
   }
 
   // Combine HMAC (32 bytes) + challenge nonce (32 bytes) = 64 bytes total
-  memcpy(combined_out, hmac, 32);
-  memcpy(combined_out + 32, challenge_nonce, 32);
+  memcpy(combined_out, hmac, HMAC_SHA256_SIZE);
+  memcpy(combined_out + AUTH_HMAC_SIZE, challenge_nonce, AUTH_CHALLENGE_SIZE);
 }
 
 void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, uint8_t *challenge_out) {
@@ -1141,8 +1147,8 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
   }
 
   // Extract HMAC (first 32 bytes) and challenge nonce (last 32 bytes)
-  memcpy(hmac_out, combined_data, 32);
-  memcpy(challenge_out, combined_data + 32, 32);
+  memcpy(hmac_out, combined_data, HMAC_SHA256_SIZE);
+  memcpy(challenge_out, combined_data + AUTH_CHALLENGE_SIZE, AUTH_CHALLENGE_SIZE);
 }
 
 // =============================================================================
@@ -1199,7 +1205,7 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   time_t since_last_rekey = now - ctx->rekey_last_time;
   time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
   if (since_last_rekey < min_interval_seconds) {
-    char elapsed_str[32], min_str[32];
+    char elapsed_str[TIME_DURATION_BUFFER_SIZE], min_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)(since_last_rekey * 1e9), -1, elapsed_str, sizeof(elapsed_str));
     time_pretty((uint64_t)(min_interval_seconds * 1e9), -1, min_str, sizeof(min_str));
     log_warn("Rekey rate limited: %s since last rekey (minimum: %s)", elapsed_str, min_str);

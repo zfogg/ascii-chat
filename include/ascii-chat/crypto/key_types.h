@@ -24,6 +24,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -67,9 +68,9 @@ typedef enum {
  * @ingroup keys
  */
 typedef struct {
-  key_type_t type;   /**< Key type (Ed25519, X25519, or GPG) */
-  uint8_t key[32];   /**< Public key data (always 32 bytes) */
-  char comment[256]; /**< Key comment/label (e.g., "user@hostname") */
+  key_type_t type;                     /**< Key type (Ed25519, X25519, or GPG) */
+  uint8_t key[CRYPTO_PUBLIC_KEY_SIZE]; /**< Public key data (always 32 bytes) */
+  char comment[MAX_COMMENT_LEN];       /**< Key comment/label (e.g., "user@hostname") */
 } public_key_t;
 
 /**
@@ -91,14 +92,14 @@ typedef struct {
 typedef struct {
   key_type_t type; /**< Key type (Ed25519, X25519, or GPG) */
   union {
-    uint8_t ed25519[64];  /**< Ed25519 seed (32) + public key (32) = 64 bytes */
-    uint8_t x25519[32];   /**< X25519 private key (32 bytes) */
-  } key;                  /**< Private key data (union based on key type) */
-  bool use_ssh_agent;     /**< If true, use SSH agent for signing (key stays in agent) */
-  bool use_gpg_agent;     /**< If true, use GPG agent for signing (currently disabled) */
-  uint8_t public_key[32]; /**< Ed25519 public key (for agent mode or verification) */
-  char key_comment[256];  /**< SSH key comment (for agent identification) */
-  char gpg_keygrip[64];   /**< GPG keygrip (40 hex chars + null) for gpg-agent signing */
+    uint8_t ed25519[ED25519_PRIVATE_KEY_SIZE]; /**< Ed25519 seed (32) + public key (32) = 64 bytes */
+    uint8_t x25519[X25519_KEY_SIZE];           /**< X25519 private key (32 bytes) */
+  } key;                                       /**< Private key data (union based on key type) */
+  bool use_ssh_agent;                          /**< If true, use SSH agent for signing (key stays in agent) */
+  bool use_gpg_agent;                          /**< If true, use GPG agent for signing (currently disabled) */
+  uint8_t public_key[CRYPTO_PUBLIC_KEY_SIZE];  /**< Ed25519 public key (for agent mode or verification) */
+  char key_comment[MAX_COMMENT_LEN];           /**< SSH key comment (for agent identification) */
+  char gpg_keygrip[MAX_GPG_KEYGRIP_LEN];       /**< GPG keygrip (40 hex chars + null) for gpg-agent signing */
 } private_key_t;
 
 /** @} */

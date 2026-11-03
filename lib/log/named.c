@@ -13,6 +13,18 @@
  * - ID value: grey (LOG_COLOR_GREY)
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_NAMED_ID_BUFFER_SIZE 64
+#define LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE 512
+#define LOG_NAMED_ID_EXTENDED_BUFFER_SIZE 128
+#define LOG_NAMED_TYPE_BUFFER_SIZE 64
+#define LOG_NAMED_KW_BUFFER_SIZE 32
+#define LOG_NAMED_TEMP_BUFFER_SIZE 512
+#define LOG_NAMED_TYPE_SHORT_BUFFER_SIZE 32
+#define LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE 256
+#define LOG_NAMED_NAME_BUFFER_SIZE 256
+#define LOG_NAMED_ADDR_BUFFER_SIZE 128
+
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -328,13 +340,13 @@ static bool write_formatted_packet_type(int pkt_value, const char *name, char *o
   named_metadata_t metadata;
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
-  char id_buffer[64];
+  char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
   int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
 
-  char temp_output[512];
+  char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
   int temp_written = snprintf(temp_output, sizeof(temp_output), "packet_type/%s (pkt_type=%s)", name, id_buffer);
   if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
     return false;
@@ -353,13 +365,13 @@ static bool write_formatted_fd(int fd_value, const char *name, char *output, siz
   named_metadata_t metadata;
   const char *fmt_spec = named_fd_metadata_copy(fd_value, &metadata) ? metadata.format : "%d";
 
-  char id_buffer[64];
+  char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
   int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
 
-  char temp_output[512];
+  char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
   int temp_written = snprintf(temp_output, sizeof(temp_output), "fd/%s (fd=%s)", name, id_buffer);
   if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
     return false;
@@ -407,13 +419,13 @@ static bool write_formatted_type_equals(int pkt_value, const char *name, char *o
   named_metadata_t metadata;
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
-  char id_buffer[64];
+  char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
   int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
 
-  char temp_output[512];
+  char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
   int temp_written = snprintf(temp_output, sizeof(temp_output), "packet_type/%s (type=%s)", name, id_buffer);
   if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
     return false;
@@ -485,7 +497,7 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
     const char *type = metadata.type;
     const char *fmt_spec = metadata.format;
 
-    char id_buffer[128];
+    char id_buffer[LOG_NAMED_ID_EXTENDED_BUFFER_SIZE];
     int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
     if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
       return false;
@@ -502,7 +514,7 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
       }
     }
 
-    char temp_output[512];
+    char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
     int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
     if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
       *out_pos = saved_pos;
@@ -528,7 +540,7 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
       *out_pos -= prefix_len;
     }
 
-    char type_str[64];
+    char type_str[LOG_NAMED_TYPE_BUFFER_SIZE];
     if (prefix_type_len >= sizeof(type_str)) {
       *out_pos = saved_pos;
       return false;
@@ -536,7 +548,7 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
     memcpy(type_str, prefix_type, prefix_type_len);
     type_str[prefix_type_len] = '\0';
 
-    char temp_output[512];
+    char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
     int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/(null)", type_str);
     if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
       *out_pos = saved_pos;
@@ -721,7 +733,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
               kw_end++;
             size_t kw_len = kw_end - prefix_start;
 
-            char kw_buf[32];
+            char kw_buf[LOG_NAMED_KW_BUFFER_SIZE];
             if (kw_len > 0 && kw_len < sizeof(kw_buf)) {
               memcpy(kw_buf, prefix_start, kw_len);
               kw_buf[kw_len] = '\0';
@@ -729,7 +741,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
               snprintf(kw_buf, sizeof(kw_buf), "%s", reg_type);
             }
 
-            char temp[512];
+            char temp[LOG_NAMED_TEMP_BUFFER_SIZE];
             int written = snprintf(temp, sizeof(temp), "%s/%s (%s=%d)", reg_type, name, kw_buf, fd_value);
             if (written > 0 && (size_t)written < sizeof(temp) && out_pos + (size_t)written < output_size - 1) {
               memcpy(output + out_pos, temp, (size_t)written);
@@ -791,9 +803,9 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
             const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
 
-            char temp_output[512];
-            char type_str[32];
-            char id_buffer[64];
+            char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
+            char type_str[LOG_NAMED_TYPE_SHORT_BUFFER_SIZE];
+            char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
 
             /* Safely copy type name */
             if (type_len < sizeof(type_str)) {
@@ -961,7 +973,7 @@ const char *colorize_named_string(const char *name_str) {
 
   /* Extract type (before slash) */
   size_t type_len = slash - name_str;
-  char type_buf[256];
+  char type_buf[LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE];
   size_t copy_len = type_len < sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1;
   memcpy(type_buf, name_str, copy_len);
   type_buf[copy_len] = '\0';
@@ -980,7 +992,7 @@ const char *colorize_named_string(const char *name_str) {
     name_len = strlen(name_start);
   }
 
-  char name_buf[256];
+  char name_buf[LOG_NAMED_NAME_BUFFER_SIZE];
   size_t name_copy_len = name_len < sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1;
   memcpy(name_buf, name_start, name_copy_len);
   name_buf[name_copy_len] = '\0';
@@ -996,7 +1008,7 @@ const char *colorize_named_string(const char *name_str) {
     const char *addr_end = strchr(addr_start, ')');
     if (addr_end) {
       size_t addr_len = addr_end - addr_start;
-      char addr_buf[128];
+      char addr_buf[LOG_NAMED_ADDR_BUFFER_SIZE];
       size_t addr_copy_len = addr_len < sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1;
       memcpy(addr_buf, addr_start, addr_copy_len);
       addr_buf[addr_copy_len] = '\0';

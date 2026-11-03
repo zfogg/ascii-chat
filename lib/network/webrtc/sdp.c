@@ -8,6 +8,14 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE 128
+#define NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE 256
+#define NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SDP_VIDEO_CODEC_CAPACITY 4
+
 #include <ascii-chat/network/webrtc/sdp.h>
 #include <ascii-chat/media/codecs.h>
 #include <ascii-chat/log/log.h>
@@ -126,7 +134,7 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
   remaining -= written;
 
   // Video media section with terminal capabilities
-  char codec_list[128] = "96";
+  char codec_list[NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE] = "96";
   size_t codec_pos = strlen(codec_list);
   for (size_t i = 1; i < capability_count && codec_pos < sizeof(codec_list) - 1; i++) {
     codec_pos += safe_snprintf(codec_list + codec_pos, sizeof(codec_list) - codec_pos, " %d", 96 + (int)i);
@@ -518,7 +526,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
       // o=username session_id session_version ... session_id ...
       // Parse session ID (second field)
       {
-        char o_copy[256];
+        char o_copy[NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE];
         SAFE_STRNCPY(o_copy, value, sizeof(o_copy));
         char *o_saveptr = NULL;
         platform_strtok_r(o_copy, " ", &o_saveptr); // username
@@ -573,7 +581,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
         // Parse: PT codec/rate[/channels]
         char *endptr = NULL;
         int pt = (int)strtol(rtpmap, &endptr, 10);
-        char codec_name[32] = {0};
+        char codec_name[NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE] = {0};
         if (endptr && *endptr == ' ') {
           SAFE_STRNCPY(codec_name, endptr + 1, sizeof(codec_name));
         }
@@ -582,10 +590,11 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
           // Opus audio
           session->audio_config.sample_rate = 48000;
           session->audio_config.channels = 2;
-        } else if (in_video_section && video_codec_index < 4) {
+        } else if (in_video_section && video_codec_index < SDP_VIDEO_CODEC_CAPACITY) {
           // Terminal capability codec
           if (!session->video_codecs) {
-            session->video_codecs = SAFE_MALLOC(4 * sizeof(terminal_capability_t), terminal_capability_t *);
+            session->video_codecs =
+                SAFE_MALLOC(SDP_VIDEO_CODEC_CAPACITY * sizeof(terminal_capability_t), terminal_capability_t *);
           }
 
           terminal_capability_t *cap = &session->video_codecs[video_codec_index];

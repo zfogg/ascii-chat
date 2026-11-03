@@ -7,6 +7,9 @@
  * merging of auto-generated content with manual sections.
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MANPAGE_INITIAL_BUFFER_SIZE 512
+
 #include <ascii-chat/options/manpage/merger.h>
 #include <ascii-chat/options/manpage/formatter.h>
 #include <ascii-chat/log/log.h>
@@ -140,7 +143,7 @@ asciichat_error_t manpage_merger_generate_synopsis(const char *mode_name, char *
   }
 
   // Allocate buffer for synopsis
-  size_t buffer_size = 512;
+  size_t buffer_size = MANPAGE_INITIAL_BUFFER_SIZE;
   char *buffer = SAFE_MALLOC(buffer_size, char *);
   size_t offset = 0;
 

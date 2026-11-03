@@ -9,6 +9,14 @@
  * Used to detect circular wait deadlock patterns by comparing stacks across threads.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_MUTEX_SPAN_NAME_BUFFER_SIZE 224
+#define DEBUG_MUTEX_ERROR_MESSAGE_BUFFER_SIZE 1024
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define DEBUG_MUTEX_TRACE_ID_SIZE 16
+#define DEBUG_MUTEX_SPAN_ID_SIZE 8
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -101,11 +109,11 @@ typedef struct {
   uintptr_t thread_key;
   uint64_t since_ns;
   bool cycle;
-  char span_name[224];
+  char span_name[DEBUG_MUTEX_SPAN_NAME_BUFFER_SIZE];
   int error_code;
-  char error_message[1024];
-  uint8_t trace_id[16], span_id[8];
-  uint8_t parent_span_id[8];
+  char error_message[DEBUG_MUTEX_ERROR_MESSAGE_BUFFER_SIZE];
+  uint8_t trace_id[DEBUG_MUTEX_TRACE_ID_SIZE], span_id[DEBUG_MUTEX_SPAN_ID_SIZE];
+  uint8_t parent_span_id[DEBUG_MUTEX_SPAN_ID_SIZE];
   uint64_t span_start_unix_ns;
   bool context_valid, context_sampled;
 } mutex_wait_snapshot_t;

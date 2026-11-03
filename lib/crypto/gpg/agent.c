@@ -4,6 +4,11 @@
  * @brief GPG agent connection and communication implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_AGENT_SIGKEY_CMD_BUFFER_SIZE 128
+#define CRYPTO_GPG_AGENT_SETHASH_CMD_BUFFER_SIZE 256
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/common.h>
@@ -164,7 +169,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   char response[GPG_AGENT_MAX_RESPONSE];
 
   // 1. Set the key to use (SIGKEY command)
-  char sigkey_cmd[128];
+  char sigkey_cmd[CRYPTO_GPG_AGENT_SIGKEY_CMD_BUFFER_SIZE];
   safe_snprintf(sigkey_cmd, sizeof(sigkey_cmd), "SIGKEY %s", keygrip);
   if (send_agent_command(handle, sigkey_cmd) != 0) {
     log_error("Failed to send SIGKEY command");
@@ -192,7 +197,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
 
   // Build SETHASH command with SHA512 hash (algo 10)
   // Format: "SETHASH 10 <128 hex chars for 64-byte SHA512 hash>"
-  char sethash_cmd[256];
+  char sethash_cmd[CRYPTO_GPG_AGENT_SETHASH_CMD_BUFFER_SIZE];
   int offset = safe_snprintf(sethash_cmd, sizeof(sethash_cmd), "SETHASH 10 ");
   for (size_t i = 0; i < crypto_hash_sha512_BYTES; i++) {
     offset += safe_snprintf(sethash_cmd + offset, sizeof(sethash_cmd) - (size_t)offset, "%02X", hash[i]);
@@ -308,12 +313,13 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     log_error("Invalid Ed25519 signature S-expression from GPG agent");
     return -1;
   }
-  memcpy(signature_out, decoded + prefix_len, 32);
-  memcpy(signature_out + 32, decoded + prefix_len + 32 + separator_len, 32);
+  memcpy(signature_out, decoded + prefix_len, ED25519_SIGNATURE_PART_SIZE);
+  memcpy(signature_out + ED25519_SIGNATURE_PART_SIZE, decoded + prefix_len + 32 + separator_len,
+         ED25519_SIGNATURE_PART_SIZE);
   *signature_len_out = 64;
 
   // DEBUG: Print signature in hex
-  char sig_hex[129];
+  char sig_hex[HEX_STRING_SIZE_64];
   for (int i = 0; i < 64; i++) {
     safe_snprintf(sig_hex + i * 2, 3, "%02x", (unsigned char)signature_out[i]);
   }

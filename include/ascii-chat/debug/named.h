@@ -43,6 +43,11 @@
  * @date February 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_NAMED_NAME_BUFFER_SIZE 256
+#define DEBUG_NAMED_TYPE_BUFFER_SIZE 64
+#define DEBUG_NAMED_FORMAT_BUFFER_SIZE 64
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -163,9 +168,9 @@ const char *named_get(uintptr_t key);
 
 /** Copied display metadata; never contains pointers into a live registry entry. */
 typedef struct {
-  char name[256];
-  char type[64];
-  char format[64];
+  char name[DEBUG_NAMED_NAME_BUFFER_SIZE];
+  char type[DEBUG_NAMED_TYPE_BUFFER_SIZE];
+  char format[DEBUG_NAMED_FORMAT_BUFFER_SIZE];
 } named_metadata_t;
 
 /**

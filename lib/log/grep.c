@@ -665,7 +665,7 @@ char *grep_highlight_colored_copy(const char *colored_text, const char *plain_te
 
 const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
                                    size_t match_len) {
-  static __thread char highlight_buffer[16384];
+  static __thread char highlight_buffer[LOG_TERMINAL_BUFFER_SIZE];
 
   if (!colored_text || !plain_text || match_len == 0) {
     return colored_text;
@@ -697,7 +697,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   if (should_use_global_pattern) {
     pcre2_code *code = NULL;
     pcre2_match_data *match_data = NULL;
-    char fixed_string_pattern[4096] = {0};
+    char fixed_string_pattern[LOG_GREP_PATTERN_BUFFER_SIZE] = {0};
     bool is_fixed_string_pattern = false;
     bool case_insensitive_fixed = false;
 

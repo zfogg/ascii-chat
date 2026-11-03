@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_RENDER_PROGRESS_LABEL_BUFFER_SIZE 160
+#define TUI_RENDER_PROGRESS_TOTAL_BUFFER_SIZE 32
+#define TUI_RENDER_PROGRESS_TITLE_BUFFER_SIZE 64
+#define TUI_RENDER_PROGRESS_BAR_BUFFER_SIZE 4096
+
+#include <ascii-chat/ui/text.h>
 #include <ascii-chat/ui/progress.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/controller.h>
@@ -40,7 +48,7 @@ static void progress_render(terminal_size_t size, const void *data) {
   if (!buffer)
     return;
   char *line = SAFE_MALLOC(snapshot->length + 1, char *);
-  char *clipped = SAFE_MALLOC(snapshot->length + 32, char *);
+  char *clipped = SAFE_MALLOC(snapshot->length + UI_CLIPPED_TEXT_OVERHEAD, char *);
   const char *cursor = snapshot->frame;
   const char *end = cursor + snapshot->length;
   // Address each row explicitly, leaving the last column free to prevent wrapping.
@@ -51,14 +59,14 @@ static void progress_render(terminal_size_t size, const void *data) {
       size_t length = (size_t)((newline ? newline : end) - cursor);
       memcpy(line, cursor, length);
       line[length] = '\0';
-      truncate_with_ellipsis(line, clipped, snapshot->length + 32, size.cols - 1);
+      truncate_with_ellipsis(line, clipped, snapshot->length + UI_CLIPPED_TEXT_OVERHEAD, size.cols - 1);
       frame_buffer_append(buffer, clipped, strlen(clipped));
       cursor += length + (newline ? 1 : 0);
     }
   }
   uint64_t elapsed = snapshot->started_ns ? time_get_ns() - snapshot->started_ns : 0;
   uint64_t seconds = elapsed / NS_PER_SEC_INT;
-  char label[160], total[32];
+  char label[TUI_RENDER_PROGRESS_LABEL_BUFFER_SIZE], total[TUI_RENDER_PROGRESS_TOTAL_BUFFER_SIZE];
   if (snapshot->total_known)
     snprintf(total, sizeof(total), "%llu", (unsigned long long)snapshot->total);
   else
@@ -74,20 +82,20 @@ static void progress_render(terminal_size_t size, const void *data) {
     width = size.cols - 2;
     label[width] = '\0';
   }
-  char title[64];
+  char title[TUI_RENDER_PROGRESS_TITLE_BUFFER_SIZE];
   truncate_with_ellipsis("--render-file Progress", title, sizeof(title), size.cols - 4);
   int col = (size.cols - display_width(title) - 2) / 2 + 1;
   frame_buffer_printf(buffer, "\033[%d;%dH\033[0;1;7m %s \033[0m", (size.rows + 1) / 2 - 1, col, title);
   col = (size.cols - width) / 2 + 1;
   frame_buffer_printf(buffer, "\033[%d;%dH\033[0;7m%s\033[0m", (size.rows + 1) / 2, col, label);
-  size_t destination_size = snapshot->destination_length + 32;
+  size_t destination_size = snapshot->destination_length + UI_CLIPPED_TEXT_OVERHEAD;
   char *destination = SAFE_MALLOC(destination_size, char *);
   truncate_with_ellipsis(snapshot->frame + snapshot->length + 1, destination, destination_size, size.cols - 4);
   int destination_width = display_width(destination) + 2;
   col = (size.cols - destination_width) / 2 + 1;
   frame_buffer_printf(buffer, "\033[%d;%dH\033[0;7m %s \033[0m", (size.rows + 1) / 2 + 1, col, destination);
   if (snapshot->total_known && snapshot->total && size.rows >= 9) {
-    char bar[4096];
+    char bar[TUI_RENDER_PROGRESS_BAR_BUFFER_SIZE];
     int bar_width = size.cols > 44 ? 40 : size.cols - 4;
     ui_progress_format(bar, sizeof(bar), (double)snapshot->completed / (double)snapshot->total, bar_width);
     frame_buffer_printf(buffer, "\033[%d;%dH%s", (size.rows + 1) / 2 + 2, (size.cols - bar_width) / 2 + 1, bar);

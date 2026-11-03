@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MAIN_LOG_OUT_BUFFER_SIZE 64
+#define MAIN_JSON_FILENAME_BUFFER_SIZE 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
@@ -257,7 +262,7 @@ static void handle_sigterm(int sig) {
                          : (sig == SIGINT) ? "SIGINT"
                          : (sig == SIGHUP) ? "SIGHUP"
                                            : "UNKNOWN";
-  char log_out[64];
+  char log_out[MAIN_LOG_OUT_BUFFER_SIZE];
   safe_snprintf(log_out, sizeof(log_out), "Signal '%s' received", sig_name);
 
   // If Ctrl+C (SIGINT) and help screen is active, close it instead of exiting
@@ -848,7 +853,7 @@ int main(int argc, char *argv[]) {
   }
 
   const char *final_log_file = opts->log_file;
-  char json_filename_buf[256];
+  char json_filename_buf[MAIN_JSON_FILENAME_BUFFER_SIZE];
 
   if (use_json_logging) {
     // When JSON logging is enabled, determine JSON output filename

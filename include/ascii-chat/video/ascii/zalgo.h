@@ -1,5 +1,8 @@
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ZALGO_MAX_MARKS 10
+
 #include <ascii-chat/asciichat_errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -12,4 +15,4 @@
 asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_t max_output_bytes, char **output);
 
 /** Shared terminal/raster distribution. Returns 0-10 marks for one cell. */
-unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[10]);
+unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[ZALGO_MAX_MARKS]);

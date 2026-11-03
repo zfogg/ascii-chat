@@ -9,6 +9,9 @@
  *   log stream --predicate 'subsystem == "chat.ascii.ascii-chat"' --level debug
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_APPLE_CLEAN_BUFFER_SIZE 4096
+
 #include <os/log.h>
 #include <string.h>
 #include <ascii-chat/log/log.h>
@@ -57,7 +60,7 @@ void platform_log_hook(log_level_t level, const char *message) {
   os_log_t log = get_apple_log();
 
   // Strip ANSI escape codes for clean system log output
-  char clean[4096];
+  char clean[LOG_APPLE_CLEAN_BUFFER_SIZE];
   strip_ansi_codes(message, clean, sizeof(clean));
 
   os_log_with_type(log, level_to_os_log_type(level), "%{public}s", clean);

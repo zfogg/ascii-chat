@@ -9,6 +9,10 @@
  * @date January 2026
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ACIP_OPUS_INLINE_FRAME_CAPACITY 8
+
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
@@ -228,7 +232,8 @@ asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *
   // Convert single opus frame to batch format (frame_count=1) with standard parameters
   // Standard: 48kHz sample rate, 20ms frame duration
   uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, 48000, 20);
+  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, AUDIO_SAMPLE_RATE,
+                                    CLIENT_AUDIO_PIPELINE_FRAME_MS);
 }
 
 asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len,
@@ -240,7 +245,7 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
   }
 
   // Build batch header (16 bytes)
-  uint8_t header[16];
+  uint8_t header[ACIP_OPUS_BATCH_HEADER_SIZE];
   *(uint32_t *)(header + 0) = HOST_TO_NET_U32(sample_rate);
   *(uint32_t *)(header + 4) = HOST_TO_NET_U32(frame_duration);
   *(uint32_t *)(header + 8) = HOST_TO_NET_U32(frame_count);
@@ -249,8 +254,8 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
   if (frame_count > MAX_PACKET_SIZE / sizeof(uint16_t) || opus_len > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Opus batch too large");
   size_t sizes_len = (size_t)frame_count * sizeof(uint16_t);
-  uint16_t inline_sizes[8];
-  uint16_t *sizes = frame_count <= 8 ? inline_sizes : buffer_alloc(NULL, sizes_len);
+  uint16_t inline_sizes[ACIP_OPUS_INLINE_FRAME_CAPACITY];
+  uint16_t *sizes = frame_count <= ACIP_OPUS_INLINE_FRAME_CAPACITY ? inline_sizes : buffer_alloc(NULL, sizes_len);
   if (!sizes)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate Opus lengths");
   for (uint32_t i = 0; i < frame_count; ++i)

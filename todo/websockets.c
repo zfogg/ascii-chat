@@ -41,6 +41,19 @@
 #include <time.h>
 #include <unistd.h>
 
+// Existing scratch budgets; text capacities include the terminating NUL.
+#define WS_KEY_BUFFER_SIZE 32
+#define WS_ACCEPT_BUFFER_SIZE 64
+#define WS_ACCEPT_INPUT_BUFFER_SIZE 128
+#define WS_HTTP_INITIAL_CAPACITY 4096
+#define WS_HTTP_READ_CHUNK_SIZE 1024
+#define WS_HTTP_MAX_HEADER_BYTES (1 << 20)
+#define WS_HTTP_REQUEST_BUFFER_SIZE 1024
+#define WS_SEND_CHUNK_SIZE 4096
+#define WS_CLOSE_BUFFER_SIZE 128
+#define WS_DISCARD_CHUNK_SIZE 512
+#define WS_DEMO_BUFFER_SIZE 1024
+
 // ---------- Small utilities ----------
 static int set_nonblock(int fd, bool nb) {
   int flags = fcntl(fd, F_GETFL, 0);
@@ -249,17 +262,17 @@ struct ws_conn {
   int fd;
   int timeout_ms;
   bool open;
-  char sec_key[32]; // base64 of 16B nonce (24 chars + NUL)
+  char sec_key[WS_KEY_BUFFER_SIZE]; // base64 of 16B nonce (24 chars + NUL)
 };
 
 static int http_read_headers(int fd, int timeout_ms, char **out_headers) {
   // Read until "\r\n\r\n"
-  size_t cap = 4096, len = 0;
+  size_t cap = WS_HTTP_INITIAL_CAPACITY, len = 0;
   char *buf = malloc(cap);
   if (!buf)
     return -1;
   for (;;) {
-    if (len + 1024 > cap) {
+    if (len + WS_HTTP_READ_CHUNK_SIZE > cap) {
       cap *= 2;
       char *nb = realloc(buf, cap);
       if (!nb) {
@@ -273,7 +286,7 @@ static int http_read_headers(int fd, int timeout_ms, char **out_headers) {
       free(buf);
       return rdy == 0 ? -2 : -1;
     }
-    ssize_t r = recv(fd, buf + len, 1024, 0);
+    ssize_t r = recv(fd, buf + len, WS_HTTP_READ_CHUNK_SIZE, 0);
     if (r <= 0) {
       free(buf);
       return -1;
@@ -284,7 +297,7 @@ static int http_read_headers(int fd, int timeout_ms, char **out_headers) {
       *out_headers = buf;
       return (int)len;
     }
-    if (len > (1 << 20)) {
+    if (len > WS_HTTP_MAX_HEADER_BYTES) {
       free(buf);
       return -3;
     } // 1MB header cap
@@ -306,9 +319,9 @@ static const char *http_hdr_get(const char *hdrs, const char *key) {
   return NULL;
 }
 
-static int ws_compute_accept(const char *sec_key_b64, char out_b64[64]) {
+static int ws_compute_accept(const char *sec_key_b64, char out_b64[WS_ACCEPT_BUFFER_SIZE]) {
   static const char *GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  char concat[128];
+  char concat[WS_ACCEPT_INPUT_BUFFER_SIZE];
   int n = snprintf(concat, sizeof concat, "%s%s", sec_key_b64, GUID);
   if (n < 0 || (size_t)n >= sizeof concat)
     return -1;
@@ -317,15 +330,15 @@ static int ws_compute_accept(const char *sec_key_b64, char out_b64[64]) {
   sha1_update(&c, concat, (size_t)n);
   uint8_t digest[20];
   sha1_final(&c, digest);
-  int enc = base64_encode(digest, 20, out_b64, 64);
+  int enc = base64_encode(digest, sizeof digest, out_b64, WS_ACCEPT_BUFFER_SIZE);
   return enc < 0 ? -1 : 0;
 }
 
-static int mk_nonce_b64(char out[32]) {
+static int mk_nonce_b64(char out[WS_KEY_BUFFER_SIZE]) {
   uint8_t nonce[16];
   if (urandom_bytes(nonce, sizeof nonce) != 0)
     return -1;
-  return base64_encode(nonce, sizeof nonce, out, 32) < 0 ? -1 : 0;
+  return base64_encode(nonce, sizeof nonce, out, WS_KEY_BUFFER_SIZE) < 0 ? -1 : 0;
 }
 
 int ws_connect(struct ws_conn *ws, const char *host, const char *path, const char *port, int timeout_ms) {
@@ -377,7 +390,7 @@ int ws_connect(struct ws_conn *ws, const char *host, const char *path, const cha
     return -3;
   }
 
-  char req[1024];
+  char req[WS_HTTP_REQUEST_BUFFER_SIZE];
   int n = snprintf(req, sizeof req,
                    "GET %s HTTP/1.1\r\n"
                    "Host: %s:%s\r\n"
@@ -430,7 +443,7 @@ int ws_connect(struct ws_conn *ws, const char *host, const char *path, const cha
     close(fd);
     return -9;
   }
-  char expect[64];
+  char expect[WS_ACCEPT_BUFFER_SIZE];
   if (ws_compute_accept(ws->sec_key, expect) != 0) {
     free(hdrs);
     close(fd);
@@ -484,7 +497,7 @@ static int ws_send_frame(struct ws_conn *ws, enum ws_opcode op, const void *data
 
   const uint8_t *p = data;
   size_t off = 0;
-  uint8_t chunk[4096];
+  uint8_t chunk[WS_SEND_CHUNK_SIZE];
   while (off < len) {
     size_t n = len - off;
     if (n > sizeof chunk)
@@ -559,7 +572,7 @@ ssize_t ws_recv(struct ws_conn *ws, uint8_t *buf, size_t cap, int *opcode_out) {
     return 0;
   }
   if (op == WS_CLOSE) { // read close code+reason, reply if not sent
-    uint8_t tmp[128];
+    uint8_t tmp[WS_CLOSE_BUFFER_SIZE];
     size_t n = (size_t)len;
     if (n > sizeof tmp)
       n = sizeof tmp;
@@ -579,7 +592,7 @@ ssize_t ws_recv(struct ws_conn *ws, uint8_t *buf, size_t cap, int *opcode_out) {
   if ((size_t)len > cap) {
     // read & discard to keep stream in sync
     size_t left = (size_t)len;
-    uint8_t tmp[512];
+    uint8_t tmp[WS_DISCARD_CHUNK_SIZE];
     while (left) {
       size_t n = left > sizeof tmp ? sizeof tmp : left;
       if (read_all_timeout(ws->fd, tmp, n, ws->timeout_ms) != 0)
@@ -601,7 +614,7 @@ ssize_t ws_recv(struct ws_conn *ws, uint8_t *buf, size_t cap, int *opcode_out) {
 int ws_close(struct ws_conn *ws, uint16_t code, const char *reason) {
   if (!ws || ws->fd < 0 || !ws->open)
     return 0;
-  uint8_t tmp[128];
+  uint8_t tmp[WS_CLOSE_BUFFER_SIZE];
   size_t n = 0;
   if (code) {
     tmp[n++] = code >> 8;
@@ -639,7 +652,7 @@ int main(void) {
   puts("connected");
   const char *msg = "hello from c23";
   ws_send_text(&ws, msg, strlen(msg));
-  uint8_t buf[1024];
+  uint8_t buf[WS_DEMO_BUFFER_SIZE];
   int op = 0;
   ssize_t n = ws_recv(&ws, buf, sizeof buf, &op);
   if (n > 0) {

@@ -4,6 +4,12 @@
  * @ingroup logging
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_FORMAT_STRFTIME_LITERAL_MAX 64
+#define LOG_FORMAT_FORMAT_BUFFER_SIZE (1 + LOG_FORMAT_STRFTIME_LITERAL_MAX + 1)
+#define LOG_FORMAT_LEVEL_NAME_BUFFER_SIZE 32
+#define LOG_FORMAT_CONTENT_BUFFER_SIZE 512
+
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/named.h>
@@ -616,9 +622,9 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
     case LOG_FORMAT_STRFTIME_CODE: {
       /* strftime format code (like %H, %M, %S, %A, %B, etc.)
        * Let strftime handle all the parsing and validation */
-      if (spec->literal && spec->literal_len < 64) {
+      if (spec->literal && spec->literal_len < LOG_FORMAT_STRFTIME_LITERAL_MAX) {
         /* Construct format string with % prefix on stack */
-        char format_str[66]; /* 1 (%) + 64 (literal) + 1 (null) */
+        char format_str[LOG_FORMAT_FORMAT_BUFFER_SIZE]; /* 1 (%) + 64 (literal) + 1 (null) */
         format_str[0] = '%';
         memcpy(format_str + 1, spec->literal, spec->literal_len);
         format_str[spec->literal_len + 1] = '\0';
@@ -675,7 +681,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
       /* Extract level name (before comma) */
       size_t level_len = comma_pos - spec->literal;
-      char level_name[32];
+      char level_name[LOG_FORMAT_LEVEL_NAME_BUFFER_SIZE];
       if (level_len >= sizeof(level_name)) {
         /* Level name too long */
         written = 0;
@@ -694,7 +700,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
       }
 
       /* Render content recursively */
-      char content_buf[512];
+      char content_buf[LOG_FORMAT_CONTENT_BUFFER_SIZE];
       int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
                                               line, func, tid, message, use_colors, time_nanoseconds);
 

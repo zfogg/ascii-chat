@@ -4,6 +4,17 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE 32
+#define CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SSH_PASSWORD_INPUT_BUFFER_SIZE 1024
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SSH_BCRYPT_SALT_SIZE 16
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
@@ -113,8 +124,8 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
     br_aes_ct_cbcdec_init(&aes_ctx, key, key_size);
 
     // Copy IV to working buffer
-    uint8_t working_iv[16];
-    memcpy(working_iv, derived_iv, 16);
+    uint8_t working_iv[AES_IV_SIZE];
+    memcpy(working_iv, derived_iv, sizeof(working_iv));
 
     // Decrypt in-place
     memcpy(decrypted, encrypted_blob, blob_len);
@@ -164,7 +175,7 @@ static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64
 // SSH Key Parsing Implementation
 // =============================================================================
 
-asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32]) {
+asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!line || !ed25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: line=%p, ed25519_pk=%p", line, ed25519_pk);
   }
@@ -224,9 +235,9 @@ typedef struct {
   uint8_t *decrypted_blob;
   size_t decrypted_blob_len;
   size_t dec_offset;
-  char ciphername[32];
-  uint8_t bcrypt_salt[16];
-  uint8_t ed25519_pubkey[32];
+  char ciphername[CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE];
+  uint8_t bcrypt_salt[SSH_BCRYPT_SALT_SIZE];
+  uint8_t ed25519_pubkey[ED25519_PUBLIC_KEY_SIZE];
 } ssh_private_key_parse_t;
 
 static void ssh_private_key_clear_password(ssh_private_key_parse_t *state) {
@@ -269,8 +280,8 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
           memset(key_out, 0, sizeof(*key_out));
           key_out->type = KEY_TYPE_ED25519;
           key_out->use_ssh_agent = true;
-          memcpy(key_out->key.ed25519 + 32, pub_key.key, 32); // Copy public key to second half
-          memcpy(key_out->public_key, pub_key.key, 32);       // Also store in public_key field
+          memcpy(key_out->key.ed25519 + 32, pub_key.key, CRYPTO_PUBLIC_KEY_SIZE); // Copy public key to second half
+          memcpy(key_out->public_key, pub_key.key, ED25519_PUBLIC_KEY_SIZE);      // Also store in public_key field
           // Note: We don't have the private key seed, but ssh-agent will sign for us
           return true;
         } else {
@@ -440,7 +451,7 @@ static asciichat_error_t ssh_private_key_read_encryption(ssh_private_key_parse_t
   }
 
   // Parse the KDF name from the stored position
-  char kdfname[32] = {0};
+  char kdfname[CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE] = {0};
   if (state->kdfname_len > 0 && state->kdfname_len < sizeof(kdfname)) {
     memcpy(kdfname, state->key_blob + state->kdfname_pos, state->kdfname_len);
   }
@@ -516,12 +527,13 @@ static asciichat_error_t ssh_private_key_read_password(ssh_private_key_parse_t *
     }
   } else {
     // Prompt for password interactively - allocate buffer for input
-    state->password = SAFE_CALLOC(1024, 1, char *);
+    state->password = SAFE_CALLOC(SSH_PASSWORD_INPUT_BUFFER_SIZE, 1, char *);
     if (!state->password) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
     }
-    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password, 1024, UI_PROMPT_SSH_PASSPHRASE) != 0) {
+    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password,
+                                    SSH_PASSWORD_INPUT_BUFFER_SIZE, UI_PROMPT_SSH_PASSPHRASE) != 0) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
     }
@@ -676,8 +688,8 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
     ssh_private_key_cleanup(state);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey data: %s", key_path);
   }
-  uint8_t ed25519_pk[32];
-  memcpy(ed25519_pk, state->decrypted_blob + state->dec_offset, 32);
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
+  memcpy(ed25519_pk, state->decrypted_blob + state->dec_offset, ED25519_PUBLIC_KEY_SIZE);
   state->dec_offset += 32;
 
   // Read private key length
@@ -697,15 +709,15 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
     ssh_private_key_cleanup(state);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey data: %s", key_path);
   }
-  uint8_t ed25519_sk[64];
-  memcpy(ed25519_sk, state->decrypted_blob + state->dec_offset, 64);
+  uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE];
+  memcpy(ed25519_sk, state->decrypted_blob + state->dec_offset, ED25519_PRIVATE_KEY_SIZE);
   state->dec_offset += 64;
 
   // Populate key_out (ed25519_sk contains: 32-byte seed + 32-byte public key)
   memset(key_out, 0, sizeof(*key_out));
   key_out->type = KEY_TYPE_ED25519;
-  memcpy(key_out->key.ed25519, ed25519_sk, 32);           // Seed (first 32 bytes)
-  memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, 32); // Public key (next 32 bytes)
+  memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);           // Seed (first 32 bytes)
+  memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, ED25519_SEED_SIZE); // Public key (next 32 bytes)
   memcpy(key_out->public_key, ed25519_pk, sizeof(ed25519_pk));
   SAFE_STRNCPY(key_out->key_comment, "ssh-ed25519", sizeof(key_out->key_comment) - 1);
   sodium_memzero(ed25519_sk, sizeof(ed25519_sk));
@@ -835,7 +847,7 @@ static asciichat_error_t ssh_private_key_read_public(ssh_private_key_parse_t *st
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at public key: %s", key_path);
   }
 
-  memcpy(state->ed25519_pubkey, state->key_blob + state->offset, 32);
+  memcpy(state->ed25519_pubkey, state->key_blob + state->offset, ED25519_PUBLIC_KEY_SIZE);
   state->offset += pubkey_data_len; // Skip the entire public key data
 
   // Skip the rest of the public key data to get to the private key
@@ -942,8 +954,8 @@ static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *s
   }
 
   // Extract the Ed25519 private key (first 32 bytes)
-  uint8_t ed25519_privkey[32];
-  memcpy(ed25519_privkey, state->key_blob + state->offset, 32);
+  uint8_t ed25519_privkey[ED25519_SEED_SIZE];
+  memcpy(ed25519_privkey, state->key_blob + state->offset, sizeof(ed25519_privkey));
 
   // Verify the public key matches
   // The public key in the privkey section is raw Ed25519, while the one in pubkey section is SSH format
@@ -960,11 +972,12 @@ static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *s
 
   // Store the actual private key (seed + public key = 64 bytes)
   // Ed25519 private key format: [32 bytes seed][32 bytes public key]
-  memcpy(key_out->key.ed25519, ed25519_privkey, 32);            // Store the seed (first 32 bytes)
-  memcpy(key_out->key.ed25519 + 32, state->ed25519_pubkey, 32); // Store the public key (next 32 bytes)
+  memcpy(key_out->key.ed25519, ed25519_privkey, CRYPTO_PUBLIC_KEY_SIZE); // Store the seed (first 32 bytes)
+  memcpy(key_out->key.ed25519 + 32, state->ed25519_pubkey,
+         ED25519_PUBLIC_KEY_SIZE); // Store the public key (next 32 bytes)
 
   // Also store the public key in the public_key field for easy access
-  memcpy(key_out->public_key, state->ed25519_pubkey, 32);
+  memcpy(key_out->public_key, state->ed25519_pubkey, ED25519_PUBLIC_KEY_SIZE);
 
   // Set a comment
   SAFE_STRNCPY(key_out->key_comment, "ssh-ed25519", sizeof(key_out->key_comment) - 1);
@@ -1095,7 +1108,8 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
 // Key Conversion Functions
 // =============================================================================
 
-asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t x25519_pk[32]) {
+asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                           uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!ed25519_pk || !x25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ed25519_pk=%p, x25519_pk=%p", ed25519_pk, x25519_pk);
   }
@@ -1108,7 +1122,8 @@ asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_t x25519_sk[32]) {
+asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE],
+                                            uint8_t x25519_sk[X25519_KEY_SIZE]) {
   if (!ed25519_sk || !x25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ed25519_sk=%p, x25519_sk=%p", ed25519_sk, x25519_sk);
   }
@@ -1126,7 +1141,7 @@ asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_
 // =============================================================================
 
 asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[64]) {
+                                       uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!key || !message || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, message=%p, signature=%p", key, message,
                      signature);
@@ -1202,7 +1217,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     // Create a public_key_t from the stored public key
     public_key_t pub_key = {0};
     pub_key.type = KEY_TYPE_ED25519;
-    memcpy(pub_key.key, key->public_key, 32);
+    memcpy(pub_key.key, key->public_key, ED25519_PUBLIC_KEY_SIZE);
 
     // Sign using SSH agent
     asciichat_error_t result = ssh_agent_sign(&pub_key, message, message_len, signature);
@@ -1227,8 +1242,9 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64], const char *gpg_key_id) {
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message,
+                                           size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
+                                           const char *gpg_key_id) {
   if (!public_key || !message || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
                      message, signature);

@@ -3,6 +3,12 @@
  * @brief Update checker implementation with GitHub API and cache management
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE 512
+#define NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE 64
+#define NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE 256
+#define NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE 512
+
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/network/http_client.h>
 #include <ascii-chat/network/dns.h>
@@ -32,7 +38,6 @@
 #define UPDATE_CHECK_CACHE_MAX_AGE_SECONDS (7 * 24 * 60 * 60)
 
 // DNS timeout for connectivity check
-#define DNS_TIMEOUT_SECONDS 2
 
 // GitHub API endpoint
 #define GITHUB_API_HOSTNAME "api.github.com"
@@ -105,7 +110,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   }
 
   // Read line 1: timestamp
-  char line[512];
+  char line[NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE];
   if (!fgets(line, sizeof(line), f)) {
     fclose(f);
     SAFE_FREE(cache_path);
@@ -354,8 +359,8 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   }
 
   // Parse JSON response
-  char latest_tag[64] = {0};
-  char release_url[512] = {0};
+  char latest_tag[NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE] = {0};
+  char release_url[NETWORK_UPDATE_CHECKER_RELEASE_URL_BUFFER_SIZE] = {0};
 
   if (!parse_github_release_json(response, latest_tag, sizeof(latest_tag), release_url, sizeof(release_url))) {
     log_error("Failed to parse GitHub API response");
@@ -427,7 +432,7 @@ static bool is_arch_linux(void) {
     return false;
   }
 
-  char line[256];
+  char line[NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE];
   bool is_arch = false;
   while (fgets(line, sizeof(line), f)) {
     if (strstr(line, "ID=arch") || strstr(line, "ID=\"arch\"")) {
@@ -528,7 +533,7 @@ void update_check_format_notification(const update_check_result_t *result, char 
 
   // Get upgrade suggestion
   install_method_t method = update_check_detect_install_method();
-  char suggestion[512];
+  char suggestion[NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE];
   update_check_get_upgrade_suggestion(method, result->latest_version, suggestion, sizeof(suggestion));
 
   // Keep the notification useful even when it is displayed in a log line:

@@ -4,6 +4,9 @@
  * @brief ANSI escape sequence utilities and fast color code generation with SIMD-accelerated terminal output
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ANSI_16_SGR_BUFFER_SIZE 16
+
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -127,8 +130,8 @@ bool ansi_is_already_colorized(const char *message, size_t pos) {
 
 /* ===== 16-COLOR LOOKUP TABLES ===== */
 
-static char color16_fg_strings[16][16];
-static char color16_bg_strings[16][16];
+static char color16_fg_strings[16][ANSI_16_SGR_BUFFER_SIZE];
+static char color16_bg_strings[16][ANSI_16_SGR_BUFFER_SIZE];
 static lifecycle_t g_color16_lc = LIFECYCLE_INIT;
 
 /* ===== TRUECOLOR FUNCTIONS ===== */

@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_MDNS_INPUT_BUFFER_SIZE 32
+#define TUI_MDNS_HEADING_BUFFER_SIZE 128
+#define TUI_MDNS_LINE_BUFFER_SIZE 512
+#define TUI_MDNS_CLIPPED_BUFFER_SIZE 512
+
 #include <ascii-chat/ui/scrollbar.h>
 #include <ascii-chat/ui/viewport.h>
 #include <ascii-chat/ui/text.h>
@@ -121,7 +128,7 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
 typedef struct {
   int count;
   ui_selectable_list_t list;
-  char input[32];
+  char input[TUI_MDNS_INPUT_BUFFER_SIZE];
   ui_mdns_server_t servers[];
 } mdns_snapshot_t;
 
@@ -239,7 +246,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     invitation_render_logo(buffer, size.cols - 1, tick, colors, compact);
     frame_buffer_printf(buffer, "\r\n");
   }
-  char heading[128];
+  char heading[TUI_MDNS_HEADING_BUFFER_SIZE];
   if (show_title) {
     truncate_with_ellipsis("LAN servers", heading, sizeof(heading), size.cols - 1);
     frame_buffer_render_centered(buffer, heading, size.cols - 1);
@@ -255,7 +262,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
   ui_selectable_list_keep_visible(&list, snapshot->count, available);
   int first = list.first_visible;
   for (int i = first; i < snapshot->count && i < first + available; ++i) {
-    char line[512], clipped[512];
+    char line[TUI_MDNS_LINE_BUFFER_SIZE], clipped[TUI_MDNS_CLIPPED_BUFFER_SIZE];
     const char *address = ui_mdns_get_best_address(&snapshot->servers[i]);
     snprintf(line, sizeof(line), "%s [%d] %s (%s%s%s:%u)", i == list.selected ? ">" : " ", i + 1,
              snapshot->servers[i].name, strchr(address, ':') ? "[" : "", address, strchr(address, ':') ? "]" : "",

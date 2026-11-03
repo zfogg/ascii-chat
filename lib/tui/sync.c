@@ -1,3 +1,34 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SYNC_NAME_BUFFER_SIZE 256
+#define TUI_SYNC_TYPE_BUFFER_SIZE 24
+#define TUI_SYNC_FILE_BUFFER_SIZE 160
+#define TUI_SYNC_OUTPUT_BUFFER_SIZE 2048
+#define TUI_SYNC_LINE_BUFFER_SIZE 2048
+#define TUI_SYNC_LABEL_BUFFER_SIZE 288
+#define TUI_SYNC_DEADLOCK_BUFFER_SIZE 128
+#define TUI_SYNC_LINE_SHORT_BUFFER_SIZE 1024
+#define TUI_SYNC_NAME_EXTENDED_BUFFER_SIZE 288
+#define TUI_SYNC_STATE_BUFFER_SIZE 128
+#define TUI_SYNC_PADDED_STATE_BUFFER_SIZE 256
+#define TUI_SYNC_PLAIN_ACTIONS_BUFFER_SIZE 32
+#define TUI_SYNC_ACTIONS_BUFFER_SIZE 256
+#define TUI_SYNC_PADDED_ACTIONS_BUFFER_SIZE 32
+#define TUI_SYNC_CHANGES_BUFFER_SIZE 64
+#define TUI_SYNC_PADDED_WAIT_BUFFER_SIZE 48
+#define TUI_SYNC_COLORED_WAIT_BUFFER_SIZE 512
+#define TUI_SYNC_LOCKS_BUFFER_SIZE 96
+#define TUI_SYNC_UNLOCKS_BUFFER_SIZE 96
+#define TUI_SYNC_NUMBERS_BUFFER_SIZE 512
+#define TUI_SYNC_FULL_NAME_BUFFER_SIZE 288
+#define TUI_SYNC_COLORED_NAME_BUFFER_SIZE 640
+#define TUI_SYNC_OUTPUT_SHORT_BUFFER_SIZE 512
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SYNC_WAIT_SNAPSHOT_CAPACITY 256
+#define SYNC_ROW_CAPACITY 128
+#define SYNC_OUTPUT_BUFFER_SIZE (64 * 1024)
+
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/ui/layout.h>
@@ -32,7 +63,7 @@ typedef struct {
   uintptr_t key, owner, waiter;
   uint64_t generation, value, locks, unlocks, changes, actions, last_ns, wait_ns;
   double lock_rate, unlock_rate, change_rate, total_score;
-  char name[256], type[24], file[160];
+  char name[TUI_SYNC_NAME_BUFFER_SIZE], type[TUI_SYNC_TYPE_BUFFER_SIZE], file[TUI_SYNC_FILE_BUFFER_SIZE];
   int line;
   unsigned waiters;
   bool cycle, wait_known;
@@ -210,7 +241,7 @@ static void *sync_collect_main(void *unused) {
         }
         if (complete) {
           sample->sampled_ns = now;
-          mutex_wait_snapshot_t waits[256];
+          mutex_wait_snapshot_t waits[SYNC_WAIT_SNAPSHOT_CAPACITY];
           size_t wait_count = 0;
           sample->limited = false;
           sample->waits_complete = mutex_stack_try_snapshot(waits, 256, &wait_count, &sample->limited);
@@ -350,7 +381,7 @@ static const char *sync_rate_color(double rate) {
 
 // Only the presentation worker writes this storage. Diagnostic rendering must
 // remain usable even when the allocator or another subsystem mutex is stuck.
-static char g_sync_output[64 * 1024];
+static char g_sync_output[SYNC_OUTPUT_BUFFER_SIZE];
 static size_t g_sync_output_used;
 
 static void sync_flush(void) {
@@ -372,7 +403,7 @@ static void sync_write(const char *text, size_t length) {
 }
 
 static void sync_write_line(const char *text, int columns, bool newline, int *measured_width) {
-  char output[2048];
+  char output[TUI_SYNC_OUTPUT_BUFFER_SIZE];
   size_t used = 0;
   int visible = 0;
   const char *prefix = "\033[0m";
@@ -418,7 +449,7 @@ static void sync_color_numbers(const char *text, char *output, size_t capacity) 
 }
 
 static void sync_write_numbers(const char *text, int columns, int *measure) {
-  char output[2048];
+  char output[TUI_SYNC_OUTPUT_BUFFER_SIZE];
   sync_color_numbers(text, output, sizeof(output));
   sync_write_line(output, columns, true, measure);
 }
@@ -426,7 +457,7 @@ static void sync_write_numbers(const char *text, int columns, int *measure) {
 static void sync_separator(int columns, int *measure) {
   if (measure)
     return;
-  char line[2048];
+  char line[TUI_SYNC_LINE_BUFFER_SIZE];
   const char *rule = g_sync_use_utf8 ? "━" : "-";
   size_t width = strlen(rule), used = 0;
   used += snprintf(line, sizeof(line), "%s", sync_color(LOG_COLOR_DEBUG));
@@ -447,7 +478,7 @@ void ui_sync_render(terminal_size_t size) {
   g_sync_use_utf8 = terminal_should_use_utf8();
   // Copy only the visible page before terminal writes; the collector never
   // waits for output, and the renderer never waits for collection.
-  sync_row_t rows[128];
+  sync_row_t rows[SYNC_ROW_CAPACITY];
   size_t count = 0, total = 0, cycles = 0;
   size_t mutexes = 0, conditions = 0, rwlocks = 0, atomics = 0;
   uint64_t sampled = 0;
@@ -494,7 +525,7 @@ void ui_sync_render(terminal_size_t size) {
       conditions += !strcmp(type, "cond");
       rwlocks += !strcmp(type, "rwlock");
       atomics += !strncmp(type, "atomic", 6);
-      char label[288];
+      char label[TUI_SYNC_LABEL_BUFFER_SIZE];
       sync_row_label(&s->rows[i], label, sizeof(label));
       int width = (int)strlen(label);
       if (width > name_width)
@@ -511,13 +542,13 @@ void ui_sync_render(terminal_size_t size) {
   selected %= per_page;
   if ((size_t)selected >= count)
     selected = count ? (int)count - 1 : 0;
-  char deadlock[128];
+  char deadlock[TUI_SYNC_DEADLOCK_BUFFER_SIZE];
   snprintf(deadlock, sizeof(deadlock), "%s%s%s", sync_color(LOG_COLOR_ERROR),
            g_sync_use_utf8 ? "DEADLOCK ❌" : "DEADLOCK!", sync_color(LOG_COLOR_RESET));
   int measured_width = 0;
   for (int pass = 0; pass < 2; ++pass) {
     int *measure = pass == 0 ? &measured_width : NULL;
-    char line[1024];
+    char line[TUI_SYNC_LINE_SHORT_BUFFER_SIZE];
     if (!measure)
       sync_write("\033[?2026h\033[H", 11);
     snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | item %zu/%zu | age %.1fs", total,
@@ -543,7 +574,7 @@ void ui_sync_render(terminal_size_t size) {
       sync_row_t *r = &rows[i];
       // Parent names may be media paths; keep the primitive visible in the table.
       // The detail row identifies the source location and address.
-      char name[288];
+      char name[TUI_SYNC_NAME_EXTENDED_BUFFER_SIZE];
       sync_row_label(r, name, sizeof(name));
       if (strlen(name) > (size_t)name_width) {
         const char *suffix = strrchr(name, '.');
@@ -569,7 +600,7 @@ void ui_sync_render(terminal_size_t size) {
         }
         name[used] = '\0';
       }
-      char state[128];
+      char state[TUI_SYNC_STATE_BUFFER_SIZE];
       if (r->cycle)
         snprintf(state, sizeof(state), "DEADLOCK");
       else if (!strcmp(r->type, "mutex"))
@@ -587,34 +618,34 @@ void ui_sync_render(terminal_size_t size) {
       // Prefer the complete hex value over a clipped redundant decimal copy.
       if (!strncmp(r->type, "atomic", 6) && strlen(state) > 12)
         snprintf(state, sizeof(state), "0x%" PRIx64, r->value);
-      char padded_state[256];
+      char padded_state[TUI_SYNC_PADDED_STATE_BUFFER_SIZE];
       if (r->cycle) {
         int width = utf8_display_width(g_sync_use_utf8 ? "DEADLOCK ❌" : "DEADLOCK!");
         snprintf(padded_state, sizeof(padded_state), "%s%*s", deadlock, 12 - width, "");
       } else {
         snprintf(padded_state, sizeof(padded_state), "%-12.12s", state);
       }
-      char plain_actions[32], actions[256];
+      char plain_actions[TUI_SYNC_PLAIN_ACTIONS_BUFFER_SIZE], actions[TUI_SYNC_ACTIONS_BUFFER_SIZE];
       format_number_compact(r->actions, plain_actions, sizeof(plain_actions));
-      char padded_actions[32];
+      char padded_actions[TUI_SYNC_PADDED_ACTIONS_BUFFER_SIZE];
       snprintf(padded_actions, sizeof(padded_actions), "%13s", plain_actions);
       sync_color_numbers(padded_actions, actions, sizeof(actions));
-      char changes[64];
+      char changes[TUI_SYNC_CHANGES_BUFFER_SIZE];
       if (!strncmp(r->type, "atomic", 6))
         snprintf(changes, sizeof(changes), "%s%7.1f", sync_rate_color(r->change_rate), r->change_rate);
       else
         snprintf(changes, sizeof(changes), "%s%7s", sync_color(LOG_COLOR_RESET), "-");
-      char wait[32] = "-";
+      char wait[TIME_DURATION_BUFFER_SIZE] = "-";
       if (!strcmp(r->type, "cond")) {
         if (r->wait_known)
           time_pretty(r->wait_ns, -1, wait, sizeof(wait));
         else
           snprintf(wait, sizeof(wait), "busy");
       }
-      char padded_wait[48], colored_wait[512];
+      char padded_wait[TUI_SYNC_PADDED_WAIT_BUFFER_SIZE], colored_wait[TUI_SYNC_COLORED_WAIT_BUFFER_SIZE];
       snprintf(padded_wait, sizeof(padded_wait), "%12s", wait);
       sync_color_numbers(padded_wait, colored_wait, sizeof(colored_wait));
-      char locks[96], unlocks[96];
+      char locks[TUI_SYNC_LOCKS_BUFFER_SIZE], unlocks[TUI_SYNC_UNLOCKS_BUFFER_SIZE];
       snprintf(locks, sizeof(locks), "%s%6.1f%s", sync_rate_color(r->lock_rate), r->lock_rate,
                sync_color(LOG_COLOR_RESET));
       snprintf(unlocks, sizeof(unlocks), "%s%6.1f%s", sync_rate_color(r->unlock_rate), r->unlock_rate,
@@ -640,9 +671,9 @@ void ui_sync_render(terminal_size_t size) {
     if (count) {
       sync_row_t *r = &rows[selected];
       snprintf(line, sizeof(line), "%d @0x%" PRIxPTR, r->line, r->key);
-      char numbers[512];
+      char numbers[TUI_SYNC_NUMBERS_BUFFER_SIZE];
       sync_color_numbers(line, numbers, sizeof(numbers));
-      char full_name[288], colored_name[640];
+      char full_name[TUI_SYNC_FULL_NAME_BUFFER_SIZE], colored_name[TUI_SYNC_COLORED_NAME_BUFFER_SIZE];
       sync_row_label(r, full_name, sizeof(full_name));
       sync_color_numbers(full_name, colored_name, sizeof(colored_name));
       snprintf(line, sizeof(line), "%s%s%s:%s | %s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET),
@@ -673,7 +704,7 @@ void ui_sync_render(terminal_size_t size) {
     if (measure) {
       terminal_size_t minimum = {.cols = measured_width + 1, .rows = fixed_rows + 1};
       if (ui_too_small(size, minimum)) {
-        char output[512];
+        char output[TUI_SYNC_OUTPUT_SHORT_BUFFER_SIZE];
         size_t length = ui_too_small_format(output, sizeof(output), size, minimum);
         ui_controller_write(g_sync_fd, output, length);
         return;

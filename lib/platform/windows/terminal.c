@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_TERMINAL_SUMMARY_BUFFER_SIZE 256
+#define PLATFORM_WINDOWS_TERMINAL_RESPONSE_BUFFER_SIZE 256
+
 #include <ascii-chat/platform/keyboard.h>
 /**
  * @file platform/windows/terminal.c
@@ -1051,7 +1056,7 @@ const char *terminal_color_level_name(terminal_color_mode_t level) {
 }
 
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
-  static char summary[256];
+  static char summary[PLATFORM_WINDOWS_TERMINAL_SUMMARY_BUFFER_SIZE];
 
   safe_snprintf(summary, sizeof(summary), "%s (%d colors), UTF-8: %s, TERM: %s, COLORTERM: %s",
                 terminal_color_level_name(caps->color_level), caps->color_count,
@@ -1275,7 +1280,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   }
 
   // Read response with timeout (format: ESC]11;rgb:RRRR/GGGG/BBBBESC\ or BEL)
-  char response[256];
+  char response[PLATFORM_WINDOWS_TERMINAL_RESPONSE_BUFFER_SIZE];
   DWORD total_read = 0;
   DWORD start_time = GetTickCount();
   DWORD timeout_ms = 100;

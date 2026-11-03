@@ -3,6 +3,9 @@
  * @brief FFmpeg-based media decoder implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
@@ -630,7 +633,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     bool cancelled = cancel && cancel(decoder->exit_callback_user_data);
 
     if (frame_decoded) {
-      char read_time_str[32];
+      char read_time_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty(time_elapsed_ns(read_start_ns, time_get_ns()), -1, read_time_str, sizeof(read_time_str));
       log_dev_every(5 * US_PER_SEC_INT, "PREFETCH: decoded frame in %s", read_time_str);
     }
@@ -1000,7 +1003,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
   log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
-  char decoder_name[256];
+  char decoder_name[MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE];
   snprintf(decoder_name, sizeof(decoder_name), "%s", path);
   NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name, NULL);
   NAMED_REGISTER_ATOMIC(&decoder->eof_reached, "ffmpeg_eof", decoder);

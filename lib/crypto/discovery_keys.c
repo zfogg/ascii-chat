@@ -7,6 +7,15 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE 128
+#define CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE 65
+#define CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE 2048
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SSH_ED25519_WIRE_KEY_SIZE (sizeof(uint32_t) + 11 + sizeof(uint32_t) + ED25519_PUBLIC_KEY_SIZE)
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/discovery_keys.h>
@@ -79,7 +88,7 @@ static bool is_official_server(const char *acds_server) {
 // HTTPS Download and Key Loading
 // ============================================================================
 
-asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!url || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -93,12 +102,12 @@ asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to download and parse ACDS key from %s", url);
   }
 
-  memcpy(pubkey_out, key.key, 32);
+  memcpy(pubkey_out, key.key, ED25519_PUBLIC_KEY_SIZE);
   log_debug("Successfully downloaded and parsed ACDS key from %s", url);
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!file_path || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -112,7 +121,7 @@ asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to load ACDS key from file: %s", file_path);
   }
 
-  memcpy(pubkey_out, key.key, 32);
+  memcpy(pubkey_out, key.key, ED25519_PUBLIC_KEY_SIZE);
   log_debug("Successfully loaded ACDS key from file: %s", file_path);
   return ASCIICHAT_OK;
 }
@@ -139,7 +148,7 @@ asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *p
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -159,7 +168,7 @@ asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pu
   return discovery_keys_load_file(cache_path, pubkey_out);
 }
 
-asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[32]) {
+asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -197,9 +206,10 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   }
 
   // OpenSSH encodes a length-prefixed algorithm name followed by the key string.
-  uint8_t wire_key[51] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
-  memcpy(wire_key + 19, pubkey, 32);
-  char base64_key[128];
+  uint8_t wire_key[SSH_ED25519_WIRE_KEY_SIZE] = {0,   0,   0,   11,  's', 's', 'h', '-', 'e', 'd',
+                                                 '2', '5', '5', '1', '9', 0,   0,   0,   32};
+  memcpy(wire_key + 19, pubkey, ED25519_PUBLIC_KEY_SIZE);
+  char base64_key[CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE];
   sodium_bin2base64(base64_key, sizeof(base64_key), wire_key, sizeof(wire_key), sodium_base64_VARIANT_ORIGINAL);
 
   fprintf(f, "ssh-ed25519 %s acds-cached-key\n", base64_key);
@@ -234,18 +244,19 @@ asciichat_error_t discovery_keys_clear_cache(const char *acds_server) {
 // User Verification for Key Changes
 // ============================================================================
 
-asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
-                                               const uint8_t new_pubkey[32]) {
+asciichat_error_t discovery_keys_verify_change(const char *acds_server,
+                                               const uint8_t old_pubkey[ED25519_PUBLIC_KEY_SIZE],
+                                               const uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !old_pubkey || !new_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
-  char old_fingerprint[65], new_fingerprint[65];
+  char old_fingerprint[HEX_STRING_SIZE_32], new_fingerprint[CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE];
   compute_key_fingerprint(old_pubkey, old_fingerprint);
   compute_key_fingerprint(new_pubkey, new_fingerprint);
 
   // Ask user to confirm
-  char question[2048];
+  char question[CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE];
   safe_snprintf(question, sizeof(question),
                 "ACDS SERVER KEY HAS CHANGED\nServer: %s\n\nOld SHA256: %s\nNew SHA256: %s\n\n"
                 "This may indicate key rotation or a man-in-the-middle attack.\n"
@@ -264,12 +275,13 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
 // Main Verification Function
 // ============================================================================
 
-asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
+                                        uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
-  uint8_t new_pubkey[32];
+  uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t result;
   bool is_official = is_official_server(acds_server);
 
@@ -292,7 +304,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
       return SET_ERRNO(ERROR_NETWORK, "Failed to download key from official ACDS server");
     }
 
-    memcpy(new_pubkey, key.key, 32);
+    memcpy(new_pubkey, key.key, ED25519_PUBLIC_KEY_SIZE);
 
   } else if (!key_spec) {
     // No key_spec and not official server = error
@@ -309,19 +321,19 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to load/download ACDS key from: %s", key_spec);
     }
 
-    memcpy(new_pubkey, key.key, 32);
+    memcpy(new_pubkey, key.key, ED25519_PUBLIC_KEY_SIZE);
   }
 
   // ===========================================================================
   // Step 2: Check cache and handle key changes
   // ===========================================================================
 
-  uint8_t cached_pubkey[32];
+  uint8_t cached_pubkey[ED25519_PUBLIC_KEY_SIZE];
   result = discovery_keys_load_cached(acds_server, cached_pubkey);
 
   if (result == ASCIICHAT_OK) {
     // Cached key exists - compare
-    if (memcmp(cached_pubkey, new_pubkey, 32) != 0) {
+    if (memcmp(cached_pubkey, new_pubkey, ED25519_PUBLIC_KEY_SIZE) != 0) {
       // Key changed - require user verification
       result = discovery_keys_verify_change(acds_server, cached_pubkey, new_pubkey);
       if (result != ASCIICHAT_OK) {
@@ -350,7 +362,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
   // Step 3: Return verified key
   // ===========================================================================
 
-  memcpy(pubkey_out, new_pubkey, 32);
+  memcpy(pubkey_out, new_pubkey, ED25519_PUBLIC_KEY_SIZE);
   log_debug("ACDS key verification successful for: %s", acds_server);
   return ASCIICHAT_OK;
 }

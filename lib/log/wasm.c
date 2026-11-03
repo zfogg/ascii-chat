@@ -4,6 +4,10 @@
  * @ingroup logging
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE 4096
+#define LOG_WASM_MSG_BUFFER_SIZE 4096
+
 #include <emscripten.h>
 #include <string.h>
 #include <ascii-chat/log/log.h>
@@ -54,7 +58,7 @@ EM_JS(void, js_console_log, (int level, const char *message), {
 void platform_log_hook(log_level_t level, const char *message) {
   if (message) {
     // Strip ANSI codes for clean browser console output
-    static char clean_message[4096];
+    static char clean_message[LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE];
     strip_ansi_codes(message, clean_message, sizeof(clean_message));
     js_console_log((int)level, clean_message);
   }
@@ -121,7 +125,7 @@ void wasm_log_to_console(int fd, const uint8_t *buf, size_t count) {
     if (level >= 0) {
       // Create null-terminated string for console output
       // Copy buffer to local array and null-terminate
-      static char msg_buffer[4096];
+      static char msg_buffer[LOG_WASM_MSG_BUFFER_SIZE];
       size_t copy_len = (count < sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
       memcpy(msg_buffer, buf, copy_len);
       msg_buffer[copy_len] = '\0';

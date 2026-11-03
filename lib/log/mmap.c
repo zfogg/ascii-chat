@@ -7,6 +7,9 @@
  * On crash, the log file is immediately readable with cat/tail.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_MMAP_DIAGNOSTIC_BUFFER_SIZE 64
+
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/mmap.h>
@@ -81,7 +84,7 @@ static void crash_signal_handler(int sig) {
   /* Write crash marker directly to mmap'd log */
   if (g_mmap_log.initialized && g_mmap_log.text_region) {
     const char *crash_msg = "\n=== CRASH DETECTED (signal %d) ===\n";
-    char msg_buf[64];
+    char msg_buf[LOG_MMAP_DIAGNOSTIC_BUFFER_SIZE];
     int len = safe_snprintf(msg_buf, sizeof(msg_buf), crash_msg, sig);
     if (len > 0) {
       uint64_t pos = atomic_fetch_add_u64(&g_mmap_log.write_pos, (uint64_t)len);
@@ -121,7 +124,7 @@ static LONG WINAPI windows_crash_handler(EXCEPTION_POINTERS *exception_info) {
   if (g_mmap_log.initialized && g_mmap_log.text_region) {
     DWORD exception_code = exception_info ? exception_info->ExceptionRecord->ExceptionCode : 0;
     const char *crash_msg = "\n=== CRASH DETECTED (exception 0x%08lX) ===\n";
-    char msg_buf[64];
+    char msg_buf[LOG_MMAP_DIAGNOSTIC_BUFFER_SIZE];
     int len = safe_snprintf(msg_buf, sizeof(msg_buf), crash_msg, (unsigned long)exception_code);
     if (len > 0) {
       uint64_t pos = atomic_fetch_add_u64(&g_mmap_log.write_pos, (uint64_t)len);

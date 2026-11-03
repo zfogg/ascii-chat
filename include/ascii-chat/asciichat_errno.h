@@ -5,6 +5,13 @@
  * SET_ERRNO pushes, CLEAR_ERRNO pops. Recovery scopes resolve one attempt's
  * errors. See docs/topics/errno.dox for ownership and capacity contracts.
  */
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ASCIICHAT_ERROR_COUNTER_CAPACITY 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ASCIICHAT_BACKTRACE_FRAME_CAPACITY 32
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -12,7 +19,7 @@
 #include "log/log.h"
 
 typedef struct {
-  void *ptrs[32];
+  void *ptrs[ASCIICHAT_BACKTRACE_FRAME_CAPACITY];
   char **symbols;
   int count;
   bool tried_symbolize;
@@ -86,7 +93,7 @@ typedef struct {
 } asciichat_errno_snapshot_t;
 
 typedef struct {
-  uint64_t error_counts[256];
+  uint64_t error_counts[ASCIICHAT_ERROR_COUNTER_CAPACITY];
   uint64_t total_errors;
   uint64_t last_error_time;
   asciichat_error_t last_error_code;

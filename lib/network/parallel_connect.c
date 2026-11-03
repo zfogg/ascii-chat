@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE 16
+
 #include <ascii-chat/util/url.h>
 /**
  * @file network/parallel_connect.c
@@ -194,7 +198,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  char port_str[16];
+  char port_str[NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE];
   safe_snprintf(port_str, sizeof(port_str), "%d", config->port);
 
   int gai_result;

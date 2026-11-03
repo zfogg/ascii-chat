@@ -109,6 +109,17 @@
  * @see network.h For packet structure definitions
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SERVER_PROTOCOL_REASON_BUFFER_SIZE 257
+#define SERVER_PROTOCOL_PRETTY_BUFFER_SIZE 64
+#define SERVER_PROTOCOL_SIZE_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SERVER_H265_RGBA_WIDTH 512
+#define SERVER_H265_RGBA_HEIGHT 512
+#define SERVER_H265_RGBA_BUFFER_SIZE (SERVER_H265_RGBA_WIDTH * SERVER_H265_RGBA_HEIGHT * 4)
+
+#include <ascii-chat/audio/limits.h>
 #include <math.h>
 #include <stdarg.h>
 #include <ascii-chat/atomic.h>
@@ -397,7 +408,7 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
       return;
     }
 
-    char reason[257] = {0};
+    char reason[SERVER_PROTOCOL_REASON_BUFFER_SIZE] = {0};
     memcpy(reason, data, len);
     reason[len] = '\0';
 
@@ -727,7 +738,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     mutex_lock(&client->client_state_mutex);
     client->frames_received_logged++;
     if (client->frames_received_logged % 25000 == 0) {
-      char pretty[64];
+      char pretty[SERVER_PROTOCOL_PRETTY_BUFFER_SIZE];
       format_bytes_pretty(len, pretty, sizeof(pretty));
       log_debug("Client %s has sent %u IMAGE_FRAME packets (%s)", client->client_id, client->frames_received_logged,
                 pretty);
@@ -767,7 +778,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
   // Only support legacy format: [width:4][height:4][rgb_data:w*h*3]
   if (rgb_size > SIZE_MAX - FRAME_HEADER_SIZE_LEGACY) {
-    char size_str[32];
+    char size_str[SERVER_PROTOCOL_SIZE_BUFFER_SIZE];
     format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
     disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %s", size_str);
     return;
@@ -961,8 +972,8 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
 
   // Allocate temporary RGBA buffer for decoding
   // H.265 frames from client are sent as [flags:u8][width:u16][height:u16][h265_data...]
-  // Max frame is (256x256 = 65536 pixels) * 4 bytes/pixel = 262KB
-  uint8_t *rgba_buf = SAFE_MALLOC(512 * 512 * 4, uint8_t *);
+  // Existing scratch budget for a 512-by-512 RGBA image.
+  uint8_t *rgba_buf = SAFE_MALLOC(SERVER_H265_RGBA_BUFFER_SIZE, uint8_t *);
   if (!rgba_buf) {
     log_error("Failed to allocate RGBA buffer for H.265 decoding");
     disconnect_client_for_bad_data(client, "Out of memory for H.265 frame decoding");
@@ -971,7 +982,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
 
   uint16_t frame_width = 0;
   uint16_t frame_height = 0;
-  size_t rgba_size = 512 * 512 * 4;
+  size_t rgba_size = SERVER_H265_RGBA_BUFFER_SIZE;
 
   // Decode H.265 packet to RGBA
   asciichat_error_t decode_result = h265_server_decode_and_convert(client_decoder, (const uint8_t *)data, len, rgba_buf,
@@ -1310,7 +1321,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Use static buffer for common case to avoid malloc in hot path
   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
-#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
+#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * OPUS_FRAME_SAMPLES)
   // Each client receive thread decodes independently. Sharing this scratch
   // buffer lets concurrent clients overwrite one another's PCM before it is
   // written to their source rings.
@@ -1491,13 +1502,13 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
 
   // Calculate expected samples per frame
   int samples_per_frame = (int)((sample_rate * frame_duration) / 1000);
-  if (samples_per_frame <= 0 || samples_per_frame > 5760) { // Max 120ms @ 48kHz
+  if (samples_per_frame <= 0 || samples_per_frame > AUDIO_OPUS_MAX_DECODE_SAMPLES) { // Max 120ms @ 48kHz
     disconnect_client_for_bad_data(client, "AUDIO_OPUS invalid samples_per_frame: %d", samples_per_frame);
     return;
   }
 
   // Decode Opus frame
-  float decoded_samples[5760]; // Max Opus frame size (120ms @ 48kHz)
+  float decoded_samples[AUDIO_OPUS_MAX_DECODE_SAMPLES]; // Max Opus frame size (120ms @ 48kHz)
   int decoded_count =
       opus_codec_decode((opus_codec_t *)client->opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
 
