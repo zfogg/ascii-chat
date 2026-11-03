@@ -93,6 +93,12 @@ The pump bounds work per call and retains a generated datagram when the socket
 would block. A connection error identifies the affected handle so its owner can
 remove it while retaining the other connections.
 
+After pumping, an owner can calculate the earliest QUIC timer and pending socket
+write interest, then wait for UDP readiness outside the lane. A wake operation
+sends a one-byte non-QUIC datagram to the bound local socket so another thread
+can interrupt that wait after publishing work. The owner must keep the endpoint
+alive until all wait and wake calls return, and pump after wakeup to drain it.
+
 This driver is not a public listener: it lacks address-validation Retry,
 production admission controls, wildcard-address destination selection,
 version negotiation, a blocking wakeup mechanism, application authentication,

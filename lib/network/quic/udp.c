@@ -231,6 +231,51 @@ asciichat_error_t acip_quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t acip_quic_udp_wait_parameters(const acip_quic_udp_endpoint_t *endpoint, uint64_t now_ns,
+                                                uint64_t maximum_wait_ns, uint64_t *wait_ns, bool *want_write) {
+  if (!endpoint || !wait_ns || !want_write || now_ns == UINT64_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP wait parameters");
+  *wait_ns = maximum_wait_ns;
+  *want_write = false;
+  for (const udp_peer_t *peer = endpoint->peers; peer; peer = peer->next) {
+    uint64_t expiry = acip_quic_connection_expiry(peer->connection);
+    if (expiry <= now_ns)
+      *wait_ns = 0;
+    else if (expiry != UINT64_MAX && expiry - now_ns < *wait_ns)
+      *wait_ns = expiry - now_ns;
+    if (peer->pending_length)
+      *want_write = true;
+  }
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t acip_quic_udp_wait(acip_quic_udp_endpoint_t *endpoint, uint64_t wait_ns, bool want_write,
+                                     bool *ready) {
+  if (!endpoint || !ready)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP wait");
+  *ready = false;
+  struct pollfd fd = {.fd = endpoint->socket, .events = (short)(POLLIN | (want_write ? POLLOUT : 0))};
+  int64_t timeout = wait_ns > INT64_MAX ? INT64_MAX : (int64_t)wait_ns;
+  int result = socket_poll(&fd, 1, timeout);
+  if (result < 0)
+    return SET_ERRNO(ERROR_NETWORK, "QUIC UDP poll failed");
+  if (result > 0 && (fd.revents & (POLLERR | POLLNVAL)))
+    return SET_ERRNO(ERROR_NETWORK, "QUIC UDP socket poll reported an error");
+  *ready = result > 0;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t acip_quic_udp_wake(acip_quic_udp_endpoint_t *endpoint) {
+  if (!endpoint)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP wake");
+  const uint8_t wake = 0;
+  ssize_t sent = socket_sendto(endpoint->socket, &wake, sizeof(wake), 0, (struct sockaddr *)&endpoint->local,
+                               endpoint->local_length);
+  if (sent != (ssize_t)sizeof(wake))
+    return SET_ERRNO(ERROR_NETWORK, "Cannot wake QUIC UDP endpoint");
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t acip_quic_udp_remove(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection) {
   if (!endpoint || !connection)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP removal");

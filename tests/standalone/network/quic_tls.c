@@ -724,6 +724,14 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   uint64_t start = time_get_ns();
   CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
                               &client_connection) == ASCIICHAT_OK);
+  uint64_t wait_ns = 0;
+  bool want_write = true;
+  uint64_t expiry = acip_quic_connection_expiry(client_connection);
+  CHECK(acip_quic_udp_wait_parameters(client, start, 5 * NS_PER_SEC_INT, &wait_ns, &want_write) == ASCIICHAT_OK);
+  uint64_t expected_wait = expiry <= start ? 0 : expiry - start;
+  if (expected_wait > 5 * NS_PER_SEC_INT)
+    expected_wait = 5 * NS_PER_SEC_INT;
+  CHECK(wait_ns == expected_wait && !want_write);
   bool handshake_started = false, submitted = false, rejected = false, client_rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
@@ -1028,6 +1036,47 @@ static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *
   socket_cleanup();
 }
 
+typedef struct {
+  acip_quic_udp_endpoint_t *endpoint;
+  atomic_t started;
+  asciichat_error_t result;
+  bool ready;
+} quic_udp_wait_test_t;
+
+static void *quic_udp_wait_thread(void *arg) {
+  quic_udp_wait_test_t *state = arg;
+  atomic_store_u64(&state->started, 1);
+  state->result = acip_quic_udp_wait(state->endpoint, 2 * NS_PER_SEC_INT, false, &state->ready);
+  return NULL;
+}
+
+static void quic_udp_wakeup_test(void) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  acip_quic_udp_endpoint_t *endpoint = NULL;
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &endpoint) ==
+        ASCIICHAT_OK);
+  uint64_t wait_ns = 0;
+  bool want_write = true, ready = true;
+  CHECK(acip_quic_udp_wait_parameters(endpoint, time_get_ns(), 10 * NS_PER_MS_INT, &wait_ns, &want_write) ==
+        ASCIICHAT_OK);
+  CHECK(wait_ns == 10 * NS_PER_MS_INT && !want_write);
+  CHECK(acip_quic_udp_wait(endpoint, wait_ns, want_write, &ready) == ASCIICHAT_OK && !ready);
+  quic_udp_wait_test_t state = {.endpoint = endpoint};
+  asciichat_thread_t thread;
+  CHECK(acthread_create(&thread, "quic_udp_wait", quic_udp_wait_thread, &state) == 0);
+  while (!atomic_load_u64(&state.started))
+    time_sleep_ns(NS_PER_MS_INT);
+  CHECK(acip_quic_udp_wake(endpoint) == ASCIICHAT_OK);
+  CHECK(thread_join(&thread, NULL) == 0);
+  CHECK(state.result == ASCIICHAT_OK && state.ready);
+  acip_quic_connection_t *failed = NULL;
+  CHECK(acip_quic_udp_pump(endpoint, time_get_ns(), &failed) == ASCIICHAT_OK && !failed);
+  CHECK(acip_quic_udp_wait(endpoint, 0, false, &ready) == ASCIICHAT_OK && !ready);
+  acip_quic_udp_endpoint_destroy(&endpoint);
+  socket_cleanup();
+}
+
 int main(int argc, char **argv) {
   CHECK(argc == 5);
   log_init(NULL, LOG_ERROR, false, false);
@@ -1076,6 +1125,7 @@ int main(int argc, char **argv) {
         quic_failure == ERROR_CRYPTO);
   quic_udp_exchange(server, client);
   quic_udp_bad_identity(server, client);
+  quic_udp_wakeup_test();
   quic_udp_secure_exchange(server, client, false);
   quic_udp_secure_exchange(server, client, true);
 
