@@ -16,6 +16,7 @@
 #include <ascii-chat/buffer.h>
 #include <network/quic/connection.h>
 #include <network/quic/security.h>
+#include <network/quic/rekey.h>
 #include <network/quic/tls.h>
 #include <network/quic/udp.h>
 #include <network/quic/worker.h>
@@ -323,6 +324,137 @@ static void quic_secure_framing(void) {
   buffer_release(wire[0]);
   buffer_release(audio);
   buffer_release(control);
+  crypto_destroy(&server_crypto);
+  crypto_destroy(&client_crypto);
+}
+
+typedef struct {
+  acip_quic_security_t security;
+  acip_quic_rekey_t rekey;
+  uint8_t *wire[32];
+  size_t length[32];
+  acip_traffic_class_t flow[32];
+  unsigned count, read;
+  bool fail_send;
+} rekey_peer_t;
+
+static asciichat_error_t rekey_enqueue(void *context, acip_traffic_class_t flow, const void *packet, size_t length) {
+  rekey_peer_t *peer = context;
+  if (peer->fail_send || peer->count == 32)
+    return SET_ERRNO(ERROR_NETWORK, "Test rekey queue is unavailable");
+  unsigned i = peer->count;
+  asciichat_error_t result = acip_quic_security_seal(&peer->security, flow, ACIP_DELIVERY_RELIABLE, packet, length,
+                                                     &peer->wire[i], &peer->length[i]);
+  if (result == ASCIICHAT_OK) {
+    peer->flow[i] = flow;
+    ++peer->count;
+  }
+  return result;
+}
+
+static void rekey_deliver(rekey_peer_t *from, rekey_peer_t *to, uint64_t now) {
+  CHECK(from->read < from->count);
+  unsigned i = from->read++;
+  uint8_t *plain = NULL;
+  size_t length = 0;
+  CHECK(acip_quic_security_open(&to->security, from->flow[i], ACIP_DELIVERY_RELIABLE, from->wire[i], from->length[i],
+                                &plain, &length) == ASCIICHAT_OK);
+  bool consumed = false;
+  CHECK(acip_quic_rekey_receive(&to->rekey, from->flow[i], ACIP_DELIVERY_RELIABLE, plain, length, now, &consumed) ==
+            ASCIICHAT_OK &&
+        consumed);
+  buffer_release(plain);
+}
+
+static void quic_rekey_coordinator(void) {
+  crypto_context_t client_crypto, server_crypto;
+  CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&server_crypto, client_crypto.public_key) == CRYPTO_OK);
+  client_crypto.handshake_complete = server_crypto.handshake_complete = true;
+  rekey_peer_t client = {0}, server = {0};
+  CHECK(acip_quic_security_init(&client.security, &client_crypto, false) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_init(&server.security, &server_crypto, true) == ASCIICHAT_OK);
+  uint64_t now = NS_PER_SEC_INT;
+  CHECK(acip_quic_rekey_init(&client.rekey, &client.security, rekey_enqueue, &client, now) == ASCIICHAT_OK);
+  CHECK(acip_quic_rekey_init(&server.rekey, &server.security, rekey_enqueue, &server, now) == ASCIICHAT_OK);
+  CHECK(acip_quic_rekey_request(&client.rekey, now) == ASCIICHAT_OK && !client.count);
+  now += REKEY_MIN_INTERVAL;
+  client_crypto.rekey_last_time = server_crypto.rekey_last_time = 0;
+  CHECK(acip_quic_rekey_tick(&client.rekey, now) == ASCIICHAT_OK && client.count == 1);
+  rekey_deliver(&client, &server, now); // client asks; server owns the DH exchange
+  CHECK(server.rekey.waiting_response);
+  rekey_deliver(&server, &client, now);
+  CHECK(client.security.pending_prepared && client.rekey.expecting_complete);
+  rekey_deliver(&client, &server, now);
+  CHECK(server.security.key_epoch == 1 && server.security.previous_valid);
+  // New audio can arrive before the reliable COMPLETE and commit the prepared key.
+  size_t packet_length = 0, wire_length = 0, plain_length = 0;
+  uint8_t *packet = make_packet(PACKET_TYPE_AUDIO_BATCH, 16, &packet_length), *wire = NULL, *plain = NULL;
+  CHECK(acip_quic_security_seal(&server.security, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, packet, packet_length,
+                                &wire, &wire_length) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_open(&client.security, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire, wire_length, &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  bool consumed = true;
+  CHECK(acip_quic_rekey_receive(&client.rekey, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, plain, plain_length, now,
+                                &consumed) == ASCIICHAT_OK &&
+        !consumed);
+  CHECK(client.security.key_epoch == 1 && client.rekey.markers_sent && client.rekey.expecting_complete);
+  buffer_release(packet);
+  buffer_release(wire);
+  buffer_release(plain);
+  // Hold the server's last retirement marker while the client retires all server flows.
+  while (client.read < client.count)
+    rekey_deliver(&client, &server, now);
+  CHECK(!server.security.previous_valid && client.security.previous_valid);
+  while (server.read + 2 < server.count)
+    rekey_deliver(&server, &client, now);
+  CHECK(client.security.previous_valid && server.rekey.peer_ack == 0);
+  CHECK(acip_quic_rekey_request(&server.rekey, now) == ASCIICHAT_OK && server.rekey.exchange_ns);
+  while (server.read < server.count)
+    rekey_deliver(&server, &client, now);
+  while (client.read < client.count)
+    rekey_deliver(&client, &server, now);
+  CHECK(!client.security.previous_valid && !server.security.previous_valid);
+  CHECK(!client.rekey.exchange_ns && !server.rekey.exchange_ns);
+  CHECK(client.rekey.peer_ack == 1 && server.rekey.peer_ack == 1);
+  // A second exchange must wait for the request rate limit, even after retirement.
+  CHECK(acip_quic_rekey_request(&server.rekey, now + REKEY_MIN_INTERVAL) == ASCIICHAT_OK);
+  CHECK(!server.rekey.waiting_response);
+  now += REKEY_MIN_REQUEST_INTERVAL;
+  client_crypto.rekey_last_time = server_crypto.rekey_last_time = 0;
+  CHECK(acip_quic_rekey_tick(&server.rekey, now) == ASCIICHAT_OK && server.rekey.waiting_response);
+  for (unsigned round = 0; round < 5; ++round) {
+    while (server.read < server.count)
+      rekey_deliver(&server, &client, now);
+    while (client.read < client.count)
+      rekey_deliver(&client, &server, now);
+  }
+  CHECK(client.security.key_epoch == 2 && server.security.key_epoch == 2);
+  CHECK(!client.rekey.exchange_ns && !server.rekey.exchange_ns);
+  CHECK(acip_quic_rekey_tick(&client.rekey, now - 1) == ERROR_INVALID_STATE);
+  now += REKEY_MIN_REQUEST_INTERVAL;
+  server_crypto.rekey_last_time = 0;
+  CHECK(acip_quic_rekey_request(&server.rekey, now) == ASCIICHAT_OK && server.rekey.waiting_response);
+  CHECK(acip_quic_rekey_tick(&server.rekey, now + 31ULL * NS_PER_SEC_INT) == ERROR_NETWORK_TIMEOUT);
+  acip_quic_rekey_cleanup(&server.rekey);
+  CHECK(!server_crypto.rekey_in_progress && !server_crypto.has_temp_key);
+  acip_quic_rekey_cleanup(&client.rekey);
+  // Enqueue failure is visible to the caller; cleanup aborts the unfinished DH.
+  server.fail_send = true;
+  now += 32ULL * NS_PER_SEC_INT;
+  CHECK(acip_quic_rekey_init(&server.rekey, &server.security, rekey_enqueue, &server, now) == ASCIICHAT_OK);
+  server_crypto.rekey_last_time = 0;
+  CHECK(acip_quic_rekey_request(&server.rekey, now + REKEY_MIN_INTERVAL) == ERROR_NETWORK);
+  CHECK(server_crypto.rekey_in_progress);
+  acip_quic_rekey_cleanup(&server.rekey);
+  CHECK(!server_crypto.rekey_in_progress && !server_crypto.has_temp_key);
+  for (unsigned i = 0; i < server.count; ++i)
+    buffer_release(server.wire[i]);
+  for (unsigned i = 0; i < client.count; ++i)
+    buffer_release(client.wire[i]);
+  acip_quic_security_cleanup(&server.security);
+  acip_quic_security_cleanup(&client.security);
   crypto_destroy(&server_crypto);
   crypto_destroy(&client_crypto);
 }
@@ -2066,6 +2198,7 @@ int main(int argc, char **argv) {
   errno_suppress(true);
   quic_secure_framing();
   quic_secure_epochs();
+  quic_rekey_coordinator();
   EVP_PKEY *key = make_key(), *other_key = make_key();
   X509 *cert = make_certificate(key), *other_cert = make_certificate(other_key);
   write_certificate(argv[1], cert);

@@ -10,7 +10,7 @@
  * One previous receive epoch survives until each reliable flow crosses its marker. */
 typedef struct {
   crypto_context_t *crypto;
-  uint64_t key_epoch;
+  uint64_t key_epoch, last_receive_epoch;
   crypto_context_t previous_crypto;
   uint64_t previous_epoch;
   bool previous_valid, pending_prepared, previous_allowed[3];

@@ -335,6 +335,9 @@ typedef enum {
   PACKET_TYPE_QUIC_READY = 1110,
   /** @brief Internal authenticated request for a QUIC encoded-video keyframe */
   PACKET_TYPE_QUIC_KEYFRAME_REQUEST = 1111,
+  PACKET_TYPE_QUIC_EPOCH_MARKER = 1112,
+  PACKET_TYPE_QUIC_REKEY_NEEDED = 1113,
+  PACKET_TYPE_QUIC_EPOCH_ACK = 1114,
 
   // ============================================================================
   // Cryptographic Rekeying (Types 1200-1299)

@@ -22,14 +22,17 @@ static bool ready(const acip_quic_security_t *state) {
          state->crypto->rekey_count == state->key_epoch;
 }
 
-static asciichat_error_t validate_packet(const void *packet, size_t length, acip_traffic_class_t traffic_class) {
+static asciichat_error_t validate_packet(const void *packet, size_t length, acip_traffic_class_t traffic_class,
+                                         acip_delivery_t delivery) {
   if (!packet || length < sizeof(packet_header_t) || length - sizeof(packet_header_t) > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACIP packet size");
   packet_header_t header;
   memcpy(&header, packet, sizeof(header));
   uint16_t type = NET_TO_HOST_U16(header.type);
   if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != length - sizeof(header) ||
-      type == PACKET_TYPE_ENCRYPTED || acip_packet_traffic_class(type) != traffic_class ||
+      type == PACKET_TYPE_ENCRYPTED ||
+      (type == PACKET_TYPE_QUIC_EPOCH_MARKER ? delivery != ACIP_DELIVERY_RELIABLE
+                                             : acip_packet_traffic_class(type) != traffic_class) ||
       NET_TO_HOST_U32(header.crc32) !=
           asciichat_crc32((const uint8_t *)packet + sizeof(header), length - sizeof(header)))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ACIP packet or traffic class");
@@ -54,7 +57,7 @@ asciichat_error_t acip_quic_security_seal(acip_quic_security_t *state, acip_traf
   *out_length = 0;
   if (!ready(state) || !valid_flow(traffic_class, delivery))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC ACIP encryption is not ready for this flow");
-  asciichat_error_t result = validate_packet(packet, length, traffic_class);
+  asciichat_error_t result = validate_packet(packet, length, traffic_class, delivery);
   if (result != ASCIICHAT_OK)
     return result;
   if (length > CRYPTO_MAX_PLAINTEXT_SIZE - QUIC_SECURE_PREFIX_SIZE ||
@@ -182,7 +185,7 @@ asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, 
     return SET_ERRNO(ERROR_CRYPTO, "Replayed or stale QUIC ACIP packet");
   }
   size_t inner_length = plain_length - QUIC_SECURE_PREFIX_SIZE;
-  asciichat_error_t result = validate_packet(plain + QUIC_SECURE_PREFIX_SIZE, inner_length, traffic_class);
+  asciichat_error_t result = validate_packet(plain + QUIC_SECURE_PREFIX_SIZE, inner_length, traffic_class, delivery);
   if (result != ASCIICHAT_OK) {
     buffer_release(plain);
     return result;
@@ -207,6 +210,7 @@ asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, 
     high = sequence;
   }
   state->receive_high[traffic_class][delivery] = high;
+  state->last_receive_epoch = epoch;
   memmove(plain, plain + QUIC_SECURE_PREFIX_SIZE, inner_length);
   *out = plain;
   *out_length = inner_length;
