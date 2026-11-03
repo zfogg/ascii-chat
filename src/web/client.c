@@ -983,13 +983,18 @@ int client_opus_encoder_init(int sample_rate, int channels, int bitrate) {
   }
 
   int error;
-  g_opus_encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &error);
+  g_opus_encoder = opus_encoder_create(sample_rate, channels,
+                                       channels == 2 ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP, &error);
   if (error != OPUS_OK || !g_opus_encoder) {
     return -1;
   }
 
   // Set bitrate
-  opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate));
+  if (opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate)) != OPUS_OK) {
+    opus_encoder_destroy(g_opus_encoder);
+    g_opus_encoder = NULL;
+    return -1;
+  }
 
   return 0;
 }

@@ -1,7 +1,12 @@
 import { chromium } from "@playwright/test";
 
 const [base = "http://127.0.0.1:3000"] = process.argv.slice(2);
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+    ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+    : {}),
+});
 try {
   const page = await browser.newPage();
   await page.goto(new URL("/tests/wasm/stereo-audio.html", base).href);
