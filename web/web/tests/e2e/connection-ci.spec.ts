@@ -57,7 +57,10 @@ test("browser transport exchanges packets, reconnects after restart, and honors 
       page.evaluate((value) => {
         // A framed payload for the adapter; this does not simulate a handshake.
         const packet = new Uint8Array(23);
-        new DataView(packet.buffer).setUint32(10, 1);
+        const header = new DataView(packet.buffer);
+        header.setBigUint64(0, 0xa5c11c4a1n);
+        header.setUint32(10, 1);
+        header.setUint32(14, value === 17 ? 0xb8b2cf7f : 0xb1048354);
         packet[22] = value;
         window.__connectionCi.bridge.send(packet);
       }, value);

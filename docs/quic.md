@@ -5,6 +5,11 @@ The native server has an opt-in listener and native clients can select it with
 an explicit `quic://` address. The WebTransport session protocol is not yet
 available.
 
+The browser includes an incremental ACIP stream decoder and an ACQS preamble
+decoder. These validate framing and preserve the stream's traffic class for a
+future WebTransport session. They do not establish HTTP/3, enforce the encrypted
+packet's flow after decryption, or provide a browser QUIC connection on their own.
+
 For example, start a listener with `--quic-bind-address 127.0.0.1`,
 `--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with
 `ascii-chat client quic://localhost:PORT --quic-ca-file CA.pem`. The client
