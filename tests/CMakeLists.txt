@@ -54,6 +54,13 @@ if(BUILD_TESTS)
     asciichat_add_python_test(standalone-upnp
         ${CMAKE_SOURCE_DIR}/tests/standalone/upnp/run.py --cc ${CMAKE_C_COMPILER})
     set_tests_properties(standalone-upnp PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+    if(NOT EMSCRIPTEN)
+        asciichat_add_python_test(quic-tls-configure
+            ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run.py
+            --cmake ${CMAKE_COMMAND} --cc ${CMAKE_C_COMPILER}
+            --module ${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
+        set_tests_properties(quic-tls-configure PROPERTIES LABELS "unit;standalone" TIMEOUT 180)
+    endif()
     if(UNIX)
         asciichat_add_python_test(standalone-log-io
             ${CMAKE_SOURCE_DIR}/tests/standalone/log_io/run.py --cc ${CMAKE_C_COMPILER})

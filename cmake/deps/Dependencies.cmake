@@ -72,6 +72,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
+if(NOT EMSCRIPTEN)
+    include(${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
+endif()
 
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/deps/BearSSL.cmake)
