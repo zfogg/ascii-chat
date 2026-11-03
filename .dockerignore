@@ -23,6 +23,7 @@ todo/
 # Git (exclude everything git-related, submodules must be pre-cloned)
 .gitignore
 .git
+**/.git
 .gitmodules
 
 # Documentation

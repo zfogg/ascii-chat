@@ -22,7 +22,8 @@ COPY . /build/
 
 # Restore submodules
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
-    mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
+    mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve && \
+    find /build/deps -type f -name .git -delete
 
 # Refresh the dependency image's configure cache against the current toolchain.
 # Downloaded dependency sources remain cached outside the build tree.
