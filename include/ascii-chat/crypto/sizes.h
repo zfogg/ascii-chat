@@ -169,5 +169,5 @@
 #define GPG_KEY_ID_SIZE 8
 #define GPG_KEY_ID_HEX_BUFFER_SIZE (GPG_KEY_ID_SIZE * 2 + 1)
 /** Existing text storage budgets, including NUL. */
-#define CRYPTO_KEY_COMMENT_BUFFER_SIZE 256
-#define GPG_KEYGRIP_BUFFER_SIZE 64
+#define MAX_COMMENT_LEN 256
+#define MAX_GPG_KEYGRIP_LEN 64

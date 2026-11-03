@@ -123,7 +123,7 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed255
 
   // Use gpg_get_public_key() to extract Ed25519 public key from GPG keyring
   // Note: gpg_key_id should be the key ID (e.g., "7FE90A79F2E80ED3")
-  char keygrip[GPG_KEYGRIP_BUFFER_SIZE];
+  char keygrip[MAX_GPG_KEYGRIP_LEN];
   if (gpg_get_public_key(gpg_key_id, ed25519_pk, keygrip) != 0) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to extract Ed25519 public key from GPG for key ID: %s", gpg_key_id);
   }

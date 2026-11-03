@@ -255,7 +255,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     // Get public key and keygrip from GPG keyring
     uint8_t public_key[ED25519_PUBLIC_KEY_SIZE];
-    char keygrip[GPG_KEYGRIP_BUFFER_SIZE];
+    char keygrip[MAX_GPG_KEYGRIP_LEN];
     if (gpg_get_public_key(key_id, public_key, keygrip) != 0) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to get public key from GPG for key ID: %s", key_id);
     }

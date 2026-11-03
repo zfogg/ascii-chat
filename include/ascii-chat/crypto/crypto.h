@@ -283,9 +283,6 @@ typedef enum {
 // String and Display Constants
 // =============================================================================
 
-#define MAX_COMMENT_LEN 256    // Maximum key comment length
-#define MAX_GPG_KEYGRIP_LEN 64 // Maximum GPG keygrip length
-
 /**
  * @name Core Initialization and Setup
  * @{
