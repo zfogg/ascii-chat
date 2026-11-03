@@ -22,8 +22,11 @@ typedef struct {
   cond_t received;
   received_packet_t *head, *tail;
   size_t bytes;
+  asciichat_error_t failure;
   bool connected;
 } quic_transport_t;
+
+static const acip_transport_methods_t quic_methods;
 
 static void lane_lock(quic_transport_t *quic) {
   if (quic->lane)
@@ -95,7 +98,7 @@ static asciichat_error_t quic_sendv_ex(acip_transport_t *transport, const socket
   lane_lock(quic);
   asciichat_error_t result = quic->connected
                                  ? acip_quic_connection_submit(quic->connection, options->traffic_class, packet, length)
-                                 : SET_ERRNO(ERROR_NETWORK, "QUIC transport is closed");
+                                 : SET_ERRNO(quic->failure, "QUIC transport is closed");
   lane_unlock(quic);
   buffer_release(packet);
   return result;
@@ -137,8 +140,9 @@ static asciichat_error_t quic_recv(acip_transport_t *transport, void **buffer, s
     }
   }
   if (!quic->connected) {
+    asciichat_error_t failure = quic->failure;
     lane_unlock(quic);
-    return SET_ERRNO(ERROR_NETWORK, "QUIC transport is closed");
+    return SET_ERRNO(failure, "QUIC transport is closed");
   }
   received_packet_t *item = quic->head;
   if (!item) {
@@ -156,14 +160,12 @@ static asciichat_error_t quic_recv(acip_transport_t *transport, void **buffer, s
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t quic_close(acip_transport_t *transport) {
-  quic_transport_t *quic = transport->impl_data;
-  lane_lock(quic);
+static asciichat_error_t quic_close_locked(quic_transport_t *quic, asciichat_error_t reason) {
   if (!quic->connected) {
-    lane_unlock(quic);
     return ASCIICHAT_OK;
   }
   quic->connected = false;
+  quic->failure = reason;
   if (quic->lane)
     cond_broadcast(&quic->received);
   asciichat_error_t result = acip_quic_connection_clear_receiver(quic->connection, quic);
@@ -175,6 +177,23 @@ static asciichat_error_t quic_close(acip_transport_t *transport) {
   }
   quic->tail = NULL;
   quic->bytes = 0;
+  return result;
+}
+
+static asciichat_error_t quic_close(acip_transport_t *transport) {
+  quic_transport_t *quic = transport->impl_data;
+  lane_lock(quic);
+  asciichat_error_t result = quic_close_locked(quic, ERROR_NETWORK);
+  lane_unlock(quic);
+  return result;
+}
+
+asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason) {
+  if (!transport || transport->methods != &quic_methods || reason == ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport failure");
+  quic_transport_t *quic = transport->impl_data;
+  lane_lock(quic);
+  asciichat_error_t result = quic_close_locked(quic, reason);
   lane_unlock(quic);
   return result;
 }

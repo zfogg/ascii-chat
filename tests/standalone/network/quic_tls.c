@@ -878,7 +878,15 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     CHECK(acthread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
     while (!atomic_load_u64(&receiver.started))
       time_sleep_ns(NS_PER_MS_INT);
-    acip_transport_interrupt(server_transport);
+    CHECK(acip_quic_transport_fail(server_transport, ERROR_CRYPTO) == ASCIICHAT_OK);
+    CHECK(thread_join(&thread, NULL) == 0);
+    CHECK(receiver.result == ERROR_CRYPTO && !receiver.allocation);
+    receiver = (quic_concurrent_receiver_t){.transport = client_transport};
+    client_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    CHECK(acthread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
+    while (!atomic_load_u64(&receiver.started))
+      time_sleep_ns(NS_PER_MS_INT);
+    acip_transport_interrupt(client_transport);
     CHECK(thread_join(&thread, NULL) == 0);
     CHECK(receiver.result == ERROR_NETWORK && !receiver.allocation);
   }

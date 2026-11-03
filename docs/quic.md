@@ -110,8 +110,10 @@ pumping; the owner must hold that mutex for every direct connection and pump
 operation. The serialized adapter supports a timed receive and interrupt wakes
 waiting receivers; the single-lane adapter remains nonblocking. Stop and join
 all transport users before destroying it, and destroy it before its borrowed
-connection and mutex. This does not yet provide the endpoint worker and
-lifecycle integration required by concurrent client/server paths.
+connection and mutex. An endpoint owner can propagate a connection failure to
+the adapter, waking receivers and preserving the error; it remains responsible
+for removing that connection. This does not yet provide the endpoint worker
+and lifecycle integration required by concurrent client/server paths.
 
 ## ACIP encryption audit
 

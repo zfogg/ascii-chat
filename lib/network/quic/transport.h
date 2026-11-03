@@ -18,3 +18,7 @@ asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection,
  * Stop and join all transport users before destroying the transport. */
 asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                                         mutex_t *lane, acip_transport_t **out);
+/* Report an endpoint-reported connection failure after releasing the lane
+ * mutex. Pending receives wake and return the supplied error; the endpoint
+ * owner must remove the borrowed connection after transport users stop. */
+asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason);
