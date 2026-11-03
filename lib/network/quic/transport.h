@@ -23,10 +23,19 @@ asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *
  * released. */
 asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                                      mutex_t *lane, acip_transport_t **out);
+asciichat_error_t acip_quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
+                                                                void (*wake)(void *), void *context,
+                                                                acip_transport_t **out);
 /* Report an endpoint-reported connection failure after releasing the lane
  * mutex. Pending receives wake and return the supplied error. Once this
  * returns, the endpoint owner may remove the detached connection on the lane. */
 asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason);
+/* The endpoint owner already holds the adapter's lane. */
+asciichat_error_t acip_quic_transport_fail_on_lane(acip_transport_t *transport, asciichat_error_t reason);
+/* Only for an unclaimed adapter that has never been exposed to a caller. */
+asciichat_error_t acip_quic_transport_destroy_unclaimed_on_lane(acip_transport_t **transport, asciichat_error_t reason);
+asciichat_error_t acip_quic_transport_set_waker_on_lane(acip_transport_t *transport, void (*wake)(void *),
+                                                        void *context);
 /* Configure while the transport is live. Called under the lane lock after a
  * packet is admitted; the callback must not block or reenter transport APIs.
  * Clear it and stop producers before destroying its context. */

@@ -13,6 +13,10 @@ typedef bool (*acip_quic_worker_failure_fn)(acip_quic_connection_t *, asciichat_
 
 asciichat_error_t acip_quic_worker_start(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
                                          acip_quic_worker_failure_fn failure, void *context, acip_quic_worker_t **out);
+/* Variant: failure callback runs on the held endpoint lane and must not lock it. */
+asciichat_error_t acip_quic_worker_start_locked_failure(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
+                                                        acip_quic_worker_failure_fn failure, void *context,
+                                                        acip_quic_worker_t **out);
 /* Thread-safe while the worker and endpoint remain alive. */
 void acip_quic_worker_wake(void *worker);
 /* Stops and joins the worker, then frees it. Returns its terminal error. */

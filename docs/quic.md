@@ -1,7 +1,8 @@
 # ACIP over QUIC
 
 This document records the stream framing being implemented for issue #247.
-The public QUIC transport and WebTransport session protocol are not yet available.
+The native endpoint API is available for integration; the application does not
+yet select it, and the WebTransport session protocol is not yet available.
 
 ## Reliable streams
 
@@ -133,6 +134,18 @@ the failed connection before reporting it handled. Owners must stop producers,
 clear their wakers, join the worker, and then destroy its borrowed resources.
 The worker and adapter are not yet integrated into the production lifecycle or
 connection selection.
+
+The native endpoint API wraps the UDP driver and worker and owns the returned
+transports until they are explicitly released. It accepts resolved IPv4 or IPv6
+addresses and requires a concrete local bind address. Accept is nonblocking and
+may return a transport before TLS completes; the caller waits for negotiated
+capabilities, runs the ACIP handshake, activates its security context, and
+waits for authenticated readiness before enabling media. Stop joins the worker,
+interrupts claimed transports, and discards unclaimed accepts; callers release
+claimed transports before destroying the endpoint. Endpoint lifecycle calls
+must be serialized, and callers stop transport users before release. Public
+hostname resolution, wildcard destination selection, graceful close, production
+admission policy, and integration into client/server selection remain open.
 
 ## ACIP encryption audit
 
