@@ -9,8 +9,12 @@ The browser includes an incremental ACIP stream and ACQS preamble decoder,
 ACQD datagram fragmentation and bounded reassembly, and a WASM interface to
 the native authenticated per-flow QUIC security codec. The security interface
 requires a completed ACIP handshake and returns the authenticated sequence for
-datagram recovery. These pieces do not establish HTTP/3 or a WebTransport
-session, and are not yet connected to the browser session lifecycle.
+datagram recovery. A browser bridge maps an established WebTransport session
+to the three ACIP streams and media datagrams, with separate send queues and a
+bounded receive path. Its caller must perform the ACIP handshake, authenticate
+packets against their flow, and enforce readiness. The bridge is not yet wired
+into the browser session lifecycle, and the server does not yet establish
+HTTP/3 WebTransport sessions.
 
 For example, start a listener with `--quic-bind-address 127.0.0.1`,
 `--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with

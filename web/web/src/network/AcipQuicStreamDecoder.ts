@@ -13,6 +13,7 @@ export class AcipQuicStreamDecoder {
   feed(
     input: Uint8Array,
     emit: (flow: AcipFlow, packet: Uint8Array) => void,
+    onFlow?: (flow: AcipFlow) => void,
   ): void {
     if (this.failed) throw new Error("ACIP QUIC stream decoder has failed");
     let offset = 0;
@@ -40,6 +41,12 @@ export class AcipQuicStreamDecoder {
         throw new Error("Invalid ACIP QUIC stream preamble");
       }
       this.flow = p[5] as AcipFlow;
+      try {
+        onFlow?.(this.flow);
+      } catch (error) {
+        this.failed = true;
+        throw error;
+      }
     }
     const flow = this.flow;
     try {
