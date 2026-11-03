@@ -331,6 +331,8 @@ typedef enum {
   PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 1108,
   /** @brief Client -> Server: "I want to proceed without encryption" (UNENCRYPTED) */
   PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 1109,
+  /** @brief Internal authenticated readiness barrier for ACIP over QUIC */
+  PACKET_TYPE_QUIC_READY = 1110,
 
   // ============================================================================
   // Cryptographic Rekeying (Types 1200-1299)

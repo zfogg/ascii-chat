@@ -52,13 +52,16 @@ asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *conn
                                                     void *context);
 /** Detach the current receiver on the connection lane before freeing its context. */
 asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context);
-/** Permit media only after the application has completed and acknowledged the
- * ACIP handshake. The owner must separately coordinate later control barriers. */
+/** Permit outbound media after the authenticated readiness exchange. The
+ * owner must separately coordinate later application control barriers. */
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection);
-/** Enable authenticated ACIP framing after an acknowledged handshake barrier.
+/** Enable authenticated ACIP framing after the local ACIP handshake. This
+ * queues a readiness marker and handles the peer's marker and acknowledgement.
  * The crypto context is borrowed until connection destruction. The endpoint
  * must serialize every operation on it, including rekeying, with this engine. */
 asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto);
+/** True after the peer's authenticated READY and acknowledgement are received. */
+bool acip_quic_connection_security_ready(const acip_quic_connection_t *connection);
 /** Copy one complete ACIP wire packet to its reliable stream. Admission is
  * bounded; ERROR_BUFFER_FULL leaves the queue unchanged. The connection owns
  * submitted bytes until ngtcp2 acknowledges them or the connection is freed. */

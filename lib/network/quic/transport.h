@@ -31,3 +31,8 @@ asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciicha
  * packet is admitted; the callback must not block or reenter transport APIs.
  * Clear it and stop producers before destroying its context. */
 asciichat_error_t acip_quic_transport_set_waker(acip_transport_t *transport, void (*wake)(void *), void *context);
+/* After the local ACIP handshake, begin the authenticated readiness exchange.
+ * The borrowed crypto context must outlive the connection. */
+asciichat_error_t acip_quic_transport_begin_security(acip_transport_t *transport, crypto_context_t *crypto);
+bool acip_quic_transport_security_ready(acip_transport_t *transport);
+asciichat_error_t acip_quic_transport_allow_media(acip_transport_t *transport);

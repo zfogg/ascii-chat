@@ -329,6 +329,33 @@ static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *n
   return false;
 }
 
+static void drive_barrier_step(acip_quic_connection_t *client, acip_quic_connection_t *server,
+                               const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t now,
+                               bool *drop_client_control) {
+  acip_quic_connection_t *senders[] = {client, server};
+  acip_quic_connection_t *receivers[] = {server, client};
+  const ngtcp2_path *paths[] = {server_path, client_path};
+  for (size_t i = 0; i < 2; ++i) {
+    uint8_t packet[1452];
+    size_t length = 0;
+    ngtcp2_path_storage path;
+    CHECK(acip_quic_connection_write(senders[i], &path, packet, sizeof(packet), &length, now) == ASCIICHAT_OK);
+    if (length) {
+      acip_traffic_class_t traffic_class;
+      bool drop = i == 0 && drop_client_control && *drop_client_control &&
+                  acip_quic_connection_pending_packet_class(senders[i], &traffic_class) &&
+                  traffic_class == ACIP_TRAFFIC_CONTROL;
+      CHECK(acip_quic_connection_packet_sent(senders[i], now) == ASCIICHAT_OK);
+      if (drop)
+        *drop_client_control = false;
+      else
+        CHECK(acip_quic_connection_receive(receivers[i], paths[i], packet, length, now) == ASCIICHAT_OK);
+    }
+    if (acip_quic_connection_expiry(senders[i]) <= now)
+      CHECK(acip_quic_connection_handle_expiry(senders[i], now) == ASCIICHAT_OK);
+  }
+}
+
 static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connection_t *server,
                                 const ngtcp2_path *client_path, const ngtcp2_path *server_path, uint64_t *clock_ns,
                                 bool drop_control, crypto_context_t *client_crypto, crypto_context_t *server_crypto) {
@@ -350,7 +377,22 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
   CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_AUDIO, packets[1], lengths[1]) == ERROR_INVALID_STATE);
   CHECK(acip_quic_connection_allow_media(client) == ERROR_INVALID_STATE);
   CHECK(acip_quic_connection_enable_security(client, client_crypto) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_allow_media(client) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_CONTROL, packets[0], lengths[0]) == ERROR_INVALID_STATE);
+  bool drop_barrier_packet = drop_control;
+  for (unsigned step = 0; step < 100; ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, &drop_barrier_packet);
   CHECK(acip_quic_connection_enable_security(server, server_crypto) == ASCIICHAT_OK);
+  for (unsigned step = 0;
+       step < 10000 && (!acip_quic_connection_security_ready(client) || !acip_quic_connection_security_ready(server));
+       ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, &drop_barrier_packet);
+  CHECK(acip_quic_connection_security_ready(client) && acip_quic_connection_security_ready(server));
+  CHECK(!drop_barrier_packet);
+  size_t reserved_length = 0;
+  uint8_t *reserved = make_packet(PACKET_TYPE_QUIC_READY, 5, &reserved_length);
+  CHECK(acip_quic_connection_submit(client, ACIP_TRAFFIC_CONTROL, reserved, reserved_length) == ERROR_INVALID_PARAM);
+  buffer_release(reserved);
   CHECK(acip_quic_connection_allow_media(client) == ASCIICHAT_OK);
   CHECK(acip_quic_connection_allow_media(server) == ASCIICHAT_OK);
   acip_quic_connection_t *peers[] = {client, server};
@@ -695,13 +737,38 @@ static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t
   CHECK(received_length == packet_length && memcmp(received, packet, packet_length) == 0);
   buffer_release(allocation);
   buffer_release(packet);
+  crypto_context_t client_crypto, server_crypto;
+  CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&server_crypto, client_crypto.public_key) == CRYPTO_OK);
+  client_crypto.handshake_complete = server_crypto.handshake_complete = true;
+  CHECK(acip_quic_transport_set_waker(server_transport, acip_quic_worker_wake, server_worker) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_begin_security(client_transport, &client_crypto) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_begin_security(server_transport, &server_crypto) == ASCIICHAT_OK);
+  start = time_get_ns();
+  while ((!acip_quic_transport_security_ready(client_transport) ||
+          !acip_quic_transport_security_ready(server_transport)) &&
+         time_get_ns() - start < 5 * NS_PER_SEC_INT)
+    time_sleep_ns(NS_PER_MS_INT);
+  CHECK(acip_quic_transport_security_ready(client_transport) && acip_quic_transport_security_ready(server_transport));
+  CHECK(acip_quic_transport_allow_media(client_transport) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_allow_media(server_transport) == ASCIICHAT_OK);
+  packet = make_packet(PACKET_TYPE_AUDIO_BATCH, 64, &packet_length);
+  CHECK(acip_transport_send(client_transport, packet, packet_length) == ASCIICHAT_OK);
+  CHECK(acip_transport_recv(server_transport, &received, &received_length, &allocation) == ASCIICHAT_OK);
+  CHECK(received_length == packet_length && memcmp(received, packet, packet_length) == 0);
+  buffer_release(allocation);
+  buffer_release(packet);
   CHECK(acip_quic_transport_set_waker(client_transport, NULL, NULL) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_set_waker(server_transport, NULL, NULL) == ASCIICHAT_OK);
   CHECK(acip_quic_worker_stop(&client_worker) == ASCIICHAT_OK);
   CHECK(acip_quic_worker_stop(&server_worker) == ASCIICHAT_OK);
   acip_transport_destroy(client_transport);
   acip_transport_destroy(server_transport);
   acip_quic_udp_endpoint_destroy(&client);
   acip_quic_udp_endpoint_destroy(&server);
+  crypto_destroy(&client_crypto);
+  crypto_destroy(&server_crypto);
   mutex_destroy(&client_lane);
   mutex_destroy(&server_lane);
   socket_cleanup();
@@ -853,7 +920,8 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   if (expected_wait > 5 * NS_PER_SEC_INT)
     expected_wait = 5 * NS_PER_SEC_INT;
   CHECK(wait_ns == expected_wait && !want_write);
-  bool handshake_started = false, submitted = false, rejected = false, client_rejected = false;
+  bool handshake_started = false, security_started = false, submitted = false, rejected = false,
+       client_rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
     acip_quic_connection_t *failed = NULL;
@@ -888,7 +956,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       CHECK(crypto_handshake_server_start(&server_handshake, server_transport) == ASCIICHAT_OK);
       handshake_started = true;
     }
-    if (handshake_started && !submitted) {
+    if (handshake_started && !security_started) {
       asciichat_error_t client_result = quic_handshake_dispatch(client_transport, &client_handshake, false);
       asciichat_error_t server_result =
           rejected ? ASCIICHAT_OK : quic_handshake_dispatch(server_transport, &server_handshake, true);
@@ -902,11 +970,14 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
         break;
       }
     }
-    if (handshake_started && !submitted && crypto_handshake_is_ready(&client_handshake) &&
-        crypto_handshake_is_ready(&server_handshake) && !acip_quic_connection_pending_bytes(client_connection) &&
-        !acip_quic_connection_pending_bytes(server_state.peer)) {
+    if (handshake_started && !security_started && crypto_handshake_is_ready(&client_handshake) &&
+        crypto_handshake_is_ready(&server_handshake)) {
       CHECK(acip_quic_connection_enable_security(client_connection, &client_handshake.crypto_ctx) == ASCIICHAT_OK);
       CHECK(acip_quic_connection_enable_security(server_state.peer, &server_handshake.crypto_ctx) == ASCIICHAT_OK);
+      security_started = true;
+    }
+    if (security_started && !submitted && acip_quic_connection_security_ready(client_connection) &&
+        acip_quic_connection_security_ready(server_state.peer)) {
       CHECK(acip_quic_connection_allow_media(client_connection) == ASCIICHAT_OK);
       CHECK(acip_quic_connection_allow_media(server_state.peer) == ASCIICHAT_OK);
       acip_transport_t *peers[] = {client_transport, server_transport};

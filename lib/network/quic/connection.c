@@ -3,6 +3,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/backpressure.h>
+#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <ngtcp2/ngtcp2_crypto_ossl.h>
 #include <sodium.h>
@@ -58,9 +59,71 @@ struct acip_quic_connection {
   bool packet_has_stream_data;
   acip_traffic_class_t packet_traffic_class;
   bool media_allowed;
+  bool peer_ready_seen;
+  bool peer_security_ready;
+  uint8_t *early_security_packet;
+  size_t early_security_length;
 };
 
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection);
+static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                           const void *packet, size_t length);
+static const uint8_t quic_ready_payload[] = {'A', 'C', 'Q', 'R', 1};
+static const uint8_t quic_ack_payload[] = {'A', 'C', 'Q', 'A', 1};
+
+static asciichat_error_t queue_security_barrier(acip_quic_connection_t *connection, const uint8_t *payload,
+                                                size_t payload_length) {
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16(PACKET_TYPE_QUIC_READY),
+                            .length = HOST_TO_NET_U32((uint32_t)payload_length),
+                            .crc32 = HOST_TO_NET_U32(asciichat_crc32(payload, payload_length))};
+  uint8_t marker[sizeof(header) + sizeof(quic_ready_payload)];
+  if (payload_length != sizeof(quic_ready_payload))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC readiness marker");
+  memcpy(marker, &header, sizeof(header));
+  memcpy(marker + sizeof(header), payload, payload_length);
+  uint8_t *wire = NULL;
+  size_t wire_length = 0;
+  asciichat_error_t result = acip_quic_security_seal(
+      &connection->security, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, marker, sizeof(marker), &wire, &wire_length);
+  if (result == ASCIICHAT_OK)
+    result = queue_wire_packet(connection, ACIP_TRAFFIC_CONTROL, wire, wire_length);
+  buffer_release(wire);
+  return result;
+}
+
+static asciichat_error_t open_security_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+                                              const void *packet, size_t size) {
+  uint8_t *plaintext = NULL;
+  size_t plaintext_length = 0;
+  asciichat_error_t result = acip_quic_security_open(&connection->security, traffic_class, ACIP_DELIVERY_RELIABLE,
+                                                     packet, size, &plaintext, &plaintext_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  packet_header_t header;
+  memcpy(&header, plaintext, sizeof(header));
+  packet_type_t type = NET_TO_HOST_U16(header.type);
+  if (type == PACKET_TYPE_QUIC_READY) {
+    const uint8_t *payload = plaintext + sizeof(header);
+    if (traffic_class != ACIP_TRAFFIC_CONTROL || plaintext_length != sizeof(header) + sizeof(quic_ready_payload)) {
+      result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC readiness barrier");
+    } else if (!connection->peer_ready_seen && memcmp(payload, quic_ready_payload, sizeof(quic_ready_payload)) == 0) {
+      connection->peer_ready_seen = true;
+      result = queue_security_barrier(connection, quic_ack_payload, sizeof(quic_ack_payload));
+    } else if (connection->peer_ready_seen && !connection->peer_security_ready &&
+               memcmp(payload, quic_ack_payload, sizeof(quic_ack_payload)) == 0) {
+      connection->peer_security_ready = true;
+    } else {
+      result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC readiness barrier");
+    }
+  } else if (!connection->peer_ready_seen) {
+    result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Missing authenticated QUIC readiness barrier");
+  } else {
+    result = connection->emit(traffic_class, plaintext, plaintext_length, connection->emit_context);
+  }
+  buffer_release(plaintext);
+  return result;
+}
 
 static bool initial_handshake_packet(packet_type_t type) {
   return type == PACKET_TYPE_ERROR_MESSAGE || type == PACKET_TYPE_PROTOCOL_VERSION ||
@@ -156,24 +219,28 @@ static asciichat_error_t emit_received_packet(acip_traffic_class_t traffic_class
   asciichat_error_t result = register_receive_class(context);
   if (result != ASCIICHAT_OK)
     return result;
-  if (!context->connection->emit || (traffic_class != ACIP_TRAFFIC_CONTROL && !context->connection->media_allowed))
+  if (!context->connection->emit || (traffic_class != ACIP_TRAFFIC_CONTROL &&
+                                     (!context->connection->security.crypto || !context->connection->peer_ready_seen)))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC packet received before application readiness");
   if (!context->connection->security.crypto) {
     packet_header_t header;
     memcpy(&header, packet, sizeof(header));
     packet_type_t type = NET_TO_HOST_U16(header.type);
+    if (traffic_class == ACIP_TRAFFIC_CONTROL && type == PACKET_TYPE_ENCRYPTED) {
+      if (context->connection->early_security_packet || size > 256)
+        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid early QUIC security barrier");
+      context->connection->early_security_packet = buffer_alloc(NULL, size);
+      if (!context->connection->early_security_packet)
+        return SET_ERRNO(ERROR_MEMORY, "Cannot buffer early QUIC security barrier");
+      memcpy(context->connection->early_security_packet, packet, size);
+      context->connection->early_security_length = size;
+      return ASCIICHAT_OK;
+    }
     if (!initial_handshake_packet(type))
       return SET_ERRNO(ERROR_CRYPTO, "Non-handshake ACIP packet received before authentication");
     return context->connection->emit(traffic_class, packet, size, context->connection->emit_context);
   }
-  uint8_t *plaintext = NULL;
-  size_t plaintext_length = 0;
-  result = acip_quic_security_open(&context->connection->security, traffic_class, ACIP_DELIVERY_RELIABLE, packet, size,
-                                   &plaintext, &plaintext_length);
-  if (result == ASCIICHAT_OK)
-    result = context->connection->emit(traffic_class, plaintext, plaintext_length, context->connection->emit_context);
-  buffer_release(plaintext);
-  return result;
+  return open_security_packet(context->connection, traffic_class, packet, size);
 }
 
 static int receive_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id, uint64_t offset,
@@ -497,16 +564,33 @@ asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *co
 }
 
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection) {
-  if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->security.crypto)
+  if (!connection || !connection->conn || connection->failed || !connection->tls_ready ||
+      !connection->security.crypto || !connection->peer_security_ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC and authenticated ACIP encryption are not ready for media");
   connection->media_allowed = true;
   return ASCIICHAT_OK;
 }
 
 asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto) {
-  if (!connection || !connection->conn || connection->failed || !connection->tls_ready || connection->pending_bytes)
+  if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->emit)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC is not ready for the ACIP security transition");
-  return acip_quic_security_init(&connection->security, crypto, connection->tls->server);
+  asciichat_error_t result = acip_quic_security_init(&connection->security, crypto, connection->tls->server);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = queue_security_barrier(connection, quic_ready_payload, sizeof(quic_ready_payload));
+  if (result == ASCIICHAT_OK && connection->early_security_packet)
+    result = open_security_packet(connection, ACIP_TRAFFIC_CONTROL, connection->early_security_packet,
+                                  connection->early_security_length);
+  buffer_release(connection->early_security_packet);
+  connection->early_security_packet = NULL;
+  connection->early_security_length = 0;
+  if (result != ASCIICHAT_OK)
+    connection->failed = true;
+  return result;
+}
+
+bool acip_quic_connection_security_ready(const acip_quic_connection_t *connection) {
+  return connection && connection->security.crypto && connection->peer_security_ready && !connection->failed;
 }
 
 static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
@@ -576,6 +660,14 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
   }
   if (!connection || !connection->security.crypto)
     return queue_wire_packet(connection, traffic_class, packet, length);
+  if (!connection->peer_security_ready)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC peer has not acknowledged ACIP security readiness");
+  if (packet && length >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, packet, sizeof(header));
+    if (NET_TO_HOST_U16(header.type) == PACKET_TYPE_QUIC_READY)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC readiness marker is reserved");
+  }
   if (!connection->conn || connection->failed || !connection->tls_ready ||
       (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT ||
       (traffic_class != ACIP_TRAFFIC_CONTROL && !connection->media_allowed))
@@ -756,6 +848,7 @@ void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
     return;
   ngtcp2_conn_del((*connection)->conn);
   (*connection)->conn = NULL;
+  buffer_release((*connection)->early_security_packet);
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
     send_chunk_t *chunk = (*connection)->sends[i].head;
     while (chunk) {

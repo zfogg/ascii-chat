@@ -163,14 +163,24 @@ before receive state changes, and the codec rejects use during rekey or after
 the borrowed crypto context changes key epoch. Its owner must serialize all
 access to that context, retain exactly one security state for the epoch, and
 establish an acknowledged barrier before replacing the state. The private
-connection engine can enable it after TLS and a caller-confirmed ACIP handshake
-barrier; it accepts only initial handshake and error control packets before that
-point, rejects no-encryption and premature rekey messages, and requires this
-security layer before permitting media. Once enabled it seals
-and opens reliable packets before dispatch. A UDP loopback fixture exercises
-the existing password-authenticated ACIP handshake through the private adapter,
-waits for both peers and their queued handshake data, and then exchanges
-encrypted media. The security transition is coordinated by the fixture rather
-than negotiated by the application. The codec is not connected to a public
-transport. It does not implement datagram fragmentation, rekey transitions,
-or replay protection for existing connections.
+connection engine can enable it after TLS and a caller-confirmed ACIP handshake.
+It accepts only initial handshake and error control packets before that point,
+and rejects no-encryption and premature rekey messages. Each side then sends an
+authenticated, versioned READY marker on the ordered control stream and replies
+to the peer's marker with an authenticated ACK. A side may send application
+traffic only after receiving the peer's ACK. This lets it know the peer has
+processed its READY before media can arrive on an independent stream. A single
+early encrypted control packet can be buffered while the local application
+finishes its handshake; it must authenticate as READY once security is enabled.
+After processing the peer's READY and sending ACK, the receiver can queue
+authenticated media even if its own ACK is still in flight; this avoids
+rejecting media reordered ahead of that ACK. The application still explicitly
+enables outbound media after its own readiness exchange completes.
+Later application state changes still require their own control barriers.
+
+A UDP loopback fixture exercises the existing password-authenticated ACIP
+handshake through the private adapter and then exchanges encrypted media after
+the readiness exchange. The fixture still triggers the local security
+transition; production orchestration is not connected to a public transport.
+The codec does not implement datagram fragmentation, rekey transitions, or
+replay protection for existing connections.
