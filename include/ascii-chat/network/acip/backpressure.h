@@ -1,5 +1,6 @@
 #pragma once
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/acip/traffic.h>
 #include <ascii-chat/platform/socket.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -7,26 +8,6 @@
 
 typedef struct acip_transport acip_transport_t;
 typedef struct acip_outbound acip_outbound_t;
-
-typedef enum {
-  ACIP_TRAFFIC_CONTROL,
-  ACIP_TRAFFIC_AUDIO,
-  ACIP_TRAFFIC_VISUAL,
-} acip_traffic_class_t;
-
-typedef enum {
-  ACIP_DELIVERY_RELIABLE,
-  ACIP_DELIVERY_DATAGRAM,
-} acip_delivery_t;
-
-typedef struct {
-  acip_traffic_class_t traffic_class;
-  acip_delivery_t delivery;
-  uint64_t deadline_ns;
-} acip_send_options_t;
-
-/** Classify a plaintext ACIP packet type before any transport encryption. */
-acip_traffic_class_t acip_packet_traffic_class(uint16_t type);
 
 /** All limits include ACIP/encryption overhead. Backend bytes exclude OS buffers. */
 #define ACIP_OUTBOUND_BUDGET (8U * 1024U * 1024U)

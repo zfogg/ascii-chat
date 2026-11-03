@@ -76,6 +76,7 @@
 
 #pragma once
 #include <ascii-chat/network/acip/backpressure.h>
+#include <ascii-chat/network/acip/traffic.h>
 
 #include <ascii-chat/stats/runtime.h>
 #include "../../common.h"

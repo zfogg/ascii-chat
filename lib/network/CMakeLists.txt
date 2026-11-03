@@ -47,6 +47,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_client_io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/send.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/acip/traffic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/prepare.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/security_options.c

@@ -45,22 +45,6 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-acip_traffic_class_t acip_packet_traffic_class(uint16_t type) {
-  switch (type) {
-  case PACKET_TYPE_AUDIO_MESSAGE:
-  case PACKET_TYPE_AUDIO_BATCH:
-  case PACKET_TYPE_AUDIO_OPUS_BATCH:
-    return ACIP_TRAFFIC_AUDIO;
-  case PACKET_TYPE_ASCII_FRAME:
-  case PACKET_TYPE_IMAGE_FRAME:
-  case PACKET_TYPE_IMAGE_FRAME_H264:
-  case PACKET_TYPE_IMAGE_FRAME_H265:
-    return ACIP_TRAFFIC_VISUAL;
-  default:
-    return ACIP_TRAFFIC_CONTROL;
-  }
-}
-
 static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                               const acip_send_options_t *options) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
