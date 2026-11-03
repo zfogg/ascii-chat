@@ -33,3 +33,21 @@ about the packet inside it. Where ACIP encryption is active, classification is
 performed before encryption, and the receiver must validate the decrypted
 packet against the flow. Authentication, replay handling, datagrams, and
 fallback are not defined by this framing alone and remain implementation work.
+
+## TLS policy
+
+The QUIC TLS context requires TLS 1.3 and disables early data. A server must
+provide a matching certificate and private key. A client verifies the chain
+against an explicitly supplied CA file or the system trust store and verifies
+the expected DNS name or IP address. ALPN must match exactly before a session
+is considered ready. These checks establish the identity of the TLS endpoint;
+they do not replace ACIP authentication or protect data beyond an
+intermediary that terminates QUIC. The endpoint must apply the existing ACIP
+security policy and must not report readiness until both TLS and ACIP
+handshakes have succeeded.
+
+ngtcp2's OpenSSL connection reference is borrowed by the SSL object. The
+reference and its connection must remain valid while callbacks may use them;
+the SSL app data must be cleared before freeing SSL if the connection has
+already been destroyed. The endpoint must also honor the lifetime of the
+ngtcp2 OpenSSL context associated with the connection.

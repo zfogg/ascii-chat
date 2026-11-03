@@ -1434,6 +1434,15 @@ if(TARGET ascii-chat-static)
             ${CMAKE_SOURCE_DIR}/tests/standalone/network/traffic_metadata.c)
         add_executable(test-quic-stream EXCLUDE_FROM_ALL
             ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_stream.c)
+        add_executable(test-quic-tls EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_tls.c)
+        target_link_libraries(test-quic-tls PRIVATE ascii-chat-static asciichat-quic ${MIMALLOC_LIBRARIES})
+        apply_sanitizers_to_target(test-quic-tls)
+        target_include_directories(test-quic-tls PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-tls PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        asciichat_add_python_test(quic-tls-identity
+            ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_handshake.py $<TARGET_FILE:test-quic-tls>)
+        set_tests_properties(quic-tls-identity PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
         target_link_libraries(test-quic-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
         if(WIN32)
             target_link_libraries(test-quic-stream PRIVATE ws2_32)
@@ -1458,10 +1467,15 @@ if(TARGET ascii-chat-static)
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            set_property(TEST quic-tls-identity PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
         endif()
         if(TARGET tests)
             add_dependencies(tests test-traffic-metadata)
             add_dependencies(tests test-quic-stream)
+            add_dependencies(tests test-quic-tls)
         endif()
     endif()
     add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
