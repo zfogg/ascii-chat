@@ -2233,6 +2233,13 @@ if(BUILD_TESTS AND TARGET test-sync-regressions AND NOT WIN32 AND CMAKE_BUILD_TY
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
 
+if(BUILD_TESTS AND TARGET ascii-chat)
+    asciichat_add_python_test(first-use-terminal
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/first_use_terminal.py --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(first-use-terminal PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
 if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     asciichat_add_python_test(terminal-titles
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_titles.py --binary $<TARGET_FILE:ascii-chat>

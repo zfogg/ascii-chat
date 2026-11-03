@@ -3,6 +3,8 @@
 #define STATS_RUNTIME_TRANSPORT_BUFFER_SIZE 16
 #define STATS_RUNTIME_STATE_BUFFER_SIZE 64
 #define STATS_RUNTIME_OUTPUT_BUFFER_SIZE 8192
+#define STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE 4096
+#define STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE 512
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define STATS_PEER_CAPACITY 64
@@ -19,6 +21,8 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/notice.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/log/search.h>
@@ -48,7 +52,7 @@ static stats_provider_fn g_provider;
 static void *g_provider_data;
 static char g_mode[STATS_RUNTIME_MODE_BUFFER_SIZE], g_state[STATS_RUNTIME_STATE_BUFFER_SIZE];
 static unsigned g_interval;
-static atomic_t g_stop, g_active;
+static atomic_t g_stop, g_active, g_onboarding_wait;
 static asciichat_thread_t g_worker;
 static bool g_started, g_keyboard;
 static int g_fd;
@@ -322,6 +326,58 @@ static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t 
   ui_controller_write(STDOUT_FILENO, output, (size_t)used);
 }
 
+static bool show_first_use_instructions(void) {
+  if (!g_keyboard || GET_OPTION(snapshot_mode) || GET_OPTION(render_file)[0] || !platform_isatty(STDERR_FILENO))
+    return false;
+  const char *title = NULL, *text = NULL;
+  if (!strcmp(g_mode, "mirror")) {
+    title = "Mirror mode";
+    text = "Preview your camera locally.\n\no\tOpen a file or URL after closing\n?\tShow keyboard shortcuts";
+  } else if (!strcmp(g_mode, "client")) {
+    title = "Client mode";
+    text = "Connect to a server with ascii-chat client <address>.\n\n?\tShow keyboard shortcuts";
+  } else if (!strcmp(g_mode, "discovery")) {
+    title = "Discovery mode";
+    text = "Start without a name to create a session. Share its name to invite others. "
+           "Join with ascii-chat <session-name>.\n\n?\tShow keyboard shortcuts";
+  } else if (!strcmp(g_mode, "server")) {
+    title = "Server mode";
+    text = "Share this server's address and port with participants.\n\n?\tShow keyboard shortcuts";
+  } else if (!strcmp(g_mode, "discovery-service")) {
+    title = "Discovery service mode";
+    text = "Help participants find sessions. Configure clients to use this service's address and port."
+           "\n\n?\tShow keyboard shortcuts";
+  } else if (!strcmp(g_mode, "mcp-server")) {
+    title = "MCP server mode";
+    text = "Expose rendering tools to MCP clients. Configure an MCP client to connect."
+           "\n\n?\tShow keyboard shortcuts";
+  }
+  if (!text)
+    return false;
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  const char *disabled = platform_getenv("ASCII_CHAT_DISABLE_FIRST_USE");
+  if (disabled && !strcmp(disabled, "1")) {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    return false;
+  }
+  const char *override = platform_getenv("ASCII_CHAT_FIRST_USE_DIR");
+  char *dir = override && *override ? platform_strdup(override) : platform_get_data_dir();
+  if (!dir) {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    return false;
+  }
+  char marker_path[STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE];
+  int length = snprintf(marker_path, sizeof(marker_path), "%s/first-use-%s", dir, g_mode);
+  char message[STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE];
+  snprintf(message, sizeof(message), "%s", text);
+  bool shown = length > 0 && (size_t)length < sizeof(marker_path) && !platform_is_regular_file(marker_path) &&
+               platform_mkdir_recursive(dir, 0700) == ASCIICHAT_OK &&
+               ui_notice_present_first_use(title, message, marker_path) == ASCIICHAT_OK;
+  SAFE_FREE(dir);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  return shown;
+}
+
 static void *stats_worker(void *unused) {
   (void)unused;
   uint64_t next_sample = 0, next_print = time_get_ns() + (uint64_t)g_interval * NS_PER_SEC_INT;
@@ -331,12 +387,21 @@ static void *stats_worker(void *unused) {
   bool was_active = false;
   uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
+    int screen = ui_controller_current_screen();
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
     bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0 ||
                        (strcmp(g_mode, "mcp-server") == 0 && !strcmp(GET_OPTION(mcp_transport), "http"));
-    if (g_keyboard && (active || (server_like && !ui_controller_screen_live(UI_SCREEN_STATUS)))) {
-      keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATS);
+    bool first_use_input =
+        atomic_load_bool_impl(&g_onboarding_wait) &&
+        (screen == UI_SCREEN_NOTICE || (screen == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_NOTICE));
+    if (g_keyboard && (first_use_input || active || (server_like && !ui_controller_screen_live(UI_SCREEN_STATUS)))) {
+      keyboard_key_t key =
+          ui_input_read_key(first_use_input && screen == UI_SCREEN_HELP ? UI_SCREEN_HELP : UI_SCREEN_STATS);
+      if (first_use_input && (key == 'q' || key == 3)) {
+        shutdown_request();
+        continue;
+      }
       active = stats_runtime_active();
       if (active && key == ']') {
         stats_runtime_toggle();
@@ -478,13 +543,24 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
                platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
+  atomic_store_bool_impl(&g_onboarding_wait, false);
   g_started = true;
   bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0 ||
                      (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
-  if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0)
+  if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0) {
+    atomic_store_bool_impl(&g_onboarding_wait, true);
+    bool shown = show_first_use_instructions();
+    while (shown && ui_controller_screen_live(UI_SCREEN_NOTICE) && !shutdown_is_requested()) {
+      ui_presentation_state_t state = ui_controller_state();
+      if (state.screen == UI_SCREEN_NOTICE && state.covered)
+        break;
+      platform_sleep_ms(10);
+    }
+    atomic_store_bool_impl(&g_onboarding_wait, false);
     return ASCIICHAT_OK;
+  }
   result = SET_ERRNO(ERROR_THREAD, "Cannot start stats worker");
   g_started = false;
   if (g_keyboard)

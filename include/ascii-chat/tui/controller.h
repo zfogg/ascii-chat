@@ -114,3 +114,5 @@ void ui_controller_frame_acquired_at(uint64_t started_ns);
 /** Start terminal interaction without publishing a background screen. */
 asciichat_error_t ui_controller_start_terminal(int fd);
 bool ui_controller_screen_live(ui_screen_t screen);
+/** Handle input for a first-use notice, retaining its snapshot while it is used. */
+bool ui_controller_first_use_key(int key);

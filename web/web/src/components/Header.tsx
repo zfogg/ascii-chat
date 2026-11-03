@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ModeInstructions, type InstructionMode } from "./ModeInstructions";
 import { Link } from "@ascii-chat/shared/components/Link";
 
 export function Header() {
@@ -46,6 +47,13 @@ export function Header() {
               </Link>
             ))}
           </nav>
+
+          {["/mirror", "/client", "/discovery"].includes(currentPath) && (
+            <ModeInstructions
+              key={currentPath}
+              mode={currentPath.slice(1) as InstructionMode}
+            />
+          )}
 
           {/* Mobile Menu Button */}
           <button

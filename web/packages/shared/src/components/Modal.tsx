@@ -10,6 +10,7 @@ interface ModalProps {
   children: ReactNode;
   className?: string;
   backdropClassName?: string;
+  rootClassName?: string;
 }
 
 export function Modal({
@@ -18,9 +19,10 @@ export function Modal({
   children,
   className = "",
   backdropClassName = "bg-black/75 backdrop-blur-sm",
+  rootClassName = "",
 }: ModalProps) {
   return (
-    <Dialog open={open} onClose={onClose} className="modal">
+    <Dialog open={open} onClose={onClose} className={`modal ${rootClassName}`}>
       <DialogBackdrop className={`modal-backdrop ${backdropClassName}`} />
       <div className="modal-viewport">
         <div className="modal-layout">

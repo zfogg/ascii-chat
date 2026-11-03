@@ -23,6 +23,20 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
 /** Present a notice without changing authentication or input policy. */
 asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *text);
 
+/** Show a first-use notice until the user dismisses it. */
+asciichat_error_t ui_notice_present_first_use(const char *title, const char *text, const char *marker_path);
+/** Record which first-use page reached the terminal after a successful frame. */
+void ui_notice_frame_presented(const void *snapshot);
+typedef enum {
+  UI_NOTICE_KEY_ORDINARY,
+  UI_NOTICE_KEY_HANDLED,
+  UI_NOTICE_KEY_HELP,
+  UI_NOTICE_KEY_DISMISS,
+  UI_NOTICE_KEY_COMPLETE
+} ui_notice_key_result_t;
+ui_notice_key_result_t ui_notice_first_use_key(const void *snapshot, int key);
+void ui_notice_first_use_complete(const void *snapshot);
+
 /** Explicitly styled yes/no prompt; default remains No. */
 #ifdef EMSCRIPTEN_BUILD
 #include <ascii-chat/platform/question.h>
@@ -34,14 +48,14 @@ static inline bool ui_notice_confirm(ui_notice_severity_t severity, const char *
 bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned timeout_seconds);
 #endif
 #ifdef EMSCRIPTEN_BUILD
-static inline bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
-                                          const char *text, unsigned timeout_seconds) {
+static inline bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
+                                          unsigned timeout_seconds) {
   (void)kind;
   return ui_notice_confirm(severity, text, timeout_seconds);
 }
 #else
-bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
-                            const char *text, unsigned timeout_seconds);
+bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
+                            unsigned timeout_seconds);
 #endif
 ui_prompt_kind_t ui_notice_prompt_kind(void);
 ui_notice_severity_t ui_notice_prompt_severity(void);
