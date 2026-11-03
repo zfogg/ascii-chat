@@ -5,10 +5,38 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tui/controller.h>
+#include "session/audio.h"
+#include "session/capture.h"
 static unsigned joins, join_failures, writes, sleeps, exits, loops, stops;
 static asciichat_error_t write_result, process_result, handoff_result, render_result, run_result;
 static bool cancelled, fail_create, report_error, activate, exit_on_process;
 static int chunks[8];
+static unsigned audio_failure;
+static bool fail_read;
+static image_t *media_read_frame(session_capture_ctx_t *capture) {
+  if (fail_read) {
+    SET_ERRNO(ERROR_MEDIA_DECODE, "fixture capture failed");
+    return NULL;
+  }
+  return session_capture_read_frame(capture);
+}
+static bool end_after_frame;
+static asciichat_error_t frame_result;
+static session_audio_ctx_t *media_audio_create(bool host) {
+  return audio_failure == 1 ? NULL : session_audio_create(host);
+}
+static asciichat_error_t media_audio_start(session_audio_ctx_t *audio) {
+  cr_assert_not_null(audio);
+  return audio_failure == 2 ? ERROR_AUDIO : ASCIICHAT_OK;
+}
+static asciichat_error_t media_thread_create(asciichat_thread_t *thread, const char *name, void *(*fn)(void *),
+                                             void *arg) {
+  (void)thread;
+  (void)name;
+  (void)fn;
+  (void)arg;
+  return ERROR_THREAD;
+}
 static asciichat_error_t media_join(asciichat_thread_t *thread, void **result) {
   (void)thread;
   (void)result;
@@ -31,6 +59,10 @@ static asciichat_error_t media_process(discovery_session_t *s, uint64_t timeout)
   ++loops;
   if (activate)
     s->state = DISCOVERY_STATE_ACTIVE;
+  if (end_after_frame && loops > 1) {
+    s->state = DISCOVERY_STATE_ENDED;
+    return frame_result;
+  }
   if (exit_on_process)
     cancelled = true;
   return process_result;
@@ -51,6 +83,10 @@ static void media_stop(discovery_session_t *s) {
   ++stops;
   discovery_session_stop(s);
 }
+#define session_capture_read_frame media_read_frame
+#define session_audio_create media_audio_create
+#define session_audio_start_capture media_audio_start
+#define acthread_create media_thread_create
 #define thread_join media_join
 #define audio_write_samples media_write
 #define platform_sleep_ns media_sleep_ns
@@ -61,6 +97,10 @@ static void media_stop(discovery_session_t *s) {
 #define discovery_session_create media_create
 #define discovery_session_stop media_stop
 #include "../../../src/discovery/main.c"
+#undef session_capture_read_frame
+#undef session_audio_create
+#undef session_audio_start_capture
+#undef acthread_create
 #undef thread_join
 #undef audio_write_samples
 #undef platform_sleep_ns
@@ -268,4 +308,59 @@ Test(discovery_media, constructor_failure_does_not_enter_the_shared_media_framew
   cr_assert_eq(discovery_main(), ERROR_MEMORY);
   cr_assert_eq(stops, 0);
   cr_assert_null(g_discovery);
+}
+
+Test(discovery_media, host_audio_startup_failures_leave_session_ownership_with_the_discovery_owner) {
+  create_session();
+  activate = true;
+  g_discovery->is_host = true;
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  v->audio_enabled = true;
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+  session_host_config_t config = {.max_clients = 1};
+  for (unsigned stage = 1; stage <= 3; ++stage) {
+    g_discovery->host_ctx = session_host_create(&config);
+    cr_assert_not_null(g_discovery->host_ctx);
+    audio_failure = stage;
+    cr_assert_eq(discovery_run(NULL, NULL, NULL), stage == 3 ? ERROR_THREAD : ERROR_AUDIO);
+    cr_assert_not_null(g_discovery->host_ctx);
+    session_host_destroy(g_discovery->host_ctx);
+    g_discovery->host_ctx = NULL;
+    CLEAR_ERRNO_ALL();
+  }
+}
+Test(discovery_media, host_capture_errors_are_propagated_after_render_cleanup) {
+  create_session();
+  activate = true;
+  g_discovery->is_host = true;
+  session_host_config_t config = {.max_clients = 1};
+  g_discovery->host_ctx = session_host_create(&config);
+  cr_assert_not_null(g_discovery->host_ctx);
+  render_result = ASCIICHAT_OK;
+  session_capture_ctx_t *capture = session_network_capture_create(20);
+  cr_assert_not_null(capture);
+  fail_read = true;
+  cr_assert_eq(discovery_run(capture, NULL, NULL), ERROR_MEDIA_DECODE);
+  session_capture_destroy(capture);
+  cr_assert_not_null(g_discovery->host_ctx);
+}
+Test(discovery_media, host_delivers_a_real_synthetic_frame_and_preserves_signaling_failure) {
+  create_session();
+  activate = true;
+  end_after_frame = true;
+  frame_result = ERROR_NETWORK;
+  g_discovery->is_host = true;
+  session_host_config_t host_config = {.max_clients = 1};
+  g_discovery->host_ctx = session_host_create(&host_config);
+  cr_assert_not_null(g_discovery->host_ctx);
+  session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .target_fps = 20};
+  session_capture_ctx_t *capture = session_mirror_capture_create(&config);
+  cr_assert_not_null(capture);
+  cr_assert_eq(discovery_run(capture, NULL, NULL), ERROR_NETWORK);
+  cr_assert_eq(loops, 2);
+  cr_assert_eq(session_host_get_client_count(g_discovery->host_ctx), 1);
+  cr_assert_eq(g_discovery->state, DISCOVERY_STATE_ENDED);
+  session_capture_destroy(capture);
 }

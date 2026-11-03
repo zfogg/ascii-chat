@@ -6,6 +6,18 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
+#include <ascii-chat/media/render/renderer.h>
+static bool fail_encoder;
+static unsigned encoder_calls;
+static int encoder_fps;
+static asciichat_error_t delivery_encoder(const char *path, int cols, int rows, int fps, int theme,
+                                          render_file_ctx_t **out) {
+  ++encoder_calls;
+  encoder_fps = fps;
+  if (fail_encoder)
+    return SET_ERRNO(ERROR_MEDIA_INIT, "fixture encoder failed");
+  return render_file_create(path, cols, rows, fps, theme, out);
+}
 static bool delivery_interactive;
 static asciichat_error_t delivery_result;
 static unsigned delivery_writes, delivery_fresh, delivery_retained, delivery_exits;
@@ -40,11 +52,13 @@ static asciichat_error_t delivery_present_retained(ui_screen_t screen, int fd, t
 static void delivery_exit(void) {
   ++delivery_exits;
 }
+#define render_file_create delivery_encoder
 #define terminal_is_interactive delivery_terminal_interactive
 #define ui_controller_write delivery_write
 #define ui_controller_present delivery_present
 #define ui_controller_present_retained delivery_present_retained
 #include "../../../src/common/session/display.c"
+#undef render_file_create
 #undef terminal_is_interactive
 #undef ui_controller_write
 #undef ui_controller_present
@@ -284,4 +298,47 @@ Test(display_delivery, invalid_conversion_and_recording_inputs_preserve_existing
   cr_assert_eq(workspace->w, 3);
   cr_assert_eq(workspace->h, 4);
   image_destroy(image);
+}
+
+static void encoder_options(int fps) {
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  SAFE_STRNCPY(v->render_file, "fixture-output.mp4", sizeof(v->render_file));
+  v->fps = fps;
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+}
+Test(display_delivery, encoder_start_failure_rolls_back_constructor_and_preserves_the_cause) {
+  encoder_options(30);
+  fail_encoder = true;
+  cr_assert_null(session_display_create(NULL));
+  cr_assert_eq(GET_ERRNO(), ERROR_MEDIA_INIT);
+  asciichat_error_context_t cause;
+  cr_assert(HAS_ERRNO(&cause));
+  cr_assert_not_null(strstr(cause.context_message, "fixture encoder failed"));
+  cr_assert_eq(encoder_calls, 1);
+  cr_assert_eq(encoder_fps, 30);
+}
+Test(display_delivery, deferred_encoder_selects_media_then_option_then_default_fps_and_remains_retryable) {
+  encoder_options(0);
+  fail_encoder = true;
+  session_display_config_t config = {.snapshot_mode = true,
+                                     .palette_type = PALETTE_STANDARD,
+                                     .color_mode = TERM_COLOR_NONE,
+                                     .defer_render_file = true};
+  display = session_display_create(&config);
+  cr_assert_not_null(display);
+  cr_assert_eq(encoder_calls, 0);
+  cr_assert_eq(session_display_init_render_file(display, 0), ERROR_MEDIA_INIT);
+  cr_assert_eq(encoder_fps, 60);
+  cr_assert_not(session_display_has_render_file(display));
+  CLEAR_ERRNO_ALL();
+  encoder_options(25);
+  cr_assert_eq(session_display_init_render_file(display, 0), ERROR_MEDIA_INIT);
+  cr_assert_eq(encoder_fps, 25);
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(session_display_init_render_file(display, 50), ERROR_MEDIA_INIT);
+  cr_assert_eq(encoder_fps, 50);
+  cr_assert_not(session_display_has_render_file(display));
+  cr_assert_eq(encoder_calls, 3);
 }
