@@ -1277,6 +1277,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     asciichat_add_python_test(discovery-direct-tcp
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/discovery_direct_tcp.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(discovery-direct-tcp PROPERTIES LABELS "integration" TIMEOUT 90)
+    asciichat_add_python_test(discovery-audio
+        ${CMAKE_SOURCE_DIR}/tests/integration/discovery_audio.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(discovery-audio PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
@@ -1623,6 +1626,19 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     asciichat_add_contract_test(server-stream test-server-stream)
     set_property(TEST server-stream APPEND PROPERTY LABELS unit)
+
+    add_executable(test-client-transport contracts/network/client_transport_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/keepalive.c
+        ${CMAKE_SOURCE_DIR}/src/client/crypto.c ${CMAKE_SOURCE_DIR}/src/client/display.c)
+    asciichat_configure_contract(test-client-transport)
+    target_link_libraries(test-client-transport PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-transport PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-client-transport)
+    set_target_properties(test-client-transport PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-transport test-client-transport)
+    set_property(TEST client-transport APPEND PROPERTY LABELS unit)
 
     add_executable(test-session-h265-client contracts/session/h265_client_test.c
         ${CMAKE_SOURCE_DIR}/src/session/h265/client.c)

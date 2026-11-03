@@ -10,8 +10,8 @@ static uint8_t members[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE];
 static unsigned elections, notifications;
 static bool invalid_choice, reject_election;
 
-static asciichat_error_t send_packet(void *context, const uint8_t id[SESSION_ID_SIZE], const uint8_t *data,
-                                     size_t size) {
+static asciichat_error_t capture_packet(void *context, const uint8_t id[SESSION_ID_SIZE], const uint8_t *data,
+                                        size_t size) {
   (void)context;
   (void)id;
   (void)data;
@@ -55,7 +55,7 @@ static asciichat_error_t choose(void *context, const participant_metrics_t *metr
   return reject_election ? ERROR_NETWORK : ASCIICHAT_OK;
 }
 static session_consensus_callbacks_t callbacks(bool custom) {
-  return (session_consensus_callbacks_t){.send_packet = send_packet,
+  return (session_consensus_callbacks_t){.send_packet = capture_packet,
                                          .on_election = notified,
                                          .get_metrics = own_metrics,
                                          .election = custom ? choose : NULL,
