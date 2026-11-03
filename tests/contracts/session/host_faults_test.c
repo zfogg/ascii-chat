@@ -158,6 +158,77 @@ Test(host_faults, failed_frame_resize_preserves_the_last_committed_video_buffer_
   cr_assert_eq(((uint8_t *)previous->pixels)[0], 91);
   image_destroy(image);
 }
+
+Test(host_faults, receive_resize_failure_preserves_pixels_and_a_later_packet_can_recover) {
+  create();
+  uint32_t id = session_host_add_memory_participant(owner);
+  cr_assert_neq(id, 0);
+  image_t *previous = owner->clients[0].incoming_video;
+  previous->pixels[0] = (rgb_pixel_t){11, 22, 33};
+  struct {
+    image_frame_packet_t header;
+    uint8_t pixels[18];
+  } packet = {.header = {.width = HOST_TO_NET_U32(3),
+                         .height = HOST_TO_NET_U32(2),
+                         .pixel_format = HOST_TO_NET_U32(PIXEL_FORMAT_RGB)}};
+  memset(packet.pixels, 77, sizeof(packet.pixels));
+  fail_image = true;
+  cr_assert_eq(session_host_receive_packet(owner, id, PACKET_TYPE_IMAGE_FRAME, &packet, sizeof(packet)), ASCIICHAT_OK);
+  cr_assert_eq(owner->clients[0].incoming_video, previous);
+  cr_assert_eq(previous->pixels[0].r, 11);
+  fail_image = false;
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(session_host_receive_packet(owner, id, PACKET_TYPE_IMAGE_FRAME, &packet, sizeof(packet)), ASCIICHAT_OK);
+  cr_assert_eq(owner->clients[0].incoming_video->w, 3);
+  cr_assert_eq(owner->clients[0].incoming_video->h, 2);
+  cr_assert_eq(owner->clients[0].incoming_video->pixels[0].r, 77);
+}
+
+Test(host_faults, unavailable_memory_media_buffers_and_unknown_ids_do_not_damage_membership) {
+  create();
+  uint32_t id = session_host_add_memory_participant(owner);
+  cr_assert_neq(id, 0);
+  image_t *frame = image_new(2, 2);
+  cr_assert_not_null(frame);
+  image_t *saved_video = owner->clients[0].incoming_video;
+  ringbuffer_t *saved_audio = owner->clients[0].incoming_audio;
+  owner->clients[0].incoming_video = NULL;
+  cr_assert_eq(session_host_inject_frame(owner, id, frame), ERROR_INVALID_STATE);
+  owner->clients[0].incoming_video = saved_video;
+  owner->clients[0].incoming_audio = NULL;
+  float samples[] = {0.25f, -0.25f};
+  cr_assert_eq(session_host_inject_audio(owner, id, samples, 2), ERROR_INVALID_STATE);
+  owner->clients[0].incoming_audio = saved_audio;
+  cr_assert_eq(session_host_inject_frame(owner, id + 1, frame), ERROR_NOT_FOUND);
+  cr_assert_eq(session_host_inject_audio(owner, id + 1, samples, 2), ERROR_NOT_FOUND);
+  cr_assert_eq(session_host_get_client_count(owner), 1);
+  cr_assert_eq(session_host_inject_frame(owner, id, frame), ASCIICHAT_OK);
+  cr_assert_eq(session_host_inject_audio(owner, id, samples, 2), ASCIICHAT_OK);
+  float received = 0;
+  cr_assert(ringbuffer_read(saved_audio, &received));
+  cr_assert_float_eq(received, samples[0], 1e-6);
+  image_destroy(frame);
+}
+
+Test(host_faults, full_memory_audio_ring_discards_excess_and_accepts_samples_after_drain) {
+  create();
+  uint32_t id = session_host_add_memory_participant(owner);
+  cr_assert_neq(id, 0);
+  ringbuffer_destroy(owner->clients[0].incoming_audio);
+  owner->clients[0].incoming_audio = ringbuffer_create(sizeof(float), 2);
+  cr_assert_not_null(owner->clients[0].incoming_audio);
+  const float samples[] = {0.25f, -0.5f, 0.75f, 1.0f};
+  cr_assert_eq(session_host_inject_audio(owner, id, samples, 4), ASCIICHAT_OK);
+  float received;
+  cr_assert(ringbuffer_read(owner->clients[0].incoming_audio, &received));
+  cr_assert_float_eq(received, samples[0], 1e-6);
+  cr_assert(ringbuffer_read(owner->clients[0].incoming_audio, &received));
+  cr_assert_float_eq(received, samples[1], 1e-6);
+  cr_assert_not(ringbuffer_read(owner->clients[0].incoming_audio, &received));
+  cr_assert_eq(session_host_inject_audio(owner, id, samples + 2, 2), ASCIICHAT_OK);
+  cr_assert(ringbuffer_read(owner->clients[0].incoming_audio, &received));
+  cr_assert_float_eq(received, samples[2], 1e-6);
+}
 Test(host_faults, malformed_injected_frame_is_rejected_before_replacing_the_committed_buffer) {
   create();
   uint32_t id = session_host_add_memory_participant(owner);
