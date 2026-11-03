@@ -1,4 +1,5 @@
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
+import { writeTerminalRendererConfig } from "../../wasm/terminalRenderer";
 import type { RasterWorkerRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
 import { createWasmModule, type ClientLikeKind } from "../../wasm/assetUrl";
@@ -41,19 +42,20 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
       if (signature !== nextSignature) {
         if (renderer) module._term_renderer_destroy(renderer);
         renderer = 0;
-        const config = module._malloc(544),
+        const config = module._malloc(module._wasm_renderer_config_size()),
           out = module._malloc(4);
         try {
           if (module._set_matrix_rain?.(matrix ? 1 : 0) !== 0)
             throw new Error("Cannot select raster worker font");
-          module.HEAPU8.fill(0, config, config + 544);
-          const view = new DataView(module.HEAPU8.buffer, config, 544);
-          view.setInt32(0, cols, true);
-          view.setInt32(4, rows, true);
-          view.setFloat64(8, browserRasterFontSize(matrix), true);
-          if (matrix) module.stringToUTF8("Matrix", config + 20, 512);
-          view.setInt32(536, module._get_font_default_ptr(0), true);
-          view.setInt32(540, module._get_font_default_size(0), true);
+          writeTerminalRendererConfig(
+            module,
+            config,
+            cols,
+            rows,
+            browserRasterFontSize(matrix),
+            matrix,
+            0,
+          );
           if (module._term_renderer_create(config, out))
             throw new Error("Cannot create raster worker renderer");
           renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(

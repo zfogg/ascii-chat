@@ -81,6 +81,11 @@ elseif(APPLE)
         # developer's Homebrew versions of Fontconfig and its libraries.
         set(_fontconfig_static_paths)
         foreach(_dependency fontconfig expat freetype intl png16)
+            if(_dependency STREQUAL "freetype")
+                # Share the renderer's selected FreeType, including pinned HVF builds.
+                list(APPEND _fontconfig_static_paths ${FREETYPE_LIBRARIES})
+                continue()
+            endif()
             set(_brew_package "${_dependency}")
             if(_dependency STREQUAL "intl")
                 set(_brew_package gettext)

@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -49,6 +50,41 @@ class CoverageReportTests(unittest.TestCase):
     def test_missing_counters_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
+
+    @unittest.skipUnless(sys.platform == "linux" and shutil.which("clang") and shutil.which("cmake")
+                         and shutil.which("ninja") and importlib.util.find_spec("gcovr"),
+                         "Requires Linux, Clang sanitizers, CMake, Ninja and gcovr")
+    def test_source_coverage_excludes_sanitizer_generated_branches_without_changing_debug_default(self):
+        module = Path(__file__).resolve().parents[2] / "cmake/platform/Sanitizers.cmake"
+        source = self.root / "lib/main.c"
+        source.parent.mkdir()
+        source.write_text('int read_value(const int *value) {\n  return *value;\n}\n'
+                          'int main(void) {\n  int value = 7;\n  return read_value(&value) - 7;\n}\n')
+        (self.root / "CMakeLists.txt").write_text(
+            'cmake_minimum_required(VERSION 3.24)\nproject(fixture C)\n'
+            'include(CheckCCompilerFlag)\n'
+            f'include("{module.as_posix()}")\n'
+            'if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")\n'
+            '  configure_sanitizers(FALSE Debug)\nendif()\n'
+            'add_executable(fixture lib/main.c)\n'
+            'target_compile_options(fixture PRIVATE --coverage -O0)\n'
+            'target_link_options(fixture PRIVATE --coverage)\n'
+            'apply_sanitizers_to_target(fixture)\n'
+        )
+        build = self.root / "build"
+        branch_counts = []
+        for extra in (["-DCMAKE_BUILD_TYPE=Debug"],
+                      ["-DCMAKE_BUILD_TYPE=Release", "-DASCIICHAT_ENABLE_SANITIZERS=OFF"]):
+            subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
+                            f"-DCMAKE_C_COMPILER={shutil.which('clang')}", *extra], check=True)
+            for counter in build.rglob("*.gcda"):
+                counter.unlink()
+            subprocess.run(["cmake", "--build", str(build)], check=True)
+            subprocess.run([str(build / "fixture")], check=True)
+            coverage_report.generate(self.root, build, self.report)
+            branch_counts.append(int(ET.parse(self.report).getroot().get("branches-valid")))
+        self.assertGreater(branch_counts[0], 0, "Debug sanitizers remain enabled by default")
+        self.assertEqual(branch_counts[1], 0, "This fixture contains no source-level decisions")
 
     def test_compiler_cache_types_include_explicit_command_line_selection(self):
         compiler = self.root / "clang"

@@ -587,6 +587,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_help_text
     _face_web_input _face_web_reset _face_web_detect _face_web_tick
     # Terminal renderer functions (libvterm + FreeType)
+    _wasm_renderer_config_size _wasm_renderer_config_write
     _term_renderer_create
     _term_renderer_set_zalgo
     _term_renderer_feed
@@ -669,6 +670,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_get_crypto_error_message
     _face_web_input _face_web_reset _face_web_detect _face_web_tick
     # Terminal renderer functions (libvterm + FreeType)
+    _wasm_renderer_config_size _wasm_renderer_config_write
     _term_renderer_create
     _term_renderer_set_zalgo
     _term_renderer_feed

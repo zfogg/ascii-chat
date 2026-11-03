@@ -799,9 +799,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     // Configure FFmpeg options for HTTP streaming performance
     AVDictionary *options = NULL;
 
-    // Only HTTP inputs need network probing options. A local path is not a
-    // failed URL parse and must not leave an error on successful media open.
-    if (strncmp(path, "http://", 7) == 0 || strncmp(path, "https://", 8) == 0) {
+    // Local paths must not create URL errors or diagnostic notifications.
+    // Resolve a failed explicit-URL probe without dismissing older errors.
+    asciichat_errno_scope_t url_scope = errno_scope_begin();
+    bool is_url = path && strstr(path, "://") && url_is_valid(path);
+    errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
+    // For HTTP/HTTPS streams: enable fast probing and reconnection.
+    if (is_url) {
       // Limit probing to 32KB for faster format detection
       av_dict_set(&options, "probesize", "32768", 0);
       // Analyze for 100ms max to determine streams quickly
