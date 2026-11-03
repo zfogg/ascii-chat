@@ -971,14 +971,16 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(ready && client_caps.datagrams && server_caps.datagrams);
   CHECK(acip_quic_transport_wait_security(outbound, 0) == ERROR_NETWORK_TIMEOUT);
   CHECK(acip_quic_release(client, &inbound) == ERROR_INVALID_PARAM && inbound);
-  crypto_handshake_context_t client_handshake, server_handshake;
-  CHECK(crypto_handshake_init_with_password("public-client", &client_handshake, false, "test-password") ==
-        ASCIICHAT_OK);
+  network_connection_t *adopted = NULL;
+  CHECK(network_connection_adopt_negotiating(outbound, "localhost", true, &adopted) == ASCIICHAT_OK && adopted);
+  CHECK(network_connection_state(adopted) == NETWORK_NEGOTIATING);
+  crypto_handshake_context_t *client_handshake = network_connection_handshake(adopted);
+  crypto_handshake_context_t server_handshake;
+  CHECK(crypto_handshake_init_with_password("public-client", client_handshake, false, "test-password") == ASCIICHAT_OK);
   CHECK(crypto_handshake_init_with_password("public-server", &server_handshake, true, "test-password") == ASCIICHAT_OK);
-  SAFE_STRNCPY(client_handshake.server_ip, "127.0.0.1", sizeof(client_handshake.server_ip));
-  client_handshake.server_port = 27224;
-  CHECK(network_client_negotiate(outbound, &client_handshake, ACIP_CRYPTO_NONE, NETWORK_PROTOCOL_MEDIA) ==
-        ERROR_CRYPTO);
+  SAFE_STRNCPY(client_handshake->server_ip, "127.0.0.1", sizeof(client_handshake->server_ip));
+  client_handshake->server_port = 27224;
+  CHECK(network_client_negotiate(outbound, client_handshake, ACIP_CRYPTO_NONE, NETWORK_PROTOCOL_MEDIA) == ERROR_CRYPTO);
   network_negotiation_t server_negotiation = {.protocol = NETWORK_PROTOCOL_MEDIA,
                                               .handshake = &server_handshake,
                                               .initialized = true,
@@ -990,7 +992,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(network_negotiation_receive(&server_negotiation, inbound, PACKET_TYPE_PROTOCOL_VERSION, &insecure_version,
                                     sizeof(insecure_version)) == ERROR_CRYPTO);
   CHECK(!server_negotiation.ready && server_negotiation.step == 0);
-  quic_client_negotiation_t client_negotiation = {.transport = outbound, .handshake = &client_handshake};
+  quic_client_negotiation_t client_negotiation = {.transport = outbound, .handshake = client_handshake};
   asciichat_thread_t negotiation_thread;
   CHECK(acthread_create(&negotiation_thread, "quic_negotiate", quic_client_negotiate_thread, &client_negotiation) ==
         ASCIICHAT_OK);
@@ -1013,7 +1015,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   }
   CHECK(thread_join(&negotiation_thread, NULL) == ASCIICHAT_OK);
   CHECK(server_negotiation.ready && client_negotiation.result == ASCIICHAT_OK);
-  CHECK(crypto_handshake_is_ready(&client_handshake) && crypto_handshake_is_ready(&server_handshake));
+  CHECK(crypto_handshake_is_ready(client_handshake) && crypto_handshake_is_ready(&server_handshake));
   CHECK(acip_quic_transport_security_ready(outbound) && acip_quic_transport_security_ready(inbound));
   CHECK(acip_quic_transport_wait_security(outbound, 0) == ASCIICHAT_OK);
   size_t audio_length = 0;
@@ -1027,8 +1029,7 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(acip_transport_recv(inbound, &received, &received_length, &allocation) == ASCIICHAT_OK);
   CHECK(received_length == audio_length && memcmp(received, audio, audio_length) == 0);
   buffer_release(allocation);
-  network_connection_t *adopted = NULL;
-  CHECK(network_connection_adopt(outbound, &adopted) == ASCIICHAT_OK && adopted);
+  network_connection_ready(adopted);
   outbound = NULL;
   CHECK(acip_transport_get_type(network_connection_transport(adopted)) == ACIP_TRANSPORT_QUIC);
   CHECK(acip_transport_sendv_ex(inbound, &slice, 1, &options) == ASCIICHAT_OK);
@@ -1063,7 +1064,6 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(acip_quic_endpoint_stop(client) == ASCIICHAT_OK);
   CHECK(acip_quic_release(client, &unclaimed) == ASCIICHAT_OK && !unclaimed);
   CHECK(acip_quic_endpoint_destroy(&client) == ASCIICHAT_OK && !client);
-  crypto_handshake_destroy(&client_handshake);
   crypto_handshake_destroy(&server_handshake);
   socket_cleanup();
 }

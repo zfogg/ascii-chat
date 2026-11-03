@@ -107,7 +107,11 @@ asciichat_error_t network_connection_prepare_security(network_connection_t *c, b
   if (!c || c->security_claimed || network_connection_state(c) != NETWORK_NEGOTIATING)
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection security already configured");
   c->security_claimed = c->security_options = true;
-  asciichat_error_t result = acip_security_init_options(&c->security, server, c->secure, password);
+  /* QUIC protects its own endpoints, but ACIP encryption is also required
+   * for the application identity and intermediary trust boundary. */
+  bool transport_satisfies_acip_encryption = c->secure && acip_transport_get_type(c->transport) != ACIP_TRANSPORT_QUIC;
+  asciichat_error_t result =
+      acip_security_init_options(&c->security, server, transport_satisfies_acip_encryption, password);
   if (result == ASCIICHAT_OK && !server) {
     crypto_handshake_context_t *ctx = &c->security.handshake;
     SAFE_STRNCPY(ctx->server_hostname, c->peer, sizeof(ctx->server_hostname));
@@ -248,7 +252,9 @@ static asciichat_error_t connection_packet(const void *data, size_t length, void
   asciichat_error_t result = ASCIICHAT_OK;
   if (!c->authenticated_peer && network_connection_state(c) == NETWORK_READY && c->transport->crypto_ctx &&
       c->transport->crypto_ctx->encrypt_data) {
-    bool backend_decrypted = !c->stream && acip_transport_get_type(c->transport) == ACIP_TRANSPORT_TCP;
+    acip_transport_type_t transport_type = acip_transport_get_type(c->transport);
+    bool backend_decrypted =
+        !c->stream && (transport_type == ACIP_TRANSPORT_TCP || transport_type == ACIP_TRANSPORT_QUIC);
     if (envelope.type != PACKET_TYPE_ENCRYPTED && !backend_decrypted)
       return SET_ERRNO(ERROR_CRYPTO, "Plaintext application packet on encrypted connection");
     if (envelope.type == PACKET_TYPE_ENCRYPTED)
@@ -438,11 +444,11 @@ static void *websocket_accept(void *arg) {
   SAFE_FREE(ctx);
   return c ? connection_receive(c) : NULL;
 }
-asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer,
-                                       bool secure) {
+static asciichat_error_t server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure,
+                                      bool ready) {
   if (!s || !transport)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing adopted connection");
-  network_connection_t *c = connection_create(s, transport, peer, secure, true);
+  network_connection_t *c = connection_create(s, transport, peer, secure, ready);
   if (!c)
     return SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Cannot admit peer connection");
   asciichat_error_t result = thread_pool_spawn(s->peers, connection_receive, c, 0, "network_peer");
@@ -452,6 +458,14 @@ asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *tr
     connection_free(c);
   }
   return result;
+}
+asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer,
+                                       bool secure) {
+  return server_adopt(s, transport, peer, secure, true);
+}
+asciichat_error_t network_server_adopt_negotiating(network_server_t *s, acip_transport_t *transport, const char *peer,
+                                                   bool secure) {
+  return server_adopt(s, transport, peer, secure, false);
 }
 static void *websocket_run(void *arg) {
   websocket_server_run(arg);
@@ -698,6 +712,13 @@ asciichat_error_t network_connection_adopt(acip_transport_t *transport, network_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection adoption parameters");
   *out = connection_create(NULL, transport, "peer", true, true);
   return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot own authenticated transport");
+}
+asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *transport, const char *peer, bool secure,
+                                                       network_connection_t **out) {
+  if (!transport || !out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection adoption parameters");
+  *out = connection_create(NULL, transport, peer, secure, false);
+  return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot own negotiating transport");
 }
 void network_connection_destroy(network_connection_t **owner) {
   if (!owner || !*owner)

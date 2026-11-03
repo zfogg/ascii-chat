@@ -57,6 +57,10 @@ const network_server_config_t *network_server_config(network_server_t *);
 
 /** Adopt an authenticated peer transport on success; the caller retains it on failure. */
 asciichat_error_t network_server_adopt(network_server_t *, acip_transport_t *, const char *peer, bool secure);
+/** Adopt a connected transport before application authentication. The caller
+ * retains it on failure; on success the server owns it and drives negotiation. */
+asciichat_error_t network_server_adopt_negotiating(network_server_t *, acip_transport_t *, const char *peer,
+                                                   bool secure);
 
 /** Iteration pins connections and application state, without holding registry
  * locks across callbacks or sends. The callback must not wait for server shutdown.
@@ -78,6 +82,10 @@ crypto_handshake_context_t *network_connection_handshake(network_connection_t *)
 asciichat_error_t network_connection_prepare_security(network_connection_t *, bool server, const char *password);
 /** Wrap an already authenticated transport in the same ownership contract. */
 asciichat_error_t network_connection_adopt(acip_transport_t *, network_connection_t **);
+/** Wrap a connected transport before application negotiation. Ownership
+ * transfers only on success. The caller drives negotiation before run(). */
+asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *, const char *peer, bool secure,
+                                                       network_connection_t **);
 
 /** Shared outbound establishment. Native TCP is adopted into the event backend;
  * WebSocket establishes its library-managed transport. Returns one owned object.
