@@ -1566,7 +1566,7 @@ static void render_text(terminal_size_t size, const void *data) {
   // of letting old-sized content wrap and scroll after a terminal resize.
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
   char *line = SAFE_MALLOC(text->len + 1, char *);
-  char *clipped = SAFE_MALLOC(text->len + 32, char *);
+  char *clipped = SAFE_MALLOC(text->len + UI_CLIPPED_TEXT_OVERHEAD, char *);
   if (buffer && line && clipped) {
     const char *cursor = text->text;
     const char *end = cursor + text->len;
@@ -1577,7 +1577,8 @@ static void render_text(terminal_size_t size, const void *data) {
       line[length] = '\0';
       bool reserved_counter = row == 1 && GET_OPTION(fps_counter) && size.cols >= 7;
       char *expanded = expand_media_row(line, length, text->dimensions.cols);
-      truncate_with_ellipsis(expanded ? expanded : "", clipped, text->len + 32, size.cols - (reserved_counter ? 7 : 1));
+      truncate_with_ellipsis(expanded ? expanded : "", clipped, text->len + UI_CLIPPED_TEXT_OVERHEAD,
+                             size.cols - (reserved_counter ? 7 : 1));
       SAFE_FREE(expanded);
       frame_buffer_printf(buffer, reserved_counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
       frame_buffer_append(buffer, clipped, strlen(clipped));
