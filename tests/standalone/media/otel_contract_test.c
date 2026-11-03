@@ -15,11 +15,17 @@
 
 static gotel_test_capture_t *capture;
 
+/* Fixture storage in exporter records and retained protobuf bytes. */
+enum {
+  OTEL_CONTRACT_EXPORT_QUEUE_CAPACITY = 1024,
+  OTEL_CONTRACT_CAPTURE_MAX_BYTES = 8 * 1024 * 1024,
+};
+
 static gotel_host_t *start(double rate) {
   gotel_options_t options = {0};
   options.exporter.service_name = "ascii-chat-contract";
   options.exporter.endpoint = "http://127.0.0.1:1";
-  options.exporter.queue_capacity = 1024;
+  options.exporter.queue_capacity = OTEL_CONTRACT_EXPORT_QUEUE_CAPACITY;
   options.signals = GOTEL_TRACES | GOTEL_METRICS;
   options.operations = operations;
   options.operation_count = ASCII_OTEL_OPERATION_COUNT;
@@ -184,7 +190,7 @@ int main(int argc, char **argv) {
   CHECK(argc == 1 || argc == 2);
   log_init(NULL, LOG_ERROR, false, false);
   if (argc == 2) {
-    capture = gotel_test_capture_create(8 * 1024 * 1024);
+    capture = gotel_test_capture_create(OTEL_CONTRACT_CAPTURE_MAX_BYTES);
     CHECK(capture != NULL);
   }
   bounded_sampling();
