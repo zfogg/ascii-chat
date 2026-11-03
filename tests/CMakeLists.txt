@@ -74,8 +74,8 @@ if(ASCIICHAT_ENABLE_COVERAGE)
     set(IS_COVERAGE_BUILD ON)
 endif()
 
-# Configure timeouts based on build type
-if(IS_COVERAGE_BUILD)
+# Instrumentation slows tests and increases memory per Criterion worker.
+if(IS_COVERAGE_BUILD OR ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=")
     set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
     set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
     set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
@@ -1585,6 +1585,42 @@ endif()
 
 # Server handlers linked with their real media pipeline and fixture-owned application state.
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-signaling contracts/network/signaling_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/webrtc.c)
+    asciichat_configure_contract(test-signaling)
+    target_link_libraries(test-signaling PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-signaling PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-signaling)
+    set_target_properties(test-signaling PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(signaling test-signaling)
+    set_property(TEST signaling APPEND PROPERTY LABELS unit)
+
+    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/crypto.c)
+    asciichat_configure_contract(test-client-rekey)
+    target_link_libraries(test-client-rekey PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-client-rekey PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-client-rekey)
+    set_target_properties(test-client-rekey PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-rekey test-client-rekey)
+    set_property(TEST client-rekey APPEND PROPERTY LABELS unit)
+
+    add_executable(test-server-stream contracts/network/server_stream_test.c
+        ${CMAKE_SOURCE_DIR}/src/server/stream.c)
+    asciichat_configure_contract(test-server-stream)
+    target_link_libraries(test-server-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-server-stream PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-server-stream)
+    set_target_properties(test-server-stream PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-stream test-server-stream)
+    set_property(TEST server-stream APPEND PROPERTY LABELS unit)
+
     add_executable(test-server-protocol contracts/network/server_protocol_test.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
     asciichat_configure_contract(test-server-protocol)

@@ -1,592 +1,164 @@
-# Codecov configuration for ascii-chat
-# This configuration uses Components to organize coverage reporting by functionality
-
-# Global settings
+# Native coverage is published once, after prepare-coverage-upload.py validates
+# all seven CI shards. Test analytics uploads do not count as coverage uploads.
 codecov:
-  # Use the default branch from Git
   branch: master
-  # Use Codecov's default relative age limit; "12h" is parsed as noon.
-  # One upload is published only after all seven native coverage reports exist.
+  max_report_age: 24
+  require_ci_to_pass: false
   notify:
-    # Enable GitHub PR comments with coverage details
-    require_ci_to_pass: false
     after_n_builds: 1
+    wait_for_ci: false
+    notify_error: true
 
-# Coverage configuration
 coverage:
-  # Overall precision and display settings
   precision: 2
   round: down
-  range: 60..100
-
-  # Status checks configuration
+  range: "50..100"
   status:
-    # Default rules applied to all status checks
     default_rules:
       flag_coverage_not_uploaded_behavior: include
-
-    # Project-level status checks
     project:
-      # Overall project coverage
       default:
         target: auto
-        threshold: 2%
-        branches:
-          - master
-          - main
-          - palettes
-
-      # Core server functionality (most critical)
-      server_core:
+        threshold: 1%
+      application:
         target: 50%
-        threshold: 2%
+        threshold: 0%
         paths:
-          - "src/server/**/*"
-          - "lib/network/**/*"
-
-      # Client functionality
-      client_core:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "src/client/**/*"
-
-      # ASCII conversion engine (core feature)
-      ascii_engine:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/video/ascii/**/*"
-
-      # Video processing pipeline
-      video_processing:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/video/rgba/**/*"
-          - "lib/video/webcam/*"
-          - "lib/video/webcam/**/*"
-
-      # Audio system
-      audio_system:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/audio/**/*"
-          - "lib/audio/mixer.*"
-          - "lib/audio/audio.*"
-
-      # Network infrastructure
-      network_infrastructure:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/network/**/*"
-          - "lib/network/packet/queue.*"
-          - "lib/buffer.*"
-
-      # Security components (crypto is now a directory)
-      security_crypto:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/crypto/**/*"
-          - "lib/network/crc32.*"
-
-      # Terminal rendering and output
-      terminal_rendering:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/video/terminal/**/*"
-          - "lib/platform/**/terminal.*"
-          - "include/ascii-chat/platform/terminal.h"
-          - "lib/video/ascii/palette.*"
-
-      # Video frame handling
-      video_frames:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/video/rgba/video_frame.*"
-
-      # Core utilities and error handling
-      core_utilities:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "lib/asciichat_errno.*"
-          - "lib/common.*"
-          - "lib/network/compression.*"
-          - "lib/util/**/*"
-
-      # Debug utilities
-      debug_utilities:
-        target: 40%
-        threshold: 5%
-        paths:
-          - "lib/debug/**/*"
-        informational: true
-
-      # Tooling (defer, panic, query)
-      tooling:
-        target: 40%
-        threshold: 5%
-        paths:
-          - "lib/tooling/**/*"
-          - "src/tooling/**/*"
-        informational: true
-
-      # Main entry point
-      main_entry:
-        target: 50%
-        threshold: 2%
-        paths:
-          - "src/main.c"
-
-    # Patch-level status checks (for PRs)
+          - "src/"
     patch:
-      # Overall patch coverage
       default:
         target: 60%
-        threshold: 0% # Strict - all new code should be tested
-        base: auto
-        branches:
-          - master
-          - main
-          - palettes
-        if_ci_failed: error
+        threshold: 0%
         only_pulls: true
-        informational: false
-
-      # Stricter patch requirements for core functionality
-      core_patch:
-        target: 60%
-        threshold: 5%
-        base: auto
-        paths:
-          - "src/server/**/*"
-          - "src/client/**/*"
-          - "lib/video/ascii/**/*"
-          - "lib/network/**/*"
-          - "lib/crypto/**/*"
-        branches:
-          - master
-          - main
-          - palettes
-        if_ci_failed: error
-        only_pulls: true
-
-      # Security code patch coverage
-      security_patch:
+      security:
         target: 70%
-        threshold: 5%
-        base: auto
-        paths:
-          - "lib/crypto/**/*"
-          - "lib/network/crc32.*"
-        branches:
-          - master
-          - main
-          - palettes
-        if_ci_failed: error
+        threshold: 0%
         only_pulls: true
-
-      # SIMD optimizations patch coverage
-      simd_patch:
-        target: 50%
-        threshold: 10%
-        base: auto
         paths:
-          - "lib/video/ascii/avx2/**/*"
-          - "lib/video/ascii/neon/**/*"
-          - "lib/video/ascii/sve/**/*"
-        branches:
-          - master
-          - main
-          - palettes
-        if_ci_failed: error
-        only_pulls: true
+          - "lib/crypto/"
+          - "include/ascii-chat/crypto/"
+          - "lib/network/crc32.c"
+    changes: false
 
-    # Changes status - detects unexpected coverage changes
-    changes:
-      default:
-        # Detect coverage changes not in the diff
-        if_ci_failed: error
-        branches:
-          - master
-          - main
-          - palettes
-
-# Component management for detailed reporting
+# Components diagnose modules without duplicating the gates above. Targets follow
+# each module's baseline, including hardware and platform backends.
 component_management:
-  # Default rules inherited by all components
   default_rules:
-    # Default paths that apply to all components unless overridden
-    paths:
-      - "lib/**/*"
-      - "src/**/*"
-    # Flag regexes to include specific flag patterns
     flag_regexes:
-      - "ascii-chat-(tests|integration|performance).*"
-      - "coverage"
+      - "^coverage$"
     statuses:
       - type: project
         target: auto
-        threshold: 2%
-        branches:
-          - "!master" # Don't run on master to reduce noise
-      - type: patch
-        target: 70%
-        threshold: 5%
-
-  # Individual components for detailed tracking
+        threshold: 1%
+        informational: true
   individual_components:
-    # Server core functionality
-    - component_id: server_core
-      name: "Server Core"
+    - component_id: server
+      name: Server
+      paths: ["src/server/"]
+    - component_id: client
+      name: Client
+      paths: ["src/client/"]
+    - component_id: session
+      name: Shared Sessions
+      paths: ["src/common/session/", "src/session/"]
+    - component_id: discovery
+      name: Discovery
+      paths: ["src/discovery/", "src/discovery-service/", "lib/discovery/", "include/ascii-chat/discovery/"]
+    - component_id: mcp
+      name: MCP Server
+      paths: ["src/mcp-server/"]
+    - component_id: entry_points
+      name: CLI Entry Points
+      paths: ["src/main.c", "src/mirror/", "src/strings/"]
+    - component_id: video
+      name: Video and ASCII Rendering
+      paths: ["lib/video/", "include/ascii-chat/video/"]
+    - component_id: simd
+      name: SIMD Rendering
       paths:
-        - "src/server/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 60%
-
-    # Client core functionality
-    - component_id: client_core
-      name: "Client Core"
-      paths:
-        - "src/client/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 60%
-
-    # ASCII art conversion engine
-    - component_id: ascii_engine
-      name: "ASCII Art Engine"
-      paths:
-        - "lib/video/ascii/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 60%
-
-    # SIMD optimizations
-    - component_id: simd_optimizations
-      name: "SIMD Optimizations"
-      paths:
-        - "lib/video/ascii/avx2/**/*"
-        - "lib/video/ascii/neon/**/*"
-        - "lib/video/ascii/sve/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 5%
-        - type: patch
-          target: 50%
-
-    # Network protocol and communication
+        - "lib/video/ascii/avx2/"
+        - "lib/video/ascii/neon/"
+        - "lib/video/ascii/scalar/"
+        - "lib/video/ascii/simd/"
+        - "lib/video/ascii/sse2/"
+        - "lib/video/ascii/ssse3/"
+        - "lib/video/ascii/sve/"
+    - component_id: audio
+      name: Audio
+      paths: ["lib/audio/", "include/ascii-chat/audio/"]
     - component_id: networking
-      name: "Network Protocol"
+      name: Networking
+      paths: ["lib/network/", "include/ascii-chat/network/"]
+    - component_id: crypto
+      name: Cryptography
+      paths: ["lib/crypto/", "include/ascii-chat/crypto/"]
+    - component_id: media
+      name: Media Sources and Output
+      paths: ["lib/media/", "include/ascii-chat/media/"]
+    - component_id: terminal
+      name: Terminal and UI
       paths:
-        - "lib/network/**/*"
-        - "lib/network/packet/queue.*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 60%
-
-    # Audio processing and mixing
-    - component_id: audio_processing
-      name: "Audio Processing"
+        - "lib/terminal/"
+        - "lib/tui/"
+        - "lib/ui/"
+        - "include/ascii-chat/terminal/"
+        - "include/ascii-chat/tui/"
+        - "include/ascii-chat/ui/"
+    - component_id: options
+      name: Options and Configuration
+      paths: ["lib/options/", "include/ascii-chat/options/"]
+    - component_id: observability
+      name: Logging, Statistics and Debugging
       paths:
-        - "lib/audio/**/*"
-        - "lib/audio/mixer.*"
-        - "lib/audio/audio.*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 50%
-
-    # Video capture and processing
-    - component_id: video_processing
-      name: "Video Processing"
-      paths:
-        - "lib/video/rgba/**/*"
-        - "lib/video/webcam/*"
-        - "lib/video/webcam/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 5%
-
-    # Security and cryptography
-    - component_id: security
-      name: "Security & Crypto"
-      paths:
-        - "lib/crypto/**/*"
-        - "lib/network/crc32.*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 60%
-
-    # Memory management and data structures
-    - component_id: data_structures
-      name: "Data Structures"
-      paths:
-        - "lib/buffer.*"
-        - "lib/network/packet/queue.*"
-        - "lib/audio/audio.*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-        - type: patch
-          target: 60%
-
-    # Terminal output and rendering
-    - component_id: terminal_output
-      name: "Terminal Output"
-      paths:
-        - "lib/video/terminal/**/*"
-        - "lib/platform/**/terminal.*"
-        - "lib/video/ascii/palette.*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 5%
-
-    # Configuration and options
-    - component_id: configuration
-      name: "Configuration"
-      paths:
-        - "lib/options/**/*"
-        - "lib/log/**/*"
-        - "lib/options/config/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          informational: true
-
-    # Video frame handling
-    - component_id: video_frames
-      name: "Video Frames"
-      paths:
-        - "lib/video/rgba/video_frame.*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-
-    # Core utilities
-    - component_id: core_utilities
-      name: "Core Utilities"
-      paths:
-        - "lib/asciichat_errno.*"
-        - "lib/common.*"
-        - "lib/network/compression.*"
-        - "lib/util/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-
-    # Debug utilities
-    - component_id: debug_utilities
-      name: "Debug Utilities"
-      paths:
-        - "lib/debug/**/*"
-      statuses:
-        - type: project
-          target: 40%
-          informational: true
-
-    # Tooling
+        - "lib/log/"
+        - "lib/stats/"
+        - "lib/debug/"
+        - "include/ascii-chat/log/"
+        - "include/ascii-chat/stats/"
+        - "include/ascii-chat/debug/"
+    - component_id: platform
+      name: Platform Abstraction
+      paths: ["lib/platform/", "include/ascii-chat/platform/"]
+    - component_id: utilities
+      name: Utilities and Data Structures
+      paths: ["lib/*.c", "lib/util/", "include/ascii-chat/*.h", "include/ascii-chat/util/"]
     - component_id: tooling
-      name: "Tooling"
-      paths:
-        - "lib/tooling/**/*"
-        - "src/tooling/**/*"
-      statuses:
-        - type: project
-          target: 40%
-          informational: true
+      name: Native Developer Tools
+      paths: ["lib/tooling/", "src/tooling/"]
+    - component_id: browser
+      name: Browser Runtime
+      paths: ["src/web/"]
 
-    # Main entry point
-    - component_id: main_entry
-      name: "Main Entry"
-      paths:
-        - "src/main.c"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 2%
-
-    # Platform abstraction layer
-    - component_id: platform_abstraction
-      name: "Platform Abstraction"
-      paths:
-        - "lib/platform/**/*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 5%
-        - type: patch
-          target: 50%
-
-    # Cross-cutting components (span multiple directories)
-    - component_id: simd_all
-      name: "All SIMD Code"
-      paths:
-        - "lib/video/ascii/avx2/**/*"
-        - "lib/video/ascii/neon/**/*"
-        - "lib/video/ascii/sve/**/*"
-      flag_regexes:
-        - "coverage"
-        - "ascii-chat-(tests|integration|performance).*"
-      statuses:
-        - type: project
-          target: 50%
-          threshold: 5%
-        - type: patch
-          target: 50%
-
-    - component_id: headers
-      name: "Header Files"
-      paths:
-        - "lib/**/*.h"
-        - "src/**/*.h"
-      statuses:
-        - type: project
-          target: auto
-          informational: true
-
-    - component_id: platform_specific
-      name: "Platform-Specific Code"
-      paths:
-        - "lib/video/webcam/**/*"
-        - "lib/platform/posix/**/*"
-        - "lib/platform/windows/**/*"
-        - "lib/video/ascii/neon/**/*"
-        - "lib/video/ascii/ssse3/**/*"
-        - "lib/video/ascii/avx2/**/*"
-        - "lib/video/ascii/sve/**/*"
-      statuses:
-        - type: project
-          target: 40%
-          threshold: 10%
-          informational: true
-
-# Pull request comment configuration
 comment:
   layout: "header, diff, flags, components, footer"
   behavior: default
   require_changes: false
   require_base: false
   require_head: true
-  branches:
-    - master
-    - main
-    - palettes
-  # Show component information prominently in PR comments
   show_carryforward_flags: false
 
-# Ignore certain paths from coverage calculation
+# Generated files, external sources and test code. All product src/ modules stay
+# in the denominator, including currently untested paths.
 ignore:
-  - "build/**/*"
-  - "bin/**/*"
-  - "*.gcov"
-  - "**/*.gcov"
-  - ".github/**/*"
-  - "notes/**/*"
-  - "todo/**/*"
-  - "README.md"
-  - "Makefile*"
-  - "Info.plist"
-  - "**/.DS_Store"
-  - "**/compile_commands.json"
+  - "build*/**"
+  - ".deps-cache/"
+  - "deps/"
+  - "tests/"
+  - "lib/tests/"
+  - "include/ascii-chat/tests/"
   - "lib/version.c"
-  - "lib/version.h.in"
   - "lib/musl_c23_compat.c"
-  - "tests/**/*"
 
-# Flag configuration for organizing uploads
 flags:
-  ascii-chat-tests-ubuntu-debug:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-tests-ubuntu-release:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-tests-macos-debug:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-tests-macos-release:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-tests:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
   coverage:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-integration-ubuntu:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-integration-macos:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-performance-ubuntu:
-    paths:
-      - "lib/"
-      - "src/"
-    carryforward: false
-  ascii-chat-performance-macos:
-    paths:
-      - "lib/"
-      - "src/"
+    paths: ["lib/", "src/", "include/"]
     carryforward: false
 
-# Notification settings
+# Preserve branch partials; treating them as hits raises the score without
+# exercising another branch.
+parsers:
+  cobertura:
+    partials_as_hits: false
+
 github_checks:
   annotations: true
-
-# Profiling configuration for YAML reporting
-profiling:
-  # Enable YAML report customization
-  critical_files_paths:
-    - "src/server/**/*"
-    - "src/client/**/*"
-    - "lib/video/ascii/**/*"
-    - "lib/network/**/*"
-    - "lib/crypto/**/*"

@@ -63,6 +63,23 @@ static void teardown(void) {
   log_destroy();
 }
 TestSuite(source_audio_contract, .init = setup, .fini = teardown, .timeout = 20);
+
+Test(source_audio_contract, local_path_url_probe_preserves_preexisting_errors_without_adding_one) {
+  CLEAR_ERRNO_ALL();
+  SET_ERRNO(ERROR_NETWORK, "Earlier caller error");
+  asciichat_errno_scope_t before_open = errno_checkpoint();
+  media_source_t *second = media_source_create(MEDIA_SOURCE_FILE, path);
+  cr_assert_not_null(second);
+  cr_assert(errno_scope_is_clean(before_open));
+  asciichat_error_context_t error;
+  cr_assert(HAS_ERRNO(&error));
+  cr_assert_eq(error.code, ERROR_NETWORK);
+  cr_assert_not_null(strstr(error.context_message, "Earlier caller error"));
+  media_source_destroy(second);
+  cr_assert(errno_scope_is_clean(before_open));
+  CLEAR_ERRNO_ALL();
+}
+
 static void read_samples(float expected) {
   float samples[128];
   cr_assert_eq(media_source_read_audio(source, samples, 128), 128);
