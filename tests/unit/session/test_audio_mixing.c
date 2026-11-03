@@ -112,14 +112,14 @@ Test(session_audio_mixing, participant_cannot_register_or_mix_host_sources) {
 Test(session_audio_mixing, capture_and_playback_use_the_owned_rings_without_opening_devices) {
   audio_context_t *audio = session_audio_get_context(participant);
   cr_assert_not_null(audio);
-  float input[] = {0.25f, -0.5f, 0.75f}, output[3] = {0};
-  cr_assert_eq(audio_ring_buffer_write(audio->capture_buffer, input, 3), ASCIICHAT_OK);
-  cr_assert_eq(session_audio_read_captured(participant, output, 3), 3);
+  float input[] = {0.25f, -0.5f, 0.75f, -0.25f, 0.5f, -0.75f}, output[6] = {0};
+  cr_assert_eq(audio_ring_buffer_write(audio->capture_buffer, input, ARRAY_SIZE(input)), ASCIICHAT_OK);
+  cr_assert_eq(session_audio_read_captured(participant, output, ARRAY_SIZE(output)), ARRAY_SIZE(output));
   cr_assert_arr_eq(input, output, sizeof(input));
   cr_assert_eq(session_audio_read_captured(participant, output, 3), 0);
   audio->playback_buffer->jitter_buffer_enabled = false;
-  cr_assert_eq(session_audio_write_playback(participant, input, 3), ASCIICHAT_OK);
-  cr_assert_eq(audio_ring_buffer_read(audio->playback_buffer, output, 3), 3);
+  cr_assert_eq(session_audio_write_playback(participant, input, ARRAY_SIZE(input)), ASCIICHAT_OK);
+  cr_assert_eq(audio_ring_buffer_read(audio->playback_buffer, output, ARRAY_SIZE(output)), 3);
   cr_assert_arr_eq(input, output, sizeof(input));
   int media_token;
   session_audio_set_capture_source(participant, &media_token);

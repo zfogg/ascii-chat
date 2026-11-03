@@ -168,10 +168,10 @@ Test(session_host_media, mixed_memory_audio_is_encoded_and_delivered_to_a_networ
   uint32_t source = session_host_add_memory_participant(host);
   uint32_t listener = session_host_add_client(host, &transport, ACIP_TRANSPORT_BORROWED, "127.0.0.1", 1234);
   cr_assert(source && listener);
-  float input[OPUS_FRAME_SAMPLES];
-  for (unsigned i = 0; i < OPUS_FRAME_SAMPLES; ++i)
+  float input[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
+  for (unsigned i = 0; i < (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); ++i)
     input[i] = 0.5f * sinf((float)i * 0.07f);
-  cr_assert_eq(session_host_inject_audio(host, source, input, OPUS_FRAME_SAMPLES), ASCIICHAT_OK);
+  cr_assert_eq(session_host_inject_audio(host, source, input, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)), ASCIICHAT_OK);
   cr_assert_eq(session_host_render_audio(host), ASCIICHAT_OK);
   cr_assert_gt(sends, 0);
   cr_assert_gt(packet_length, sizeof(packet_header_t) + 18);
@@ -185,10 +185,11 @@ Test(session_host_media, mixed_memory_audio_is_encoded_and_delivered_to_a_networ
   cr_assert_eq(packet_length, sizeof(header) + 18 + size);
   opus_codec_t *decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
   cr_assert_not_null(decoder);
-  float decoded[OPUS_FRAME_SAMPLES];
-  cr_assert_eq(opus_codec_decode(decoder, batch + 18, size, decoded, OPUS_FRAME_SAMPLES), OPUS_FRAME_SAMPLES);
+  float decoded[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
+  cr_assert_eq(opus_codec_decode(decoder, batch + 18, size, decoded, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)),
+               (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
   double energy = 0;
-  for (unsigned i = 0; i < OPUS_FRAME_SAMPLES; ++i)
+  for (unsigned i = 0; i < (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); ++i)
     energy += decoded[i] * decoded[i];
   cr_assert_gt(energy, 0.01);
   opus_codec_destroy(decoder);

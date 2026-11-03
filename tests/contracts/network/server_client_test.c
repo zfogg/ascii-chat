@@ -71,8 +71,8 @@ static unsigned allocation_failure;
 static video_frame_buffer_t *contract_video_buffer(const char *name) {
   return allocation_failure == 1 ? NULL : video_frame_buffer_create(name);
 }
-static audio_ring_buffer_t *contract_audio_buffer(void) {
-  return allocation_failure == 2 ? NULL : audio_ring_buffer_create_for_capture();
+static audio_ring_buffer_t *contract_audio_buffer(unsigned channels, bool capture) {
+  return allocation_failure == 2 ? NULL : audio_ring_buffer_create_format(channels, capture);
 }
 static asciichat_error_t contract_client_mutex(mutex_t *mutex, const char *name) {
   if ((allocation_failure == 3 && strcmp(name, "client_state") == 0) ||
@@ -81,11 +81,11 @@ static asciichat_error_t contract_client_mutex(mutex_t *mutex, const char *name)
   return mutex_init(mutex, name);
 }
 #define video_frame_buffer_create contract_video_buffer
-#define audio_ring_buffer_create_for_capture contract_audio_buffer
+#define audio_ring_buffer_create_format contract_audio_buffer
 #define mutex_init contract_client_mutex
 #include "../../../src/server/client.c"
 #undef video_frame_buffer_create
-#undef audio_ring_buffer_create_for_capture
+#undef audio_ring_buffer_create_format
 #undef mutex_init
 
 static void setup(void) {
@@ -214,10 +214,10 @@ Test(server_client, audio_callbacks_ignore_unannounced_samples_then_deliver_to_c
   uint32_t stream = HOST_TO_NET_U32(STREAM_TYPE_AUDIO);
   dispatch(client, PACKET_TYPE_STREAM_START, &stream, sizeof(stream));
   dispatch(client, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet));
-  float actual[8];
-  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 8), 8);
-  for (size_t i = 0; i < 8; ++i)
-    cr_assert_float_eq(actual[i], samples[i], 1e-4);
+  float actual[8 * AUDIO_CHANNELS];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, ARRAY_SIZE(actual)), ARRAY_SIZE(actual));
+  for (size_t i = 0; i < ARRAY_SIZE(actual); ++i)
+    cr_assert_float_eq(actual[i], samples[i / AUDIO_CHANNELS], 1e-4);
 }
 Test(server_client, ping_is_serialized_and_shutdown_suppresses_the_reply) {
   client_info_t *client = admit();
@@ -460,9 +460,10 @@ Test(server_client, legacy_pcm_validates_stream_alignment_limits_and_recovers_wi
   expect_rejected(client);
   resume_client(client);
   handle_audio_packet(client, samples, sizeof(float) * 2);
-  float actual[2];
-  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 2), 2);
-  cr_assert_arr_eq(actual, samples, sizeof(actual));
+  float actual[2 * AUDIO_CHANNELS];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, ARRAY_SIZE(actual)), ARRAY_SIZE(actual));
+  for (size_t i = 0; i < ARRAY_SIZE(actual); ++i)
+    cr_assert_float_eq(actual[i], samples[i / AUDIO_CHANNELS], 1e-6);
 }
 Test(server_client, legacy_pcm_batch_rejects_bad_headers_and_counts_without_publishing_samples) {
   client_info_t *client = admit();
@@ -489,8 +490,8 @@ Test(server_client, legacy_pcm_batch_rejects_bad_headers_and_counts_without_publ
   p.header.batch_count = HOST_TO_NET_U32(1);
   p.samples[0] = HOST_TO_NET_U32(1073741823);
   handle_audio_batch_packet(client, &p, sizeof(p));
-  float actual[4];
-  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 4), 4);
+  float actual[4 * AUDIO_CHANNELS];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, ARRAY_SIZE(actual)), ARRAY_SIZE(actual));
   cr_assert_float_eq(actual[0], 0.5, 1e-6);
 }
 Test(server_client, single_opus_compatibility_rejects_bad_metadata_and_decodes_real_audio) {
@@ -518,19 +519,19 @@ Test(server_client, single_opus_compatibility_rejects_bad_metadata_and_decodes_r
   handle_audio_opus_packet(client, packet, 17);
   expect_rejected(client);
   resume_client(client);
-  float samples[OPUS_FRAME_SAMPLES];
+  float samples[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
   for (unsigned i = 0; i < ARRAY_SIZE(samples); ++i)
     samples[i] = (i % 32 < 16 ? 0.25f : -0.25f);
   opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
   cr_assert_not_null(encoder);
-  int size = opus_codec_encode(encoder, samples, OPUS_FRAME_SAMPLES, packet + 16, sizeof(packet) - 16);
+  int size = opus_codec_encode(encoder, samples, ARRAY_SIZE(samples), packet + 16, sizeof(packet) - 16);
   cr_assert_gt(size, 0);
   uint32_t rate = HOST_TO_NET_U32(48000), duration = HOST_TO_NET_U32(20);
   memcpy(packet, &rate, 4);
   memcpy(packet + 4, &duration, 4);
   handle_audio_opus_packet(client, packet, 16 + size);
   cr_assert(atomic_load_bool(&client->active));
-  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES);
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
   opus_codec_destroy(encoder);
 }
 
@@ -674,12 +675,12 @@ Test(server_client, single_opus_callback_wraps_real_audio_and_ignores_incompatib
   uint8_t packet[4096] = {0};
   acip_server_on_audio_opus(packet, 15, client, NULL);
   cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
-  float samples[OPUS_FRAME_SAMPLES];
+  float samples[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
   for (unsigned i = 0; i < ARRAY_SIZE(samples); ++i)
     samples[i] = i % 32 < 16 ? 0.25f : -0.25f;
   opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
   cr_assert_not_null(encoder);
-  int length = opus_codec_encode(encoder, samples, OPUS_FRAME_SAMPLES, packet + 16, sizeof(packet) - 16);
+  int length = opus_codec_encode(encoder, samples, ARRAY_SIZE(samples), packet + 16, sizeof(packet) - 16);
   cr_assert_gt(length, 0);
   write_u32_unaligned(packet, HOST_TO_NET_U32(44100));
   write_u32_unaligned(packet + 4, HOST_TO_NET_U32(20));
@@ -687,7 +688,7 @@ Test(server_client, single_opus_callback_wraps_real_audio_and_ignores_incompatib
   cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
   write_u32_unaligned(packet, HOST_TO_NET_U32(48000));
   acip_server_on_audio_opus(packet, length + 16, client, NULL);
-  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES);
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
   cr_assert(atomic_load_bool(&client->active));
   opus_codec_destroy(encoder);
 }
@@ -702,9 +703,10 @@ Test(server_client, compatibility_callbacks_validate_protocol_audio_and_remote_l
   resume_client(client);
   float samples[2] = {0.25f, -0.25f};
   acip_server_on_audio(samples, sizeof(samples), client, NULL);
-  float actual[2];
-  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 2), 2);
-  cr_assert_arr_eq(actual, samples, sizeof(samples));
+  float actual[2 * AUDIO_CHANNELS];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, ARRAY_SIZE(actual)), ARRAY_SIZE(actual));
+  for (size_t i = 0; i < ARRAY_SIZE(actual); ++i)
+    cr_assert_float_eq(actual[i], samples[i / AUDIO_CHANNELS], 1e-6);
   remote_log_packet_t header = {
       .log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, .message_length = HOST_TO_NET_U32(5)};
   acip_server_on_remote_log(&header, "hello", client, NULL);

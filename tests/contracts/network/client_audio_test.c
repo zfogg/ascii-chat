@@ -222,7 +222,7 @@ Test(client_audio_contract, received_pcm_checks_bounds_and_delivers_non_silent_a
   audio_process_received_samples(&audio_connection, samples, 0);
   cr_assert_eq(GET_ERRNO(), ERROR_INVALID_PARAM);
   CLEAR_ERRNO_ALL();
-  audio_process_received_samples(&audio_connection, samples, AUDIO_BATCH_SAMPLES + 1);
+  audio_process_received_samples(&audio_connection, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS + 2);
   cr_assert_eq(audio_ring_buffer_available_read(audio_connection.audio_context->playback_buffer), 0);
   audio_ring_buffer_set_jitter_target(audio_connection.audio_context->playback_buffer, 960);
   audio_process_received_samples(&audio_connection, samples, 512);
@@ -243,7 +243,7 @@ Test(client_audio_contract, pipeline_decodes_real_opus_and_capture_stop_preserve
   session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .target_fps = 60};
   audio_connection.capture_context = session_mirror_capture_create(&config);
   cr_assert_not_null(audio_connection.capture_context);
-  float decoded[OPUS_FRAME_SAMPLES];
+  float decoded[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
   uint8_t encoded[1024];
   cr_assert_eq(audio_decode_opus(&audio_connection, encoded, 1, decoded, ARRAY_SIZE(decoded)), -1);
   cr_assert_eq(audio_connection_init(&audio_connection), ASCIICHAT_OK);
@@ -253,12 +253,13 @@ Test(client_audio_contract, pipeline_decodes_real_opus_and_capture_stop_preserve
   cr_assert_eq(audio_decode_opus(&audio_connection, encoded, 1, decoded, 0), -1);
   opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
   cr_assert_not_null(encoder);
-  float pcm[960];
+  float pcm[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
   for (unsigned i = 0; i < ARRAY_SIZE(pcm); ++i)
     pcm[i] = i % 32 < 16 ? 0.2f : -0.2f;
-  int length = opus_codec_encode(encoder, pcm, 960, encoded, sizeof(encoded));
+  int length = opus_codec_encode(encoder, pcm, ARRAY_SIZE(pcm), encoded, sizeof(encoded));
   cr_assert_gt(length, 0);
-  cr_assert_eq(audio_decode_opus(&audio_connection, encoded, length, decoded, 960), 960);
+  cr_assert_eq(audio_decode_opus(&audio_connection, encoded, length, decoded, ARRAY_SIZE(decoded)),
+               ARRAY_SIZE(decoded));
   opus_codec_destroy(encoder);
   fail_worker = "audio_capture";
   cr_assert_eq(audio_start_thread(&audio_connection), -1);
@@ -283,7 +284,7 @@ Test(client_audio_contract, capture_worker_encodes_oversized_input_and_flushes_a
   cr_assert_not_null(audio_connection.capture_context);
   cr_assert_eq(audio_connection_init(&audio_connection), ASCIICHAT_OK);
   audio_connection.audio_send_direct = true;
-  float pcm[OPUS_FRAME_SAMPLES];
+  float pcm[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
   for (unsigned i = 0; i < ARRAY_SIZE(pcm); ++i)
     pcm[i] = i % 32 < 16 ? 2.0f : -2.0f;
   cr_assert_eq(audio_ring_buffer_write(audio_connection.audio_context->capture_buffer, pcm, ARRAY_SIZE(pcm)),

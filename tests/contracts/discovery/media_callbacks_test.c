@@ -176,7 +176,7 @@ Test(discovery_media, joins_preserve_worker_flags_until_each_handle_has_been_joi
 Test(discovery_media, remote_pcm_is_chunked_and_failed_submission_does_not_advance_observations) {
   audio_context_t audio = {0};
   discovery_video_receiver_t receiver = {.audio = &audio};
-  size_t count = AUDIO_OPUS_MAX_DECODE_SAMPLES + 17;
+  size_t count = AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS + 18;
   float *samples = SAFE_MALLOC(count * sizeof(float), float *);
   for (size_t i = 0; i < count; ++i)
     samples[i] = 0.25f;
@@ -187,19 +187,19 @@ Test(discovery_media, remote_pcm_is_chunked_and_failed_submission_does_not_advan
   SAFE_FREE(v);
   cr_assert_eq(discovery_play_samples(samples, count, &receiver), ASCIICHAT_OK);
   cr_assert_eq(writes, 2);
-  cr_assert_eq(chunks[0], AUDIO_OPUS_MAX_DECODE_SAMPLES);
-  cr_assert_eq(chunks[1], 17);
+  cr_assert_eq(chunks[0], AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS);
+  cr_assert_eq(chunks[1], 18);
   cr_assert_eq(receiver.observed_audio_samples, count);
   cr_assert_eq(receiver.observed_audio_blocks, 1);
   cr_assert_gt(receiver.observed_audio_ns, 0);
-  cr_assert_eq(discovery_play_samples(samples, 1, &receiver), ASCIICHAT_OK);
+  cr_assert_eq(discovery_play_samples(samples, AUDIO_CHANNELS, &receiver), ASCIICHAT_OK);
   cr_assert_eq(receiver.observed_audio_blocks, 2);
   cr_assert_gt(receiver.observed_audio_gap_ns, 0);
   write_result = ERROR_AUDIO;
-  cr_assert_eq(discovery_play_samples(samples, 1, &receiver), ERROR_AUDIO);
+  cr_assert_eq(discovery_play_samples(samples, AUDIO_CHANNELS, &receiver), ERROR_AUDIO);
   cr_assert_eq(receiver.observed_audio_blocks, 2);
   receiver.audio = NULL;
-  cr_assert_eq(discovery_play_samples(samples, 1, &receiver), ASCIICHAT_OK);
+  cr_assert_eq(discovery_play_samples(samples, AUDIO_CHANNELS, &receiver), ASCIICHAT_OK);
   cr_assert_eq(writes, 4);
   SAFE_FREE(samples);
 }
