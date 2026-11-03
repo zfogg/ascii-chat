@@ -5,6 +5,10 @@
 
 set(ASCIICHAT_OPENSSL_SOURCE_VERSION "3.6.0")
 set(ASCIICHAT_OPENSSL_SOURCE_SHA256 "b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9")
+set(ASCIICHAT_OPENSSL_BUILD_JOBS 4 CACHE STRING "Parallel jobs for source-built OpenSSL")
+if(NOT ASCIICHAT_OPENSSL_BUILD_JOBS MATCHES "^[1-9][0-9]*$")
+    message(FATAL_ERROR "ASCIICHAT_OPENSSL_BUILD_JOBS must be a positive integer")
+endif()
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
@@ -100,7 +104,7 @@ if(PLATFORM_IOS)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND make -j
+            COMMAND make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
@@ -259,7 +263,7 @@ if(USE_MUSL)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j
+            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
@@ -479,7 +483,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND ${_OPENSSL_ENV_CMD} make -j
+            COMMAND ${_OPENSSL_ENV_CMD} make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
         )
