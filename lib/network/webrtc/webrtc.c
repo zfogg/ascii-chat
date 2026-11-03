@@ -10,6 +10,9 @@
 #define WEBRTC_PERCENT_ESCAPE_EXPANSION 3
 #define WEBRTC_ESCAPED_AUTH_BUFFER_SIZE (WEBRTC_AUTH_INPUT_BUFFER_SIZE * WEBRTC_PERCENT_ESCAPE_EXPANSION)
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define WEBRTC_TURN_URL_BUFFER_SIZE 1024
+
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file networking/webrtc/webrtc.c
@@ -588,7 +591,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
 
     // Add TURN servers
     if (config->turn_count > 0) {
-      turn_urls = SAFE_CALLOC(config->turn_count, 1024, char *);
+      turn_urls = SAFE_CALLOC(config->turn_count, WEBRTC_TURN_URL_BUFFER_SIZE, char *);
       if (!turn_urls) {
         SAFE_FREE(ice_servers);
         SAFE_FREE(pc);
@@ -606,9 +609,9 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
       const char *address = strchr(server->url, ':') + 1;
       while (*address == '/')
         address++;
-      SAFE_SNPRINTF(turn_urls + i * 1024, 1024, "%.*s%s:%s@%s", (int)(strchr(server->url, ':') - server->url + 1),
-                    server->url, username, credential, address);
-      ice_servers[config->stun_count + i] = turn_urls + i * 1024;
+      SAFE_SNPRINTF(turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE, WEBRTC_TURN_URL_BUFFER_SIZE, "%.*s%s:%s@%s",
+                    (int)(strchr(server->url, ':') - server->url + 1), server->url, username, credential, address);
+      ice_servers[config->stun_count + i] = turn_urls + i * WEBRTC_TURN_URL_BUFFER_SIZE;
     }
   }
 

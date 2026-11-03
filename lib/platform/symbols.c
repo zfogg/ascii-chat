@@ -621,13 +621,15 @@ static char *parse_llvm_symbolizer_result(FILE *fp, void *addr, const char *modu
   }
 
   if (!has_func && !has_file) {
-    SAFE_SNPRINTF(result, 1024, "%p", addr);
+    SAFE_SNPRINTF(result, SYMBOL_DESCRIPTION_BUFFER_SIZE, "%p", addr);
   } else if (has_func && has_file) {
-    SAFE_SNPRINTF(result, 1024, "%s() (%s)%s", clean_func, rel_path, external ? " (external code)" : "");
+    SAFE_SNPRINTF(result, SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s() (%s)%s", clean_func, rel_path,
+                  external ? " (external code)" : "");
   } else if (has_func) {
-    SAFE_SNPRINTF(result, 1024, "%s()", clean_func);
+    SAFE_SNPRINTF(result, SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s()", clean_func);
   } else {
-    SAFE_SNPRINTF(result, 1024, "%s (unknown function)%s", rel_path, external ? " (external code)" : "");
+    SAFE_SNPRINTF(result, SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s (unknown function)%s", rel_path,
+                  external ? " (external code)" : "");
   }
 
   return result;

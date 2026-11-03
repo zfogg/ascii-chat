@@ -2,6 +2,9 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define SESSION_HOST_KEY_PATH_BUFFER_SIZE 512
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define HOST_AUDIO_BUFFER_FRAMES 10
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/audio/limits.h>
@@ -1064,7 +1067,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270); // Network-optimal size (HD preview)
       host->clients[i].incoming_audio =
-          ringbuffer_create(sizeof(float), OPUS_FRAME_SAMPLES * 10); // ~200ms buffer @ 48kHz
+          ringbuffer_create(sizeof(float), OPUS_FRAME_SAMPLES * HOST_AUDIO_BUFFER_FRAMES); // ~200ms buffer @ 48kHz
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         // Cleanup on allocation failure
@@ -1141,7 +1144,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
 
       // Allocate media buffers (same as network clients)
       host->clients[i].incoming_video = image_new(480, 270);
-      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), OPUS_FRAME_SAMPLES * 10);
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), OPUS_FRAME_SAMPLES * HOST_AUDIO_BUFFER_FRAMES);
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         if (host->clients[i].incoming_video) {
