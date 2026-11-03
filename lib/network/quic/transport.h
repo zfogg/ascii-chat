@@ -18,6 +18,11 @@ asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection,
  * Stop and join all transport users before destroying the transport. */
 asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                                         mutex_t *lane, acip_transport_t **out);
+/* For an endpoint accept callback already holding lane. The returned adapter
+ * uses lane for later calls; no adapter method may be called until it is
+ * released. */
+asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
+                                                     mutex_t *lane, acip_transport_t **out);
 /* Report an endpoint-reported connection failure after releasing the lane
  * mutex. Pending receives wake and return the supplied error. Once this
  * returns, the endpoint owner may remove the detached connection on the lane. */

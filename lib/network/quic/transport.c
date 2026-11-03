@@ -270,7 +270,7 @@ static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .destroy_impl = quic_destroy_impl};
 
 static asciichat_error_t attach_transport(acip_quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
-                                          acip_transport_t **out) {
+                                          bool lane_held, acip_transport_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC transport output");
   *out = NULL;
@@ -294,9 +294,11 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   transport->methods = &quic_methods;
   transport->impl_data = quic;
   transport->crypto_ctx = crypto;
-  lane_lock(quic);
+  if (!lane_held)
+    lane_lock(quic);
   asciichat_error_t result = acip_quic_connection_set_receiver(connection, queue_received_packet, quic);
-  lane_unlock(quic);
+  if (!lane_held)
+    lane_unlock(quic);
   if (result != ASCIICHAT_OK) {
     if (lane)
       cond_destroy(&quic->received);
@@ -310,7 +312,7 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
 
 asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                              acip_transport_t **out) {
-  return attach_transport(connection, crypto, NULL, out);
+  return attach_transport(connection, crypto, NULL, false, out);
 }
 
 asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
@@ -320,5 +322,15 @@ asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *
       *out = NULL;
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC lane mutex");
   }
-  return attach_transport(connection, crypto, lane, out);
+  return attach_transport(connection, crypto, lane, false, out);
+}
+
+asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
+                                                     mutex_t *lane, acip_transport_t **out) {
+  if (!lane) {
+    if (out)
+      *out = NULL;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC lane mutex");
+  }
+  return attach_transport(connection, crypto, lane, true, out);
 }

@@ -610,6 +610,84 @@ typedef struct {
 } udp_secure_test_state_t;
 
 typedef struct {
+  mutex_t *lane;
+  acip_quic_connection_t *connection;
+  acip_transport_t *transport;
+} quic_worker_accept_test_t;
+
+static asciichat_error_t quic_worker_accept(acip_quic_connection_t *connection, void *context) {
+  quic_worker_accept_test_t *state = context;
+  if (state->connection)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC worker connection");
+  asciichat_error_t result = acip_quic_transport_attach_on_lane(connection, NULL, state->lane, &state->transport);
+  if (result == ASCIICHAT_OK)
+    state->connection = connection;
+  return result;
+}
+
+static void quic_worker_accept_test(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  mutex_t client_lane, server_lane;
+  CHECK(mutex_init(&client_lane, "quic_accept_client") == 0);
+  CHECK(mutex_init(&server_lane, "quic_accept_server") == 0);
+  struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  quic_worker_accept_test_t accepted = {.lane = &server_lane};
+  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, quic_worker_accept,
+                                      &accepted, &server) == ASCIICHAT_OK);
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
+        ASCIICHAT_OK);
+  struct sockaddr_storage address;
+  socklen_t address_length = 0;
+  CHECK(acip_quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
+  acip_quic_connection_t *connection = NULL;
+  CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length,
+                              time_get_ns(), &connection) == ASCIICHAT_OK);
+  acip_transport_t *client_transport = NULL;
+  CHECK(acip_quic_transport_attach_serialized(connection, NULL, &client_lane, &client_transport) == ASCIICHAT_OK);
+  acip_quic_worker_t *client_worker = NULL, *server_worker = NULL;
+  CHECK(acip_quic_worker_start(server, &server_lane, NULL, NULL, &server_worker) == ASCIICHAT_OK);
+  CHECK(acip_quic_worker_start(client, &client_lane, NULL, NULL, &client_worker) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_set_waker(client_transport, acip_quic_worker_wake, client_worker) == ASCIICHAT_OK);
+  uint64_t start = time_get_ns();
+  bool client_ready = false, server_ready = false;
+  acip_transport_t *server_transport = NULL;
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
+    mutex_lock(&client_lane);
+    client_ready = acip_quic_connection_tls_ready(connection);
+    mutex_unlock(&client_lane);
+    mutex_lock(&server_lane);
+    server_transport = accepted.transport;
+    server_ready = accepted.connection && acip_quic_connection_tls_ready(accepted.connection);
+    mutex_unlock(&server_lane);
+    if (client_ready && server_ready && server_transport)
+      break;
+    time_sleep_ns(NS_PER_MS_INT);
+  }
+  CHECK(client_ready && server_ready && server_transport);
+  size_t packet_length = 0;
+  uint8_t *packet = make_packet(PACKET_TYPE_CRYPTO_CAPABILITIES, 16, &packet_length);
+  CHECK(acip_transport_send(client_transport, packet, packet_length) == ASCIICHAT_OK);
+  server_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+  void *received = NULL, *allocation = NULL;
+  size_t received_length = 0;
+  CHECK(acip_transport_recv(server_transport, &received, &received_length, &allocation) == ASCIICHAT_OK);
+  CHECK(received_length == packet_length && memcmp(received, packet, packet_length) == 0);
+  buffer_release(allocation);
+  buffer_release(packet);
+  CHECK(acip_quic_transport_set_waker(client_transport, NULL, NULL) == ASCIICHAT_OK);
+  CHECK(acip_quic_worker_stop(&client_worker) == ASCIICHAT_OK);
+  CHECK(acip_quic_worker_stop(&server_worker) == ASCIICHAT_OK);
+  acip_transport_destroy(client_transport);
+  acip_transport_destroy(server_transport);
+  acip_quic_udp_endpoint_destroy(&client);
+  acip_quic_udp_endpoint_destroy(&server);
+  mutex_destroy(&client_lane);
+  mutex_destroy(&server_lane);
+  socket_cleanup();
+}
+
+typedef struct {
   acip_quic_udp_endpoint_t *endpoint;
   acip_transport_t *transport;
   mutex_t *lane;
@@ -1143,6 +1221,7 @@ int main(int argc, char **argv) {
   quic_udp_exchange(server, client);
   quic_udp_bad_identity(server, client);
   quic_udp_wakeup_test();
+  quic_worker_accept_test(server, client);
   quic_udp_secure_exchange(server, client, false);
   quic_udp_secure_exchange(server, client, true);
 

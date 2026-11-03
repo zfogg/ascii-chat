@@ -88,7 +88,9 @@ connection ID, including the original Initial ID and active IDs issued by
 ngtcp2, rather than by peer address. The application drives it on one lane;
 TLS contexts outlive the endpoint, the endpoint owns connections and its socket,
 and callers must discard borrowed connection handles when removed or destroyed.
-An accept callback can install a receiver before the Initial is processed.
+An accept callback can attach an adapter while it holds the endpoint lane,
+before the Initial is processed. Adapter methods must wait until that callback
+returns and releases the lane.
 The pump bounds work per call and retains a generated datagram when the socket
 would block. A connection error identifies the affected handle so its owner can
 remove it while retaining the other connections.
