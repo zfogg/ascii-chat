@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/format.h>
 #include <ascii-chat/network/acip/settings.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
@@ -72,6 +73,7 @@ typedef struct {
   bool active;
   bool video_active;
   bool audio_active;
+  bool stereo_audio;
   uint64_t connected_at;
   uint16_t render_width;
   uint16_t render_height;
@@ -91,7 +93,7 @@ typedef struct {
   ringbuffer_t *incoming_audio;
   opus_codec_t *opus_decoder;
   opus_codec_t *opus_encoder;
-  float audio_frame[960];
+  float audio_frame[(960 * AUDIO_PCM_CHANNELS)];
 } session_host_client_t;
 
 static void host_client_release_transport(session_host_client_t *client) {
@@ -389,7 +391,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
         for (int j = 0; j < host->max_clients; j++) {
           if (host->clients[j].client_id == client_id && host->clients[j].active && host->clients[j].incoming_audio) {
             if (!host->clients[j].opus_decoder)
-              host->clients[j].opus_decoder = opus_codec_create_decoder(48000);
+              host->clients[j].opus_decoder = opus_codec_create_decoder_channels(48000, AUDIO_PCM_CHANNELS);
             if (!host->clients[j].opus_decoder) {
               mutex_unlock(&host->clients_mutex);
               return SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant decoder");
@@ -405,9 +407,9 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
               }
               if (frame_size > 0) {
                 // Allocate buffer for decoded samples
-                float decoded_samples[960]; // Max 20ms @ 48kHz
+                float decoded_samples[(960 * AUDIO_PCM_CHANNELS)]; // Max 20ms @ 48kHz
                 int decoded_count = opus_codec_decode(host->clients[j].opus_decoder, current_frame, (int)frame_size,
-                                                      decoded_samples, 960);
+                                                      decoded_samples, (960 * AUDIO_PCM_CHANNELS));
                 if (decoded_count > 0) {
                   host->clients[j].audio_active = true;
                   // Write samples to ringbuffer one at a time
@@ -461,6 +463,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
       else {
         terminal_capabilities_packet_t packet;
         memcpy(&packet, data, sizeof(packet));
+        target->stereo_audio = (NET_TO_HOST_U32(packet.codec_capabilities_audio) & AUDIO_CAP_STEREO) != 0;
         if (target->rendering.width) {
           // Codec advertisements cannot change an established viewer's settings.
           mutex_unlock(&host->clients_mutex);
@@ -719,7 +722,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
   if (!host || !host->initialized)
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   uint64_t mix_start = time_get_ns();
-  double total[960] = {0};
+  double total[(960 * AUDIO_PCM_CHANNELS)] = {0};
   asciichat_error_t result = ASCIICHAT_OK;
   mutex_lock(&host->clients_mutex);
   // Drain each source once. Keep unclipped samples so mix-minus can subtract
@@ -729,7 +732,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
     memset(client->audio_frame, 0, sizeof(client->audio_frame));
     if (!client->active || !client->audio_active || !client->incoming_audio)
       continue;
-    for (int j = 0; j < 960; j++) {
+    for (int j = 0; j < (960 * AUDIO_PCM_CHANNELS); j++) {
       if (ringbuffer_read(client->incoming_audio, &client->audio_frame[j]))
         total[j] += client->audio_frame[j];
     }
@@ -739,19 +742,34 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
     if (!client->active || !client->transport)
       continue;
     ASCII_OTEL_SCOPE(SERVER_AUDIO);
+    int channels = client->stereo_audio ? AUDIO_PCM_CHANNELS : 1;
+    if (client->opus_encoder && client->opus_encoder->channels != channels) {
+      opus_codec_destroy(client->opus_encoder);
+      client->opus_encoder = NULL;
+    }
     if (!client->opus_encoder)
-      client->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+      client->opus_encoder = opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, 48000, 128000,
+                                                                client->stereo_audio ? AUDIO_PCM_CHANNELS : 1);
     if (!client->opus_encoder) {
       result = SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant encoder");
       continue;
     }
-    float mixed[960];
-    for (int j = 0; j < 960; j++) {
+    float mixed[(960 * AUDIO_PCM_CHANNELS)];
+    for (int j = 0; j < (960 * AUDIO_PCM_CHANNELS); j++) {
       float sample = (float)(total[j] - client->audio_frame[j]);
       mixed[j] = sample > 1.0f ? 1.0f : sample < -1.0f ? -1.0f : sample;
     }
     uint8_t opus_buffer[1000];
-    size_t opus_len = opus_codec_encode(client->opus_encoder, mixed, 960, opus_buffer, sizeof(opus_buffer));
+    float mono[960];
+    const float *encode_pcm = mixed;
+    int encode_samples = 960 * AUDIO_PCM_CHANNELS;
+    if (client->opus_encoder->channels == 1) {
+      (void)audio_convert_channels(mixed, 960, AUDIO_PCM_CHANNELS, mono, 1);
+      encode_pcm = mono;
+      encode_samples = 960;
+    }
+    size_t opus_len =
+        opus_codec_encode(client->opus_encoder, encode_pcm, encode_samples, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
       asciichat_error_t sent =
@@ -763,10 +781,10 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
   mutex_unlock(&host->clients_mutex);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
 #ifndef __EMSCRIPTEN__
-  float recorded[960];
-  for (int j = 0; j < 960; j++)
+  float recorded[(960 * AUDIO_PCM_CHANNELS)];
+  for (int j = 0; j < (960 * AUDIO_PCM_CHANNELS); j++)
     recorded[j] = total[j] > 1.0 ? 1.0f : total[j] < -1.0 ? -1.0f : (float)total[j];
-  audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, 960, time_get_ns());
+  audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, (960 * AUDIO_PCM_CHANNELS), time_get_ns());
 #endif
   return result;
 }
@@ -1035,6 +1053,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
   for (int i = 0; i < host->max_clients; i++) {
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
+      host->clients[i].stereo_audio = false;
       host->clients[i].client_id = host->next_client_id++;
       host->clients[i].connection = NULL;
       if (ip) {
@@ -1054,8 +1073,9 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers
-      host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
-      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10); // ~200ms buffer @ 48kHz
+      host->clients[i].incoming_video = image_new(480, 270); // Network-optimal size (HD preview)
+      host->clients[i].incoming_audio =
+          ringbuffer_create(sizeof(float), (960 * AUDIO_PCM_CHANNELS) * 10); // ~200ms buffer @ 48kHz
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         // Cleanup on allocation failure
@@ -1120,6 +1140,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
   for (int i = 0; i < host->max_clients; i++) {
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_MEMORY;
+      host->clients[i].stereo_audio = true;
       host->clients[i].client_id = host->next_client_id++;
       SAFE_STRNCPY(host->clients[i].ip_address, "memory", sizeof(host->clients[i].ip_address));
       host->clients[i].port = 0;
@@ -1132,7 +1153,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
 
       // Allocate media buffers (same as network clients)
       host->clients[i].incoming_video = image_new(480, 270);
-      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10);
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), (960 * AUDIO_PCM_CHANNELS) * 10);
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         if (host->clients[i].incoming_video) {
@@ -1216,7 +1237,7 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
 
 asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples,
                                             size_t count) {
-  if (!host || !host->initialized || !samples || count == 0) {
+  if (!host || !host->initialized || !samples || count == 0 || count % AUDIO_PCM_CHANNELS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 

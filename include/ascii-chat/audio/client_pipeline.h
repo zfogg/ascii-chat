@@ -167,6 +167,8 @@ typedef struct {
  */
 typedef struct {
   /** Sample rate in Hz (default: 48000) */
+  int channels;         ///< PCM channels (1 or 2)
+  int encoder_channels; ///< Transmitted channels, independent of playback
   int sample_rate;
   /** Frame size in milliseconds (default: 20ms) */
   uint64_t frame_duration_ms;

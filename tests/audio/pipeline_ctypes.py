@@ -30,6 +30,8 @@ class Flags(c.Structure):
 
 class Config(c.Structure):
     _fields_ = [
+        ("channels", c.c_int),
+        ("encoder_channels", c.c_int),
         ("sample_rate", c.c_int),
         ("frame_duration_ms", c.c_uint64),
         ("opus_bitrate", c.c_int),

@@ -203,6 +203,7 @@ typedef struct {
  * @ingroup ringbuffer
  */
 typedef struct audio_ring_buffer {
+  unsigned channels; ///< Frame width, configured before the first read/write
   /** @brief Audio sample data buffer */
   float data[AUDIO_RING_BUFFER_SIZE];
   /** @brief Write index (producer position) - LOCK-FREE with atomic operations */

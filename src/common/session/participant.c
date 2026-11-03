@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/format.h>
 #include <ascii-chat/util/password.h>
 #include <sodium.h>
 #include <ascii-chat/network/acip/settings.h>
@@ -32,6 +33,8 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/opus.h>
+#include <ascii-chat/audio/client_pipeline.h>
+#include <ascii-chat/media/source.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -460,21 +463,34 @@ static void *participant_audio_capture_thread(void *arg) {
 
   log_info("Audio capture thread started");
 
-  float sample_buffer[960]; // 20ms @ 48kHz
+  float sample_buffer[(960 * AUDIO_PCM_CHANNELS)]; // 20ms @ 48kHz
   uint8_t opus_buffer[1000];
+  size_t collected = 0;
 
   while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
-    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, 960);
+    size_t samples_read =
+        session_audio_read_captured(p->audio_capture, sample_buffer + collected, 960 * AUDIO_PCM_CHANNELS - collected);
     if (samples_read <= 0) {
       APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);
       continue;
     }
+    collected += samples_read;
+    if (collected < 960 * AUDIO_PCM_CHANNELS)
+      continue;
 
     // Encode to Opus (lossy compression for bandwidth efficiency)
-    size_t opus_len =
-        opus_codec_encode(p->opus_encoder, sample_buffer, (int)samples_read, opus_buffer, sizeof(opus_buffer));
+    float mono[960];
+    const float *pcm = sample_buffer;
+    int samples = (int)collected;
+    if (p->opus_encoder->channels == 1) {
+      (void)audio_convert_channels(sample_buffer, 960, AUDIO_PCM_CHANNELS, mono, 1);
+      pcm = mono;
+      samples = 960;
+    }
+    size_t opus_len = opus_codec_encode(p->opus_encoder, pcm, samples, opus_buffer, sizeof(opus_buffer));
+    collected = 0;
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
       asciichat_error_t err =
@@ -628,7 +644,10 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
   if (!p->opus_encoder) {
     asciichat_errno_scope_t checkpoint = errno_checkpoint();
-    p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+    client_audio_pipeline_config_t profile =
+        client_audio_pipeline_config_for_source(source && media_source_has_audio(source));
+    p->opus_encoder = opus_codec_create_encoder_channels((opus_application_t)profile.opus_application, 48000,
+                                                         profile.opus_bitrate, profile.encoder_channels);
     if (!p->opus_encoder) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create Opus encoder");
       session_participant_stop_audio(p);

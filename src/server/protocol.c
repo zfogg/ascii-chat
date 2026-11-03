@@ -500,7 +500,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 
     // Create Opus decoder for this client if not already created
     if (!client->opus_decoder) {
-      client->opus_decoder = opus_codec_create_decoder(48000);
+      client->opus_decoder = opus_codec_create_decoder_channels(48000, AUDIO_CHANNELS);
       if (client->opus_decoder) {
         log_info("Client %s: Opus decoder created (48kHz)", client->client_id);
       } else {
@@ -948,7 +948,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
     // Fallback to string hash if can't parse as number
     client_id_num = 0;
     for (int i = 0; client->client_id[i]; i++) {
-      client_id_num = (client_id_num * 31 + (unsigned char)client->client_id[i]) & 0xFFFFFFFF;
+      client_id_num = (uint32_t)((uint64_t)client_id_num * 31 + (unsigned char)client->client_id[i]);
     }
   }
 
@@ -1062,7 +1062,11 @@ void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_RESOURCE_INITIALIZED(client, client->incoming_audio_buffer, "audio buffer");
 
   const float *samples = (const float *)data;
-  asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
+  asciichat_error_t result = ASCIICHAT_OK;
+  float *stereo = SAFE_MALLOC((size_t)num_samples * AUDIO_CHANNELS * sizeof(float), float *);
+  if (audio_convert_channels(samples, (size_t)num_samples, 1, stereo, AUDIO_CHANNELS) == ASCIICHAT_OK)
+    result = audio_ring_buffer_write(client->incoming_audio_buffer, stereo, num_samples * AUDIO_CHANNELS);
+  SAFE_FREE(stereo);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to write audio samples to buffer: %s", asciichat_error_format(NULL, result));
   }
@@ -1169,6 +1173,11 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   uint32_t packet_batch_count = batch_info.batch_count;
   uint32_t total_samples = batch_info.total_samples;
   uint32_t sample_rate = batch_info.sample_rate;
+  if (sample_rate != AUDIO_SAMPLE_RATE || (batch_info.channels != 1 && batch_info.channels != 2) ||
+      total_samples % batch_info.channels) {
+    disconnect_client_for_bad_data(client, "Unsupported PCM audio format");
+    return;
+  }
 
   (void)packet_batch_count;
   (void)sample_rate;
@@ -1201,7 +1210,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
 
   // Safe allocation: total_samples is bounded above, so multiplication won't overflow
-  size_t alloc_size = (size_t)total_samples * sizeof(float);
+  size_t alloc_size = (size_t)total_samples * AUDIO_CHANNELS * sizeof(float);
   float *samples = SAFE_MALLOC(alloc_size, float *);
   if (!samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio sample conversion");
@@ -1233,7 +1242,10 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 #endif
 
   if (client->incoming_audio_buffer) {
-    asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+    uint32_t frames = total_samples / batch_info.channels;
+    (void)audio_convert_channels(samples, frames, batch_info.channels, samples, AUDIO_CHANNELS);
+    asciichat_error_t write_result =
+        audio_ring_buffer_write(client->incoming_audio_buffer, samples, frames * AUDIO_CHANNELS);
     if (write_result != ASCIICHAT_OK) {
       log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_format(NULL, write_result));
     }
@@ -1304,13 +1316,13 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   VALIDATE_NONZERO(client, opus_size, "opus_size", "AUDIO_OPUS_BATCH");
 
   // Calculate samples per frame (20ms @ 48kHz = 960 samples)
-  int samples_per_frame = (sample_rate * frame_duration) / 1000;
-  VALIDATE_RANGE(client, samples_per_frame, 1, 4096, "samples_per_frame", "AUDIO_OPUS_BATCH");
+  int samples_per_frame = (sample_rate * frame_duration) / 1000 * AUDIO_CHANNELS;
+  VALIDATE_RANGE(client, samples_per_frame, 1, 5760 * AUDIO_CHANNELS, "samples_per_frame", "AUDIO_OPUS_BATCH");
 
   // Use static buffer for common case to avoid malloc in hot path
   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
-#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
+#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960 * AUDIO_CHANNELS)
   // Each client receive thread decodes independently. Sharing this scratch
   // buffer lets concurrent clients overwrite one another's PCM before it is
   // written to their source rings.
@@ -1490,14 +1502,14 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
   }
 
   // Calculate expected samples per frame
-  int samples_per_frame = (int)((sample_rate * frame_duration) / 1000);
-  if (samples_per_frame <= 0 || samples_per_frame > 5760) { // Max 120ms @ 48kHz
+  int samples_per_frame = (int)((sample_rate * frame_duration) / 1000) * AUDIO_CHANNELS;
+  if (samples_per_frame <= 0 || samples_per_frame > 5760 * AUDIO_CHANNELS) { // Max 120ms @ 48kHz
     disconnect_client_for_bad_data(client, "AUDIO_OPUS invalid samples_per_frame: %d", samples_per_frame);
     return;
   }
 
   // Decode Opus frame
-  float decoded_samples[5760]; // Max Opus frame size (120ms @ 48kHz)
+  float decoded_samples[5760 * AUDIO_CHANNELS]; // Max Opus frame size (120ms @ 48kHz)
   int decoded_count =
       opus_codec_decode((opus_codec_t *)client->opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
 

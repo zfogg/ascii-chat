@@ -1,7 +1,8 @@
 # Audio reliability and validation
 
-Opus is already the wire codec. This change keeps the existing mono, 48 kHz,
-20 ms protocol and improves native encoding, decoded playback, and queue recovery.
+Opus is the wire codec at 48 kHz with 20 ms packets. Native and browser paths
+support mono speech and stereo media; see [audio channels](audio-channels.md) for
+device routing, stereo negotiation, and hardware-free regression coverage.
 
 ## Behavior
 
@@ -43,7 +44,7 @@ independent mixed recipient streams, the production capture pipeline, quiet
 playback compared sample-for-sample with an independent Opus decoder, decoder
 concealment, and AEC3 echo-only/double-talk signals.
 
-## Measured validation
+## Earlier mono baseline measurements
 
 Native builds and compiled audio checks passed on Windows, Intel macOS, and
 Linux. The clock-skew queues stayed within 2399–3361 samples without underruns.
@@ -69,8 +70,7 @@ their manifest was regenerated and verified before the check.
 ## Boundaries
 
 The packet format still has no sequence/timestamp contract for unreliable audio;
-FEC and a lossy transport require a separate protocol change. Stereo remains a
-separate negotiation/mixing feature. Physical Bluetooth, device unplug/replug,
+FEC and a lossy transport require a separate protocol change. Physical Bluetooth, device unplug/replug,
 speaker-to-microphone AEC, and overnight soak coverage are not established by the
 synthetic tests or the five-minute call. The SSH Mac test intentionally bypasses
 microphone permission restrictions with generated audio.

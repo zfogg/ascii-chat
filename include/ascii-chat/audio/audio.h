@@ -31,7 +31,7 @@
  * AUDIO PARAMETERS:
  * =================
  * - Sample Rate: 48kHz (professional quality, Opus-compatible)
- * - Channels: Mono (1 channel)
+ * - Channels: Interleaved stereo internally; device layouts are negotiated
  * - Buffer Size: 256 frames per buffer (low latency)
  * - Format: 32-bit floating point samples
  *
@@ -57,6 +57,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/audio/format.h>
 #include <stdbool.h>
 #include <ascii-chat/atomic.h>
 #include <portaudio.h>
@@ -85,8 +86,8 @@
 #define AUDIO_SAMPLE_RATE 48000
 /** @brief Audio frames per buffer (480 = 10ms at 48kHz, matches WebRTC AEC3 frame size) */
 #define AUDIO_FRAMES_PER_BUFFER 480
-/** @brief Number of audio channels (1 = mono) */
-#define AUDIO_CHANNELS 1
+/** @brief Internal PCM channel count (2 = interleaved stereo) */
+#define AUDIO_CHANNELS AUDIO_PCM_CHANNELS
 /** @brief Total audio buffer size (frames × channels) */
 #define AUDIO_BUFFER_SIZE (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS)
 
@@ -168,14 +169,18 @@ typedef struct {
   uint64_t test_audio_playback_position; ///< Output callback's synthesized monitor sample clock
   void *capture_media_source;            ///< Borrowed local media audio; configure before starting duplex
   double sample_rate;                    ///< Actual sample rate of streams (48kHz)
-  double input_device_rate;              ///< Native sample rate of input device
-  double output_device_rate;             ///< Native sample rate of output device
-  double input_resample_phase;           ///< Source position carried between native-rate input blocks
-  float input_resample_previous;         ///< Last input sample used at a block boundary
-  bool input_resample_has_previous;      ///< Whether a prior input block has been processed
-  double output_resample_phase;          ///< 48 kHz source position carried between output callbacks
-  float output_resample_previous;        ///< Last source sample used at an output boundary
-  bool output_resample_has_previous;     ///< Whether a prior output block has been processed
+  unsigned input_device_channels;
+  unsigned output_device_channels;
+  audio_resampler_t capture_resampler;
+  audio_resampler_t playback_resampler;
+  double input_device_rate;          ///< Native sample rate of input device
+  double output_device_rate;         ///< Native sample rate of output device
+  double input_resample_phase;       ///< Source position carried between native-rate input blocks
+  float input_resample_previous;     ///< Last input sample used at a block boundary
+  bool input_resample_has_previous;  ///< Whether a prior input block has been processed
+  double output_resample_phase;      ///< 48 kHz source position carried between output callbacks
+  float output_resample_previous;    ///< Last source sample used at an output boundary
+  bool output_resample_has_previous; ///< Whether a prior output block has been processed
 } audio_context_t;
 
 /* ============================================================================
@@ -509,6 +514,8 @@ asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t 
  * @ingroup audio
  */
 audio_ring_buffer_t *audio_ring_buffer_create(void);
+/** Allocate an explicitly formatted mono/stereo queue. */
+audio_ring_buffer_t *audio_ring_buffer_create_format(unsigned channels, bool capture);
 /** Set initial 20-160 ms target before starting producer/consumer threads. */
 void audio_ring_buffer_set_jitter_target(audio_ring_buffer_t *rb, uint32_t samples);
 

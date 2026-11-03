@@ -103,6 +103,7 @@ typedef struct {
   OpusEncoder *encoder; ///< Encoder state (NULL if decoder)
   OpusDecoder *decoder; ///< Decoder state (NULL if encoder)
   int sample_rate;      ///< Sample rate in Hz (e.g., 44100)
+  int channels;         ///< PCM channels (1 or 2); sample counts include all channels
   int bitrate;          ///< Bitrate in bits per second (encoder only)
   uint8_t *tmp_buffer;  ///< Temporary buffer for internal use
 } opus_codec_t;
@@ -130,6 +131,8 @@ typedef struct {
  * @ingroup audio
  */
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate);
+opus_codec_t *opus_codec_create_encoder_channels(opus_application_t application, int sample_rate, int bitrate,
+                                                 int channels);
 
 /**
  * @brief Create an Opus decoder
@@ -143,6 +146,7 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
  * @ingroup audio
  */
 opus_codec_t *opus_codec_create_decoder(int sample_rate);
+opus_codec_t *opus_codec_create_decoder_channels(int sample_rate, int channels);
 
 /**
  * @brief Encode audio frame with Opus

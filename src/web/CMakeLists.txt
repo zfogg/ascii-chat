@@ -502,6 +502,7 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/visualization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
     ${LIB_ROOT}/audio/processor.c
+    ${LIB_ROOT}/audio/format.c
     ${LIB_ROOT}/audio/effects.c
     ${LIB_ROOT}/audio/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c

@@ -20,6 +20,7 @@ class Flags(c.Structure):
 
 class Config(c.Structure):
     _fields_ = [
+        ("channels", c.c_int),
         ("sample_rate", c.c_int),
         ("flags", Flags),
         ("spectral_enabled", c.c_bool),

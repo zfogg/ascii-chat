@@ -1261,7 +1261,7 @@ static asciichat_error_t server_init_audio_mixer(void) {
   // Initialize audio mixer (always enabled on server)
   if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing audio mixer for per-client audio rendering...");
-    g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
+    g_audio_mixer = mixer_create_channels(MAX_CLIENTS, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
     if (!g_audio_mixer) {
       LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
       if (!atomic_load_bool(&g_should_exit)) {

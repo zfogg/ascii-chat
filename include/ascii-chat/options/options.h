@@ -1086,6 +1086,8 @@ typedef struct options_state {
   audio_capture_source_t audio_capture_source; ///< Local capture/media selection policy
   bool waveform;                               ///< Replace the video image with a live audio waveform
   bool fft;                                    ///< Replace the video image with a live audio frequency spectrogram
+  int microphone_channels;                     ///< Selected microphone channels: 1 (speech) or 2 (stereo)
+  int microphone_channel;                      ///< First zero-based input channel; -1 downmixes all inputs
   int microphone_index;                        ///< Microphone device index (-1 = default)
   int speakers_index;                          ///< Speakers device index (-1 = default)
   float microphone_sensitivity;                ///< Microphone volume multiplier (0.0-1.0, default 1.0)

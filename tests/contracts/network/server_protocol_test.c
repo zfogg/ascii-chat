@@ -273,13 +273,16 @@ Test(server_protocol, legacy_rgb_frames_reach_owned_video_buffer_without_payload
 }
 
 Test(server_protocol, raw_and_quantized_audio_are_stored_and_disabled_streams_rejected) {
-  client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
+  client->incoming_audio_buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, true);
   cr_assert_not_null(client->incoming_audio_buffer);
   atomic_store_bool(&client->is_sending_audio, true);
-  float input[] = {0, .5f, -1, 1}, output[4];
+  float input[] = {0, .5f, -1, 1}, output[4 * AUDIO_CHANNELS];
   handle_audio_packet(client, input, sizeof(input));
-  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 4), 4);
-  cr_assert_arr_eq(input, output, sizeof(input));
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 4 * AUDIO_CHANNELS), 4 * AUDIO_CHANNELS);
+  for (size_t i = 0; i < 4; i++) {
+    cr_assert_eq(output[i * 2], input[i]);
+    cr_assert_eq(output[i * 2 + 1], input[i]);
+  }
   struct {
     audio_batch_packet_t header;
     uint32_t samples[4];
@@ -290,8 +293,15 @@ Test(server_protocol, raw_and_quantized_audio_are_stored_and_disabled_streams_re
              .samples = {HOST_TO_NET_U32(0), HOST_TO_NET_U32(0x40000000), HOST_TO_NET_U32(0x80000001),
                          HOST_TO_NET_U32(0x7fffffff)}};
   handle_audio_batch_packet(client, &batch, sizeof(batch));
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 4 * AUDIO_CHANNELS), 4 * AUDIO_CHANNELS);
+  for (size_t i = 0; i < 4; ++i) {
+    cr_assert_float_eq(input[i], output[i * 2], 1e-6);
+    cr_assert_float_eq(input[i], output[i * 2 + 1], 1e-6);
+  }
+  batch.header.channels = HOST_TO_NET_U32(2);
+  handle_audio_batch_packet(client, &batch, sizeof(batch));
   cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, output, 4), 4);
-  for (size_t i = 0; i < 4; ++i)
+  for (size_t i = 0; i < 4; i++)
     cr_assert_float_eq(input[i], output[i], 1e-6);
   reset_disconnect();
   handle_audio_packet(client, input, sizeof(input) - 1);

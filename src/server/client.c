@@ -370,7 +370,7 @@ static asciichat_error_t server_client_allocate_transport_buffers(client_info_t 
   }
 
   // Create individual audio buffer for this client
-  client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
+  client->incoming_audio_buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, true);
   if (!client->incoming_audio_buffer) {
     log_error("Failed to create audio buffer for transport client %s", new_client_id);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for transport client %s", new_client_id);
@@ -1262,7 +1262,9 @@ static void acip_server_on_audio(const void *audio_data, size_t audio_len, void 
 static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
                                        void *client_ctx, void *app_ctx) {
   (void)app_ctx;
-  (void)header; // Header info not needed - ACIP already validated
+  if (header->sample_rate != AUDIO_SAMPLE_RATE || (header->channels != 1 && header->channels != 2) ||
+      num_samples % header->channels)
+    return;
   client_info_t *client = (client_info_t *)client_ctx;
 
   // ACIP handler already dequantized samples - write directly to audio buffer
@@ -1276,8 +1278,12 @@ static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const
   }
 
   if (client->incoming_audio_buffer) {
-    asciichat_error_t write_result =
-        audio_ring_buffer_write(client->incoming_audio_buffer, (float *)samples, num_samples);
+    asciichat_error_t write_result = ASCIICHAT_OK;
+    size_t frames = num_samples / header->channels;
+    float *stereo = SAFE_MALLOC(frames * AUDIO_CHANNELS * sizeof(float), float *);
+    if (audio_convert_channels(samples, frames, header->channels, stereo, AUDIO_CHANNELS) == ASCIICHAT_OK)
+      write_result = audio_ring_buffer_write(client->incoming_audio_buffer, stereo, (int)(frames * AUDIO_CHANNELS));
+    SAFE_FREE(stereo);
     if (write_result != ASCIICHAT_OK) {
       log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_format(NULL, write_result));
     }

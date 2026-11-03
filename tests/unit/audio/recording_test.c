@@ -232,7 +232,7 @@ Test(recording, small_audio_blocks_preserve_every_decoded_sample_until_end) {
   size_t total = 0;
   while (!media_source_at_end(source)) {
     size_t count = media_source_read_audio(source, samples, 288);
-    total += count;
+    total += count / AUDIO_CHANNELS;
     cr_assert_leq(total, 48000);
     if (total < 48000)
       cr_assert_not(media_source_at_end(source), "Buffered audio must finish before webcam capture stops");
@@ -262,11 +262,11 @@ Test(recording, small_audio_blocks_preserve_resampled_duration_and_tone) {
   double real = 0, imag = 0;
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 288)) > 0) {
     for (size_t i = 0; i < count; i++) {
-      double phase = 2.0 * M_PI * 440.0 * (double)(total + i) / 48000.0;
+      double phase = 2.0 * M_PI * 440.0 * (double)(total + i / AUDIO_CHANNELS) / 48000.0;
       real += samples[i] * cos(phase);
       imag += samples[i] * sin(phase);
     }
-    total += count;
+    total += count / AUDIO_CHANNELS;
     cr_assert_leq(total, 48100);
   }
   cr_assert_eq(total, 48000);
@@ -491,14 +491,14 @@ Test(recording, rendered_video_contains_mixed_audio_and_flushes_the_tail, .timeo
   cr_assert_eq(render_file_create(path, 8, 4, 10, 0, &render), ASCIICHAT_OK);
   const char *frame = "\033[Hhello\nworld\nhello\nworld";
   cr_assert_eq(render_file_write_frame(render, frame, epoch), ASCIICHAT_OK);
-  float mic[4800], remote[4800];
-  for (int i = 0; i < 4800; i++) {
-    mic[i] = 0.2f * sinf((float)i * 0.057595865f);
-    remote[i] = 0.15f * sinf((float)i * 0.11519173f);
+  float mic[4800 * AUDIO_CHANNELS], remote[4800 * AUDIO_CHANNELS];
+  for (int i = 0; i < 4800 * AUDIO_CHANNELS; i++) {
+    mic[i] = 0.2f * sinf((float)(i / AUDIO_CHANNELS) * 0.057595865f);
+    remote[i] = 0.15f * sinf((float)(i / AUDIO_CHANNELS) * 0.11519173f);
   }
   for (int i = 0; i < 9; i++) {
-    audio_recording_submit(AUDIO_RECORDING_MIC, mic, 4800, epoch + (uint64_t)i * 100000000ULL);
-    audio_recording_submit(AUDIO_RECORDING_REMOTE, remote, 4800, epoch + (uint64_t)i * 100000000ULL);
+    audio_recording_submit(AUDIO_RECORDING_MIC, mic, 4800 * AUDIO_CHANNELS, epoch + (uint64_t)i * 100000000ULL);
+    audio_recording_submit(AUDIO_RECORDING_REMOTE, remote, 4800 * AUDIO_CHANNELS, epoch + (uint64_t)i * 100000000ULL);
     cr_assert_eq(render_file_write_frame(render, frame, epoch + (uint64_t)(i + 1) * 100000000ULL), ASCIICHAT_OK);
   }
   cr_assert_eq(render_file_destroy(render), ASCIICHAT_OK);
@@ -510,7 +510,7 @@ Test(recording, rendered_video_contains_mixed_audio_and_flushes_the_tail, .timeo
   size_t total = 0, count;
   float energy = 0;
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 960)) > 0) {
-    total += count;
+    total += count / AUDIO_CHANNELS;
     for (size_t i = 0; i < count; i++)
       energy += samples[i] * samples[i];
   }
@@ -533,21 +533,21 @@ Test(recording, both_source_mixes_microphone_and_file_in_the_same_outgoing_block
   cr_assert_eq(audio_init(&ctx), ASCIICHAT_OK);
   ctx.capture_media_source = source;
   ctx.playback_only = true;
-  float mic[960];
-  for (int i = 0; i < 960; i++)
+  float mic[960 * AUDIO_CHANNELS];
+  for (int i = 0; i < 960 * AUDIO_CHANNELS; i++)
     mic[i] = 0.2f;
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
-  cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 960), ASCIICHAT_OK);
-  wait_for_captured_samples(&ctx, 960);
-  cr_assert_eq(audio_ring_buffer_available_read(ctx.capture_buffer), 960);
-  float outgoing[960];
-  cr_assert_eq(audio_ring_buffer_read(ctx.capture_buffer, outgoing, 960), 960);
+  cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 960 * AUDIO_CHANNELS), ASCIICHAT_OK);
+  wait_for_captured_samples(&ctx, 960 * AUDIO_CHANNELS);
+  cr_assert_eq(audio_ring_buffer_available_read(ctx.capture_buffer), 960 * AUDIO_CHANNELS);
+  float outgoing[960 * AUDIO_CHANNELS];
+  cr_assert_eq(audio_ring_buffer_read(ctx.capture_buffer, outgoing, 960 * AUDIO_CHANNELS), 960 * AUDIO_CHANNELS);
   float mean = 0, variation = 0;
-  for (int i = 0; i < 960; i++) {
+  for (int i = 0; i < 960 * AUDIO_CHANNELS; i++) {
     mean += outgoing[i];
     variation += (outgoing[i] - 0.2f) * (outgoing[i] - 0.2f);
   }
-  cr_assert_float_eq(mean / 960, 0.2f, 0.01f);
+  cr_assert_float_eq(mean / (960 * AUDIO_CHANNELS), 0.2f, 0.01f);
   cr_assert_gt(variation, 10.0f, "Outgoing microphone blocks must also contain the file tone");
   audio_stop_duplex(&ctx);
   audio_destroy(&ctx);
@@ -607,7 +607,7 @@ Test(recording, live_recording_uses_elapsed_time_instead_of_received_frame_count
   float samples[960];
   size_t total = 0, count;
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 960)) > 0)
-    total += count;
+    total += count / AUDIO_CHANNELS;
   cr_assert_geq(total, 52800);
   cr_assert_lt(total, 55000);
   ffmpeg_decoder_destroy(decoder);
@@ -627,23 +627,23 @@ Test(recording, file_pause_gap_keeps_audio_and_video_timelines_aligned, .timeout
   cr_assert_eq(render_file_create(path, 8, 4, 10, 0, &render), ASCIICHAT_OK);
   render_file_set_live_timing(render);
   const char *frame = "\033[Hhello\nworld\nhello\nworld";
-  float tone[4800], silence[4800] = {0};
-  for (int i = 0; i < 4800; i++)
-    tone[i] = 0.2f * sinf((float)i * 0.057595865f);
+  float tone[4800 * AUDIO_CHANNELS], silence[4800 * AUDIO_CHANNELS] = {0};
+  for (int i = 0; i < 4800 * AUDIO_CHANNELS; i++)
+    tone[i] = 0.2f * sinf((float)(i / AUDIO_CHANNELS) * 0.057595865f);
 
   cr_assert_eq(render_file_write_frame(render, frame, epoch), ASCIICHAT_OK);
   for (int i = 0; i < 10; i++) {
     uint64_t timestamp = epoch + (uint64_t)i * 100000000ULL;
-    audio_recording_submit(AUDIO_RECORDING_MEDIA, tone, 4800, timestamp);
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, tone, 4800 * AUDIO_CHANNELS, timestamp);
     cr_assert_eq(render_file_write_frame(render, frame, timestamp + 100000000ULL), ASCIICHAT_OK);
   }
 
   /* Paused playback submits silence while video frames stop arriving. */
   for (int i = 10; i < 20; i++)
-    audio_recording_submit(AUDIO_RECORDING_MEDIA, silence, 4800, epoch + (uint64_t)i * 100000000ULL);
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, silence, 4800 * AUDIO_CHANNELS, epoch + (uint64_t)i * 100000000ULL);
   for (int i = 20; i < 30; i++) {
     uint64_t timestamp = epoch + (uint64_t)i * 100000000ULL;
-    audio_recording_submit(AUDIO_RECORDING_MEDIA, tone, 4800, timestamp);
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, tone, 4800 * AUDIO_CHANNELS, timestamp);
     cr_assert_eq(render_file_write_frame(render, frame, timestamp + 100000000ULL), ASCIICHAT_OK);
   }
 
@@ -663,14 +663,15 @@ Test(recording, file_pause_gap_keeps_audio_and_video_timelines_aligned, .timeout
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 12000)) > 0) {
     for (size_t i = 0; i < count; i++, total++) {
       for (size_t window_index = 0; window_index < 3; window_index++) {
-        if (total >= window_starts[window_index] && total < window_starts[window_index] + 24000)
+        if (total / AUDIO_CHANNELS >= window_starts[window_index] &&
+            total / AUDIO_CHANNELS < window_starts[window_index] + 24000)
           window[window_index] += samples[i] * samples[i];
       }
     }
   }
-  cr_assert_geq(total, 148000);
+  cr_assert_geq(total / AUDIO_CHANNELS, 148000);
   for (size_t i = 0; i < 3; i++)
-    rms[i] = sqrtf(window[i] / 24000.0f);
+    rms[i] = sqrtf(window[i] / (24000.0f * AUDIO_CHANNELS));
   cr_assert_gt(rms[0], 0.03f, "Audio before pause must be present");
   cr_assert_lt(rms[1], 0.01f, "Paused interval must be silent");
   cr_assert_gt(rms[2], 0.03f, "Audio must resume after the paused interval");

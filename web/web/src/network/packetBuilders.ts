@@ -12,7 +12,9 @@ export const VIDEO_CODEC_CAP_SUPPORTED = VIDEO_CODEC_CAP_RGBA;
 
 export const AUDIO_CODEC_CAP_RAW = 1 << 0; // Bit 0: Raw PCM support
 export const AUDIO_CODEC_CAP_OPUS = 1 << 1; // Bit 1: Opus support
-export const AUDIO_CODEC_CAP_ALL = AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS;
+export const AUDIO_CAP_STEREO = 1 << 8;
+export const AUDIO_CODEC_CAP_ALL =
+  AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS | AUDIO_CAP_STEREO;
 const TERM_CAP_MATRIX_RAIN = 0x0020;
 
 export type BrowserColorMode = "auto" | "none" | "16" | "256" | "truecolor";

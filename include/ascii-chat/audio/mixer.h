@@ -331,6 +331,8 @@ typedef struct {
   int max_sources;
   /** @brief Sample rate in Hz (e.g., 44100) */
   int sample_rate;
+  unsigned channels;
+  struct spectral_processor *spectral_right[MIXER_MAX_SOURCES + 1];
   struct spectral_processor *spectral[MIXER_MAX_SOURCES + 1];
 
   /** @brief Array of pointers to client audio ring buffers */
@@ -386,6 +388,7 @@ typedef struct {
  * @ingroup audio
  */
 mixer_t *mixer_create(int max_sources, int sample_rate);
+mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channels);
 
 /**
  * @brief Destroy a mixer and free all resources

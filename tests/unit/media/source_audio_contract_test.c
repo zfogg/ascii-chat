@@ -108,7 +108,7 @@ Test(source_audio_contract, eof_and_looping_deliver_the_original_audio_again) {
   float samples[1024];
   for (unsigned attempt = 0; attempt < 100; ++attempt) {
     size_t count = media_source_read_audio(source, samples, 1024);
-    total += count;
+    total += count / AUDIO_CHANNELS;
     if (!count)
       break;
   }

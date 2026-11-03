@@ -1,5 +1,8 @@
 export interface AudioCaptureOptions {
   bypass: boolean;
+  microphoneChannels?: 1 | 2;
+  firstChannel?: number;
+  media?: boolean;
   onFrame: (payload: Uint8Array, samples: Float32Array) => void;
   onError: (error: Error) => void;
 }
@@ -25,9 +28,19 @@ export class AudioCapture {
       new URL("./capture-worklet.js", import.meta.url),
     );
     const node = new AudioWorkletNode(context, "ascii-chat-pcm-capture", {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
+      numberOfInputs: 2,
+      numberOfOutputs: 2,
+      outputChannelCount: [1, 2],
+      channelCount: Math.max(
+        2,
+        (options.firstChannel || 0) + (options.microphoneChannels || 1),
+      ),
+      channelCountMode: "max",
+      channelInterpretation: "discrete",
+      processorOptions: {
+        microphoneChannels: options.microphoneChannels || 1,
+        firstChannel: options.firstChannel || 0,
+      },
     });
     let worker: Worker;
     try {
@@ -69,6 +82,8 @@ export class AudioCapture {
             port: channel.port2,
             bypass: options.bypass,
             sampleRate: context.sampleRate,
+            encoderChannels:
+              options.media || options.microphoneChannels === 2 ? 2 : 1,
           },
           [channel.port2],
         );

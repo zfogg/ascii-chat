@@ -16,6 +16,7 @@ typedef struct {
 } audio_processor_flags_t;
 
 typedef struct {
+  int channels; ///< Interleaved PCM channels; zero retains the mono API default
   int sample_rate;
   audio_processor_flags_t flags;
   bool spectral_enabled;

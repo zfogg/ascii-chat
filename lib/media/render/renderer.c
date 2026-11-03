@@ -158,7 +158,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   ctx->audio_buf_size = 8192; // Temporary buffer for reading audio (in floats)
   ctx->audio_read_buf = SAFE_MALLOC(ctx->audio_buf_size * sizeof(float), float *);
 
-  err = audio_recording_create(&ctx->recording);
+  err = audio_recording_create_channels(&ctx->recording, 2);
   if (err != ASCIICHAT_OK) {
     ffmpeg_encoder_destroy(ctx->encoder);
     term_renderer_destroy(ctx->renderer);
@@ -269,10 +269,11 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
     }
     ctx->frames_written++;
     ctx->last_frame_index = frame_index;
-    uint64_t target = (ctx->live_timing ? frame_index + 1 : ctx->frames_written) * ctx->audio_sample_rate / ctx->fps;
+    uint64_t target =
+        ((ctx->live_timing ? frame_index + 1 : ctx->frames_written) * ctx->audio_sample_rate / ctx->fps) * 2;
     ctx->audio_target = target;
     /* Keep 100 ms pending so audio callbacks can deliver samples before encoding. */
-    uint64_t ready = target > 4800 ? target - 4800 : 0;
+    uint64_t ready = target > 9600 ? target - 9600 : 0;
     while (ctx->audio_samples_written < ready) {
       int count = (int)((ready - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size
                             ? (uint64_t)ctx->audio_buf_size

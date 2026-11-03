@@ -13,6 +13,8 @@
 #include "session/audio.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/client_pipeline.h>
+#include <ascii-chat/media/source.h>
 #include <ascii-chat/asciichat_errno.h>
 
 #include <string.h>
@@ -44,6 +46,7 @@ typedef struct {
 struct session_audio_ctx {
   /** @brief Underlying audio context from lib/audio */
   audio_context_t audio_ctx;
+  client_audio_pipeline_t *pipeline;
 
   /** @brief True if this is a host context (has mixing capabilities) */
   bool is_host;
@@ -133,6 +136,7 @@ void session_audio_destroy(session_audio_ctx_t *ctx) {
 
   // Destroy underlying audio context
   audio_destroy(&ctx->audio_ctx);
+  client_audio_pipeline_destroy(ctx->pipeline);
 
   ctx->initialized = false;
   SAFE_FREE(ctx);
@@ -169,6 +173,14 @@ asciichat_error_t session_audio_start_duplex(session_audio_ctx_t *ctx) {
     return ASCIICHAT_OK; // Already running
   }
 
+  if (!ctx->pipeline) {
+    client_audio_pipeline_config_t config = client_audio_pipeline_config_for_source(
+        ctx->audio_ctx.capture_media_source && media_source_has_audio(ctx->audio_ctx.capture_media_source));
+    ctx->pipeline = client_audio_pipeline_create(&config);
+    if (!ctx->pipeline)
+      return SET_ERRNO(ERROR_AUDIO, "Cannot initialize session audio processing");
+    audio_set_pipeline(&ctx->audio_ctx, ctx->pipeline);
+  }
   asciichat_error_t result = audio_start_duplex(&ctx->audio_ctx);
   if (result == ASCIICHAT_OK) {
     ctx->running = true;
@@ -355,8 +367,12 @@ size_t session_audio_mix_excluding(session_audio_ctx_t *ctx, uint32_t exclude_id
 }
 
 void session_audio_set_capture_source(session_audio_ctx_t *ctx, void *source) {
-  if (ctx && !ctx->running)
+  if (ctx && !ctx->running) {
+    audio_set_pipeline(&ctx->audio_ctx, NULL);
+    client_audio_pipeline_destroy(ctx->pipeline);
+    ctx->pipeline = NULL;
     ctx->audio_ctx.capture_media_source = source;
+  }
 }
 
 void *session_audio_get_context(session_audio_ctx_t *ctx) {

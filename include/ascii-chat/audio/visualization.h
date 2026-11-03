@@ -21,6 +21,8 @@ typedef enum {
 
 /* Publish mono float PCM without taking ownership of the caller's buffer. */
 void audio_visualization_submit(audio_visualization_source_t source, const float *samples, size_t count);
+/** Downmix interleaved stereo only for display analysis, preserving its sample clock. */
+void audio_visualization_submit_stereo(audio_visualization_source_t source, const float *samples, size_t count);
 
 /* Read the latest samples from one source, or combine the source groups. */
 void audio_visualization_read(audio_visualization_source_t source, float *samples, size_t count);
