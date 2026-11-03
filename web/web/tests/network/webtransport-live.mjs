@@ -95,6 +95,11 @@ async function freeUdp() {
 }
 const udpPort = await freeUdp();
 const nativePort = await freeUdp();
+const blackhole = createSocket("udp4");
+let droppedUdpPackets = 0;
+blackhole.on("message", () => ++droppedUdpPackets);
+await new Promise((resolve) => blackhole.bind(0, "127.0.0.1", resolve));
+const blockedPort = blackhole.address().port;
 async function freeTcp() {
   const s = createTcp();
   await new Promise((r) => s.listen(0, "127.0.0.1", r));
@@ -476,20 +481,34 @@ try {
     );
   for (const mode of ["unsupported", "blocked", "wrong-key"]) {
     const fallbackResult = await page.evaluate(
-      async ({ udpPort, wsPort, serverPublicKey, wrongPublicKey, mode }) => {
+      async ({
+        udpPort,
+        blockedPort,
+        wsPort,
+        hash,
+        serverPublicKey,
+        wrongPublicKey,
+        mode,
+      }) => {
         const Original = globalThis.WebTransport;
         globalThis.WebTransport =
           mode !== "blocked"
             ? undefined
-            : class {
-                ready = new Promise(() => {});
-                close() {}
+            : class extends Original {
+                constructor(url, options) {
+                  super(url, {
+                    ...options,
+                    serverCertificateHashes: [
+                      { algorithm: "sha-256", value: new Uint8Array(hash) },
+                    ],
+                  });
+                }
               };
         const { WebTransportFallbackSession } =
           await import("/src/network/WebTransportFallbackSession.ts");
         const session = new WebTransportFallbackSession(
           {
-            serverUrl: `https://127.0.0.1:${udpPort}/acip`,
+            serverUrl: `https://127.0.0.1:${mode === "blocked" ? blockedPort : udpPort}/acip`,
             cryptoOptions: {
               password: "test-password",
               expectedServerPublicKeyText:
@@ -497,7 +516,7 @@ try {
             },
           },
           `wss://127.0.0.1:${wsPort}`,
-          200,
+          1500,
         );
         const states = [];
         const packets = [];
@@ -545,9 +564,19 @@ try {
           globalThis.WebTransport = Original;
         }
       },
-      { udpPort, wsPort, serverPublicKey, wrongPublicKey, mode },
+      {
+        udpPort,
+        blockedPort,
+        wsPort,
+        hash,
+        serverPublicKey,
+        wrongPublicKey,
+        mode,
+      },
     );
     console.log("FALLBACK RESULT", mode, JSON.stringify(fallbackResult));
+    if (mode === "blocked" && droppedUdpPackets === 0)
+      throw new Error("browser did not send UDP packets to the blackhole");
     if (mode === "wrong-key") {
       if (fallbackResult.ok || fallbackResult.states.includes(3))
         throw new Error("fallback accepted the wrong server identity");
@@ -578,6 +607,7 @@ try {
   throw error;
 } finally {
   if (browser) await browser.close();
+  await new Promise((resolve) => blackhole.close(resolve));
   for (const { process } of participants) process.kill();
   server.kill();
   await vite.close();

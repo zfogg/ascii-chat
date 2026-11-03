@@ -58,7 +58,7 @@ it needs OpenSSL, ssh-keygen, and a Playwright Chromium installation (or
 certificate rejection, encrypted control traffic, and fragmented browser-to-server
 visual datagrams. It also runs two native QUIC participants alongside the browser
 and checks media traffic continues after the browser disconnects. It also checks
-WSS fallback when WebTransport is unavailable or remains pending, and rejects
+WSS fallback when WebTransport is unavailable or UDP packets are dropped, and rejects
 a wrong fallback identity key.
 
 ## Reliable streams
