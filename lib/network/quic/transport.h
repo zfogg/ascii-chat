@@ -13,6 +13,8 @@ asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection,
 /* As above, but adapter operations lock the borrowed lane mutex. The endpoint
  * owner must hold that same mutex for every operation on the connection,
  * including UDP pump, security transitions, and removal. The mutex outlives
- * the transport; do not call attach while already holding it. */
+ * the transport; do not call attach while already holding it. recv waits up to
+ * receive_timeout_ns (one second if zero), and interrupt wakes receivers.
+ * Stop and join all transport users before destroying the transport. */
 asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                                         mutex_t *lane, acip_transport_t **out);

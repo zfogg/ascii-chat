@@ -2,7 +2,10 @@
 
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
+#include <errno.h>
 #include <string.h>
 
 #define QUIC_RECEIVE_BUDGET (16U * 1024U * 1024U)
@@ -16,6 +19,7 @@ typedef struct received_packet {
 typedef struct {
   acip_quic_connection_t *connection;
   mutex_t *lane;
+  cond_t received;
   received_packet_t *head, *tail;
   size_t bytes;
   bool connected;
@@ -59,6 +63,8 @@ static asciichat_error_t queue_received_packet(acip_traffic_class_t traffic_clas
     quic->head = item;
   quic->tail = item;
   quic->bytes += item->cost;
+  if (quic->lane)
+    cond_signal(&quic->received);
   return ASCIICHAT_OK;
 }
 
@@ -114,6 +120,22 @@ static asciichat_error_t quic_recv(acip_transport_t *transport, void **buffer, s
   *allocation = NULL;
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
+  if (quic->lane && quic->connected && !quic->head) {
+    uint64_t timeout = transport->receive_timeout_ns ? transport->receive_timeout_ns : NS_PER_SEC_INT;
+    uint64_t start = time_get_ns();
+    while (quic->connected && !quic->head) {
+      uint64_t elapsed = time_get_ns() - start;
+      if (elapsed >= timeout)
+        break;
+      uint64_t remaining = timeout - elapsed;
+      int wait_result =
+          cond_timedwait(&quic->received, quic->lane, remaining < NS_PER_SEC_INT ? remaining : NS_PER_SEC_INT);
+      if (wait_result != 0 && wait_result != ETIMEDOUT) {
+        lane_unlock(quic);
+        return SET_ERRNO(ERROR_NETWORK, "QUIC receive wait failed");
+      }
+    }
+  }
   if (!quic->connected) {
     lane_unlock(quic);
     return SET_ERRNO(ERROR_NETWORK, "QUIC transport is closed");
@@ -142,6 +164,8 @@ static asciichat_error_t quic_close(acip_transport_t *transport) {
     return ASCIICHAT_OK;
   }
   quic->connected = false;
+  if (quic->lane)
+    cond_broadcast(&quic->received);
   asciichat_error_t result = acip_quic_connection_clear_receiver(quic->connection, quic);
   while (quic->head) {
     received_packet_t *item = quic->head;
@@ -187,6 +211,11 @@ static size_t quic_queued(acip_transport_t *transport) {
   lane_unlock(quic);
   return bytes;
 }
+static void quic_destroy_impl(acip_transport_t *transport) {
+  quic_transport_t *quic = transport->impl_data;
+  if (quic->lane)
+    cond_destroy(&quic->received);
+}
 static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .sendv_ex = quic_sendv_ex,
                                                       .recv = quic_recv,
@@ -196,7 +225,8 @@ static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .get_socket = quic_socket,
                                                       .is_connected = quic_connected,
                                                       .has_pending_data = quic_pending,
-                                                      .queued_bytes = quic_queued};
+                                                      .queued_bytes = quic_queued,
+                                                      .destroy_impl = quic_destroy_impl};
 
 static asciichat_error_t attach_transport(acip_quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
                                           acip_transport_t **out) {
@@ -215,6 +245,11 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   quic->connection = connection;
   quic->lane = lane;
   quic->connected = true;
+  if (lane && cond_init(&quic->received, "quic_receive") != 0) {
+    SAFE_FREE(quic);
+    SAFE_FREE(transport);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot initialize QUIC receive wait");
+  }
   transport->methods = &quic_methods;
   transport->impl_data = quic;
   transport->crypto_ctx = crypto;
@@ -222,6 +257,8 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   asciichat_error_t result = acip_quic_connection_set_receiver(connection, queue_received_packet, quic);
   lane_unlock(quic);
   if (result != ASCIICHAT_OK) {
+    if (lane)
+      cond_destroy(&quic->received);
     SAFE_FREE(quic);
     SAFE_FREE(transport);
     return result;

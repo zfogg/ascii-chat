@@ -107,9 +107,11 @@ packets through a bounded queue, and reports QUIC as its transport type. It
 returns an explicit unsupported error for datagrams and deadlines. The adapter
 can use a borrowed lane mutex to serialize its operations with endpoint
 pumping; the owner must hold that mutex for every direct connection and pump
-operation. Receive remains nonblocking, and the adapter must be destroyed
-before its borrowed connection and mutex. This does not yet provide the worker,
-wakeup, or lifecycle integration required by concurrent client/server paths.
+operation. The serialized adapter supports a timed receive and interrupt wakes
+waiting receivers; the single-lane adapter remains nonblocking. Stop and join
+all transport users before destroying it, and destroy it before its borrowed
+connection and mutex. This does not yet provide the endpoint worker and
+lifecycle integration required by concurrent client/server paths.
 
 ## ACIP encryption audit
 

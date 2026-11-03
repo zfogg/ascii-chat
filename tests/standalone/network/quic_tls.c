@@ -660,6 +660,23 @@ typedef struct {
   asciichat_error_t result;
 } quic_concurrent_sender_t;
 
+typedef struct {
+  acip_transport_t *transport;
+  void *packet, *allocation;
+  size_t length;
+  asciichat_error_t result;
+  atomic_t started, done;
+} quic_concurrent_receiver_t;
+
+static void *quic_concurrent_receive(void *arg) {
+  quic_concurrent_receiver_t *receiver = arg;
+  atomic_store_u64(&receiver->started, 1);
+  receiver->result =
+      acip_transport_recv(receiver->transport, &receiver->packet, &receiver->length, &receiver->allocation);
+  atomic_store_u64(&receiver->done, 1);
+  return NULL;
+}
+
 static void *quic_concurrent_send(void *arg) {
   quic_concurrent_sender_t *sender = arg;
   sender->result = ASCIICHAT_OK;
@@ -731,6 +748,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
             !duplicate);
       CHECK(acip_transport_get_type(client_transport) == ACIP_TRANSPORT_QUIC);
       CHECK(acip_transport_get_socket(client_transport) == INVALID_SOCKET_VALUE);
+      client_transport->receive_timeout_ns = 5 * NS_PER_MS_INT;
       void *empty = NULL, *allocation = NULL;
       size_t empty_length = 0;
       CHECK(acip_transport_recv(client_transport, &empty, &empty_length, &allocation) == ERROR_NETWORK_TIMEOUT);
@@ -832,6 +850,37 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     }
     CHECK(thread_join(&thread, NULL) == 0);
     CHECK(sender.result == ASCIICHAT_OK && received == 32);
+    server_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    quic_concurrent_receiver_t receiver = {.transport = server_transport};
+    CHECK(acthread_create(&thread, "quic_concurrent_receiver", quic_concurrent_receive, &receiver) == 0);
+    while (!atomic_load_u64(&receiver.started))
+      time_sleep_ns(NS_PER_MS_INT);
+    CHECK(acip_transport_send(client_transport, packets[0], lengths[0]) == ASCIICHAT_OK);
+    start = time_get_ns();
+    while (!atomic_load_u64(&receiver.done) && time_get_ns() - start < 2 * NS_PER_SEC_INT) {
+      uint64_t now = time_get_ns();
+      acip_quic_connection_t *failed = NULL;
+      mutex_lock(&client_lane);
+      asciichat_error_t result = acip_quic_udp_pump(client, now, &failed);
+      mutex_unlock(&client_lane);
+      CHECK(result == ASCIICHAT_OK && !failed);
+      mutex_lock(&server_lane);
+      result = acip_quic_udp_pump(server, now, &failed);
+      mutex_unlock(&server_lane);
+      CHECK(result == ASCIICHAT_OK && !failed);
+      time_sleep_ns(NS_PER_MS_INT);
+    }
+    CHECK(thread_join(&thread, NULL) == 0);
+    CHECK(receiver.result == ASCIICHAT_OK && receiver.length == lengths[0] &&
+          memcmp(receiver.packet, packets[0], receiver.length) == 0);
+    buffer_release(receiver.allocation);
+    receiver = (quic_concurrent_receiver_t){.transport = server_transport};
+    CHECK(acthread_create(&thread, "quic_interrupted_receiver", quic_concurrent_receive, &receiver) == 0);
+    while (!atomic_load_u64(&receiver.started))
+      time_sleep_ns(NS_PER_MS_INT);
+    acip_transport_interrupt(server_transport);
+    CHECK(thread_join(&thread, NULL) == 0);
+    CHECK(receiver.result == ERROR_NETWORK && !receiver.allocation);
   }
   CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
   CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
