@@ -23,6 +23,8 @@ typedef struct {
   cond_t received;
   void (*wake)(void *);
   void *wake_context;
+  void (*on_destroy)(acip_transport_t *, void *);
+  void *destroy_context;
   received_packet_t *head, *tail;
   size_t bytes;
   asciichat_error_t failure;
@@ -360,6 +362,8 @@ static asciichat_error_t quic_validate_options(acip_transport_t *transport, cons
 }
 static void quic_destroy_impl(acip_transport_t *transport) {
   quic_transport_t *quic = transport->impl_data;
+  if (quic->on_destroy)
+    quic->on_destroy(transport, quic->destroy_context);
   if (quic->lane)
     cond_destroy(&quic->received);
 }
@@ -379,6 +383,7 @@ static const acip_transport_methods_t quic_methods = {.send = quic_send,
 
 static asciichat_error_t attach_transport(acip_quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,
                                           bool lane_held, void (*wake)(void *), void *wake_context,
+                                          void (*on_destroy)(acip_transport_t *, void *), void *destroy_context,
                                           acip_transport_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC transport output");
@@ -396,6 +401,8 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   quic->lane = lane;
   quic->wake = wake;
   quic->wake_context = wake ? wake_context : NULL;
+  quic->on_destroy = on_destroy;
+  quic->destroy_context = destroy_context;
   quic->connected = true;
   if (lane && cond_init(&quic->received, "quic_receive") != 0) {
     SAFE_FREE(quic);
@@ -423,7 +430,7 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
 
 asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                              acip_transport_t **out) {
-  return attach_transport(connection, crypto, NULL, false, NULL, NULL, out);
+  return attach_transport(connection, crypto, NULL, false, NULL, NULL, NULL, NULL, out);
 }
 
 asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
@@ -433,7 +440,7 @@ asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *
       *out = NULL;
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC lane mutex");
   }
-  return attach_transport(connection, crypto, lane, false, NULL, NULL, out);
+  return attach_transport(connection, crypto, lane, false, NULL, NULL, NULL, NULL, out);
 }
 
 asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
@@ -443,16 +450,17 @@ asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *con
       *out = NULL;
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC lane mutex");
   }
-  return attach_transport(connection, crypto, lane, true, NULL, NULL, out);
+  return attach_transport(connection, crypto, lane, true, NULL, NULL, NULL, NULL, out);
 }
 
 asciichat_error_t acip_quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
                                                                 void (*wake)(void *), void *context,
-                                                                acip_transport_t **out) {
+                                                                void (*on_destroy)(acip_transport_t *, void *),
+                                                                void *destroy_context, acip_transport_t **out) {
   if (!lane) {
     if (out)
       *out = NULL;
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC lane mutex");
   }
-  return attach_transport(connection, NULL, lane, true, wake, context, out);
+  return attach_transport(connection, NULL, lane, true, wake, context, on_destroy, destroy_context, out);
 }

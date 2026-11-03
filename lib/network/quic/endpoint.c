@@ -29,6 +29,25 @@ static void wake_endpoint(void *context) {
   (void)acip_quic_udp_wake(endpoint->udp);
 }
 
+/* The transport has already detached its receiver. Destroy may be called by
+ * the normal network connection owner after an authenticated transport is adopted. */
+static void transport_destroyed(acip_transport_t *transport, void *context) {
+  acip_quic_endpoint_t *endpoint = context;
+  mutex_lock(&endpoint->lane);
+  endpoint_transport_t **link = &endpoint->transports;
+  while (*link && (*link)->transport != transport)
+    link = &(*link)->next;
+  endpoint_transport_t *item = *link;
+  if (item) {
+    if (item->connection && acip_quic_udp_contains(endpoint->udp, item->connection))
+      (void)acip_quic_udp_remove(endpoint->udp, item->connection);
+    *link = item->next;
+    --endpoint->count;
+  }
+  mutex_unlock(&endpoint->lane);
+  SAFE_FREE(item);
+}
+
 /* Called on the endpoint lane. */
 static asciichat_error_t attach(acip_quic_endpoint_t *endpoint, acip_quic_connection_t *connection, bool claimed,
                                 acip_transport_t **out) {
@@ -37,8 +56,8 @@ static asciichat_error_t attach(acip_quic_endpoint_t *endpoint, acip_quic_connec
   endpoint_transport_t *item = SAFE_CALLOC(1, sizeof(*item), endpoint_transport_t *);
   if (!item)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC endpoint transport");
-  asciichat_error_t result = acip_quic_transport_attach_on_lane_with_waker(connection, &endpoint->lane, wake_endpoint,
-                                                                           endpoint, &item->transport);
+  asciichat_error_t result = acip_quic_transport_attach_on_lane_with_waker(
+      connection, &endpoint->lane, wake_endpoint, endpoint, transport_destroyed, endpoint, &item->transport);
   if (result != ASCIICHAT_OK) {
     SAFE_FREE(item);
     return result;

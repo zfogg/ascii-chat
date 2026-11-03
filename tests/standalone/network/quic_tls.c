@@ -1,6 +1,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/platform/filesystem.h>
@@ -904,6 +905,22 @@ static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, cr
   return ASCIICHAT_OK;
 }
 
+typedef struct {
+  const uint8_t *payload;
+  size_t length;
+  bool received;
+} quic_network_capture_t;
+
+static asciichat_error_t quic_network_packet(network_connection_t *connection, packet_type_t type, const void *payload,
+                                             size_t length, void *context) {
+  quic_network_capture_t *capture = context;
+  if (type != PACKET_TYPE_AUDIO_BATCH || length != capture->length || memcmp(payload, capture->payload, length))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected adopted QUIC packet");
+  capture->received = true;
+  network_connection_request_stop(connection);
+  return ASCIICHAT_OK;
+}
+
 static void quic_public_endpoint_test(const char *certificate, const char *private_key) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
@@ -975,6 +992,17 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(acip_transport_recv(inbound, &received, &received_length, &allocation) == ASCIICHAT_OK);
   CHECK(received_length == audio_length && memcmp(received, audio, audio_length) == 0);
   buffer_release(allocation);
+  network_connection_t *adopted = NULL;
+  CHECK(network_connection_adopt(outbound, &adopted) == ASCIICHAT_OK && adopted);
+  outbound = NULL;
+  CHECK(acip_transport_get_type(network_connection_transport(adopted)) == ACIP_TRANSPORT_QUIC);
+  CHECK(acip_transport_sendv_ex(inbound, &slice, 1, &options) == ASCIICHAT_OK);
+  quic_network_capture_t network_capture = {.payload = audio + sizeof(packet_header_t),
+                                            .length = audio_length - sizeof(packet_header_t)};
+  network_connection_callbacks_t callbacks = {.packet = quic_network_packet};
+  CHECK(network_connection_run(adopted, &callbacks, &network_capture) == ASCIICHAT_OK && network_capture.received);
+  network_connection_destroy(&adopted);
+  CHECK(!adopted);
   buffer_release(audio);
 
   acip_transport_t *bad = NULL;
@@ -998,7 +1026,6 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(acip_quic_endpoint_destroy(&server) == ASCIICHAT_OK && !server);
   CHECK(acip_quic_endpoint_stop(client) == ASCIICHAT_OK);
   CHECK(acip_quic_release(client, &unclaimed) == ASCIICHAT_OK && !unclaimed);
-  CHECK(acip_quic_release(client, &outbound) == ASCIICHAT_OK && !outbound);
   CHECK(acip_quic_endpoint_destroy(&client) == ASCIICHAT_OK && !client);
   crypto_handshake_destroy(&client_handshake);
   crypto_handshake_destroy(&server_handshake);

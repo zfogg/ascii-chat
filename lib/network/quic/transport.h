@@ -25,7 +25,8 @@ asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *con
                                                      mutex_t *lane, acip_transport_t **out);
 asciichat_error_t acip_quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
                                                                 void (*wake)(void *), void *context,
-                                                                acip_transport_t **out);
+                                                                void (*on_destroy)(acip_transport_t *, void *),
+                                                                void *destroy_context, acip_transport_t **out);
 /* Report an endpoint-reported connection failure after releasing the lane
  * mutex. Pending receives wake and return the supplied error. Once this
  * returns, the endpoint owner may remove the detached connection on the lane. */

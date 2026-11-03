@@ -135,13 +135,14 @@ clear their wakers, join the worker, and then destroy its borrowed resources.
 The worker and adapter are not yet integrated into the production lifecycle or
 connection selection.
 
-The native endpoint API wraps the UDP driver and worker and owns the returned
-transports until they are explicitly released. It accepts resolved IPv4 or IPv6
+The native endpoint API wraps the UDP driver and worker. Returned transports
+are owned by their caller and can be destroyed directly or released through the
+endpoint, which must outlive them. It accepts resolved IPv4 or IPv6
 addresses and requires a concrete local bind address. Accept is nonblocking and
 may return a transport before TLS completes; the caller waits for negotiated
 capabilities, runs the ACIP handshake, activates its security context, and
 waits for authenticated readiness before enabling media. Stop joins the worker,
-interrupts claimed transports, and discards unclaimed accepts; callers release
+interrupts claimed transports, and discards unclaimed accepts; callers destroy
 claimed transports before destroying the endpoint. Endpoint lifecycle calls
 must be serialized, and callers stop transport users before release. Public
 hostname resolution, wildcard destination selection, graceful close, production
