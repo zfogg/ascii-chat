@@ -37,6 +37,19 @@ key. Certificate, authentication, protocol, and cancellation errors do not
 trigger fallback, and no fallback happens after TLS is established. Hostname
 resolution currently uses IPv4; IPv6 literals are supported.
 
+## Discovery route
+
+A native discovery participant can opt into `--discovery-quic` when the host
+has disclosed its endpoint and listens for native QUIC on the same UDP port as
+its advertised TCP port. The option does not disclose a private address or
+assert that the host supports QUIC; it selects the configured route explicitly.
+Use `--quic-ca-file` when the host certificate needs a private trust anchor and
+`--server-key` to pin its application identity. The same media datagram options
+are available. `--quic-fallback-port` permits the existing authenticated TCP
+fallback after a pre-TLS timeout, provided a server key is pinned. Certificate
+and authentication failures do not trigger fallback. WebRTC remains the default
+for WebRTC discovery sessions, including browser participants.
+
 ## HTTP/3 WebTransport listener
 
 Enable the browser listener with `--webtransport-bind-address 127.0.0.1`,

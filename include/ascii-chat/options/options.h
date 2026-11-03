@@ -1002,6 +1002,7 @@ typedef struct options_state {
   char quic_ca_file[OPTIONS_BUFF_SIZE];               ///< Native QUIC client certificate trust anchors.
   bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
   bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
+  bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
   int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
   int quic_fallback_port;                             ///< TCP fallback port, or zero to disable fallback.
   int max_clients;                                    ///< Maximum concurrent clients (server only)

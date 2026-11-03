@@ -1373,14 +1373,20 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
-  if (GET_OPTION(no_webrtc)) {
+  if (GET_OPTION(no_webrtc) || GET_OPTION(discovery_quic)) {
     if (!joined->server_address[0] || joined->server_port == 0) {
-      set_error(session, ERROR_NETWORK, "Direct TCP requires a disclosed host endpoint; WebRTC is disabled");
+      const char *message = GET_OPTION(discovery_quic)
+                                ? "Direct QUIC requires a disclosed host endpoint"
+                                : "Direct TCP requires a disclosed host endpoint; WebRTC is disabled";
+      set_error(session, ERROR_NETWORK, message);
       buffer_release(alloc_buffer);
-      return SET_ERRNO(ERROR_NETWORK, "Direct TCP requires a disclosed host endpoint; WebRTC is disabled");
+      return SET_ERRNO(ERROR_NETWORK, "%s", message);
     }
     session->session_type = SESSION_TYPE_DIRECT_TCP;
-    log_info("Discovery connection route: direct TCP (--no-webrtc)");
+    if (GET_OPTION(discovery_quic))
+      log_info("Discovery connection route: direct QUIC (--discovery-quic)");
+    else
+      log_info("Discovery connection route: direct TCP (--no-webrtc)");
   }
   if (session->session_type == SESSION_TYPE_WEBRTC) {
     // WebRTC signaling addresses peers by participant ID, so a private server
@@ -1873,12 +1879,25 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *session) {
   ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
   if (!session->participant_ctx) {
-    session_participant_config_t config = {.address = session->host_address,
+    char quic_address[ACIP_ADDRESS_SIZE + 16];
+    const char *address = session->host_address;
+    if (GET_OPTION(discovery_quic)) {
+      if (strchr(address, ':'))
+        SAFE_SNPRINTF(quic_address, sizeof(quic_address), "quic://[%s]", address);
+      else
+        SAFE_SNPRINTF(quic_address, sizeof(quic_address), "quic://%s", address);
+      address = quic_address;
+    }
+    session_participant_config_t config = {.address = address,
                                            .port = session->host_port,
                                            .enable_audio = true,
                                            .enable_video = true,
                                            .encryption_enabled = true,
-                                           .password = session->password};
+                                           .password = session->password,
+                                           .server_key = GET_OPTION(server_key),
+                                           .quic_ca_file = GET_OPTION(quic_ca_file),
+                                           .quic_audio_datagrams = GET_OPTION(quic_audio_datagrams),
+                                           .quic_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
     session->participant_ctx = session_participant_create(&config);
     if (!session->participant_ctx)
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate discovery participant");
