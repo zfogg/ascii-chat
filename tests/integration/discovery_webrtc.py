@@ -14,7 +14,7 @@ import time
 from server_lifecycle import Service, free_port
 
 
-def exercise(binary, directory):
+def exercise(binary, directory, audio=False):
     for suffix in ['ascii-chat', '.config/ascii-chat']:
         (directory/suffix).mkdir(parents=True, exist_ok=True)
     identity = directory/'identity'
@@ -29,7 +29,8 @@ def exercise(binary, directory):
         services.append(acds)
         acds.wait_for('Server accepting connections')
         common = ['--discovery-service', '127.0.0.1', '--discovery-service-port', str(ap),
-                  '--audio=false', '--width','40','--height','12','--color-mode','none','--splash-screen=false','--webrtc-skip-stun','--webrtc-disable-turn']
+                  '--width','40','--height','12','--color-mode','none','--splash-screen=false','--webrtc-skip-stun','--webrtc-disable-turn']
+        common += (['--audio=true', '--test-audio', '--no-audio-playback'] if audio else ['--audio=false'])
         host = Service(binary, directory, 'host', '--test-pattern', common + ['--port',str(hp)], env)
         services.append(host)
         host.wait_for('Session created:', timeout=25)
@@ -39,6 +40,12 @@ def exercise(binary, directory):
         services.append(client)
         client.wait_for('WebRTC Media Channel ACTIVE', timeout=35)
         host.wait_for('Frame received from client', timeout=20)
+        if audio:
+            client.wait_for('Discovery decoded remote audio: blocks=25', timeout=30)
+            observations = re.findall(r'Discovery decoded remote audio: blocks=(\d+) samples=(\d+)', client.text())
+            blocks, samples = map(int, observations[-1])
+            assert blocks >= 25 and samples == blocks * 1920, observations
+            print('STEREO AUDIO RECEIVED: 960 frames / 1920 samples per packet', flush=True)
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             text = client.output.read_text(errors='replace')
@@ -71,4 +78,4 @@ def exercise(binary, directory):
 
 if __name__ == '__main__':
     with tempfile.TemporaryDirectory(prefix='ascii-discovery-webrtc-') as tmp:
-        exercise(Path(sys.argv[1]).resolve(), Path(tmp))
+        exercise(Path(sys.argv[1]).resolve(), Path(tmp), audio='--audio' in sys.argv[2:])

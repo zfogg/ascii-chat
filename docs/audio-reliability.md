@@ -1,7 +1,7 @@
 # Audio reliability and validation
 
 Opus is the wire codec at 48 kHz with 20 ms packets. Native and browser paths
-support mono speech and stereo media; see [audio channels](audio-channels.md) for
+use stereo codecs for centered speech and stereo media; see [audio channels](audio-channels.md) for
 device routing, stereo negotiation, and hardware-free regression coverage.
 
 ## Behavior

@@ -1959,6 +1959,10 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
         ${CMAKE_SOURCE_DIR}/tests/integration/discovery_webrtc.py
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(discovery-webrtc PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
+    asciichat_add_python_test(discovery-stereo-audio
+        ${CMAKE_SOURCE_DIR}/tests/integration/discovery_webrtc.py
+            $<TARGET_FILE:ascii-chat> --audio)
+    set_tests_properties(discovery-stereo-audio PROPERTIES LABELS "integration;audio" TIMEOUT 120 RUN_SERIAL TRUE)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
