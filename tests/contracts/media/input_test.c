@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/media/input.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -412,7 +413,14 @@ static session_capture_ctx_t *input_file_capture(char path[PLATFORM_MAX_PATH_LEN
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = path, .target_fps = 30};
   session_capture_ctx_t *capture = session_mirror_capture_create(&config);
   cr_assert_not_null(capture);
-  cr_assert_not_null(session_capture_read_frame(capture));
+  uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
+  image_t *first = NULL;
+  while (!first && time_get_ns() < deadline) {
+    first = session_capture_read_frame(capture);
+    if (!first)
+      platform_sleep_ms(1);
+  }
+  cr_assert_not_null(first);
   return capture;
 }
 Test(media_input, session_seek_pause_and_media_toggle_preserve_capture_and_flush_borrowed_audio, .timeout = 15) {

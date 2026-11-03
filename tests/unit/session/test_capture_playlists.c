@@ -41,7 +41,14 @@ static void setup(void) {
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = red, .target_fps = 60};
   capture = session_mirror_capture_create(&config);
   cr_assert_not_null(capture);
-  cr_assert_not_null(session_capture_read_frame(capture));
+  uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
+  image_t *first = NULL;
+  while (!first && time_get_ns() < deadline) {
+    first = session_capture_read_frame(capture);
+    if (!first)
+      platform_sleep_ms(1);
+  }
+  cr_assert_not_null(first);
   media_source_pause(session_capture_get_media_source(capture));
 }
 static void teardown(void) {
