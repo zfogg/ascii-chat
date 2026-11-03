@@ -15,18 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends libicu-dev && \
 # Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
 
-# Submodules are baked into the deps image — no git clone needed at build time.
-# Preserve submodules from deps image before COPY overwrites them
-RUN mv /build/deps /tmp/deps-preserve
+# Use the source checkout's pinned submodules while retaining cached downloads.
+RUN rm -rf /build/deps
 
 # Copy source code (.dockerignore excludes .deps-cache/ so pre-cached deps from
 # the deps image are preserved)
 COPY . /build/
 
-# Restore submodules from deps image (overwrite empty dirs from build context)
-RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
-    mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve && \
-    find /build/deps -type f -name .git -delete
+RUN test -f /build/deps/ascii-chat-deps/mdns/mdns.c && \
+    test -f /build/deps/ascii-chat-deps/gotel/c/CMakeLists.txt
 
 # Accept VERSION build arg from Docker build / Coolify
 ARG VERSION=0.0.0

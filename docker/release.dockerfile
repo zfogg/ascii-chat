@@ -14,16 +14,15 @@ ARG SOURCE_COMMIT=docker-build
 ENV VERSION=${VERSION}
 ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 
-# Preserve submodules from deps image
-RUN mv /build/deps /tmp/deps-preserve
+# Use the source checkout's pinned submodules, not potentially stale copies
+# from the dependency image. Keep its downloaded dependency cache.
+RUN rm -rf /build/deps
 
 # Copy fresh source (excludes .deps-cache/ via .dockerignore)
 COPY . /build/
 
-# Restore submodules
-RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
-    mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve && \
-    find /build/deps -type f -name .git -delete
+RUN test -f /build/deps/ascii-chat-deps/mdns/mdns.c && \
+    test -f /build/deps/ascii-chat-deps/gotel/c/CMakeLists.txt
 
 # Refresh the dependency image's configure cache against the current toolchain.
 # Downloaded dependency sources remain cached outside the build tree.
@@ -37,8 +36,8 @@ RUN cd /build && \
         -DUSE_MUSL=ON \
         -DASCIICHAT_ENABLE_ANALYZERS=OFF \
         -DASCIICHAT_LIB_VERSION=${LIB_VERSION} && \
-    cmake --build build_release && \
-    cmake --install build_release --prefix /tmp/install --component Runtime && \
+    cmake --build build/release-musl && \
+    cmake --install build/release-musl --prefix /tmp/install --component Runtime && \
     strip /tmp/install/bin/ascii-chat
 
 # ============================================================================
