@@ -397,8 +397,8 @@ static int receive_http3(ngtcp2_conn *conn, acip_quic_connection_t *connection, 
   }
   ngtcp2_conn_extend_max_offset(conn, consumed);
   int64_t session_id = -1;
-  if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) &&
-      acip_http3_server_accepted(connection->http3, &session_id) && stream_id == session_id) {
+  if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) && acip_http3_server_accepted(connection->http3, &session_id) &&
+      stream_id == session_id) {
     connection->callback_error = ERROR_NETWORK;
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }

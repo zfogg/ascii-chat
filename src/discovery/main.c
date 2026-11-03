@@ -207,8 +207,7 @@ static asciichat_error_t discovery_present_frame(const ascii_frame_packet_t *hea
   session_display_render_frame(receiver->display, text);
   if (text && text[0]) {
     receiver->observed_video_frames++;
-    if (receiver->observed_video_frames == 1 ||
-        (GET_OPTION(test_audio) && receiver->observed_video_frames % 25 == 0))
+    if (receiver->observed_video_frames == 1 || (GET_OPTION(test_audio) && receiver->observed_video_frames % 25 == 0))
       log_info("Discovery decoded video: frames=%llu", (unsigned long long)receiver->observed_video_frames);
   }
   return ASCIICHAT_OK;
