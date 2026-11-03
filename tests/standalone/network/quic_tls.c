@@ -1,5 +1,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/backpressure.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
@@ -613,6 +615,40 @@ static asciichat_error_t udp_secure_accept(acip_quic_connection_t *connection, v
   return ASCIICHAT_OK;
 }
 
+static void quic_handshake_dispatch(acip_transport_t *transport, crypto_handshake_context_t *ctx, bool server) {
+  while (acip_transport_has_pending_data(transport)) {
+    void *packet = NULL, *allocation = NULL;
+    size_t length = 0;
+    CHECK(acip_transport_recv(transport, &packet, &length, &allocation) == ASCIICHAT_OK);
+    CHECK(length >= sizeof(packet_header_t));
+    packet_header_t header;
+    memcpy(&header, packet, sizeof(header));
+    packet_type_t type = NET_TO_HOST_U16(header.type);
+    const uint8_t *payload = (const uint8_t *)packet + sizeof(header);
+    size_t payload_length = length - sizeof(header);
+    asciichat_error_t result = ERROR_NETWORK_PROTOCOL;
+    if (!server && type == PACKET_TYPE_CRYPTO_PARAMETERS) {
+      CHECK(payload_length == sizeof(crypto_parameters_packet_t));
+      crypto_parameters_packet_t params;
+      memcpy(&params, payload, sizeof(params));
+      result = crypto_handshake_set_parameters(ctx, &params);
+    } else if (!server && type == PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT) {
+      result = crypto_handshake_client_key_exchange(ctx, transport, type, payload, payload_length);
+    } else if (!server &&
+               (type == PACKET_TYPE_CRYPTO_AUTH_CHALLENGE || type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE)) {
+      result = crypto_handshake_client_auth_response(ctx, transport, type, payload, payload_length);
+    } else if (!server && type == PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP) {
+      result = crypto_handshake_client_complete(ctx, transport, type, payload, payload_length);
+    } else if (server && type == PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP) {
+      result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, payload_length);
+    } else if (server && type == PACKET_TYPE_CRYPTO_AUTH_RESPONSE) {
+      result = crypto_handshake_server_complete(ctx, transport, type, payload, payload_length);
+    }
+    buffer_release(allocation);
+    CHECK(result == ASCIICHAT_OK);
+  }
+}
+
 static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
@@ -628,11 +664,11 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     client_capture.packets[i] = server_state.capture.packets[i] = packets[i];
     client_capture.lengths[i] = server_state.capture.lengths[i] = lengths[i];
   }
-  crypto_context_t client_crypto, server_crypto;
-  CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
-  CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
-  CHECK(crypto_set_peer_public_key(&server_crypto, client_crypto.public_key) == CRYPTO_OK);
-  client_crypto.handshake_complete = server_crypto.handshake_complete = true;
+  crypto_handshake_context_t client_handshake, server_handshake;
+  CHECK(crypto_handshake_init_with_password("quic-client", &client_handshake, false, "test-password") == ASCIICHAT_OK);
+  CHECK(crypto_handshake_init_with_password("quic-server", &server_handshake, true, "test-password") == ASCIICHAT_OK);
+  SAFE_STRNCPY(client_handshake.server_ip, "127.0.0.1", sizeof(client_handshake.server_ip));
+  client_handshake.server_port = 27224;
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_secure_accept,
                                       &server_state, &server) == ASCIICHAT_OK);
   CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
@@ -645,22 +681,21 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   uint64_t start = time_get_ns();
   CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
                               &client_connection) == ASCIICHAT_OK);
-  bool submitted = false;
+  bool handshake_started = false, submitted = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
     acip_quic_connection_t *failed = NULL;
     CHECK(acip_quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
     CHECK(acip_quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
-    if (!submitted && server_state.peer && acip_quic_connection_tls_ready(client_connection) &&
+    if (!handshake_started && server_state.peer && acip_quic_connection_tls_ready(client_connection) &&
         acip_quic_connection_tls_ready(server_state.peer)) {
-      CHECK(acip_quic_connection_enable_security(client_connection, &client_crypto) == ASCIICHAT_OK);
-      CHECK(acip_quic_connection_enable_security(server_state.peer, &server_crypto) == ASCIICHAT_OK);
-      CHECK(acip_quic_connection_allow_media(client_connection) == ASCIICHAT_OK);
-      CHECK(acip_quic_connection_allow_media(server_state.peer) == ASCIICHAT_OK);
-      CHECK(acip_quic_transport_attach(client_connection, &client_crypto, &client_transport) == ASCIICHAT_OK);
-      CHECK(acip_quic_transport_attach(server_state.peer, &server_crypto, &server_transport) == ASCIICHAT_OK);
+      CHECK(acip_quic_transport_attach(client_connection, &client_handshake.crypto_ctx, &client_transport) ==
+            ASCIICHAT_OK);
+      CHECK(acip_quic_transport_attach(server_state.peer, &server_handshake.crypto_ctx, &server_transport) ==
+            ASCIICHAT_OK);
       acip_transport_t *duplicate = NULL;
-      CHECK(acip_quic_transport_attach(client_connection, &client_crypto, &duplicate) == ERROR_INVALID_PARAM &&
+      CHECK(acip_quic_transport_attach(client_connection, &client_handshake.crypto_ctx, &duplicate) ==
+                ERROR_INVALID_PARAM &&
             !duplicate);
       CHECK(acip_transport_get_type(client_transport) == ACIP_TRANSPORT_QUIC);
       CHECK(acip_transport_get_socket(client_transport) == INVALID_SOCKET_VALUE);
@@ -670,6 +705,21 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       acip_send_options_t unsupported = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
       socket_buffer_t unsupported_slice = {packets[1], lengths[1]};
       CHECK(acip_transport_sendv_ex(client_transport, &unsupported_slice, 1, &unsupported) == ERROR_NOT_SUPPORTED);
+      CHECK(crypto_handshake_server_send_parameters(&server_handshake, server_transport) == ASCIICHAT_OK);
+      CHECK(crypto_handshake_server_start(&server_handshake, server_transport) == ASCIICHAT_OK);
+      handshake_started = true;
+    }
+    if (handshake_started && !submitted) {
+      quic_handshake_dispatch(client_transport, &client_handshake, false);
+      quic_handshake_dispatch(server_transport, &server_handshake, true);
+    }
+    if (handshake_started && !submitted && crypto_handshake_is_ready(&client_handshake) &&
+        crypto_handshake_is_ready(&server_handshake) && !acip_quic_connection_pending_bytes(client_connection) &&
+        !acip_quic_connection_pending_bytes(server_state.peer)) {
+      CHECK(acip_quic_connection_enable_security(client_connection, &client_handshake.crypto_ctx) == ASCIICHAT_OK);
+      CHECK(acip_quic_connection_enable_security(server_state.peer, &server_handshake.crypto_ctx) == ASCIICHAT_OK);
+      CHECK(acip_quic_connection_allow_media(client_connection) == ASCIICHAT_OK);
+      CHECK(acip_quic_connection_allow_media(server_state.peer) == ASCIICHAT_OK);
       acip_transport_t *peers[] = {client_transport, server_transport};
       for (size_t peer = 0; peer < 2; ++peer) {
         for (size_t i = 0; i < 6; ++i) {
@@ -713,8 +763,8 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   acip_transport_destroy(server_transport);
   acip_quic_udp_endpoint_destroy(&client);
   acip_quic_udp_endpoint_destroy(&server);
-  crypto_destroy(&client_crypto);
-  crypto_destroy(&server_crypto);
+  crypto_handshake_destroy(&client_handshake);
+  crypto_handshake_destroy(&server_handshake);
   for (size_t i = 0; i < 6; ++i)
     buffer_release(packets[i]);
   socket_cleanup();

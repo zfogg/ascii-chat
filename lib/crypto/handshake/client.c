@@ -935,6 +935,7 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
                                                                        // retry
   }
   ctx->state = CRYPTO_HANDSHAKE_READY;
+  ctx->crypto_ctx.handshake_complete = true;
   log_info("Server authentication successful - mutual authentication complete");
 
   return ASCIICHAT_OK;

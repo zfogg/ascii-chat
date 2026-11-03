@@ -63,7 +63,8 @@ struct acip_quic_connection {
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection);
 
 static bool initial_handshake_packet(packet_type_t type) {
-  return type == PACKET_TYPE_ERROR_MESSAGE || type == PACKET_TYPE_CRYPTO_CLIENT_HELLO ||
+  return type == PACKET_TYPE_ERROR_MESSAGE || type == PACKET_TYPE_PROTOCOL_VERSION ||
+         type == PACKET_TYPE_CRYPTO_CLIENT_HELLO ||
          (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type < PACKET_TYPE_CRYPTO_NO_ENCRYPTION);
 }
 

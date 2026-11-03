@@ -142,8 +142,10 @@ connection engine can enable it after TLS and a caller-confirmed ACIP handshake
 barrier; it accepts only initial handshake and error control packets before that
 point, rejects no-encryption and premature rekey messages, and requires this
 security layer before permitting media. Once enabled it seals
-and opens reliable packets before dispatch. The current fixture supplies
-X25519-derived contexts and simulates completion of the ACIP handshake; it does
-not exercise that handshake over the engine. This codec is not negotiated or
-connected to a public transport. It does not implement datagram fragmentation,
-rekey transitions, or replay protection for existing connections.
+and opens reliable packets before dispatch. A UDP loopback fixture exercises
+the existing password-authenticated ACIP handshake through the private adapter,
+waits for both peers and their queued handshake data, and then exchanges
+encrypted media. The security transition is coordinated by the fixture rather
+than negotiated by the application. The codec is not connected to a public
+transport. It does not implement datagram fragmentation, rekey transitions,
+or replay protection for existing connections.
