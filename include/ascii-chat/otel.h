@@ -53,8 +53,11 @@ void ascii_otel_pipeline_progress(unsigned stage, unsigned expected);
 void ascii_otel_http(ascii_otel_scope_t *scope, const char *hostname, const char *path);
 void ascii_otel_http_status(ascii_otel_scope_t *scope, int status);
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
-/** Prepare a NUL-terminated statement; rejected SQL receives a safe failure span. */
+
+/** Prepare NUL-terminated SQL using the attached Gotel policy and SQLite result
+ * codes. Unattached databases use ordinary SQLite preparation. */
 int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **statement);
+
 #define ASCII_OTEL_ATTR_STRING(key, value) ascii_otel_scope_string(&otel_scope, key, value)
 #define ASCII_OTEL_ATTR_INT(key, value) ascii_otel_scope_int(&otel_scope, key, value)
 #define ASCII_OTEL_PACKET(type, size, action, transport) ascii_otel_packet(&otel_scope, type, size, action, transport)

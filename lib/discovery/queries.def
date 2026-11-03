@@ -231,3 +231,39 @@ DATABASE_QUERY(GetPopulation, "SELECT\n"
                               "FROM sessions\n"
                               "WHERE\n"
                               "  expires_at > ?")
+
+/* Session-key policy and migration operations. */
+DATABASE_QUERY(SchemaKeyPolicy,
+               "CREATE TABLE IF NOT EXISTS session_key_policy ( session_string TEXT PRIMARY KEY REFERENCES "
+               "sessions(session_string) ON DELETE CASCADE, restricted INTEGER NOT NULL CHECK(restricted IN (0,1)));")
+DATABASE_QUERY(SchemaIdentityKeys,
+               "CREATE TABLE IF NOT EXISTS session_identity_keys ( session_string TEXT NOT NULL REFERENCES "
+               "sessions(session_string) ON DELETE CASCADE, key_type TEXT NOT NULL CHECK(key_type = 'ed25519'), "
+               "identity_pubkey BLOB NOT NULL CHECK(typeof(identity_pubkey) = 'blob' AND length(identity_pubkey) = "
+               "32), key_version INTEGER NOT NULL, added_at INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0 "
+               "CHECK(revoked IN (0,1)), PRIMARY KEY(session_string, key_type, identity_pubkey));")
+DATABASE_QUERY(
+    BackfillSessionIdentityKeys,
+    "INSERT OR IGNORE INTO session_identity_keys  SELECT s.session_string, 'ed25519', s.host_pubkey, 0, s.created_at, "
+    "0 FROM sessions s WHERE typeof(s.host_pubkey) = 'blob' AND length(s.host_pubkey) = 32 AND s.host_pubkey != "
+    "zeroblob(32) AND NOT EXISTS (SELECT 1 FROM session_key_policy p WHERE p.session_string = s.session_string);")
+DATABASE_QUERY(BackfillSessionKeyPolicy,
+               "INSERT OR IGNORE INTO session_key_policy SELECT session_string, 0 FROM sessions;")
+DATABASE_QUERY(ImportLegacySessionKeys,
+               "INSERT OR IGNORE INTO session_identity_keys "
+               " SELECT k.session_string, 'ed25519', k.identity_pubkey, k.key_version, k.added_at, "
+               "CASE WHEN k.revoked = 0 THEN "
+               "0 ELSE 1 END"
+               " FROM session_keys k WHERE typeof(k.identity_pubkey) = 'blob' AND "
+               "length(k.identity_pubkey) = 32 AND NOT EXISTS"
+               " (SELECT 1 FROM session_key_policy p WHERE p.session_string = k.session_string);")
+DATABASE_QUERY(HasLegacySessionKeys, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_keys'")
+DATABASE_QUERY(InsertSessionKeyPolicy, "INSERT INTO session_key_policy VALUES (?, ?)")
+DATABASE_QUERY(GetSessionKeyPolicy, "SELECT restricted FROM session_key_policy WHERE session_string = ?")
+DATABASE_QUERY(BeginKeySet, "SAVEPOINT create_key_set")
+DATABASE_QUERY(CommitKeySet, "RELEASE create_key_set")
+DATABASE_QUERY(RollbackToKeySet, "ROLLBACK TO create_key_set;")
+
+#define RATE_LIMIT_QUERY(name, sql) DATABASE_QUERY(name, sql)
+#include "../network/rate_limit/queries.def"
+#undef RATE_LIMIT_QUERY
