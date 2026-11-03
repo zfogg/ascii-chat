@@ -43,7 +43,7 @@ def main():
         else:
             raise RuntimeError("No shared TCP/UDP port is available")
         environment = {"ASCII_CHAT_QUESTION_PROMPT_RESPONSE": "y;y;y", "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK": "1"}
-        acds = host = None
+        acds = host = udp_blackhole = None
         clients = []
         try:
             acds = Service(binary, directory, "acds", "discovery-service",
@@ -98,6 +98,45 @@ def main():
                     "QUIC connection establishment failed" not in negative):
                 raise AssertionError(f"Wrong certificate unexpectedly succeeded or downgraded: {negative[-8000:]}")
             assert "AddressSanitizer" not in host.text() + acds.text() + "".join(c.text() for c in clients) + negative
+            for client in clients:
+                client.stop()
+            clients.clear()
+            host.stop()
+            host = None
+
+            fallback_ws = free_port()
+            for _ in range(100):
+                fallback_port = free_port()
+                udp_blackhole = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                try:
+                    udp_blackhole.bind(("127.0.0.1", fallback_port))
+                    break
+                except OSError:
+                    udp_blackhole.close()
+                    udp_blackhole = None
+            else:
+                raise RuntimeError("No shared TCP/UDP port is available for fallback")
+            host = Service(binary, directory, "fallback-host", "server",
+                           server_options(fallback_port, fallback_ws) + discovery +
+                           ["--discovery", "--webrtc", "--discovery-expose-ip", "--password", "route-test-password",
+                            "--key", str(host_key)], environment)
+            host.wait_for("Session created:")
+            session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+            client = Service(binary, directory, "fallback-client", session,
+                             discovery + ["--discovery-quic", "--quic-ca-file", str(cert),
+                                          "--quic-fallback-port", str(fallback_port),
+                                          "--server-key", str(host_key) + ".pub", "--password", "route-test-password",
+                                          "--test-pattern", "--audio=false", "--width", "40", "--height", "12",
+                                          "--color-mode", "none", "--splash-screen=false"], environment)
+            clients.append(client)
+            client.wait_for("trying authenticated TCP fallback", timeout=30)
+            udp_blackhole.settimeout(2)
+            data, _ = udp_blackhole.recvfrom(65535)
+            if not data:
+                raise AssertionError("QUIC client sent no traffic to the UDP blackhole")
+            client.wait_for("Server identity key verified against --server-key")
+            client.wait_for("Discovery decoded video: frames=1")
+            assert re.search(r"Added new transport client \S+.*type=1,", host.text()), host.text()[-8000:]
             print("PASS: two discovery participants use authenticated QUIC and receive video")
         finally:
             for client in clients:
@@ -106,6 +145,8 @@ def main():
                 host.stop()
             if acds:
                 acds.stop()
+            if udp_blackhole:
+                udp_blackhole.close()
 
 
 if __name__ == "__main__":
