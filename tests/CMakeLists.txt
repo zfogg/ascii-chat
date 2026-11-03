@@ -1652,6 +1652,43 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(session-h265-client test-session-h265-client)
     set_property(TEST session-h265-client APPEND PROPERTY LABELS unit)
 
+    add_executable(test-client-audio contracts/network/client_audio_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c
+        ${CMAKE_SOURCE_DIR}/src/client/crypto.c
+        ${CMAKE_SOURCE_DIR}/src/client/display.c
+        ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)
+    asciichat_configure_contract(test-client-audio)
+    target_link_libraries(test-client-audio PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-audio PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-audio)
+    set_target_properties(test-client-audio PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-audio test-client-audio)
+    set_property(TEST client-audio APPEND PROPERTY LABELS unit)
+
+    add_executable(test-capture-transactions contracts/media/capture_transactions_test.c)
+    asciichat_configure_contract(test-capture-transactions)
+    target_link_libraries(test-capture-transactions PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-capture-transactions PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-capture-transactions)
+    set_target_properties(test-capture-transactions PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(capture-transactions test-capture-transactions)
+    set_property(TEST capture-transactions APPEND PROPERTY LABELS unit)
+
+    add_executable(test-display-delivery contracts/media/display_delivery_test.c)
+    asciichat_configure_contract(test-display-delivery)
+    target_link_libraries(test-display-delivery PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-display-delivery PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-display-delivery)
+    set_target_properties(test-display-delivery PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(display-delivery test-display-delivery)
+    set_property(TEST display-delivery APPEND PROPERTY LABELS unit)
+
     add_executable(test-server-main contracts/network/server_main_test.c
         ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/connections.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/server/stream.c
