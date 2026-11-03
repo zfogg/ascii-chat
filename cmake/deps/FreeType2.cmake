@@ -14,7 +14,7 @@
 
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
-function(asciichat_require_freetype_hvf)
+function(asciichat_check_freetype_hvf)
     include(CheckCSourceCompiles)
     set(CMAKE_REQUIRED_INCLUDES ${ARGN})
     # Recheck after package/SDK upgrades without requiring a fresh build tree.
@@ -29,8 +29,10 @@ function(asciichat_require_freetype_hvf)
 #error FreeType was built without Apple HVF support
 #endif
 int main(void) { return 0; }" ASCIICHAT_FREETYPE_HAS_HVF)
-    if(NOT ASCIICHAT_FREETYPE_HAS_HVF)
-        message(FATAL_ERROR "Apple font rendering requires FreeType >= 2.15 with HVF enabled and an HVF-capable Apple SDK")
+    if(ASCIICHAT_FREETYPE_HAS_HVF)
+        message(STATUS "Apple HVF fonts: available with a supported OS at runtime")
+    else()
+        message(STATUS "Apple HVF fonts: unavailable with this FreeType/SDK; standard fonts remain supported")
     endif()
 endfunction()
 
@@ -67,7 +69,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
         FetchContent_MakeAvailable(asciichat_freetype)
         if(APPLE)
-            asciichat_require_freetype_hvf("${asciichat_freetype_BINARY_DIR}/include" "${asciichat_freetype_SOURCE_DIR}/include")
+            asciichat_check_freetype_hvf("${asciichat_freetype_BINARY_DIR}/include" "${asciichat_freetype_SOURCE_DIR}/include")
         endif()
         set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_SOURCE_DIR}/include;${asciichat_freetype_BINARY_DIR}/include" PARENT_SCOPE)
         # Fontconfig's Autotools build consumes an installation, not CMake targets.
@@ -97,7 +99,7 @@ if(UNIX AND NOT APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
 
 elseif(APPLE)
-    find_package(Freetype 2.15 REQUIRED)
+    find_package(Freetype REQUIRED)
     # macOS: Try pkg-config first, then fall back to CMake FindFreetype
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
@@ -108,7 +110,7 @@ elseif(APPLE)
     if(NOT FREETYPE_FOUND)
         find_package(Freetype REQUIRED)
     endif()
-    asciichat_require_freetype_hvf(${FREETYPE_INCLUDE_DIRS})
+    asciichat_check_freetype_hvf(${FREETYPE_INCLUDE_DIRS})
 
     # Homebrew's dylib is versioned to the installed formula and is not a
     # suitable runtime dependency for a portable Release executable.

@@ -16,6 +16,7 @@ import {
 } from "../../utils/colorMappers";
 
 import { browserRasterFontSize } from "./rasterConfig";
+import { writeTerminalRendererConfig } from "../../wasm/terminalRenderer";
 
 const rendererFontSelection = (matrix: boolean) => (matrix ? 2 : 1);
 
@@ -148,14 +149,7 @@ export function useInitAsciiRenderer({
     currentMatrixModeRef.current = matrixMode;
   }, [matrixMode]);
 
-  // Write config struct fields to WASM memory
-  // Struct layout (WASM 32-bit pointers):
-  // int cols (4) + int rows (4) + double font_size_pt (8) + int theme (4) = 20 bytes
-  // char font_spec[512] at offset 20 = 512 bytes
-  // bool font_is_path (1) + padding (3) = 4 bytes at offset 532
-  // uint8_t *font_data (4) at offset 536
-  // size_t font_data_size (4) at offset 540
-  // Total: 544 bytes
+  // C owns the renderer configuration's layout and path-buffer capacity.
   const writeConfigStructFields = useCallback(
     (configPtr: number, cols: number, rows: number, isMatrixMode: boolean) => {
       if (!moduleRef.current) {
@@ -164,39 +158,14 @@ export function useInitAsciiRenderer({
         );
       }
 
-      const view = new DataView(
-        moduleRef.current.HEAPU8.buffer,
+      writeTerminalRendererConfig(
+        moduleRef.current,
         configPtr,
-        544,
-      );
-
-      view.setInt32(0, cols, true); // cols
-      view.setInt32(4, rows, true); // rows
-      view.setFloat64(8, browserRasterFontSize(isMatrixMode), true); // font_size_pt
-      view.setInt32(16, 0, true); // theme
-
-      // Use "Matrix" font_spec when matrix_rain is enabled, otherwise use default font selection
-      const fontSpec = isMatrixMode ? "Matrix" : "";
-      console.debug("[writeConfigStructFields]", {
         cols,
         rows,
+        browserRasterFontSize(isMatrixMode),
         isMatrixMode,
-        fontSpec,
-      });
-      for (let i = 0; i < fontSpec.length && i < 511; i++) {
-        moduleRef.current.HEAPU8[configPtr + 20 + i] = fontSpec.charCodeAt(i);
-      }
-      moduleRef.current.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
-      moduleRef.current.HEAPU8[configPtr + 532] = 0; // font_is_path
-
-      const fontSelection = rendererFontSelection(isMatrixMode);
-      const fontDataPtr =
-        moduleRef.current._get_font_default_ptr(fontSelection);
-      view.setInt32(536, fontDataPtr, true); // font_data pointer
-
-      const fontDataSize =
-        moduleRef.current._get_font_default_size(fontSelection);
-      view.setInt32(540, fontDataSize, true); // font_data_size
+      );
     },
     [],
   );
@@ -215,7 +184,7 @@ export function useInitAsciiRenderer({
           );
         }
 
-        const configSize = 544;
+        const configSize = moduleRef.current._wasm_renderer_config_size();
         const configPtr = moduleRef.current._malloc(configSize);
 
         if (!configPtr) {
