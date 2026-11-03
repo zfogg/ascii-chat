@@ -9,6 +9,7 @@
 #include <network/quic/security.h>
 #include <network/quic/tls.h>
 #include <network/quic/udp.h>
+#include <network/quic/transport.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <string.h>
@@ -609,7 +610,7 @@ static asciichat_error_t udp_secure_accept(acip_quic_connection_t *connection, v
   if (state->peer)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected secure UDP test connection");
   state->peer = connection;
-  return acip_quic_connection_set_receiver(connection, capture_quic_packet, &state->capture);
+  return ASCIICHAT_OK;
 }
 
 static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
@@ -640,10 +641,10 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   socklen_t address_length = 0;
   CHECK(acip_quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
   acip_quic_connection_t *client_connection = NULL;
+  acip_transport_t *client_transport = NULL, *server_transport = NULL;
   uint64_t start = time_get_ns();
   CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
                               &client_connection) == ASCIICHAT_OK);
-  CHECK(acip_quic_connection_set_receiver(client_connection, capture_quic_packet, &client_capture) == ASCIICHAT_OK);
   bool submitted = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
@@ -656,20 +657,60 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       CHECK(acip_quic_connection_enable_security(server_state.peer, &server_crypto) == ASCIICHAT_OK);
       CHECK(acip_quic_connection_allow_media(client_connection) == ASCIICHAT_OK);
       CHECK(acip_quic_connection_allow_media(server_state.peer) == ASCIICHAT_OK);
-      acip_quic_connection_t *peers[] = {client_connection, server_state.peer};
+      CHECK(acip_quic_transport_attach(client_connection, &client_crypto, &client_transport) == ASCIICHAT_OK);
+      CHECK(acip_quic_transport_attach(server_state.peer, &server_crypto, &server_transport) == ASCIICHAT_OK);
+      acip_transport_t *duplicate = NULL;
+      CHECK(acip_quic_transport_attach(client_connection, &client_crypto, &duplicate) == ERROR_INVALID_PARAM &&
+            !duplicate);
+      CHECK(acip_transport_get_type(client_transport) == ACIP_TRANSPORT_QUIC);
+      CHECK(acip_transport_get_socket(client_transport) == INVALID_SOCKET_VALUE);
+      void *empty = NULL, *allocation = NULL;
+      size_t empty_length = 0;
+      CHECK(acip_transport_recv(client_transport, &empty, &empty_length, &allocation) == ERROR_NETWORK_TIMEOUT);
+      acip_send_options_t unsupported = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
+      socket_buffer_t unsupported_slice = {packets[1], lengths[1]};
+      CHECK(acip_transport_sendv_ex(client_transport, &unsupported_slice, 1, &unsupported) == ERROR_NOT_SUPPORTED);
+      acip_transport_t *peers[] = {client_transport, server_transport};
       for (size_t peer = 0; peer < 2; ++peer) {
         for (size_t i = 0; i < 6; ++i) {
-          acip_traffic_class_t traffic_class = i < 2 ? (acip_traffic_class_t)i : ACIP_TRAFFIC_VISUAL;
-          CHECK(acip_quic_connection_submit(peers[peer], traffic_class, packets[i], lengths[i]) == ASCIICHAT_OK);
+          if (i == 2) {
+            socket_buffer_t slices[] = {{packets[i], sizeof(packet_header_t)},
+                                        {packets[i] + sizeof(packet_header_t), lengths[i] - sizeof(packet_header_t)}};
+            CHECK(acip_transport_sendv(peers[peer], slices, 2) == ASCIICHAT_OK);
+          } else {
+            CHECK(acip_transport_send(peers[peer], packets[i], lengths[i]) == ASCIICHAT_OK);
+          }
         }
       }
       submitted = true;
+    }
+    if (submitted) {
+      acip_transport_t *peers[] = {client_transport, server_transport};
+      media_capture_t *captures[] = {&client_capture, &server_state.capture};
+      for (size_t peer = 0; peer < 2; ++peer) {
+        while (acip_transport_has_pending_data(peers[peer])) {
+          void *packet = NULL, *allocation = NULL;
+          size_t length = 0;
+          CHECK(acip_transport_recv(peers[peer], &packet, &length, &allocation) == ASCIICHAT_OK);
+          CHECK(length >= sizeof(packet_header_t));
+          packet_header_t header;
+          memcpy(&header, packet, sizeof(header));
+          acip_traffic_class_t traffic_class = acip_packet_traffic_class(NET_TO_HOST_U16(header.type));
+          CHECK(capture_quic_packet(traffic_class, packet, length, captures[peer]) == ASCIICHAT_OK);
+          buffer_release(allocation);
+        }
+      }
     }
     if (submitted && client_capture.count == 6 && server_state.capture.count == 6)
       break;
     time_sleep_ns(NS_PER_MS_INT);
   }
   CHECK(submitted && client_capture.count == 6 && server_state.capture.count == 6);
+  CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
+  CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
+  CHECK(!acip_transport_is_connected(client_transport));
+  acip_transport_destroy(client_transport);
+  acip_transport_destroy(server_transport);
   acip_quic_udp_endpoint_destroy(&client);
   acip_quic_udp_endpoint_destroy(&server);
   crypto_destroy(&client_crypto);

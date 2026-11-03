@@ -45,6 +45,8 @@ asciichat_error_t acip_quic_connection_matches_cid(const acip_quic_connection_t 
  * the callback must copy what it retains and must not reenter the connection. */
 asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *connection, acip_quic_stream_emit_fn emit,
                                                     void *context);
+/** Detach the current receiver on the connection lane before freeing its context. */
+asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context);
 /** Permit media only after the application has completed and acknowledged the
  * ACIP handshake. The owner must separately coordinate later control barriers. */
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection);

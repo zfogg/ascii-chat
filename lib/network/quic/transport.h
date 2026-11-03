@@ -1,0 +1,12 @@
+#pragma once
+
+#include "connection.h"
+#include <ascii-chat/network/acip/transport.h>
+
+/* Private single-lane bridge. The connection and its crypto context outlive
+ * the returned transport. All operations, endpoint pumping, and destruction
+ * must run on the same lane. recv is nonblocking and returns
+ * ERROR_NETWORK_TIMEOUT when no complete packet is queued. The caller must
+ * destroy the transport before destroying the connection. */
+asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
+                                             acip_transport_t **out);

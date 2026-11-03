@@ -101,6 +101,14 @@ DoS protection. Do not expose it to untrusted networks yet. A socket loopback
 fixture exercises two simultaneous connections and continued routing after one
 is removed; it does not prove ACIP authentication or the public call flow.
 
+The private transport adapter wraps one connection with the existing ACIP
+send/receive interface. It copies vectored sends, exposes complete received
+packets through a bounded queue, and reports QUIC as its transport type. It
+returns an explicit unsupported error for datagrams and deadlines. The adapter
+and endpoint must currently be driven on the same serialized lane, receive is
+nonblocking, and the adapter must be destroyed before its borrowed connection.
+It is not yet suitable for the existing concurrent client/server call paths.
+
 ## ACIP encryption audit
 
 The current ACIP `crypto_encrypt` uses a random 16-byte sender prefix followed

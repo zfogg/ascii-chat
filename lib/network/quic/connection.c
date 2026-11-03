@@ -461,6 +461,14 @@ asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *conn
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context) {
+  if (!connection || !connection->emit || connection->emit_context != context)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC receive callback context");
+  connection->emit = NULL;
+  connection->emit_context = NULL;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->security.crypto)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC and authenticated ACIP encryption are not ready for media");
