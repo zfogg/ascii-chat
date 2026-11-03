@@ -1241,6 +1241,8 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
   mutex_unlock(&session->nat_quality_mutex);
+  if (GET_OPTION(quic_bind_address)[0] && GET_OPTION(quic_tls_cert)[0] && GET_OPTION(quic_tls_key)[0])
+    message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
   asciichat_error_t result = discovery_handoff_send(session, &message, false);
@@ -1273,9 +1275,18 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_RECONCILE);
   ASCII_OTEL_ATTR_STRING("host.update.source", "designation");
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "malformed");
-  if (!data || len != sizeof(acip_host_designated_t))
+  if (!data || len < sizeof(acip_host_designated_t))
     return;
   const acip_host_designated_t *host = data;
+  uint16_t quic_port = 0;
+  char webtransport_url[512];
+  asciichat_errno_scope_t metadata_scope = errno_scope_begin();
+  asciichat_error_t metadata_result =
+      acds_transport_metadata_decode((const uint8_t *)data + sizeof(*host), len - sizeof(*host), &quic_port,
+                                     webtransport_url, sizeof(webtransport_url));
+  errno_scope_end(metadata_scope, ASCIICHAT_ERRNO_DISMISSED);
+  if (metadata_result != ASCIICHAT_OK)
+    return;
   uint32_t generation = NET_TO_HOST_U32(host->generation);
   ASCII_OTEL_ATTR_INT("host.generation", generation);
   ASCII_OTEL_ATTR_INT("host.decision.sequence", NET_TO_HOST_U32(host->sequence));
@@ -1298,7 +1309,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
     session->host_address[0] = 0;
   if (host->host_address[0])
     SAFE_STRNCPY(session->host_address, host->host_address, sizeof(session->host_address));
-  session->host_port = host->host_port;
+  session->host_port = GET_OPTION(discovery_quic) && quic_port ? quic_port : host->host_port;
   if (changed && active)
     NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
   if ((changed && (active || connecting) && discovery_host_endpoint_ready(session, host)) ||
@@ -1782,8 +1793,22 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   announcement.sequence = HOST_TO_NET_U32(session->host_authority_sequence);
 
   if (session->acds_transport) {
-    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
-                              sizeof(announcement), 0);
+    uint8_t payload[sizeof(announcement) + ACDS_TRANSPORT_METADATA_MAX];
+    size_t metadata_length = 0;
+    uint16_t quic_port =
+        GET_OPTION(quic_bind_address)[0] ? (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : host_port) : 0;
+    const char *url = GET_OPTION(webtransport_bind_address)[0] ? GET_OPTION(webtransport_public_url) : "";
+    asciichat_error_t sent = ASCIICHAT_OK;
+    if (quic_port || *url)
+      sent = acds_transport_metadata_encode(quic_port, url, payload + sizeof(announcement), ACDS_TRANSPORT_METADATA_MAX,
+                                            &metadata_length);
+    if (sent != ASCIICHAT_OK)
+      return sent;
+    memcpy(payload, &announcement, sizeof(announcement));
+    sent = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, payload,
+                                     sizeof(announcement) + metadata_length, 0);
+    if (sent != ASCIICHAT_OK)
+      return sent;
     log_info("Sent HOST_ANNOUNCEMENT to ACDS at %s:%u", announcement.host_address, announcement.host_port);
   }
 

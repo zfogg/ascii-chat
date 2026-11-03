@@ -256,6 +256,8 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
   }
 
   rc = sqlite3_exec(*db, database_queries[QUERY_SchemaSessionTransports].sql, NULL, NULL, NULL);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_exec(*db, database_queries[QUERY_SchemaSessionTransportHosts].sql, NULL, NULL, NULL);
   if (rc != SQLITE_OK) {
     sqlite3_close(*db);
     *db = NULL;
@@ -1540,5 +1542,41 @@ asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t sess
     result = SET_ERRNO(ERROR_CONFIG, "Cannot read discovery transport metadata");
   }
   sqlite3_finalize(statement);
+  return result;
+}
+
+/* The authority check belongs to the signaling layer holding handoff_mutex.
+ * Persist endpoint and transport ownership together so failure cannot leave a
+ * successor paired with the previous host's transport advertisements. */
+asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE],
+                                                              const uint8_t host[SESSION_ID_SIZE], const char *address,
+                                                              uint16_t port, uint8_t type, const void *metadata,
+                                                              size_t length) {
+  if (!db || !session || !host || (!metadata && length) || (length && (length < 10 || length > 521)))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host transport update");
+  if (sqlite3_exec(db, "SAVEPOINT host_transport_refresh", NULL, NULL, NULL) != SQLITE_OK)
+    return SET_ERRNO(ERROR_CONFIG, "Cannot begin host transport update");
+  asciichat_error_t result = database_session_update_host(db, session, host, address, port, type);
+  if (result == ASCIICHAT_OK && length)
+    result = database_session_transport_set(db, session, metadata, length);
+  if (result == ASCIICHAT_OK && length) {
+    sqlite3_stmt *statement = NULL;
+    int rc = ascii_otel_sqlite_prepare(db, database_queries[QUERY_SetSessionTransportHost].sql, &statement);
+    if (rc == SQLITE_OK)
+      rc = sqlite3_bind_blob(statement, 1, session, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+    if (rc == SQLITE_OK)
+      rc = sqlite3_bind_blob(statement, 2, host, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+    if (rc == SQLITE_OK)
+      rc = sqlite3_step(statement);
+    sqlite3_finalize(statement);
+    if (rc != SQLITE_DONE)
+      result = SET_ERRNO(ERROR_CONFIG, "Cannot bind transports to the new host");
+  }
+  if (result == ASCIICHAT_OK && sqlite3_exec(db, "RELEASE host_transport_refresh", NULL, NULL, NULL) != SQLITE_OK)
+    result = SET_ERRNO(ERROR_CONFIG, "Cannot commit host transport update");
+  if (result != ASCIICHAT_OK) {
+    sqlite3_exec(db, "ROLLBACK TO host_transport_refresh", NULL, NULL, NULL);
+    sqlite3_exec(db, "RELEASE host_transport_refresh", NULL, NULL, NULL);
+  }
   return result;
 }

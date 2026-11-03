@@ -113,3 +113,57 @@ Test(database_lifecycle, transport_storage_failure_rolls_back_session_creation) 
   cr_assert_eq(sqlite3_column_int(statement, 0), 1);
   sqlite3_finalize(statement);
 }
+
+Test(database_lifecycle, successor_transports_follow_the_host_and_failed_refresh_rolls_back) {
+  uint8_t old_metadata[10] = {'A', 'C', 'Q', 'T', 1, 0, 0x75, 0x31, 0, 0};
+  uint8_t fresh_metadata[10] = {'A', 'C', 'Q', 'T', 1, 0, 0x75, 0x32, 0, 0};
+  uint8_t first[16] = {42}, second[16] = {43}, output[10];
+  size_t length = 0;
+  cr_assert_eq(database_session_transport_set(db, session.session_id, old_metadata, 10), ASCIICHAT_OK);
+  cr_assert_eq(database_session_update_host(db, session.session_id, first, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
+  cr_assert_eq(length, 0);
+  cr_assert_eq(database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0,
+                                                           fresh_metadata, 10),
+               ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
+  cr_assert_eq(length, 10);
+  cr_assert_arr_eq(output, fresh_metadata, 10);
+  cr_assert_eq(sqlite3_exec(db,
+                            "CREATE TRIGGER reject_host_transport BEFORE INSERT ON session_transport_hosts "
+                            "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
+                            NULL, NULL, NULL),
+               SQLITE_OK);
+  cr_assert_neq(database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0,
+                                                            old_metadata, 10),
+                ASCIICHAT_OK);
+  session_entry_t *stored = database_session_find_by_id(db, session.session_id);
+  cr_assert_not_null(stored);
+  cr_assert_arr_eq(stored->host_participant_id, first, 16);
+  cr_assert_eq(stored->host_port, 30000);
+  session_entry_destroy(stored);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
+  cr_assert_arr_eq(output, fresh_metadata, 10);
+  cr_assert_eq(database_session_start_migration(db, session.session_id), ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
+  cr_assert_eq(length, 0);
+  cr_assert_eq(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
+  cr_assert_eq(length, 0);
+}
+
+Test(database_lifecycle, clearing_a_failed_host_cannot_republish_its_old_transport) {
+  uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, host[16] = {42}, output[10];
+  size_t length = 0;
+  cr_assert_eq(
+      database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10),
+      ASCIICHAT_OK);
+  cr_assert_eq(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
+  cr_assert_eq(length, 0);
+  sqlite3_stmt *statement = NULL;
+  cr_assert_eq(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM session_transports", -1, &statement, NULL), SQLITE_OK);
+  cr_assert_eq(sqlite3_step(statement), SQLITE_ROW);
+  cr_assert_eq(sqlite3_column_int(statement, 0), 0);
+  sqlite3_finalize(statement);
+}

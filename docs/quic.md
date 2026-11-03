@@ -92,6 +92,36 @@ Legacy responses without the extension remain valid. Unknown versions,
 truncated or trailing bytes, embedded NULs, and non-HTTPS URLs are rejected.
 ACDS stores the extension in the same transaction as the session and keys.
 
+## Discovery host changes
+
+A prepared successor announces its configured QUIC port and WebTransport URL
+using the same optional ACQT suffix on HOST_ANNOUNCEMENT. ACDS validates the
+committed generation, round, participant, and session before atomically storing
+the host endpoint, transport metadata, and metadata owner. Advertisements are
+hidden during migration and when their owner differs from the current host.
+Clearing a failed established host deletes its transport metadata. A conflicting
+endpoint announcement for the same committed decision is rejected.
+
+HOST_DESIGNATED carries the suffix only when host IP disclosure is allowed.
+ACDS sends the extended designation followed by the unchanged fixed-size legacy
+designation. Updated clients apply the first authoritative decision and ignore
+the duplicate; old fixed-size parsers can consume the legacy message. New joins
+and replayed designations use the current host's transport metadata.
+
+Native QUIC participants retain their discovery session across a transient
+transport closure and reconnect through the existing handoff state machine.
+Authentication and protocol failures remain fatal. When a successor uses a
+different identity, the participant's trusted key file must include that identity.
+The protocol-version feature bit `0x0008` negotiates a bounded set of acceptable
+Ed25519 identities in CLIENT_HELLO; older peers still receive the first key in
+the original 32-byte format. The selected key must pass the ordinary signed
+handshake and pin verification. Authentication failure cannot trigger TCP fallback.
+
+`discovery-quic-handoff` exercises a prepared successor on distinct TCP and QUIC
+ports with a different identity, reconnects an existing participant in the same
+process, rejects a peer that trusts only the departed host, and verifies a late
+join authenticates and receives video from the successor.
+
 ## HTTP/3 WebTransport listener
 
 Enable the browser listener with `--webtransport-bind-address 127.0.0.1`,

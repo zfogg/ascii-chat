@@ -604,6 +604,36 @@ static acip_host_designated_t acds_host_designation(const session_entry_t *sessi
   return designated;
 }
 
+/* Send the optional extension first, then the legacy fixed-size designation.
+ * New peers accept the first authority update and ignore its duplicate; old
+ * peers can continue using the fixed-size message and TCP/WebRTC endpoint. */
+static asciichat_error_t acds_send_designation(acds_server_t *server, const session_entry_t *stored,
+                                               uint32_t generation, uint32_t sequence, acip_transport_t *recipient) {
+  acip_host_designated_t designated = acds_host_designation(stored, generation, sequence);
+  uint8_t payload[sizeof(designated) + ACDS_TRANSPORT_METADATA_MAX];
+  size_t length = 0;
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (designated.host_address[0])
+    result = database_session_transport_get(server->db, stored->session_id, payload + sizeof(designated),
+                                            ACDS_TRANSPORT_METADATA_MAX, &length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (length) {
+    memcpy(payload, &designated, sizeof(designated));
+    result = recipient
+                 ? packet_send_via_transport(recipient, PACKET_TYPE_ACIP_HOST_DESIGNATED, payload,
+                                             sizeof(designated) + length, 0)
+                 : signaling_broadcast(server->db, server->network_server, stored->session_id,
+                                       PACKET_TYPE_ACIP_HOST_DESIGNATED, payload, sizeof(designated) + length, NULL);
+  }
+  asciichat_error_t legacy =
+      recipient
+          ? packet_send_via_transport(recipient, PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), 0)
+          : signaling_broadcast(server->db, server->network_server, stored->session_id,
+                                PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), NULL);
+  return result != ASCIICHAT_OK ? result : legacy;
+}
+
 static bool acds_host_endpoint_conflicts(const session_entry_t *stored, const acip_host_announcement_t *announcement,
                                          const char *address) {
   // Accepted endpoints are immutable within a committed decision; duplicates can repair delivery.
@@ -615,7 +645,7 @@ static bool acds_host_endpoint_conflicts(const session_entry_t *stored, const ac
 
 // Caller holds handoff_mutex through validation, persistence and delivery.
 static asciichat_error_t acds_update_announced_host(acds_server_t *server, const acip_host_announcement_t *announcement,
-                                                    const char *address) {
+                                                    const char *address, const void *metadata, size_t metadata_length) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_DESIGNATION);
   ASCII_OTEL_ATTR_STRING("host.update.source", "announcement");
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "rejected");
@@ -632,17 +662,23 @@ static asciichat_error_t acds_update_announced_host(acds_server_t *server, const
     session_entry_destroy(stored);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Conflicting host endpoint");
   }
-  asciichat_error_t result =
-      database_session_update_host(server->db, announcement->session_id, announcement->host_id, address,
-                                   announcement->host_port, announcement->connection_type);
+  uint8_t previous[ACDS_TRANSPORT_METADATA_MAX];
+  size_t previous_length = 0;
+  asciichat_error_t result = database_session_transport_get(server->db, announcement->session_id, previous,
+                                                            sizeof(previous), &previous_length);
+  if (result == ASCIICHAT_OK && metadata_length && previous_length &&
+      (previous_length != metadata_length || memcmp(previous, metadata, metadata_length)))
+    result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Conflicting host transport endpoints");
+  if (result == ASCIICHAT_OK)
+    result = database_session_update_host_with_transport(server->db, announcement->session_id, announcement->host_id,
+                                                         address, announcement->host_port,
+                                                         announcement->connection_type, metadata, metadata_length);
   if (result == ASCIICHAT_OK) {
     memcpy(stored->host_participant_id, announcement->host_id, sizeof(stored->host_participant_id));
     SAFE_STRNCPY(stored->host_address, address, sizeof(stored->host_address));
     stored->host_port = announcement->host_port;
     stored->host_connection_type = announcement->connection_type;
-    acip_host_designated_t designated = acds_host_designation(stored, generation, handoff->host_sequence);
-    result = signaling_broadcast(server->db, server->network_server, announcement->session_id,
-                                 PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), NULL);
+    result = acds_send_designation(server, stored, generation, handoff->host_sequence, NULL);
   }
   ASCII_OTEL_ATTR_STRING("host.update.outcome", result == ASCIICHAT_OK ? "broadcast_attempted" : "failed");
   ASCII_OTEL_ATTR_INT("host.update.error_code", result);
@@ -652,6 +688,12 @@ static asciichat_error_t acds_update_announced_host(acds_server_t *server, const
 
 void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                const char *client_ip, void *app_ctx) {
+  acds_on_host_announcement_ex(announcement, NULL, 0, transport, client_ip, app_ctx);
+}
+
+void acds_on_host_announcement_ex(const acip_host_announcement_t *announcement, const void *metadata,
+                                  size_t metadata_length, acip_transport_t *transport, const char *client_ip,
+                                  void *app_ctx) {
 
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_ANNOUNCE);
   acds_server_t *server = (acds_server_t *)app_ctx;
@@ -676,10 +718,17 @@ void acds_on_host_announcement(const acip_host_announcement_t *announcement, aci
     acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Invalid host endpoint");
     return;
   }
+  uint16_t quic_port;
+  char webtransport_url[512];
+  if (acds_transport_metadata_decode(metadata, metadata_length, &quic_port, webtransport_url,
+                                     sizeof(webtransport_url)) != ASCIICHAT_OK) {
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Invalid host transport metadata");
+    return;
+  }
   const char *host_address = announcement->host_address[0] ? announcement->host_address : client_ip;
   // Serialize authority validation, persistence and delivery with handoff commits.
   mutex_lock(&server->handoff_mutex);
-  asciichat_error_t result = acds_update_announced_host(server, announcement, host_address);
+  asciichat_error_t result = acds_update_announced_host(server, announcement, host_address, metadata, metadata_length);
   mutex_unlock(&server->handoff_mutex);
   ASCII_OTEL_ATTR_STRING("host.update.outcome", result == ASCIICHAT_OK ? "accepted" : "failed");
   ASCII_OTEL_ATTR_INT("host.update.error_code", result);
@@ -753,9 +802,8 @@ void acds_send_current_host(acds_server_t *server, acip_transport_t *transport, 
   session_entry_t *stored = database_session_find_by_id(server->db, id);
   if (state && stored && stored->host_established) {
     ASCII_OTEL_ATTR_INT("host.generation", state->generation);
-    acip_host_designated_t designated = acds_host_designation(stored, state->generation, state->host_sequence);
     asciichat_error_t result =
-        packet_send_via_transport(transport, PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), 0);
+        acds_send_designation(server, stored, state->generation, state->host_sequence, transport);
     ASCII_OTEL_ATTR_STRING("host.update.outcome", result == ASCIICHAT_OK ? "admitted" : "failed");
     ASCII_OTEL_ATTR_INT("host.update.error_code", result);
     if (result != ASCIICHAT_OK)
@@ -836,6 +884,7 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_webrtc_sdp = acds_on_webrtc_sdp,
     .on_webrtc_ice = acds_on_webrtc_ice,
     .on_host_announcement = acds_on_host_announcement,
+    .on_host_announcement_ex = acds_on_host_announcement_ex,
     .on_host_lost = acds_on_host_lost,
     .on_handoff = acds_on_handoff,
     .app_ctx = NULL // Set dynamically to server instance

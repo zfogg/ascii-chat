@@ -500,3 +500,45 @@ asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t
   }
   return result;
 }
+
+asciichat_error_t acds_transport_metadata_encode(uint16_t port, const char *url, void *output, size_t capacity,
+                                                 size_t *length) {
+  if (!url || !output || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery transport output");
+  *length = 0;
+  size_t size = strnlen(url, 512);
+  if (size >= 512 || capacity < 10 + size || (size && (size < 9 || strncmp(url, "https://", 8))))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport endpoint or capacity");
+  uint8_t *bytes = output;
+  memcpy(bytes, "ACQT", 4);
+  bytes[4] = 1;
+  bytes[5] = 0;
+  bytes[6] = (uint8_t)(port >> 8);
+  bytes[7] = (uint8_t)port;
+  bytes[8] = (uint8_t)(size >> 8);
+  bytes[9] = (uint8_t)size;
+  memcpy(bytes + 10, url, size);
+  *length = 10 + size;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t acds_transport_metadata_decode(const void *data, size_t length, uint16_t *port, char *url,
+                                                 size_t capacity) {
+  if (!port || !url || !capacity || (!data && length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery transport input or output");
+  *port = 0;
+  url[0] = 0;
+  if (!length)
+    return ASCIICHAT_OK;
+  const uint8_t *bytes = data;
+  if (length < 10 || memcmp(bytes, "ACQT", 4) || bytes[4] != 1 || bytes[5])
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery transport extension");
+  size_t size = ((size_t)bytes[8] << 8) | bytes[9];
+  if (size >= 512 || size >= capacity || length != 10 + size ||
+      (size && (size < 9 || memcmp(bytes + 10, "https://", 8) || memchr(bytes + 10, 0, size))))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery WebTransport endpoint");
+  *port = (uint16_t)((uint16_t)bytes[6] << 8 | bytes[7]);
+  memcpy(url, bytes + 10, size);
+  url[size] = 0;
+  return ASCIICHAT_OK;
+}

@@ -277,7 +277,9 @@ static void *discovery_video_receive_thread(void *arg) {
   discovery_video_receiver_t *receiver = arg;
   network_connection_callbacks_t callbacks = {.packet = discovery_media_packet};
   receiver->result = network_connection_run(receiver->network, &callbacks, receiver);
-  if (!atomic_load_bool(&receiver->running) || should_exit())
+  if ((!atomic_load_bool(&receiver->running) || should_exit()) &&
+      (receiver->result == ASCIICHAT_OK || receiver->result == ERROR_NETWORK ||
+       receiver->result == ERROR_NETWORK_TIMEOUT))
     receiver->result = ASCIICHAT_OK;
   atomic_store_bool(&receiver->running, false);
   return NULL;
@@ -653,6 +655,7 @@ role_dispatch:
     session_participant_t *participant = discovery_session_get_participant(g_discovery);
     acip_transport_t *transport = session_participant_get_transport(participant);
     if (transport) {
+      bool quic_disconnected = false;
       bool enable_audio = GET_OPTION(audio_enabled);
       log_info("Discovery participant audio: %s", enable_audio ? "enabled" : "disabled");
       uint64_t advertised_revision = UINT64_MAX;
@@ -797,6 +800,8 @@ role_dispatch:
         session_capture_sleep_for_fps(capture);
       }
     media_cleanup:
+      quic_disconnected =
+          acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC && !acip_transport_is_connected(transport);
       session_capture_set_audio_context(capture, NULL);
       /* These workers borrow stack audio/display state. Retain it and retry a
        * failed join before returning to the application/media cleanup. */
@@ -806,7 +811,15 @@ role_dispatch:
       }
       NAMED_UNREGISTER(&receiver.running);
       NAMED_UNREGISTER(&receiver.connection.state);
-      if (!should_exit() && g_discovery->session_type == SESSION_TYPE_WEBRTC) {
+      bool quic_recoverable =
+          acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC &&
+          (quic_disconnected || g_discovery->handoff_pending || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
+          (g_discovery->state == DISCOVERY_STATE_ACTIVE || g_discovery->state == DISCOVERY_STATE_MIGRATING) &&
+          (receiver.result == ASCIICHAT_OK || receiver.result == ERROR_NETWORK ||
+           receiver.result == ERROR_NETWORK_TIMEOUT) &&
+          (result == ASCIICHAT_OK || result == ERROR_NETWORK || result == ERROR_NETWORK_TIMEOUT ||
+           (result == ERROR_INVALID_STATE && quic_disconnected));
+      if (!should_exit() && (g_discovery->session_type == SESSION_TYPE_WEBRTC || quic_recoverable)) {
         if (!g_discovery->handoff_pending && g_discovery->state != DISCOVERY_STATE_MIGRATING) {
           if (g_discovery->state == DISCOVERY_STATE_FAILED)
             return g_discovery->error;

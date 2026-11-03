@@ -375,3 +375,10 @@ bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds);
  * @param config Configuration to initialize
  */
 void acds_client_config_init_defaults(acds_client_config_t *config);
+
+#define ACDS_TRANSPORT_METADATA_MAX 521
+/* ACQT v1 is optional. An absent extension decodes to no advertised endpoints. */
+asciichat_error_t acds_transport_metadata_encode(uint16_t quic_port, const char *url, void *output, size_t capacity,
+                                                 size_t *length);
+asciichat_error_t acds_transport_metadata_decode(const void *bytes, size_t length, uint16_t *quic_port, char *url,
+                                                 size_t capacity);

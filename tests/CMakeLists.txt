@@ -687,42 +687,30 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         COMMENT "Building Criterion test executables"
     )
 
-    # Target to build all tests without running them (excluded from default build)
-    # This is the main public target that includes timing
-    # NOTE: Only available with --preset github (CI environment)
-    # For local development, use individual test targets (test_debug, test_release, etc.)
-    # Claude should NOT run the 'tests' target directly - run individual tests instead
-    if(DEFINED ENV{GITHUB_CMAKE_BINARY_DIR})
-        add_custom_target(tests
-            COMMENT "Building all test executables"
-        )
+    # Build all registered test executables without running them.
+    add_custom_target(tests
+        COMMENT "Building all test executables"
+    )
 
-        # Timer end target runs after all tests are built
-        if(TARGET tests-timer-start)
-            add_custom_target(tests-timer-end
-                COMMAND ${CMAKE_COMMAND}
-                -DACTION=end
-                -DTARGET_NAME=tests
-                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-                COMMENT "Finishing test build timing"
-                VERBATIM
-            )
-            # Timer end depends on timer start and the actual test build
-            add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-            # Main tests target depends on timer end (so timing is shown)
-            add_dependencies(tests tests-timer-end)
-        else()
-            # No timer, just depend on the build target directly
-            add_dependencies(tests tests-criterion-build)
-        endif()
+    # Timer end target runs after all tests are built
+    if(TARGET tests-timer-start)
+        add_custom_target(tests-timer-end
+            COMMAND ${CMAKE_COMMAND}
+            -DACTION=end
+            -DTARGET_NAME=tests
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMENT "Finishing test build timing"
+            VERBATIM
+        )
+        # Timer end depends on timer start and the actual test build
+        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+        # Main tests target depends on timer end (so timing is shown)
+        add_dependencies(tests tests-timer-end)
     else()
-        # For non-GitHub presets, print a helpful message
-        message(STATUS "Note: The 'tests' target is only available with --preset github")
-        message(STATUS "For local development, use individual test targets like:")
-        message(STATUS "  cmake --build build --target test_debug")
-        message(STATUS "  cmake --build build --target test_release")
+        # No timer, just depend on the build target directly
+        add_dependencies(tests tests-criterion-build)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
@@ -1472,6 +1460,11 @@ if(TARGET ascii-chat-static)
                 ${CMAKE_SOURCE_DIR}/tests/integration/discovery_auto_quic.py
                 $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
             set_tests_properties(discovery-auto-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
+            asciichat_add_python_test(discovery-quic-handoff
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_quic_handoff.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>
+                ${CMAKE_BINARY_DIR}/test_artifacts/quic-handoff)
+            set_tests_properties(discovery-quic-handoff PROPERTIES LABELS "integration;standalone" TIMEOUT 180)
             asciichat_add_python_test(quic-cli-server
                 ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_server.py
                 $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)

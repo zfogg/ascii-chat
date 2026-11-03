@@ -67,6 +67,11 @@ typedef struct {
   void (*on_host_announcement)(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                const char *client_ip, void *app_ctx);
 
+  /** Optional host announcement including validated ACQT transport metadata. */
+  void (*on_host_announcement_ex)(const acip_host_announcement_t *announcement, const void *metadata,
+                                  size_t metadata_length, acip_transport_t *transport, const char *client_ip,
+                                  void *app_ctx);
+
   /** @brief Called when participant reports host has disconnected (discovery mode) */
   void (*on_host_lost)(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip,
                        void *app_ctx);

@@ -95,7 +95,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     version.protocol_revision = 0;
     version.compression_algorithms = 0;
     version.compression_threshold = 0;
-    version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
+    version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS | PROTOCOL_FEATURE_IDENTITY_SET);
     result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
     n->step = 1;
     return result;
@@ -152,11 +152,15 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
         return result;
       n->step = 3;
     } else {
-      if (length != ED25519_PUBLIC_KEY_SIZE)
-        return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
+      if (!length || length % ED25519_PUBLIC_KEY_SIZE || length > MAX_CLIENTS * ED25519_PUBLIC_KEY_SIZE)
+        return SET_ERRNO(ERROR_CRYPTO, "Expected a bounded pinned server identity set");
       bool found = false;
       for (size_t i = 0; i < n->identity_key_count; ++i) {
-        if (sodium_memcmp(payload, n->identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+        bool requested = false;
+        for (size_t offset = 0; offset < length; offset += ED25519_PUBLIC_KEY_SIZE)
+          requested |= sodium_memcmp((const uint8_t *)payload + offset, n->identity_keys[i].public_key,
+                                     ED25519_PUBLIC_KEY_SIZE) == 0;
+        if (requested) {
           ctx->server_private_key = n->identity_keys[i];
           ctx->server_public_key.type = KEY_TYPE_ED25519;
           memcpy(ctx->server_public_key.key, n->identity_keys[i].public_key, sizeof(n->identity_keys[i].public_key));
@@ -344,8 +348,12 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
     result = parse_public_keys(ctx->expected_server_key, keys, &count, MAX_CLIENTS);
     if (result != ASCIICHAT_OK || !count)
       return SET_ERRNO(ERROR_CRYPTO_AUTH, "Cannot resolve pinned server identity");
-    result =
-        packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, keys[0].key, ED25519_PUBLIC_KEY_SIZE, 0);
+    uint8_t requested[MAX_CLIENTS][ED25519_PUBLIC_KEY_SIZE];
+    size_t requested_count = NET_TO_HOST_U16(version.feature_flags) & PROTOCOL_FEATURE_IDENTITY_SET ? count : 1;
+    for (size_t i = 0; i < requested_count; ++i)
+      memcpy(requested[i], keys[i].key, ED25519_PUBLIC_KEY_SIZE);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, requested,
+                                       requested_count * ED25519_PUBLIC_KEY_SIZE, 0);
     if (result != ASCIICHAT_OK)
       return result;
   }

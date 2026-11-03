@@ -1,6 +1,7 @@
 #include <ascii-chat/common.h>
 #include <network/quic/http3.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
+#include <ascii-chat/network/acip/acds_client.h>
 #include <string.h>
 
 #define CHECK(expression)                                                                                              \
@@ -262,6 +263,31 @@ static void test_discovered_endpoint(void) {
         ERROR_NETWORK_PROTOCOL);
 }
 
+static void test_transport_metadata_codec(void) {
+  uint8_t bytes[ACDS_TRANSPORT_METADATA_MAX + 1];
+  char url[512];
+  uint16_t port = 99;
+  size_t length = 0;
+  CHECK(acds_transport_metadata_decode(NULL, 0, &port, url, sizeof(url)) == ASCIICHAT_OK && !port && !url[0]);
+  CHECK(acds_transport_metadata_encode(30001, "https://example.test:443/acip", bytes, sizeof(bytes), &length) ==
+        ASCIICHAT_OK);
+  CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ASCIICHAT_OK && port == 30001 &&
+        !strcmp(url, "https://example.test:443/acip"));
+  CHECK(acds_transport_metadata_decode(bytes, length + 1, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL && !port &&
+        !url[0]);
+  bytes[4] = 2;
+  CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL);
+  bytes[4] = 1;
+  bytes[5] = 1;
+  CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL);
+  bytes[5] = 0;
+  bytes[12] = 0;
+  CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL);
+  CHECK(acds_transport_metadata_encode(1, "http://example.test/acip", bytes, sizeof(bytes), &length) ==
+        ERROR_INVALID_PARAM);
+  CHECK(acds_transport_metadata_encode(1, "https://example.test/acip", bytes, 10, &length) == ERROR_INVALID_PARAM);
+}
+
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
@@ -270,6 +296,7 @@ int main(void) {
   CHECK(!invalid);
   test_output_contract();
   test_discovered_endpoint();
+  test_transport_metadata_codec();
   for (unsigned scenario = 0; scenario < 6; ++scenario)
     exchange(scenario);
   log_destroy();

@@ -287,3 +287,8 @@ typedef struct {
 } database_session_stats_t;
 asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity,
                                           size_t *row_count, uint64_t *sessions, uint64_t *participants);
+
+asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE],
+                                                              const uint8_t host[SESSION_ID_SIZE], const char *address,
+                                                              uint16_t port, uint8_t type, const void *metadata,
+                                                              size_t length);

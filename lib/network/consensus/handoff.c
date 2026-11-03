@@ -88,7 +88,10 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[SESSION_ID
     ++s->generation;
     if (memcmp(s->host, id, SESSION_ID_SIZE) == 0)
       s->host_lost = true;
-    if (memcmp(s->successor, id, SESSION_ID_SIZE) == 0) {
+    // Pending acknowledgements carry the old membership generation. Reissue
+    // their preparation instead of rejecting the late reply and exhausting
+    // recovery without trying the still-eligible successor again.
+    if (!s->ready || memcmp(s->successor, id, SESSION_ID_SIZE) == 0) {
       memset(s->successor, 0, SESSION_ID_SIZE);
       s->ready = false;
     }

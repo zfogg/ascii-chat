@@ -265,7 +265,9 @@ DATABASE_QUERY(CommitKeySet, "RELEASE create_key_set")
 DATABASE_QUERY(RollbackToKeySet, "ROLLBACK TO create_key_set;")
 DATABASE_QUERY(SchemaSessionTransports, "CREATE TABLE IF NOT EXISTS session_transports (session_id BLOB PRIMARY KEY REFERENCES sessions(session_id) ON DELETE CASCADE, metadata BLOB NOT NULL);")
 DATABASE_QUERY(SetSessionTransports, "INSERT OR REPLACE INTO session_transports(session_id, metadata) VALUES (?, ?);")
-DATABASE_QUERY(GetSessionTransports, "SELECT t.metadata FROM session_transports t JOIN sessions s ON s.session_id = t.session_id WHERE t.session_id = ? AND s.in_migration = 0 AND (s.host_participant_id IS NULL OR s.host_participant_id = s.initiator_id);")
+DATABASE_QUERY(SchemaSessionTransportHosts, "CREATE TABLE IF NOT EXISTS session_transport_hosts (session_id BLOB PRIMARY KEY REFERENCES session_transports(session_id) ON DELETE CASCADE, host_id BLOB NOT NULL CHECK(length(host_id) = 16)); CREATE TRIGGER IF NOT EXISTS clear_session_transports_after_host_clear AFTER UPDATE OF host_established ON sessions WHEN OLD.host_established = 1 AND NEW.host_established = 0 BEGIN DELETE FROM session_transports WHERE session_id = NEW.session_id; END;")
+DATABASE_QUERY(SetSessionTransportHost, "INSERT OR REPLACE INTO session_transport_hosts(session_id, host_id) VALUES (?, ?);")
+DATABASE_QUERY(GetSessionTransports, "SELECT t.metadata FROM session_transports t JOIN sessions s ON s.session_id = t.session_id LEFT JOIN session_transport_hosts h ON h.session_id = t.session_id WHERE t.session_id = ? AND s.in_migration = 0 AND COALESCE(s.host_participant_id, s.initiator_id) IS COALESCE(h.host_id, s.initiator_id);")
 
 #define RATE_LIMIT_QUERY(name, sql) DATABASE_QUERY(name, sql)
 #include "../network/rate_limit/queries.def"
