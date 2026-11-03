@@ -332,7 +332,7 @@ static bool show_first_use_instructions(void) {
   const char *title = NULL, *text = NULL;
   if (!strcmp(g_mode, "mirror")) {
     title = "Mirror mode";
-    text = "Preview your camera locally.\n\no\tOpen a file or URL after closing\n?\tShow keyboard shortcuts";
+    text = "Preview your camera locally.\n\n?\tShow keyboard shortcuts";
   } else if (!strcmp(g_mode, "client")) {
     title = "Client mode";
     text = "Connect to a server with ascii-chat client <address>.\n\n?\tShow keyboard shortcuts";

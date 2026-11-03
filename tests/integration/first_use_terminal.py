@@ -48,7 +48,10 @@ def main():
                     bottom = next(i for i, line in enumerate(lines) if "└" in line and "┘" in line)
                     left, right = lines[top].index("┌"), lines[top].index("┐")
                     assert abs(left - (term.screen.columns - right - 1)) <= 1, "Popup is not horizontally centered"
-                    assert abs(top - (term.screen.lines - bottom - 1)) <= 1, "Popup is not vertically centered"
+                    assert top >= 4, "Not enough room for the logo above the popup"
+                    logo = lines[top - 4:top]
+                    assert any("___" in line for line in logo), "Animated logo missing above popup"
+                    assert abs((top - 4) - (term.screen.lines - bottom - 1)) <= 1, "Logo and popup are not vertically centered"
                     assert any("│" in line for line in lines[top + 1:bottom]), "UTF-8 side borders missing"
                     row = next(i for i, line in enumerate(lines) if "?" in line and "keyboard shortcuts" in line)
                     col = lines[row].index("?")

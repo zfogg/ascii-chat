@@ -100,6 +100,8 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define DEBUG_BACKTRACE_COLORED_BUFFER_SIZE 16384
 #define DEBUG_BACKTRACE_PLAIN_BUFFER_SIZE 16384
+/** Frames used to capture and record an errno context. */
+#define ERROR_BACKTRACE_INTERNAL_FRAMES 3
 
 #include <stdbool.h>
 #include <stddef.h>

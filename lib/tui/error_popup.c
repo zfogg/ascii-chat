@@ -203,7 +203,8 @@ static void wrap_body(const char *text, int width) {
       bytes = 1;
     int columns = utf8_display_width_n(text, (size_t)bytes);
     if (*text == '\n' || (cells && cells + columns > width)) {
-      append_bytes(&used, "\033[0m", 4);
+      if (style[0])
+        append_bytes(&used, "\033[0m", 4);
       g_lines[g_line_count++] = used + 1;
       append_bytes(&used, "\n", 1);
       append_bytes(&used, style, strlen(style));
@@ -265,7 +266,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     if (trace.count) {
       backtrace_symbolize(&trace);
       if (trace.symbols)
-        backtrace_format_styled(&g_trace, "Backtrace", &trace, 0, 0, NULL);
+        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, NULL);
       backtrace_t_free(&trace);
     }
   }
@@ -287,6 +288,11 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   g_cached_id = error->error_id;
   g_cached_width = width;
   g_cached_color = colors;
+}
+
+static void format_error_heading(char *buffer, size_t capacity, const asciichat_error_context_t *error) {
+  safe_snprintf(buffer, capacity, "%s (%d): %s", asciichat_error_name(error->code), error->code,
+                asciichat_error_string(error->code));
 }
 
 void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
@@ -336,8 +342,7 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   frame_buffer_printf(out, "\033[%d;%dH%s", top + 1, left + 2,
                       colors ? colored_string(LOG_COLOR_ERROR, heading) : heading);
   char code[TUI_ERROR_POPUP_CODE_BUFFER_SIZE], cell[TUI_ERROR_POPUP_CELL_BUFFER_SIZE];
-  safe_snprintf(code, sizeof(code), "%s (%d): %s", asciichat_error_name(error.code), error.code,
-                asciichat_error_string(error.code));
+  format_error_heading(code, sizeof(code), &error);
   ui_text_cell(cell, sizeof(cell), code, width - 4, UI_ALIGN_LEFT);
   frame_buffer_printf(out, "\033[%d;%dH%s", top + 2, left + 2, cell);
   for (int i = 0; i < body_rows; ++i) {
@@ -377,30 +382,56 @@ void ui_error_popup_preserve(int fd, terminal_size_t size) {
   if (!count)
     return;
   bool previous = errno_notifications_suppress(true);
-  frame_buffer_t *text = frame_buffer_create(0, 0);
   frame_buffer_t *output = frame_buffer_create(0, 0);
-  if (text && output) {
+  if (output) {
+    bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(fd);
+    bool unicode = terminal_should_use_utf8();
+    int width = MIN(size.cols > 0 ? size.cols - 1 : 79, 100);
+    width = MAX(width, 8);
+    int body_width = width - 4;
     size_t first = count > 4 ? count - 4 : 0;
-    if (first)
-      frame_buffer_printf(text, "%zu pending notifications; showing the latest 4.\n", count);
-    for (size_t i = first; i < count; ++i) {
-      char message[ASCIICHAT_ERRNO_MESSAGE_MAX];
-      sanitize(message, sizeof(message), entries[i].context_message);
-      frame_buffer_printf(text, "%s: %s\n", asciichat_error_name(entries[i].code), message);
-    }
     frame_buffer_append(output, "\033[0m\033[?25h\r\n", 12);
-    // Use a portable final box: console detection must not hold up queue retirement.
-    ui_notice_render(output, frame_buffer_get_content(text), UI_NOTICE_DANGER, size.cols > 0 ? size.cols : 80, false,
-                     false);
-    // Narrow terminals can expand a box substantially. Keep complete terminal
-    // controls, falling back to the bounded plain summary rather than cutting ANSI.
-    frame_buffer_t *final = frame_buffer_get_length(output) <= sizeof(g_final_output) ? output : text;
-    g_final_length = frame_buffer_get_length(final);
-    memcpy(g_final_output, frame_buffer_get_content(final), g_final_length);
-    g_final_fd = fd;
+    if (first)
+      frame_buffer_printf(output, "%zu pending notifications; showing the latest 4.\n", count);
+    for (size_t i = first; i < count; ++i) {
+      char cell[TUI_ERROR_POPUP_CELL_BUFFER_SIZE], code[TUI_ERROR_POPUP_CODE_BUFFER_SIZE];
+      const char *side = unicode ? "│" : "|";
+      ui_popup_rule(output, width, UI_POPUP_TOP, false, unicode, LOG_COLOR_RESET);
+      frame_buffer_append(output, "\n", 1);
+      ui_text_cell(cell, sizeof(cell), "ERROR", body_width, UI_ALIGN_LEFT);
+      frame_buffer_printf(output, "%s %s %s\n", side, colors ? colored_string(LOG_COLOR_ERROR, cell) : cell, side);
+      format_error_heading(code, sizeof(code), &entries[i]);
+      ui_text_cell(cell, sizeof(cell), code, body_width, UI_ALIGN_LEFT);
+      frame_buffer_printf(output, "%s %s %s\n", side, cell, side);
+      build_body(&entries[i], body_width, colors);
+      for (size_t line = 0; line < g_line_count; ++line) {
+        const char *start = g_wrapped + g_lines[line];
+        const char *end = strchr(start, '\n');
+        char line_text[TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE];
+        size_t length = end ? (size_t)(end - start) : strlen(start);
+        length = MIN(length, sizeof(line_text) - 1);
+        memcpy(line_text, start, length);
+        line_text[length] = '\0';
+        ui_text_cell(cell, sizeof(cell), line_text, body_width, UI_ALIGN_LEFT);
+        frame_buffer_printf(output, "%s %s%s %s\n", side, cell, colors ? "\033[0m" : "", side);
+      }
+      ui_popup_rule(output, width, UI_POPUP_BOTTOM, false, unicode, LOG_COLOR_RESET);
+      frame_buffer_append(output, "\n", 1);
+    }
+    if (frame_buffer_get_length(output) <= sizeof(g_final_output)) {
+      g_final_length = frame_buffer_get_length(output);
+      memcpy(g_final_output, frame_buffer_get_content(output), g_final_length);
+      g_final_fd = fd;
+    } else {
+      char message[ASCIICHAT_ERRNO_MESSAGE_MAX];
+      sanitize(message, sizeof(message), entries[count - 1].context_message);
+      int length = safe_snprintf(g_final_output, sizeof(g_final_output), "\nERROR\n%s (%d): %s\nDetails: %s\n",
+                                 asciichat_error_name(entries[count - 1].code), entries[count - 1].code,
+                                 asciichat_error_string(entries[count - 1].code), message);
+      g_final_length = length > 0 ? MIN((size_t)length, sizeof(g_final_output) - 1) : 0;
+      g_final_fd = fd;
+    }
   }
-  if (text)
-    frame_buffer_destroy(text);
   if (output)
     frame_buffer_destroy(output);
   errno_notifications_suppress(previous);

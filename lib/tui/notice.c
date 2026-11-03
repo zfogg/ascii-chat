@@ -1,6 +1,7 @@
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -253,7 +254,8 @@ static void render_first_use(terminal_size_t size, const notice_snapshot_t *noti
   size_t count = first_use_wrap(notice->text, width, lines);
   if (!count)
     return;
-  int page_rows = size.rows - 7;
+  int logo_rows = size.rows >= 15 && size.cols >= 52 ? 4 : size.rows >= 10 ? 1 : 0;
+  int page_rows = size.rows - 7 - logo_rows;
   int pages = (int)((count + (size_t)page_rows - 1) / (size_t)page_rows);
   notice_snapshot_t *state = (notice_snapshot_t *)notice;
   if (state->rendered_cols != size.cols || state->rendered_rows != size.rows) {
@@ -283,12 +285,20 @@ static void render_first_use(terminal_size_t size, const notice_snapshot_t *noti
                       .lines = visible,
                       .line_count = visible_count,
                       .footer = footer,
+                      .top_margin = logo_rows,
                       .minimum_width = width + 4};
   frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
   if (!output)
     return;
   frame_buffer_append(output, "\033[H\033[2J", 7);
   if (ui_popup_render(output, size, &popup)) {
+    if (logo_rows) {
+      int popup_height = (int)visible_count + 5;
+      int popup_top = logo_rows + (size.rows - logo_rows - popup_height) / 2 + 1;
+      frame_buffer_printf(output, "\033[%d;1H", popup_top - logo_rows);
+      int tick = (int)((time_get_ns() / (NS_PER_SEC_INT / 60)) % 1800);
+      invitation_render_logo(output, size.cols - 1, tick, notice->color, logo_rows == 1);
+    }
     state->rendered_page = page;
     ui_controller_write(STDERR_FILENO, frame_buffer_get_content(output), frame_buffer_get_length(output));
   }

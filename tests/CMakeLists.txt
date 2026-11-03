@@ -2238,6 +2238,14 @@ if(BUILD_TESTS AND TARGET ascii-chat)
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/first_use_terminal.py --binary $<TARGET_FILE:ascii-chat>)
     set_tests_properties(first-use-terminal PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    set(final_error_args --binary $<TARGET_FILE:ascii-chat>)
+    if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")
+        list(APPEND final_error_args --diagnostics)
+    endif()
+    asciichat_add_python_test(final-error-notice
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/final_error_notice.py ${final_error_args})
+    set_tests_properties(final-error-notice PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE STREQUAL "Debug")
