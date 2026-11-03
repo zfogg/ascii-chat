@@ -54,6 +54,7 @@ typedef struct report_config {
   const char *include_filter;   ///< File path substring filter for inclusion
   const char *exclude_filter;   ///< File path substring filter for exclusion
   thread_filter_list_t threads; ///< Thread IDs to include in report
+  bool help_requested;          ///< Help was requested without a usage error
   bool emit_raw_line;           ///< Whether to emit raw log lines in output
 } report_config_t;
 
@@ -239,16 +240,14 @@ static bool extract_snippet(const char *line, char **out_value) {
 }
 
 static bool extract_uint64(const char *line, const char *key, uint64_t *out_value) {
-  const char *position = strstr(line, key);
-  if (position == NULL) {
+  char *token = NULL;
+  if (!extract_token(line, key, &token))
     return false;
-  }
-  position += strlen(key);
   unsigned long long value = 0;
-  asciichat_error_t result = parse_ulonglong(position, &value, 0, ULLONG_MAX);
-  if (result != ASCIICHAT_OK) {
+  asciichat_error_t result = token[0] == '-' ? ERROR_INVALID_PARAM : parse_ulonglong(token, &value, 0, ULLONG_MAX);
+  SAFE_FREE(token);
+  if (result != ASCIICHAT_OK)
     return false;
-  }
   *out_value = (uint64_t)value;
   return true;
 }
@@ -484,6 +483,7 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
       config->emit_raw_line = true;
       break;
     case 'h':
+      config->help_requested = true;
       usage(stdout, argv[0]);
       return false;
     default:
@@ -597,7 +597,7 @@ int main(int argc, char **argv) {
 
   int exit_code = EXIT_SUCCESS;
   if (!parse_arguments(argc, argv, &config)) {
-    exit_code = ERROR_USAGE;
+    exit_code = config.help_requested ? EXIT_SUCCESS : ERROR_USAGE;
     goto cleanup;
   }
 

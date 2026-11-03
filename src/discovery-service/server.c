@@ -109,6 +109,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   asciichat_error_t lock_result = mutex_init(&server->handoff_mutex, "acds_handoff");
   if (lock_result != ASCIICHAT_OK)
     return lock_result;
+  server->handoff_mutex_initialized = true;
   memcpy(&server->config, config, sizeof(acds_config_t));
 
   // Initialize stats
@@ -121,14 +122,14 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   // Open database (SQLite as single source of truth)
   asciichat_error_t result = database_init(config->database_path, &server->db);
   if (result != ASCIICHAT_OK) {
-    return result;
+    goto init_failed;
   }
 
   // Initialize rate limiter with SQLite backend
   server->rate_limiter = rate_limiter_create_sqlite(NULL); // NULL = externally managed DB
   if (!server->rate_limiter) {
-    database_close(server->db);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create rate limiter");
+    result = SET_ERRNO(ERROR_MEMORY, "Failed to create rate limiter");
+    goto init_failed;
   }
 
   // Set the database handle for the rate limiter
@@ -137,9 +138,8 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   // Get TCP server from server_like (it owns the lifecycle)
   server->network_server = session_server_like_get_network_server();
   if (!server->network_server) {
-    rate_limiter_destroy(server->rate_limiter);
-    database_close(server->db);
-    return SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
+    result = SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
+    goto init_failed;
   }
 
   // Initialize background worker thread pool
@@ -147,9 +147,8 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   server->worker_pool = thread_pool_create("acds_workers");
   if (!server->worker_pool) {
     log_warn("Failed to create worker thread pool");
-    rate_limiter_destroy(server->rate_limiter);
-    database_close(server->db);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create worker thread pool");
+    result = SET_ERRNO(ERROR_MEMORY, "Failed to create worker thread pool");
+    goto init_failed;
   }
 
   // Spawn cleanup thread in worker pool
@@ -159,6 +158,10 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
 
   log_info("Discovery server initialized successfully");
   return ASCIICHAT_OK;
+
+init_failed:
+  acds_server_shutdown(server);
+  return result;
 }
 
 void acds_server_shutdown(acds_server_t *server) {
@@ -177,13 +180,17 @@ void acds_server_shutdown(acds_server_t *server) {
     log_debug("Worker thread pool stopped");
   }
 
-  mutex_lock(&server->handoff_mutex);
-  while (server->handoffs) {
-    acds_handoff_entry_t *entry = server->handoffs;
-    server->handoffs = entry->next;
-    SAFE_FREE(entry);
+  if (server->handoff_mutex_initialized) {
+    mutex_lock(&server->handoff_mutex);
+    while (server->handoffs) {
+      acds_handoff_entry_t *entry = server->handoffs;
+      server->handoffs = entry->next;
+      SAFE_FREE(entry);
+    }
+    mutex_unlock(&server->handoff_mutex);
+    mutex_destroy(&server->handoff_mutex);
+    server->handoff_mutex_initialized = false;
   }
-  mutex_unlock(&server->handoff_mutex);
 
   // Destroy rate limiter
   if (server->rate_limiter) {
@@ -212,7 +219,7 @@ void acds_server_shutdown(acds_server_t *server) {
 static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_size) {
   if (server) {
     // Packet size includes header (same as receive)
-    size_t total_packet_size = payload_size + 14; // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
+    size_t total_packet_size = payload_size + sizeof(packet_header_t);
     atomic_fetch_add_u64(&server->stats.bytes_sent, total_packet_size);
     atomic_fetch_add_u64(&server->stats.packets_sent, 1);
   }

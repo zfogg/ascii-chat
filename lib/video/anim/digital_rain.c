@@ -411,6 +411,7 @@ char *digital_rain_render_at(digital_rain_t *rain, const char *frame, float seco
   int col = 0, row = 0;
   float foreground_luminance = 1.0f, background_luminance = 0.0f;
   bool has_background = false;
+  bool colored = false;
 
   while (*src && remaining > 100) {
     if (*src == '\033') {
@@ -459,6 +460,7 @@ char *digital_rain_render_at(digital_rain_t *rain, const char *frame, float seco
       rain->previous_brightness[idx] = brightness;
     }
     int count = generate_rain_color(dst, remaining, rain, brightness, head, foreground_luminance, true);
+    colored = true;
     dst += count;
     remaining -= (size_t)count;
     if (has_background) {
@@ -484,7 +486,18 @@ char *digital_rain_render_at(digital_rain_t *rain, const char *frame, float seco
     }
     col++;
   }
-  *dst = '\0';
+  // Monochrome input has no trailing SGR reset to copy. The effect introduces
+  // colors itself, so every colored result must restore terminal attributes.
+  if (colored) {
+    const char reset[] = "\033[0m";
+    if (remaining < sizeof(reset)) {
+      SAFE_FREE(output);
+      return NULL;
+    }
+    memcpy(dst, reset, sizeof(reset));
+  } else {
+    *dst = '\0';
+  }
   rain->first_frame = false;
   return output;
 }

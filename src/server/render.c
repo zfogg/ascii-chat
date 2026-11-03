@@ -937,6 +937,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
     atomic_store_bool(&client->video_render_thread_running, false);
+    atomic_store_bool(&client->audio_render_thread_running, false);
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }

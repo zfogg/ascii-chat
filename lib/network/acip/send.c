@@ -26,6 +26,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
+#include <math.h>
 #include <ascii-chat/network/crc32.h>
 #include <time.h>
 // =============================================================================
@@ -212,15 +213,35 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Build batch header
-  audio_batch_packet_t header;
-  header.batch_count = batch_count;
-  header.total_samples = (uint32_t)num_samples;
-  header.sample_rate = (uint32_t)AUDIO_SAMPLE_RATE;
-  header.channels = 1;
+  if (num_samples > (MAX_PACKET_SIZE - sizeof(audio_batch_packet_t)) / sizeof(uint32_t))
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "PCM batch exceeds the packet size limit");
 
-  socket_buffer_t slices[] = {{&header, sizeof(header)}, {samples, (size_t)num_samples * sizeof(float)}};
-  return packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_BATCH, slices, 2, 0);
+  // The receiver consumes network-order signed PCM32, rather than host floats.
+  audio_batch_packet_t header;
+  header.batch_count = HOST_TO_NET_U32(batch_count);
+  header.total_samples = HOST_TO_NET_U32(num_samples);
+  header.sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE);
+  header.channels = HOST_TO_NET_U32(1);
+  uint32_t inline_samples[OPUS_FRAME_SAMPLES];
+  uint32_t *wire =
+      num_samples <= OPUS_FRAME_SAMPLES ? inline_samples : buffer_alloc(NULL, (size_t)num_samples * sizeof(uint32_t));
+  if (!wire)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate PCM batch samples");
+  for (uint32_t i = 0; i < num_samples; ++i) {
+    if (!isfinite(samples[i])) {
+      if (wire != inline_samples)
+        buffer_release(wire);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "PCM samples must be finite");
+    }
+    double sample = fmax(-1.0, fmin(1.0, samples[i]));
+    int32_t scaled = (int32_t)(sample * INT32_MAX);
+    wire[i] = HOST_TO_NET_U32((uint32_t)scaled);
+  }
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, {wire, (size_t)num_samples * sizeof(uint32_t)}};
+  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_BATCH, slices, 2, 0);
+  if (wire != inline_samples)
+    buffer_release(wire);
+  return result;
 }
 
 asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *opus_data, size_t opus_len) {

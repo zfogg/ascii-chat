@@ -462,31 +462,13 @@ asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, cons
   acip_transport_t *transport = connection->transport;
   mutex_unlock(&connection->send_mutex);
 
-  // Build Opus packet with header (outside mutex - no blocking I/O yet)
-  size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
-  size_t total_size = header_size + opus_size;
-  void *packet_data = buffer_alloc(NULL, total_size);
-  if (!packet_data) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
-  }
-
-  // Write header in network byte order
-  uint8_t *buf = (uint8_t *)packet_data;
-  uint32_t sr = HOST_TO_NET_U32((uint32_t)sample_rate);
-  uint32_t fd = HOST_TO_NET_U32((uint32_t)frame_duration);
-  memcpy(buf, &sr, 4);
-  memcpy(buf + 4, &fd, 4);
-  memset(buf + 8, 0, 8); // Reserved
-
-  // Copy Opus data
-  memcpy(buf + header_size, opus_data, opus_size);
-
-  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  // The protocol carries Opus through batches, including a one-frame batch.
+  // Reuse its serializer so the count and frame-size table are always present.
+  if (opus_size > UINT16_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Opus frame exceeds its wire size field");
+  uint16_t frame_size = (uint16_t)opus_size;
   asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, 0);
-
-  // Clean up
-  buffer_release(packet_data);
+      acip_send_audio_opus_batch(transport, opus_data, opus_size, &frame_size, 1, sample_rate, frame_duration);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {

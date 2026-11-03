@@ -165,11 +165,9 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
   char *json_str = yyjson_mut_write(doc, 0, &json_len);
 
   if (json_str && json_len > 0) {
-    /* Write JSON string */
-    platform_write(fd, (const uint8_t *)json_str, json_len);
-
-    /* Write newline for NDJSON format */
-    platform_write(fd, (const uint8_t *)"\n", 1);
+    // Include the delimiter in the same write so concurrent records stay on separate lines.
+    json_str[json_len] = '\n';
+    platform_write(fd, (const uint8_t *)json_str, json_len + 1);
 
     /* Free serialized JSON string */
     free(json_str);

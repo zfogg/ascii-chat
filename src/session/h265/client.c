@@ -29,6 +29,10 @@ h265_client_context_t *h265_client_context_create(uint16_t width, uint16_t heigh
     SET_ERRNO(ERROR_MEDIA_INIT, "Frame dimensions must be non-zero");
     return NULL;
   }
+  if ((size_t)width * height > SIZE_MAX / 3) {
+    SET_ERRNO(ERROR_MEDIA_INIT, "RGB frame dimensions exceed addressable storage");
+    return NULL;
+  }
 
   h265_client_context_t *ctx = SAFE_CALLOC(1, sizeof(h265_client_context_t), h265_client_context_t *);
   if (!ctx) {
@@ -45,7 +49,7 @@ h265_client_context_t *h265_client_context_create(uint16_t width, uint16_t heigh
 
   ctx->current_width = width;
   ctx->current_height = height;
-  ctx->frame_buf_size = width * height;
+  ctx->frame_buf_size = (size_t)width * height * 3;
   ctx->frame_buf = SAFE_MALLOC(ctx->frame_buf_size, uint8_t *);
   if (!ctx->frame_buf) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate frame buffer");

@@ -270,21 +270,18 @@ asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }
 
-  /* Update topology reference */
-  coordinator->topology = new_topology;
-
-  /* Reset state if we're in the middle of a round */
+  /* State also borrows the topology while idle. Build a complete replacement
+   * before publishing either pointer so a rejected update leaves both valid. */
+  consensus_state_t *replacement = NULL;
+  asciichat_error_t err = consensus_state_create(coordinator->my_id, new_topology, &replacement);
+  if (err != ASCIICHAT_OK)
+    return err;
   consensus_state_machine_t current_state = consensus_state_get_current_state(coordinator->state);
-  if (current_state != CONSENSUS_STATE_IDLE) {
+  if (current_state != CONSENSUS_STATE_IDLE)
     log_warn("Ring topology changed during round, resetting state");
-    consensus_state_destroy(coordinator->state);
-    coordinator->state = NULL;
-
-    asciichat_error_t err = consensus_state_create(coordinator->my_id, new_topology, &coordinator->state);
-    if (err != ASCIICHAT_OK) {
-      return err;
-    }
-  }
+  consensus_state_destroy(coordinator->state);
+  coordinator->state = replacement;
+  coordinator->topology = new_topology;
 
   log_info("Ring topology updated");
   return ASCIICHAT_OK;

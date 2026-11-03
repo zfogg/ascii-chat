@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/audio/limits.h>
 #include <criterion/parameterized.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
@@ -210,21 +211,30 @@ Test(codec_roundtrip, independent_stereo_pcm_is_resampled_and_rewound) {
   cr_assert_float_eq(ffmpeg_decoder_get_duration(decoder), 0.25, 0.001);
   float samples[257];
   size_t total = 0, count;
-  double in_phase = 0, quadrature = 0;
-  while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 257)) != 0) {
-    cr_assert_leq(total + count, 12000);
+  double in_phase[AUDIO_CHANNELS] = {0}, quadrature[AUDIO_CHANNELS] = {0};
+  while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, ARRAY_SIZE(samples))) != 0) {
+    cr_assert_leq(total + count, 12000 * AUDIO_CHANNELS);
+    cr_assert_eq(count % AUDIO_CHANNELS, 0);
     for (size_t i = 0; i < count; ++i) {
       cr_assert(isfinite(samples[i]));
-      in_phase += samples[i] * cos(6.283185307 * 480 * (total + i) / 48000);
-      quadrature += samples[i] * sin(6.283185307 * 480 * (total + i) / 48000);
+      size_t sample = total + i;
+      size_t channel = sample % AUDIO_CHANNELS;
+      double phase = 6.283185307 * 480 * (sample / AUDIO_CHANNELS) / AUDIO_SAMPLE_RATE;
+      in_phase[channel] += samples[i] * cos(phase);
+      quadrature[channel] += samples[i] * sin(phase);
     }
     total += count;
   }
+  // Scalar sample counts include both channels; each retains its independent amplitude.
   // A resampler may retain a short filter tail at EOF.
-  cr_assert_geq(total, 11900);
-  cr_assert_gt(2 * hypot(in_phase, quadrature) / total, 0.1);
+  cr_assert_geq(total, 11900 * AUDIO_CHANNELS);
+  cr_assert_eq(total % AUDIO_CHANNELS, 0);
+  double frames = (double)total / AUDIO_CHANNELS;
+  cr_assert_float_eq(2 * hypot(in_phase[0], quadrature[0]) / frames, 0.2, 0.01);
+  cr_assert_float_eq(2 * hypot(in_phase[1], quadrature[1]) / frames, 0.1, 0.01);
   cr_assert(ffmpeg_decoder_at_end(decoder));
   cr_assert_eq(ffmpeg_decoder_rewind(decoder), ASCIICHAT_OK);
   cr_assert_not(ffmpeg_decoder_at_end(decoder));
-  cr_assert_eq(ffmpeg_decoder_read_audio_samples(decoder, samples, 257), 257);
+  // An odd scalar capacity holds 128 complete stereo frames.
+  cr_assert_eq(ffmpeg_decoder_read_audio_samples(decoder, samples, 257), 256);
 }

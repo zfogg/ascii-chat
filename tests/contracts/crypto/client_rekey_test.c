@@ -6,6 +6,52 @@
 #include <sodium.h>
 #include <string.h>
 
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/crypto/discovery_keys.h>
+static bool startup_connect_fails, startup_lookup_fails, startup_session_missing, startup_key_fails,
+    startup_checkpoint_fails;
+static unsigned startup_connects, startup_disconnects, startup_lookups, startup_verifications;
+static acds_client_config_t startup_observed;
+static asciichat_error_t crypto_discovery_connect(acds_client_t *client, const acds_client_config_t *config) {
+  (void)client;
+  ++startup_connects;
+  startup_observed = *config;
+  return startup_connect_fails ? ERROR_NETWORK : ASCIICHAT_OK;
+}
+static void crypto_discovery_disconnect(acds_client_t *client) {
+  (void)client;
+  ++startup_disconnects;
+}
+static asciichat_error_t crypto_discovery_lookup(acds_client_t *client, const char *name,
+                                                 acds_session_lookup_result_t *result) {
+  (void)client;
+  cr_assert_str_eq(name, "river-cloud-tree");
+  ++startup_lookups;
+  memset(result, 0, sizeof(*result));
+  result->found = !startup_session_missing;
+  for (unsigned i = 0; i < 32; ++i)
+    result->host_pubkey[i] = (uint8_t)i;
+  return startup_lookup_fails ? ERROR_NETWORK : ASCIICHAT_OK;
+}
+static asciichat_error_t crypto_discovery_verify(const char *host, const char *path, uint8_t key[32]) {
+  cr_assert_str_eq(host, "127.0.0.2");
+  cr_assert_str_eq(path, "fixture-discovery-key");
+  ++startup_verifications;
+  memset(key, 0x42, 32);
+  return startup_key_fails ? ERROR_CRYPTO_AUTH : ASCIICHAT_OK;
+}
+#define acds_client_connect crypto_discovery_connect
+#define acds_client_disconnect crypto_discovery_disconnect
+#define acds_session_lookup crypto_discovery_lookup
+#define discovery_keys_verify crypto_discovery_verify
+#include "../../../src/client/crypto.c"
+#undef acds_client_connect
+#undef acds_client_disconnect
+#undef acds_session_lookup
+#undef discovery_keys_verify
+static network_connection_t *startup_owner;
+static socket_t startup_listener = INVALID_SOCKET_VALUE;
+
 static client_connection_t connection;
 static crypto_handshake_context_t local, peer;
 static asciichat_error_t send_result;
@@ -18,8 +64,8 @@ acip_transport_t *server_connection_get_transport(client_connection_t *owner) {
   return owner->transport;
 }
 asciichat_error_t client_connection_checkpoint(const char *stage) {
-  (void)stage;
-  return ASCIICHAT_OK;
+  cr_assert_str_eq(stage, "crypto");
+  return startup_checkpoint_fails ? ERROR_THREAD : ASCIICHAT_OK;
 }
 
 static asciichat_error_t capture(acip_transport_t *transport, const void *data, size_t length) {
@@ -38,7 +84,8 @@ static const acip_transport_methods_t methods = {.send = capture};
 static acip_transport_t transport = {.methods = &methods};
 
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
+  log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   cr_assert_eq(crypto_init(&local.crypto_ctx), CRYPTO_OK);
   cr_assert_eq(crypto_init(&peer.crypto_ctx), CRYPTO_OK);
@@ -53,6 +100,9 @@ static void setup(void) {
   send_result = ASCIICHAT_OK;
 }
 static void teardown(void) {
+  network_connection_destroy(&startup_owner);
+  if (startup_listener != INVALID_SOCKET_VALUE)
+    socket_close(startup_listener);
   crypto_handshake_destroy(&local);
   crypto_handshake_destroy(&peer);
   options_state_destroy();
@@ -178,4 +228,87 @@ Test(client_rekey, missing_transport_or_unsolicited_response_does_not_change_act
   cr_assert_eq(crypto_client_process_rekey_response(&connection, invalid, 31), ERROR_INVALID_PARAM);
   cr_assert_eq(crypto_client_process_rekey_response(&connection, invalid, sizeof(invalid)), ERROR_CRYPTO);
   cr_assert_arr_eq(local.crypto_ctx.shared_key, old, sizeof(old));
+}
+
+static void startup_security(bool verify_key) {
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  v->require_client_verify = true;
+  SAFE_STRNCPY(v->session_string, "river-cloud-tree", sizeof(v->session_string));
+  SAFE_STRNCPY(v->discovery_server, "127.0.0.2", sizeof(v->discovery_server));
+  v->discovery_port = 27002;
+  if (verify_key)
+    SAFE_STRNCPY(v->discovery_service_key, "fixture-discovery-key", sizeof(v->discovery_service_key));
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+  cr_assert_eq(socket_init(), ASCIICHAT_OK);
+  startup_listener = socket_create("crypto-startup-listener", AF_INET, SOCK_STREAM, 0);
+  cr_assert_neq(startup_listener, INVALID_SOCKET_VALUE);
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  cr_assert_eq(socket_bind(startup_listener, (struct sockaddr *)&address, sizeof(address)), 0);
+  cr_assert_eq(socket_listen(startup_listener, 1), 0);
+  socklen_t length = sizeof(address);
+  cr_assert_eq(socket_getsockname(startup_listener, (struct sockaddr *)&address, &length), 0);
+  network_connect_config_t settings = {.timeout_ms = 1000};
+  cr_assert_eq(network_connection_open("crypto-startup-peer", "127.0.0.1", NET_TO_HOST_U16(address.sin_port), &settings,
+                                       &startup_owner, NULL),
+               ASCIICHAT_OK);
+  connection.network = startup_owner;
+}
+Test(client_rekey, discovery_identity_is_verified_and_bound_to_the_expected_server_key) {
+  startup_security(true);
+  cr_assert_eq(client_crypto_init(&connection, NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_verifications, 1);
+  cr_assert_eq(startup_connects, 1);
+  cr_assert_eq(startup_lookups, 1);
+  cr_assert_eq(startup_disconnects, 1);
+  cr_assert_str_eq(startup_observed.server_address, "127.0.0.2");
+  cr_assert_eq(startup_observed.server_port, 27002);
+  cr_assert_eq(startup_observed.timeout_ms, 5000);
+  cr_assert_eq(connection.crypto_ctx, network_connection_handshake(startup_owner));
+  cr_assert(connection.crypto_ctx->verify_server_key);
+  cr_assert_str_eq(connection.crypto_ctx->expected_server_key,
+                   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+}
+Test(client_rekey, failed_discovery_key_verification_does_not_attempt_an_untrusted_lookup) {
+  startup_security(true);
+  startup_key_fails = true;
+  cr_assert_eq(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
+  cr_assert_eq(startup_verifications, 1);
+  cr_assert_eq(startup_connects, 0);
+  cr_assert_eq(startup_lookups, 0);
+  cr_assert_not(connection.crypto_ctx->verify_server_key);
+}
+Test(client_rekey, discovery_connection_failure_is_fatal_to_required_identity_verification) {
+  startup_security(false);
+  startup_connect_fails = true;
+  cr_assert_eq(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
+  cr_assert_eq(startup_connects, 1);
+  cr_assert_eq(startup_lookups, 0);
+  cr_assert_eq(startup_disconnects, 0);
+}
+Test(client_rekey, failed_discovery_lookup_does_not_publish_an_expected_key) {
+  startup_security(false);
+  startup_lookup_fails = true;
+  cr_assert_eq(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
+  cr_assert_eq(startup_disconnects, 1);
+  cr_assert_not(connection.crypto_ctx->verify_server_key);
+}
+Test(client_rekey, missing_discovery_session_does_not_publish_an_expected_key) {
+  startup_security(false);
+  startup_session_missing = true;
+  cr_assert_eq(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
+  cr_assert_eq(startup_disconnects, 1);
+  cr_assert_not(connection.crypto_ctx->verify_server_key);
+}
+Test(client_rekey, security_preparation_and_checkpoint_failures_do_not_start_identity_lookup) {
+  connection.network = NULL;
+  cr_assert_neq(client_crypto_init(&connection, NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_connects, 0);
+  startup_security(false);
+  startup_checkpoint_fails = true;
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(client_crypto_init(&connection, NULL), ERROR_THREAD);
+  cr_assert_eq(startup_connects, 0);
+  cr_assert_eq(connection.crypto_ctx, network_connection_handshake(startup_owner));
 }
