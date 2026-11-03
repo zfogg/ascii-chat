@@ -1,10 +1,10 @@
 #include <criterion/criterion.h>
-#include "session/capture.h"
-#include "session/display.h"
-#include "session/host.h"
-#include "session/audio.h"
-#include "session/participant.h"
-#include "session/pipeline.h"
+#include "common/session/capture.h"
+#include "common/session/display.h"
+#include "common/session/host.h"
+#include "common/session/audio.h"
+#include "common/session/participant.h"
+#include "common/session/pipeline.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
