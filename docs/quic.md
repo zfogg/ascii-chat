@@ -182,5 +182,43 @@ A UDP loopback fixture exercises the existing password-authenticated ACIP
 handshake through the private adapter and then exchanges encrypted media after
 the readiness exchange. The fixture still triggers the local security
 transition; production orchestration is not connected to a public transport.
-The codec does not implement datagram fragmentation, rekey transitions, or
+The security codec does not itself implement rekey transitions or
 replay protection for existing connections.
+
+## Experimental datagram fragments
+
+The private fragment codec defines the `ACQD` version 1 envelope for audio
+and visual packets. It is not yet connected to ngtcp2 or exposed as a
+negotiated capability. Each fragment starts with the following network-order
+fields, followed by that fragment's bytes from one encrypted ACIP packet:
+
+| Offset | Size | Meaning |
+| --- | --- | --- |
+| 0 | 4 | ASCII `ACQD` |
+| 4 | 1 | Version `1` |
+| 5 | 1 | Traffic class: audio `1`, visual `2` |
+| 6 | 2 | Reserved, zero |
+| 8 | 8 | Nonzero packet ID, unique per flow and key epoch |
+| 16 | 4 | Total encrypted packet length |
+| 20 | 2 | Payload size of each non-final fragment |
+| 22 | 2 | Zero-based fragment index |
+| 24 | 2 | Fragment count |
+| 26 | 2 | Reserved, zero |
+
+All fragments of a packet have identical metadata except index and payload.
+The count must match the total and unit size; the last fragment is exactly the
+remaining length. The reader accepts reordering and identical duplicates,
+rejects malformed or conflicting fragments, and limits each flow to four
+incomplete packets and 2 MiB of allocated buffer capacity. Incomplete packets
+expire one second after their first received fragment. A caller must invoke
+expiry even when no datagrams arrive. The current ACIP crypto codec limits a
+plaintext to 1 MiB; larger media will require an explicit design rather than
+assuming fragmentation removes that limit.
+
+The envelope is protected by QUIC between transport endpoints, but it is not
+authenticated across a terminating intermediary. Reassembly output must pass
+the ACIP datagram security codec before dispatch or replay state changes.
+Expiry bounds retained resources; it does not establish the age of a packet
+whose first fragment arrives late. Media sequence and codec recovery policy,
+including suppressing stale or damaged frames and requesting keyframes, remain
+to be integrated with the application.

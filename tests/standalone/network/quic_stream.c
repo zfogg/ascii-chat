@@ -4,6 +4,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <network/quic/stream.h>
+#include <network/quic/datagram.h>
 #include <string.h>
 
 #define CHECK(expression)                                                                                              \
@@ -28,9 +29,74 @@ static asciichat_error_t capture(acip_traffic_class_t traffic_class, const void 
   return state->reject ? SET_ERRNO(ERROR_BUFFER_FULL, "Receiver rejected packet") : ASCIICHAT_OK;
 }
 
+static void test_datagrams(void) {
+  uint8_t packet[301];
+  for (size_t i = 0; i < sizeof(packet); ++i)
+    packet[i] = (uint8_t)i;
+  uint8_t fragments[4][128];
+  size_t sizes[4];
+  for (uint16_t i = 0; i < 4; ++i)
+    CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 7, packet, sizeof(packet), 100, i, fragments[i],
+                                      sizeof(fragments[i]), &sizes[i]) == ASCIICHAT_OK);
+  acip_quic_datagram_reader_t reader = {0};
+  acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
+  uint8_t *output = NULL;
+  size_t output_size = 0;
+  const unsigned order[] = {3, 1, 1, 0, 2};
+  for (size_t i = 0; i < sizeof(order) / sizeof(order[0]); ++i) {
+    unsigned n = order[i];
+    CHECK(acip_quic_datagram_read(&reader, fragments[n], sizes[n], 10 + i, &flow, &output, &output_size) ==
+          ASCIICHAT_OK);
+    if (i + 1 < sizeof(order) / sizeof(order[0]))
+      CHECK(output == NULL);
+  }
+  CHECK(output && output_size == sizeof(packet) && flow == ACIP_TRAFFIC_VISUAL);
+  CHECK(memcmp(output, packet, sizeof(packet)) == 0 && reader.bytes == 0);
+  buffer_release(output);
+  CHECK(acip_quic_datagram_read(&reader, fragments[0], sizes[0], 20, &flow, &output, &output_size) == ASCIICHAT_OK);
+  fragments[0][ACIP_QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
+  CHECK(acip_quic_datagram_read(&reader, fragments[0], sizes[0], 21, &flow, &output, &output_size) ==
+        ERROR_NETWORK_PROTOCOL);
+  fragments[0][ACIP_QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
+  CHECK(acip_quic_datagram_read(&reader, fragments[1], sizes[1] - 1, 22, &flow, &output, &output_size) ==
+        ERROR_NETWORK_PROTOCOL);
+  fragments[1][26] = 1;
+  CHECK(acip_quic_datagram_read(&reader, fragments[1], sizes[1], 22, &flow, &output, &output_size) ==
+        ERROR_NETWORK_PROTOCOL);
+  fragments[1][26] = 0;
+  CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_CONTROL, 1, packet, sizeof(packet), 100, 0, fragments[1],
+                                    sizeof(fragments[1]), &sizes[1]) == ERROR_INVALID_PARAM);
+  CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 4, fragments[1],
+                                    sizeof(fragments[1]), &sizes[1]) == ERROR_NETWORK_SIZE);
+  CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 1, packet, sizeof(packet), 100, 0, fragments[1], 40,
+                                    &sizes[1]) == ERROR_BUFFER_FULL);
+  CHECK(acip_quic_datagram_read(&reader, fragments[0], sizes[0], 19, &flow, &output, &output_size) ==
+        ERROR_INVALID_PARAM);
+  CHECK(reader.bytes > 0);
+  acip_quic_datagram_expire(&reader, 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS);
+  CHECK(reader.bytes == 0);
+  for (uint64_t id = 1; id <= 4; ++id) {
+    CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, id, packet, sizeof(packet), 100, 0, fragments[0],
+                                      sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+    CHECK(acip_quic_datagram_read(&reader, fragments[0], sizes[0], 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+                                  &output_size) == ASCIICHAT_OK);
+  }
+  CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_VISUAL, 5, packet, sizeof(packet), 100, 0, fragments[0],
+                                    sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+  CHECK(acip_quic_datagram_read(&reader, fragments[0], sizes[0], 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+                                &output_size) == ERROR_BUFFER_FULL);
+  CHECK(acip_quic_datagram_fragment(ACIP_TRAFFIC_AUDIO, 5, packet, sizeof(packet), 100, 0, fragments[0],
+                                    sizeof(fragments[0]), &sizes[0]) == ASCIICHAT_OK);
+  CHECK(acip_quic_datagram_read(&reader, fragments[0], sizes[0], 20 + ACIP_QUIC_DATAGRAM_EXPIRY_NS, &flow, &output,
+                                &output_size) == ASCIICHAT_OK);
+  acip_quic_datagram_reset(&reader);
+  CHECK(reader.bytes == 0);
+}
+
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
+  test_datagrams();
   const char payload[] = "video";
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                             .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME),
