@@ -307,3 +307,69 @@ Test(server_main_contract, resource_initializers_propagate_failure_and_shutdown_
   cr_assert_eq(server_init_h265(), ASCIICHAT_OK);
   cr_assert_not_null(g_h265_server);
 }
+
+Test(server_main_contract, discovery_keepalive_replies_only_while_transport_is_available) {
+  on_acds_ping(NULL);
+  cr_assert_eq(contract_sends, 0);
+  g_acds_transport = &contract_transport;
+  on_acds_ping(NULL);
+  cr_assert_eq(contract_sends, 1);
+  cr_assert_eq(contract_type, PACKET_TYPE_PONG);
+  cr_assert_eq(contract_length, 0);
+  on_acds_pong(NULL);
+  cr_assert_eq(contract_sends, 1);
+  g_acds_transport = NULL;
+  on_acds_ping(NULL);
+  cr_assert_eq(contract_sends, 1);
+}
+Test(server_main_contract, per_connection_statistics_include_only_ready_clients_and_preserve_dimensions) {
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
+  transport->methods = &contract_methods;
+  network_connection_t *connection = NULL;
+  cr_assert_eq(network_connection_adopt(transport, &connection), ASCIICHAT_OK);
+  stats_view_t view = {0};
+  server_stats_visit_t visit = {.view = &view};
+  server_stats_connection(connection, &visit);
+  cr_assert_eq(visit.active, 0);
+  server_connection_state_t state = {0};
+  network_connection_set_context(connection, &state);
+  server_stats_connection(connection, &visit);
+  cr_assert_eq(visit.active, 0);
+  client_info_t *client = &g_client_manager.clients[0];
+  cr_assert_eq(mutex_init(&client->client_state_mutex, "stats-fixture"), ASCIICHAT_OK);
+  SAFE_STRNCPY(client->client_id, "stats-client", sizeof(client->client_id));
+  client->width = 100;
+  client->height = 30;
+  atomic_ptr_store(&state.client, client);
+  server_stats_connection(connection, &visit);
+  cr_assert_eq(visit.active, 0);
+  atomic_store_bool(&client->event_ready, true);
+  server_stats_connection(connection, &visit);
+  cr_assert_eq(visit.active, 1);
+  cr_assert_eq(view.count, 0);
+  view.page = 1;
+  atomic_store_u64(&client->frames_sent_count, 17);
+  server_stats_connection(connection, &visit);
+  cr_assert_eq(visit.active, 2);
+  cr_assert_eq(view.count, 1);
+  cr_assert(strstr(view.lines[0], "stats-client"));
+  cr_assert(strstr(view.lines[0], "100x30"));
+  cr_assert(strstr(view.lines[0], "17"));
+  client->incoming_video_buffer = video_frame_buffer_create("stats-video");
+  cr_assert_not_null(client->incoming_video_buffer);
+  atomic_store_u64(&client->incoming_video_buffer->total_frames_received, 23);
+  server_stats_connection(connection, &visit);
+  cr_assert_eq(view.count, 2);
+  cr_assert(strstr(view.lines[1], "23"));
+  video_frame_buffer_destroy(client->incoming_video_buffer);
+  client->incoming_video_buffer = NULL;
+  mutex_destroy(&client->client_state_mutex);
+  network_connection_set_context(connection, NULL);
+  network_connection_destroy(&connection);
+  view = (stats_view_t){.page = 1};
+  server_stats_provider(&view, NULL);
+  cr_assert_eq(view.count, 3);
+  cr_assert(strstr(view.lines[2], "Connected clients: 0"));
+  ui_status_t status = {0};
+  server_status_fn(NULL, &status);
+}

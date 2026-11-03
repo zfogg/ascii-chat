@@ -1656,6 +1656,19 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         target_include_directories(test_unit_session_test_api_boundaries PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
     endif()
 
+    add_executable(test-client-video contracts/network/client_video_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/crypto.c
+        ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)
+    asciichat_configure_contract(test-client-video)
+    target_link_libraries(test-client-video PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-video PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-video)
+    set_target_properties(test-client-video PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-video test-client-video)
+    set_property(TEST client-video APPEND PROPERTY LABELS unit)
+
     add_executable(test-client-audio contracts/network/client_audio_test.c
         ${CMAKE_SOURCE_DIR}/src/client/server.c
         ${CMAKE_SOURCE_DIR}/src/client/crypto.c
