@@ -15,6 +15,8 @@ const char *connection_endpoint_protocol_name(connection_endpoint_protocol_t pro
     return "TCP";
   case CONNECTION_ENDPOINT_WEBSOCKET:
     return "WebSocket";
+  case CONNECTION_ENDPOINT_QUIC:
+    return "QUIC";
   default:
     return "Unknown";
   }
@@ -48,6 +50,25 @@ asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t defaul
 
   url_parts_t parts = {0};
   asciichat_error_t result;
+
+  if (strncasecmp(input, "quic://", 7) == 0) {
+    char rewritten[URL_BUFFER_SIZE];
+    if (strlen(input) - 1 >= sizeof(rewritten))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC endpoint is too long");
+    SAFE_SNPRINTF(rewritten, sizeof(rewritten), "tcp://%s", input + 7);
+    result = url_parse(rewritten, &parts);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (parts.userinfo || (parts.path && *parts.path)) {
+      url_parts_destroy(&parts);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC endpoint must not include user information or a path");
+    }
+    result = connection_endpoint_from_parts(endpoint_out, &parts, CONNECTION_ENDPOINT_QUIC, default_port, input);
+    if (result == ASCIICHAT_OK && parts.ipv6)
+      SAFE_STRNCPY(endpoint_out->host, parts.ipv6, sizeof(endpoint_out->host));
+    url_parts_destroy(&parts);
+    return result;
+  }
 
   if (url_is_websocket(input)) {
     result = url_parse(input, &parts);

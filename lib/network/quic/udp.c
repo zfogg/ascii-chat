@@ -225,8 +225,13 @@ asciichat_error_t acip_quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_
     ssize_t received =
         socket_recvfrom(endpoint->socket, data, sizeof(data), 0, (struct sockaddr *)&remote, &remote_length);
     if (received < 0) {
-      if (socket_is_would_block_error(socket_get_last_error()))
+      int error = socket_get_last_error();
+      if (socket_is_would_block_error(error))
         break;
+      /* An ICMP error for an earlier datagram does not identify a QUIC
+       * connection and must not terminate a shared listener. */
+      if (socket_is_connection_reset_error(error))
+        continue;
       return SET_ERRNO(ERROR_NETWORK, "QUIC UDP receive failed");
     }
     if (!received || !valid_address((struct sockaddr *)&remote, remote_length))

@@ -61,6 +61,34 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                 sys.stderr.write(f"QUIC probe exited {result.returncode}\n{result.stdout}\n{result.stderr}\n")
                 sys.stderr.write((root / "server.log").read_text(errors="replace"))
                 raise SystemExit(result.returncode)
+            client_log = root / "client.log"
+            client = subprocess.run(
+                [binary, "--log-file", str(client_log), "client", f"quic://localhost:{udp_port}", "--quic-ca-file", str(certificate),
+                 "--password", "test-password", "--test-pattern", "--audio=false", "--snapshot",
+                 "--snapshot-delay", "0", "--splash-screen=false", "--color-mode", "none",
+                 "--reconnect-attempts", "0"],
+                timeout=30, creationflags=flags, check=False, capture_output=True, text=True, errors="replace",
+                env=probe_env,
+            )
+            client_logs = client_log.read_text(errors="replace") if client_log.exists() else ""
+            if client.returncode or "using native QUIC" not in client_logs or not client.stdout.strip():
+                log.flush()
+                sys.stderr.write(f"QUIC client exited {client.returncode}\n{client.stdout}\n{client.stderr}\n{client_logs}\n")
+                sys.stderr.write((root / "server.log").read_text(errors="replace"))
+                raise SystemExit(client.returncode or 1)
+            rejected_log = root / "rejected-client.log"
+            rejected = subprocess.run(
+                [binary, "--log-file", str(rejected_log), "client", f"quic://localhost:{udp_port}",
+                 "--quic-ca-file", str(other_cert), "--password", "test-password", "--test-pattern",
+                 "--audio=false", "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
+                 "--reconnect-attempts", "0"],
+                timeout=30, creationflags=flags, check=False, capture_output=True, text=True, errors="replace",
+                env=probe_env,
+            )
+            rejected_logs = rejected_log.read_text(errors="replace") if rejected_log.exists() else ""
+            if (rejected.returncode == 0 or "using native QUIC" in rejected_logs or
+                    "QUIC connection establishment failed: Cryptographic error" not in rejected_logs):
+                raise RuntimeError(f"Untrusted QUIC certificate was not rejected: {rejected_logs}")
         finally:
             if server.poll() is None:
                 server.terminate()

@@ -97,6 +97,7 @@ typedef struct {
   uint32_t timeout_ms;
   bool (*should_exit_callback)(void *);
   void *callback_data;
+  const char *quic_ca_file; /**< Optional trust anchors for an explicit quic:// connection. */
 } network_connect_config_t;
 
 /** A NULL config uses backend defaults and the application's exit callback.

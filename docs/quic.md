@@ -1,8 +1,16 @@
 # ACIP over QUIC
 
 This document records the stream framing being implemented for issue #247.
-The native server has an opt-in listener; native client selection and the
-WebTransport session protocol are not yet available.
+The native server has an opt-in listener and native clients can select it with
+an explicit `quic://` address. The WebTransport session protocol is not yet
+available.
+
+For example, start a listener with `--quic-bind-address 127.0.0.1`,
+`--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with
+`ascii-chat client quic://localhost:PORT --quic-ca-file CA.pem`. The client
+uses system trust when `--quic-ca-file` is omitted and verifies the certificate
+against the address hostname. An explicit QUIC connection does not fall back
+to TCP. Hostname resolution currently uses IPv4; IPv6 literals are supported.
 
 ## Reliable streams
 

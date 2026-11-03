@@ -36,6 +36,15 @@ static bool validate_webrtc_bind_address(const void *data) {
 }
 
 const registry_entry_t g_network_entries[] = {
+    {.long_name = "quic-ca-file",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, quic_ca_file),
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "CA certificate file for native QUIC server verification (default: system trust).",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_QUIC_CA_FILE",
+     .mode_bitmask = OPTION_MODE_CLIENT,
+     .metadata = {.input_type = OPTION_INPUT_STRING}},
     {.long_name = "quic-bind-address",
      .type = OPTION_TYPE_STRING,
      .offset = offsetof(options_t, quic_bind_address),

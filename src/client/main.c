@@ -641,7 +641,7 @@ int client_main(void) {
   const options_t *opts_websocket = options_get();
   const char *provided_address = opts_websocket && opts_websocket->address[0] != '\0' ? opts_websocket->address : NULL;
 
-  if (provided_address && url_is_websocket(provided_address)) {
+  if (provided_address && url_looks_like_websocket(provided_address) && url_is_websocket(provided_address)) {
     // Direct WebSocket connection
     log_debug("Client: Direct WebSocket URL: %s", provided_address);
     discovered_address = provided_address;

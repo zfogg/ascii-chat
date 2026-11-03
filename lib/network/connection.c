@@ -18,6 +18,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -53,6 +54,7 @@ struct network_connection {
   network_server_config_t policy;
   network_connection_t *next;
   acip_transport_t *transport;
+  acip_quic_endpoint_t *owned_quic_endpoint;
   platform_event_stream_t *stream;
   packet_decoder_t decoder;
   acip_security_t security;
@@ -209,6 +211,18 @@ static void connection_finish(void *arg) {
   c->cleanup_failed = false;
   acip_transport_destroy(c->transport);
   c->transport = NULL;
+  if (c->owned_quic_endpoint) {
+    asciichat_error_t result = acip_quic_endpoint_stop(c->owned_quic_endpoint);
+    if (result != ASCIICHAT_OK)
+      result = acip_quic_endpoint_stop(c->owned_quic_endpoint);
+    if (result == ASCIICHAT_OK)
+      result = acip_quic_endpoint_destroy(&c->owned_quic_endpoint);
+    if (result != ASCIICHAT_OK) {
+      c->result = result;
+      c->cleanup_failed = true;
+      return;
+    }
+  }
   c->adopted_security = NULL;
   if (c->security_options)
     acip_security_cleanup(&c->security);
@@ -686,6 +700,82 @@ static asciichat_error_t connection_open_tcp(const char *name, const connection_
   return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_NETWORK, "Cannot adopt connected TCP socket");
 }
 
+static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpoint,
+                                              const network_connect_config_t *settings, acip_quic_endpoint_t **owner,
+                                              acip_transport_t **transport) {
+  struct sockaddr_storage remote, local;
+  socklen_t remote_length = 0, local_length = sizeof(local);
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  asciichat_error_t result = parse_numeric_socket_address(endpoint->host, endpoint->port, &remote, &remote_length);
+  if (result != ASCIICHAT_OK) {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    char resolved[INET_ADDRSTRLEN];
+    result = platform_resolve_hostname_to_ipv4(endpoint->host, resolved, sizeof(resolved));
+    if (result != ASCIICHAT_OK)
+      return result;
+    result = parse_numeric_socket_address(resolved, endpoint->port, &remote, &remote_length);
+  } else {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  }
+  if (result != ASCIICHAT_OK)
+    return result;
+  socket_t route = socket_create("quic_route", remote.ss_family, SOCK_DGRAM, 0);
+  if (route == INVALID_SOCKET_VALUE)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot determine QUIC local route");
+  if (socket_connect(route, (const struct sockaddr *)&remote, remote_length) != 0 ||
+      socket_getsockname(route, (struct sockaddr *)&local, &local_length) != 0) {
+    socket_close(route);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot determine QUIC local route");
+  }
+  socket_close(route);
+  if (local.ss_family == AF_INET)
+    ((struct sockaddr_in *)&local)->sin_port = 0;
+  else if (local.ss_family == AF_INET6)
+    ((struct sockaddr_in6 *)&local)->sin6_port = 0;
+  else
+    return SET_ERRNO(ERROR_NETWORK, "Unsupported QUIC local route");
+  acip_quic_config_t config = {.ca_file = settings ? settings->quic_ca_file : NULL, .enable_datagrams = true};
+  result = acip_quic_endpoint_open((struct sockaddr *)&local, local_length, false, &config, owner);
+  if (result == ASCIICHAT_OK)
+    result = acip_quic_connect(*owner, (struct sockaddr *)&remote, remote_length, endpoint->host, transport);
+  if (result == ASCIICHAT_OK) {
+    uint64_t start = time_get_ns();
+    uint64_t timeout = (settings ? (uint64_t)settings->timeout_ms : 10000) * NS_PER_MS_INT;
+    for (;;) {
+      acip_transport_capabilities_t capabilities;
+      asciichat_errno_scope_t attempt_scope = errno_scope_begin();
+      result = acip_transport_get_capabilities(*transport, &capabilities);
+      if (result == ASCIICHAT_OK) {
+        errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+        break;
+      }
+      if (result != ERROR_INVALID_STATE || connect_cancelled((void *)settings) || time_get_ns() - start >= timeout) {
+        if (result == ERROR_INVALID_STATE) {
+          errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_DISMISSED);
+          result = SET_ERRNO(ERROR_NETWORK_CONNECT, "QUIC connection timed out or was cancelled");
+        } else {
+          errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+        }
+        break;
+      }
+      errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_DISMISSED);
+      platform_sleep_ms(5);
+    }
+  }
+  if (result != ASCIICHAT_OK) {
+    if (*transport) {
+      acip_transport_destroy(*transport);
+      *transport = NULL;
+    }
+    if (*owner) {
+      (void)acip_quic_endpoint_stop(*owner);
+      (void)acip_quic_endpoint_destroy(owner);
+    }
+    return SET_ERRNO(result, "QUIC connection establishment failed");
+  }
+  return result;
+}
+
 asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t port,
                                           const network_connect_config_t *settings, network_connection_t **out,
                                           connection_endpoint_t *resolved) {
@@ -700,13 +790,21 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   if (result != ASCIICHAT_OK)
     return result;
   acip_transport_t *transport = NULL;
+  acip_quic_endpoint_t *quic_endpoint = NULL;
   ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol",
-                         endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket" : "tcp");
+                         endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket"
+                         : endpoint.protocol == CONNECTION_ENDPOINT_QUIC    ? "quic"
+                                                                            : "tcp");
   ASCII_OTEL_ATTR_INT("server.port", endpoint.port);
   ASCII_OTEL_ATTR_INT("network.connection.timeout_ms", settings ? settings->timeout_ms
                                                        : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000
                                                                                                             : 3000);
-  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
+  if (endpoint.protocol == CONNECTION_ENDPOINT_QUIC) {
+    result = connection_open_quic(&endpoint, settings, &quic_endpoint, &transport);
+    if (result != ASCIICHAT_OK)
+      return result;
+    log_info("Connected to %s:%u using native QUIC", endpoint.host, (unsigned)endpoint.port);
+  } else if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     transport = acip_websocket_client_transport_create(name, endpoint.input, NULL);
   } else {
     result = connection_open_tcp(name, &endpoint, settings, NULL, &transport);
@@ -726,14 +824,21 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
     }
   }
   network_connection_t *c = connection_create(NULL, transport, endpoint.host,
-                                              strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0, false);
+                                              endpoint.protocol == CONNECTION_ENDPOINT_QUIC ||
+                                                  strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0,
+                                              false);
   if (!c) {
     acip_transport_destroy(transport);
+    if (quic_endpoint) {
+      (void)acip_quic_endpoint_stop(quic_endpoint);
+      (void)acip_quic_endpoint_destroy(&quic_endpoint);
+    }
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate connection");
   }
   if (resolved)
     *resolved = endpoint;
   c->port = endpoint.port;
+  c->owned_quic_endpoint = quic_endpoint;
   *out = c;
   ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTION_ESTABLISHED, 1);
   return ASCIICHAT_OK;
