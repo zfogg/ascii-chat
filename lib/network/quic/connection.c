@@ -1039,6 +1039,19 @@ bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection) {
   return connection && !connection->failed && connection->tls_ready;
 }
 
+asciichat_error_t acip_quic_connection_peer_address(const acip_quic_connection_t *connection,
+                                                    struct sockaddr_storage *address, socklen_t *length) {
+  if (!connection || !connection->conn || connection->failed || !address || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC peer address query");
+  const ngtcp2_path *path = ngtcp2_conn_get_path2(connection->conn);
+  if (!path || !valid_address(&path->remote))
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC peer address is unavailable");
+  memset(address, 0, sizeof(*address));
+  memcpy(address, path->remote.addr, (size_t)path->remote.addrlen);
+  *length = path->remote.addrlen;
+  return ASCIICHAT_OK;
+}
+
 void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
   if (!connection || !*connection)
     return;

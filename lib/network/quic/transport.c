@@ -34,6 +34,20 @@ typedef struct {
 
 static const acip_transport_methods_t quic_methods;
 
+asciichat_error_t acip_quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
+                                                   socklen_t *length) {
+  if (!transport || transport->methods != &quic_methods || !address || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC peer address query");
+  quic_transport_t *quic = transport->impl_data;
+  if (quic->lane)
+    mutex_lock(quic->lane);
+  asciichat_error_t result = quic->connected ? acip_quic_connection_peer_address(quic->connection, address, length)
+                                             : SET_ERRNO(quic->failure, "QUIC transport is closed");
+  if (quic->lane)
+    mutex_unlock(quic->lane);
+  return result;
+}
+
 static void security_ready_notify(void *context) {
   quic_transport_t *quic = context;
   if (quic->lane)

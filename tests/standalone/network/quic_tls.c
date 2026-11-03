@@ -943,8 +943,21 @@ typedef struct {
   atomic_t received;
 } quic_server_fixture_t;
 
+typedef struct {
+  network_server_t *server;
+  asciichat_error_t result;
+} quic_server_runner_t;
+
+static void *quic_server_run(void *context) {
+  quic_server_runner_t *runner = context;
+  runner->result = network_server_run(runner->server);
+  return NULL;
+}
+
 static asciichat_error_t quic_server_open(network_connection_t *connection, void *context) {
   quic_server_fixture_t *fixture = context;
+  if (strcmp(network_connection_peer(connection), "127.0.0.1") != 0)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "QUIC server received an incorrect peer address");
   crypto_handshake_context_t *handshake = network_connection_handshake(connection);
   asciichat_error_t result =
       crypto_handshake_init_with_password("quic-network-server", handshake, true, "test-password");
@@ -989,18 +1002,13 @@ static void quic_network_server_test(const char *certificate, const char *privat
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(acip_quic_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
-  acip_transport_t *outbound = NULL, *inbound = NULL;
+  acip_transport_t *outbound = NULL;
   CHECK(acip_quic_connect(client, (struct sockaddr *)&address, address_length, "localhost", &outbound) == ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   acip_transport_capabilities_t capabilities;
   bool ready = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
-    if (!inbound) {
-      asciichat_error_t result = acip_quic_accept(server, &inbound);
-      CHECK(result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT);
-    }
-    if (inbound && acip_transport_get_capabilities(outbound, &capabilities) == ASCIICHAT_OK &&
-        acip_transport_get_capabilities(inbound, &capabilities) == ASCIICHAT_OK) {
+    if (acip_transport_get_capabilities(outbound, &capabilities) == ASCIICHAT_OK) {
       ready = true;
       break;
     }
@@ -1015,12 +1023,14 @@ static void quic_network_server_test(const char *certificate, const char *privat
                                     .ipv4_address = "127.0.0.1",
                                     .bind_ipv4 = true,
                                     .callbacks = {.open = quic_server_open, .packet = quic_server_packet},
-                                    .user_data = &fixture};
+                                    .user_data = &fixture,
+                                    .quic_endpoint = server};
   network_server_t *network_server = NULL;
   CHECK(network_server_create(&config, &network_server) == ASCIICHAT_OK);
   CHECK(network_server_start(network_server) == ASCIICHAT_OK);
-  CHECK(network_server_adopt_negotiating(network_server, inbound, "127.0.0.1", true) == ASCIICHAT_OK);
-  inbound = NULL;
+  quic_server_runner_t runner = {.server = network_server};
+  asciichat_thread_t server_thread;
+  CHECK(acthread_create(&server_thread, "quic_server_loop", quic_server_run, &runner) == ASCIICHAT_OK);
   crypto_handshake_context_t client_handshake;
   CHECK(crypto_handshake_init_with_password("quic-network-client", &client_handshake, false, "test-password") ==
         ASCIICHAT_OK);
@@ -1038,6 +1048,8 @@ static void quic_network_server_test(const char *certificate, const char *privat
   CHECK(atomic_load_bool(&fixture.received) && echo_length == audio_length && memcmp(echo, audio, audio_length) == 0);
   buffer_release(allocation);
   buffer_release(audio);
+  network_server_request_stop(network_server);
+  CHECK(thread_join(&server_thread, NULL) == ASCIICHAT_OK && runner.result == ASCIICHAT_OK);
   CHECK(network_server_stop(network_server) == ASCIICHAT_OK);
   network_server_destroy(&network_server);
   CHECK(!network_server);
@@ -1084,6 +1096,14 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
     time_sleep_ns(NS_PER_MS_INT);
   }
   CHECK(ready && client_caps.datagrams && server_caps.datagrams);
+  struct sockaddr_storage client_address, observed_peer;
+  socklen_t client_address_length = 0, peer_length = 0;
+  CHECK(acip_quic_endpoint_address(client, &client_address, &client_address_length) == ASCIICHAT_OK);
+  CHECK(acip_quic_transport_peer_address(inbound, &observed_peer, &peer_length) == ASCIICHAT_OK);
+  CHECK(peer_length == client_address_length && observed_peer.ss_family == AF_INET &&
+        ((struct sockaddr_in *)&observed_peer)->sin_port == ((struct sockaddr_in *)&client_address)->sin_port &&
+        ((struct sockaddr_in *)&observed_peer)->sin_addr.s_addr ==
+            ((struct sockaddr_in *)&client_address)->sin_addr.s_addr);
   CHECK(acip_quic_transport_wait_security(outbound, 0) == ERROR_NETWORK_TIMEOUT);
   CHECK(acip_quic_release(client, &inbound) == ERROR_INVALID_PARAM && inbound);
   network_connection_t *adopted = NULL;

@@ -42,6 +42,8 @@ bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *con
 uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns);
 bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection);
+asciichat_error_t acip_quic_connection_peer_address(const acip_quic_connection_t *connection,
+                                                    struct sockaddr_storage *address, socklen_t *length);
 /* Match an incoming destination CID, including the server's original Initial
  * CID. Called only on the connection lane. */
 asciichat_error_t acip_quic_connection_matches_cid(const acip_quic_connection_t *connection, const uint8_t *cid,

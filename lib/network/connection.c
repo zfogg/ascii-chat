@@ -17,6 +17,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/network/acip/quic.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -42,7 +43,7 @@ struct network_server {
   network_connection_t *connections;
   size_t count;
   atomic_t stopping, executing;
-  bool listener_initialized, websocket_initialized, websocket_started;
+  bool listener_initialized, websocket_initialized, websocket_started, quic_failed;
 };
 
 struct network_connection {
@@ -482,6 +483,36 @@ static void server_tick(void *arg) {
   mutex_unlock(&s->registry_mutex);
   for (size_t i = 0; i < count; ++i)
     platform_event_stream_close(closing[i], ASCIICHAT_OK);
+  if (!atomic_load_bool(&s->stopping) && s->config.quic_endpoint && !s->quic_failed) {
+    for (unsigned i = 0; i < 16; ++i) {
+      acip_transport_t *transport = NULL;
+      asciichat_errno_scope_t scope = errno_scope_begin();
+      asciichat_error_t result = acip_quic_accept(s->config.quic_endpoint, &transport);
+      if (result == ERROR_NETWORK_TIMEOUT) {
+        errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+        break;
+      }
+      if (result != ASCIICHAT_OK) {
+        log_warn("QUIC listener stopped accepting: %s", asciichat_error_format(NULL, result));
+        s->quic_failed = true;
+        errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+        break;
+      }
+      struct sockaddr_storage address;
+      socklen_t length = 0;
+      char peer[INET6_ADDRSTRLEN] = "";
+      result = acip_quic_transport_peer_address(transport, &address, &length);
+      if (result == ASCIICHAT_OK)
+        result = format_ip_address(address.ss_family, (const struct sockaddr *)&address, peer, sizeof(peer));
+      if (result == ASCIICHAT_OK)
+        result = network_server_adopt_negotiating(s, transport, peer, true);
+      if (result != ASCIICHAT_OK) {
+        log_debug("Cannot admit QUIC peer: %s", asciichat_error_format(NULL, result));
+        acip_transport_destroy(transport);
+      }
+      errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    }
+  }
   if (atomic_load_bool(&s->stopping))
     atomic_store_bool(&s->listener.running, false);
   else if (s->config.tick)

@@ -32,6 +32,9 @@ asciichat_error_t acip_quic_connect(acip_quic_endpoint_t *endpoint, const struct
 /** Nonblocking accept. Returns ERROR_NETWORK_TIMEOUT when none is available.
  * A returned transport is owned and may still be negotiating TLS. */
 asciichat_error_t acip_quic_accept(acip_quic_endpoint_t *endpoint, acip_transport_t **out);
+/** Copy the current peer address. It may change after a validated migration. */
+asciichat_error_t acip_quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
+                                                   socklen_t *length);
 
 /** Start the authenticated transition after the existing ACIP handshake.
  * crypto is borrowed and must outlive the transport. After this call the
