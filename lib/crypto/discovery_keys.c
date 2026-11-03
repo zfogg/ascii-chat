@@ -102,7 +102,7 @@ asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to download and parse ACDS key from %s", url);
   }
 
-  memcpy(pubkey_out, key.key, 32);
+  memcpy(pubkey_out, key.key, ED25519_PUBLIC_KEY_SIZE);
   log_debug("Successfully downloaded and parsed ACDS key from %s", url);
   return ASCIICHAT_OK;
 }
@@ -121,7 +121,7 @@ asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to load ACDS key from file: %s", file_path);
   }
 
-  memcpy(pubkey_out, key.key, 32);
+  memcpy(pubkey_out, key.key, ED25519_PUBLIC_KEY_SIZE);
   log_debug("Successfully loaded ACDS key from file: %s", file_path);
   return ASCIICHAT_OK;
 }
@@ -208,7 +208,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   // OpenSSH encodes a length-prefixed algorithm name followed by the key string.
   uint8_t wire_key[SSH_ED25519_WIRE_KEY_SIZE] = {0,   0,   0,   11,  's', 's', 'h', '-', 'e', 'd',
                                                  '2', '5', '5', '1', '9', 0,   0,   0,   32};
-  memcpy(wire_key + 19, pubkey, 32);
+  memcpy(wire_key + 19, pubkey, ED25519_PUBLIC_KEY_SIZE);
   char base64_key[CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE];
   sodium_bin2base64(base64_key, sizeof(base64_key), wire_key, sizeof(wire_key), sodium_base64_VARIANT_ORIGINAL);
 
@@ -304,7 +304,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
       return SET_ERRNO(ERROR_NETWORK, "Failed to download key from official ACDS server");
     }
 
-    memcpy(new_pubkey, key.key, 32);
+    memcpy(new_pubkey, key.key, ED25519_PUBLIC_KEY_SIZE);
 
   } else if (!key_spec) {
     // No key_spec and not official server = error
@@ -321,7 +321,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to load/download ACDS key from: %s", key_spec);
     }
 
-    memcpy(new_pubkey, key.key, 32);
+    memcpy(new_pubkey, key.key, ED25519_PUBLIC_KEY_SIZE);
   }
 
   // ===========================================================================
@@ -333,7 +333,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
 
   if (result == ASCIICHAT_OK) {
     // Cached key exists - compare
-    if (memcmp(cached_pubkey, new_pubkey, 32) != 0) {
+    if (memcmp(cached_pubkey, new_pubkey, ED25519_PUBLIC_KEY_SIZE) != 0) {
       // Key changed - require user verification
       result = discovery_keys_verify_change(acds_server, cached_pubkey, new_pubkey);
       if (result != ASCIICHAT_OK) {
@@ -362,7 +362,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
   // Step 3: Return verified key
   // ===========================================================================
 
-  memcpy(pubkey_out, new_pubkey, 32);
+  memcpy(pubkey_out, new_pubkey, ED25519_PUBLIC_KEY_SIZE);
   log_debug("ACDS key verification successful for: %s", acds_server);
   return ASCIICHAT_OK;
 }

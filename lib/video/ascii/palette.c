@@ -8,6 +8,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256
 
+#include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -111,7 +112,7 @@ bool validate_palette_chars(const char *chars, size_t len) {
     } else {
       // Non-ASCII: use utf8_display_width to check character width
       // Create a temporary buffer with the UTF-8 encoded character
-      uint8_t utf8_buf[5] = {0};
+      uint8_t utf8_buf[UTF8_BUFFER_SIZE] = {0};
 
       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
       if (cp <= 0x7F) {

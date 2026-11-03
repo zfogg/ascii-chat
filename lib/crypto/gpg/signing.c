@@ -286,7 +286,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
   }
 
   // OpenPGP MPIs omit leading zero bytes; raw signatures retain fixed-width components.
-  memset(signature_out, 0, 64);
+  memset(signature_out, 0, ED25519_SIGNATURE_SIZE);
   memcpy(signature_out + 32 - r_bytes, &openpgp_signature[offset], r_bytes);
   offset += r_bytes;
 

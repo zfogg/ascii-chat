@@ -951,7 +951,7 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  if (len >= 256) {
+  if (len >= OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE) {
     if (error_msg) {
       char msg[OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE];
       safe_snprintf(msg, sizeof(msg), "Invalid palette-chars: too long (%zu chars, max 255)", len);
@@ -961,8 +961,8 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   }
 
   // Copy the palette characters
-  SAFE_STRNCPY(palette_custom, arg, 256);
-  palette_custom[255] = '\0';
+  SAFE_STRNCPY(palette_custom, arg, OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE);
+  palette_custom[OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE - 1] = '\0';
 
   // Also set the palette type to custom by calculating back to options_t pointer
   // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic

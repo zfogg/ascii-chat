@@ -194,7 +194,7 @@ asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mp
   }
 
   // Extract 32-byte Ed25519 public key
-  memcpy(ed25519_pk, mpi + 3, 32);
+  memcpy(ed25519_pk, mpi + 3, ED25519_PUBLIC_KEY_SIZE);
 
   return ASCIICHAT_OK;
 }
@@ -266,7 +266,7 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
   }
 
   // Extract the 32-byte Ed25519 public key
-  memcpy(pubkey->pubkey, packet_body + key_offset, 32);
+  memcpy(pubkey->pubkey, packet_body + key_offset, ED25519_PUBLIC_KEY_SIZE);
 
   log_debug("Extracted Ed25519 public key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", pubkey->pubkey[0],
             pubkey->pubkey[1], pubkey->pubkey[2], pubkey->pubkey[3], pubkey->pubkey[4], pubkey->pubkey[5],
@@ -312,7 +312,7 @@ asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_l
       openpgp_public_key_t pubkey;
       result = openpgp_parse_public_key_packet(data + offset + header.header_len, header.length, &pubkey);
       if (result == ASCIICHAT_OK) {
-        memcpy(ed25519_pk, pubkey.pubkey, 32);
+        memcpy(ed25519_pk, pubkey.pubkey, ED25519_PUBLIC_KEY_SIZE);
         return ASCIICHAT_OK;
       }
     }
@@ -440,7 +440,7 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
   }
 
   // Extract the 32-byte Ed25519 public key
-  memcpy(seckey->pubkey, packet_body + pubkey_offset, 32);
+  memcpy(seckey->pubkey, packet_body + pubkey_offset, ED25519_PUBLIC_KEY_SIZE);
 
   log_debug("Extracted Ed25519 public key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", seckey->pubkey[0],
             seckey->pubkey[1], seckey->pubkey[2], seckey->pubkey[3], seckey->pubkey[4], seckey->pubkey[5],
@@ -753,8 +753,8 @@ asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_l
           return SET_ERRNO(ERROR_NOT_SUPPORTED,
                            "Encrypted binary OpenPGP private keys are not supported; use an unencrypted key");
         }
-        memcpy(ed25519_pk, seckey.pubkey, 32);
-        memcpy(ed25519_sk, seckey.seckey, 32);
+        memcpy(ed25519_pk, seckey.pubkey, ED25519_PUBLIC_KEY_SIZE);
+        memcpy(ed25519_sk, seckey.seckey, ED25519_SEED_SIZE);
         return ASCIICHAT_OK;
       }
     }
@@ -868,8 +868,8 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
         }
 
         // Unencrypted key - extract directly
-        memcpy(ed25519_pk, seckey.pubkey, 32);
-        memcpy(ed25519_sk, seckey.seckey, 32);
+        memcpy(ed25519_pk, seckey.pubkey, ED25519_PUBLIC_KEY_SIZE);
+        memcpy(ed25519_sk, seckey.seckey, ED25519_SEED_SIZE);
         found_seckey = true;
         log_debug("Extracted Ed25519 keypair from OpenPGP armored secret key block");
         break;

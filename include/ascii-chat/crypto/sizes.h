@@ -3,6 +3,9 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define GPG_SIGNATURE_PACKET_CAPACITY 512
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ED25519_SIGNATURE_PART_SIZE (ED25519_SIGNATURE_SIZE / 2)
+
 #include <ascii-chat/common/limits.h>
 
 /** Cryptographic storage and wire widths; usable without crypto context types or libsodium. */

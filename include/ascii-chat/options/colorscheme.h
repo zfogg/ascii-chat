@@ -35,10 +35,9 @@
 #define OPTIONS_COLORSCHEME_FOREGROUND_16_BUFFER_SIZE 16
 #define OPTIONS_COLORSCHEME_FOREGROUND_256_BUFFER_SIZE 24
 #define OPTIONS_COLORSCHEME_FOREGROUND_TRUECOLOR_BUFFER_SIZE 32
-#define OPTIONS_COLORSCHEME_FOREGROUND_BUFFER_SIZE 32
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define COLORSCHEME_LOG_LEVEL_COUNT 8
+#define COLORSCHEME_LOG_COLOR_COUNT 8
 #define COLORSCHEME_SGR_BUFFER_SIZE 32
 
 #include "../common.h"
@@ -95,9 +94,9 @@ typedef struct color_scheme_t {
  * rather than inline char arrays, matching the interface expected by callers.
  */
 typedef struct {
-  const char *codes_16[8];        /**< Array of 16-color ANSI code strings */
-  const char *codes_256[8];       /**< Array of 256-color ANSI code strings */
-  const char *codes_truecolor[8]; /**< Array of 24-bit truecolor ANSI code strings */
+  const char *codes_16[COLORSCHEME_LOG_COLOR_COUNT];        /**< Array of 16-color ANSI code strings */
+  const char *codes_256[COLORSCHEME_LOG_COLOR_COUNT];       /**< Array of 256-color ANSI code strings */
+  const char *codes_truecolor[COLORSCHEME_LOG_COLOR_COUNT]; /**< Array of 24-bit truecolor ANSI code strings */
   char
       foreground_16[OPTIONS_COLORSCHEME_FOREGROUND_16_BUFFER_SIZE]; /**< Scheme neutral text color, not an ANSI reset */
   char foreground_256[OPTIONS_COLORSCHEME_FOREGROUND_256_BUFFER_SIZE];
@@ -106,10 +105,10 @@ typedef struct {
 
 /** A caller-owned palette: no shared string lifetime or allocation. */
 typedef struct {
-  char codes[COLORSCHEME_LOG_LEVEL_COUNT][COLORSCHEME_SGR_BUFFER_SIZE];
-  char background_codes[COLORSCHEME_LOG_LEVEL_COUNT]
+  char codes[COLORSCHEME_LOG_COLOR_COUNT][COLORSCHEME_SGR_BUFFER_SIZE];
+  char background_codes[COLORSCHEME_LOG_COLOR_COUNT]
                        [COLORSCHEME_SGR_BUFFER_SIZE]; /**< Matching live logging colors as background SGR sequences. */
-  char foreground[OPTIONS_COLORSCHEME_FOREGROUND_BUFFER_SIZE];
+  char foreground[COLORSCHEME_SGR_BUFFER_SIZE];
   terminal_background_t background;
 } colorscheme_palette_t;
 

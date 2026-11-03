@@ -12,6 +12,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define ACIP_OPUS_INLINE_FRAME_CAPACITY 8
 
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
@@ -231,7 +232,8 @@ asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *
   // Convert single opus frame to batch format (frame_count=1) with standard parameters
   // Standard: 48kHz sample rate, 20ms frame duration
   uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, 48000, 20);
+  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, AUDIO_SAMPLE_RATE,
+                                    CLIENT_AUDIO_PIPELINE_FRAME_MS);
 }
 
 asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len,

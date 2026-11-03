@@ -937,7 +937,7 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
     return;
   }
   const color_scheme_t *active = colorscheme_get_active_scheme();
-  rgb_pixel_t colors[8];
+  rgb_pixel_t colors[COLORSCHEME_LOG_COLOR_COUNT];
   memcpy(colors,
          palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light
                                                                                    : active->log_colors_dark,
@@ -950,25 +950,25 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
     if (i < 8) {
       char *background = palette->background_codes[i];
       if (i == 7)
-        safe_snprintf(background, 32, "\033[49m");
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[49m");
       else if (mode >= TERM_COLOR_TRUECOLOR)
-        safe_snprintf(background, 32, "\033[48;2;%u;%u;%um", rgb.r, rgb.g, rgb.b);
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[48;2;%u;%u;%um", rgb.r, rgb.g, rgb.b);
       else if (mode >= TERM_COLOR_256)
-        safe_snprintf(background, 32, "\033[48;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[48;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
       else {
         unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
-        safe_snprintf(background, 32, "\033[%um", index < 8 ? 40 + index : 100 + index - 8);
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[%um", index < 8 ? 40 + index : 100 + index - 8);
       }
     }
     if (i == 7)
-      safe_snprintf(code, 32, "\033[0m");
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[0m");
     else if (mode >= TERM_COLOR_TRUECOLOR)
       rgb_to_truecolor_ansi(rgb.r, rgb.g, rgb.b, code, 32);
     else if (mode >= TERM_COLOR_256)
-      safe_snprintf(code, 32, "\033[38;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[38;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
     else {
       unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
-      safe_snprintf(code, 32, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
     }
   }
   cached = *palette;

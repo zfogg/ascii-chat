@@ -222,7 +222,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
     snprintf(settings[2], sizeof(settings[2]), "Status screen : %s", status_indicator(GET_OPTION(status_screen)));
     snprintf(settings[3], sizeof(settings[3]), "Log level : %d", GET_OPTION(log_level));
   }
-  const char *settings_text[20];
+  const char *settings_text[TUI_SESSION_HELP_SETTINGS_COUNT];
   for (int i = 0; i < settings_count; ++i)
     settings_text[i] = settings[i];
   char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];

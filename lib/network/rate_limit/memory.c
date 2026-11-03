@@ -8,6 +8,9 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE 256
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define RATE_LIMIT_INITIAL_EVENT_CAPACITY 100
+
 #include <ascii-chat/network/rate_limit/memory.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -159,7 +162,7 @@ static asciichat_error_t memory_record(void *backend_data, const char *ip_addres
     SAFE_STRNCPY(event->key, key, sizeof(event->key));
 
     // Allocate timestamp buffer (default: 100 events)
-    event->capacity = 100;
+    event->capacity = RATE_LIMIT_INITIAL_EVENT_CAPACITY;
     event->timestamps = SAFE_MALLOC(sizeof(uint64_t) * event->capacity, uint64_t *);
     if (!event->timestamps) {
       SAFE_FREE(event);

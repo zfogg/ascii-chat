@@ -150,8 +150,8 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
             ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
 
         // Convert to dotted quad notation
-        safe_snprintf(reflexive_addr, 64, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF,
-                      addr & 0xFF);
+        safe_snprintf(reflexive_addr, IP_ADDRESS_BUFFER_SIZE, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF,
+                      (addr >> 8) & 0xFF, addr & 0xFF);
         *reflexive_port = port;
         return ASCIICHAT_OK;
       }

@@ -1,10 +1,8 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define SESSION_CONSENSUS_HOST_ADDRESS_BUFFER_SIZE 64
-#define SESSION_CONSENSUS_BACKUP_ADDRESS_BUFFER_SIZE 64
-#define SESSION_CONSENSUS_OUT_HOST_ADDRESS_BUFFER_SIZE 64
-#define SESSION_CONSENSUS_OUT_BACKUP_ADDRESS_BUFFER_SIZE 64
 
+#include <ascii-chat/network/acip/acds_sizes.h>
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
@@ -138,7 +136,7 @@ asciichat_error_t session_consensus_create(const uint8_t my_id[SESSION_ID_SIZE],
   }
 
   // Copy identity
-  memcpy(consensus->my_id, my_id, 16);
+  memcpy(consensus->my_id, my_id, SESSION_ID_SIZE);
   consensus->is_leader = is_leader;
 
   // Copy callbacks
@@ -246,12 +244,12 @@ asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consens
   return consensus_coordinator_on_stats_update(consensus->coordinator, sender_id, metrics, num_metrics);
 }
 
-asciichat_error_t
-session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[SESSION_ID_SIZE],
-                                     const char host_address[SESSION_CONSENSUS_HOST_ADDRESS_BUFFER_SIZE],
-                                     uint16_t host_port, const uint8_t backup_id[SESSION_ID_SIZE],
-                                     const char backup_address[SESSION_CONSENSUS_BACKUP_ADDRESS_BUFFER_SIZE],
-                                     uint16_t backup_port) {
+asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus,
+                                                       const uint8_t host_id[SESSION_ID_SIZE],
+                                                       const char host_address[ACIP_ADDRESS_SIZE], uint16_t host_port,
+                                                       const uint8_t backup_id[SESSION_ID_SIZE],
+                                                       const char backup_address[ACIP_ADDRESS_SIZE],
+                                                       uint16_t backup_port) {
   if (!consensus || !host_id || !backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -271,12 +269,12 @@ session_consensus_on_election_result(session_consensus_t *consensus, const uint8
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t
-session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[SESSION_ID_SIZE],
-                                   char out_host_address[SESSION_CONSENSUS_OUT_HOST_ADDRESS_BUFFER_SIZE],
-                                   uint16_t *out_host_port, uint8_t out_backup_id[SESSION_ID_SIZE],
-                                   char out_backup_address[SESSION_CONSENSUS_OUT_BACKUP_ADDRESS_BUFFER_SIZE],
-                                   uint16_t *out_backup_port) {
+asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus,
+                                                     uint8_t out_host_id[SESSION_ID_SIZE],
+                                                     char out_host_address[ACIP_ADDRESS_SIZE], uint16_t *out_host_port,
+                                                     uint8_t out_backup_id[SESSION_ID_SIZE],
+                                                     char out_backup_address[ACIP_ADDRESS_SIZE],
+                                                     uint16_t *out_backup_port) {
   if (!consensus || !out_host_id || !out_host_address || !out_host_port || !out_backup_id || !out_backup_address ||
       !out_backup_port) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -291,9 +289,9 @@ session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_h
   // NOTE: The current API doesn't return addresses/ports. This is a limitation
   // of the coordinator that should be addressed in a future enhancement.
   // For now, return zeros and indicate this is a placeholder.
-  memset(out_host_address, 0, 64);
+  memset(out_host_address, 0, ACIP_ADDRESS_SIZE);
   *out_host_port = 0;
-  memset(out_backup_address, 0, 64);
+  memset(out_backup_address, 0, ACIP_ADDRESS_SIZE);
   *out_backup_port = 0;
 
   return ASCIICHAT_OK;

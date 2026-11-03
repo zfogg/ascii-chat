@@ -10,6 +10,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define GPG_EXPORT_PACKET_CAPACITY 8192
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/export.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
@@ -227,12 +228,12 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
     // Ed25519 keys in OpenPGP have a 0x40 prefix byte
     if (mpi_bytes == 33 && packet_data[offset] == 0x40) {
       // Found it! Extract the 32-byte public key (skip 0x40 prefix)
-      memcpy(public_key_out, &packet_data[offset + 1], 32);
+      memcpy(public_key_out, &packet_data[offset + 1], ED25519_PUBLIC_KEY_SIZE);
       log_debug("Extracted Ed25519 public key from gpg --export (fallback method)");
       return 0;
     } else if (mpi_bytes == 32) {
       // Key without prefix (less common but valid)
-      memcpy(public_key_out, &packet_data[offset], 32);
+      memcpy(public_key_out, &packet_data[offset], ED25519_PUBLIC_KEY_SIZE);
       log_debug("Extracted Ed25519 public key from gpg --export (fallback method)");
       return 0;
     }
@@ -462,7 +463,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   }
 
   // Copy the 32-byte public key (skip the 0x40 prefix)
-  memcpy(public_key_out, binary_start + 1, 32);
+  memcpy(public_key_out, binary_start + 1, ED25519_PUBLIC_KEY_SIZE);
 
   log_debug("Extracted Ed25519 public key from GPG agent via READKEY command");
   return 0;

@@ -6,6 +6,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE 64
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/coordinator.h>
 #include <ascii-chat/network/consensus/election.h>
@@ -62,7 +63,7 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SI
   }
 
   memset(coordinator, 0, sizeof(*coordinator));
-  memcpy(coordinator->my_id, my_id, 16);
+  memcpy(coordinator->my_id, my_id, SESSION_ID_SIZE);
   coordinator->topology = topology;
   coordinator->election_func = election_func;
   coordinator->election_context = election_context;

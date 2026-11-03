@@ -125,7 +125,7 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
 
     // Copy IV to working buffer
     uint8_t working_iv[AES_IV_SIZE];
-    memcpy(working_iv, derived_iv, 16);
+    memcpy(working_iv, derived_iv, sizeof(working_iv));
 
     // Decrypt in-place
     memcpy(decrypted, encrypted_blob, blob_len);
@@ -280,8 +280,8 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
           memset(key_out, 0, sizeof(*key_out));
           key_out->type = KEY_TYPE_ED25519;
           key_out->use_ssh_agent = true;
-          memcpy(key_out->key.ed25519 + 32, pub_key.key, 32); // Copy public key to second half
-          memcpy(key_out->public_key, pub_key.key, 32);       // Also store in public_key field
+          memcpy(key_out->key.ed25519 + 32, pub_key.key, CRYPTO_PUBLIC_KEY_SIZE); // Copy public key to second half
+          memcpy(key_out->public_key, pub_key.key, ED25519_PUBLIC_KEY_SIZE);      // Also store in public_key field
           // Note: We don't have the private key seed, but ssh-agent will sign for us
           return true;
         } else {
@@ -689,7 +689,7 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey data: %s", key_path);
   }
   uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
-  memcpy(ed25519_pk, state->decrypted_blob + state->dec_offset, 32);
+  memcpy(ed25519_pk, state->decrypted_blob + state->dec_offset, ED25519_PUBLIC_KEY_SIZE);
   state->dec_offset += 32;
 
   // Read private key length
@@ -710,14 +710,14 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey data: %s", key_path);
   }
   uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE];
-  memcpy(ed25519_sk, state->decrypted_blob + state->dec_offset, 64);
+  memcpy(ed25519_sk, state->decrypted_blob + state->dec_offset, ED25519_PRIVATE_KEY_SIZE);
   state->dec_offset += 64;
 
   // Populate key_out (ed25519_sk contains: 32-byte seed + 32-byte public key)
   memset(key_out, 0, sizeof(*key_out));
   key_out->type = KEY_TYPE_ED25519;
-  memcpy(key_out->key.ed25519, ed25519_sk, 32);           // Seed (first 32 bytes)
-  memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, 32); // Public key (next 32 bytes)
+  memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);           // Seed (first 32 bytes)
+  memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, ED25519_SEED_SIZE); // Public key (next 32 bytes)
   memcpy(key_out->public_key, ed25519_pk, sizeof(ed25519_pk));
   SAFE_STRNCPY(key_out->key_comment, "ssh-ed25519", sizeof(key_out->key_comment) - 1);
   sodium_memzero(ed25519_sk, sizeof(ed25519_sk));
@@ -847,7 +847,7 @@ static asciichat_error_t ssh_private_key_read_public(ssh_private_key_parse_t *st
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at public key: %s", key_path);
   }
 
-  memcpy(state->ed25519_pubkey, state->key_blob + state->offset, 32);
+  memcpy(state->ed25519_pubkey, state->key_blob + state->offset, ED25519_PUBLIC_KEY_SIZE);
   state->offset += pubkey_data_len; // Skip the entire public key data
 
   // Skip the rest of the public key data to get to the private key
@@ -955,7 +955,7 @@ static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *s
 
   // Extract the Ed25519 private key (first 32 bytes)
   uint8_t ed25519_privkey[ED25519_SEED_SIZE];
-  memcpy(ed25519_privkey, state->key_blob + state->offset, 32);
+  memcpy(ed25519_privkey, state->key_blob + state->offset, sizeof(ed25519_privkey));
 
   // Verify the public key matches
   // The public key in the privkey section is raw Ed25519, while the one in pubkey section is SSH format
@@ -972,11 +972,12 @@ static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *s
 
   // Store the actual private key (seed + public key = 64 bytes)
   // Ed25519 private key format: [32 bytes seed][32 bytes public key]
-  memcpy(key_out->key.ed25519, ed25519_privkey, 32);            // Store the seed (first 32 bytes)
-  memcpy(key_out->key.ed25519 + 32, state->ed25519_pubkey, 32); // Store the public key (next 32 bytes)
+  memcpy(key_out->key.ed25519, ed25519_privkey, CRYPTO_PUBLIC_KEY_SIZE); // Store the seed (first 32 bytes)
+  memcpy(key_out->key.ed25519 + 32, state->ed25519_pubkey,
+         ED25519_PUBLIC_KEY_SIZE); // Store the public key (next 32 bytes)
 
   // Also store the public key in the public_key field for easy access
-  memcpy(key_out->public_key, state->ed25519_pubkey, 32);
+  memcpy(key_out->public_key, state->ed25519_pubkey, ED25519_PUBLIC_KEY_SIZE);
 
   // Set a comment
   SAFE_STRNCPY(key_out->key_comment, "ssh-ed25519", sizeof(key_out->key_comment) - 1);
@@ -1216,7 +1217,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     // Create a public_key_t from the stored public key
     public_key_t pub_key = {0};
     pub_key.type = KEY_TYPE_ED25519;
-    memcpy(pub_key.key, key->public_key, 32);
+    memcpy(pub_key.key, key->public_key, ED25519_PUBLIC_KEY_SIZE);
 
     // Sign using SSH agent
     asciichat_error_t result = ssh_agent_sign(&pub_key, message, message_len, signature);

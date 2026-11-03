@@ -684,7 +684,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
       // Could not find binary - use raw address as fallback
       result[i] = SAFE_MALLOC(SYMBOL_ADDRESS_BUFFER_SIZE, char *);
       if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+        SAFE_SNPRINTF(result[i], SYMBOL_ADDRESS_BUFFER_SIZE, "%p", buffer[i]);
       }
       continue;
     }
@@ -727,7 +727,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
         if (!result[orig_idx]) {
           result[orig_idx] = SAFE_MALLOC(SYMBOL_ADDRESS_BUFFER_SIZE, char *);
           if (result[orig_idx]) {
-            SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+            SAFE_SNPRINTF(result[orig_idx], SYMBOL_ADDRESS_BUFFER_SIZE, "%p", buffer[orig_idx]);
           }
         }
       }
@@ -761,7 +761,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
         if (!result[orig_idx]) {
           result[orig_idx] = SAFE_MALLOC(SYMBOL_ADDRESS_BUFFER_SIZE, char *);
           if (result[orig_idx]) {
-            SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+            SAFE_SNPRINTF(result[orig_idx], SYMBOL_ADDRESS_BUFFER_SIZE, "%p", buffer[orig_idx]);
           }
         }
       }
@@ -784,7 +784,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
         // Prepend binary name in brackets
         char *with_binary = SAFE_MALLOC(SYMBOL_DESCRIPTION_BUFFER_SIZE, char *);
         if (with_binary) {
-          SAFE_SNPRINTF(with_binary, 1024, "[%s] %s", binary_name, parsed);
+          SAFE_SNPRINTF(with_binary, SYMBOL_DESCRIPTION_BUFFER_SIZE, "[%s] %s", binary_name, parsed);
           SAFE_FREE(parsed);
           result[orig_idx] = with_binary;
         } else {
@@ -794,7 +794,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
         // Fallback: show raw address with binary name
         result[orig_idx] = SAFE_MALLOC(SYMBOL_FALLBACK_BUFFER_SIZE, char *);
         if (result[orig_idx]) {
-          SAFE_SNPRINTF(result[orig_idx], 256, "[%s] %p", binary_name, buffer[orig_idx]);
+          SAFE_SNPRINTF(result[orig_idx], SYMBOL_FALLBACK_BUFFER_SIZE, "[%s] %p", binary_name, buffer[orig_idx]);
         }
       }
     }
@@ -890,7 +890,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     for (int i = 0; i < size; i++) {
       result[i] = SAFE_MALLOC(SYMBOL_ADDRESS_BUFFER_SIZE, char *);
       if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+        SAFE_SNPRINTF(result[i], SYMBOL_ADDRESS_BUFFER_SIZE, "%p", buffer[i]);
       }
     }
     result[size] = NULL;
@@ -933,20 +933,23 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
     if (!has_func && !has_file) {
       // Complete unknown - show raw address
-      SAFE_SNPRINTF(result[i], 1024, "%p", buffer[i]);
+      SAFE_SNPRINTF(result[i], SYMBOL_DESCRIPTION_BUFFER_SIZE, "%p", buffer[i]);
     } else if (has_func && has_file) {
       // Best case - both function and file:line known
       if (strstr(rel_path, ":") != NULL) {
-        SAFE_SNPRINTF(result[i], 1024, "%s in %s()%s", rel_path, func_name, external ? " (external code)" : "");
+        SAFE_SNPRINTF(result[i], SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s in %s()%s", rel_path, func_name,
+                      external ? " (external code)" : "");
       } else {
-        SAFE_SNPRINTF(result[i], 1024, "%s() at %s%s", func_name, rel_path, external ? " (external code)" : "");
+        SAFE_SNPRINTF(result[i], SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s() at %s%s", func_name, rel_path,
+                      external ? " (external code)" : "");
       }
     } else if (has_func) {
       // Function known but file unknown (common for library functions)
-      SAFE_SNPRINTF(result[i], 1024, "%s() at %p", func_name, buffer[i]);
+      SAFE_SNPRINTF(result[i], SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s() at %p", func_name, buffer[i]);
     } else {
       // File known but function unknown (rare)
-      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)%s", rel_path, external ? " (external code)" : "");
+      SAFE_SNPRINTF(result[i], SYMBOL_DESCRIPTION_BUFFER_SIZE, "%s (unknown function)%s", rel_path,
+                    external ? " (external code)" : "");
     }
   }
 
@@ -1004,7 +1007,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
     for (int i = 0; i < size; i++) {
       result[i] = SAFE_MALLOC(SYMBOL_ADDRESS_BUFFER_SIZE, char *);
       if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+        SAFE_SNPRINTF(result[i], SYMBOL_ADDRESS_BUFFER_SIZE, "%p", buffer[i]);
       }
     }
     return result;
@@ -1079,7 +1082,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
         if (!result[orig_idx]) {
           result[orig_idx] = SAFE_MALLOC(SYMBOL_ADDRESS_BUFFER_SIZE, char *);
           if (result[orig_idx]) {
-            SAFE_SNPRINTF(result[orig_idx], 32, "%p", uncached_addrs[i]);
+            SAFE_SNPRINTF(result[orig_idx], SYMBOL_ADDRESS_BUFFER_SIZE, "%p", uncached_addrs[i]);
           } else {
             result[orig_idx] = platform_strdup(NULL_SENTINEL);
           }

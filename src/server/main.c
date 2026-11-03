@@ -1391,13 +1391,13 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
                                              nat_upnp_context_t *upnp_ctx, bool upnp_succeeded) {
   // Use server's Ed25519 identity public key if available
   if (g_server_encryption_enabled && policy->has_identity) {
-    memcpy(params->identity_pubkey, g_server_private_key.public_key, 32);
+    memcpy(params->identity_pubkey, g_server_private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
     memcpy(params->identity_seckey, g_server_private_key.key.ed25519, sizeof(params->identity_seckey));
     log_debug("Using server identity key for ACDS session");
   } else {
     // No identity key available - use zero key
     // ACDS will accept this if identity verification is not required
-    memset(params->identity_pubkey, 0, 32);
+    memset(params->identity_pubkey, 0, ED25519_PUBLIC_KEY_SIZE);
     log_debug("No server identity key - using zero key for ACDS session");
   }
 
@@ -1474,7 +1474,7 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
   join_params.session_string = session_string;
 
   // Use same identity key as session creation
-  memcpy(join_params.identity_pubkey, params->identity_pubkey, 32);
+  memcpy(join_params.identity_pubkey, params->identity_pubkey, ED25519_PUBLIC_KEY_SIZE);
   memcpy(join_params.identity_seckey, params->identity_seckey, sizeof(join_params.identity_seckey));
 
   // Include password if session is password-protected

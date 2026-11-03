@@ -1,3 +1,7 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MCP_RENDER_ENV_CAPACITY 16
+
 #include "mcp.h"
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
@@ -121,7 +125,7 @@ void mcp_render_execute(mcp_render_request_t *r, atomic_t *cancelled, mcp_render
   // Only runtime essentials are inherited; user config, ASCII_CHAT_* and credentials are excluded.
   const char *keys[] = {
       "PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "TESTING", NULL};
-  char *env[16] = {0};
+  char *env[MCP_RENDER_ENV_CAPACITY] = {0};
   size_t ne = 0;
   for (size_t i = 0; keys[i]; ++i) {
     const char *v = platform_getenv(keys[i]);

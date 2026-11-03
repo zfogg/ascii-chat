@@ -10,6 +10,9 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define CONFIG_WRITTEN_FLAG_CAPACITY 64
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CONFIG_CATEGORY_CAPACITY 16
+
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/config.h>
@@ -1349,10 +1352,10 @@ asciichat_error_t config_create_default(const char *config_path) {
   }
 
   // Build list of unique categories in order of first appearance
-  const char *categories[16] = {0}; // Max expected categories
+  const char *categories[CONFIG_CATEGORY_CAPACITY] = {0}; // Max expected categories
   size_t category_count = 0;
 
-  for (size_t i = 0; i < metadata_count && category_count < 16; i++) {
+  for (size_t i = 0; i < metadata_count && category_count < CONFIG_CATEGORY_CAPACITY; i++) {
     const char *category = metadata[i].category;
     if (!category) {
       continue;

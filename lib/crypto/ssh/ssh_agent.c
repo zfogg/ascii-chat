@@ -190,14 +190,14 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   len = 32;
   write_u32_be(buf + pos, len);
   pos += 4;
-  memcpy(buf + pos, private_key->key.ed25519 + 32, 32); // Public key is second half
+  memcpy(buf + pos, private_key->key.ed25519 + ED25519_SEED_SIZE, ED25519_PUBLIC_KEY_SIZE); // Public key is second half
   pos += 32;
 
   // Private key (64 bytes - full ed25519 key: 32-byte seed + 32-byte public)
   len = 64;
   write_u32_be(buf + pos, len);
   pos += 4;
-  memcpy(buf + pos, private_key->key.ed25519, 64);
+  memcpy(buf + pos, private_key->key.ed25519, ED25519_PRIVATE_KEY_SIZE);
   pos += 64;
 
   // Comment (key path)
@@ -321,7 +321,7 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
   // Write key_blob: string(public_key)
   write_u32_be(buf + offset, 32);
   offset += 4;
-  memcpy(buf + offset, public_key->key, 32);
+  memcpy(buf + offset, public_key->key, ED25519_PUBLIC_KEY_SIZE);
   offset += 32;
 
   // Write data to sign
@@ -408,7 +408,7 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
   }
 
   // Copy signature to output
-  memcpy(signature, response + offset_sig, 64);
+  memcpy(signature, response + offset_sig, ED25519_SIGNATURE_SIZE);
 
   log_debug("SSH agent successfully signed %zu bytes with Ed25519 key", message_len);
   return ASCIICHAT_OK;

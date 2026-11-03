@@ -688,10 +688,10 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
   char expected_identity[KEY_IDENTITY_BUFFER_SIZE] = "No stored public identity available.\n";
   char received_identity[KEY_IDENTITY_BUFFER_SIZE] = "";
   if (expected_key) {
-    memcpy(public_key.key, expected_key, 32);
+    memcpy(public_key.key, expected_key, ED25519_PUBLIC_KEY_SIZE);
     (void)key_identity_format_terminal(&public_key, expected_identity, sizeof(expected_identity));
   }
-  memcpy(public_key.key, received_key, 32);
+  memcpy(public_key.key, received_key, ED25519_PUBLIC_KEY_SIZE);
   (void)key_identity_format_terminal(&public_key, received_identity, sizeof(received_identity));
 
   const char *known_hosts_path = get_known_hosts_path();

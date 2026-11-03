@@ -2,6 +2,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define DISCOVERY_SERVICE_SERVER_SESSION_STRING_BUFFER_SIZE 49
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/policy.h>
@@ -413,7 +414,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     memset(&participant_joined, 0, sizeof(participant_joined));
     memcpy(participant_joined.session_id, resp.session_id, SESSION_ID_SIZE);
     memcpy(participant_joined.new_participant_id, resp.participant_id, SESSION_ID_SIZE);
-    memcpy(participant_joined.new_participant_pubkey, req->identity_pubkey, 32);
+    memcpy(participant_joined.new_participant_pubkey, req->identity_pubkey, ED25519_PUBLIC_KEY_SIZE);
     // peer_count is the number of OTHER participants; total = peer_count + 1 (the new one)
     participant_joined.current_participant_count = resp.peer_count + 1;
 
@@ -689,7 +690,7 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
 static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8_t session[SESSION_ID_SIZE],
                                               bool create) {
   for (acds_handoff_entry_t *entry = server->handoffs; entry; entry = entry->next)
-    if (!memcmp(entry->state.session, session, 16))
+    if (!memcmp(entry->state.session, session, SESSION_ID_SIZE))
       return &entry->state;
   if (!create)
     return NULL;
@@ -772,7 +773,7 @@ static asciichat_error_t acds_on_handoff(const void *data, size_t length, acip_t
   }
   if ((message.kind == HANDOFF_READY || message.kind == HANDOFF_REJECT) &&
       (message.generation != state->generation || message.sequence != state->round ||
-       memcmp(message.participant, state->successor, 16))) {
+       memcmp(message.participant, state->successor, SESSION_ID_SIZE))) {
     mutex_unlock(&server->handoff_mutex);
     return ASCIICHAT_OK; // Membership changes can overtake a preparation acknowledgment.
   }

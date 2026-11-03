@@ -3,6 +3,7 @@
  * @brief Ring consensus state machine implementation
  */
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/state.h>
 #include <ascii-chat/network/consensus/election.h>
@@ -48,7 +49,7 @@ asciichat_error_t consensus_state_create(const uint8_t my_id[SESSION_ID_SIZE], c
 
   state->current_state = CONSENSUS_STATE_IDLE;
   state->topology = (consensus_topology_t *)topology; /* Cast away const for storage */
-  memcpy(state->my_id, my_id, 16);
+  memcpy(state->my_id, my_id, SESSION_ID_SIZE);
 
   /* Initialize metrics array with initial capacity of 10 */
   state->metrics_capacity = 10;

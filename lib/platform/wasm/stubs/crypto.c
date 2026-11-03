@@ -75,7 +75,7 @@ asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port
   if (has_stored_key)
     *has_stored_key = false;
   if (stored_key)
-    memset(stored_key, 0, 32);
+    memset(stored_key, 0, sizeof(stored_key));
   return check_known_host(server_ip, port, server_key);
 }
 

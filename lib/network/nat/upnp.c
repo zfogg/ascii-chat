@@ -1,7 +1,7 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_NAT_UPNP_CLIENT_BUFFER_SIZE 40
-#define NETWORK_NAT_UPNP_DESCRIPTION_BUFFER_SIZE 80
+#define UPNP_MAPPING_DESCRIPTION_BUFFER_SIZE 80
 #define NETWORK_NAT_UPNP_LEASE_BUFFER_SIZE 16
 #define NETWORK_NAT_UPNP_LAN_ADDRESS_BUFFER_SIZE 16
 #define NETWORK_NAT_UPNP_EXTERNAL_ADDRESS_BUFFER_SIZE 16
@@ -56,7 +56,7 @@ static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
   }
   // Some gateways silently shorten the requested lease. Read it back on every renewal.
   char client[NETWORK_NAT_UPNP_CLIENT_BUFFER_SIZE] = {0}, port[6] = {0},
-       description[NETWORK_NAT_UPNP_DESCRIPTION_BUFFER_SIZE] = {0}, enabled[4] = {0},
+       description[UPNP_MAPPING_DESCRIPTION_BUFFER_SIZE] = {0}, enabled[4] = {0},
        lease[NETWORK_NAT_UPNP_LEASE_BUFFER_SIZE] = {0};
   result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, mapping_protocol(ctx),
                                             NULL, client, port, description, enabled, lease);

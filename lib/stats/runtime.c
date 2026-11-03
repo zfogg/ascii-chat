@@ -4,6 +4,9 @@
 #define STATS_RUNTIME_STATE_BUFFER_SIZE 64
 #define STATS_RUNTIME_OUTPUT_BUFFER_SIZE 8192
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define STATS_PEER_CAPACITY 64
+
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/ui/viewport.h>
 #include <ascii-chat/tui/stats.h>
@@ -39,7 +42,7 @@ struct stats_peer {
 static stats_scope_t *g_scope;
 static stats_sampler_t *g_sampler;
 static mutex_t g_peers_mutex, g_provider_mutex;
-static stats_peer_t *g_peers[64];
+static stats_peer_t *g_peers[STATS_PEER_CAPACITY];
 static uint64_t g_peer_id, g_peer_count;
 static stats_provider_fn g_provider;
 static void *g_provider_data;
@@ -152,7 +155,7 @@ stats_peer_t *stats_runtime_peer_open(const char *transport) {
   peer->id = ++g_peer_id;
   ++g_peer_count;
   stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
-  for (unsigned i = 0; i < 64; ++i) {
+  for (unsigned i = 0; i < STATS_PEER_CAPACITY; ++i) {
     if (!g_peers[i]) {
       g_peers[i] = peer;
       break;
@@ -166,7 +169,7 @@ void stats_runtime_peer_close(stats_peer_t *peer) {
   if (!peer)
     return;
   mutex_lock(&g_peers_mutex);
-  for (unsigned i = 0; i < 64; ++i)
+  for (unsigned i = 0; i < STATS_PEER_CAPACITY; ++i)
     if (g_peers[i] == peer)
       g_peers[i] = NULL;
   --g_peer_count;
@@ -265,7 +268,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   if (view->page && strcmp(g_mode, "mcp-server") != 0)
     stats_view_add_header(view, "%-5s %-12s %12s %12s %10s %10s", "ID", "TRANSPORT", "TX bytes/s", "RX bytes/s",
                           "TX fps", "RX fps");
-  for (unsigned i = 0; i < 64; ++i) {
+  for (unsigned i = 0; i < STATS_PEER_CAPACITY; ++i) {
     stats_peer_t *peer = g_peers[i];
     if (!peer)
       continue;

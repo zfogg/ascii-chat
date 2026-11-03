@@ -863,3 +863,35 @@ return value and preserve the original input separately for display. `url_parse(
 returns an ASCII host and preserves the path/query/fragment bytes. IP literals
 bypass IDNA. Use the canonical host for DNS, TLS SNI/certificate checks and saved
 connection identity; do not Punycode URL paths or session names.
+
+### Buffer capacities
+
+Keep each capacity at its narrowest useful scope:
+
+- `common/limits.h` owns shared application limits. `common/buffer_sizes.h`
+  provides generic scratch budgets and encoding widths.
+- Module headers own contracts shared by their declarations and callers, such
+  as `audio/limits.h`, `crypto/sizes.h`, and `network/acip/acds_sizes.h`.
+- Implementation-only budgets belong in file-local defines or enums. Use a
+  module/file prefix and describe the representation or storage role.
+
+Move established constant names to the owning header and update callers
+instead of adding aliases just for the move. Reuse semantic contracts;
+matching numeric values alone do not establish shared ownership.
+
+Document bytes versus elements/samples and whether text includes NUL. Derive
+combined storage from its component widths. Use `sizeof(array)` or
+`ARRAY_SIZE(array)` for operations on owned arrays, and the owning capacity
+for pointer-backed allocations, checks, copies, formatting, and loop bounds.
+C fixed array bounds require macros or enum constants rather than local
+`const size_t` variables that would create VLAs.
+
+Packed wire storage is a protocol contract. Preserve its width independently
+of larger application/OS storage, and distinguish it from validation limits.
+
+Literal dimensions remain appropriate for initialized tuples and test vectors,
+FourCC tags, single scalar/plane outputs, reserved wire padding, byte-domain
+lookup tables, and SIMD lanes when the surrounding code makes their purpose
+clear. Boundary-test sizes and expected wire widths should remain independent
+of implementation constants. Generated and vendored sources retain their own
+conventions. Arbitrary scratch, queue, parser, and formatting budgets need names.

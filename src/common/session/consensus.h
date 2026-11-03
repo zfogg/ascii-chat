@@ -1,10 +1,7 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define SESSION_CONSENSUS_HOST_ADDRESS_BUFFER_SIZE 64
-#define SESSION_CONSENSUS_BACKUP_ADDRESS_BUFFER_SIZE 64
-#define SESSION_CONSENSUS_OUT_HOST_ADDRESS_BUFFER_SIZE 64
-#define SESSION_CONSENSUS_OUT_BACKUP_ADDRESS_BUFFER_SIZE 64
 
+#include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
@@ -80,11 +77,12 @@ typedef asciichat_error_t (*session_consensus_send_packet_fn)(void *context,
  * @param backup_port Backup port
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-typedef asciichat_error_t (*session_consensus_on_election_fn)(
-    void *context, const uint8_t host_id[SESSION_ID_SIZE],
-    const char host_address[SESSION_CONSENSUS_HOST_ADDRESS_BUFFER_SIZE], uint16_t host_port,
-    const uint8_t backup_id[SESSION_ID_SIZE], const char backup_address[SESSION_CONSENSUS_BACKUP_ADDRESS_BUFFER_SIZE],
-    uint16_t backup_port);
+typedef asciichat_error_t (*session_consensus_on_election_fn)(void *context, const uint8_t host_id[SESSION_ID_SIZE],
+                                                              const char host_address[ACIP_ADDRESS_SIZE],
+                                                              uint16_t host_port,
+                                                              const uint8_t backup_id[SESSION_ID_SIZE],
+                                                              const char backup_address[ACIP_ADDRESS_SIZE],
+                                                              uint16_t backup_port);
 
 /**
  * @brief Callback: Measure current participant's network metrics
@@ -243,12 +241,12 @@ asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consens
  * @param backup_port Port of backup host
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t
-session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[SESSION_ID_SIZE],
-                                     const char host_address[SESSION_CONSENSUS_HOST_ADDRESS_BUFFER_SIZE],
-                                     uint16_t host_port, const uint8_t backup_id[SESSION_ID_SIZE],
-                                     const char backup_address[SESSION_CONSENSUS_BACKUP_ADDRESS_BUFFER_SIZE],
-                                     uint16_t backup_port);
+asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus,
+                                                       const uint8_t host_id[SESSION_ID_SIZE],
+                                                       const char host_address[ACIP_ADDRESS_SIZE], uint16_t host_port,
+                                                       const uint8_t backup_id[SESSION_ID_SIZE],
+                                                       const char backup_address[ACIP_ADDRESS_SIZE],
+                                                       uint16_t backup_port);
 
 /**
  * @brief Get the currently elected host
@@ -265,12 +263,12 @@ session_consensus_on_election_result(session_consensus_t *consensus, const uint8
  * @param out_backup_port Output: Backup port
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t
-session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[SESSION_ID_SIZE],
-                                   char out_host_address[SESSION_CONSENSUS_OUT_HOST_ADDRESS_BUFFER_SIZE],
-                                   uint16_t *out_host_port, uint8_t out_backup_id[SESSION_ID_SIZE],
-                                   char out_backup_address[SESSION_CONSENSUS_OUT_BACKUP_ADDRESS_BUFFER_SIZE],
-                                   uint16_t *out_backup_port);
+asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus,
+                                                     uint8_t out_host_id[SESSION_ID_SIZE],
+                                                     char out_host_address[ACIP_ADDRESS_SIZE], uint16_t *out_host_port,
+                                                     uint8_t out_backup_id[SESSION_ID_SIZE],
+                                                     char out_backup_address[ACIP_ADDRESS_SIZE],
+                                                     uint16_t *out_backup_port);
 
 /**
  * @brief Check if consensus has completed at least one round

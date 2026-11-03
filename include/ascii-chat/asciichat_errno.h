@@ -9,6 +9,9 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define ASCIICHAT_ERROR_COUNTER_CAPACITY 256
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ASCIICHAT_BACKTRACE_FRAME_CAPACITY 32
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -16,7 +19,7 @@
 #include "log/log.h"
 
 typedef struct {
-  void *ptrs[32];
+  void *ptrs[ASCIICHAT_BACKTRACE_FRAME_CAPACITY];
   char **symbols;
   int count;
   bool tried_symbolize;

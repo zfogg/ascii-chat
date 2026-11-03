@@ -5,6 +5,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define BROWSER_PACKET_JSON_BUFFER_SIZE 1024
 
+#include "buffer_sizes.h"
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
@@ -405,8 +406,8 @@ int client_init_with_args(const char *args_json) {
     return 0;
   // Parse space-separated arguments
   char *args_copy = NULL;
-  char *argv[64] = {NULL};
-  int argc = wasm_parse_args(args_json, argv, 64, &args_copy);
+  char *argv[WASM_ARGV_CAPACITY] = {NULL};
+  int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
   if (argc < 0) {
     return -1;
   }

@@ -3,6 +3,9 @@
 #define UI_TABLE_CLIPPED_BUFFER_SIZE 8192
 #define UI_TABLE_LINE_BUFFER_SIZE 8192
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define UI_TABLE_CELL_CAPACITY 32
+
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/ui/table.h>
 #include <ascii-chat/util/string.h>
@@ -85,7 +88,7 @@ void ui_table_render(frame_buffer_t *out, ui_table_t *t, int row, int col, int w
     return;
   ui_viewport_range_t range = ui_viewport_update(&t->viewport, t->row_count, (size_t)height);
   for (int i = 0; i < height; ++i) {
-    const char *cells[32] = {0};
+    const char *cells[UI_TABLE_CELL_CAPACITY] = {0};
     if ((size_t)i < range.count) {
       t->cells(range.first + (size_t)i, cells, t->column_count, t->data);
       ui_table_row(line, sizeof(line), t->columns, cells, t->column_count, width - 1, t->selectable,

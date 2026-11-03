@@ -105,7 +105,7 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
     return false;
   }
   char text[UI_HELP_MENU_TEXT_COUNT][HELP_MENU_TEXT_LINE_BUFFER_SIZE];
-  const char *lines[64];
+  const char *lines[UI_HELP_MENU_TEXT_COUNT];
   size_t rows = m->count > m->settings_count ? m->count : m->settings_count;
   int keys, left, right;
   measure(m, &keys, &left, &right);

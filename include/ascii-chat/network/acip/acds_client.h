@@ -1,7 +1,6 @@
 
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define NETWORK_ACIP_ACDS_CLIENT_SERVER_ADDRESS_BUFFER_SIZE 64
 
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/network/acip/acds_sizes.h>
@@ -180,12 +179,12 @@ typedef struct {
   uint8_t max_participants;                          ///< Maximum participants (1-128)
   bool has_password;                                 ///< Password protection enabled
   char password[ACIP_PASSWORD_SIZE];                 ///< Optional password (if has_password)
-  bool acds_expose_ip;         ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
-  uint8_t session_type;        ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
-  const char *reserved_string; ///< Optional reserved string (NULL = auto-generate)
-  char server_address[NETWORK_ACIP_ACDS_CLIENT_SERVER_ADDRESS_BUFFER_SIZE]; ///< Server address where clients should
-                                                                            ///< connect
-  uint16_t server_port; ///< Server port where clients should connect
+  bool acds_expose_ip;                    ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
+  uint8_t session_type;                   ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
+  const char *reserved_string;            ///< Optional reserved string (NULL = auto-generate)
+  char server_address[ACIP_ADDRESS_SIZE]; ///< Server address where clients should
+                                          ///< connect
+  uint16_t server_port;                   ///< Server port where clients should connect
 } acds_session_create_params_t;
 
 /**

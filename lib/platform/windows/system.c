@@ -3,6 +3,9 @@
 #define PLATFORM_WINDOWS_SYSTEM_FRAME_BUFFER_SIZE 16
 #define PLATFORM_WINDOWS_SYSTEM_FULL_PATH_BUFFER_SIZE 512
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SYSTEM_BACKTRACE_FRAME_CAPACITY 32
+
 #include <ascii-chat/util/url.h>
 /**
  * @file platform/windows/system.c
@@ -513,8 +516,8 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
  * Captures and prints a backtrace using platform_print_backtrace_symbols().
  */
 void platform_print_backtrace(int skip_frames) {
-  void *buffer[32];
-  int size = platform_backtrace(buffer, 32);
+  void *buffer[SYSTEM_BACKTRACE_FRAME_CAPACITY];
+  int size = platform_backtrace(buffer, SYSTEM_BACKTRACE_FRAME_CAPACITY);
 
   if (size > 0) {
     char **symbols = platform_backtrace_symbols(buffer, size);

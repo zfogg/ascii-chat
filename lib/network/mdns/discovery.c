@@ -434,7 +434,7 @@ static void *acds_thread_fn(void *arg) {
 
   // Verify pubkey if provided
   if (ctx->config->expected_pubkey) {
-    if (memcmp(lookup_result.host_pubkey, ctx->config->expected_pubkey, 32) != 0) {
+    if (memcmp(lookup_result.host_pubkey, ctx->config->expected_pubkey, ED25519_PUBLIC_KEY_SIZE) != 0) {
       NOTICE(DANGER, "DISCOVERED HOST KEY MISMATCH",
              "The discovered session host key does not match the expected key.\n"
              "Possible man-in-the-middle attack. This discovery result was rejected.");
@@ -454,10 +454,10 @@ static void *acds_thread_fn(void *arg) {
   join_params.session_string = ctx->session_string;
 
   if (ctx->config->client_pubkey) {
-    memcpy(join_params.identity_pubkey, ctx->config->client_pubkey, 32);
+    memcpy(join_params.identity_pubkey, ctx->config->client_pubkey, ED25519_PUBLIC_KEY_SIZE);
   }
   if (ctx->config->client_seckey) {
-    memcpy(join_params.identity_seckey, ctx->config->client_seckey, 64);
+    memcpy(join_params.identity_seckey, ctx->config->client_seckey, ED25519_PRIVATE_KEY_SIZE);
   }
   if (ctx->config->password) {
     join_params.has_password = true;
@@ -488,7 +488,7 @@ static void *acds_thread_fn(void *arg) {
       ctx->state->result->success = true;
       ctx->state->result->source = DISCOVERY_SOURCE_ACDS;
 
-      memcpy(ctx->state->result->host_pubkey, lookup_result.host_pubkey, 32);
+      memcpy(ctx->state->result->host_pubkey, lookup_result.host_pubkey, ED25519_PUBLIC_KEY_SIZE);
       memcpy(ctx->state->result->session_id, join_result.session_id, SESSION_ID_SIZE);
       memcpy(ctx->state->result->participant_id, join_result.participant_id, SESSION_ID_SIZE);
 

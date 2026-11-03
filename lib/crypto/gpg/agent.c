@@ -313,8 +313,9 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     log_error("Invalid Ed25519 signature S-expression from GPG agent");
     return -1;
   }
-  memcpy(signature_out, decoded + prefix_len, 32);
-  memcpy(signature_out + 32, decoded + prefix_len + 32 + separator_len, 32);
+  memcpy(signature_out, decoded + prefix_len, ED25519_SIGNATURE_PART_SIZE);
+  memcpy(signature_out + ED25519_SIGNATURE_PART_SIZE, decoded + prefix_len + 32 + separator_len,
+         ED25519_SIGNATURE_PART_SIZE);
   *signature_len_out = 64;
 
   // DEBUG: Print signature in hex

@@ -103,8 +103,7 @@ void audio_terminate_portaudio_final(void) {
 }
 
 // AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
-#define WORKER_BATCH_FRAMES OPUS_FRAME_SAMPLES
-#define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
+#define WORKER_BATCH_SAMPLES (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)
 // Device callbacks signal after capture/consumption. The fallback follows the
 // 20 ms worker cadence for software sources and missed notifications.
 #define WORKER_TIMEOUT_MS 20
@@ -174,7 +173,7 @@ static void *audio_worker_thread(void *arg) {
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     errno_notifications_suppress(notifications);
   }
-  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
+  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", OPUS_FRAME_SAMPLES,
             WORKER_BATCH_SAMPLES);
 
   // Check for AEC3 bypass (static, checked once)

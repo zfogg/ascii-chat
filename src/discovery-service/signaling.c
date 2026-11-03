@@ -1,6 +1,7 @@
 /* Discovery signaling through pinned connection-registry visits.
  * Sends run outside the registry mutex while participant state remains alive. */
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include "discovery-service/signaling.h"
 #include "discovery-service/server.h"
@@ -27,7 +28,7 @@ static bool is_broadcast_uuid(const uint8_t uuid[SESSION_ID_SIZE]) {
  * @brief Helper: Compare two UUIDs for equality
  */
 static bool uuid_equals(const uint8_t a[SESSION_ID_SIZE], const uint8_t b[SESSION_ID_SIZE]) {
-  return memcmp(a, b, 16) == 0;
+  return memcmp(a, b, SESSION_ID_SIZE) == 0;
 }
 
 /**

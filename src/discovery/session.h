@@ -3,7 +3,6 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define DISCOVERY_SESSION_ACDS_ADDRESS_BUFFER_SIZE 64
 #define DISCOVERY_SESSION_ACDS_URL_BUFFER_SIZE 512
-#define DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE 64
 
 #include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
@@ -127,7 +126,7 @@ typedef struct {
 
   // Host info (when not us)
   uint8_t host_id[SESSION_ID_SIZE];
-  char host_address[DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE];
+  char host_address[ACIP_ADDRESS_SIZE];
   uint16_t host_port;
   uint8_t session_type; ///< 0 = DIRECT_TCP, 1 = WEBRTC
 

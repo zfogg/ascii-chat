@@ -3,6 +3,7 @@
  * @brief WASM entry point for ascii-chat mirror mode
  */
 
+#include "buffer_sizes.h"
 #include <emscripten.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,8 +55,8 @@ int mirror_init_with_args(const char *args_json) {
 
   // Parse space-separated arguments
   char *args_copy = NULL;
-  char *argv[64] = {NULL};
-  int argc = wasm_parse_args(args_json, argv, 64, &args_copy);
+  char *argv[WASM_ARGV_CAPACITY] = {NULL};
+  int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
   if (argc < 0) {
     return -1;
   }

@@ -1,3 +1,4 @@
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
@@ -136,7 +137,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   blob = sqlite3_column_blob(stmt, 2);
   if (blob) {
-    memcpy(session->host_pubkey, blob, 32);
+    memcpy(session->host_pubkey, blob, ED25519_PUBLIC_KEY_SIZE);
   }
 
   str = (const char *)sqlite3_column_text(stmt, 3);
@@ -164,7 +165,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
   // Discovery mode host negotiation fields
   blob = sqlite3_column_blob(stmt, 15);
   if (blob) {
-    memcpy(session->initiator_id, blob, 16);
+    memcpy(session->initiator_id, blob, SESSION_ID_SIZE);
   }
 
   session->host_established = sqlite3_column_int(stmt, 16) != 0;
@@ -217,7 +218,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
 
     blob = sqlite3_column_blob(stmt, 1);
     if (blob) {
-      memcpy(p->identity_pubkey, blob, 32);
+      memcpy(p->identity_pubkey, blob, ED25519_PUBLIC_KEY_SIZE);
     }
 
     p->joined_at = (uint64_t)sqlite3_column_int64(stmt, 2);
@@ -596,7 +597,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
 
   blob = sqlite3_column_blob(stmt, 2);
   if (blob) {
-    memcpy(resp->host_pubkey, blob, 32);
+    memcpy(resp->host_pubkey, blob, ED25519_PUBLIC_KEY_SIZE);
   }
 
   resp->max_participants = (uint8_t)sqlite3_column_int(stmt, 4);
@@ -794,7 +795,7 @@ static void database_session_join_response(sqlite3 *db, session_entry_t *session
   memcpy(resp->session_id, session->session_id, SESSION_ID_SIZE);
 
   // Discovery mode host negotiation fields
-  memcpy(resp->initiator_id, session->initiator_id, 16);
+  memcpy(resp->initiator_id, session->initiator_id, SESSION_ID_SIZE);
   resp->host_established = session->host_established ? 1 : 0;
   if (session->host_established) {
     memcpy(resp->host_id, session->host_participant_id, SESSION_ID_SIZE);
@@ -1438,7 +1439,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
   while (sqlite3_step(stmt) == SQLITE_ROW && count < max_keys) {
     const void *blob = sqlite3_column_blob(stmt, 0);
     if (blob && sqlite3_column_bytes(stmt, 0) == 32) {
-      memcpy(keys_out[count], blob, 32);
+      memcpy(keys_out[count], blob, ED25519_PUBLIC_KEY_SIZE);
       count++;
     }
   }

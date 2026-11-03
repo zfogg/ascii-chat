@@ -1,3 +1,4 @@
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
@@ -26,7 +27,7 @@ typedef struct consensus_topology {
 static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int count,
                               const uint8_t target[SESSION_ID_SIZE]) {
   for (int i = 0; i < count; i++) {
-    if (memcmp(uuids[i], target, 16) == 0) {
+    if (memcmp(uuids[i], target, SESSION_ID_SIZE) == 0) {
       return i;
     }
   }
@@ -35,7 +36,7 @@ static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][SESS
 
 // Comparison function for qsort
 static int qsort_uuid_compare(const void *a, const void *b) {
-  return memcmp(a, b, 16);
+  return memcmp(a, b, SESSION_ID_SIZE);
 }
 
 asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],

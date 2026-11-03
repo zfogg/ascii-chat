@@ -1,3 +1,4 @@
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/consensus/handoff.h>
@@ -22,8 +23,8 @@ asciichat_error_t consensus_handoff_decode(const void *data, size_t length, cons
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid handoff version, kind or length");
   memset(m, 0, sizeof(*m));
   m->kind = p[1];
-  memcpy(m->session, p + 4, 16);
-  memcpy(m->participant, p + 20, 16);
+  memcpy(m->session, p + 4, SESSION_ID_SIZE);
+  memcpy(m->participant, p + 20, SESSION_ID_SIZE);
   m->generation = read32(p + 36);
   m->sequence = read32(p + 40);
   m->upload_kbps = read32(p + 44);
@@ -37,8 +38,8 @@ void consensus_handoff_encode(const consensus_handoff_message_t *m, uint8_t out[
   memset(out, 0, CONSENSUS_HANDOFF_HEADER);
   out[0] = CONSENSUS_HANDOFF_VERSION;
   out[1] = m->kind;
-  memcpy(out + 4, m->session, 16);
-  memcpy(out + 20, m->participant, 16);
+  memcpy(out + 4, m->session, SESSION_ID_SIZE);
+  memcpy(out + 20, m->participant, SESSION_ID_SIZE);
   write32(out + 36, m->generation);
   write32(out + 40, m->sequence);
   write32(out + 44, m->upload_kbps);
@@ -51,13 +52,13 @@ void consensus_handoff_encode(const consensus_handoff_message_t *m, uint8_t out[
 void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[SESSION_ID_SIZE],
                             const uint8_t host[SESSION_ID_SIZE]) {
   memset(s, 0, sizeof(*s));
-  memcpy(s->session, session, 16);
-  memcpy(s->host, host, 16);
+  memcpy(s->session, session, SESSION_ID_SIZE);
+  memcpy(s->host, host, SESSION_ID_SIZE);
   s->generation = 1;
 }
 static consensus_handoff_peer_t *find_peer(consensus_handoff_t *s, const uint8_t id[SESSION_ID_SIZE]) {
   for (size_t i = 0; i < s->count; ++i)
-    if (memcmp(s->peers[i].id, id, 16) == 0)
+    if (memcmp(s->peers[i].id, id, SESSION_ID_SIZE) == 0)
       return &s->peers[i];
   return NULL;
 }
@@ -68,27 +69,27 @@ asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t i
     return SET_ERRNO(ERROR_INVALID_STATE, "Handoff membership full");
   consensus_handoff_peer_t *p = &s->peers[s->count++];
   memset(p, 0, sizeof(*p));
-  memcpy(p->id, id, 16);
+  memcpy(p->id, id, SESSION_ID_SIZE);
   p->nat_tier = 255;
   ++s->generation;
   s->ready = false;
-  memset(s->successor, 0, 16);
+  memset(s->successor, 0, SESSION_ID_SIZE);
   return ASCIICHAT_OK;
 }
 void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[SESSION_ID_SIZE]) {
   // The incumbent can leave before its first measurement creates a peer entry.
-  if (memcmp(s->host, id, 16) == 0)
+  if (memcmp(s->host, id, SESSION_ID_SIZE) == 0)
     s->host_lost = true;
   for (size_t i = 0; i < s->count; ++i) {
-    if (memcmp(s->peers[i].id, id, 16) != 0)
+    if (memcmp(s->peers[i].id, id, SESSION_ID_SIZE) != 0)
       continue;
     memmove(&s->peers[i], &s->peers[i + 1], (s->count - i - 1) * sizeof(s->peers[0]));
     --s->count;
     ++s->generation;
-    if (memcmp(s->host, id, 16) == 0)
+    if (memcmp(s->host, id, SESSION_ID_SIZE) == 0)
       s->host_lost = true;
-    if (memcmp(s->successor, id, 16) == 0) {
-      memset(s->successor, 0, 16);
+    if (memcmp(s->successor, id, SESSION_ID_SIZE) == 0) {
+      memset(s->successor, 0, SESSION_ID_SIZE);
       s->ready = false;
     }
     return;
@@ -111,7 +112,7 @@ void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[SESS
  */
 asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consensus_handoff_message_t *m, size_t length,
                                             uint64_t now) {
-  if (memcmp(s->session, m->session, 16) != 0)
+  if (memcmp(s->session, m->session, SESSION_ID_SIZE) != 0)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Wrong handoff session");
   consensus_handoff_peer_t *p = find_peer(s, m->participant);
   if (!p)
@@ -145,14 +146,15 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     p->upload_kbps = (uint32_t)((uint64_t)CONSENSUS_HANDOFF_PROBE_BYTES * 8 / elapsed);
     p->measured_ms = now;
   } else if (m->kind == HANDOFF_READY || m->kind == HANDOFF_REJECT) {
-    if (m->generation != s->generation || m->sequence != s->round || memcmp(m->participant, s->successor, 16))
+    if (m->generation != s->generation || m->sequence != s->round ||
+        memcmp(m->participant, s->successor, SESSION_ID_SIZE))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Obsolete handoff preparation");
     if (m->kind == HANDOFF_READY && now <= s->prepare_deadline_ms)
       s->ready = true;
     else {
       p->rejected = true;
       s->ready = false;
-      memset(s->successor, 0, 16);
+      memset(s->successor, 0, SESSION_ID_SIZE);
     }
   } else
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Client cannot announce a handoff decision");
@@ -201,7 +203,7 @@ static void handoff_record_action(consensus_handoff_t *state, const consensus_ha
  */
 bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_handoff_message_t *a) {
   memset(a, 0, sizeof(*a));
-  memcpy(a->session, s->session, 16);
+  memcpy(a->session, s->session, SESSION_ID_SIZE);
   a->generation = s->generation;
   if (s->failure_announced)
     return false; // Terminal until the session is recreated.
@@ -230,13 +232,13 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
     if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS) {
       a->kind = HANDOFF_COMMIT;
-      memcpy(a->participant, s->successor, 16);
+      memcpy(a->participant, s->successor, SESSION_ID_SIZE);
       a->sequence = s->round;
       a->port = p->port;
       a->capabilities = p->capabilities;
       handoff_record_action(s, a, now, 1);
       s->host_sequence = a->sequence;
-      memcpy(s->host, s->successor, 16);
+      memcpy(s->host, s->successor, SESSION_ID_SIZE);
       s->host_lost = false;
       s->monitoring_started_ms = now;
       s->ready = false;
@@ -244,21 +246,21 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
       s->failure_announced = false;
       for (size_t i = 0; i < s->count; ++i)
         s->peers[i].rejected = false;
-      memset(s->successor, 0, 16);
+      memset(s->successor, 0, SESSION_ID_SIZE);
       return true;
     }
     s->ready = false;
-    memset(s->successor, 0, 16);
+    memset(s->successor, 0, SESSION_ID_SIZE);
   }
   uint8_t zero[SESSION_ID_SIZE] = {0};
-  if (memcmp(s->successor, zero, 16)) {
+  if (memcmp(s->successor, zero, SESSION_ID_SIZE)) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
     if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
         (s->ready || now < s->prepare_deadline_ms))
       return false;
     if (p && !s->ready)
       p->rejected = true;
-    memset(s->successor, 0, 16);
+    memset(s->successor, 0, SESSION_ID_SIZE);
     s->ready = false;
   }
   participant_metrics_t metrics[MAX_SESSION_PARTICIPANTS];
@@ -266,7 +268,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   for (size_t i = 0; i < s->count; ++i) {
     consensus_handoff_peer_t *p = &s->peers[i];
     if (!p->valid || p->rejected || !p->capabilities || now - p->measured_ms > CONSENSUS_HANDOFF_FRESH_MS ||
-        memcmp(p->id, s->host, 16) == 0)
+        memcmp(p->id, s->host, SESSION_ID_SIZE) == 0)
       continue;
     participant_metrics_t *m = &metrics[count++];
     memset(m, 0, sizeof(*m));
@@ -285,7 +287,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   ++s->round;
   s->prepare_deadline_ms = now + CONSENSUS_HANDOFF_PREPARE_MS;
   a->kind = HANDOFF_PREPARE;
-  memcpy(a->participant, s->successor, 16);
+  memcpy(a->participant, s->successor, SESSION_ID_SIZE);
   a->sequence = s->round;
   handoff_record_action(s, a, now, count);
   return true;

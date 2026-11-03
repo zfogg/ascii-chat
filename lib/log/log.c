@@ -2,7 +2,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define LOG_BUFFER_BUFFER_SIZE 8192
 #define LOG_LOG_MSG_BUFFER_SIZE 256
-#define LOG_TIMESTAMP_BUFFER_SIZE 64
+#define LOG_PARSE_TIMESTAMP_BUFFER_SIZE 64
 #define LOG_LEVEL_BUFFER_SIZE 16
 #define LOG_FILE_PATH_BUFFER_SIZE 256
 #define LOG_FUNC_NAME_BUFFER_SIZE 256
@@ -1093,7 +1093,7 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   // Keep the complete body for notices that span multiple file-log records.
   size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE;
   char *plain_log_line = SAFE_MALLOC(capacity, char *);
-  char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
+  char timestamp[LOG_PARSE_TIMESTAMP_BUFFER_SIZE];
   uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(timestamp);
   const log_template_t *format = g_log.format;
@@ -1893,7 +1893,7 @@ void log_redetect_terminal_capabilities(void) {
 
 /* Get the appropriate color array based on terminal capabilities */
 static _Thread_local colorscheme_palette_t live_log_palette;
-static _Thread_local const char *live_log_codes[8];
+static _Thread_local const char *live_log_codes[COLORSCHEME_LOG_COLOR_COUNT];
 
 const char **log_get_color_array(void) {
   init_terminal_capabilities();
@@ -2097,7 +2097,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   }
 
   size_t timestamp_len = p - timestamp_start;
-  char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
+  char timestamp[LOG_PARSE_TIMESTAMP_BUFFER_SIZE];
   if (timestamp_len >= sizeof(timestamp) || timestamp_len == 0) {
     return 0; // Invalid timestamp - empty or too long
   }

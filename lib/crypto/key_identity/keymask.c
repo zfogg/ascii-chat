@@ -124,8 +124,8 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
   cells[accent_row + 1][accent_col] = '!';
 
   size_t required = KEYMASK_ROWS * (KEYMASK_WIDTH + 1) + 1;
-  for (unsigned r = 0; r < 16; ++r)
-    for (unsigned c = 0; c < 32; ++c)
+  for (unsigned r = 0; r < KEYMASK_INTERIOR_ROWS; ++r)
+    for (unsigned c = 0; c < KEYMASK_INTERIOR_COLUMNS; ++c)
       if (unicode && cells[r][c] == '#')
         required += 2;
   if (size < required)
@@ -134,9 +134,9 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
   const char border[] = "+--------------------------------+\n";
   memcpy(p, border, sizeof(border) - 1);
   p += sizeof(border) - 1;
-  for (unsigned r = 0; r < 16; ++r) {
+  for (unsigned r = 0; r < KEYMASK_INTERIOR_ROWS; ++r) {
     *p++ = '|';
-    for (unsigned c = 0; c < 32; ++c) {
+    for (unsigned c = 0; c < KEYMASK_INTERIOR_COLUMNS; ++c) {
       if (unicode && cells[r][c] == '#') {
         memcpy(p, "\xe2\x96\x91", 3);
         p += 3;

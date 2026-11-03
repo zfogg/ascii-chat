@@ -1,5 +1,8 @@
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define PLATFORM_BACKTRACE_FRAME_CAPACITY 64
+
 #include <stddef.h>
 
 /**

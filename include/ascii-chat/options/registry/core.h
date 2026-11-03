@@ -12,6 +12,9 @@
 
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define OPTIONS_REGISTRY_CAPACITY 2048
+
 #include "common.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/builder.h>
@@ -23,7 +26,7 @@
 // ============================================================================
 
 // Unified view of all registry entries
-extern registry_entry_t g_options_registry[2048];
+extern registry_entry_t g_options_registry[OPTIONS_REGISTRY_CAPACITY];
 extern size_t g_registry_size;
 extern bool g_metadata_populated;
 

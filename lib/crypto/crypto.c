@@ -909,8 +909,8 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
   uint8_t combined_data[AUTH_COMBINED_SIZE];
-  memcpy(combined_data, nonce, 32);
-  memcpy(combined_data + 32, ctx->shared_key, 32);
+  memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
+  memcpy(combined_data + AUTH_CHALLENGE_SIZE, ctx->shared_key, CRYPTO_SHARED_KEY_SIZE);
 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
@@ -941,8 +941,8 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
   uint8_t combined_data[AUTH_COMBINED_SIZE];
-  memcpy(combined_data, nonce, 32);
-  memcpy(combined_data + 32, ctx->shared_key, 32);
+  memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
+  memcpy(combined_data + AUTH_CHALLENGE_SIZE, ctx->shared_key, CRYPTO_SHARED_KEY_SIZE);
 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
@@ -1068,8 +1068,8 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
   // Combine nonce and shared_secret for HMAC computation
   // This binds the password to the DH shared secret, preventing MITM attacks
   uint8_t combined_data[AUTH_COMBINED_SIZE];
-  memcpy(combined_data, nonce, 32);
-  memcpy(combined_data + 32, shared_secret, 32);
+  memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
+  memcpy(combined_data + AUTH_CHALLENGE_SIZE, shared_secret, CRYPTO_SHARED_KEY_SIZE);
 
   // Compute HMAC using the password-derived key
   if (crypto_compute_hmac_ex(ctx, password_key, combined_data, 64, hmac_out) != 0) {
@@ -1135,8 +1135,8 @@ void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonc
   }
 
   // Combine HMAC (32 bytes) + challenge nonce (32 bytes) = 64 bytes total
-  memcpy(combined_out, hmac, 32);
-  memcpy(combined_out + 32, challenge_nonce, 32);
+  memcpy(combined_out, hmac, HMAC_SHA256_SIZE);
+  memcpy(combined_out + AUTH_HMAC_SIZE, challenge_nonce, AUTH_CHALLENGE_SIZE);
 }
 
 void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, uint8_t *challenge_out) {
@@ -1147,8 +1147,8 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
   }
 
   // Extract HMAC (first 32 bytes) and challenge nonce (last 32 bytes)
-  memcpy(hmac_out, combined_data, 32);
-  memcpy(challenge_out, combined_data + 32, 32);
+  memcpy(hmac_out, combined_data, HMAC_SHA256_SIZE);
+  memcpy(challenge_out, combined_data + AUTH_CHALLENGE_SIZE, AUTH_CHALLENGE_SIZE);
 }
 
 // =============================================================================

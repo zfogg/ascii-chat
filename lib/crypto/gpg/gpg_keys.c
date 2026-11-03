@@ -7,6 +7,9 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE 17
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define GPG_COLON_FIELD_CAPACITY 12
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/gpg_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h> // For openpgp_parse_armored_pubkey()
@@ -64,7 +67,7 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_id, public_key_t *key_out) {
   // Initialize the public key structure
   memset(key_out, 0, sizeof(public_key_t));
   key_out->type = KEY_TYPE_GPG;
-  memcpy(key_out->key, ed25519_pk, 32);
+  memcpy(key_out->key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
 
   // Set comment for display
   safe_snprintf(key_out->comment, sizeof(key_out->comment), "GPG key %s", key_id);
@@ -104,7 +107,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   // Initialize the public key structure
   memset(key_out, 0, sizeof(public_key_t));
   key_out->type = KEY_TYPE_GPG;
-  memcpy(key_out->key, ed25519_pk, 32);
+  memcpy(key_out->key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
 
   // Set comment for display
   safe_snprintf(key_out->comment, sizeof(key_out->comment), "GPG Ed25519 key");
@@ -233,12 +236,12 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
       found_pub = true;
 
       // Split line by colons
-      char *fields[12];
+      char *fields[GPG_COLON_FIELD_CAPACITY];
       int field_count = 0;
       char *ptr = line;
       char *field_start = ptr;
 
-      while (*ptr && field_count < 12) {
+      while (*ptr && field_count < GPG_COLON_FIELD_CAPACITY) {
         if (*ptr == ':' || *ptr == '\n') {
           *ptr = '\0';
           fields[field_count++] = field_start;

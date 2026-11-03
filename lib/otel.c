@@ -8,6 +8,9 @@
 #define OTEL_URL_BUFFER_SIZE 2048
 #define OTEL_NAME_EXTENDED_BUFFER_SIZE 1200
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define OTEL_WAIT_SNAPSHOT_CAPACITY 256
+
 #include <ascii-chat/otel.h>
 #ifdef ASCIICHAT_WITH_OTEL
 #include <ascii-chat/common.h>
@@ -230,7 +233,7 @@ static void exporter_diagnostic(void *context, otlp_log_level_t level, const cha
 static mutex_wait_snapshot_t watchdog_detail;
 static bool watchdog_snapshot(void *context, gotel_watchdog_snapshot_t *out) {
   (void)context;
-  static mutex_wait_snapshot_t waits[256];
+  static mutex_wait_snapshot_t waits[OTEL_WAIT_SNAPSHOT_CAPACITY];
   size_t count = 0;
   if (!mutex_stack_try_snapshot(waits, 256, &count, &out->limited))
     return false;

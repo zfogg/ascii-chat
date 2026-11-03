@@ -170,7 +170,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     log_info("Loaded %zu identity key(s) for multi-key protocol", session->num_identity_keys);
   } else {
     // Single-key mode: use only the primary identity key
-    memcpy(session->identity_pubkeys[0], session->identity_pubkey, 32);
+    memcpy(session->identity_pubkeys[0], session->identity_pubkey, ED25519_PUBLIC_KEY_SIZE);
     memcpy(session->identity_seckeys[0], session->identity_seckey, sizeof(session->identity_seckey));
     session->num_identity_keys = 1;
   }
@@ -1493,12 +1493,12 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     return result;
   }
 
-  bool has_identity = memcmp(session->identity_pubkey, (uint8_t[32]){0}, 32) != 0;
+  bool has_identity = memcmp(session->identity_pubkey, (uint8_t[32]){0}, ED25519_PUBLIC_KEY_SIZE) != 0;
   // Store identity key in handshake context
   handshake_ctx->client_public_key.type = has_identity ? KEY_TYPE_ED25519 : KEY_TYPE_UNKNOWN;
   handshake_ctx->client_private_key.type = handshake_ctx->client_public_key.type;
-  memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, 32);
-  memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, 64);
+  memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, ED25519_PUBLIC_KEY_SIZE);
+  memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, ED25519_PRIVATE_KEY_SIZE);
   memcpy(handshake_ctx->client_private_key.public_key, session->identity_pubkey, sizeof(session->identity_pubkey));
 
   crypto_policy_t signaling_policy = {

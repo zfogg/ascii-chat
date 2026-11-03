@@ -3,6 +3,9 @@
  * @brief Ring consensus metrics collection and wire protocol implementation
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CONSENSUS_METRICS_INITIAL_CAPACITY 10
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/common.h>
@@ -78,7 +81,7 @@ asciichat_error_t consensus_metrics_collection_create(consensus_metrics_collecti
   consensus_metrics_collection_t *collection = SAFE_MALLOC(sizeof(*collection), consensus_metrics_collection_t *);
   memset(collection, 0, sizeof(*collection));
 
-  collection->capacity = 10; // Start with capacity for 10 participants
+  collection->capacity = CONSENSUS_METRICS_INITIAL_CAPACITY; // Start with capacity for 10 participants
   collection->metrics = SAFE_MALLOC(collection->capacity * sizeof(participant_metrics_t), participant_metrics_t *);
   collection->count = 0;
 

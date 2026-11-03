@@ -45,7 +45,7 @@ static asciichat_error_t validate_contract(const char *text, size_t length, uint
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame bounds");
   uint32_t palette[256];
   size_t palette_count = 0;
-  bool ascii_allowed[128] = {0};
+  bool ascii_allowed[128] /* One entry for each 7-bit ASCII code. */ = {0};
   unsigned rain_groups = 0;
   if (settings) {
     size_t n = strnlen(settings->palette, sizeof(settings->palette));

@@ -86,7 +86,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
               if (pubkey_len == 32 && blob_len >= 51) {
                 // Extract Ed25519 public key
                 key_out->type = KEY_TYPE_ED25519;
-                memcpy(key_out->key, blob + 19, 32);
+                memcpy(key_out->key, blob + 19, CRYPTO_PUBLIC_KEY_SIZE);
                 platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-base64",
                                  sizeof(key_out->comment) - 1);
                 SAFE_FREE(blob);
@@ -266,7 +266,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     key_out->use_ssh_agent = false;
 
     // Store public key (for handshake and verification)
-    memcpy(key_out->public_key, public_key, 32);
+    memcpy(key_out->public_key, public_key, ED25519_PUBLIC_KEY_SIZE);
 
     // Store keygrip (for GPG agent signing operations)
     platform_strncpy(key_out->gpg_keygrip, sizeof(key_out->gpg_keygrip), keygrip, sizeof(key_out->gpg_keygrip) - 1);
@@ -276,11 +276,11 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     // Clear the key.ed25519 field (we don't have the private key in memory)
     // The private key stays protected in GPG agent
-    memset(key_out->key.ed25519, 0, 64);
+    memset(key_out->key.ed25519, 0, ED25519_PRIVATE_KEY_SIZE);
 
     // Set the public key in the second half of ed25519 key (standard Ed25519 format)
     // This is for compatibility with code that expects the public key at offset 32
-    memcpy(key_out->key.ed25519 + 32, public_key, 32);
+    memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, public_key, ED25519_PUBLIC_KEY_SIZE);
 
     log_debug("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
     return ASCIICHAT_OK;
@@ -353,9 +353,9 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     // Store keypair in Ed25519 format (64 bytes: 32-byte seed + 32-byte public key)
     // libsodium expects the seed in first 32 bytes and public key in second 32 bytes
-    memcpy(key_out->key.ed25519, ed25519_sk, 32);      // Secret key (seed)
-    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32); // Public key
-    memcpy(key_out->public_key, ed25519_pk, 32);       // Also store in public_key field
+    memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);                           // Secret key (seed)
+    memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, ed25519_pk, ED25519_PUBLIC_KEY_SIZE); // Public key
+    memcpy(key_out->public_key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE); // Also store in public_key field
 
     // Store comment
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
@@ -405,9 +405,9 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     key_out->type = KEY_TYPE_ED25519;
     key_out->use_gpg_agent = false;
     key_out->use_ssh_agent = false;
-    memcpy(key_out->key.ed25519, ed25519_sk, 32);
-    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32);
-    memcpy(key_out->public_key, ed25519_pk, 32);
+    memcpy(key_out->key.ed25519, ed25519_sk, ED25519_SEED_SIZE);
+    memcpy(key_out->key.ed25519 + ED25519_SEED_SIZE, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
+    memcpy(key_out->public_key, ed25519_pk, ED25519_PUBLIC_KEY_SIZE);
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
     sodium_memzero(ed25519_sk, sizeof(ed25519_sk));
     return ASCIICHAT_OK;
@@ -560,7 +560,7 @@ asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_p
 
   if (key->type == KEY_TYPE_X25519) {
     // Passthrough for X25519 keys
-    memcpy(x25519_pk, key->key, 32);
+    memcpy(x25519_pk, key->key, X25519_KEY_SIZE);
     return ASCIICHAT_OK;
   }
 
@@ -579,7 +579,7 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
 
   if (key->type == KEY_TYPE_X25519) {
     // Passthrough for X25519 keys
-    memcpy(x25519_sk, key->key.x25519, 32);
+    memcpy(x25519_sk, key->key.x25519, X25519_KEY_SIZE);
     return ASCIICHAT_OK;
   }
 

@@ -8,6 +8,10 @@
 #define MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE 64
 #define MCP_SERVER_REQUEST_B_BUFFER_SIZE 16
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define MCP_REQUEST_ARGV_CAPACITY 256
+#define MCP_REQUEST_RESERVED_ARGS 6
+
 #include "mcp.h"
 #include <ascii-chat/options/json.h>
 #include <ascii-chat/options/registry.h>
@@ -220,7 +224,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   return tools;
 }
 static asciichat_error_t arg(mcp_render_request_t *r, const char *value) {
-  if (r->argc >= 250 || strlen(value) > MCP_MAX_INPUT)
+  if (r->argc >= MCP_REQUEST_ARGV_CAPACITY - MCP_REQUEST_RESERVED_ARGS || strlen(value) > MCP_MAX_INPUT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Too many or oversized options");
   r->argv[r->argc++] = platform_strdup(value);
   r->argv[r->argc] = NULL;
@@ -364,7 +368,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
 asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjson_val *a, mcp_render_request_t *r) {
   memset(r, 0, sizeof(*r));
   r->timeout_ms = 45000;
-  r->argv = SAFE_CALLOC(256, sizeof(char *), char **);
+  r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
   static const char *const fields[] = {"path",         "data_base64",   "mime_type", "url",         "video_device",
                                        "audio",        "visualization", "options",   "output_path", "timeout_ms",
                                        "audio_device", "volume",        NULL};
