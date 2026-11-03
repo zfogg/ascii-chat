@@ -112,6 +112,7 @@ typedef struct {
 
   // Configuration
   acds_config_t config; ///< Runtime configuration
+  bool handoff_mutex_initialized; ///< Whether shutdown owns the handoff mutex
 } acds_server_t;
 
 /**

@@ -1693,6 +1693,18 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(display-delivery test-display-delivery)
     set_property(TEST display-delivery APPEND PROPERTY LABELS unit)
 
+    add_executable(test-discovery-service-callbacks contracts/discovery/service_callbacks_test.c
+        ${CMAKE_SOURCE_DIR}/src/discovery-service/signaling.c)
+    asciichat_configure_contract(test-discovery-service-callbacks)
+    target_link_libraries(test-discovery-service-callbacks PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${SQLITE3_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-discovery-service-callbacks PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-discovery-service-callbacks)
+    set_target_properties(test-discovery-service-callbacks PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(discovery-service-callbacks test-discovery-service-callbacks)
+    set_property(TEST discovery-service-callbacks APPEND PROPERTY LABELS unit)
+
     add_executable(test-server-main contracts/network/server_main_test.c
         ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/connections.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/server/stream.c
