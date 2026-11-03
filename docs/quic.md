@@ -11,10 +11,12 @@ the native authenticated per-flow QUIC security codec. The security interface
 requires a completed ACIP handshake and returns the authenticated sequence for
 datagram recovery. A browser bridge maps an established WebTransport session
 to the three ACIP streams and media datagrams, with separate send queues and a
-bounded receive path. Its caller must perform the ACIP handshake, authenticate
-packets against their flow, and enforce readiness. The bridge is not yet wired
-into the browser session lifecycle, and the server does not yet establish
-HTTP/3 WebTransport sessions.
+bounded receive path. A channel can run the existing WASM ACIP handshake,
+authenticate packets against their flow, enforce the READY/ACK barrier, and
+request keyframes after visual loss. Its owner must initialize the shared WASM
+client and configure credentials before starting the handshake. The channel is
+not yet wired into the application session lifecycle, and the server does not
+yet establish HTTP/3 WebTransport sessions.
 
 For example, start a listener with `--quic-bind-address 127.0.0.1`,
 `--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with

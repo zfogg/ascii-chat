@@ -891,9 +891,16 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_open(uint32_t flow, 
   *sequence = 0;
   uint8_t *plain = NULL;
   size_t plain_len = 0;
-  asciichat_error_t result =
-      acip_quic_security_open_sequence(&g_quic_security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, packet,
-                                       packet_len, &plain, &plain_len, sequence);
+  asciichat_error_t result;
+  if (delivery == ACIP_DELIVERY_DATAGRAM) {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    result = acip_quic_security_open_sequence(&g_quic_security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
+                                              packet, packet_len, &plain, &plain_len, sequence);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  } else {
+    result = acip_quic_security_open_sequence(&g_quic_security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
+                                              packet, packet_len, &plain, &plain_len, sequence);
+  }
   if (result == ASCIICHAT_OK) {
     memcpy(output, plain, plain_len);
     *out_len = plain_len;

@@ -1176,6 +1176,7 @@ export function processQuicPacket(
   flow: 0 | 1 | 2,
   delivery: 0 | 1,
   packet: Uint8Array,
+  quietFailure = false,
 ): { packet: Uint8Array; sequence: bigint } {
   if (!wasmModule) throw new Error("WASM module not initialized");
   const capacity = packet.length + (operation === "seal" ? 78 : 0);
@@ -1213,7 +1214,11 @@ export function processQuicPacket(
             length,
             sequence,
           );
-    if (result !== 0) throwWasmError(result, `QUIC packet ${operation} failed`);
+    if (result !== 0) {
+      if (quietFailure && operation === "open" && delivery === 1)
+        throw new Error(`QUIC packet ${operation} failed (${result})`);
+      throwWasmError(result, `QUIC packet ${operation} failed`);
+    }
     const data = wasmModule.HEAPU8.slice(output, output + readI32(length));
     const sequenceNumber =
       operation === "open"
