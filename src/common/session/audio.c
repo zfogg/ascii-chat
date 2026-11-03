@@ -250,7 +250,7 @@ asciichat_error_t session_audio_add_source(session_audio_ctx_t *ctx, uint32_t so
     if (!ctx->sources[i].active) {
       ctx->sources[i].source_id = source_id;
       ctx->sources[i].active = true;
-      ctx->sources[i].buffer = audio_ring_buffer_create();
+      ctx->sources[i].buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, false);
       if (!ctx->sources[i].buffer) {
         ctx->sources[i].active = false;
         return SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for source");

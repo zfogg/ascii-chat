@@ -9,6 +9,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/audio/client_pipeline.h>
+#include "../../../src/common/session/audio.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/fnv1a.h>
@@ -316,6 +317,26 @@ Test(stereo, stereo_media_resampling_and_eof_preserve_duration_and_independent_c
   cr_assert_gt(energy / total, 0.02);
   ffmpeg_decoder_destroy(decoder);
   platform_delete_temp_file(path);
+}
+
+Test(stereo, session_source_queues_keep_complete_stereo_frames) {
+  session_audio_ctx_t *session = session_audio_create(true);
+  cr_assert_not_null(session);
+  cr_assert_eq(session_audio_add_source(session, 1), ASCIICHAT_OK);
+  float samples[8000], mixed[960];
+  for (size_t i = 0; i < ARRAY_SIZE(samples) / 2; i++) {
+    samples[i * 2] = 0.25f;
+    samples[i * 2 + 1] = -0.5f;
+  }
+  cr_assert_eq(session_audio_write_source(session, 1, samples, 3), ERROR_INVALID_PARAM);
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(session_audio_write_source(session, 1, samples, ARRAY_SIZE(samples)), ASCIICHAT_OK);
+  cr_assert_eq(session_audio_mix_excluding(session, 99, mixed, ARRAY_SIZE(mixed)), ARRAY_SIZE(mixed));
+  for (size_t i = 0; i < ARRAY_SIZE(mixed) / 2; i++) {
+    cr_assert_geq(mixed[i * 2], 0);
+    cr_assert_float_eq(mixed[i * 2 + 1], -2 * mixed[i * 2], 1e-6);
+  }
+  session_audio_destroy(session);
 }
 
 Test(stereo, capture_and_transmission_layouts_are_independent) {
