@@ -133,7 +133,7 @@ export default function RenderingExportSection() {
             </p>
             <CodeBlock language="bash">
               {
-                'ascii-chat mirror --test-pattern --audio=false --snapshot \\\n  --palette custom --palette-chars "天地人中你好漢字" \\\n  --render-font /System/Library/PrivateFrameworks/FontServices.framework/Versions/A/Resources/Reserved/PingFangUI.ttc \\\n  --render-file hvf.png'
+                'ascii-chat mirror --test-pattern --audio=false --snapshot \\\n  --palette custom --palette-chars "人中天字你好地漢" \\\n  --render-font /System/Library/PrivateFrameworks/FontServices.framework/Versions/A/Resources/Reserved/PingFangUI.ttc \\\n  --render-file hvf.png'
               }
             </CodeBlock>
           </div>
