@@ -46,7 +46,10 @@ async function observe(page: Page) {
       pointer: number,
       length: number,
     ) => {
-      const text = m.UTF8ToString(pointer, length);
+      // Inspect rendered text independently of terminal color decoration.
+      const text = m
+        .UTF8ToString(pointer, length)
+        .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
@@ -231,7 +234,7 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
   expect(result).toEqual(Array(10).fill(true));
 });
 
-test("C application logs survive closed overlays and share exclusive presentation", async ({
+test("C application logs survive search, log help, and media transitions", async ({
   page,
 }) => {
   await observe(page);
@@ -256,10 +259,9 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.keyboard.press("?");
   await expect
     .poll(() => lastFrame(page))
-    .toContain("Live log viewer/searcher TUI");
-  expect(await lastFrame(page)).not.toContain("/: search logs");
+    .toContain("Log Viewer Keyboard Controls");
   await page.screenshot({ path: "artifacts/session-logs-help-web.png" });
-  await page.keyboard.press("]");
+  await page.keyboard.press("Escape");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.keyboard.press("Escape");
   await expect

@@ -237,7 +237,6 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   }
 
   asciichat_error_t result = ASCIICHAT_OK;
-  bool mode_init_started = false;
 
   /* === 1. Keepawake === */
 
@@ -422,7 +421,6 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   /* === 8. Mode-specific init === */
 
-  mode_init_started = true;
   result = config->init_fn(config->init_user_data);
   if (result != ASCIICHAT_OK) {
     log_error("Mode initialization failed");
@@ -532,7 +530,7 @@ cleanup:
     return stopped;
 
   /* 13. Mode-specific cleanup (only call if config provided) */
-  if (mode_init_started && config && config->cleanup_fn) {
+  if (config && config->cleanup_fn) {
     config->cleanup_fn(config->cleanup_user_data);
   }
 

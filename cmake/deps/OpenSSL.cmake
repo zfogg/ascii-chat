@@ -3,6 +3,7 @@
 # Provides: OpenSSL::Crypto, OpenSSL::SSL (or static equivalents)
 #
 
+set(ASCIICHAT_OPENSSL_RUNTIME_DIR "" CACHE INTERNAL "Runtime directory for selected shared OpenSSL" FORCE)
 set(ASCIICHAT_OPENSSL_SOURCE_VERSION "3.6.0")
 set(ASCIICHAT_OPENSSL_SOURCE_SHA256 "b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9")
 set(ASCIICHAT_OPENSSL_BUILD_JOBS 4 CACHE STRING "Parallel jobs for source-built OpenSSL")
@@ -532,6 +533,13 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     endif()
     if(NOT EXISTS "${OPENSSL_SSL_LIBRARY}" OR NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
         message(FATAL_ERROR "OpenSSL build succeeded but libraries were not found in ${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}")
+    endif()
+
+    if(OPENSSL_BUILD_SHARED)
+        set(ASCIICHAT_OPENSSL_RUNTIME_DIR "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}"
+            CACHE INTERNAL "Runtime directory for selected shared OpenSSL" FORCE)
+        list(PREPEND CMAKE_BUILD_RPATH "${ASCIICHAT_OPENSSL_RUNTIME_DIR}")
+        list(REMOVE_DUPLICATES CMAKE_BUILD_RPATH)
     endif()
 
     set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}" CACHE PATH "OpenSSL root directory" FORCE)

@@ -157,7 +157,7 @@ uint64_t terminal_screen_logs_last_tail_sequence(void) {
   return sequence;
 }
 
-bool terminal_screen_logs_handle_key(int key) {
+bool terminal_screen_logs_handle_key_sized(int key, terminal_size_t size) {
   if (!terminal_screen_logs_mutex_init())
     return false;
   bool redraw = false;
@@ -173,7 +173,6 @@ bool terminal_screen_logs_handle_key(int key) {
     return true;
   }
   if (key == '?') {
-    terminal_size_t size = ui_controller_size();
     g_log_help_too_small = size.rows < 12 || size.cols < 8;
     g_log_help = !g_log_help_too_small;
     redraw = true;
@@ -208,7 +207,7 @@ bool terminal_screen_logs_handle_key(int key) {
     if (step > 64)
       step = 64;
   } else {
-    int rows = ui_controller_size().rows;
+    int rows = size.rows;
     step = (size_t)(rows > 6 ? (rows - 5) / 2 : 1);
   }
   g_log_hold_direction = direction;
@@ -225,6 +224,10 @@ bool terminal_screen_logs_handle_key(int key) {
   mutex_unlock(&g_log_viewer_mutex);
   ui_controller_redraw();
   return true;
+}
+
+bool terminal_screen_logs_handle_key(int key) {
+  return terminal_screen_logs_handle_key_sized(key, ui_controller_size());
 }
 
 bool terminal_screen_logs_help_open(void) {

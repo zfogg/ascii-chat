@@ -1521,11 +1521,12 @@ if(TARGET ascii-chat-static)
                     "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
             endif()
         endif()
-        if(TARGET tests)
-            add_dependencies(tests test-traffic-metadata)
-            add_dependencies(tests test-quic-stream)
-            add_dependencies(tests test-quic-tls)
-        endif()
+        foreach(quic_test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${quic_test_build_target})
+                add_dependencies(${quic_test_build_target} test-traffic-metadata test-quic-stream
+                    test-quic-tls test-quic-http3 test-quic-dependencies)
+            endif()
+        endforeach()
     endif()
     add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
     target_link_libraries(test-network-vectors PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
@@ -2340,6 +2341,13 @@ if(BUILD_TESTS AND TARGET ascii-chat-shared)
     list(APPEND shared_api_tests log-viewer-rendering)
     foreach(api_test IN LISTS shared_api_tests)
         set_tests_properties(${api_test} PROPERTIES LABELS "unit" TIMEOUT 120)
+        # The Python host can import its SSL module before loading ascii-chat.
+        # Select the same OpenSSL ABI from process startup, rather than loading
+        # the runner's older libssl first under the same shared-library name.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_OPENSSL_RUNTIME_DIR)
+            set_property(TEST ${api_test} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+                "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_OPENSSL_RUNTIME_DIR}")
+        endif()
         # Python hosts the instrumented library, so load ASan before Python's allocator.
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=address"
            AND EXISTS "${ASAN_RUNTIME_LIBRARY}")
