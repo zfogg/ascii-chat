@@ -146,8 +146,15 @@ Test(session_capture_lifecycle, paused_file_redraw_retains_frame_without_countin
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = path, .target_fps = 60, .loop = true};
   capture = session_mirror_capture_create(&config);
   cr_assert_not_null(capture);
-  image_t *frame = session_capture_read_frame(capture);
-  cr_assert_not_null(frame);
+  // File decoding can publish its first frame after the source is initialized.
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  image_t *frame = NULL;
+  while (!frame && time_get_ns() < deadline) {
+    frame = session_capture_read_frame(capture);
+    if (!frame)
+      platform_sleep_ms(1);
+  }
+  cr_assert_not_null(frame, "File decoder did not publish its first frame before the deadline");
   cr_assert_eq(frame->w, 4);
   cr_assert_eq(frame->h, 2);
   cr_assert_arr_eq(frame->pixels, pixels, sizeof(pixels));

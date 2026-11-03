@@ -1461,7 +1461,9 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-render-loop contracts/session/render_loop_test.c)
     asciichat_configure_contract(test-render-loop)
-    target_link_libraries(test-render-loop PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    # The white-box copy defines render globals; use one static copy rather than
+    # also loading those globals from the Debug shared library under ASan.
+    target_link_libraries(test-render-loop PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
     target_include_directories(test-render-loop PRIVATE
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
     apply_sanitizers_to_target(test-render-loop)
@@ -1706,7 +1708,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_configure_contract(test-entry-signals)
     target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES} ${YYJSON_LIBRARIES})
     target_include_directories(test-entry-signals PRIVATE ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS} ${YYJSON_INCLUDE_DIRS})
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS} ${YYJSON_INCLUDE_DIRS} ${PCRE2_INCLUDE_DIRS})
     apply_sanitizers_to_target(test-entry-signals)
     set_target_properties(test-entry-signals PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
