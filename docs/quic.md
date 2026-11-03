@@ -31,6 +31,17 @@ key. Certificate, authentication, protocol, and cancellation errors do not
 trigger fallback, and no fallback happens after TLS is established. Hostname
 resolution currently uses IPv4; IPv6 literals are supported.
 
+## HTTP/3 session work
+
+The server has a private nghttp3 CONNECT codec that advertises extended CONNECT,
+HTTP datagrams, and browser WebTransport settings. It requires an exact HTTPS
+Origin and configured request path, accepts one CONNECT session, and keeps the
+CONNECT stream open after a successful response. A rejected origin or path gets
+a 403 response. The codec is not yet attached to the QUIC endpoint; stream and
+datagram session mapping, listener configuration, and browser interoperability
+remain to be implemented and verified. The supplied origin must be explicitly
+configured; the codec does not treat TLS encryption as origin authorization.
+
 ## Reliable streams
 
 Each participant opens one unidirectional stream for each outgoing control,
