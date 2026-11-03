@@ -445,8 +445,21 @@ try {
       (match) => match[1],
     ),
   );
-  if (![...allIngress].some((client) => !nativeIngress.has(client)))
+  const browserClient = [...allIngress].find(
+    (client) => !nativeIngress.has(client),
+  );
+  if (!browserClient)
     throw new Error("server did not receive the browser's visual datagram");
+  const closeDeadline = Date.now() + 8000;
+  while (
+    !logs.includes(`Removing client ${browserClient} - marking inactive`) &&
+    Date.now() < closeDeadline
+  )
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  if (!logs.includes(`Removing client ${browserClient} - marking inactive`))
+    throw new Error(
+      "browser session was not removed promptly after disconnect",
+    );
 } catch (error) {
   console.error("SERVER LOG", logs.slice(-12000));
   for (const participant of participants)
