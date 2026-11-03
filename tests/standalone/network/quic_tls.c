@@ -989,12 +989,12 @@ static asciichat_error_t quic_server_packet(network_connection_t *connection, pa
   return packet_send_via_transport(network_connection_transport(connection), type, payload, length, 0);
 }
 
-static void quic_network_server_test(const char *certificate, const char *private_key) {
+static void quic_network_server_test(const char *certificate, const char *private_key, bool datagrams) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_config_t server_config = {.certificate_file = certificate,
                                       .private_key_file = private_key,
-                                      .enable_datagrams = true,
+                                      .enable_datagrams = datagrams,
                                       .prefer_audio_datagrams = true};
   acip_quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true, .prefer_audio_datagrams = true};
   acip_quic_endpoint_t *server = NULL, *client = NULL;
@@ -1017,7 +1017,7 @@ static void quic_network_server_test(const char *certificate, const char *privat
     }
     time_sleep_ns(NS_PER_MS_INT);
   }
-  CHECK(ready);
+  CHECK(ready && capabilities.datagrams == datagrams);
   size_t audio_length = 0;
   uint8_t *audio = make_packet(PACKET_TYPE_AUDIO_BATCH, 48, &audio_length);
   quic_server_fixture_t fixture = {.audio = audio + sizeof(packet_header_t),
@@ -1798,7 +1798,8 @@ int main(int argc, char **argv) {
   quic_udp_secure_exchange(server, client, false);
   quic_udp_secure_exchange(server, client, true);
   quic_public_endpoint_test(argv[1], argv[2]);
-  quic_network_server_test(argv[1], argv[2]);
+  quic_network_server_test(argv[1], argv[2], true);
+  quic_network_server_test(argv[1], argv[2], false);
 
   acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;
   CHECK(acip_quic_tls_server_create("acip/1", argv[1], argv[4], &invalid) == ERROR_CRYPTO && !invalid);
