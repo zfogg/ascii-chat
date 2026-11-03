@@ -3,6 +3,7 @@
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -652,10 +653,31 @@ static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, cr
   return ASCIICHAT_OK;
 }
 
+typedef struct {
+  acip_transport_t *transport;
+  const uint8_t *packet;
+  size_t length;
+  asciichat_error_t result;
+} quic_concurrent_sender_t;
+
+static void *quic_concurrent_send(void *arg) {
+  quic_concurrent_sender_t *sender = arg;
+  sender->result = ASCIICHAT_OK;
+  for (unsigned i = 0; i < 32; ++i) {
+    sender->result = acip_transport_send(sender->transport, sender->packet, sender->length);
+    if (sender->result != ASCIICHAT_OK)
+      break;
+  }
+  return NULL;
+}
+
 static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, bool wrong_password) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  mutex_t client_lane, server_lane;
+  CHECK(mutex_init(&client_lane, "quic_client_lane") == 0);
+  CHECK(mutex_init(&server_lane, "quic_server_lane") == 0);
   udp_secure_test_state_t server_state = {0};
   media_capture_t client_capture = {0};
   packet_type_t types[] = {PACKET_TYPE_PING,        PACKET_TYPE_AUDIO_BATCH,      PACKET_TYPE_IMAGE_FRAME,
@@ -689,14 +711,20 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
     acip_quic_connection_t *failed = NULL;
-    CHECK(acip_quic_udp_pump(client, now, &failed) == ASCIICHAT_OK && !failed);
-    CHECK(acip_quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
+    mutex_lock(&client_lane);
+    asciichat_error_t client_pump = acip_quic_udp_pump(client, now, &failed);
+    mutex_unlock(&client_lane);
+    CHECK(client_pump == ASCIICHAT_OK && !failed);
+    mutex_lock(&server_lane);
+    asciichat_error_t server_pump = acip_quic_udp_pump(server, now, &failed);
+    mutex_unlock(&server_lane);
+    CHECK(server_pump == ASCIICHAT_OK && !failed);
     if (!handshake_started && server_state.peer && acip_quic_connection_tls_ready(client_connection) &&
         acip_quic_connection_tls_ready(server_state.peer)) {
-      CHECK(acip_quic_transport_attach(client_connection, &client_handshake.crypto_ctx, &client_transport) ==
-            ASCIICHAT_OK);
-      CHECK(acip_quic_transport_attach(server_state.peer, &server_handshake.crypto_ctx, &server_transport) ==
-            ASCIICHAT_OK);
+      CHECK(acip_quic_transport_attach_serialized(client_connection, &client_handshake.crypto_ctx, &client_lane,
+                                                  &client_transport) == ASCIICHAT_OK);
+      CHECK(acip_quic_transport_attach_serialized(server_state.peer, &server_handshake.crypto_ctx, &server_lane,
+                                                  &server_transport) == ASCIICHAT_OK);
       acip_transport_t *duplicate = NULL;
       CHECK(acip_quic_transport_attach(client_connection, &client_handshake.crypto_ctx, &duplicate) ==
                 ERROR_INVALID_PARAM &&
@@ -776,6 +804,34 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     CHECK(acip_quic_connection_allow_media(server_state.peer) == ERROR_INVALID_STATE);
   } else {
     CHECK(submitted && client_capture.count == 6 && server_state.capture.count == 6);
+    quic_concurrent_sender_t sender = {.transport = client_transport, .packet = packets[0], .length = lengths[0]};
+    asciichat_thread_t thread;
+    CHECK(acthread_create(&thread, "quic_concurrent_sender", quic_concurrent_send, &sender) == 0);
+    unsigned received = 0;
+    start = time_get_ns();
+    while (received < 32 && time_get_ns() - start < 10 * NS_PER_SEC_INT) {
+      uint64_t now = time_get_ns();
+      acip_quic_connection_t *failed = NULL;
+      mutex_lock(&client_lane);
+      asciichat_error_t result = acip_quic_udp_pump(client, now, &failed);
+      mutex_unlock(&client_lane);
+      CHECK(result == ASCIICHAT_OK && !failed);
+      mutex_lock(&server_lane);
+      result = acip_quic_udp_pump(server, now, &failed);
+      mutex_unlock(&server_lane);
+      CHECK(result == ASCIICHAT_OK && !failed);
+      while (acip_transport_has_pending_data(server_transport)) {
+        void *packet = NULL, *allocation = NULL;
+        size_t length = 0;
+        CHECK(acip_transport_recv(server_transport, &packet, &length, &allocation) == ASCIICHAT_OK);
+        CHECK(length == lengths[0] && memcmp(packet, packets[0], length) == 0);
+        buffer_release(allocation);
+        ++received;
+      }
+      time_sleep_ns(NS_PER_MS_INT);
+    }
+    CHECK(thread_join(&thread, NULL) == 0);
+    CHECK(sender.result == ASCIICHAT_OK && received == 32);
   }
   CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
   CHECK(acip_transport_close(client_transport) == ASCIICHAT_OK);
@@ -784,6 +840,8 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   acip_transport_destroy(server_transport);
   acip_quic_udp_endpoint_destroy(&client);
   acip_quic_udp_endpoint_destroy(&server);
+  mutex_destroy(&client_lane);
+  mutex_destroy(&server_lane);
   crypto_handshake_destroy(&client_handshake);
   crypto_handshake_destroy(&server_handshake);
   for (size_t i = 0; i < 6; ++i)

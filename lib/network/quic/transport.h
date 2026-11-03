@@ -10,3 +10,9 @@
  * destroy the transport before destroying the connection. */
 asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                              acip_transport_t **out);
+/* As above, but adapter operations lock the borrowed lane mutex. The endpoint
+ * owner must hold that same mutex for every operation on the connection,
+ * including UDP pump, security transitions, and removal. The mutex outlives
+ * the transport; do not call attach while already holding it. */
+asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
+                                                        mutex_t *lane, acip_transport_t **out);
