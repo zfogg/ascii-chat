@@ -56,15 +56,15 @@ h265_encoder_t *video_encoder_create(video_codec_t codec, uint16_t initial_width
 void h265_encoder_destroy(h265_encoder_t *encoder);
 
 /**
- * Encode an ASCII art frame
+ * Encode an RGB24 upload frame
  *
  * The encoder automatically detects size changes and reinitializes when needed.
  * The output packet includes frame dimensions so decoder can reconfigure.
  *
  * @param encoder Encoder handle
- * @param width Current frame width (characters)
- * @param height Current frame height (characters)
- * @param ascii_data Raw ASCII character grid (width × height bytes)
+ * @param width Current frame width in pixels
+ * @param height Current frame height in pixels
+ * @param ascii_data RGB24 pixel data (width × height × 3 bytes)
  * @param output_buf Buffer for encoded output
  * @param output_size Input: buffer size, Output: actual encoded size
  * @return Error code (ASCIICHAT_OK on success)

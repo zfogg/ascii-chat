@@ -114,7 +114,7 @@ const hash = [
     .update(new X509Certificate(readFileSync(cert)).raw)
     .digest(),
 ];
-const env = { ...process.env };
+const env = { ...process.env, ASCII_CHAT_DISABLE_FIRST_USE: "1" };
 const server = spawn(
   resolve(binary),
   [

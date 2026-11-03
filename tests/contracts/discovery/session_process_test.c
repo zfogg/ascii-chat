@@ -580,6 +580,7 @@ Test(discovery_session_process, host_fanout_authority_isolation_and_reconnect, .
   acds_server_t server = {0};
   cr_assert_eq(database_init(":memory:", &server.db), ASCIICHAT_OK);
   cr_assert_eq(mutex_init(&server.handoff_mutex, "designation-test"), ASCIICHAT_OK);
+  server.handoff_mutex_initialized = true;
   acip_session_create_t request = {
       .session_type = SESSION_TYPE_WEBRTC, .max_participants = 8, .expose_ip_publicly = true};
   acip_session_created_t created;
@@ -648,7 +649,6 @@ Test(discovery_session_process, host_fanout_authority_isolation_and_reconnect, .
   network_server_destroy(&server.network_server);
   // Release handoff state through normal server cleanup.
   acds_server_shutdown(&server);
-  mutex_destroy(&server.handoff_mutex);
   socket_cleanup();
   asciichat_shared_destroy();
 }

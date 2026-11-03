@@ -46,6 +46,7 @@ class Native {
           APPDATA: home,
           XDG_CONFIG_HOME: home,
           ASCII_CHAT_OTEL_ENABLED_TELEMETRY: "none",
+          ASCII_CHAT_DISABLE_FIRST_USE: "1",
           ASCII_CHAT_QUESTION_PROMPT_RESPONSE: "y;y;y",
           ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK: "1",
         },

@@ -1,4 +1,11 @@
 {
+  "rewrites": [
+    { "source": "/docs", "destination": "/index.html" },
+    { "source": "/docs/:path*", "destination": "/index.html" },
+    { "source": "/man1", "destination": "/index.html" },
+    { "source": "/man5", "destination": "/index.html" },
+    { "source": "/man3/:path*", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

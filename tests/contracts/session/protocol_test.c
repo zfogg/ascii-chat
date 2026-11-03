@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/audio/limits.h>
 #include "session/protocol.h"
 #include "session/frame_validation.h"
 #include "session/participant.h"
@@ -11,8 +12,7 @@
 
 typedef struct {
   size_t frames, samples, decodes, pongs, controls;
-  bool fail_audio;
-  bool expect_mono_upmix;
+  bool fail_audio, expect_mono_expansion;
 } sink_t;
 
 static asciichat_error_t frame(const ascii_frame_packet_t *header, const char *text, void *context) {
@@ -35,10 +35,13 @@ static asciichat_error_t samples(const float *data, size_t count, void *context)
   sink_t *sink = context;
   if (sink->fail_audio)
     return SET_ERRNO(ERROR_AUDIO, "Injected playback failure");
-  if (sink->expect_mono_upmix)
-    cr_assert(count == 4 && data[0] > 0.99f && data[1] > 0.99f && data[2] < -0.99f && data[3] < -0.99f);
-  else
+  if (sink->expect_mono_expansion) {
+    cr_assert_eq(count, 2 * AUDIO_CHANNELS);
+    for (size_t i = 0; i < count; ++i)
+      cr_assert_float_eq(data[i], i / AUDIO_CHANNELS == 0 ? 1.0f : -1.0f, 1e-6);
+  } else {
     cr_assert(count == 2 && data[0] > 0.99f && data[1] < -0.99f);
+  }
   sink->samples += count;
   return ASCIICHAT_OK;
 }
@@ -375,7 +378,7 @@ void test_session_protocol(void) {
   test_dimensions();
   test_participant_settings();
   sink_t sinks[2] = {0};
-  sinks[0].expect_mono_upmix = true;
+  sinks[0].expect_mono_expansion = true;
   const acip_transport_methods_t methods = {.sendv = send_vectors};
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},
                                     {.methods = &methods, .impl_data = &sinks[1]}};
@@ -511,6 +514,7 @@ void test_session_protocol(void) {
       ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
 
+  sinks[0].expect_mono_expansion = true;
   audio_batch_packet_t audio = {.batch_count = HOST_TO_NET_U32(1),
                                 .total_samples = HOST_TO_NET_U32(2),
                                 .sample_rate = HOST_TO_NET_U32(48000),
@@ -521,7 +525,7 @@ void test_session_protocol(void) {
   cr_assert_eq(
       session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)),
       ASCIICHAT_OK);
-  cr_assert(sinks[0].samples == 4 && sinks[1].samples == 0);
+  cr_assert(sinks[0].samples == 2 * AUDIO_CHANNELS && sinks[1].samples == 0);
   sinks[0].fail_audio = true;
   cr_assert_eq(
       session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)),

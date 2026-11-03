@@ -286,6 +286,8 @@ See **[ascii-chat.com/crypto](https://ascii-chat.com/crypto)** for complete cryp
 
 See **[ascii-chat.com/man1/#ENVIRONMENT](https://www.ascii-chat.com/man1#ENVIRONMENT)** for complete environment variable documentation.
 
+Interactive terminal modes show instructions the first time each mode is used. Press `?` for keyboard controls at any time. Set `ASCII_CHAT_DISABLE_FIRST_USE=1` to skip the first-use notice; set `ASCII_CHAT_FIRST_USE_DIR` to choose where its per-mode markers are stored.
+
 ## ascii-chat Internet Protocol (ACIP)
 
 - 📡 **User Network Documentation: [ascii-chat.com/docs/network](https://www.ascii-chat.com/docs/network)**

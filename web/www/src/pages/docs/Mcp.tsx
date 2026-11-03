@@ -34,38 +34,28 @@ export default function Mcp() {
           </header>
           <section className="docs-section-spacing">
             <Heading level={2} className="heading-2 text-cyan-400">
-              Connect locally over stdio
+              Connect your assistant
             </Heading>
             <p className="docs-paragraph">
-              Build or install ascii-chat, then configure your MCP client to
-              launch the following command. The server uses the same mirror
-              rendering pipeline as the CLI. --transport stdio explicitly
-              selects the default: the MCP client starts this process, and no
-              network port is opened. MCP mode automatically skips startup
-              update checks. JSON-RPC messages use stdin and stdout; logs and
-              diagnostics go to stderr.
+              Install ascii-chat and make sure the command is on your PATH. Add
+              a configuration below to your assistant, then restart it or
+              reconnect the server. Your assistant starts the server as needed;
+              no network port is opened. Use the full executable path if needed.
             </p>
             <CodeBlock language="bash">{`ascii-chat mcp-server --transport stdio`}</CodeBlock>
             <p className="docs-paragraph">
-              The repository uses a shared HTTP endpoint in .codex/config.toml.
-              Start the HTTP command below before connecting. All chats keep the
-              same URL across rebuilds and restarts; interrupted requests may
-              need retry. The ascii-chat-mcp-dev skill explains the native
-              runtime copy and Windows file locks.
+              Add this Codex configuration to ~/.codex/config.toml:
             </p>
             <CodeBlock language="text">{`[mcp_servers.ascii_chat]
-url = "http://127.0.0.1:27228/mcp"
+command = "ascii-chat"
+args = ["mcp-server", "--transport", "stdio"]
 tool_timeout_sec = 70`}</CodeBlock>
-          </section>
-          <section className="docs-section-spacing">
-            <Heading level={2} className="heading-2 text-cyan-400">
+            <Heading level={3} className="text-xl font-semibold mb-3">
               Claude Code configuration
             </Heading>
             <p className="docs-paragraph">
-              The repository also includes .mcp.json for Claude Code. Build the
-              binary, start Claude Code from the checkout, and approve the
-              project server when prompted. Use /mcp to inspect its connection.
-              For a client-managed stdio server, use this configuration:
+              Add this to your project’s .mcp.json and approve the server when
+              prompted. Use /mcp to inspect the connection:
             </p>
             <CodeBlock language="json">
               {JSON.stringify(
@@ -73,7 +63,7 @@ tool_timeout_sec = 70`}</CodeBlock>
                   mcpServers: {
                     ascii_chat: {
                       type: "stdio",
-                      command: "./build/bin/ascii-chat",
+                      command: "ascii-chat",
                       args: ["mcp-server", "--transport", "stdio"],
                     },
                   },
@@ -82,19 +72,25 @@ tool_timeout_sec = 70`}</CodeBlock>
                 2,
               )}
             </CodeBlock>
-            <p className="docs-paragraph">
-              For a networked server, start the HTTP command below
-              independently, then replace that entry with this URL
-              configuration. It uses HTTP with all five local tools (add
-              --server for cloud restrictions):
-            </p>
+            <Heading level={3} className="text-xl font-semibold mb-3">
+              OpenCode configuration
+            </Heading>
+            <p className="docs-paragraph">Add this to opencode.json:</p>
             <CodeBlock language="json">
               {JSON.stringify(
                 {
-                  mcpServers: {
+                  $schema: "https://opencode.ai/config.json",
+                  mcp: {
                     ascii_chat: {
-                      type: "http",
-                      url: "http://127.0.0.1:27228/mcp",
+                      type: "local",
+                      command: [
+                        "ascii-chat",
+                        "mcp-server",
+                        "--transport",
+                        "stdio",
+                      ],
+                      enabled: true,
+                      timeout: 70000,
                     },
                   },
                 },
@@ -103,19 +99,13 @@ tool_timeout_sec = 70`}</CodeBlock>
               )}
             </CodeBlock>
             <p className="docs-paragraph">
-              See the{" "}
-              <a
-                href="https://code.claude.com/docs/en/mcp"
-                className="link-standard"
-              >
-                Claude Code MCP documentation
-              </a>{" "}
-              for project configuration and approvals.
+              Once connected, ask your assistant to render a picture, a video
+              frame, a webcam view, or an audio visualization as ASCII art.
             </p>
           </section>
           <section className="docs-section-spacing">
             <Heading level={2} className="heading-2 text-green-400">
-              Four rendering tools
+              Available tools
             </Heading>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -257,12 +247,8 @@ tool_timeout_sec = 70`}</CodeBlock>
               )}
             </CodeBlock>
             <p className="docs-paragraph">
-              The response includes text content and structuredContent with
-              ascii, elapsed_ms, and saved_files (absolute paths). Rendering
-              failures set isError. Each request runs in an isolated mirror
-              child process with explicit options, deadlines, cancellation, and
-              output limits. User and system configuration is not loaded in that
-              child.
+              The response includes the ASCII result and paths of saved files.
+              Use a new filename for each export.
             </p>
           </section>
           <section className="docs-section-spacing">
@@ -301,38 +287,20 @@ ascii-chat mcp-server --transport http 0.0.0.0 ::1 --port 28028`}</CodeBlock>
               reverse proxy as needed.
             </p>
             <p className="docs-paragraph">
-              The allowed browser Origin defaults to https://mcp.ascii-chat.com;
-              change it with --http-origin. Native clients may omit Origin. POST
-              /mcp serves stateless JSON responses; GET and DELETE return 405.
-              Clients send Accept including application/json and
-              text/event-stream. Supported protocol versions are 2025-03-26,
-              2025-06-18, and 2025-11-25. Decoded uploads are limited to 16 MiB,
-              request bodies to 24 MiB, and returned ASCII to 8 MiB.
+              If a browser client cannot connect, configure its allowed origin
+              with --http-origin. Native MCP clients may omit an Origin header.
             </p>
           </section>
           <section className="docs-section-spacing">
             <Heading level={2} className="heading-2 text-yellow-400">
-              Logs and diagnostics
+              Troubleshooting
             </Heading>
             <CodeBlock language="bash">{`ascii-chat --log-level debug --grep 'MCP|render' mcp-server --transport http --status-screen`}</CodeBlock>
             <p className="docs-paragraph">
-              HTTP status uses the shared terminal UI, including the log viewer,
-              error stacks, error popups, and sync primitives. Debug builds
-              support --sync-state, --backtrace, and memory reports. Stdio
-              reserves stdin for the protocol and does not consume terminal
-              shortcuts. Keep a bounded snapshot duration for webcam or
-              synthetic sources; unbounded capture ends with a timeout error.
-            </p>
-            <p className="docs-paragraph">
-              The normal --otel-* flags configure telemetry for either
-              transport. MCP request and render spans preserve parent context
-              across render threads. Metrics count requests, rejections,
-              failures, cancellation, deadlines, output bytes and saved files,
-              plus render duration. Attributes contain bounded method/tool names
-              and status codes, without media paths, URLs, uploaded bytes or
-              ASCII content. Render subprocesses do not export separately; the
-              parent records each job. Test environments prohibit collector
-              export.
+              If your assistant cannot start the server, check that ascii-chat
+              is installed and on its PATH, or use an absolute executable path.
+              File paths and devices belong to the computer running the server.
+              Keep webcam and synthetic captures bounded to avoid timeouts.
             </p>
             <p className="docs-paragraph">
               See{" "}

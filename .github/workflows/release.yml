@@ -353,6 +353,26 @@ jobs:
           rm -f "$archive_contents"
           echo "Verified static libasciichat.a in $archive"
 
+      - name: Verify runtime manual
+        shell: bash
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
+          if [[ "$(uname -m)" == "aarch64" ]]; then arch="arm64"; else arch="amd64"; fi
+          archive="build_release/ascii-chat-${version}-Linux-${arch}.tar.gz"
+          tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
+          grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
+          tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
+          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+
+      - name: Save manual for Windows ARM packaging
+        if: matrix.runner == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-man1
+          path: build_release/share/man/man1/ascii-chat.1
+          if-no-files-found: error
+
       - name: Print build logs on failure
         if: failure()
         run: |
@@ -594,6 +614,17 @@ jobs:
       - name: Smoke test macOS release executable
         run: cmake -DEXECUTABLE="$PWD/build_release/bin/ascii-chat" -DEXPECTED_VERSION="${{ needs.create-release.outputs.version }}" -P cmake/scripts/VerifyReleaseVersion.cmake
 
+      - name: Verify runtime manual
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          version="${version#v}"
+          if [[ "$(uname -m)" == "arm64" ]]; then arch="arm64"; else arch="amd64"; fi
+          archive="build_release/ascii-chat-${version}-macOS-${arch}.tar.gz"
+          tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
+          grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
+          tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
+          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+
       - name: Verify macOS development package contains the static library
         shell: bash
         run: |
@@ -714,7 +745,7 @@ jobs:
   package-windows:
     name: Package Windows installers (${{ matrix.arch }})
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    needs: create-release
+    needs: [create-release, package-linux]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -809,6 +840,13 @@ jobs:
             deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
+      - name: Download manual for Windows ARM
+        if: matrix.arch == 'arm64'
+        uses: actions/download-artifact@v4
+        with:
+          name: release-man1
+          path: build_release/share/man/man1
+
       - name: Build and package with CPack
         shell: pwsh
         run: |
@@ -842,7 +880,14 @@ jobs:
 
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $runtimeArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $runtimeZip))
-          try { $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName) }
+          try {
+            $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName)
+            $manual = $runtimeArchive.Entries | Where-Object { $_.FullName -match '(?i)(^|/)share/man/man1/ascii-chat\.1$' } | Select-Object -First 1
+            if (-not $manual) { throw "Runtime archive does not contain the manual" }
+            $reader = [System.IO.StreamReader]::new($manual.Open())
+            try { $manualText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($manualText -notmatch 'MCP SERVER') { throw "Runtime manual is missing MCP documentation" }
+          }
           finally { $runtimeArchive.Dispose() }
           $runtimeDlls = @($runtimeEntries | Where-Object { $_ -match '(?i)\.dll$' })
           if ($runtimeDlls.Count -gt 0) {

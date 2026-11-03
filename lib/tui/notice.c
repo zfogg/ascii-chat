@@ -1,10 +1,15 @@
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/keyboard.h>
+#include <stdatomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/popup.h>
+#include <ascii-chat/ui/help_menu.h>
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
@@ -170,6 +175,14 @@ typedef struct {
   bool unicode;
   bool color;
   uint64_t started;
+  size_t marker_offset;
+  size_t title_offset;
+  atomic_int page;
+  atomic_int pages;
+  atomic_int presented_page;
+  int rendered_page;
+  int rendered_cols;
+  int rendered_rows;
   char text[];
 } notice_snapshot_t;
 
@@ -180,8 +193,124 @@ const char *ui_notice_title(const void *data) {
                                                                                        : "notice";
 }
 
+#define FIRST_USE_LINE_COUNT 64
+#define FIRST_USE_LINE_BYTES 512
+#define FIRST_USE_CONTENT_COLUMNS 66
+
+static size_t first_use_wrap(const char *text, int width, char lines[FIRST_USE_LINE_COUNT][FIRST_USE_LINE_BYTES]) {
+  size_t count = 0;
+  for (const char *line = text; *line && count < FIRST_USE_LINE_COUNT;) {
+    const char *end = strchr(line, '\n');
+    if (!end)
+      end = line + strlen(line);
+    const char *tab = memchr(line, '\t', (size_t)(end - line));
+    bool shortcut = tab && tab - line == 1;
+    char key[2] = {0}, styled[128] = {0};
+    if (shortcut) {
+      key[0] = *line;
+      ui_help_keys(styled, sizeof(styled), key);
+      line = tab + 1;
+    }
+    if (line == end) {
+      lines[count++][0] = '\0';
+    } else {
+      bool first = true;
+      while (line < end && count < FIRST_USE_LINE_COUNT) {
+        while (line < end && *line == ' ')
+          ++line;
+        if (line == end)
+          break;
+        int available = width - (shortcut ? 3 : 0);
+        size_t length = (size_t)(end - line);
+        if (length > (size_t)available) {
+          length = (size_t)available;
+          size_t split = length;
+          while (split > 0 && line[split] != ' ')
+            --split;
+          if (split)
+            length = split;
+        }
+        if (shortcut)
+          snprintf(lines[count], FIRST_USE_LINE_BYTES, "%s  %.*s", first ? styled : " ", (int)length, line);
+        else
+          snprintf(lines[count], FIRST_USE_LINE_BYTES, "%.*s", (int)length, line);
+        ++count;
+        first = false;
+        line += length;
+      }
+    }
+    line = *end ? end + 1 : end;
+  }
+  return count;
+}
+
+static void render_first_use(terminal_size_t size, const notice_snapshot_t *notice) {
+  int width = size.cols - 6;
+  if (width > FIRST_USE_CONTENT_COLUMNS)
+    width = FIRST_USE_CONTENT_COLUMNS;
+  if (width < 4 || size.rows < 8)
+    return;
+  char lines[FIRST_USE_LINE_COUNT][FIRST_USE_LINE_BYTES];
+  size_t count = first_use_wrap(notice->text, width, lines);
+  if (!count)
+    return;
+  int logo_rows = size.rows >= 15 && size.cols >= 52 ? 4 : size.rows >= 10 ? 1 : 0;
+  int page_rows = size.rows - 7 - logo_rows;
+  int pages = (int)((count + (size_t)page_rows - 1) / (size_t)page_rows);
+  notice_snapshot_t *state = (notice_snapshot_t *)notice;
+  if (state->rendered_cols != size.cols || state->rendered_rows != size.rows) {
+    atomic_store(&state->presented_page, -1);
+    state->rendered_cols = size.cols;
+    state->rendered_rows = size.rows;
+  }
+  atomic_store(&state->pages, pages);
+  int page = atomic_load(&state->page);
+  if (page >= pages) {
+    page = pages - 1;
+    atomic_store(&state->page, page);
+  }
+  const char *visible[FIRST_USE_LINE_COUNT];
+  size_t start = (size_t)page * (size_t)page_rows;
+  size_t visible_count = count - start;
+  if (visible_count > (size_t)page_rows)
+    visible_count = (size_t)page_rows;
+  for (size_t i = 0; i < visible_count; ++i)
+    visible[i] = lines[start + i];
+  char enter[128], escape[128], footer[512];
+  ui_help_keys(enter, sizeof(enter), "Enter");
+  ui_help_keys(escape, sizeof(escape), "Esc");
+  snprintf(footer, sizeof(footer), "%d/%d %s %s %s%s", page + 1, pages, enter, page + 1 == pages ? "done" : "next",
+           escape, width >= 25 ? " close" : "");
+  ui_popup_t popup = {.title = notice->text + notice->title_offset,
+                      .lines = visible,
+                      .line_count = visible_count,
+                      .footer = footer,
+                      .top_margin = logo_rows,
+                      .minimum_width = width + 4};
+  frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
+  if (!output)
+    return;
+  frame_buffer_append(output, "\033[H\033[2J", 7);
+  if (ui_popup_render(output, size, &popup)) {
+    if (logo_rows) {
+      int popup_height = (int)visible_count + 5;
+      int popup_top = logo_rows + (size.rows - logo_rows - popup_height) / 2 + 1;
+      frame_buffer_printf(output, "\033[%d;1H", popup_top - logo_rows);
+      int tick = (int)((time_get_ns() / (NS_PER_SEC_INT / 60)) % 1800);
+      invitation_render_logo(output, size.cols - 1, tick, notice->color, logo_rows == 1);
+    }
+    state->rendered_page = page;
+    ui_controller_write(STDERR_FILENO, frame_buffer_get_content(output), frame_buffer_get_length(output));
+  }
+  frame_buffer_destroy(output);
+}
+
 static void render_notice(terminal_size_t size, const void *data) {
   const notice_snapshot_t *notice = data;
+  if (notice->marker_offset) {
+    render_first_use(size, notice);
+    return;
+  }
   // Only the presentation thread owns these counters. Every queued notice gets
   // its own full reading interval when it first becomes visible.
   static uint64_t active_id;
@@ -251,6 +380,12 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
     snapshot->unicode = unicode;
     snapshot->color = color;
     snapshot->started = time_get_ns();
+    snapshot->marker_offset = snapshot->title_offset = 0;
+    atomic_init(&snapshot->page, 0);
+    atomic_init(&snapshot->pages, 0);
+    atomic_init(&snapshot->presented_page, -1);
+    snapshot->rendered_page = -1;
+    snapshot->rendered_cols = snapshot->rendered_rows = 0;
     memcpy(snapshot->text, text, text_bytes);
     asciichat_error_t result = ui_controller_submit(
         UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
@@ -273,12 +408,90 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
   return result;
 }
 
+asciichat_error_t ui_notice_present_first_use(const char *title, const char *text, const char *marker_path) {
+  if (!title || !text || !marker_path || !platform_isatty(STDERR_FILENO) || GET_OPTION(snapshot_mode))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "First-use notice requires an interactive terminal and marker path");
+  size_t text_bytes = strlen(text) + 1, title_bytes = strlen(title) + 1, marker_bytes = strlen(marker_path) + 1;
+  if (title_bytes > SIZE_MAX - marker_bytes - sizeof(notice_snapshot_t) ||
+      text_bytes > SIZE_MAX - title_bytes - marker_bytes - sizeof(notice_snapshot_t))
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "First-use notice is too large");
+  size_t bytes = sizeof(notice_snapshot_t) + text_bytes + title_bytes + marker_bytes;
+  notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
+  if (!snapshot)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate first-use notice");
+  snapshot->severity = UI_NOTICE_INFO;
+  snapshot->unicode = terminal_should_use_utf8();
+  snapshot->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
+  snapshot->started = time_get_ns();
+  snapshot->title_offset = text_bytes;
+  snapshot->marker_offset = text_bytes + title_bytes;
+  atomic_init(&snapshot->page, 0);
+  atomic_init(&snapshot->pages, 0);
+  atomic_init(&snapshot->presented_page, -1);
+  snapshot->rendered_page = -1;
+  snapshot->rendered_cols = snapshot->rendered_rows = 0;
+  memcpy(snapshot->text, text, text_bytes);
+  memcpy(snapshot->text + text_bytes, title, title_bytes);
+  memcpy(snapshot->text + snapshot->marker_offset, marker_path, marker_bytes);
+  asciichat_error_t result = ui_controller_submit(
+      UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 20, .rows = 8}, render_notice, snapshot, bytes);
+  SAFE_FREE(snapshot);
+  return result;
+}
+
+void ui_notice_frame_presented(const void *data) {
+  notice_snapshot_t *notice = (notice_snapshot_t *)data;
+  if (notice && notice->marker_offset)
+    atomic_store(&notice->presented_page, notice->rendered_page);
+}
+
+ui_notice_key_result_t ui_notice_first_use_key(const void *data, int key) {
+  notice_snapshot_t *notice = (notice_snapshot_t *)data;
+  if (!notice || !notice->marker_offset)
+    return UI_NOTICE_KEY_ORDINARY;
+  if (key == KEY_ESCAPE || key == 'q' || key == 3)
+    return UI_NOTICE_KEY_DISMISS;
+  if (key == KEY_QUESTION)
+    return UI_NOTICE_KEY_HELP;
+  int page = atomic_load(&notice->page);
+  int pages = atomic_load(&notice->pages);
+  if (key == KEY_LEFT && page > 0) {
+    atomic_store(&notice->presented_page, -1);
+    atomic_store(&notice->page, page - 1);
+  } else if ((key == '\r' || key == '\n' || key == KEY_RIGHT) && pages > 0 &&
+             atomic_load(&notice->presented_page) == page) {
+    if (page + 1 < pages) {
+      atomic_store(&notice->presented_page, -1);
+      atomic_store(&notice->page, page + 1);
+    } else if (key == '\r' || key == '\n') {
+      return UI_NOTICE_KEY_COMPLETE;
+    }
+  }
+  return UI_NOTICE_KEY_HANDLED;
+}
+
+void ui_notice_first_use_complete(const void *data) {
+  const notice_snapshot_t *notice = data;
+  if (!notice || !notice->marker_offset)
+    return;
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  FILE *marker = platform_fopen("first-use instructions", notice->text + notice->marker_offset, "w");
+  if (!marker) {
+    log_warn("Could not save first-use instructions state; the notice may appear again: %s",
+             notice->text + notice->marker_offset);
+  } else if (fclose(marker) != 0) {
+    log_warn("Could not finish saving first-use instructions state; the notice may appear again: %s",
+             notice->text + notice->marker_offset);
+  }
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+}
+
 bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned timeout_seconds) {
   return ui_notice_confirm_kind(UI_PROMPT_CONFIRMATION, severity, text, timeout_seconds);
 }
 
-bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
-                            const char *text, unsigned timeout_seconds) {
+bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
+                            unsigned timeout_seconds) {
   ui_prompt_kind_t previous_kind = g_prompt_kind;
   g_prompt_kind = kind;
   ui_notice_severity_t previous = g_prompt_severity;

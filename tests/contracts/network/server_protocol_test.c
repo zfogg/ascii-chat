@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ascii-chat/video/h265/encoder.h>
 #include <ascii-chat/video/h265/decoder.h>
+#include <ascii-chat/audio/limits.h>
 
 atomic_t g_should_exit;
 client_manager_t g_client_manager;
@@ -432,4 +433,149 @@ Test(server_protocol, h265_frames_decode_to_grayscale_rgba_and_preserve_client_i
   h265_server_remove_client(g_h265_server, 7);
   h265_server_remove_client(g_h265_server, 7);
   cr_assert_not_null(h265_server_get_client_decoder(g_h265_server, 7));
+}
+
+Test(server_protocol, repeated_capabilities_update_codecs_without_overwriting_committed_render_preferences) {
+  log_set_level(LOG_DEV);
+  terminal_capabilities_packet_t caps = {.width = HOST_TO_NET_U16(40),
+                                         .height = HOST_TO_NET_U16(12),
+                                         .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE),
+                                         .palette_type = HOST_TO_NET_U32(PALETTE_STANDARD),
+                                         .codec_capabilities_video = HOST_TO_NET_U32(VIDEO_CODEC_CAP_RGBA)};
+  uint8_t request[ACIP_SETTINGS_MAX_SIZE];
+  size_t length;
+  acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+  cr_assert_eq(acip_settings_encode(&header, "", request, sizeof(request), &length), ASCIICHAT_OK);
+  cr_assert_eq(handle_runtime_settings(client, request, length), ERROR_INVALID_STATE);
+  handle_client_capabilities_packet(client, &caps, sizeof(caps));
+  cr_assert(client->has_terminal_caps);
+  cr_assert_eq(client->width, 40);
+  cr_assert_eq(client->height, 12);
+  caps.width = HOST_TO_NET_U16(80);
+  caps.codec_capabilities_video = HOST_TO_NET_U32(VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265);
+  handle_client_capabilities_packet(client, &caps, sizeof(caps));
+  cr_assert_eq(client->width, 40);
+  cr_assert_eq(client->codec_capabilities_video, VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265);
+  size_t before = sends;
+  client->transport = NULL;
+  cr_assert_eq(handle_runtime_settings(client, request, length), ERROR_INVALID_STATE);
+  cr_assert_eq(sends, before);
+  client->transport = &transport;
+  atomic_store_bool(&client->shutting_down, true);
+  cr_assert_eq(handle_runtime_settings(client, request, length), ERROR_INVALID_STATE);
+  cr_assert_eq(sends, before);
+}
+Test(server_protocol, invalid_capabilities_disconnect_before_committing_dimensions) {
+  log_set_level(LOG_DEV);
+  handle_client_capabilities_packet(client, NULL, 0);
+  expect_disconnect();
+  reset_disconnect();
+  terminal_capabilities_packet_t caps = {.width = HOST_TO_NET_U16(40), .height = 0};
+  handle_client_capabilities_packet(client, &caps, sizeof(caps));
+  expect_disconnect();
+  cr_assert_not(client->has_terminal_caps);
+  cr_assert_eq(client->width, 0);
+}
+Test(server_protocol, hevc_rejections_preserve_frame_count_and_handle_shutdown_without_a_decoder) {
+  log_set_level(LOG_DEV);
+  client->codec_capabilities_video = VIDEO_CODEC_CAP_H265;
+  const uint8_t malformed[] = {3, 0, 8, 0, 4, 0xff, 0xff};
+  handle_image_frame_h265_packet(client, malformed, 4);
+  expect_disconnect();
+  reset_disconnect();
+  handle_image_frame_h265_packet(client, malformed, sizeof(malformed));
+  cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
+  client->incoming_video_buffer = video_frame_buffer_create(client->client_id);
+  cr_assert_not_null(client->incoming_video_buffer);
+  handle_image_frame_h265_packet(client, malformed, sizeof(malformed));
+  atomic_store_bool(&g_should_exit, true);
+  handle_image_frame_h265_packet(client, malformed, sizeof(malformed));
+  cr_assert_eq(client->frames_received, 0);
+  atomic_store_bool(&g_should_exit, false);
+  g_h265_server = h265_server_context_create();
+  cr_assert_not_null(g_h265_server);
+  SAFE_STRNCPY(client->client_id, "7", sizeof(client->client_id));
+  handle_image_frame_h265_packet(client, malformed, sizeof(malformed));
+  expect_disconnect();
+  cr_assert_eq(client->frames_received, 0);
+  cr_assert_null(video_frame_get_latest(client->incoming_video_buffer));
+}
+Test(server_protocol, malformed_opus_batches_release_both_scratch_sizes_without_publishing_partial_audio) {
+  log_set_level(LOG_DEV);
+  atomic_store_bool(&client->is_sending_audio, true);
+  uint8_t single[18] = {0};
+  uint32_t rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE), duration = HOST_TO_NET_U32(20);
+  memcpy(single, &rate, sizeof(rate));
+  memcpy(single + 4, &duration, sizeof(duration));
+  single[16] = single[17] = 0xff;
+  handle_audio_opus_packet(client, single, sizeof(single));
+  expect_disconnect();
+  reset_disconnect();
+  client->opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
+  client->incoming_audio_buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, true);
+  cr_assert_not_null(client->opus_decoder);
+  cr_assert_not_null(client->incoming_audio_buffer);
+  handle_audio_opus_batch_packet(client, single, 16);
+  expect_disconnect();
+  reset_disconnect();
+  handle_audio_opus_packet(client, single, sizeof(single));
+  cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
+  const unsigned counts[] = {1, 33};
+  for (size_t n = 0; n < ARRAY_SIZE(counts); ++n) {
+    unsigned count = counts[n];
+    uint8_t batch[16 + 33 * 4] = {0};
+    memcpy(batch, &rate, sizeof(rate));
+    memcpy(batch + 4, &duration, sizeof(duration));
+    uint32_t wire_count = HOST_TO_NET_U32(count);
+    memcpy(batch + 8, &wire_count, sizeof(wire_count));
+    uint16_t frame_size = HOST_TO_NET_U16(2);
+    for (unsigned i = 0; i < count; ++i) {
+      memcpy(batch + 16 + 2 * i, &frame_size, sizeof(frame_size));
+      memset(batch + 16 + 2 * count + 2 * i, 0xff, 2);
+    }
+    handle_audio_opus_batch_packet(client, batch, 16 + count * 4);
+    cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
+    cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  }
+}
+Test(server_protocol, oversized_pcm_and_unsupported_formats_never_publish_audio) {
+  log_set_level(LOG_DEV);
+  atomic_store_bool(&client->is_sending_audio, true);
+  client->incoming_audio_buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, true);
+  cr_assert_not_null(client->incoming_audio_buffer);
+  const uint32_t count = AUDIO_BATCH_SAMPLES * 2 + 1;
+  size_t length = sizeof(audio_batch_packet_t) + count * sizeof(uint32_t);
+  uint8_t *packet = SAFE_CALLOC(length, 1, uint8_t *);
+  audio_batch_packet_t header = {.batch_count = HOST_TO_NET_U32(1),
+                                 .total_samples = HOST_TO_NET_U32(count),
+                                 .sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE),
+                                 .channels = HOST_TO_NET_U32(1)};
+  memcpy(packet, &header, sizeof(header));
+  handle_audio_batch_packet(client, packet, length);
+  expect_disconnect();
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  reset_disconnect();
+  header.channels = HOST_TO_NET_U32(3);
+  memcpy(packet, &header, sizeof(header));
+  handle_audio_batch_packet(client, packet, length);
+  expect_disconnect();
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  SAFE_FREE(packet);
+}
+Test(server_protocol, frames_without_storage_during_shutdown_and_obsolete_console_clear_do_not_send_data) {
+  log_set_level(LOG_DEV);
+  client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
+  uint8_t packet[] = {0, 0, 0, 2, 0, 0, 0, 1, 255, 0, 0, 0, 255, 0};
+  handle_image_frame_packet(client, packet, sizeof(packet));
+  cr_assert_eq(GET_ERRNO(), ERROR_INVALID_STATE);
+  CLEAR_ERRNO_ALL();
+  atomic_store_bool(&g_should_exit, true);
+  handle_image_frame_packet(client, packet, sizeof(packet));
+  cr_assert_eq(GET_ERRNO(), ASCIICHAT_OK);
+  cr_assert_eq(client->frames_received, 0);
+  size_t before = sends;
+  broadcast_clear_console_to_all_clients();
+  cr_assert_eq(GET_ERRNO(), ERROR_INVALID_STATE);
+  cr_assert_eq(sends, before);
+  cr_assert_eq(send_server_state_to_client(NULL), -1);
 }

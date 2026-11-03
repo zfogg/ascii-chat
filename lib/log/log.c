@@ -958,7 +958,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   /* Apply format without colors first (plain version for grep matching)
    * Load format pointer once to prevent TOCTOU race condition where another
    * thread frees the format between our check and use. */
-  const log_template_t *format = g_log.format;
+  const log_template_t *format = g_log.format_console_only ? g_log.format_console_only : g_log.format;
   int plain_len = 0;
   if (format && lifecycle_is_initialized(&g_log.lifecycle)) { /* Double-check lifecycle is still active */
     plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line, func,
@@ -968,7 +968,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   /* For colored output, apply format with colors enabled */
   int colored_len = 0;
   if (use_colors && plain_len > 0) {
-    const log_template_t *format_check = g_log.format;
+    const log_template_t *format_check = g_log.format_console_only ? g_log.format_console_only : g_log.format;
     if (format_check && lifecycle_is_initialized(&g_log.lifecycle)) { /* Re-verify lifecycle before use */
       colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                        line, func, thread_current_id(), clean_msg, true, time_nanoseconds);

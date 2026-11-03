@@ -1294,6 +1294,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     asciichat_add_python_test(discovery-direct-tcp
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/discovery_direct_tcp.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(discovery-direct-tcp PROPERTIES LABELS "integration" TIMEOUT 90)
+    asciichat_add_python_test(discovery-audio
+        ${CMAKE_SOURCE_DIR}/tests/integration/discovery_audio.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(discovery-audio PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
@@ -1581,7 +1584,9 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-render-loop contracts/session/render_loop_test.c)
     asciichat_configure_contract(test-render-loop)
-    target_link_libraries(test-render-loop PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    # The white-box copy defines render globals; use one static copy rather than
+    # also loading those globals from the Debug shared library under ASan.
+    target_link_libraries(test-render-loop PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
     target_include_directories(test-render-loop PRIVATE
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
     apply_sanitizers_to_target(test-render-loop)
@@ -1723,8 +1728,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(signaling test-signaling)
     set_property(TEST signaling APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c
-        ${CMAKE_SOURCE_DIR}/src/client/crypto.c)
+    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c)
     asciichat_configure_contract(test-client-rekey)
     target_link_libraries(test-client-rekey PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-client-rekey PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1746,6 +1750,216 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     asciichat_add_contract_test(server-stream test-server-stream)
     set_property(TEST server-stream APPEND PROPERTY LABELS unit)
+
+    add_executable(test-client-transport contracts/network/client_transport_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/keepalive.c
+        ${CMAKE_SOURCE_DIR}/src/client/crypto.c ${CMAKE_SOURCE_DIR}/src/client/display.c)
+    asciichat_configure_contract(test-client-transport)
+    target_link_libraries(test-client-transport PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-transport PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-client-transport)
+    set_target_properties(test-client-transport PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-transport test-client-transport)
+    set_property(TEST client-transport APPEND PROPERTY LABELS unit)
+
+    add_executable(test-session-h265-client contracts/session/h265_client_test.c
+        ${CMAKE_SOURCE_DIR}/src/session/h265/client.c)
+    asciichat_configure_contract(test-session-h265-client)
+    target_link_libraries(test-session-h265-client PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-session-h265-client PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-session-h265-client)
+    set_target_properties(test-session-h265-client PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(session-h265-client test-session-h265-client)
+    set_property(TEST session-h265-client APPEND PROPERTY LABELS unit)
+
+    if(TARGET test_unit_session_test_api_boundaries)
+        target_include_directories(test_unit_session_test_api_boundaries PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+    endif()
+
+    add_executable(test-server-lifecycle contracts/session/server_lifecycle_test.c)
+    asciichat_configure_contract(test-server-lifecycle)
+    target_link_libraries(test-server-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-server-lifecycle PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-server-lifecycle)
+    set_target_properties(test-server-lifecycle PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(shared-server-lifecycle test-server-lifecycle)
+    set_property(TEST shared-server-lifecycle APPEND PROPERTY LABELS unit)
+
+
+    add_executable(test-client-lifecycle contracts/session/client_lifecycle_test.c)
+    asciichat_configure_contract(test-client-lifecycle)
+    target_link_libraries(test-client-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-lifecycle PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-lifecycle)
+    set_target_properties(test-client-lifecycle PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-lifecycle test-client-lifecycle)
+    set_property(TEST client-lifecycle APPEND PROPERTY LABELS unit)
+
+    add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
+    asciichat_configure_contract(test-mcp-requests)
+    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+        ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-mcp-requests PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include}
+        ${YYJSON_INCLUDE_DIRS} ${LIBWEBSOCKETS_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-mcp-requests)
+    set_target_properties(test-mcp-requests PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(mcp-requests test-mcp-requests)
+    set_property(TEST mcp-requests APPEND PROPERTY LABELS unit)
+
+    add_executable(test-discovery-media contracts/discovery/media_callbacks_test.c)
+    asciichat_configure_contract(test-discovery-media)
+    target_link_libraries(test-discovery-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-discovery-media PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-discovery-media)
+    set_target_properties(test-discovery-media PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(discovery-media test-discovery-media)
+    set_property(TEST discovery-media APPEND PROPERTY LABELS unit)
+
+    add_executable(test-entry-signals contracts/entry/signals_test.c)
+    asciichat_configure_contract(test-entry-signals)
+    target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES} ${YYJSON_LIBRARIES})
+    target_include_directories(test-entry-signals PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS} ${YYJSON_INCLUDE_DIRS} ${PCRE2_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-entry-signals)
+    set_target_properties(test-entry-signals PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(entry-signals test-entry-signals)
+    set_property(TEST entry-signals APPEND PROPERTY LABELS unit)
+
+    add_executable(test-participant-workers contracts/session/participant_workers_test.c)
+    asciichat_configure_contract(test-participant-workers)
+    target_link_libraries(test-participant-workers PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-participant-workers PRIVATE ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${LIBSODIUM_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-participant-workers)
+    set_target_properties(test-participant-workers PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(participant-workers test-participant-workers)
+    set_property(TEST participant-workers APPEND PROPERTY LABELS unit)
+
+    add_executable(test-host-faults contracts/session/host_faults_test.c)
+    asciichat_configure_contract(test-host-faults)
+    target_link_libraries(test-host-faults PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-host-faults PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-host-faults)
+    set_target_properties(test-host-faults PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(host-faults test-host-faults)
+    set_property(TEST host-faults APPEND PROPERTY LABELS unit)
+
+    add_executable(test-client-video contracts/network/client_video_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/crypto.c
+        ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)
+    asciichat_configure_contract(test-client-video)
+    target_link_libraries(test-client-video PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-video PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-video)
+    set_target_properties(test-client-video PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-video test-client-video)
+    set_property(TEST client-video APPEND PROPERTY LABELS unit)
+
+    add_executable(test-client-audio contracts/network/client_audio_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c
+        ${CMAKE_SOURCE_DIR}/src/client/crypto.c
+        ${CMAKE_SOURCE_DIR}/src/client/display.c
+        ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)
+    asciichat_configure_contract(test-client-audio)
+    target_link_libraries(test-client-audio PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-client-audio PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-audio)
+    set_target_properties(test-client-audio PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-audio test-client-audio)
+    set_property(TEST client-audio APPEND PROPERTY LABELS unit)
+
+    add_executable(test-capture-transactions contracts/media/capture_transactions_test.c)
+    asciichat_configure_contract(test-capture-transactions)
+    target_link_libraries(test-capture-transactions PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-capture-transactions PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-capture-transactions)
+    set_target_properties(test-capture-transactions PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(capture-transactions test-capture-transactions)
+    set_property(TEST capture-transactions APPEND PROPERTY LABELS unit)
+
+    add_executable(test-display-delivery contracts/media/display_delivery_test.c)
+    asciichat_configure_contract(test-display-delivery)
+    target_link_libraries(test-display-delivery PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-display-delivery PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-display-delivery)
+    set_target_properties(test-display-delivery PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(display-delivery test-display-delivery)
+    set_property(TEST display-delivery APPEND PROPERTY LABELS unit)
+
+    add_executable(test-discovery-service-callbacks contracts/discovery/service_callbacks_test.c
+        ${CMAKE_SOURCE_DIR}/src/discovery-service/signaling.c)
+    asciichat_configure_contract(test-discovery-service-callbacks)
+    target_link_libraries(test-discovery-service-callbacks PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${SQLITE3_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-discovery-service-callbacks PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-discovery-service-callbacks)
+    set_target_properties(test-discovery-service-callbacks PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(discovery-service-callbacks test-discovery-service-callbacks)
+    set_property(TEST discovery-service-callbacks APPEND PROPERTY LABELS unit)
+
+    add_executable(test-server-main contracts/network/server_main_test.c
+        ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/connections.c
+        ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/server/stream.c
+        ${CMAKE_SOURCE_DIR}/src/server/render.c ${CMAKE_SOURCE_DIR}/src/server/stats.c
+        ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
+    asciichat_configure_contract(test-server-main)
+    target_link_libraries(test-server-main PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-server-main PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-server-main)
+    set_target_properties(test-server-main PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-main test-server-main)
+    set_property(TEST server-main APPEND PROPERTY LABELS unit)
+
+    add_executable(test-server-render contracts/network/server_render_test.c)
+    asciichat_configure_contract(test-server-render)
+    target_link_libraries(test-server-render PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-server-render PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-server-render)
+    set_target_properties(test-server-render PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-render test-server-render)
+    set_property(TEST server-render APPEND PROPERTY LABELS unit)
+
+    add_executable(test-server-client contracts/network/server_client_test.c
+        ${CMAKE_SOURCE_DIR}/src/server/protocol.c
+        ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
+    asciichat_configure_contract(test-server-client)
+    target_link_libraries(test-server-client PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-server-client PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-server-client)
+    set_target_properties(test-server-client PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-client test-server-client)
+    set_property(TEST server-client APPEND PROPERTY LABELS unit)
 
     add_executable(test-server-protocol contracts/network/server_protocol_test.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
@@ -2049,6 +2263,9 @@ if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
 endif()
 
 if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
+    asciichat_add_python_test(synthetic-audio-sessions
+        ${CMAKE_SOURCE_DIR}/tests/integration/synthetic_audio_sessions.py --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(synthetic-audio-sessions PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
     asciichat_add_python_test(kitty-output
         ${CMAKE_SOURCE_DIR}/tests/integration/kitty_output.py --binary $<TARGET_FILE:ascii-chat>)
     set_tests_properties(kitty-output PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
@@ -2136,6 +2353,21 @@ if(BUILD_TESTS AND TARGET test-sync-regressions AND NOT WIN32 AND CMAKE_BUILD_TY
     asciichat_add_python_test(sync-ui-regressions
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.py $<TARGET_FILE:test-sync-regressions>)
     set_tests_properties(sync-ui-regressions PROPERTIES LABELS "integration" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    asciichat_add_python_test(first-use-terminal
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/first_use_terminal.py --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(first-use-terminal PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    set(final_error_args --binary $<TARGET_FILE:ascii-chat>)
+    if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")
+        list(APPEND final_error_args --diagnostics)
+    endif()
+    asciichat_add_python_test(final-error-notice
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/final_error_notice.py ${final_error_args})
+    set_tests_properties(final-error-notice PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
 
@@ -2290,4 +2522,21 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|R
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_tui.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/Testing/mcp-tui)
     set_tests_properties(mcp-tui PROPERTIES LABELS "integration;mcp;tui" TIMEOUT 90 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    asciichat_add_python_test(cli-logging-contract
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_logging_contract.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(cli-logging-contract PROPERTIES LABELS "integration" TIMEOUT 120)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-panic-report AND NOT EMSCRIPTEN)
+    asciichat_add_python_test(panic-report
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/panic_report.py --binary $<TARGET_FILE:ascii-panic-report>)
+    set_tests_properties(panic-report PROPERTIES LABELS "integration;tooling" TIMEOUT 60)
+    foreach(_test_build_target IN ITEMS tests tests-criterion-build tests-lib-build)
+        if(TARGET ${_test_build_target})
+            add_dependencies(${_test_build_target} ascii-panic-report)
+        endif()
+    endforeach()
 endif()

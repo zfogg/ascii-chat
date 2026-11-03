@@ -37,7 +37,7 @@ def main():
             quic_port = probe.getsockname()[1]
         if quic_port == tcp_port:
             tcp_port = free_port()
-        environment = {"ASCII_CHAT_QUESTION_PROMPT_RESPONSE": "y;y;y", "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK": "1"}
+        environment = {"ASCII_CHAT_DISABLE_FIRST_USE": "1", "ASCII_CHAT_QUESTION_PROMPT_RESPONSE": "y;y;y", "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK": "1"}
         acds = host = udp_blackhole = None
         clients = []
         try:

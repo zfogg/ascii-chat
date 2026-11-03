@@ -384,12 +384,17 @@ static inline asciichat_error_t check_media(acip_transport_t *transport, const v
   CHECK(NET_TO_HOST_U32(packet.crc32) == asciichat_crc32(body, body_len));
   switch (NET_TO_HOST_U16(packet.type)) {
   case PACKET_TYPE_AUDIO_BATCH: {
-    float decoded[4];
+    // Golden network-order PCM32 for 0, +1, -1, and +0.5. This must also
+    // agree with the receive-side PCM contract, rather than host float bytes.
+    const uint8_t pcm[] = {0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff,
+                           0x80, 0x00, 0x00, 0x01, 0x3f, 0xff, 0xff, 0xff};
     audio_batch_packet_t header;
     memcpy(&header, body, sizeof(header));
     CHECK(NET_TO_HOST_U32(header.batch_count) == 1 && NET_TO_HOST_U32(header.total_samples) == 4);
-    CHECK(NET_TO_HOST_U32(header.sample_rate) == AUDIO_SAMPLE_RATE && NET_TO_HOST_U32(header.channels) == 1);
-    CHECK(body_len == sizeof(header) + sizeof(decoded));
+    CHECK(NET_TO_HOST_U32(header.sample_rate) == 48000 && NET_TO_HOST_U32(header.channels) == 1);
+    CHECK(body_len == sizeof(header) + sizeof(pcm));
+    CHECK(memcmp(body + sizeof(header), pcm, sizeof(pcm)) == 0);
+    float decoded[4];
     CHECK(audio_dequantize_samples(body + sizeof(header), 4, decoded) == ASCIICHAT_OK);
     CHECK(decoded[0] == 0.0f && decoded[1] > 0.999f && decoded[2] < -0.999f && decoded[3] > 0.499f &&
           decoded[3] < 0.501f);

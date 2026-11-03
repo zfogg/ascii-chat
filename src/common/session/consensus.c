@@ -208,21 +208,20 @@ session_consensus_set_topology(session_consensus_t *consensus,
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 
-  // Destroy old topology
-  if (consensus->topology) {
-    consensus_topology_destroy(consensus->topology);
-  }
-
-  // Create new topology
-  asciichat_error_t err =
-      consensus_topology_create(participant_ids, num_participants, consensus->my_id, &consensus->topology);
+  // Validate the candidate before releasing the ring still borrowed by the
+  // coordinator. A rejected membership update must preserve the active round.
+  consensus_topology_t *replacement = NULL;
+  asciichat_error_t err = consensus_topology_create(participant_ids, num_participants, consensus->my_id, &replacement);
+  if (err != ASCIICHAT_OK)
+    return err;
+  err = consensus_coordinator_on_ring_members(consensus->coordinator, replacement);
   if (err != ASCIICHAT_OK) {
-    consensus->topology = NULL;
+    consensus_topology_destroy(replacement);
     return err;
   }
-
-  // Update coordinator with new topology
-  return consensus_coordinator_on_ring_members(consensus->coordinator, consensus->topology);
+  consensus_topology_destroy(consensus->topology);
+  consensus->topology = replacement;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t session_consensus_on_collection_start(session_consensus_t *consensus, uint32_t round_id,
