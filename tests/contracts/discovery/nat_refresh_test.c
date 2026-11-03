@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/platform/filesystem.h>
 
 int refresh_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg);
 int refresh_join(asciichat_thread_t *thread, void **result, uint64_t timeout);
@@ -371,4 +372,177 @@ Test(nat_refresh, backoff_is_saturated_before_shift_overflow_for_extreme_attempt
     cr_assert_geq(delay, expected[i]);
     cr_assert_leq(delay, expected[i] + 999);
   }
+}
+
+static void identity_fixture(char path[PLATFORM_MAX_PATH_LENGTH], uint8_t public_key[32]) {
+  int fd = -1;
+  cr_assert_eq(platform_create_temp_file(path, PLATFORM_MAX_PATH_LENGTH, "discovery-identity", &fd), 0);
+  cr_assert_eq(platform_close(fd), 0);
+  uint8_t secret[64];
+  cr_assert_eq(crypto_sign_keypair(public_key, secret), 0);
+  cr_assert_eq(acds_identity_save(path, public_key, secret), ASCIICHAT_OK);
+  sodium_memzero(secret, sizeof(secret));
+}
+static unsigned state_calls, error_calls;
+static discovery_state_t last_state;
+static void state_changed(discovery_state_t state, void *context) {
+  cr_assert_eq(context, &session);
+  ++state_calls;
+  last_state = state;
+}
+static void discovery_error(asciichat_error_t error, const char *message, void *context) {
+  cr_assert_eq(context, &session);
+  cr_assert_eq(error, ERROR_NETWORK);
+  cr_assert_str_eq(message, "recovery failed");
+  ++error_calls;
+}
+static bool cancel_start(void *context) {
+  cr_assert_eq(context, &session);
+  return true;
+}
+Test(nat_refresh, explicit_identity_configuration_is_copied_and_cancelled_start_does_not_connect) {
+  char path[PLATFORM_MAX_PATH_LENGTH];
+  uint8_t key[32];
+  identity_fixture(path, key);
+  options_t *v = recovery_options();
+  SAFE_STRNCPY(v->encrypt_key, path, sizeof(v->encrypt_key));
+  recovery_publish(v);
+  discovery_config_t config = {.acds_address = "127.0.0.2",
+                               .acds_url = "ws://127.0.0.2:27002",
+                               .acds_port = 27002,
+                               .session_string = "river-cloud-tree",
+                               .password = "local-secret",
+                               .on_state_change = state_changed,
+                               .on_error = discovery_error,
+                               .callback_user_data = &session,
+                               .should_exit_callback = cancel_start,
+                               .exit_callback_data = &session};
+  discovery_session_t *created = discovery_session_create(&config);
+  cr_assert_not_null(created);
+  cr_assert_arr_eq(created->identity_pubkey, key, 32);
+  cr_assert_eq(created->num_identity_keys, 1);
+  cr_assert_str_eq(created->acds_address, config.acds_address);
+  cr_assert_str_eq(created->acds_url, config.acds_url);
+  cr_assert_eq(created->acds_port, 27002);
+  cr_assert_str_eq(created->password, config.password);
+  cr_assert_not(created->is_initiator);
+  cr_assert_str_eq(discovery_session_get_string(created), config.session_string);
+  cr_assert_eq(discovery_session_get_state(created), DISCOVERY_STATE_INIT);
+  cr_assert_not(discovery_session_is_active(created));
+  cr_assert_not(discovery_session_is_host(created));
+  cr_assert_null(discovery_session_get_host(created));
+  cr_assert_null(discovery_session_get_participant(created));
+  cr_assert_eq(discovery_session_start(created), ASCIICHAT_OK);
+  cr_assert_null(created->acds_connection);
+  cr_assert_eq(created->state, DISCOVERY_STATE_INIT);
+  set_state(created, DISCOVERY_STATE_WAITING_PEER);
+  cr_assert_eq(last_state, DISCOVERY_STATE_WAITING_PEER);
+  cr_assert_gt(created->waiting_peer_start_ns, 0);
+  set_error(created, ERROR_NETWORK, "recovery failed");
+  cr_assert_eq(error_calls, 1);
+  cr_assert_eq(last_state, DISCOVERY_STATE_FAILED);
+  discovery_session_stop(created);
+  cr_assert_eq(discovery_session_get_state(created), DISCOVERY_STATE_ENDED);
+  cr_assert_eq(state_calls, 3);
+  cr_assert_eq(discovery_session_destroy(created), ASCIICHAT_OK);
+  cr_assert_eq(platform_unlink(path), 0);
+}
+Test(nat_refresh, multiple_identity_keys_are_loaded_completely_or_constructor_rejects_them) {
+  char paths[2][PLATFORM_MAX_PATH_LENGTH];
+  uint8_t keys[2][32];
+  for (unsigned i = 0; i < 2; ++i)
+    identity_fixture(paths[i], keys[i]);
+  options_t *v = recovery_options();
+  SAFE_STRNCPY(v->encrypt_key, paths[0], sizeof(v->encrypt_key));
+  v->num_identity_keys = 2;
+  for (unsigned i = 0; i < 2; ++i)
+    SAFE_STRNCPY(v->identity_keys[i], paths[i], sizeof(v->identity_keys[i]));
+  recovery_publish(v);
+  discovery_config_t config = {0};
+  discovery_session_t *created = discovery_session_create(&config);
+  cr_assert_not_null(created);
+  cr_assert(created->is_initiator);
+  cr_assert_str_eq(created->acds_address, "127.0.0.1");
+  cr_assert_eq(created->acds_port, ACIP_DISCOVERY_DEFAULT_PORT);
+  cr_assert_eq(created->num_identity_keys, 2);
+  cr_assert_arr_eq(created->identity_pubkeys, keys, sizeof(keys));
+  cr_assert_arr_eq(created->identity_pubkey, keys[0], 32);
+  cr_assert_null(discovery_session_get_string(created));
+  cr_assert_eq(discovery_session_destroy(created), ASCIICHAT_OK);
+  cr_assert_eq(platform_unlink(paths[1]), 0);
+  cr_assert_null(discovery_session_create(&config));
+  CLEAR_ERRNO_ALL();
+  v = recovery_options();
+  v->num_identity_keys = 0;
+  SAFE_STRNCPY(v->encrypt_key, paths[1], sizeof(v->encrypt_key));
+  recovery_publish(v);
+  cr_assert_null(discovery_session_create(&config));
+  cr_assert_eq(platform_unlink(paths[0]), 0);
+}
+Test(nat_refresh, absent_session_is_rejected_without_allocating_or_publishing_transport_state) {
+  cr_assert_null(discovery_session_create(NULL));
+  cr_assert_eq(discovery_session_destroy(NULL), ERROR_INVALID_PARAM);
+  cr_assert_eq(discovery_session_start(NULL), ERROR_INVALID_PARAM);
+  cr_assert_eq(discovery_session_get_state(NULL), DISCOVERY_STATE_FAILED);
+  cr_assert_not(discovery_session_is_active(NULL));
+  cr_assert_not(discovery_session_is_host(NULL));
+  cr_assert_null(discovery_session_get_string(NULL));
+  cr_assert_null(discovery_session_get_host(NULL));
+  cr_assert_null(discovery_session_get_participant(NULL));
+  discovery_session_stop(NULL);
+  discovery_session_host_pong(NULL);
+  set_state(NULL, DISCOVERY_STATE_ACTIVE);
+  set_error(NULL, ERROR_NETWORK, NULL);
+  cr_assert_eq(initialize_webrtc_peer_manager(NULL), ERROR_INVALID_PARAM);
+  cr_assert_eq(discovery_session_handle_host_disconnect(NULL, 0), ERROR_INVALID_PARAM);
+  cr_assert_eq(discovery_session_check_host_alive(NULL), ASCIICHAT_OK);
+  cr_assert_eq(session.state, DISCOVERY_STATE_INIT);
+  cr_assert_null(session.participant_ctx);
+  cr_assert_null(session.peer_manager);
+}
+Test(nat_refresh, late_or_unexpected_webrtc_transport_does_not_change_the_direct_tcp_role) {
+  session.session_type = SESSION_TYPE_DIRECT_TCP;
+  session.state = DISCOVERY_STATE_ACTIVE;
+  uint8_t peer[16] = {1};
+  discovery_on_transport_ready(&recovery_transport, peer, NULL);
+  CLEAR_ERRNO_ALL();
+  discovery_on_transport_ready(&recovery_transport, peer, &session);
+  cr_assert_not(session.webrtc_transport_ready);
+  cr_assert_null(session.participant_ctx);
+  cr_assert_eq(session.state, DISCOVERY_STATE_ACTIVE);
+}
+Test(nat_refresh, ready_webrtc_channel_can_create_or_replace_a_participant_and_reset_retry_state) {
+  session.session_type = SESSION_TYPE_WEBRTC;
+  session.webrtc_retry_attempt = 2;
+  session.webrtc_disconnected_since_ms = 3;
+  SAFE_STRNCPY(session.host_address, "127.0.0.1", sizeof(session.host_address));
+  session.host_port = 27001;
+  acip_transport_t *owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
+  owned->methods = &recovery_methods;
+  uint8_t peer[16] = {2};
+  discovery_on_transport_ready(owned, peer, &session);
+  cr_assert(session.webrtc_transport_ready);
+  cr_assert_not_null(session.participant_ctx);
+  cr_assert_eq(session_participant_get_transport(session.participant_ctx), owned);
+  cr_assert_eq(session.webrtc_retry_attempt, 0);
+  cr_assert_eq(session.webrtc_disconnected_since_ms, 0);
+  acip_transport_t *replacement = SAFE_CALLOC(1, sizeof(*replacement), acip_transport_t *);
+  replacement->methods = &recovery_methods;
+  discovery_on_transport_ready(replacement, peer, &session);
+  cr_assert_eq(session_participant_get_transport(session.participant_ctx), replacement);
+  cr_assert_eq(recovery_destroyed, 1);
+  cr_assert(session.webrtc_transport_ready);
+}
+Test(nat_refresh, host_without_listener_rejects_a_ready_channel_and_frees_its_owned_transport) {
+  session_host_config_t config = {.max_clients = 1};
+  session.host_ctx = session_host_create(&config);
+  cr_assert_not_null(session.host_ctx);
+  session.session_type = SESSION_TYPE_WEBRTC;
+  session.is_host = true;
+  uint8_t peer[16] = {2};
+  acip_transport_t *owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
+  owned->methods = &recovery_methods;
+  discovery_on_transport_ready(owned, peer, &session);
+  cr_assert_eq(recovery_destroyed, 1);
+  cr_assert_eq(session_host_get_client_count(session.host_ctx), 0);
 }

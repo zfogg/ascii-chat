@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include "server/stream.h"
 #include <ascii-chat/options/rcu.h>
+#include "session/frame_validation.h"
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/util/endian.h>
@@ -195,4 +196,89 @@ Test(server_stream, missing_capabilities_or_target_rejects_render_then_recovers)
   cr_assert_null(create_mixed_ascii_frame_for_client("source-0", 0, 24, false, &size, NULL, NULL, NULL));
   cr_assert_null(create_mixed_ascii_frame_for_client("source-0", 80, 0, false, &size, NULL, NULL, NULL));
   cr_assert_null(create_mixed_ascii_frame_for_client("source-0", 80, 24, false, NULL, NULL, NULL, NULL));
+}
+
+static void stream_settings(client_info_t *client, bool rain, int width, int height, const char *palette) {
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = options_t_new();
+  v->width = width;
+  v->height = height;
+  v->color_mode = TERM_COLOR_NONE;
+  v->palette_type = PALETTE_CUSTOM;
+  SAFE_STRNCPY(v->palette_custom, palette, sizeof(v->palette_custom));
+  v->matrix_rain = rain;
+  cr_assert_eq(acip_render_settings_prepare(&client->render_settings, v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+}
+Test(server_stream, matrix_rain_rebuilds_for_dimensions_and_is_released_when_disabled) {
+  publish(0, 16, 8, 120);
+  client_info_t *client = &g_client_manager.clients[0];
+  size_t size;
+  bool changed;
+  int sources;
+  stream_settings(client, true, 80, 24, "XX");
+  char *frame = render("source-0", &size, &changed, &sources);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(client->digital_rain);
+  cr_assert_eq(client->digital_rain->num_columns, 80);
+  cr_assert_eq(client->digital_rain->num_rows, 24);
+  SAFE_FREE(frame);
+  stream_settings(client, true, 40, 12, "XX");
+  frame = render("source-0", &size, &changed, &sources);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(client->digital_rain);
+  cr_assert_eq(client->digital_rain->num_columns, 40);
+  cr_assert_eq(client->digital_rain->num_rows, 12);
+  SAFE_FREE(frame);
+  stream_settings(client, false, 40, 12, "XX");
+  frame = render("source-0", &size, &changed, &sources);
+  cr_assert_not_null(frame);
+  cr_assert_null(client->digital_rain);
+  cr_assert_eq(session_frame_validate(frame, size, 40, 12), ASCIICHAT_OK);
+  SAFE_FREE(frame);
+}
+Test(server_stream, wide_palette_normalization_keeps_every_row_at_the_recipients_display_width) {
+  publish(0, 16, 8, 120);
+  client_info_t *client = &g_client_manager.clients[0];
+  stream_settings(client, false, 40, 12, "界é");
+  size_t size;
+  bool changed;
+  int sources;
+  char *frame = render("source-0", &size, &changed, &sources);
+  cr_assert_not_null(frame);
+  cr_assert_eq(size, strlen(frame));
+  cr_assert_eq(session_frame_validate(frame, size, 40, 12), ASCIICHAT_OK);
+  cr_assert_eq(sources, 1);
+  SAFE_FREE(frame);
+}
+Test(server_stream, three_sources_use_multiple_grid_cells_and_dimension_rejections_do_not_consume_frames) {
+  publish(0, 16, 8, 0);
+  publish(1, 8, 16, 255);
+  publish(2, 16, 16, 120);
+  size_t size;
+  bool changed;
+  int sources;
+  char *frame = render("source-2", &size, &changed, &sources);
+  cr_assert_not_null(frame);
+  cr_assert_eq(sources, 3);
+  cr_assert_gt(cells(frame, '#'), 0);
+  cr_assert_gt(cells(frame, '@'), 0);
+  SAFE_FREE(frame);
+  video_frame_buffer_t *buffer = g_client_manager.clients[0].incoming_video_buffer;
+  const uint32_t bad[][2] = {{0, 8}, {8, 0}, {4097, 8}, {8, 2161}};
+  atomic_store_bool(&g_client_manager.clients[1].active, false);
+  atomic_store_bool(&g_client_manager.clients[2].active, false);
+  for (unsigned i = 0; i < ARRAY_SIZE(bad); ++i) {
+    uint32_t dims[] = {HOST_TO_NET_U32(bad[i][0]), HOST_TO_NET_U32(bad[i][1])};
+    memcpy(buffer->front_buffer->data, dims, sizeof(dims));
+    atomic_store_bool(&buffer->new_frame_available, true);
+    cr_assert_null(render("source-0", &size, &changed, &sources));
+    cr_assert(atomic_load_bool(&buffer->new_frame_available));
+    cr_assert_eq(sources, 0);
+  }
+  publish(0, 16, 8, 255);
+  frame = render("source-0", &size, &changed, &sources);
+  cr_assert_not_null(frame);
+  cr_assert_eq(sources, 1);
+  SAFE_FREE(frame);
 }

@@ -18,9 +18,12 @@ mixer_t *volatile g_audio_mixer;
 h265_server_context_t *volatile g_h265_server;
 bool g_server_encryption_enabled;
 
+void process_decrypted_packet(client_info_t *, packet_type_t, void *, size_t);
+
 static server_context_t server;
 static unsigned starts, stops, sends;
 static asciichat_error_t send_result;
+static crypto_context_t *capture_crypto;
 static packet_type_t last_type;
 static uint8_t last_payload[4096];
 static size_t last_length;
@@ -47,7 +50,11 @@ static asciichat_error_t capture_send(acip_transport_t *transport, const void *d
   last_type = NET_TO_HOST_U16(header.type);
   last_length = length - sizeof(header);
   cr_assert_leq(last_length, sizeof(last_payload));
-  memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
+  if(capture_crypto && last_type==PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
+    cr_assert_eq(crypto_encrypt(capture_crypto,(const uint8_t *)data+sizeof(header),last_length,last_payload,sizeof(last_payload),&last_length),CRYPTO_OK);
+  } else {
+    memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
+  }
   ++sends;
   return send_result;
 }
@@ -502,4 +509,105 @@ Test(server_client, single_opus_compatibility_rejects_bad_metadata_and_decodes_r
   cr_assert(atomic_load_bool(&client->active));
   cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES);
   opus_codec_destroy(encoder);
+}
+
+Test(server_client, decrypted_dispatch_routes_controls_and_rejects_unknown_packets) {
+  client_info_t *client = admit();
+  client_info_packet_t join = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_AUDIO | CLIENT_CAP_VIDEO)};
+  SAFE_STRNCPY(join.display_name, "Decrypted", sizeof(join.display_name));
+  process_decrypted_packet(client, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join));
+  cr_assert_str_eq(client->display_name, "Decrypted");
+  terminal_capabilities_packet_t caps = {
+      .width = HOST_TO_NET_U16(80), .height = HOST_TO_NET_U16(24), .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE)};
+  process_decrypted_packet(client, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
+  cr_assert(client->has_terminal_caps);
+  uint32_t video = HOST_TO_NET_U32(STREAM_TYPE_VIDEO);
+  process_decrypted_packet(client, PACKET_TYPE_STREAM_START, &video, sizeof(video));
+  cr_assert(atomic_load_bool(&client->is_sending_video));
+  process_decrypted_packet(client, PACKET_TYPE_STREAM_STOP, &video, sizeof(video));
+  cr_assert_not(atomic_load_bool(&client->is_sending_video));
+  process_decrypted_packet(client, PACKET_TYPE_PING, NULL, 0);
+  cr_assert_eq(last_type, PACKET_TYPE_PONG);
+  process_decrypted_packet(client, PACKET_TYPE_PONG, NULL, 0);
+  cr_assert(atomic_load_bool(&client->active));
+  process_decrypted_packet(client, (packet_type_t)65000, NULL, 0);
+  expect_rejected(client);
+}
+Test(server_client, decrypted_dispatch_enforces_real_rate_limits_and_reports_backend_failure) {
+  client_info_t *client = admit();
+  g_rate_limiter = rate_limiter_create_memory();
+  cr_assert_not_null(g_rate_limiter);
+  process_decrypted_packet(client, PACKET_TYPE_PING, NULL, 0);
+  cr_assert_eq(last_type, PACKET_TYPE_PONG);
+  cr_assert(atomic_load_bool(&client->active));
+  for (uint32_t i = 0; i < DEFAULT_RATE_LIMITS[RATE_EVENT_CLIENT_JOIN].max_events; ++i)
+    cr_assert_eq(rate_limiter_record(g_rate_limiter, client->client_ip, RATE_EVENT_CLIENT_JOIN), ASCIICHAT_OK);
+  client_info_packet_t join = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_AUDIO)};
+  SAFE_STRNCPY(join.display_name, "limited", sizeof(join.display_name));
+  process_decrypted_packet(client, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join));
+  cr_assert_not(atomic_load_bool(&client->active));
+  cr_assert_eq(last_type, PACKET_TYPE_ERROR_MESSAGE);
+  rate_limiter_destroy(g_rate_limiter);
+  g_rate_limiter = rate_limiter_create_sqlite(NULL);
+  cr_assert_not_null(g_rate_limiter);
+  atomic_store_bool(&client->active, true);
+  send_result = ERROR_NETWORK;
+  process_decrypted_packet(client, PACKET_TYPE_PING, NULL, 0);
+  cr_assert_not(atomic_load_bool(&client->active));
+  cr_assert_eq(last_type, PACKET_TYPE_ERROR_MESSAGE);
+  rate_limiter_destroy(g_rate_limiter);
+  g_rate_limiter = NULL;
+}
+Test(server_client, callback_dispatch_delivers_join_capabilities_keepalive_and_leave) {
+  client_info_t *client = admit();
+  client_info_packet_t join = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_AUDIO | CLIENT_CAP_VIDEO)};
+  SAFE_STRNCPY(join.display_name, "Callback", sizeof(join.display_name));
+  dispatch(client, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join));
+  cr_assert_str_eq(client->display_name, "Callback");
+  terminal_capabilities_packet_t caps = {
+      .width = HOST_TO_NET_U16(100), .height = HOST_TO_NET_U16(30), .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE)};
+  dispatch(client, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
+  cr_assert_eq(client->width, 100);
+  cr_assert_eq(client->height, 30);
+  dispatch(client, PACKET_TYPE_PONG, NULL, 0);
+  dispatch(client, PACKET_TYPE_CLIENT_LEAVE, NULL, 0);
+  cr_assert_not(atomic_load_bool(&client->active));
+}
+Test(server_client, locally_initiated_rekey_requires_valid_response_and_commits_the_negotiated_key) {
+  client_info_t *client = admit();
+  crypto_handshake_context_t local, peer;
+  ready_crypto(&local, &peer);
+  client->crypto_handshake_ctx = &local;
+  uint8_t old_key[32];
+  memcpy(old_key, local.crypto_ctx.shared_key, 32);
+  cr_assert_eq(crypto_rekey_init(&local.crypto_ctx), CRYPTO_OK);
+  cr_assert_eq(crypto_handshake_process_rekey_request(&peer, local.crypto_ctx.temp_public_key, 32), ASCIICHAT_OK);
+  capture_crypto = &local.crypto_ctx;
+  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, peer.crypto_ctx.temp_public_key, 32);
+  capture_crypto = NULL;
+  cr_assert_eq(last_type, PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
+  cr_assert_gt(last_length, 0);
+  cr_assert_eq(crypto_handshake_process_rekey_complete(&peer, last_payload, last_length), ASCIICHAT_OK);
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, peer.crypto_ctx.shared_key, 32);
+  cr_assert_neq(memcmp(old_key, local.crypto_ctx.shared_key, 32), 0);
+  cr_assert_eq(local.crypto_ctx.rekey_count, 1);
+  client->crypto_handshake_ctx = NULL;
+  crypto_handshake_destroy(&local);
+  crypto_handshake_destroy(&peer);
+}
+Test(server_client, malformed_rekey_response_and_completion_do_not_replace_the_active_key) {
+  client_info_t *client = admit();
+  crypto_handshake_context_t local, peer;
+  ready_crypto(&local, &peer);
+  client->crypto_handshake_ctx = &local;
+  uint8_t old_key[32], invalid[32] = {0};
+  memcpy(old_key, local.crypto_ctx.shared_key, 32);
+  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, invalid, sizeof(invalid));
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, 32);
+  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, invalid, sizeof(invalid));
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, 32);
+  cr_assert(atomic_load_bool(&client->active));
+  client->crypto_handshake_ctx = NULL;
+  crypto_handshake_destroy(&local);
+  crypto_handshake_destroy(&peer);
 }

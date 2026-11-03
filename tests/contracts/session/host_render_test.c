@@ -8,6 +8,7 @@
 #include "session/host_timing.h"
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/buffer.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
 
 #include "session/protocol.h"
@@ -631,4 +632,142 @@ Test(host_render, mirror_output_validation) {
   session_display_release_ascii(display, wide);
   session_display_destroy(display);
   image_destroy(image);
+}
+
+typedef struct {
+  unsigned frames;
+  bool fail;
+  char text[4096];
+} broadcast_sink_t;
+static asciichat_error_t broadcast_frame_received(const ascii_frame_packet_t *header, const char *text, void *context) {
+  broadcast_sink_t *sink = context;
+  cr_assert_eq(header->width, 80);
+  cr_assert_eq(header->height, 24);
+  ++sink->frames;
+  SAFE_STRNCPY(sink->text, text, sizeof(sink->text));
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t broadcast_send(acip_transport_t *transport, const void *data, size_t length) {
+  packet_header_t header;
+  cr_assert_geq(length, sizeof(header));
+  memcpy(&header, data, sizeof(header));
+  if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ASCII_FRAME)
+    return ASCIICHAT_OK;
+  broadcast_sink_t *sink = transport->impl_data;
+  if (sink->fail)
+    return ERROR_NETWORK;
+  session_protocol_t protocol;
+  session_protocol_init(&protocol, transport,
+                        (session_protocol_media_t){.on_frame = broadcast_frame_received, .context = sink},
+                        (acip_client_callbacks_t){0});
+  return session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, (const uint8_t *)data + sizeof(header),
+                                   length - sizeof(header));
+}
+Test(host_render, broadcast_and_targeted_frames_preserve_membership_when_one_recipient_fails) {
+  socket_init();
+  session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 3};
+  session_host_t *host = session_host_create(&config);
+  cr_assert_not_null(host);
+  char frame[1945];
+  size_t offset = 0;
+  for (unsigned y = 0; y < 24; ++y) {
+    memset(frame + offset, 'X', 80);
+    offset += 80;
+    frame[offset++] = 10;
+  }
+  frame[offset] = 0;
+  cr_assert_eq(session_host_broadcast_frame(host, frame), ERROR_INVALID_STATE);
+  cr_assert_eq(session_host_send_frame(host, 123, frame), ERROR_INVALID_STATE);
+  cr_assert_eq(session_host_start(host), ASCIICHAT_OK);
+  cr_assert_eq(session_host_start(host), ASCIICHAT_OK);
+  broadcast_sink_t sinks[2] = {0};
+  acip_transport_t transports[2];
+  uint32_t ids[2];
+  const acip_transport_methods_t methods = {.send = broadcast_send};
+  for (unsigned i = 0; i < 2; ++i) {
+    transports[i] = (acip_transport_t){.methods = &methods, .impl_data = &sinks[i]};
+    ids[i] = session_host_add_client(host, &transports[i], ACIP_TRANSPORT_BORROWED, "local", 0);
+    cr_assert_neq(ids[i], 0);
+  }
+  uint32_t local = session_host_add_memory_participant(host);
+  cr_assert_neq(local, 0);
+  cr_assert_eq(session_host_broadcast_frame(host, frame), ASCIICHAT_OK);
+  cr_assert_eq(sinks[0].frames, 1);
+  cr_assert_eq(sinks[1].frames, 1);
+  cr_assert_str_eq(sinks[0].text, frame);
+  cr_assert_eq(session_host_send_frame(host, ids[1], frame), ASCIICHAT_OK);
+  cr_assert_eq(sinks[0].frames, 1);
+  cr_assert_eq(sinks[1].frames, 2);
+  sinks[0].fail = true;
+  cr_assert_eq(session_host_broadcast_frame(host, frame), ERROR_NETWORK);
+  cr_assert_eq(sinks[1].frames, 3);
+  cr_assert_eq(session_host_get_client_count(host), 3);
+  cr_assert_eq(session_host_send_frame(host, local, frame), ERROR_INVALID_STATE);
+  cr_assert_eq(session_host_send_frame(host, UINT32_MAX, frame), ERROR_NOT_FOUND);
+  sinks[0].fail = false;
+  cr_assert_eq(session_host_send_frame(host, ids[0], frame), ASCIICHAT_OK);
+  cr_assert_eq(sinks[0].frames, 2);
+  cr_assert_eq(session_host_destroy(host), ASCIICHAT_OK);
+  socket_cleanup();
+}
+Test(host_render, rejected_transport_replacement_and_missing_members_leave_existing_client_intact) {
+  session_host_config_t config = {.max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  cr_assert_not_null(host);
+  const acip_transport_methods_t methods = {.send = accept_send};
+  acip_transport_t transport = {.methods = &methods};
+  uint32_t id = session_host_add_client(host, &transport, ACIP_TRANSPORT_BORROWED, "local", 0);
+  cr_assert_neq(id, 0);
+  cr_assert_eq(session_host_set_client_transport(host, id, &transport, (acip_transport_ownership_t)99),
+               ERROR_INVALID_PARAM);
+  cr_assert_eq(session_host_get_client_transport(host, id), &transport);
+  cr_assert(session_host_client_has_transport(host, id));
+  cr_assert_eq(session_host_set_client_transport(host, UINT32_MAX, &transport, ACIP_TRANSPORT_BORROWED),
+               ERROR_NOT_FOUND);
+  cr_assert_null(session_host_get_client_transport(host, UINT32_MAX));
+  cr_assert_not(session_host_client_has_transport(host, UINT32_MAX));
+  cr_assert_eq(session_host_remove_client(host, UINT32_MAX), ERROR_NOT_FOUND);
+  cr_assert_eq(session_host_get_client_count(host), 1);
+  cr_assert_eq(session_host_add_memory_participant(host), 0);
+  cr_assert_eq(session_host_add_client(host, &transport, ACIP_TRANSPORT_BORROWED, "full", 0), 0);
+  cr_assert_eq(session_host_destroy(host), ASCIICHAT_OK);
+}
+
+Test(host_render, native_display_backend_renders_borrowed_source_and_can_be_detached) {
+  cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("height", 12), ASCIICHAT_OK);
+  FILE *output = platform_tmpfile();
+  cr_assert_not_null(output);
+  int saved = platform_dup(1);
+  cr_assert_geq(saved, 0);
+  cr_assert_eq(platform_dup2(fileno(output), 1), ASCIICHAT_OK);
+  session_display_config_t display_config = {
+      .snapshot_mode = true, .color_mode = TERM_COLOR_NONE, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX"};
+  session_display_ctx_t *display = session_display_create(&display_config);
+  cr_assert_not_null(display);
+  session_host_config_t config = {.max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  cr_assert_not_null(host);
+  uint32_t id = session_host_add_memory_participant(host);
+  cr_assert_neq(id, 0);
+  image_t *image = image_new(8, 4);
+  cr_assert_not_null(image);
+  memset(image->pixels, 120, 8 * 4 * sizeof(rgb_pixel_t));
+  cr_assert_eq(session_host_inject_frame(host, id, image), ASCIICHAT_OK);
+  cr_assert_eq(session_host_set_display(host, display), ASCIICHAT_OK);
+  cr_assert_eq(render_tick(host), ASCIICHAT_OK);
+  fflush(output);
+  long first = ftell(output);
+  cr_assert_gt(first, 0);
+  cr_assert_eq(session_host_set_display(host, NULL), ASCIICHAT_OK);
+  cr_assert_eq(render_tick(host), ASCIICHAT_OK);
+  fflush(output);
+  cr_assert_eq(ftell(output), first);
+  cr_assert_eq(session_host_destroy(host), ASCIICHAT_OK);
+  cr_assert_not_null(session_display_get_palette_chars(display));
+  session_display_destroy(display);
+  image_destroy(image);
+  cr_assert_eq(platform_dup2(saved, 1), ASCIICHAT_OK);
+  platform_close(saved);
+  fclose(output);
 }

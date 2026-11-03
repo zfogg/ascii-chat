@@ -395,3 +395,185 @@ Test(discovery_service_callbacks, sent_byte_statistics_include_the_serialized_pa
   cr_assert_eq(atomic_load_u64(&authority.stats.packets_sent), 1);
   cr_assert_eq(atomic_load_u64(&authority.stats.bytes_sent), sizeof(packet_header_t) + sizeof(acip_session_created_t));
 }
+
+// Application startup configuration is tested independently of listener ownership.
+static acds_config_t startup_config;
+static unsigned startup_calls, shutdown_queries;
+static unsigned cancel_on_query;
+static asciichat_error_t startup_result;
+static asciichat_error_t startup_server_init(acds_server_t *server, const acds_config_t *config) {
+  ++startup_calls;
+  startup_config = *config;
+  memset(server, 0, sizeof(*server));
+  return startup_result;
+}
+static bool startup_cancelled(void) {
+  return cancel_on_query && ++shutdown_queries >= cancel_on_query;
+}
+static void (*startup_interrupt)(void);
+static void startup_set_interrupt(void (*callback)(void)) {
+  startup_interrupt = callback;
+}
+static session_server_like_config_t startup_run_config;
+static asciichat_error_t startup_run(const session_server_like_config_t *config) {
+  startup_run_config = *config;
+  cr_assert_not_null(startup_interrupt);
+  return ERROR_NETWORK;
+}
+#define acds_server_init startup_server_init
+#define session_server_like_shutdown_requested startup_cancelled
+#define session_server_like_run startup_run
+#define set_interrupt_callback startup_set_interrupt
+#include "../../../src/discovery-service/main.c"
+#undef acds_server_init
+#undef session_server_like_shutdown_requested
+#undef session_server_like_run
+#undef set_interrupt_callback
+static char startup_path[PLATFORM_MAX_PATH_LENGTH];
+static uint8_t startup_public[32];
+static void startup_identity(void) {
+  int fd = -1;
+  cr_assert_eq(platform_create_temp_file(startup_path, sizeof(startup_path), "authority-config", &fd), 0);
+  cr_assert_eq(platform_close(fd), 0);
+  uint8_t secret[64];
+  cr_assert_eq(crypto_sign_keypair(startup_public, secret), 0);
+  cr_assert_eq(acds_identity_save(startup_path, startup_public, secret), ASCIICHAT_OK);
+  sodium_memzero(secret, sizeof(secret));
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  SAFE_STRNCPY(v->encrypt_key, startup_path, sizeof(v->encrypt_key));
+  v->port = 27002;
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+}
+Test(discovery_service_callbacks, startup_options_trim_and_bound_servers_and_install_identity_after_initialization) {
+  startup_identity();
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  v->require_server_identity = true;
+  v->require_client_identity = true;
+  SAFE_STRNCPY(v->address, "127.0.0.4", sizeof(v->address));
+  SAFE_STRNCPY(v->address6, "::1", sizeof(v->address6));
+  SAFE_STRNCPY(v->discovery_database_path, ":memory:", sizeof(v->discovery_database_path));
+  SAFE_STRNCPY(v->log_file, "authority-test.log", sizeof(v->log_file));
+  SAFE_STRNCPY(v->stun_servers, "  stun:one  , ,stun:two,stun:three,stun:four,stun:ignored", sizeof(v->stun_servers));
+  SAFE_STRNCPY(v->turn_servers, " turn:one ,	turn:two	,turn:three,turn:four,turn:ignored",
+               sizeof(v->turn_servers));
+  SAFE_STRNCPY(v->turn_username, "fixture-user", sizeof(v->turn_username));
+  SAFE_STRNCPY(v->turn_credential, "fixture-password", sizeof(v->turn_credential));
+  SAFE_STRNCPY(v->turn_secret, "fixture-hmac", sizeof(v->turn_secret));
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+  cr_assert_eq(acds_init_fn(NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_calls, 1);
+  cr_assert_eq(startup_config.port, 27002);
+  cr_assert_str_eq(startup_config.address, "127.0.0.4");
+  cr_assert_str_eq(startup_config.address6, "::1");
+  cr_assert_str_eq(startup_config.log_file, "authority-test.log");
+  cr_assert_str_eq(startup_config.database_path, ":memory:");
+  cr_assert(startup_config.require_server_identity);
+  cr_assert(startup_config.require_client_identity);
+  cr_assert_eq(startup_config.stun_count, 4);
+  cr_assert_str_eq(startup_config.stun_servers[0].host, "stun:one");
+  cr_assert_str_eq(startup_config.stun_servers[3].host, "stun:four");
+  cr_assert_eq(startup_config.turn_count, 4);
+  cr_assert_str_eq(startup_config.turn_servers[1].url, "turn:two");
+  cr_assert_str_eq(startup_config.turn_servers[0].username, "fixture-user");
+  cr_assert_str_eq(startup_config.turn_servers[0].credential, "fixture-password");
+  cr_assert_str_eq(startup_config.turn_secret, "fixture-hmac");
+  cr_assert_arr_eq(g_server.identity_public, startup_public, 32);
+  cr_assert_not(sodium_is_zero(g_server.identity_secret, 64));
+  stats_runtime_set_provider(NULL, NULL);
+  cr_assert_eq(platform_unlink(startup_path), 0);
+}
+Test(discovery_service_callbacks, startup_rejects_bad_port_or_identity_and_honors_cancellation_before_and_after_init) {
+  startup_identity();
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  v->port = 0;
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+  cr_assert_eq(acds_init_fn(NULL), ERROR_INVALID_PARAM);
+  cr_assert_eq(startup_calls, 0);
+  cr_assert_eq(options_set_int("port", 27002), ASCIICHAT_OK);
+  cancel_on_query = 1;
+  cr_assert_eq(acds_init_fn(NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_calls, 0);
+  cancel_on_query = 2;
+  shutdown_queries = 0;
+  cr_assert_eq(acds_init_fn(NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_calls, 1);
+  cr_assert_arr_eq(g_server.identity_public, startup_public, 32);
+  cancel_on_query = 0;
+  startup_result = ERROR_CONFIG;
+  cr_assert_eq(acds_init_fn(NULL), ERROR_CONFIG);
+  cr_assert_eq(startup_calls, 2);
+  cr_assert(sodium_is_zero(g_server.identity_secret, 64));
+  FILE *f = platform_fopen("invalid-authority-key", startup_path, "wb");
+  cr_assert_not_null(f);
+  cr_assert_eq(fwrite("invalid", 1, 7, f), 7);
+  cr_assert_eq(fclose(f), 0);
+  cr_assert_neq(acds_init_fn(NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_calls, 2);
+  cr_assert_eq(platform_unlink(startup_path), 0);
+}
+Test(discovery_service_callbacks, startup_discards_overlong_ice_urls_and_credentials_instead_of_truncating_them) {
+  startup_identity();
+  options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
+  *v = *options_get();
+  memset(v->stun_servers, 's', 80);
+  strcpy(v->stun_servers + 80, ", ,stun:valid");
+  memset(v->turn_servers, 't', 80);
+  strcpy(v->turn_servers + 80, ", ,turn:valid");
+  memset(v->turn_username, 'u', sizeof(startup_config.turn_servers[0].username));
+  v->turn_username[sizeof(startup_config.turn_servers[0].username)] = 0;
+  memset(v->turn_credential, 'p', sizeof(startup_config.turn_servers[0].credential));
+  v->turn_credential[sizeof(startup_config.turn_servers[0].credential)] = 0;
+  v->turn_secret[0] = 0;
+  v->address[0] = v->address6[0] = v->log_file[0] = 0;
+  cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
+  SAFE_FREE(v);
+  cr_assert_eq(acds_init_fn(NULL), ASCIICHAT_OK);
+  cr_assert_eq(startup_config.stun_count, 1);
+  cr_assert_eq(startup_config.turn_count, 1);
+  cr_assert_str_eq(startup_config.stun_servers[0].host, "stun:valid");
+  cr_assert_str_eq(startup_config.turn_servers[0].url, "turn:valid");
+  cr_assert_eq(startup_config.turn_servers[0].username_len, 0);
+  cr_assert_eq(startup_config.turn_servers[0].credential_len, 0);
+  cr_assert_eq(startup_config.turn_secret[0], 0);
+  cr_assert_str_eq(startup_config.address, "127.0.0.1");
+  cr_assert_str_eq(startup_config.address6, "::1");
+  cr_assert_str_eq(startup_config.log_file, "acds.log");
+  stats_runtime_set_provider(NULL, NULL);
+  cr_assert_eq(platform_unlink(startup_path), 0);
+}
+Test(discovery_service_callbacks, entry_point_wires_lifecycle_callbacks_and_restores_interrupt_handler) {
+  cr_assert_eq(acds_main(), ERROR_NETWORK);
+  cr_assert_null(startup_interrupt);
+  cr_assert_not_null(startup_run_config.init_fn);
+  cr_assert_not_null(startup_run_config.cleanup_fn);
+  cr_assert_not_null(startup_run_config.interrupt_fn);
+  cr_assert_not_null(startup_run_config.connections.packet);
+  cr_assert_eq(startup_run_config.connection_user_data, &g_server);
+  cr_assert(startup_run_config.websocket_enabled);
+  cr_assert_eq(startup_run_config.partial_timeout_ms, 5000);
+  cr_assert_eq(startup_run_config.idle_timeout_ms, 60000);
+}
+Test(discovery_service_callbacks, database_statistics_report_rows_totals_and_unavailability) {
+  initialize();
+  create_session_fixture();
+  stats_view_t view = {0};
+  acds_stats_provider(&view, &authority);
+  cr_assert_eq(view.count, 1);
+  cr_assert(strstr(view.lines[0], "Active sessions: 1"));
+  view = (stats_view_t){.page = 1};
+  acds_stats_provider(&view, &authority);
+  cr_assert_geq(view.count, 4);
+  cr_assert(strstr(view.lines[1], "PARTICIPANTS"));
+  cr_assert(strstr(view.lines[2], created.session_string));
+  acds_server_t absent = {0};
+  view = (stats_view_t){0};
+  acds_stats_provider(&view, &absent);
+  cr_assert_eq(view.count, 1);
+  cr_assert(strstr(view.lines[0], "unavailable"));
+}
