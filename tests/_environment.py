@@ -7,3 +7,6 @@ import os
 
 os.environ["TESTING"] = "1"
 os.environ["ASCII_CHAT_OTEL_ENABLED_TELEMETRY"] = "none"
+
+# Interactive integration tests opt in explicitly when exercising onboarding.
+os.environ["ASCII_CHAT_DISABLE_FIRST_USE"] = "1"

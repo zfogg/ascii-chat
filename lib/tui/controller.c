@@ -1032,6 +1032,8 @@ static void *presentation_main(void *unused) {
         g_probe_frame = context.fresh && context.drew && reply_support >= 0;
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
         uint64_t write_done_ns = time_get_ns();
+        if (written == ASCIICHAT_OK && active == UI_SCREEN_NOTICE && context.drew && !covered && !errors)
+          ui_notice_frame_presented(screen->snapshot);
         if (context.fresh && context.drew) {
           fps_counter_write_begin(g_fps);
           // A frontend reply drains the complete update. A local console query

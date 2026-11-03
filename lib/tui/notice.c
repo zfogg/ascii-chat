@@ -2,6 +2,7 @@
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/popup.h>
@@ -170,6 +171,9 @@ typedef struct {
   bool unicode;
   bool color;
   uint64_t started;
+  size_t marker_offset;
+  bool marker_ready;
+  bool marker_written;
   char text[];
 } notice_snapshot_t;
 
@@ -231,6 +235,8 @@ static void render_notice(terminal_size_t size, const void *data) {
     ui_controller_write(STDERR_FILENO, "\033[0m", 4);
   if (pages > 1)
     ui_controller_printf(STDERR_FILENO, "Page %llu/%d (advances automatically)", (unsigned long long)page + 1, pages);
+  if (notice->marker_offset)
+    ((notice_snapshot_t *)notice)->marker_ready = page + 1 == (uint64_t)pages;
   frame_buffer_destroy(buffer);
 }
 
@@ -251,6 +257,8 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
     snapshot->unicode = unicode;
     snapshot->color = color;
     snapshot->started = time_get_ns();
+    snapshot->marker_offset = 0;
+    snapshot->marker_ready = snapshot->marker_written = false;
     memcpy(snapshot->text, text, text_bytes);
     asciichat_error_t result = ui_controller_submit(
         UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
@@ -273,12 +281,49 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
   return result;
 }
 
+asciichat_error_t ui_notice_present_first_use(const char *text, const char *marker_path) {
+  if (!text || !marker_path || !platform_isatty(STDERR_FILENO) || GET_OPTION(snapshot_mode))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "First-use notice requires an interactive terminal and marker path");
+  size_t text_bytes = strlen(text) + 1, marker_bytes = strlen(marker_path) + 1;
+  if (text_bytes > SIZE_MAX - marker_bytes - sizeof(notice_snapshot_t))
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "First-use notice is too large");
+  size_t bytes = sizeof(notice_snapshot_t) + text_bytes + marker_bytes;
+  notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
+  if (!snapshot)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate first-use notice");
+  snapshot->severity = UI_NOTICE_INFO;
+  snapshot->unicode = terminal_should_use_utf8();
+  snapshot->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
+  snapshot->started = time_get_ns();
+  snapshot->marker_offset = text_bytes;
+  snapshot->marker_ready = snapshot->marker_written = false;
+  memcpy(snapshot->text, text, text_bytes);
+  memcpy(snapshot->text + text_bytes, marker_path, marker_bytes);
+  asciichat_error_t result = ui_controller_submit(
+      UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
+  SAFE_FREE(snapshot);
+  return result;
+}
+
+void ui_notice_frame_presented(const void *data) {
+  notice_snapshot_t *notice = (notice_snapshot_t *)data;
+  if (!notice || !notice->marker_offset || !notice->marker_ready || notice->marker_written)
+    return;
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  FILE *marker = platform_fopen("first-use instructions", notice->text + notice->marker_offset, "w");
+  if (marker) {
+    fclose(marker);
+    notice->marker_written = true;
+  }
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+}
+
 bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned timeout_seconds) {
   return ui_notice_confirm_kind(UI_PROMPT_CONFIRMATION, severity, text, timeout_seconds);
 }
 
-bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
-                            const char *text, unsigned timeout_seconds) {
+bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
+                            unsigned timeout_seconds) {
   ui_prompt_kind_t previous_kind = g_prompt_kind;
   g_prompt_kind = kind;
   ui_notice_severity_t previous = g_prompt_severity;

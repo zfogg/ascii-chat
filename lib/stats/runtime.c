@@ -3,6 +3,8 @@
 #define STATS_RUNTIME_TRANSPORT_BUFFER_SIZE 16
 #define STATS_RUNTIME_STATE_BUFFER_SIZE 64
 #define STATS_RUNTIME_OUTPUT_BUFFER_SIZE 8192
+#define STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE 4096
+#define STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE 512
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define STATS_PEER_CAPACITY 64
@@ -19,6 +21,8 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/notice.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/log/search.h>
@@ -322,6 +326,54 @@ static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t 
   ui_controller_write(STDOUT_FILENO, output, (size_t)used);
 }
 
+static void show_first_use_instructions(void) {
+  if (!g_keyboard || GET_OPTION(snapshot_mode) || GET_OPTION(render_file)[0] || !platform_isatty(STDERR_FILENO))
+    return;
+  const char *text = NULL;
+  if (!strcmp(g_mode, "mirror"))
+    text =
+        "Mirror previews your camera locally. Press [o] to open a file or URL. Press ? for keyboard controls; Escape "
+        "exits.";
+  else if (!strcmp(g_mode, "client"))
+    text = "Client connects to a server. Run `ascii-chat client <address>` to choose the server. "
+           "Press ? for keyboard controls; Escape exits.";
+  else if (!strcmp(g_mode, "discovery"))
+    text = "Discovery creates a session when started without a name. Share the session name to invite others. "
+           "Join with `ascii-chat <session-name>`. Press ? for keyboard controls; Escape exits.";
+  else if (!strcmp(g_mode, "server"))
+    text = "Server accepts connections from clients. Share its address and port with participants. Press ? for "
+           "keyboard controls.";
+  else if (!strcmp(g_mode, "discovery-service"))
+    text = "The discovery service helps participants find sessions. Configure clients to use its address and port. "
+           "Press ? for keyboard controls.";
+  else if (!strcmp(g_mode, "mcp-server"))
+    text = "MCP server exposes rendering tools to MCP clients. Configure an MCP client to connect. Press ? for "
+           "keyboard controls.";
+  if (!text)
+    return;
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  const char *disabled = platform_getenv("ASCII_CHAT_DISABLE_FIRST_USE");
+  if (disabled && !strcmp(disabled, "1")) {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    return;
+  }
+  const char *override = platform_getenv("ASCII_CHAT_FIRST_USE_DIR");
+  char *dir = override && *override ? platform_strdup(override) : platform_get_data_dir();
+  if (!dir) {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    return;
+  }
+  char marker_path[STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE];
+  int length = snprintf(marker_path, sizeof(marker_path), "%s/first-use-%s", dir, g_mode);
+  char message[STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE];
+  snprintf(message, sizeof(message), "%s Press Enter to dismiss.", text);
+  if (length > 0 && (size_t)length < sizeof(marker_path) && !platform_is_regular_file(marker_path) &&
+      platform_mkdir_recursive(dir, 0700) == ASCIICHAT_OK)
+    (void)ui_notice_present_first_use(message, marker_path);
+  SAFE_FREE(dir);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+}
+
 static void *stats_worker(void *unused) {
   (void)unused;
   uint64_t next_sample = 0, next_print = time_get_ns() + (uint64_t)g_interval * NS_PER_SEC_INT;
@@ -330,7 +382,16 @@ static void *stats_worker(void *unused) {
   ui_viewport_t viewport = {0};
   bool was_active = false;
   uint64_t next_telemetry = 0;
+  bool first_use_checked = false;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
+    int screen = ui_controller_current_screen();
+    bool server_mode =
+        !strcmp(g_mode, "server") || !strcmp(g_mode, "discovery-service") || !strcmp(g_mode, "mcp-server");
+    if (!first_use_checked && (screen == UI_SCREEN_STATUS || screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH ||
+                               (server_mode && screen < 0))) {
+      first_use_checked = true;
+      show_first_use_instructions();
+    }
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
     bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0 ||

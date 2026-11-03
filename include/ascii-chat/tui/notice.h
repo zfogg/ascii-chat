@@ -23,6 +23,11 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
 /** Present a notice without changing authentication or input policy. */
 asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *text);
 
+/** Show a first-use notice and record it after the last page reaches the terminal. */
+asciichat_error_t ui_notice_present_first_use(const char *text, const char *marker_path);
+/** Record a first-use notice only after its composed frame was written successfully. */
+void ui_notice_frame_presented(const void *snapshot);
+
 /** Explicitly styled yes/no prompt; default remains No. */
 #ifdef EMSCRIPTEN_BUILD
 #include <ascii-chat/platform/question.h>
