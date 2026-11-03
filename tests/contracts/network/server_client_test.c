@@ -50,8 +50,10 @@ static asciichat_error_t capture_send(acip_transport_t *transport, const void *d
   last_type = NET_TO_HOST_U16(header.type);
   last_length = length - sizeof(header);
   cr_assert_leq(last_length, sizeof(last_payload));
-  if(capture_crypto && last_type==PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
-    cr_assert_eq(crypto_encrypt(capture_crypto,(const uint8_t *)data+sizeof(header),last_length,last_payload,sizeof(last_payload),&last_length),CRYPTO_OK);
+  if (capture_crypto && last_type == PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
+    cr_assert_eq(crypto_encrypt(capture_crypto, (const uint8_t *)data + sizeof(header), last_length, last_payload,
+                                sizeof(last_payload), &last_length),
+                 CRYPTO_OK);
   } else {
     memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
   }
@@ -64,6 +66,27 @@ static acip_transport_type_t get_type(acip_transport_t *transport) {
 }
 static const acip_transport_methods_t methods = {.send = capture_send, .get_type = get_type};
 static acip_transport_t transport = {.methods = &methods};
+
+static unsigned allocation_failure;
+static video_frame_buffer_t *contract_video_buffer(const char *name) {
+  return allocation_failure == 1 ? NULL : video_frame_buffer_create(name);
+}
+static audio_ring_buffer_t *contract_audio_buffer(void) {
+  return allocation_failure == 2 ? NULL : audio_ring_buffer_create_for_capture();
+}
+static asciichat_error_t contract_client_mutex(mutex_t *mutex, const char *name) {
+  if ((allocation_failure == 3 && strcmp(name, "client_state") == 0) ||
+      (allocation_failure == 4 && strcmp(name, "client_send") == 0))
+    return ERROR_THREAD;
+  return mutex_init(mutex, name);
+}
+#define video_frame_buffer_create contract_video_buffer
+#define audio_ring_buffer_create_for_capture contract_audio_buffer
+#define mutex_init contract_client_mutex
+#include "../../../src/server/client.c"
+#undef video_frame_buffer_create
+#undef audio_ring_buffer_create_for_capture
+#undef mutex_init
 
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
@@ -610,4 +633,108 @@ Test(server_client, malformed_rekey_response_and_completion_do_not_replace_the_a
   client->crypto_handshake_ctx = NULL;
   crypto_handshake_destroy(&local);
   crypto_handshake_destroy(&peer);
+}
+
+Test(server_client, admission_rolls_back_partial_buffers_and_sync_before_a_successful_retry) {
+  for (unsigned failure = 1; failure <= 4; ++failure) {
+    allocation_failure = failure;
+    cr_assert_null(add_transport_client(&server, &transport, "127.0.0.1"));
+    cr_assert_eq(g_client_manager.client_count, 0);
+    cr_assert_null(g_client_manager.clients_by_id);
+    cr_assert_eq(g_client_manager.clients[0].client_id[0], 0);
+    cr_assert_null(g_client_manager.clients[0].incoming_video_buffer);
+    cr_assert_null(g_client_manager.clients[0].incoming_audio_buffer);
+    CLEAR_ERRNO_ALL();
+  }
+  allocation_failure = 0;
+  client_info_t *client = admit();
+  cr_assert_eq(find_client_by_id(client->client_id), client);
+  cr_assert_null(add_transport_client(NULL, &transport, "127.0.0.1"));
+  cr_assert_null(add_transport_client(&server, NULL, "127.0.0.1"));
+  cr_assert_null(add_transport_client(&server, &transport, NULL));
+  cr_assert_eq(remove_client(NULL, client->client_id), -1);
+  cr_assert_eq(remove_client(&server, "missing"), -1);
+  cr_assert_eq(g_client_manager.client_count, 1);
+}
+Test(server_client, concurrent_removal_is_idempotent_and_failed_state_send_does_not_skip_worker_start) {
+  client_info_t *client = admit();
+  send_result = ERROR_NETWORK;
+  cr_assert_eq(start_transport_client_threads(&server, client->client_id), 0);
+  cr_assert_eq(starts, 1);
+  atomic_store_bool(&client->shutting_down, true);
+  cr_assert_eq(remove_client(&server, client->client_id), 0);
+  cr_assert_eq(g_client_manager.client_count, 1);
+  atomic_store_bool(&client->shutting_down, false);
+}
+Test(server_client, single_opus_callback_wraps_real_audio_and_ignores_incompatible_metadata) {
+  client_info_t *client = admit();
+  resume_client(client);
+  client->opus_decoder = opus_codec_create_decoder(48000);
+  cr_assert_not_null(client->opus_decoder);
+  uint8_t packet[4096] = {0};
+  acip_server_on_audio_opus(packet, 15, client, NULL);
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  float samples[OPUS_FRAME_SAMPLES];
+  for (unsigned i = 0; i < ARRAY_SIZE(samples); ++i)
+    samples[i] = i % 32 < 16 ? 0.25f : -0.25f;
+  opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+  cr_assert_not_null(encoder);
+  int length = opus_codec_encode(encoder, samples, OPUS_FRAME_SAMPLES, packet + 16, sizeof(packet) - 16);
+  cr_assert_gt(length, 0);
+  write_u32_unaligned(packet, HOST_TO_NET_U32(44100));
+  write_u32_unaligned(packet + 4, HOST_TO_NET_U32(20));
+  acip_server_on_audio_opus(packet, length + 16, client, NULL);
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  write_u32_unaligned(packet, HOST_TO_NET_U32(48000));
+  acip_server_on_audio_opus(packet, length + 16, client, NULL);
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES);
+  cr_assert(atomic_load_bool(&client->active));
+  opus_codec_destroy(encoder);
+}
+Test(server_client, compatibility_callbacks_validate_protocol_audio_and_remote_log_before_mutating_client) {
+  client_info_t *client = admit();
+  protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(PROTOCOL_VERSION_MAJOR)};
+  acip_server_on_protocol_version(&version, client, NULL);
+  cr_assert(atomic_load_bool(&client->active));
+  version.protocol_version = HOST_TO_NET_U16(PROTOCOL_VERSION_MAJOR + 1);
+  acip_server_on_protocol_version(&version, client, NULL);
+  cr_assert(atomic_load_bool(&client->active));
+  resume_client(client);
+  float samples[2] = {0.25f, -0.25f};
+  acip_server_on_audio(samples, sizeof(samples), client, NULL);
+  float actual[2];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 2), 2);
+  cr_assert_arr_eq(actual, samples, sizeof(samples));
+  remote_log_packet_t header = {
+      .log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, .message_length = HOST_TO_NET_U32(5)};
+  acip_server_on_remote_log(&header, "hello", client, NULL);
+  cr_assert(atomic_load_bool(&client->active));
+  header.direction = REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT;
+  acip_server_on_remote_log(&header, "hello", client, NULL);
+  expect_rejected(client);
+}
+Test(server_client, image_callback_rejects_invalid_dimensions_and_handles_an_absent_video_buffer) {
+  client_info_t *client = admit();
+  image_frame_packet_t header = {.width = 2, .height = 2};
+  uint8_t pixels[12] = {0};
+  acip_server_on_image_frame(NULL, pixels, sizeof(pixels), client, NULL);
+  acip_server_on_image_frame(&header, NULL, sizeof(pixels), client, NULL);
+  acip_server_on_image_frame(&header, pixels, 2, client, NULL);
+  cr_assert_eq(client->frames_received, 0);
+  cr_assert(atomic_load_bool(&client->active));
+  header.width = 0;
+  acip_server_on_image_frame(&header, pixels, sizeof(pixels), client, NULL);
+  expect_rejected(client);
+  resume_client(client);
+  header.width = UINT32_MAX;
+  acip_server_on_image_frame(&header, pixels, sizeof(pixels), client, NULL);
+  expect_rejected(client);
+  resume_client(client);
+  header.width = 2;
+  video_frame_buffer_destroy(client->incoming_video_buffer);
+  client->incoming_video_buffer = NULL;
+  acip_server_on_image_frame(&header, pixels, sizeof(pixels), client, NULL);
+  cr_assert(atomic_load_bool(&client->active));
+  cr_assert_eq(client->frames_received, 0);
+  cr_assert_eq(client->frames_received_logged, 1);
 }

@@ -93,6 +93,8 @@ int refresh_join(asciichat_thread_t *thread, void **result, uint64_t timeout) {
 }
 static void setup(void) {
   cr_assert_eq(asciichat_shared_init(NULL, false, true), ASCIICHAT_OK);
+  log_set_level(LOG_DEV);
+  log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   static app_callbacks_t callbacks = {.platform_get_monotonic_time_us = refresh_clock,
                                       .platform_sleep_ms = refresh_sleep};

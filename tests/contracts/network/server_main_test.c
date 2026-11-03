@@ -30,6 +30,36 @@ static asciichat_error_t contract_parse_public(const char *path, public_key_t *o
 static rate_limiter_t *contract_rate_create(void);
 static mixer_t *contract_mixer_create(int sources, int rate);
 static h265_server_context_t *contract_h265_create(void);
+#include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/network/connection.h>
+static unsigned sdp_calls, ice_calls, adopt_calls, destroyed_channels;
+static const void *forwarded_signal;
+static asciichat_error_t signal_result, adopt_result;
+static char adopted_id[33];
+static asciichat_error_t contract_sdp(webrtc_peer_manager_t *manager, const acip_webrtc_sdp_t *message) {
+  cr_assert_not_null(manager);
+  ++sdp_calls;
+  forwarded_signal = message;
+  return signal_result;
+}
+static asciichat_error_t contract_ice(webrtc_peer_manager_t *manager, const acip_webrtc_ice_t *message) {
+  (void)manager;
+  ++ice_calls;
+  forwarded_signal = message;
+  return signal_result;
+}
+static asciichat_error_t contract_adopt(network_server_t *server, acip_transport_t *transport, const char *id,
+                                        bool authenticated) {
+  (void)server;
+  cr_assert_not_null(transport);
+  cr_assert(authenticated);
+  SAFE_STRNCPY(adopted_id, id, sizeof(adopted_id));
+  ++adopt_calls;
+  return adopt_result;
+}
+#define webrtc_peer_manager_handle_sdp contract_sdp
+#define webrtc_peer_manager_handle_ice contract_ice
+#define network_server_adopt contract_adopt
 #define validate_ssh_key_file contract_validate_key
 #define parse_private_key contract_parse_private
 #define parse_public_keys contract_parse_public
@@ -37,6 +67,9 @@ static h265_server_context_t *contract_h265_create(void);
 #define mixer_create contract_mixer_create
 #define h265_server_context_create contract_h265_create
 #include "../../../src/server/main.c"
+#undef webrtc_peer_manager_handle_sdp
+#undef webrtc_peer_manager_handle_ice
+#undef network_server_adopt
 #undef validate_ssh_key_file
 #undef parse_private_key
 #undef parse_public_keys
@@ -372,4 +405,75 @@ Test(server_main_contract, per_connection_statistics_include_only_ready_clients_
   cr_assert(strstr(view.lines[2], "Connected clients: 0"));
   ui_status_t status = {0};
   server_status_fn(NULL, &status);
+}
+
+Test(server_main_contract, incoming_signaling_requires_a_peer_manager_and_complete_payload_before_forwarding) {
+  struct {
+    acip_webrtc_sdp_t header;
+    char body[4];
+  } sdp = {.header = {.sdp_len = HOST_TO_NET_U16(3)}, .body = "v=0"};
+  struct {
+    acip_webrtc_ice_t header;
+    char body[8];
+  } ice = {.header = {.candidate_len = HOST_TO_NET_U16(3)}, .body = {'a', 'b', 'c', 0, 'm', 0}};
+  on_webrtc_sdp_server(NULL, 0, NULL);
+  on_webrtc_ice_server(NULL, 0, NULL);
+  on_webrtc_sdp_server(&sdp.header, sizeof(sdp), NULL);
+  on_webrtc_ice_server(&ice.header, sizeof(ice), NULL);
+  cr_assert_eq(sdp_calls, 0);
+  cr_assert_eq(ice_calls, 0);
+  int opaque = 0;
+  g_webrtc_peer_manager = (webrtc_peer_manager_t *)&opaque;
+  on_webrtc_sdp_server(&sdp.header, sizeof(sdp.header) + 2, NULL);
+  on_webrtc_ice_server(&ice.header, sizeof(ice.header) + 2, NULL);
+  cr_assert_eq(sdp_calls, 0);
+  cr_assert_eq(ice_calls, 0);
+  on_webrtc_sdp_server(&sdp.header, sizeof(sdp), NULL);
+  cr_assert_eq(sdp_calls, 1);
+  cr_assert_eq(forwarded_signal, &sdp);
+  sdp.header.sdp_type = 1;
+  signal_result = ERROR_NETWORK;
+  on_webrtc_sdp_server(&sdp.header, sizeof(sdp), NULL);
+  cr_assert_eq(sdp_calls, 2);
+  on_webrtc_ice_server(&ice.header, sizeof(ice), NULL);
+  cr_assert_eq(ice_calls, 1);
+  cr_assert_eq(forwarded_signal, &ice);
+  signal_result = ASCIICHAT_OK;
+  on_webrtc_ice_server(&ice.header, sizeof(ice), NULL);
+  cr_assert_eq(ice_calls, 2);
+  g_webrtc_peer_manager = NULL;
+}
+static void channel_destroy(acip_transport_t *transport) {
+  (void)transport;
+  ++destroyed_channels;
+}
+static acip_transport_t *channel(void) {
+  static const acip_transport_methods_t methods = {.destroy_impl = channel_destroy};
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
+  transport->methods = &methods;
+  return transport;
+}
+Test(server_main_contract, ready_channels_transfer_ownership_only_after_authenticated_adoption) {
+  uint8_t peer[16];
+  for (unsigned i = 0; i < 16; ++i)
+    peer[i] = i;
+  server_context_t context = {0};
+  on_webrtc_transport_ready(NULL, peer, &context);
+  cr_assert_eq(adopt_calls, 0);
+  on_webrtc_transport_ready(channel(), NULL, &context);
+  on_webrtc_transport_ready(channel(), peer, NULL);
+  cr_assert_eq(destroyed_channels, 2);
+  cr_assert_eq(adopt_calls, 0);
+  adopt_result = ERROR_NETWORK;
+  on_webrtc_transport_ready(channel(), peer, &context);
+  cr_assert_eq(destroyed_channels, 3);
+  cr_assert_eq(adopt_calls, 1);
+  cr_assert_str_eq(adopted_id, "000102030405060708090a0b0c0d0e0f");
+  adopt_result = ASCIICHAT_OK;
+  acip_transport_t *owned = channel();
+  on_webrtc_transport_ready(owned, peer, &context);
+  cr_assert_eq(adopt_calls, 2);
+  cr_assert_eq(destroyed_channels, 3);
+  acip_transport_destroy(owned);
+  cr_assert_eq(destroyed_channels, 4);
 }

@@ -6,6 +6,14 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
+#include <ascii-chat/tui/input.h>
+static keyboard_key_t render_key(ui_screen_t screen) {
+  cr_assert_eq(screen, UI_SCREEN_MEDIA);
+  return (keyboard_key_t)'q';
+}
+#define ui_input_read_key render_key
+#include "../../../src/common/session/render.c"
+#undef ui_input_read_key
 
 static session_display_ctx_t *display;
 static image_t *image;
@@ -14,7 +22,7 @@ static int saved_stdout = -1;
 static unsigned captures, sleeps, limit;
 static bool fail_capture, gap_first, exit_immediately;
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
@@ -149,4 +157,28 @@ Test(render_loop_contract, immediate_snapshot_renders_one_frame_and_starts_its_t
   cr_assert_gt(g_snapshot_first_frame_rendered_ns, 0);
   cr_assert_eq(count_pixels(), 40 * 12, "pixel count: %zu", count_pixels());
   cr_assert_null(session_display_get_global_context());
+}
+
+static unsigned keyboard_events;
+static void on_key(session_capture_ctx_t *source, int key, void *context) {
+  cr_assert_null(source);
+  cr_assert_eq(context, &captures);
+  cr_assert_eq(key, 'q');
+  ++keyboard_events;
+}
+Test(render_loop_contract, event_mode_delivers_keys_without_requiring_a_native_terminal) {
+  cr_assert_eq(session_render_loop(NULL, display, done, capture, pace, on_key, &captures), ASCIICHAT_OK);
+  cr_assert_eq(keyboard_events, 3);
+  cr_assert_eq(captures, 3);
+  cr_assert_eq(count_pixels(), 3 * 40 * 12);
+  cr_assert_null(session_display_get_global_context());
+}
+Test(render_loop_contract, mixed_capture_modes_and_unpaired_sleep_are_rejected_before_capture) {
+  session_capture_ctx_t *sentinel = (session_capture_ctx_t *)&captures;
+  cr_assert_eq(session_render_loop(sentinel, display, done, capture, pace, NULL, &captures), ERROR_INVALID_PARAM);
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(session_render_loop(sentinel, display, done, NULL, pace, NULL, &captures), ERROR_INVALID_PARAM);
+  cr_assert_eq(captures, 0);
+  cr_assert_eq(sleeps, 0);
+  cr_assert_eq(count_pixels(), 0);
 }

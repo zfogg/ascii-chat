@@ -206,3 +206,82 @@ Test(display_delivery, constructor_rejects_incompatible_unicode_policy_and_cance
   cr_assert_not_null(display);
   cr_assert_str_eq(session_display_get_palette_chars(display), " .#");
 }
+
+Test(display_delivery, raw_delivery_preserves_bytes_and_selects_the_owned_terminal_descriptor) {
+  create(false);
+  display->has_tty = false;
+  const char bytes[] = {'a', 0, 'b'};
+  session_display_write_raw(display, bytes, sizeof(bytes));
+  cr_assert_eq(delivery_fd, STDOUT_FILENO);
+  cr_assert_eq(delivery_length, sizeof(bytes));
+  cr_assert_arr_eq(delivery_bytes, bytes, sizeof(bytes));
+  display->has_tty = true;
+  display->tty_info.fd = 99;
+  session_display_write_raw(display, "tty", 3);
+  cr_assert_eq(delivery_fd, 99);
+  cr_assert_arr_eq(delivery_bytes, "tty", 3);
+  display->has_tty = false;
+  display->tty_info.fd = -1;
+}
+Test(display_delivery, rain_and_zalgo_effects_are_owned_by_the_display_and_work_for_received_text) {
+  cr_assert_eq(options_set_bool("matrix_rain", true), ASCIICHAT_OK);
+  create(false);
+  cr_assert_not_null(display->digital_rain);
+  display->has_tty = false;
+  session_display_write_ascii_frame(display, "hello\nworld", true);
+  cr_assert_eq(delivery_writes, 1);
+  cr_assert_gt(delivery_length, 0);
+  cr_assert_eq(delivery_bytes[delivery_length - 1], '\n');
+  cr_assert_eq(options_set_bool("matrix_rain", false), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("zalgo", 2), ASCIICHAT_OK);
+  session_display_write_ascii_frame(display, "test", true);
+  cr_assert_eq(delivery_writes, 2);
+  cr_assert_gt(delivery_length, 5);
+  cr_assert_eq(delivery_bytes[delivery_length - 1], '\n');
+}
+Test(display_delivery, global_help_cancel_is_consumed_once_and_snapshot_tty_submission_starts_the_clock) {
+  create(true);
+  session_display_set_global_context(display);
+  cr_assert_eq(session_display_get_global_context(), display);
+  keyboard_help_toggle_global();
+  cr_assert(keyboard_help_check_signal_cancel());
+  cr_assert_not(keyboard_help_check_signal_cancel());
+  session_display_set_global_context_public(NULL);
+  cr_assert_null(session_display_get_global_context());
+  cr_assert_not(keyboard_help_is_active(NULL));
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(options_set_bool("snapshot_mode", true), ASCIICHAT_OK);
+  cr_assert_not(keyboard_help_is_active(display));
+  display->has_tty = true;
+  display->tty_info.fd = -1;
+  delivery_interactive = true;
+  g_snapshot_first_frame_rendered = false;
+  session_display_write_ascii_frame(display, "snapshot", true);
+  cr_assert(g_snapshot_first_frame_rendered);
+  cr_assert_gt(g_snapshot_first_frame_rendered_ns, 0);
+  display->has_tty = false;
+}
+Test(display_delivery, invalid_conversion_and_recording_inputs_preserve_existing_display_state) {
+  create(false);
+  image_t *image = image_new(4, 4);
+  cr_assert_not_null(image);
+  cr_assert_null(convert_to_ascii(NULL, image, false));
+  CLEAR_ERRNO_ALL();
+  display->initialized = false;
+  cr_assert_null(convert_to_ascii(display, image, false));
+  CLEAR_ERRNO_ALL();
+  display->initialized = true;
+  cr_assert_eq(session_display_encode_frame(display, NULL, 0), ERROR_INVALID_PARAM);
+  CLEAR_ERRNO_ALL();
+  cr_assert_eq(session_display_encode_frame(display, image, 0), ASCIICHAT_OK);
+  session_display_write_ascii_frame(display, NULL, true);
+  cr_assert_eq(delivery_writes, 0);
+  CLEAR_ERRNO_ALL();
+  image_t *workspace = display_image_workspace(&display->filter_workspace, 2, 2);
+  cr_assert_not_null(workspace);
+  cr_assert_eq(display_image_workspace(&display->filter_workspace, 2, 2), workspace);
+  workspace = display_image_workspace(&display->filter_workspace, 3, 4);
+  cr_assert_eq(workspace->w, 3);
+  cr_assert_eq(workspace->h, 4);
+  image_destroy(image);
+}

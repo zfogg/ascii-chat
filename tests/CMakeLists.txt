@@ -1691,6 +1691,17 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(mcp-requests test-mcp-requests)
     set_property(TEST mcp-requests APPEND PROPERTY LABELS unit)
 
+    add_executable(test-discovery-media contracts/discovery/media_callbacks_test.c)
+    asciichat_configure_contract(test-discovery-media)
+    target_link_libraries(test-discovery-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-discovery-media PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-discovery-media)
+    set_target_properties(test-discovery-media PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(discovery-media test-discovery-media)
+    set_property(TEST discovery-media APPEND PROPERTY LABELS unit)
+
     add_executable(test-entry-signals contracts/entry/signals_test.c)
     asciichat_configure_contract(test-entry-signals)
     target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
@@ -1791,7 +1802,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_property(TEST server-main APPEND PROPERTY LABELS unit)
 
     add_executable(test-server-client contracts/network/server_client_test.c
-        ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/protocol.c
+        ${CMAKE_SOURCE_DIR}/src/server/protocol.c
         ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
     asciichat_configure_contract(test-server-client)
     target_link_libraries(test-server-client PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
