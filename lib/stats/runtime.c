@@ -366,7 +366,7 @@ static void show_first_use_instructions(void) {
   char marker_path[STATS_RUNTIME_FIRST_USE_PATH_BUFFER_SIZE];
   int length = snprintf(marker_path, sizeof(marker_path), "%s/first-use-%s", dir, g_mode);
   char message[STATS_RUNTIME_FIRST_USE_MESSAGE_BUFFER_SIZE];
-  snprintf(message, sizeof(message), "%s Press Enter to dismiss.", text);
+  snprintf(message, sizeof(message), "%s", text);
   if (length > 0 && (size_t)length < sizeof(marker_path) && !platform_is_regular_file(marker_path) &&
       platform_mkdir_recursive(dir, 0700) == ASCIICHAT_OK)
     (void)ui_notice_present_first_use(message, marker_path);

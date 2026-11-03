@@ -1418,10 +1418,14 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
   return submit_screen(screen, fd, minimum, render, snapshot, bytes, NULL, true);
 }
 
-static void remove_screen(ui_screen_t screen, int previous) {
+static void remove_screen(ui_screen_t screen, int previous, screen_snapshot_t *expected_owned) {
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !lifecycle_is_initialized(&g_lifecycle))
     return;
   mutex_lock(&g_mutex);
+  if (expected_owned && g_screens[screen].owned != expected_owned) {
+    mutex_unlock(&g_mutex);
+    return;
+  }
   // An old callback must not remove a replacement submitted while it rendered.
   if (g_render_snapshot && g_rendering_screen == (int)screen && g_screens[screen].owned != g_render_snapshot) {
     mutex_unlock(&g_mutex);
@@ -1466,11 +1470,32 @@ static void remove_screen(ui_screen_t screen, int previous) {
 }
 
 void ui_controller_remove(ui_screen_t screen) {
-  remove_screen(screen, -1);
+  remove_screen(screen, -1, NULL);
 }
 
 void ui_controller_dismiss(ui_screen_t screen, int previous) {
-  remove_screen(screen, previous);
+  remove_screen(screen, previous, NULL);
+}
+
+bool ui_controller_first_use_key(int key) {
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    return false;
+  mutex_lock(&g_mutex);
+  screen_snapshot_t *owned = g_screens[UI_SCREEN_NOTICE].owned;
+  if (owned)
+    atomic_fetch_add(&owned->references, 1);
+  mutex_unlock(&g_mutex);
+  if (!owned)
+    return false;
+  ui_notice_key_result_t result = ui_notice_first_use_key(owned->data, key);
+  if (result == UI_NOTICE_KEY_COMPLETE)
+    ui_notice_first_use_complete(owned->data);
+  if (result == UI_NOTICE_KEY_COMPLETE || result == UI_NOTICE_KEY_DISMISS)
+    remove_screen(UI_SCREEN_NOTICE, -1, owned);
+  else if (result == UI_NOTICE_KEY_HANDLED && (key == '\r' || key == '\n' || key == KEY_LEFT || key == KEY_RIGHT))
+    ui_controller_redraw();
+  release_snapshot(owned);
+  return result != UI_NOTICE_KEY_ORDINARY;
 }
 
 ui_presentation_state_t ui_controller_state(void) {

@@ -393,7 +393,9 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     keyboard_key_t notice_key = input_read_event();
     if (notice_key == KEY_PASTE)
       g_events.ready = false;
-    if (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3)
+    bool first_use = ui_controller_first_use_key(notice_key);
+    if (!first_use &&
+        (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3))
       ui_controller_remove(UI_SCREEN_NOTICE);
     input_unlock();
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;

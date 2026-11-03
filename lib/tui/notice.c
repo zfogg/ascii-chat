@@ -3,6 +3,8 @@
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/keyboard.h>
+#include <stdatomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/popup.h>
@@ -172,8 +174,10 @@ typedef struct {
   bool color;
   uint64_t started;
   size_t marker_offset;
-  bool marker_ready;
-  bool marker_written;
+  atomic_int page;
+  atomic_int pages;
+  atomic_int presented_page;
+  int rendered_page;
   char text[];
 } notice_snapshot_t;
 
@@ -208,7 +212,20 @@ static void render_notice(terminal_size_t size, const void *data) {
   int rows = ui_notice_render(buffer, notice->text, notice->severity, size.cols, notice->unicode, notice->color);
   int page_rows = size.rows > 2 ? size.rows - 2 : 1;
   int pages = (rows + page_rows - 1) / page_rows;
-  uint64_t page = (time_get_ns() - started) / (10 * NS_PER_SEC_INT);
+  notice_snapshot_t *mutable_notice = (notice_snapshot_t *)notice;
+  uint64_t page;
+  if (notice->marker_offset) {
+    atomic_store(&mutable_notice->pages, pages);
+    int requested = atomic_load(&mutable_notice->page);
+    if (requested >= pages) {
+      requested = pages - 1;
+      atomic_store(&mutable_notice->page, requested);
+    }
+    page = (uint64_t)requested;
+    mutable_notice->rendered_page = requested;
+  } else {
+    page = (time_get_ns() - started) / (10 * NS_PER_SEC_INT);
+  }
   if (page >= (uint64_t)pages) {
     frame_buffer_destroy(buffer);
     ui_controller_remove(UI_SCREEN_NOTICE);
@@ -233,10 +250,11 @@ static void render_notice(terminal_size_t size, const void *data) {
   ui_controller_write(STDERR_FILENO, start, (size_t)(stop - start));
   if (notice->color)
     ui_controller_write(STDERR_FILENO, "\033[0m", 4);
-  if (pages > 1)
-    ui_controller_printf(STDERR_FILENO, "Page %llu/%d (advances automatically)", (unsigned long long)page + 1, pages);
   if (notice->marker_offset)
-    ((notice_snapshot_t *)notice)->marker_ready = page + 1 == (uint64_t)pages;
+    ui_controller_printf(STDERR_FILENO, "%llu/%d Enter:%s Esc:close", (unsigned long long)page + 1, pages,
+                         page + 1 == (uint64_t)pages ? "done" : "next");
+  else if (pages > 1)
+    ui_controller_printf(STDERR_FILENO, "Page %llu/%d (advances automatically)", (unsigned long long)page + 1, pages);
   frame_buffer_destroy(buffer);
 }
 
@@ -258,7 +276,10 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
     snapshot->color = color;
     snapshot->started = time_get_ns();
     snapshot->marker_offset = 0;
-    snapshot->marker_ready = snapshot->marker_written = false;
+    atomic_init(&snapshot->page, 0);
+    atomic_init(&snapshot->pages, 0);
+    atomic_init(&snapshot->presented_page, -1);
+    snapshot->rendered_page = -1;
     memcpy(snapshot->text, text, text_bytes);
     asciichat_error_t result = ui_controller_submit(
         UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
@@ -296,7 +317,10 @@ asciichat_error_t ui_notice_present_first_use(const char *text, const char *mark
   snapshot->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
   snapshot->started = time_get_ns();
   snapshot->marker_offset = text_bytes;
-  snapshot->marker_ready = snapshot->marker_written = false;
+  atomic_init(&snapshot->page, 0);
+  atomic_init(&snapshot->pages, 0);
+  atomic_init(&snapshot->presented_page, -1);
+  snapshot->rendered_page = -1;
   memcpy(snapshot->text, text, text_bytes);
   memcpy(snapshot->text + text_bytes, marker_path, marker_bytes);
   asciichat_error_t result = ui_controller_submit(
@@ -307,14 +331,41 @@ asciichat_error_t ui_notice_present_first_use(const char *text, const char *mark
 
 void ui_notice_frame_presented(const void *data) {
   notice_snapshot_t *notice = (notice_snapshot_t *)data;
-  if (!notice || !notice->marker_offset || !notice->marker_ready || notice->marker_written)
+  if (notice && notice->marker_offset)
+    atomic_store(&notice->presented_page, notice->rendered_page);
+}
+
+ui_notice_key_result_t ui_notice_first_use_key(const void *data, int key) {
+  notice_snapshot_t *notice = (notice_snapshot_t *)data;
+  if (!notice || !notice->marker_offset)
+    return UI_NOTICE_KEY_ORDINARY;
+  if (key == KEY_ESCAPE || key == 'q' || key == 3)
+    return UI_NOTICE_KEY_DISMISS;
+  int page = atomic_load(&notice->page);
+  int pages = atomic_load(&notice->pages);
+  if (key == KEY_LEFT && page > 0) {
+    atomic_store(&notice->presented_page, -1);
+    atomic_store(&notice->page, page - 1);
+  } else if ((key == '\r' || key == '\n' || key == KEY_RIGHT) && pages > 0 &&
+             atomic_load(&notice->presented_page) == page) {
+    if (page + 1 < pages) {
+      atomic_store(&notice->presented_page, -1);
+      atomic_store(&notice->page, page + 1);
+    } else if (key == '\r' || key == '\n') {
+      return UI_NOTICE_KEY_COMPLETE;
+    }
+  }
+  return UI_NOTICE_KEY_HANDLED;
+}
+
+void ui_notice_first_use_complete(const void *data) {
+  const notice_snapshot_t *notice = data;
+  if (!notice || !notice->marker_offset)
     return;
   asciichat_errno_scope_t scope = errno_scope_begin();
   FILE *marker = platform_fopen("first-use instructions", notice->text + notice->marker_offset, "w");
-  if (marker) {
+  if (marker)
     fclose(marker);
-    notice->marker_written = true;
-  }
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
 }
 

@@ -7,6 +7,7 @@ import _environment  # noqa: F401
 import argparse
 import importlib.util
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -37,22 +38,48 @@ def main():
             term = Terminal(base + args, rows=40, cols=120, environment=env)
             try:
                 term.expect(lambda text: expected.lower() in text.lower(), "First-use instructions missing", timeout=30)
+                assert not marker.exists(), "Notice was marked before acknowledgement"
+                term.write("\r")
                 deadline = time.monotonic() + 5
                 while not marker.exists() and time.monotonic() < deadline:
                     term.pump(.1)
-                assert marker.exists(), "Notice was not marked after presentation"
-                term.write("\r")
+                assert marker.exists(), "Notice was not marked after acknowledgement"
             finally:
                 finish(term)
 
         marker = root / "first-use-mirror"
         small = Terminal(base + mirror, rows=8, cols=25, environment=env)
         try:
-            small.expect(lambda text: "INFO" in text and "Mirror" in text,
-                         "Small terminal did not show the first page", timeout=30)
+            first = small.expect(lambda text: re.search(r"1/(\d+) Enter:next", text) is not None,
+                                 "Small terminal did not show a paged notice", timeout=30)
+            pages = int(re.search(r"1/(\d+) Enter:next", first).group(1))
+            assert pages > 1
+            time.sleep(11)
+            text = small.pump(.5)
+            assert re.search(r"1/\d+ Enter:next", text), "Notice advanced without input"
             assert not marker.exists(), "Incomplete notice was marked as seen"
+            for page in range(2, pages + 1):
+                small.write("\r")
+                small.expect(lambda text, page=page: f"{page}/{pages} Enter:" in text,
+                             f"Page {page} did not appear", timeout=10)
+                assert not marker.exists(), "Notice was marked before final acknowledgement"
+            small.write("\r")
+            deadline = time.monotonic() + 5
+            while not marker.exists() and time.monotonic() < deadline:
+                small.pump(.1)
+            assert marker.exists(), "Final page acknowledgement was not recorded"
         finally:
             finish(small)
+        marker.unlink()
+        dismissed = Terminal(base + mirror, rows=40, cols=120, environment=env)
+        try:
+            dismissed.expect(lambda text: "Mirror previews your camera locally".lower() in text.lower(),
+                             "Notice did not reopen after marker removal", timeout=30)
+            dismissed.write("\x1b")
+            dismissed.pump(.5)
+            assert not marker.exists(), "Escape marked the notice complete"
+        finally:
+            finish(dismissed)
         run(mirror, "Mirror previews your camera locally", marker)
         assert not (root / "first-use-server").exists()
         run(["server", "--port", str(free_port()), "--websocket-port", str(free_port()), "--status-screen"],
