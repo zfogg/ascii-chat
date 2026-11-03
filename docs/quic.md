@@ -15,7 +15,12 @@ For example, start a listener with `--quic-bind-address 127.0.0.1`,
 `ascii-chat client quic://localhost:PORT --quic-ca-file CA.pem`. The client
 uses system trust when `--quic-ca-file` is omitted and verifies the certificate
 against the address hostname. An explicit QUIC connection does not fall back
-to TCP. Hostname resolution currently uses IPv4; IPv6 literals are supported.
+by default. Clients can set `--quic-fallback-port PORT` and `--server-key KEY`
+to retry the same hostname over TCP when the QUIC TLS connection times out.
+Fallback requires ACIP encryption and authentication with the pinned server
+key. Certificate, authentication, protocol, and cancellation errors do not
+trigger fallback, and no fallback happens after TLS is established. Hostname
+resolution currently uses IPv4; IPv6 literals are supported.
 
 ## Reliable streams
 

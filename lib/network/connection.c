@@ -751,10 +751,12 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
         errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
         break;
       }
-      if (result != ERROR_INVALID_STATE || connect_cancelled((void *)settings) || time_get_ns() - start >= timeout) {
+      bool cancelled = connect_cancelled((void *)settings);
+      if (result != ERROR_INVALID_STATE || cancelled || time_get_ns() - start >= timeout) {
         if (result == ERROR_INVALID_STATE) {
           errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_DISMISSED);
-          result = SET_ERRNO(ERROR_NETWORK_CONNECT, "QUIC connection timed out or was cancelled");
+          result = cancelled ? SET_ERRNO(ERROR_NETWORK_CONNECT, "QUIC connection cancelled")
+                             : SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC TLS connection timed out");
         } else {
           errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
         }
@@ -771,7 +773,9 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
     }
     if (*owner) {
       (void)acip_quic_endpoint_stop(*owner);
-      (void)acip_quic_endpoint_destroy(owner);
+      asciichat_error_t cleanup = acip_quic_endpoint_destroy(owner);
+      if (cleanup != ASCIICHAT_OK || *owner)
+        return SET_ERRNO(ERROR_THREAD, "Cannot clean up failed QUIC connection");
     }
     return SET_ERRNO(result, "QUIC connection establishment failed");
   }

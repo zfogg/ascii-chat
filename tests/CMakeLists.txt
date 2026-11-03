@@ -1448,6 +1448,10 @@ if(TARGET ascii-chat-static)
                 ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_server.py
                 $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
             set_tests_properties(quic-cli-server PROPERTIES LABELS "integration;standalone" TIMEOUT 100)
+            asciichat_add_python_test(quic-cli-fallback
+                ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_fallback.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(quic-cli-fallback PROPERTIES LABELS "integration;standalone" TIMEOUT 120)
         endif()
         target_link_libraries(test-quic-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
         if(WIN32)
@@ -1482,6 +1486,12 @@ if(TARGET ascii-chat-static)
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
             if(TEST quic-cli-server)
                 set_property(TEST quic-cli-server PROPERTY ENVIRONMENT_MODIFICATION
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                    "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            endif()
+            if(TEST quic-cli-fallback)
+                set_property(TEST quic-cli-fallback PROPERTY ENVIRONMENT_MODIFICATION
                     "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                     "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
                     "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")

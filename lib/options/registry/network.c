@@ -38,6 +38,15 @@ static bool validate_webrtc_bind_address(const void *data) {
 static const bool default_quic_audio_datagrams = false;
 
 const registry_entry_t g_network_entries[] = {
+    {.long_name = "quic-fallback-port",
+     .type = OPTION_TYPE_INT,
+     .offset = offsetof(options_t, quic_fallback_port),
+     .default_value_size = sizeof(int),
+     .help_text = "TCP fallback port after QUIC timeout (requires --server-key; 0 disables fallback).",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_QUIC_FALLBACK_PORT",
+     .mode_bitmask = OPTION_MODE_CLIENT,
+     .metadata = {.numeric_range = {0, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC}},
     {.long_name = "quic-audio-datagrams",
      .type = OPTION_TYPE_BOOL,
      .offset = offsetof(options_t, quic_audio_datagrams),
