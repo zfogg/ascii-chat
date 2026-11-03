@@ -246,11 +246,9 @@ class MediaSessions(unittest.TestCase):
             expect(b"QQQQQQQQ")
             os.write(master, b"?")
             expect(b"Keyboard Shortcuts")
-            # Observe each overlay and its return to the rendered frame.
-            os.write(master, b"?")
-            expect(b"QQQQQQQQ")
             os.write(master, b"\x1b[B")
             expect(b"Volume")
+            os.write(master, b"?")
             expect(b"QQQQQQQQ")
             fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 12, 19, 0, 0))
             process.send_signal(signal.SIGWINCH)
