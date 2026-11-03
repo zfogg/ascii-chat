@@ -280,7 +280,7 @@ static error_thread_t *register_current_locked(uint64_t id) {
 static void record_stats_locked(asciichat_error_t code, uint64_t timestamp) {
   if (code == ASCIICHAT_OK)
     return;
-  if ((unsigned)code < 256)
+  if ((unsigned)code < ARRAY_SIZE(g_stats.error_counts))
     ++g_stats.error_counts[code];
   ++g_stats.total_errors;
   g_stats.last_error_time = timestamp;
@@ -712,7 +712,7 @@ void asciichat_error_stats_print(void) {
   log_plain("Errors: total=%" PRIu64 " pending=%zu threads=%zu dropped=%" PRIu64 " history_overwritten=%" PRIu64,
             stats.total_errors, stats.pending_errors, stats.registered_threads, stats.dropped_errors,
             stats.overwritten_history);
-  for (size_t i = 1; i < 256; ++i)
+  for (size_t i = 1; i < ARRAY_SIZE(stats.error_counts); ++i)
     if (stats.error_counts[i])
       log_plain("  %s: %" PRIu64, asciichat_error_string((asciichat_error_t)i), stats.error_counts[i]);
 }

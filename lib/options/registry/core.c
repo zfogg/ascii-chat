@@ -35,14 +35,14 @@ void registry_init_from_builders(void) {
     }
 
     // Copy category entries (count already excludes sentinel)
-    if (offset + count <= 2048) {
+    if (offset + count <= OPTIONS_REGISTRY_CAPACITY) {
       memcpy(&g_options_registry[offset], g_category_builders[i].entries, count * sizeof(registry_entry_t));
       offset += count;
     }
   }
 
   // Add final null terminator
-  if (offset < 2048) {
+  if (offset < OPTIONS_REGISTRY_CAPACITY) {
     g_options_registry[offset] = (registry_entry_t){.long_name = NULL,
                                                     .short_name = '\0',
                                                     .type = OPTION_TYPE_BOOL,
