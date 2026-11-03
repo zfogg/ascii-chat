@@ -1,3 +1,4 @@
+import { OPUS_FRAME_SAMPLES, OPUS_ENCODE_BUFFER_SIZE } from "./limits";
 /**
  * Opus codec wrapper for WASM
  * Provides TypeScript interface to libopus compiled to WebAssembly
@@ -93,7 +94,7 @@ export class OpusEncoder {
     const maxFrameSamples = Math.ceil(this.options.sampleRate * 0.12);
     const pcmBytes = maxFrameSamples * this.options.channelCount * 2;
     this.encodePcmPtr = wasmModule._malloc(pcmBytes);
-    this.encodeOpusPtr = wasmModule._malloc(4000);
+    this.encodeOpusPtr = wasmModule._malloc(OPUS_ENCODE_BUFFER_SIZE);
     this.decodeOpusPtr = wasmModule._malloc(OpusEncoder.MAX_OPUS_PACKET_BYTES);
     this.decodePcmPtr = wasmModule._malloc(pcmBytes);
     if (
@@ -123,7 +124,7 @@ export class OpusEncoder {
     }
 
     const frameSize = pcmData.length / this.options.channelCount;
-    const maxOpusBytes = 4000; // Max Opus frame size
+
     if (frameSize > Math.ceil(this.options.sampleRate * 0.12)) {
       throw new Error("Opus input exceeds the reusable frame buffer");
     }
@@ -134,7 +135,7 @@ export class OpusEncoder {
       this.encodePcmPtr,
       frameSize,
       this.encodeOpusPtr,
-      maxOpusBytes,
+      OPUS_ENCODE_BUFFER_SIZE,
     );
 
     if (encodedBytes < 0) {
@@ -157,7 +158,10 @@ export class OpusEncoder {
    * @param frameSize Expected frame size (samples per channel)
    * @returns Decoded PCM samples
    */
-  decode(opusData: Uint8Array, frameSize: number = 960): Int16Array {
+  decode(
+    opusData: Uint8Array,
+    frameSize: number = OPUS_FRAME_SAMPLES,
+  ): Int16Array {
     if (!this.initialized || !this.wasmModule) {
       throw new Error("Opus decoder not initialized");
     }

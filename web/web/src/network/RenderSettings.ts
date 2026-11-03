@@ -1,3 +1,5 @@
+const SETTINGS_HEADER_SIZE = 20;
+const SETTINGS_JSON_MAX_BYTES = 4096;
 import type { RuntimeValues } from "@ascii-chat/shared/wasm";
 import type { ClientSession } from "./Transport";
 import { acceptRemoteRenderSettings } from "../wasm/client";
@@ -24,18 +26,22 @@ export class RenderSettingsControl {
   ) {}
   send(values: RuntimeValues, expectedRevision = 0xffff_ffff): number {
     const json = new TextEncoder().encode(JSON.stringify(values));
-    if (json.length > 4096) throw new Error("Settings are too large");
-    const payload = new Uint8Array(20 + json.length);
+    if (json.length > SETTINGS_JSON_MAX_BYTES)
+      throw new Error("Settings are too large");
+    const payload = new Uint8Array(SETTINGS_HEADER_SIZE + json.length);
     const view = new DataView(payload.buffer);
     view.setUint32(0, 1);
     view.setUint32(4, ++this.request);
     view.setUint32(8, expectedRevision);
-    payload.set(json, 20);
+    payload.set(json, SETTINGS_HEADER_SIZE);
     this.connection.sendPacket(SETTINGS_SYNC, payload);
     return this.request;
   }
   receive(payload: Uint8Array): RenderSettingsResult | null {
-    if (payload.length < 20 || payload.length > 4116)
+    if (
+      payload.length < SETTINGS_HEADER_SIZE ||
+      payload.length > SETTINGS_HEADER_SIZE + SETTINGS_JSON_MAX_BYTES
+    )
       throw new Error("Invalid settings reply length");
     const view = new DataView(
       payload.buffer,

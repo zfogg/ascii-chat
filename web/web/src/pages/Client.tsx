@@ -1,3 +1,4 @@
+const VISUALIZATION_READ_SAMPLES = 1024;
 import { ScreenShareControls } from "../components/ScreenShareControls";
 import { MediaAudioControls } from "../components/MediaAudioControls";
 import { RecordingControls } from "../components/RecordingControls";
@@ -951,7 +952,7 @@ export function ClientPage({
               ? "microphone"
               : "media";
             if (syntheticAudio) {
-              const samples = new Float32Array(1024);
+              const samples = new Float32Array(VISUALIZATION_READ_SAMPLES);
               const now = performance.now();
               for (let index = 0; index < samples.length; index++) {
                 samples[index] =

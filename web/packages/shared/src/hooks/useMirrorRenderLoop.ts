@@ -1,3 +1,4 @@
+const VISUALIZATION_READ_SAMPLES = 1024;
 import {
   useEffect,
   useLayoutEffect,
@@ -183,7 +184,7 @@ export function useMirrorRenderLoop({
     let pendingVideoFrame = false;
     const mediaClock = new VideoFrameClock();
     let lastConversionTime = 0;
-    const audioSamples = new Float32Array(1024);
+    const audioSamples = new Float32Array(VISUALIZATION_READ_SAMPLES);
     const renderFrame = (directCameraFrame = false) => {
       if (!isWasmReady() || !rendererRef.current) {
         return;
