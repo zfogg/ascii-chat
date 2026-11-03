@@ -22,6 +22,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
@@ -157,7 +158,18 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
                             .client_id = client_id};
   socket_buffer_t slices[SOCKET_IOV_MAX] = {{&header, sizeof(header)}};
   memcpy(slices + 1, payload, count * sizeof(*payload));
-  asciichat_error_t result = acip_transport_sendv(transport, slices, count + 1);
+  acip_send_options_t options = {.traffic_class = acip_packet_traffic_class(type), .delivery = ACIP_DELIVERY_RELIABLE};
+  if (transport->prefer_audio_datagrams && options.traffic_class == ACIP_TRAFFIC_AUDIO) {
+    acip_transport_capabilities_t caps;
+    asciichat_error_t result = acip_transport_get_capabilities(transport, &caps);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (caps.datagrams) {
+      options.delivery = ACIP_DELIVERY_DATAGRAM;
+      options.deadline_ns = time_get_ns() + 100 * NS_PER_MS_INT;
+    }
+  }
+  asciichat_error_t result = acip_transport_sendv_ex(transport, slices, count + 1, &options);
   stats_runtime_packet(transport->stats_peer, type, len, true, result == ASCIICHAT_OK);
 #ifdef ASCIICHAT_WITH_OTEL
   ASCII_OTEL_PACKET(type, len, "send", acip_transport_get_type(transport));

@@ -222,6 +222,14 @@ replay protection for existing connections.
 
 ## Experimental datagram fragments
 
+Native clients and servers can opt into outgoing audio datagrams with
+`--quic-audio-datagrams`. Each endpoint makes this choice independently. If the
+peer did not negotiate DATAGRAM support, audio uses its reliable stream. Once a
+datagram is selected, congestion or expiry does not retry it on the reliable
+stream. The sender gives each packet a 100 ms deadline on the monotonic clock;
+this bounds local queues, not its age at the receiver. Visual packets remain
+reliable until codec recovery is implemented.
+
 The private connection can opt into QUIC DATAGRAM transport parameters before
 the connection is created. It requires peer support and authenticated ACIP
 readiness before media admission. The private fragment codec defines the

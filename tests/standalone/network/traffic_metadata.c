@@ -150,6 +150,25 @@ int main(void) {
   }
   atomic_store_bool(&capture.blocked, false);
   acip_outbound_destroy(&transport);
+
+  /* Production packet helpers prefer datagrams only for audio, and fall back
+   * to reliable delivery when the peer did not negotiate datagrams. */
+  capture_t preferred = {0};
+  acip_transport_t preferred_transport = {.methods = &methods, .impl_data = &preferred, .prefer_audio_datagrams = true};
+  CHECK(acip_outbound_create(&preferred_transport) == ASCIICHAT_OK);
+  for (unsigned i = 0; i < 3; ++i) {
+    atomic_store_bool(&preferred.datagrams, i != 0);
+    packet_type_t type = i == 2 ? PACKET_TYPE_PING : PACKET_TYPE_AUDIO_BATCH;
+    CHECK(packet_send_via_transport(&preferred_transport, type, &keyframe, 1, 0) == ASCIICHAT_OK);
+    uint64_t before = time_get_ns();
+    while (atomic_load_u64(&preferred.count) <= i) {
+      CHECK(time_get_ns() - before < 2 * NS_PER_SEC_INT);
+      platform_sleep_ms(1);
+    }
+    CHECK(atomic_load_u64(&preferred.delivery) == (i == 1 ? ACIP_DELIVERY_DATAGRAM : ACIP_DELIVERY_RELIABLE));
+    CHECK((atomic_load_u64(&preferred.deadline) != 0) == (i == 1));
+  }
+  acip_outbound_destroy(&preferred_transport);
   buffer_system_cleanup();
   log_destroy();
   return 0;

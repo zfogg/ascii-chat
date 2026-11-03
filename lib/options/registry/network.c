@@ -35,7 +35,18 @@ static bool validate_webrtc_bind_address(const void *data) {
   return false;
 }
 
+static const bool default_quic_audio_datagrams = false;
+
 const registry_entry_t g_network_entries[] = {
+    {.long_name = "quic-audio-datagrams",
+     .type = OPTION_TYPE_BOOL,
+     .offset = offsetof(options_t, quic_audio_datagrams),
+     .default_value = &default_quic_audio_datagrams,
+     .default_value_size = sizeof(bool),
+     .help_text = "Prefer QUIC datagrams for audio when negotiated; otherwise use reliable streams.",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_QUIC_AUDIO_DATAGRAMS",
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_SERVER},
     {.long_name = "quic-ca-file",
      .type = OPTION_TYPE_STRING,
      .offset = offsetof(options_t, quic_ca_file),

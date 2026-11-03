@@ -293,8 +293,10 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
                                           &bind_length);
     if (result != ASCIICHAT_OK)
       goto cleanup;
-    acip_quic_config_t quic_config = {
-        .certificate_file = quic_certificate, .private_key_file = quic_key, .enable_datagrams = true};
+    acip_quic_config_t quic_config = {.certificate_file = quic_certificate,
+                                      .private_key_file = quic_key,
+                                      .enable_datagrams = true,
+                                      .prefer_audio_datagrams = GET_OPTION(quic_audio_datagrams)};
     result = acip_quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config,
                                      &g_quic_endpoint);
     if (result != ASCIICHAT_OK)

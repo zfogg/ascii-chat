@@ -254,6 +254,7 @@ struct acip_transport {
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
   uint64_t receive_timeout_ns; ///< Optional TCP receive timeout override; zero uses the normal polling timeout
+  bool prefer_audio_datagrams; ///< Select negotiated datagrams for audio, otherwise reliable delivery.
   void *impl_data;             ///< Transport-specific state
   void *user_data;             ///< Application-specific context (e.g., per-client data)
 };

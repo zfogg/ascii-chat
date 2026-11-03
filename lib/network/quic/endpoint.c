@@ -20,7 +20,7 @@ struct acip_quic_endpoint {
   acip_quic_worker_t *worker;
   endpoint_transport_t *transports;
   size_t count;
-  bool listener, stopping, stopped;
+  bool listener, stopping, stopped, prefer_audio_datagrams;
   asciichat_error_t terminal_error;
 };
 
@@ -71,6 +71,7 @@ static asciichat_error_t attach(acip_quic_endpoint_t *endpoint, acip_quic_connec
     return result;
   }
   acip_quic_transport_set_close_on_lane(item->transport, close_connection, endpoint);
+  item->transport->prefer_audio_datagrams = endpoint->prefer_audio_datagrams;
   item->connection = connection;
   item->claimed = claimed;
   item->next = endpoint->transports;
@@ -138,6 +139,7 @@ asciichat_error_t acip_quic_endpoint_open(const struct sockaddr *address, sockle
                : acip_quic_tls_client_create(alpn, config->ca_file, &endpoint->tls);
   if (result == ASCIICHAT_OK) {
     endpoint->tls->enable_datagrams = config->enable_datagrams;
+    endpoint->prefer_audio_datagrams = config->prefer_audio_datagrams;
     endpoint->listener = listener;
     result =
         acip_quic_udp_endpoint_create(address, length, listener ? endpoint->tls : NULL,

@@ -996,6 +996,7 @@ typedef struct options_state {
   char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
   char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
   char quic_ca_file[OPTIONS_BUFF_SIZE];               ///< Native QUIC client certificate trust anchors.
+  bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
   int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
   int max_clients;                                    ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars

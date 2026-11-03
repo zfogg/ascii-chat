@@ -12,6 +12,7 @@ typedef struct {
   const char *private_key_file; /**< Required for listeners. */
   const char *ca_file;          /**< NULL selects system trust for clients. */
   bool enable_datagrams;
+  bool prefer_audio_datagrams; /**< Send audio as datagrams when negotiated; otherwise use reliable streams. */
 } acip_quic_config_t;
 
 /** Bind a concrete IPv4 or IPv6 local address and start the endpoint worker.

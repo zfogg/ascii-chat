@@ -992,9 +992,11 @@ static asciichat_error_t quic_server_packet(network_connection_t *connection, pa
 static void quic_network_server_test(const char *certificate, const char *private_key) {
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  acip_quic_config_t server_config = {
-      .certificate_file = certificate, .private_key_file = private_key, .enable_datagrams = true};
-  acip_quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true};
+  acip_quic_config_t server_config = {.certificate_file = certificate,
+                                      .private_key_file = private_key,
+                                      .enable_datagrams = true,
+                                      .prefer_audio_datagrams = true};
+  acip_quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true, .prefer_audio_datagrams = true};
   acip_quic_endpoint_t *server = NULL, *client = NULL;
   CHECK(acip_quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==
         ASCIICHAT_OK);
@@ -1039,9 +1041,9 @@ static void quic_network_server_test(const char *certificate, const char *privat
   client_handshake.server_port = 27224;
   CHECK(network_client_negotiate(outbound, &client_handshake, ACIP_CRYPTO_FULL, NETWORK_PROTOCOL_MEDIA) ==
         ASCIICHAT_OK);
-  acip_send_options_t options = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
-  socket_buffer_t slice = {audio, audio_length};
-  CHECK(acip_transport_sendv_ex(outbound, &slice, 1, &options) == ASCIICHAT_OK);
+  CHECK(outbound->prefer_audio_datagrams);
+  CHECK(packet_send_via_transport(outbound, PACKET_TYPE_AUDIO_BATCH, fixture.audio, fixture.audio_length, 0) ==
+        ASCIICHAT_OK);
   outbound->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   void *echo = NULL, *allocation = NULL;
   size_t echo_length = 0;
