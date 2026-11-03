@@ -1652,6 +1652,21 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(session-h265-client test-session-h265-client)
     set_property(TEST session-h265-client APPEND PROPERTY LABELS unit)
 
+    add_executable(test-server-main contracts/network/server_main_test.c
+        ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/connections.c
+        ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/server/stream.c
+        ${CMAKE_SOURCE_DIR}/src/server/render.c ${CMAKE_SOURCE_DIR}/src/server/stats.c
+        ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
+    asciichat_configure_contract(test-server-main)
+    target_link_libraries(test-server-main PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-server-main PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-server-main)
+    set_target_properties(test-server-main PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-main test-server-main)
+    set_property(TEST server-main APPEND PROPERTY LABELS unit)
+
     add_executable(test-server-client contracts/network/server_client_test.c
         ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/protocol.c
         ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)

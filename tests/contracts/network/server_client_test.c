@@ -318,3 +318,188 @@ Test(server_client, malformed_rekey_requests_leave_the_active_key_and_transport_
   crypto_handshake_destroy(&local);
   crypto_handshake_destroy(&peer);
 }
+
+static void resume_client(client_info_t *client) {
+  atomic_store_bool(&client->active, true);
+  atomic_store_bool(&client->protocol_disconnect_requested, false);
+  atomic_store_bool(&client->shutting_down, false);
+  atomic_store_bool(&client->is_sending_audio, true);
+  atomic_store_bool(&client->is_sending_video, false);
+  CLEAR_ERRNO_ALL();
+}
+static void expect_rejected(client_info_t *client) {
+  cr_assert(atomic_load_bool(&client->protocol_disconnect_requested));
+  cr_assert_not(atomic_load_bool(&client->active));
+}
+Test(server_client, compatibility_ping_serializes_failures_and_shutdown_without_dropping_transport) {
+  client_info_t *client = admit();
+  handle_ping_packet(client, NULL, 0);
+  cr_assert_eq(last_type, PACKET_TYPE_PONG);
+  unsigned before = sends;
+  send_result = ERROR_NETWORK;
+  handle_ping_packet(client, NULL, 0);
+  cr_assert_eq(GET_ERRNO(), ERROR_NETWORK);
+  CLEAR_ERRNO_ALL();
+  atomic_store_bool(&client->shutting_down, true);
+  handle_ping_packet(client, NULL, 0);
+  cr_assert_eq(sends, before + 1);
+  atomic_store_bool(&client->shutting_down, false);
+  client->transport = NULL;
+  handle_ping_packet(client, NULL, 0);
+  cr_assert_eq(sends, before + 1);
+  client->transport = &transport;
+  handle_pong_packet(client, NULL, 0);
+}
+Test(server_client, remote_logs_validate_direction_and_preserve_client_media) {
+  client_info_t *client = admit();
+  struct {
+    remote_log_packet_t header;
+    char text[5];
+  } packet = {.header = {.log_level = LOG_INFO,
+                         .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
+                         .message_length = HOST_TO_NET_U32(5)},
+              .text = {'h', 'e', 'l', 'l', 'o'}};
+  handle_remote_log_packet_from_client(client, &packet, sizeof(packet));
+  cr_assert(atomic_load_bool(&client->active));
+  SAFE_STRNCPY(client->display_name, "remote-test", sizeof(client->display_name));
+  packet.header.flags = HOST_TO_NET_U16(REMOTE_LOG_FLAG_TRUNCATED);
+  handle_remote_log_packet_from_client(client, &packet, sizeof(packet));
+  cr_assert(atomic_load_bool(&client->active));
+  packet.header.direction = REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT;
+  handle_remote_log_packet_from_client(client, &packet, sizeof(packet));
+  expect_rejected(client);
+  resume_client(client);
+  handle_remote_log_packet_from_client(client, &packet, 1);
+  expect_rejected(client);
+  handle_remote_log_packet_from_client(NULL, NULL, 0);
+}
+Test(server_client, legacy_raw_frames_validate_dimensions_length_and_own_successful_pixels) {
+  client_info_t *client = admit();
+  client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
+  struct {
+    uint32_t width, height;
+    uint8_t pixels[12];
+  } packet = {.width = HOST_TO_NET_U32(2), .height = HOST_TO_NET_U32(2), .pixels = {10, 20, 30}};
+  const uint32_t bad[][2] = {{0, 2}, {2, 0}, {UINT32_MAX, 2}, {2, UINT32_MAX}};
+  for (unsigned i = 0; i < ARRAY_SIZE(bad); ++i) {
+    resume_client(client);
+    packet.width = HOST_TO_NET_U32(bad[i][0]);
+    packet.height = HOST_TO_NET_U32(bad[i][1]);
+    handle_image_frame_packet(client, &packet, sizeof(packet));
+    expect_rejected(client);
+    cr_assert_null(video_frame_get_latest(client->incoming_video_buffer));
+  }
+  packet.width = packet.height = HOST_TO_NET_U32(2);
+  resume_client(client);
+  handle_image_frame_packet(client, &packet, sizeof(packet) - 1);
+  expect_rejected(client);
+  resume_client(client);
+  handle_image_frame_packet(client, NULL, 0);
+  expect_rejected(client);
+  resume_client(client);
+  handle_image_frame_packet(client, &packet, sizeof(packet));
+  cr_assert(atomic_load_bool(&client->active));
+  const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
+  cr_assert_not_null(frame);
+  cr_assert_eq(frame->width, 2);
+  cr_assert_eq(frame->height, 2);
+  cr_assert_arr_eq((uint8_t *)frame->data + 8, packet.pixels, sizeof(packet.pixels));
+  client->frames_received_logged = 24999;
+  handle_image_frame_packet(client, &packet, sizeof(packet));
+  cr_assert_eq(client->frames_received_logged, 25000);
+  client->codec_capabilities_video = 0;
+  handle_image_frame_packet(client, &packet, sizeof(packet));
+  expect_rejected(client);
+}
+Test(server_client, legacy_pcm_validates_stream_alignment_limits_and_recovers_with_a_valid_batch) {
+  client_info_t *client = admit();
+  float samples[AUDIO_SAMPLES_PER_PACKET + 1] = {0.25f, -0.5f};
+  const size_t bad_sizes[] = {1, 0, sizeof(samples)};
+  for (unsigned i = 0; i < ARRAY_SIZE(bad_sizes); ++i) {
+    resume_client(client);
+    handle_audio_packet(client, samples, bad_sizes[i]);
+    expect_rejected(client);
+    cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  }
+  resume_client(client);
+  handle_audio_packet(client, NULL, sizeof(float));
+  expect_rejected(client);
+  resume_client(client);
+  atomic_store_bool(&client->is_sending_audio, false);
+  handle_audio_packet(client, samples, sizeof(float) * 2);
+  expect_rejected(client);
+  resume_client(client);
+  handle_audio_packet(client, samples, sizeof(float) * 2);
+  float actual[2];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 2), 2);
+  cr_assert_arr_eq(actual, samples, sizeof(actual));
+}
+Test(server_client, legacy_pcm_batch_rejects_bad_headers_and_counts_without_publishing_samples) {
+  client_info_t *client = admit();
+  struct {
+    audio_batch_packet_t header;
+    uint32_t samples[4];
+  } p = {0};
+  const uint32_t counts[][2] = {{0, 4}, {1, 0}, {1, 4}, {1, UINT32_MAX}};
+  for (unsigned i = 0; i < ARRAY_SIZE(counts); ++i) {
+    resume_client(client);
+    p.header = (audio_batch_packet_t){.batch_count = HOST_TO_NET_U32(counts[i][0]),
+                                      .total_samples = HOST_TO_NET_U32(counts[i][1]),
+                                      .sample_rate = HOST_TO_NET_U32(48000),
+                                      .channels = HOST_TO_NET_U32(1)};
+    handle_audio_batch_packet(client, &p, sizeof(p) - 1);
+    expect_rejected(client);
+    cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
+  }
+  resume_client(client);
+  handle_audio_batch_packet(client, NULL, 0);
+  expect_rejected(client);
+  resume_client(client);
+  p.header.total_samples = HOST_TO_NET_U32(4);
+  p.header.batch_count = HOST_TO_NET_U32(1);
+  p.samples[0] = HOST_TO_NET_U32(1073741823);
+  handle_audio_batch_packet(client, &p, sizeof(p));
+  float actual[4];
+  cr_assert_eq(audio_ring_buffer_read(client->incoming_audio_buffer, actual, 4), 4);
+  cr_assert_float_eq(actual[0], 0.5, 1e-6);
+}
+Test(server_client, single_opus_compatibility_rejects_bad_metadata_and_decodes_real_audio) {
+  client_info_t *client = admit();
+  uint8_t packet[4096] = {0};
+  client->opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
+  cr_assert_not_null(client->opus_decoder);
+  const uint32_t metadata[][2] = {{0, 20}, {192001, 20}, {48000, 0}, {48000, 121}, {192000, 120}, {1, 1}};
+  for (unsigned i = 0; i < ARRAY_SIZE(metadata); ++i) {
+    resume_client(client);
+    uint32_t rate = HOST_TO_NET_U32(metadata[i][0]), duration = HOST_TO_NET_U32(metadata[i][1]);
+    memcpy(packet, &rate, 4);
+    memcpy(packet + 4, &duration, 4);
+    handle_audio_opus_packet(client, packet, 17);
+    expect_rejected(client);
+  }
+  resume_client(client);
+  handle_audio_opus_packet(client, NULL, 0);
+  expect_rejected(client);
+  resume_client(client);
+  handle_audio_opus_packet(client, packet, 16);
+  expect_rejected(client);
+  resume_client(client);
+  atomic_store_bool(&client->is_sending_audio, false);
+  handle_audio_opus_packet(client, packet, 17);
+  expect_rejected(client);
+  resume_client(client);
+  float samples[OPUS_FRAME_SAMPLES];
+  for (unsigned i = 0; i < ARRAY_SIZE(samples); ++i)
+    samples[i] = (i % 32 < 16 ? 0.25f : -0.25f);
+  opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+  cr_assert_not_null(encoder);
+  int size = opus_codec_encode(encoder, samples, OPUS_FRAME_SAMPLES, packet + 16, sizeof(packet) - 16);
+  cr_assert_gt(size, 0);
+  uint32_t rate = HOST_TO_NET_U32(48000), duration = HOST_TO_NET_U32(20);
+  memcpy(packet, &rate, 4);
+  memcpy(packet + 4, &duration, 4);
+  handle_audio_opus_packet(client, packet, 16 + size);
+  cr_assert(atomic_load_bool(&client->active));
+  cr_assert_eq(audio_ring_buffer_available_read(client->incoming_audio_buffer), OPUS_FRAME_SAMPLES);
+  opus_codec_destroy(encoder);
+}

@@ -673,7 +673,8 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
   } else if (attempt > 30) {
     attempt = 30; // Prevent overflow
   }
-  uint32_t base_delay_ms = 1000U << attempt; // 1s, 2s, 4s, 8s, 16s...
+  // Saturate before shifting: a large attempt can wrap a 32-bit delay to zero.
+  uint32_t base_delay_ms = attempt >= 5 ? 30 * MS_PER_SEC_INT : 1000U << attempt;
 
   // Cap at 30 seconds
   if (base_delay_ms > 30 * MS_PER_SEC_INT) {
