@@ -84,7 +84,6 @@ if(PLATFORM_IOS)
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
-            INPUT ""
         )
         message(STATUS "  Configure result: ${CONFIG_RESULT}")
         if(CONFIG_OUTPUT)
