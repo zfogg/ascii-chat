@@ -164,6 +164,7 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/session/keyboard_handler.c
     ${CMAKE_SOURCE_DIR}/src/common/session/session_log_buffer.c
     ${CMAKE_SOURCE_DIR}/src/common/session/server_like.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/quic_listeners.c
     # Terminal FD reader/writer
     ${CMAKE_SOURCE_DIR}/lib/terminal/fd/reader.c
     ${CMAKE_SOURCE_DIR}/lib/terminal/fd/writer.c

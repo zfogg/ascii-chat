@@ -170,6 +170,9 @@ typedef struct {
   /** @brief Enable encryption (default: true) */
   bool encryption_enabled;
 
+  /** Start the configured native QUIC and HTTP/3 listeners with this host. */
+  bool configured_quic_listeners;
+
   /** @brief Path to server identity key */
   const char *key_path;
 

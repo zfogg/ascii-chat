@@ -29,14 +29,57 @@ async function sharedPort(): Promise<number> {
   throw new Error("No common TCP and UDP port available");
 }
 
+let nativeSequence = 0;
 class Native {
   readonly process: ChildProcess;
   readonly closed: Promise<void>;
-  output = "";
-  constructor(binary: string, home: string, args: string[], rekey = false) {
+  private captured = "";
+  private logFile: string | undefined;
+  private observedFile = "";
+  private fileHistory = "";
+  get output(): string {
+    if (!this.logFile) return this.captured;
+    const next = readFileSync(this.logFile, "utf8");
+    if (next.startsWith(this.observedFile)) {
+      this.fileHistory += next.slice(this.observedFile.length);
+    } else {
+      // Native logging compacts the file in place. Its retained tail lets us
+      // preserve one chronological history without counting records twice.
+      const tail = this.observedFile.slice(-8192);
+      const overlap = tail ? next.indexOf(tail) : -1;
+      this.fileHistory +=
+        overlap >= 0 ? next.slice(overlap + tail.length) : next;
+    }
+    this.observedFile = next;
+    return this.fileHistory;
+  }
+  constructor(
+    binary: string,
+    home: string,
+    args: string[],
+    rekey = false,
+    verbose = false,
+  ) {
+    if (verbose) {
+      this.logFile = resolve(home, `process-${nativeSequence++}.log`);
+      writeFileSync(this.logFile, "");
+    }
     this.process = spawn(
       binary,
-      ["--no-check-update", "--log-level", rekey ? "debug" : "info", ...args],
+      [
+        "--no-check-update",
+        ...(this.logFile
+          ? [
+              "--log-file",
+              this.logFile,
+              "--grep",
+              "/discovery|Handoff|Rekey|Setting transport|Frame received|identity key verified|using native QUIC|Native QUIC listener|Host started|Server accepting|ERROR|WARN/i",
+            ]
+          : []),
+        "--log-level",
+        rekey || verbose ? "debug" : "info",
+        ...args,
+      ],
       {
         windowsHide: true,
         env: {
@@ -58,7 +101,7 @@ class Native {
     );
     for (const stream of [this.process.stdout, this.process.stderr])
       stream?.on("data", (data: Buffer) => {
-        this.output += data.toString();
+        if (!this.logFile) this.captured += data.toString();
       });
   }
   async ready(pattern: RegExp, timeout = 30000) {
@@ -84,8 +127,12 @@ class Native {
   }
 }
 
-for (const browserQuic of [false, true])
-  test(`native QUIC discovery clients and a browser share a ${browserQuic ? "QUIC WebTransport" : "WebRTC fallback"} discovery session`, async ({
+for (const { browserQuic, automaticHost } of [
+  { browserQuic: false, automaticHost: false },
+  { browserQuic: true, automaticHost: false },
+  { browserQuic: true, automaticHost: true },
+])
+  test(`native QUIC discovery clients and a browser share ${automaticHost ? "an automatically hosted QUIC WebTransport" : browserQuic ? "QUIC WebTransport" : "a WebRTC fallback"} discovery session`, async ({
     page,
   }, info) => {
     const rekeyTest =
@@ -214,7 +261,7 @@ for (const browserQuic of [false, true])
     }
     const processes: Native[] = [];
     const start = (args: string[]) => {
-      const native = new Native(binary, root, args, rekeyTest);
+      const native = new Native(binary, root, args, rekeyTest, automaticHost);
       processes.push(native);
       return native;
     };
@@ -237,16 +284,24 @@ for (const browserQuic of [false, true])
       ]);
       await acds.ready(/Server accepting connections/);
       const host = start([
-        "server",
-        "0.0.0.0",
+        ...(automaticHost
+          ? [
+              "--test-pattern",
+              "--no-webrtc",
+              "--audio=false",
+              "--width",
+              "40",
+              "--height",
+              "12",
+            ]
+          : ["server", "0.0.0.0"]),
         "--port",
         String(tcp),
-        "--websocket-port",
-        String(ws),
-        "--status-screen=false",
+        ...(automaticHost
+          ? []
+          : ["--websocket-port", String(ws), "--status-screen=false"]),
         ...common,
-        "--discovery",
-        "--webrtc",
+        ...(automaticHost ? [] : ["--discovery", "--webrtc"]),
         "--discovery-expose-ip",
         "--password",
         "network-test-password",
@@ -275,6 +330,12 @@ for (const browserQuic of [false, true])
       const session = host.output.match(
         /Session created: ([a-z]+-[a-z]+-[a-z]+)/,
       )![1]!;
+      const acceptedPattern = automaticHost
+        ? /Setting transport=.* for client (\d+)/g
+        : /Added new transport client (\S+).*type=5,/g;
+      const ingressPattern = automaticHost
+        ? /Frame received from client (\d+)/g
+        : /Server image ingress client=(\S+)/g;
       const clients: Native[] = [];
       for (let i = 0; i < 2; ++i) {
         const client = start([
@@ -307,13 +368,8 @@ for (const browserQuic of [false, true])
       await expect
         .poll(
           () =>
-            new Set(
-              [
-                ...host.output.matchAll(
-                  /Added new transport client (\S+).*type=5,/g,
-                ),
-              ].map((m) => m[1]),
-            ).size,
+            new Set([...host.output.matchAll(acceptedPattern)].map((m) => m[1]))
+              .size,
           { timeout: 20000 },
         )
         .toBeGreaterThanOrEqual(2);
@@ -344,7 +400,9 @@ for (const browserQuic of [false, true])
       ).toBeVisible({ timeout: 40000 });
       if (browserQuic)
         await host.ready(
-          /WebTransport.*authenticated|authenticated.*WebTransport|type=5,/i,
+          automaticHost
+            ? /Setting transport=.* for client \d+/
+            : /WebTransport.*authenticated|authenticated.*WebTransport|type=5,/i,
           40000,
         );
       else await host.ready(/Authenticated WebRTC connection adopted/, 40000);
@@ -353,16 +411,18 @@ for (const browserQuic of [false, true])
           () => {
             const browserId = browserQuic
               ? [
-                  ...host.output.matchAll(
-                    /Added new transport client (\S+).*type=5,/g,
+                  ...new Set(
+                    [...host.output.matchAll(acceptedPattern)].map((m) => m[1]),
                   ),
-                ][2]?.[1]
+                ][2]
               : host.output.match(
                   /Added new transport client (\S+).*type=3,/,
                 )?.[1];
             return browserId
               ? host.output.includes(
-                  `Server image ingress client=${browserId} `,
+                  automaticHost
+                    ? `Frame received from client ${browserId} `
+                    : `Server image ingress client=${browserId} `,
                 )
               : false;
           },
@@ -413,12 +473,7 @@ for (const browserQuic of [false, true])
       const during = host.output.length;
       await expect
         .poll(
-          () =>
-            (
-              host.output
-                .slice(during)
-                .match(/Server image ingress client=/g) || []
-            ).length,
+          () => (host.output.slice(during).match(ingressPattern) || []).length,
           { timeout: 30000 },
         )
         .toBeGreaterThanOrEqual(36);
@@ -436,11 +491,9 @@ for (const browserQuic of [false, true])
         .poll(
           () =>
             new Set(
-              [
-                ...host.output
-                  .slice(after)
-                  .matchAll(/Server image ingress client=(\S+)/g),
-              ].map((m) => m[1]),
+              [...host.output.slice(after).matchAll(ingressPattern)].map(
+                (m) => m[1],
+              ),
             ).size,
           { timeout: 10000 },
         )

@@ -512,8 +512,18 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     params.session_type = SESSION_TYPE_WEBRTC;
     params.has_password = session->password[0] != 0;
     SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
-    SAFE_STRNCPY(params.server_address, "127.0.0.1", sizeof(params.server_address));
-    params.server_port = ACIP_HOST_DEFAULT_PORT;
+    // An empty address lets ACDS use the creator's observed source address.
+    params.acds_expose_ip = GET_OPTION(discovery_expose_ip);
+    params.server_port = (uint16_t)GET_OPTION(port);
+    if (GET_OPTION(quic_bind_address)[0])
+      params.quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : GET_OPTION(port));
+    if (GET_OPTION(webtransport_bind_address)[0]) {
+      if (strlen(GET_OPTION(webtransport_public_url)) >= sizeof(params.webtransport_url)) {
+        acds_protocol_destroy(&protocol);
+        return SET_ERRNO(ERROR_USAGE, "WebTransport public URL exceeds the discovery endpoint limit");
+      }
+      SAFE_STRNCPY(params.webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params.webtransport_url));
+    }
     asciichat_error_t result =
         acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
     sodium_memzero(&params, sizeof(params));
@@ -1136,7 +1146,10 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
       session_host_config_t config = {.port = GET_OPTION(port),
                                       .ipv4_address = "0.0.0.0",
                                       .max_clients = MAX_SESSION_PARTICIPANTS,
-                                      .encryption_enabled = session->session_type != SESSION_TYPE_WEBRTC};
+                                      .encryption_enabled = true,
+                                      .configured_quic_listeners = true,
+                                      .password = session->password,
+                                      .key_path = GET_OPTION(encrypt_key)};
       session->host_ctx = session_host_create(&config);
       result = session->host_ctx ? session_host_start(session->host_ctx) : ERROR_MEMORY;
     }
@@ -1373,11 +1386,12 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   memcpy(session->participant_id, joined->participant_id, SESSION_ID_SIZE);
 
   memcpy(session->host_id, joined->host_established ? joined->host_id : joined->initiator_id, SESSION_ID_SIZE);
+  session->is_host = memcmp(session->host_id, session->participant_id, sizeof(session->host_id)) == 0;
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
   if (GET_OPTION(no_webrtc) || GET_OPTION(discovery_quic)) {
-    if (!joined->server_address[0] || joined->server_port == 0) {
+    if (!session->is_host && (!joined->server_address[0] || joined->server_port == 0)) {
       const char *message = GET_OPTION(discovery_quic)
                                 ? "Direct QUIC requires a disclosed host endpoint"
                                 : "Direct TCP requires a disclosed host endpoint; WebRTC is disabled";
@@ -1415,6 +1429,14 @@ static asciichat_error_t join_session(discovery_session_t *session) {
       return webrtc_result;
     }
     log_info("WebRTC peer manager initialized successfully");
+  }
+
+  // The initiator also joins its own session. Start its listeners instead of
+  // treating its newly advertised endpoint as an already running remote host.
+  if (session->is_host) {
+    buffer_release(alloc_buffer);
+    set_state(session, DISCOVERY_STATE_STARTING_HOST);
+    return ASCIICHAT_OK;
   }
 
   // Check if host is already established
@@ -1720,6 +1742,9 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
         .ipv4_address = "0.0.0.0",
         .max_clients = MAX_SESSION_PARTICIPANTS,
         .encryption_enabled = true,
+        .configured_quic_listeners = true,
+        .password = session->password,
+        .key_path = GET_OPTION(encrypt_key),
     };
 
     session->host_ctx = session_host_create(&hconfig);

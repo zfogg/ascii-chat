@@ -46,6 +46,17 @@ listener options below. This URL must be reachable by participants; the bind
 address is not used as a public address. Endpoint metadata follows the existing
 address disclosure policy and is withheld when the host changes or migrates.
 
+Discovery mode can also create the host itself. Its creator accepts the same
+`--quic-bind-address`, `--quic-port`, TLS certificate/key, and WebTransport listener
+options as server mode. The initial session registration advertises the configured
+TCP and native QUIC ports separately, plus the explicit WebTransport public URL.
+`--discovery-expose-ip` still controls disclosure. ACDS derives the host address
+from the authenticated creator connection instead of advertising loopback.
+The creator starts its own listeners before attempting any media connection;
+it does not connect to its newly advertised endpoint as a remote participant.
+The shared listener helper owns startup validation and is closed with the host's
+network server, including partially initialized listener cleanup.
+
 A native participant opts into `--discovery-quic` and uses the advertised QUIC
 port. With older ACDS servers that return no transport metadata, this explicit
 option uses the advertised TCP port as the UDP port. Use `--quic-ca-file` for a

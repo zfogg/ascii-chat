@@ -1468,6 +1468,10 @@ if(TARGET ascii-chat-static)
                 ${CMAKE_SOURCE_DIR}/tests/integration/discovery_quic.py
                 $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
             set_tests_properties(discovery-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
+            asciichat_add_python_test(discovery-auto-quic
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_auto_quic.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(discovery-auto-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
             asciichat_add_python_test(quic-cli-server
                 ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_server.py
                 $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
