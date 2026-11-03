@@ -3,10 +3,12 @@
 from pathlib import Path
 import os
 import re
+import select
 import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 
@@ -14,6 +16,65 @@ def free_port(kind):
     with socket.socket(socket.AF_INET, kind) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
+
+
+class RebindingProxy:
+    """Forward one QUIC client while changing its server-facing UDP port."""
+
+    def __init__(self, server_port):
+        self.server = ("127.0.0.1", server_port)
+        self.front = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.front.bind(("127.0.0.1", 0))
+        self.back = self._backend()
+        self.client = None
+        self.stop = threading.Event()
+        self.rebind = threading.Event()
+        self.rebound = threading.Event()
+        self.error = None
+        self.responses_after_rebind = 0
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    @staticmethod
+    def _backend():
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(("127.0.0.1", 0))
+        return sock
+
+    def _run(self):
+        try:
+            while not self.stop.is_set():
+                if self.rebind.is_set():
+                    old = self.back
+                    self.back = self._backend()
+                    old.close()
+                    self.rebind.clear()
+                    self.rebound.set()
+                ready, _, _ = select.select([self.front, self.back], [], [], 0.05)
+                for sock in ready:
+                    data, source = sock.recvfrom(65535)
+                    if sock is self.front:
+                        if self.client is None:
+                            self.client = source
+                        if source == self.client:
+                            self.back.sendto(data, self.server)
+                    elif source == self.server and self.client:
+                        if self.rebound.is_set():
+                            self.responses_after_rebind += 1
+                        self.front.sendto(data, self.client)
+        except OSError as error:
+            if not self.stop.is_set():
+                self.error = error
+
+    def close(self):
+        self.stop.set()
+        self.thread.join(timeout=5)
+        self.front.close()
+        self.back.close()
+        if self.thread.is_alive():
+            raise RuntimeError("QUIC proxy did not stop")
+        if self.error:
+            raise RuntimeError(f"QUIC proxy failed: {self.error}")
 
 
 with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
@@ -141,6 +202,68 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                         process.wait(timeout=10)
                     output.close()
                     error.close()
+            proxy = RebindingProxy(udp_port)
+            rebinding_client = None
+            try:
+                offset = (root / "server.log").stat().st_size
+                proxy_port = proxy.front.getsockname()[1]
+                client_log = root / "rebinding-client.log"
+                with (root / "rebinding-client.out").open("wb") as output, (root / "rebinding-client.err").open("wb") as error:
+                    rebinding_client = subprocess.Popen(
+                        [binary, "--log-file", str(client_log), "client", f"quic://localhost:{proxy_port}",
+                         "--quic-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
+                         "--audio=false", "--video-codec", "raw", "--width", "40", "--height", "20",
+                         "--snapshot", "--snapshot-delay", "12", "--splash-screen=false", "--color-mode", "none",
+                         "--reconnect-attempts", "0"], stdout=output, stderr=error, creationflags=flags, env=probe_env,
+                    )
+
+                    def rebinding_logs():
+                        with (root / "server.log").open("rb") as server_output:
+                            server_output.seek(offset)
+                            return server_output.read().decode(errors="replace")
+
+                    deadline = time.monotonic() + 20
+                    client_id = None
+                    while time.monotonic() < deadline:
+                        logs = rebinding_logs()
+                        accepted = re.findall(r"Added new transport client (\S+).*type=5", logs)
+                        if accepted and f"Server image ingress client={accepted[0]} " in logs:
+                            client_id = accepted[0]
+                            break
+                        if rebinding_client.poll() is not None or proxy.error:
+                            raise RuntimeError(f"QUIC client failed before rebinding:\n{logs}")
+                        time.sleep(0.05)
+                    if client_id is None:
+                        raise RuntimeError(f"QUIC client did not begin video before rebinding:\n{logs}")
+                    proxy.rebind.set()
+                    if not proxy.rebound.wait(timeout=5):
+                        raise RuntimeError("QUIC proxy did not rebind")
+                    rebound_port = proxy.back.getsockname()[1]
+                    ingress_before = rebinding_logs().count(f"Server image ingress client={client_id} ")
+                    deadline = time.monotonic() + 8
+                    while time.monotonic() < deadline:
+                        logs = rebinding_logs()
+                        ingress_after = logs.count(f"Server image ingress client={client_id} ")
+                        if (ingress_after >= ingress_before + 2 and proxy.responses_after_rebind >= 3 and
+                                f"QUIC peer path validated: port={rebound_port}" in logs):
+                            break
+                        if rebinding_client.poll() is not None or proxy.error:
+                            raise RuntimeError(f"QUIC client failed after rebinding:\n{logs}")
+                        time.sleep(0.05)
+                    else:
+                        raise RuntimeError(f"QUIC did not resume media after rebinding:\n{logs}")
+                    if len(re.findall(r"Added new transport client (\S+).*type=5", logs)) != 1:
+                        raise RuntimeError(f"QUIC rebinding created a replacement session:\n{logs}")
+                    rebinding_client.wait(timeout=25)
+                    output.flush()
+                    if (rebinding_client.returncode or "using native QUIC" not in client_log.read_text(errors="replace") or
+                            not (root / "rebinding-client.out").read_bytes().strip()):
+                        raise RuntimeError(f"QUIC rebinding client failed: {client_log.read_text(errors='replace')}")
+            finally:
+                if rebinding_client and rebinding_client.poll() is None:
+                    rebinding_client.kill()
+                    rebinding_client.wait(timeout=10)
+                proxy.close()
             rejected_log = root / "rejected-client.log"
             rejected = subprocess.run(
                 [binary, "--log-file", str(rejected_log), "client", f"quic://localhost:{udp_port}",

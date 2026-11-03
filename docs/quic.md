@@ -113,6 +113,13 @@ The pump bounds work per call and retains a generated datagram when the socket
 would block. A connection error identifies the affected handle so its owner can
 remove it while retaining the other connections.
 
+The UDP driver routes packets by connection ID, so a server can accept a
+client's NAT rebinding and ngtcp2 validates the new peer path.
+A process test changes the server-facing port of a loopback UDP proxy during a
+call and checks path validation and continued media. This covers rebinding on
+one address family; active client-initiated migration between local sockets
+and address families is not yet implemented.
+
 After pumping, an owner can calculate the earliest QUIC timer and pending socket
 write interest, then wait for UDP readiness outside the lane. A wake operation
 sends a one-byte non-QUIC datagram to the bound local socket so another thread

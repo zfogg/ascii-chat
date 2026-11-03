@@ -375,6 +375,23 @@ static int new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, ngtcp2_stateles
   return 0;
 }
 
+static int path_validation(ngtcp2_conn *conn, uint32_t flags, const ngtcp2_path *path, const ngtcp2_path *fallback_path,
+                           ngtcp2_path_validation_result result, void *user_data) {
+  (void)conn;
+  (void)flags;
+  (void)fallback_path;
+  (void)user_data;
+  if (result == NGTCP2_PATH_VALIDATION_RESULT_SUCCESS && path && path->remote.addr) {
+    unsigned port = 0;
+    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= sizeof(struct sockaddr_in))
+      port = NET_TO_HOST_U16(((const struct sockaddr_in *)path->remote.addr)->sin_port);
+    else if (path->remote.addr->sa_family == AF_INET6 && path->remote.addrlen >= sizeof(struct sockaddr_in6))
+      port = NET_TO_HOST_U16(((const struct sockaddr_in6 *)path->remote.addr)->sin6_port);
+    log_info("QUIC peer path validated: port=%u", port);
+  }
+  return 0;
+}
+
 static ngtcp2_callbacks connection_callbacks(bool server) {
   ngtcp2_callbacks callbacks = {0};
   callbacks.client_initial = server ? NULL : ngtcp2_crypto_client_initial_cb;
@@ -396,6 +413,7 @@ static ngtcp2_callbacks connection_callbacks(bool server) {
   callbacks.version_negotiation = ngtcp2_crypto_version_negotiation_cb;
   callbacks.get_new_connection_id2 = new_connection_id;
   callbacks.get_path_challenge_data2 = ngtcp2_crypto_get_path_challenge_data2_cb;
+  callbacks.path_validation = path_validation;
   return callbacks;
 }
 
