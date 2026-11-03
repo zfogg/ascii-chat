@@ -8,6 +8,26 @@
 typedef struct acip_transport acip_transport_t;
 typedef struct acip_outbound acip_outbound_t;
 
+typedef enum {
+  ACIP_TRAFFIC_CONTROL,
+  ACIP_TRAFFIC_AUDIO,
+  ACIP_TRAFFIC_VISUAL,
+} acip_traffic_class_t;
+
+typedef enum {
+  ACIP_DELIVERY_RELIABLE,
+  ACIP_DELIVERY_DATAGRAM,
+} acip_delivery_t;
+
+typedef struct {
+  acip_traffic_class_t traffic_class;
+  acip_delivery_t delivery;
+  uint64_t deadline_ns;
+} acip_send_options_t;
+
+/** Classify a plaintext ACIP packet type before any transport encryption. */
+acip_traffic_class_t acip_packet_traffic_class(uint16_t type);
+
 /** All limits include ACIP/encryption overhead. Backend bytes exclude OS buffers. */
 #define ACIP_OUTBOUND_BUDGET (8U * 1024U * 1024U)
 #define ACIP_OUTBOUND_CONTROL_RESERVE (512U * 1024U)
@@ -41,5 +61,7 @@ void acip_outbound_destroy(acip_transport_t *transport);
  */
 asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                         acip_admission_t *admission);
+asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                           const acip_send_options_t *options, acip_admission_t *admission);
 asciichat_error_t acip_outbound_snapshot(acip_transport_t *transport, acip_outbound_stats_t *stats);
 bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t packet_type, uint32_t stream_id);

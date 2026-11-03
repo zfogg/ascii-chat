@@ -224,6 +224,9 @@ typedef struct {
   size_t (*queued_bytes)(acip_transport_t *transport);
   size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
+  /** Receives plaintext packet metadata alongside borrowed packet slices. */
+  asciichat_error_t (*sendv_ex)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                const acip_send_options_t *options);
 } acip_transport_methods_t;
 
 /**
@@ -272,6 +275,13 @@ void acip_transport_destroy(acip_transport_t *transport);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
+
+/** Send with explicit delivery metadata. Nonzero deadlines and datagrams are
+ * currently rejected with ERROR_NOT_SUPPORTED; they are never silently changed
+ * into reliable delivery. A future deadline uses time_get_ns()'s monotonic clock.
+ */
+asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                          const acip_send_options_t *options);
 
 asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len);
 
