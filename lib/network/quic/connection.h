@@ -101,3 +101,5 @@ void acip_quic_connection_destroy(acip_quic_connection_t **connection);
  * socket must already be bound; its owner keeps it alive for the connection. */
 asciichat_error_t acip_quic_connection_migrate(acip_quic_connection_t *connection, const struct sockaddr *local,
                                                socklen_t length, uint64_t now_ns);
+
+asciichat_error_t acip_quic_connection_request_rekey(acip_quic_connection_t *connection);

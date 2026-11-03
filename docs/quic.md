@@ -320,8 +320,38 @@ each flow after an in-order retirement marker; late old-epoch datagrams on that
 flow are then stale. A second transition is rejected until all three flows
 retire, bounding retained key material. Retired contexts and all codec-owned key
 copies are wiped. A direct uncoordinated mutation of the borrowed key epoch is
-still rejected. The transport orchestration for these transitions remains
-unfinished; the codec APIs alone do not enable periodic rekeying.
+still rejected.
+
+Native connections and browser WASM use the same private rekey coordinator after
+READY/ACK. The native endpoint lane owns all crypto mutation; the browser event
+loop owns each global or per-peer WASM context. A 250 ms timer also checks idle
+connections. Packet and time thresholds use the existing crypto configuration
+(default one million packets or one hour; explicit test environments use one
+thousand packets or thirty seconds).
+
+Only the server initiates the ephemeral DH exchange. A client reaching its
+threshold sends an encrypted, empty QUIC_REKEY_NEEDED (1113) control message.
+REKEY_REQUEST (1201) and REKEY_RESPONSE (1202) carry the existing 32-byte X25519
+public keys under the old epoch. The server commits the prepared key and sends
+REKEY_COMPLETE (1203), containing one zero byte, under the new epoch. The client
+can authenticate media using its prepared key before COMPLETE arrives.
+
+Each side queues QUIC_EPOCH_MARKER (1112) reliably on all three flows before
+later application packets. Its payload is the current epoch as a network-order
+64-bit integer. Markers retire old receive keys independently; only after all
+three retire does a side send QUIC_EPOCH_ACK (1114), with the same epoch payload,
+on control. Another exchange requires both local retirement and the peer ACK.
+Internal packets never reach application dispatch, and application callers cannot
+submit them as media or control.
+
+The coordinator preserves the minimum crypto and request intervals. It retains
+at most one authenticated incoming request until the receive-side interval
+expires, accommodating changed network delay without bypassing rate limiting.
+An exchange, including flow retirement, has a thirty-second timeout. Invalid
+roles, epochs, messages, output queue failures, and timeouts fail the connection.
+The browser bounds internal output to sixteen sealed reliable packets, drains
+it before later application sends, and cancels its timer before crypto cleanup.
+Cleanup aborts pending DH and wipes retained keys.
 
 The private connection engine can enable it after TLS and a caller-confirmed ACIP handshake.
 It accepts only initial handshake and error control packets before that point,
@@ -342,8 +372,10 @@ A UDP loopback fixture exercises the existing password-authenticated ACIP
 handshake through the private adapter and then exchanges encrypted media after
 the readiness exchange. Production native and browser transports invoke this transition after their
 ACIP handshakes. Reliable sequences are checked independently per flow, and
-datagrams use a replay window. Coordinated application key-epoch transitions
-remain unfinished.
+datagrams use a replay window. The standalone worker fixture exercises a live
+rotation, while the mixed native/browser test checks audio, rendered video, and
+ping replies in epochs zero, one, and two. Enable its longer rekey run with
+`ASCII_CHAT_QUIC_REKEY_TEST=1`; CI runs this variant.
 
 ## Experimental datagram fragments
 

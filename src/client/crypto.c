@@ -106,6 +106,8 @@ static bool crypto_client_is_ready(client_connection_t *connection) {
  * @ingroup client_crypto
  */
 bool crypto_client_should_rekey(client_connection_t *connection) {
+  if (connection && connection->transport && acip_transport_get_type(connection->transport) == ACIP_TRANSPORT_QUIC)
+    return false;
   if (!crypto_client_is_ready(connection) || !connection->crypto_ctx->crypto_ctx.encrypt_data) {
     return false;
   }

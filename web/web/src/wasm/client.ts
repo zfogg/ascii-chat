@@ -156,6 +156,17 @@ interface ClientModuleExports {
     pt_size: number,
     out_len_ptr: number,
   ): number;
+  _client_quic_context(): number;
+  _peer_quic_context(peer: number): number;
+  _browser_quic_tick(context: number): number;
+  _browser_quic_epoch(context: number): number;
+  _browser_quic_output(
+    context: number,
+    output: number,
+    capacity: number,
+    length: number,
+    flow: number,
+  ): number;
   _client_quic_security_init(): number;
   _client_quic_security_seal(
     flow: number,
@@ -277,6 +288,11 @@ interface ClientModule extends ClientModuleExports, RuntimeOptionsModule {
   _client_handle_handshake_complete: ClientModuleExports["_client_handle_handshake_complete"];
   _client_encrypt_packet: ClientModuleExports["_client_encrypt_packet"];
   _client_decrypt_packet: ClientModuleExports["_client_decrypt_packet"];
+  _client_quic_context: ClientModuleExports["_client_quic_context"];
+  _peer_quic_context: ClientModuleExports["_peer_quic_context"];
+  _browser_quic_epoch: ClientModuleExports["_browser_quic_epoch"];
+  _browser_quic_tick: ClientModuleExports["_browser_quic_tick"];
+  _browser_quic_output: ClientModuleExports["_browser_quic_output"];
   _client_quic_security_init: ClientModuleExports["_client_quic_security_init"];
   _client_quic_security_seal: ClientModuleExports["_client_quic_security_seal"];
   _client_quic_security_open: ClientModuleExports["_client_quic_security_open"];
@@ -1184,6 +1200,58 @@ export function initQuicSecurity(): void {
     throwWasmError(result, "QUIC security initialization failed");
 }
 
+export function getQuicEpoch(peer = 0): number {
+  if (!wasmModule) return -1;
+  const context = peer
+    ? wasmModule._peer_quic_context(peer)
+    : wasmModule._client_quic_context();
+  return wasmModule._browser_quic_epoch(context);
+}
+
+/** Runs the shared C rekey coordinator and drains its bounded reliable output. */
+export function tickQuicSecurity(
+  peer = 0,
+): { flow: 0 | 1 | 2; packet: Uint8Array }[] {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const context = peer
+    ? wasmModule._peer_quic_context(peer)
+    : wasmModule._client_quic_context();
+  const result = wasmModule._browser_quic_tick(context);
+  if (result) throwWasmError(result, "QUIC rekey failed");
+  const output = wasmModule._malloc(256);
+  const length = wasmModule._malloc(4);
+  const flow = wasmModule._malloc(4);
+  try {
+    if (!output || !length || !flow)
+      throw new Error("Cannot allocate QUIC rekey output");
+    const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
+    for (let i = 0; i <= 16; ++i) {
+      const status = wasmModule._browser_quic_output(
+        context,
+        output,
+        256,
+        length,
+        flow,
+      );
+      if (status) throwWasmError(status, "QUIC rekey output failed");
+      const size = readI32(length);
+      if (!size) return packets;
+      const packetFlow = readI32(flow);
+      if (packetFlow < 0 || packetFlow > 2)
+        throw new Error("Invalid QUIC rekey flow");
+      packets.push({
+        flow: packetFlow as 0 | 1 | 2,
+        packet: wasmModule.HEAPU8.slice(output, output + size),
+      });
+    }
+    throw new Error("QUIC rekey output exceeded its bound");
+  } finally {
+    if (output) wasmModule._free(output);
+    if (length) wasmModule._free(length);
+    if (flow) wasmModule._free(flow);
+  }
+}
+
 /** Authenticate a complete packet and its QUIC flow and delivery metadata. */
 export function processQuicPacket(
   operation: "seal" | "open",
@@ -1658,6 +1726,15 @@ export class PeerCryptoSession {
     if (!this.handle) throw new Error("Peer crypto session is closed");
     const result = wasmModule!._peer_crypto_quic_init(this.handle);
     if (result) throwWasmError(result, "Peer QUIC initialization failed");
+  }
+
+  get quicEpoch() {
+    return this.handle ? getQuicEpoch(this.handle) : -1;
+  }
+
+  tickQuic() {
+    if (!this.handle) throw new Error("Peer crypto session is closed");
+    return tickQuicSecurity(this.handle);
   }
 
   quicPacket(

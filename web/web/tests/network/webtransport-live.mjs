@@ -114,7 +114,12 @@ const hash = [
     .update(new X509Certificate(readFileSync(cert)).raw)
     .digest(),
 ];
-const env = { ...process.env, ASCII_CHAT_DISABLE_FIRST_USE: "1" };
+const rekeyTest = process.env.ASCII_CHAT_QUIC_REKEY_TEST === "1";
+const env = {
+  ...process.env,
+  ASCII_CHAT_DISABLE_FIRST_USE: "1",
+  ...(rekeyTest ? { TESTING: "1" } : {}),
+};
 const server = spawn(
   resolve(binary),
   [
@@ -172,6 +177,8 @@ try {
     const process = spawn(
       resolve(binary),
       [
+        "--log-level",
+        rekeyTest ? "debug" : "info",
         "--log-file",
         logFile,
         "client",
@@ -190,7 +197,7 @@ try {
         "raw",
         "--snapshot",
         "--snapshot-delay",
-        "25",
+        rekeyTest ? "140" : "25",
         "--splash-screen=false",
         "--color-mode",
         "none",
@@ -328,7 +335,7 @@ try {
   if (!rejectedCertificate)
     throw new Error("incorrect certificate was accepted");
   const result = await page.evaluate(
-    async ({ udpPort, hash, serverPublicKey }) => {
+    async ({ udpPort, hash, serverPublicKey, rekeyTest }) => {
       const Original = globalThis.WebTransport;
       globalThis.WebTransport = class extends Original {
         constructor(url, options) {
@@ -368,7 +375,15 @@ try {
         if (state === 3) resolveReady();
         if (state === 4) rejectReady(new Error("session error"));
       });
-      session.onPacketReceived((packet) => packets.push(packet.type));
+      const byEpoch = {};
+      session.onPacketReceived((packet) => {
+        packets.push(packet.type);
+        const epoch = session.getCryptoEpoch();
+        const counts = (byEpoch[epoch] ??= { audio: 0, visual: 0, pong: 0 });
+        if (packet.type === 4001) ++counts.audio;
+        if (packet.type === 3000) ++counts.visual;
+        if (packet.type === 5002) ++counts.pong;
+      });
       try {
         await session.connect();
         await Promise.race([
@@ -401,11 +416,41 @@ try {
           rgba[i + 3] = 255;
         }
         const frame = buildImageFramePayload(rgba, 64, 48);
-        for (let i = 0; i < 30; ++i) {
+        const mediaUntil = Date.now() + (rekeyTest ? 100000 : 1500);
+        const epochs = [session.getCryptoEpoch()];
+        while (
+          Date.now() < mediaUntil &&
+          (!rekeyTest ||
+            session.getCryptoEpoch() < 2 ||
+            !byEpoch[2]?.audio ||
+            !byEpoch[2]?.visual ||
+            !byEpoch[2]?.pong)
+        ) {
+          if (states.includes(4))
+            throw new Error("Disconnected during live rekey");
           session.sendPacket(3001, frame);
+          session.sendPacket(5001, new Uint8Array());
           await new Promise((r) => setTimeout(r, 50));
+          const epoch = session.getCryptoEpoch();
+          if (epochs.at(-1) !== epoch) epochs.push(epoch);
         }
+        if (rekeyTest && session.getCryptoEpoch() < 2)
+          throw new Error(`Two live rotations did not complete: ${epochs}`);
+        if (
+          rekeyTest &&
+          [0, 1, 2].some(
+            (epoch) =>
+              !byEpoch[epoch]?.audio ||
+              !byEpoch[epoch]?.visual ||
+              !byEpoch[epoch]?.pong,
+          )
+        )
+          throw new Error(
+            `Missing media or ping replies across key epochs: ${JSON.stringify(byEpoch)}`,
+          );
         return {
+          byEpoch,
+          epochs,
           ok: true,
           states,
           packets,
@@ -417,7 +462,7 @@ try {
         session.disconnect();
       }
     },
-    { udpPort, hash, serverPublicKey },
+    { udpPort, hash, serverPublicKey, rekeyTest },
   );
   console.log("APPLICATION RESULT", JSON.stringify(result));
   if (!result.ok) throw new Error(result.error);
@@ -425,6 +470,18 @@ try {
     throw new Error("browser received no server-rendered media");
   if (participants.some(({ process }) => process.exitCode !== null))
     throw new Error("native participant left while browser was connected");
+  if (
+    rekeyTest &&
+    participants.some(
+      ({ logFile }) =>
+        !readFileSync(logFile, "utf8").includes(
+          "Rekey committed successfully (rekey #2,",
+        ),
+    )
+  )
+    throw new Error(
+      "A native participant did not complete two live key rotations",
+    );
   const afterBrowserLeaves = logs.length;
   const outputBefore = participants.map(({ outputBytes }) => outputBytes);
   const continueDeadline = Date.now() + 6000;

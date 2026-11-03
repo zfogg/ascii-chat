@@ -399,6 +399,12 @@ asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx
     return SET_ERRNO(ERROR_INVALID_PARAM, "Transport is NULL");
   }
 
+  if (acip_transport_get_type(transport) == ACIP_TRANSPORT_QUIC) {
+    if (transport->crypto_ctx != &ctx->crypto_ctx || !transport->methods->request_rekey)
+      return SET_ERRNO(ERROR_INVALID_STATE, "QUIC rekey requires its authenticated transport context");
+    return transport->methods->request_rekey(transport);
+  }
+
   // Initialize rekey process (generates new ephemeral keypair)
   crypto_result_t result = crypto_rekey_init(&ctx->crypto_ctx);
   if (result != CRYPTO_OK) {

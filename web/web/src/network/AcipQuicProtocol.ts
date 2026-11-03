@@ -3,6 +3,7 @@ import type { WebTransportPacket } from "./WebTransportBridge";
 
 type Delivery = "reliable" | "datagram";
 type Security = {
+  tick?(): { flow: AcipFlow; packet: Uint8Array }[];
   init(): void;
   seal(flow: AcipFlow, delivery: Delivery, packet: Uint8Array): Uint8Array;
   open(
@@ -56,6 +57,7 @@ const flowOf = (type: number): AcipFlow =>
  * The caller runs the existing ACIP handshake and calls authenticated() only
  * after its identity and encryption policy has succeeded. */
 export class AcipQuicProtocol {
+  private rekeyTimer: ReturnType<typeof setInterval> | undefined;
   private securityActive = false;
   private peerReady = false;
   private acknowledged = false;
@@ -112,12 +114,15 @@ export class AcipQuicProtocol {
       type === READY ||
       type === KEYFRAME_REQUEST ||
       type === ENCRYPTED ||
+      (type >= 1112 && type <= 1114) ||
+      (type >= 1201 && type <= 1203) ||
       (handshakeType(type) && type !== 2003)
     )
       throw new Error("Reserved QUIC packet type");
     const flow = flowOf(type);
     if (delivery === "datagram" && flow === 0)
       throw new Error("Control packets require reliable delivery");
+    this.tick();
     const packet = this.callbacks.serialize(type, payload);
     const wire = this.security.seal(flow, delivery, packet);
     try {
@@ -170,6 +175,8 @@ export class AcipQuicProtocol {
         if (input.delivery === "datagram") return;
         throw error;
       }
+      if (this.acknowledged) this.tick();
+      if (!opened.packet.length) return; // C consumed an authenticated coordinator message.
       const type = typeOf(opened.packet);
       if (type === READY) {
         if (
@@ -188,11 +195,22 @@ export class AcipQuicProtocol {
           same(payload, ACK_BYTES)
         ) {
           this.acknowledged = true;
+          this.tick();
+          if (this.security.tick)
+            this.rekeyTimer = setInterval(() => {
+              try {
+                this.tick();
+              } catch (error) {
+                this.fail(error);
+              }
+            }, 250);
           this.callbacks.ready();
         } else throw new Error("Unexpected QUIC readiness packet");
         return;
       }
       if (!this.peerReady) throw new Error("Missing QUIC readiness packet");
+      if ((type >= 1112 && type <= 1114) || (type >= 1201 && type <= 1203))
+        throw new Error("Unconsumed QUIC rekey packet");
       if (type === KEYFRAME_REQUEST) {
         if (
           input.flow !== 0 ||
@@ -229,8 +247,15 @@ export class AcipQuicProtocol {
   }
 
   close(): void {
+    if (this.rekeyTimer !== undefined) clearInterval(this.rekeyTimer);
+    this.rekeyTimer = undefined;
     this.closed = true;
     this.early = null;
+  }
+
+  private tick(): void {
+    for (const output of this.security.tick?.() ?? [])
+      this.queue(output.flow, "reliable", output.packet);
   }
 
   private acceptVisual(

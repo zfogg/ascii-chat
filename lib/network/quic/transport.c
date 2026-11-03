@@ -451,7 +451,19 @@ static void quic_destroy_impl(acip_transport_t *transport) {
   if (quic->lane)
     cond_destroy(&quic->security_changed);
 }
-static const acip_transport_methods_t quic_methods = {.send = quic_send,
+static asciichat_error_t quic_request_rekey(acip_transport_t *transport) {
+  quic_transport_t *quic = transport->impl_data;
+  lane_lock(quic);
+  asciichat_error_t result = quic->connected ? acip_quic_connection_request_rekey(quic->connection)
+                                             : SET_ERRNO(quic->failure, "QUIC transport is closed");
+  if (result == ASCIICHAT_OK && quic->wake)
+    quic->wake(quic->wake_context);
+  lane_unlock(quic);
+  return result;
+}
+
+static const acip_transport_methods_t quic_methods = {.request_rekey = quic_request_rekey,
+                                                      .send = quic_send,
                                                       .sendv_ex = quic_sendv_ex,
                                                       .recv = quic_recv,
                                                       .close = quic_close,

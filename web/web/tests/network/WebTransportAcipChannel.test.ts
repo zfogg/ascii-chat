@@ -23,6 +23,7 @@ function wrap(inner: Uint8Array): Uint8Array {
 }
 vi.mock("../../src/wasm/client", () => ({
   initQuicSecurity: state.init,
+  tickQuicSecurity: () => [],
   getClientModule: () => ({
     _client_handshake_begin: state.begin,
     _client_handshake_receive: state.receive,

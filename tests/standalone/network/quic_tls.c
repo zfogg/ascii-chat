@@ -424,6 +424,12 @@ static void quic_rekey_coordinator(void) {
   now += REKEY_MIN_REQUEST_INTERVAL;
   client_crypto.rekey_last_time = server_crypto.rekey_last_time = 0;
   CHECK(acip_quic_rekey_tick(&server.rekey, now) == ASCIICHAT_OK && server.rekey.waiting_response);
+  // The next request can arrive slightly sooner at the receiver because jitter changed.
+  client.rekey.last_request_ns += NS_PER_MS_INT;
+  rekey_deliver(&server, &client, now);
+  CHECK(client.rekey.deferred_request && !client.security.pending_prepared);
+  now += NS_PER_MS_INT;
+  CHECK(acip_quic_rekey_tick(&client.rekey, now) == ASCIICHAT_OK && client.security.pending_prepared);
   for (unsigned round = 0; round < 5; ++round) {
     while (server.read < server.count)
       rekey_deliver(&server, &client, now);
@@ -1797,12 +1803,43 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     acip_quic_worker_t *client_worker = NULL, *server_worker = NULL;
     quic_worker_failure_test_t failure_state = {
         .endpoint = server, .transport = server_transport, .lane = &server_lane, .expected = server_state.peer};
+    client_handshake.crypto_ctx.rekey_packet_threshold = 1;
+    server_handshake.crypto_ctx.rekey_packet_threshold = 1;
     CHECK(acip_quic_worker_start(client, &client_lane, NULL, NULL, &client_worker) == ASCIICHAT_OK);
     CHECK(acip_quic_worker_start(server, &server_lane, quic_worker_failure, &failure_state, &server_worker) ==
           ASCIICHAT_OK);
     CHECK(acip_quic_transport_set_waker(client_transport, acip_quic_worker_wake, client_worker) == ASCIICHAT_OK);
     CHECK(acip_quic_transport_set_waker(server_transport, acip_quic_worker_wake, server_worker) == ASCIICHAT_OK);
     server_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    // Exercise the production worker, internal control dispatch, and reliable flow markers.
+    CHECK(crypto_handshake_rekey_request(&client_handshake, client_transport) == ASCIICHAT_OK);
+    uint64_t rekey_started = time_get_ns();
+    bool rotated = false;
+    while (time_get_ns() - rekey_started < 6 * NS_PER_SEC_INT) {
+      CHECK(acip_transport_send(client_transport, packets[0], lengths[0]) == ASCIICHAT_OK);
+      CHECK(acip_transport_send(server_transport, packets[0], lengths[0]) == ASCIICHAT_OK);
+      acip_transport_t *peers[] = {client_transport, server_transport};
+      for (size_t peer = 0; peer < 2; ++peer) {
+        void *control = NULL, *owned = NULL;
+        size_t control_length = 0;
+        peers[peer]->receive_timeout_ns = NS_PER_SEC_INT;
+        CHECK(acip_transport_recv(peers[peer], &control, &control_length, &owned) == ASCIICHAT_OK);
+        CHECK(control_length == lengths[0] && !memcmp(control, packets[0], control_length));
+        buffer_release(owned);
+      }
+      mutex_lock(&client_lane);
+      bool client_rotated = client_handshake.crypto_ctx.rekey_count == 1;
+      mutex_unlock(&client_lane);
+      mutex_lock(&server_lane);
+      bool server_rotated = server_handshake.crypto_ctx.rekey_count == 1;
+      mutex_unlock(&server_lane);
+      if (client_rotated && server_rotated) {
+        rotated = true;
+        break;
+      }
+      time_sleep_ns(20 * NS_PER_MS_INT);
+    }
+    CHECK(rotated);
     CHECK(acip_outbound_create(client_transport) == ASCIICHAT_OK);
     socket_buffer_t audio_slice = {packets[1], lengths[1]};
     acip_send_options_t audio_options = {.traffic_class = ACIP_TRAFFIC_AUDIO,
@@ -2181,7 +2218,7 @@ static void quic_http3_probe_server(const char *certificate, const char *key, co
 
 int main(int argc, char **argv) {
   if (argc == 6 && strcmp(argv[1], "--http3-server") == 0) {
-    log_init(NULL, LOG_DEBUG, false, false);
+    log_init(NULL, LOG_ERROR, false, false);
     quic_http3_probe_server(argv[2], argv[3], argv[4], argv[5]);
     log_destroy();
     return 0;

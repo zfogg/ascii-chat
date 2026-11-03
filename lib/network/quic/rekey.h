@@ -10,6 +10,8 @@ typedef struct {
   acip_quic_rekey_send_fn send;
   void *context;
   uint64_t activated_ns, last_ns, last_request_ns, exchange_ns, seen_epoch, peer_ack;
+  uint8_t deferred_key[CRYPTO_PUBLIC_KEY_SIZE];
+  bool deferred_request;
   bool requested, remote_requested, waiting_response, expecting_complete, markers_sent, ack_sent;
 } acip_quic_rekey_t;
 

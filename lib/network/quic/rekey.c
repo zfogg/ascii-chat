@@ -36,8 +36,8 @@ static asciichat_error_t send_rekey_packet(acip_quic_rekey_t *s, acip_traffic_cl
 }
 
 static bool settled(acip_quic_rekey_t *s) {
-  return !s->waiting_response && !s->expecting_complete && !s->remote_requested && !s->security->pending_prepared &&
-         !s->security->previous_valid && s->peer_ack == s->security->key_epoch;
+  return !s->deferred_request && !s->waiting_response && !s->expecting_complete && !s->remote_requested &&
+         !s->security->pending_prepared && !s->security->previous_valid && s->peer_ack == s->security->key_epoch;
 }
 
 static asciichat_error_t observe_epoch(acip_quic_rekey_t *s) {
@@ -96,6 +96,23 @@ asciichat_error_t acip_quic_rekey_tick(acip_quic_rekey_t *s, uint64_t now) {
     return result;
   if (s->exchange_ns && now - s->exchange_ns > QUIC_REKEY_TIMEOUT_NS)
     return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC key exchange or flow retirement timed out");
+  // A peer measures its interval at send time. Keep one authenticated request
+  // until our receive-side interval elapses; network jitter must not turn a
+  // valid rotation into a protocol violation or bypass the rate limit.
+  if (s->deferred_request && request_allowed(s, now)) {
+    crypto_context_t *crypto = s->security->crypto;
+    s->deferred_request = false;
+    s->expecting_complete = true;
+    s->last_request_ns = now;
+    if (crypto_rekey_init(crypto) != CRYPTO_OK || crypto_rekey_process_request(crypto, s->deferred_key) != CRYPTO_OK)
+      return SET_ERRNO(ERROR_CRYPTO, "Cannot compute QUIC rekey response");
+    sodium_memzero(s->deferred_key, sizeof(s->deferred_key));
+    result = acip_quic_security_prepare_epoch(s->security);
+    if (result == ASCIICHAT_OK)
+      result = send_rekey_packet(s, ACIP_TRAFFIC_CONTROL, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, crypto->temp_public_key,
+                                 CRYPTO_PUBLIC_KEY_SIZE);
+    return result;
+  }
   if (!settled(s) || !request_allowed(s, now))
     return ASCIICHAT_OK;
   crypto_context_t *crypto = s->security->crypto;
@@ -142,7 +159,7 @@ asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_cla
   memcpy(&header, packet, sizeof(header));
   uint16_t type = NET_TO_HOST_U16(header.type);
   if (!acip_quic_rekey_packet(type))
-    return ASCIICHAT_OK;
+    return acip_quic_rekey_tick(s, now);
   *consumed = true;
   const uint8_t *payload = (const uint8_t *)packet + sizeof(header);
   size_t bytes = length - sizeof(header);
@@ -172,19 +189,12 @@ asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_cla
       s->requested = true;
   } else if (type == PACKET_TYPE_CRYPTO_REKEY_REQUEST) {
     if (s->security->server || bytes != CRYPTO_PUBLIC_KEY_SIZE || s->waiting_response || s->expecting_complete ||
-        s->security->previous_valid || s->security->pending_prepared || s->peer_ack != epoch ||
-        !request_allowed(s, now))
+        s->deferred_request || s->security->previous_valid || s->security->pending_prepared || s->peer_ack != epoch)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC ephemeral rekey request");
     s->exchange_ns = now;
-    s->last_request_ns = now;
     s->remote_requested = false;
-    s->expecting_complete = true;
-    if (crypto_rekey_init(crypto) != CRYPTO_OK || crypto_rekey_process_request(crypto, payload) != CRYPTO_OK)
-      return SET_ERRNO(ERROR_CRYPTO, "Cannot compute QUIC rekey response");
-    result = acip_quic_security_prepare_epoch(s->security);
-    if (result == ASCIICHAT_OK)
-      result = send_rekey_packet(s, ACIP_TRAFFIC_CONTROL, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, crypto->temp_public_key,
-                                 CRYPTO_PUBLIC_KEY_SIZE);
+    s->deferred_request = true;
+    memcpy(s->deferred_key, payload, sizeof(s->deferred_key));
   } else if (type == PACKET_TYPE_CRYPTO_REKEY_RESPONSE) {
     if (!s->security->server || !s->waiting_response || bytes != CRYPTO_PUBLIC_KEY_SIZE)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC ephemeral rekey response");

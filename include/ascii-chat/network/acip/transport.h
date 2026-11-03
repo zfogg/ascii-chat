@@ -242,6 +242,8 @@ typedef struct {
   asciichat_error_t (*validate_send_options)(acip_transport_t *transport, const acip_send_options_t *options);
   /** Consume a peer request to restart an encoded stream with a keyframe. */
   bool (*consume_keyframe_request)(acip_transport_t *transport, uint16_t type, uint32_t stream_id);
+  /** Schedule a key rotation on the transport crypto lane. */
+  asciichat_error_t (*request_rekey)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
 /**

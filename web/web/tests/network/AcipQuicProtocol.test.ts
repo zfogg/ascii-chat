@@ -23,7 +23,7 @@ function wrap(inner: Uint8Array, sequence = 1n): Uint8Array {
 }
 const ready = packet(1110, new Uint8Array([65, 67, 81, 82, 1]));
 const ack = packet(1110, new Uint8Array([65, 67, 81, 65, 1]));
-function fixture() {
+function fixture(tick?: () => { flow: AcipFlow; packet: Uint8Array }[]) {
   const sent: WebTransportPacket[] = [],
     received: WebTransportPacket[] = [],
     handshakes: Uint8Array[] = [];
@@ -32,6 +32,7 @@ function fixture() {
     keyframe = vi.fn(),
     dropped = vi.fn();
   const security = {
+    ...(tick ? { tick } : {}),
     init: vi.fn(),
     seal: vi.fn((_flow: AcipFlow, _delivery: Delivery, value: Uint8Array) =>
       wrap(value),
@@ -203,5 +204,58 @@ describe("QUIC authenticated readiness", () => {
     expect(f.keyframe).toHaveBeenCalledWith(3003, 0);
     expect(f.failed).not.toHaveBeenCalled();
     expect(f.protocol.isReady()).toBe(true);
+  });
+});
+
+describe("shared C rekey integration", () => {
+  it("drains reliable retirement markers before later application media", () => {
+    vi.useFakeTimers();
+    const tick = vi
+      .fn<() => { flow: AcipFlow; packet: Uint8Array }[]>()
+      .mockReturnValue([]);
+    const f = fixture(tick);
+    try {
+      f.establish();
+      const marker = wrap(packet(1112));
+      tick.mockReturnValueOnce([{ flow: 2, packet: marker }]);
+      const before = f.sent.length;
+      f.protocol.send(3001, new Uint8Array([1]));
+      expect(f.sent[before]).toEqual({
+        flow: 2,
+        delivery: "reliable",
+        packet: marker,
+      });
+      expect(f.sent[before + 1]?.flow).toBe(2);
+      expect(f.failed).not.toHaveBeenCalled();
+    } finally {
+      f.protocol.close();
+      vi.useRealTimers();
+    }
+  });
+
+  it("consumes internal messages and cancels rekey ticks before crypto cleanup", () => {
+    vi.useFakeTimers();
+    const tick = vi
+      .fn<() => { flow: AcipFlow; packet: Uint8Array }[]>()
+      .mockReturnValue([]);
+    const f = fixture(tick);
+    try {
+      f.establish();
+      f.security.open.mockReturnValueOnce({
+        packet: new Uint8Array(),
+        sequence: 2n,
+      });
+      f.receive(packet(1114));
+      expect(f.received).toHaveLength(0);
+      expect(f.failed).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(250);
+      const count = tick.mock.calls.length;
+      f.protocol.close();
+      vi.advanceTimersByTime(1000);
+      expect(tick).toHaveBeenCalledTimes(count);
+    } finally {
+      f.protocol.close();
+      vi.useRealTimers();
+    }
   });
 });

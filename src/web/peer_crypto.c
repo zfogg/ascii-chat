@@ -5,7 +5,7 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/util/endian.h>
-#include "../../lib/network/quic/security.h"
+#include "quic_security.h"
 #include <emscripten.h>
 #include <string.h>
 
@@ -17,7 +17,7 @@ typedef struct peer_output {
 
 typedef struct {
   acip_security_t security;
-  acip_quic_security_t quic;
+  browser_quic_security_t quic;
   bool quic_handshake;
   acip_transport_t transport;
   peer_output_t *output, *tail;
@@ -94,7 +94,7 @@ EMSCRIPTEN_KEEPALIVE void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   while (peer->output)
     peer_crypto_output_pop(peer);
   buffer_release(peer->received);
-  acip_quic_security_cleanup(&peer->quic);
+  browser_quic_cleanup(&peer->quic);
   acip_security_cleanup(&peer->security);
   SAFE_FREE(peer);
 }
@@ -244,7 +244,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
 EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_init(browser_peer_crypto_t *peer) {
   if (!peer || !peer->security.ready || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC requires an authenticated encrypted peer");
-  return acip_quic_security_init(&peer->quic, &peer->security.handshake.crypto_ctx, false);
+  return acip_quic_security_init(&peer->quic.security, &peer->security.handshake.crypto_ctx, false);
 }
 
 EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_crypto_t *peer, bool seal, uint32_t flow,
@@ -264,13 +264,18 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_cryp
   if (quiet)
     scope = errno_scope_begin();
   asciichat_error_t result =
-      seal ? acip_quic_security_seal(&peer->quic, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, packet, length,
-                                     &result_packet, &result_length)
-           : acip_quic_security_open_sequence(&peer->quic, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
-                                              packet, length, &result_packet, &result_length, sequence);
+      seal ? acip_quic_security_seal(&peer->quic.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
+                                     packet, length, &result_packet, &result_length)
+           : acip_quic_security_open_sequence(&peer->quic.security, (acip_traffic_class_t)flow,
+                                              (acip_delivery_t)delivery, packet, length, &result_packet, &result_length,
+                                              sequence);
+  bool consumed = false;
+  if (!seal && result == ASCIICHAT_OK)
+    result = browser_quic_receive(&peer->quic, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, result_packet,
+                                  result_length, &consumed);
   if (quiet)
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
-  if (result == ASCIICHAT_OK) {
+  if (result == ASCIICHAT_OK && !consumed) {
     memcpy(output, result_packet, result_length);
     *out_length = result_length;
   }
@@ -283,4 +288,8 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_begin(browser_peer_crypt
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer QUIC handshake transition");
   peer->quic_handshake = true;
   return ASCIICHAT_OK;
+}
+
+EMSCRIPTEN_KEEPALIVE browser_quic_security_t *peer_quic_context(browser_peer_crypto_t *peer) {
+  return peer ? &peer->quic : NULL;
 }

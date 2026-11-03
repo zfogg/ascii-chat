@@ -265,7 +265,7 @@ jobs:
           vp install --frozen-lockfile
           vp exec playwright install --with-deps chromium
           vp exec node scripts/wasm-build.mjs --publish-only
-          vp exec node tests/network/webtransport-live.mjs ../../build/bin/ascii-chat src/wasm/dist
+          ASCII_CHAT_QUIC_REKEY_TEST=1 vp exec node tests/network/webtransport-live.mjs ../../build/bin/ascii-chat src/wasm/dist
           ASCII_CHAT_TEST_BINARY="${{ github.workspace }}/build/bin/ascii-chat" vp exec playwright test --config playwright.quic.config.ts
 
       - name: Upload mixed discovery browser evidence

@@ -1,3 +1,4 @@
+import { getQuicEpoch } from "../wasm/client";
 import { serializeClientInitialization } from "./ClientInitialization";
 import { OutboundQueue } from "./OutboundQueue";
 import type { ClientSession } from "./Transport";
@@ -173,6 +174,7 @@ export class WebTransportClientSession implements ClientSession {
         peer
           ? {
               init: () => peer.initQuic(),
+              tick: () => peer.tickQuic(),
               seal: (flow, delivery, packet) =>
                 peer.quicPacket(
                   "seal",
@@ -225,6 +227,10 @@ export class WebTransportClientSession implements ClientSession {
       (this.outbound?.snapshot().applicationBytes ?? 0)
     );
   }
+  getCryptoEpoch(): number {
+    return this.peerCrypto ? this.peerCrypto.quicEpoch : getQuicEpoch();
+  }
+
   getUploadFeedback() {
     const snapshot = this.outbound?.snapshot();
     return {
