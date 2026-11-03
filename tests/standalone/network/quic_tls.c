@@ -638,7 +638,7 @@ static asciichat_error_t quic_handshake_dispatch(acip_transport_t *transport, cr
     } else if (!server &&
                (type == PACKET_TYPE_CRYPTO_AUTH_CHALLENGE || type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE)) {
       result = crypto_handshake_client_auth_response(ctx, transport, type, payload, payload_length);
-    } else if (!server && type == PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP) {
+    } else if (!server && (type == PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP || type == PACKET_TYPE_CRYPTO_AUTH_FAILED)) {
       result = crypto_handshake_client_complete(ctx, transport, type, payload, payload_length);
     } else if (server && type == PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP) {
       result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, payload_length);
@@ -685,7 +685,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   uint64_t start = time_get_ns();
   CHECK(acip_quic_udp_connect(client, client_tls, "localhost", (struct sockaddr *)&address, address_length, start,
                               &client_connection) == ASCIICHAT_OK);
-  bool handshake_started = false, submitted = false, rejected = false;
+  bool handshake_started = false, submitted = false, rejected = false, client_rejected = false;
   while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
     uint64_t now = time_get_ns();
     acip_quic_connection_t *failed = NULL;
@@ -715,10 +715,15 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     }
     if (handshake_started && !submitted) {
       asciichat_error_t client_result = quic_handshake_dispatch(client_transport, &client_handshake, false);
-      asciichat_error_t server_result = quic_handshake_dispatch(server_transport, &server_handshake, true);
-      if (client_result != ASCIICHAT_OK || server_result != ASCIICHAT_OK) {
+      asciichat_error_t server_result =
+          rejected ? ASCIICHAT_OK : quic_handshake_dispatch(server_transport, &server_handshake, true);
+      if (server_result != ASCIICHAT_OK) {
         CHECK(wrong_password && server_result == ERROR_NETWORK && client_result == ASCIICHAT_OK);
         rejected = true;
+      }
+      if (client_result != ASCIICHAT_OK) {
+        CHECK(wrong_password && rejected && client_result == ERROR_CRYPTO_AUTH);
+        client_rejected = true;
         break;
       }
     }
@@ -765,7 +770,8 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     time_sleep_ns(NS_PER_MS_INT);
   }
   if (wrong_password) {
-    CHECK(rejected && !crypto_handshake_is_ready(&client_handshake) && !crypto_handshake_is_ready(&server_handshake));
+    CHECK(rejected && client_rejected && !crypto_handshake_is_ready(&client_handshake) &&
+          !crypto_handshake_is_ready(&server_handshake));
     CHECK(acip_quic_connection_allow_media(client_connection) == ERROR_INVALID_STATE);
     CHECK(acip_quic_connection_allow_media(server_state.peer) == ERROR_INVALID_STATE);
   } else {
