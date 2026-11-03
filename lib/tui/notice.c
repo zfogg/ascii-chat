@@ -466,8 +466,13 @@ void ui_notice_first_use_complete(const void *data) {
     return;
   asciichat_errno_scope_t scope = errno_scope_begin();
   FILE *marker = platform_fopen("first-use instructions", notice->text + notice->marker_offset, "w");
-  if (marker)
-    fclose(marker);
+  if (!marker) {
+    log_warn("Could not save first-use instructions state; the notice may appear again: %s",
+             notice->text + notice->marker_offset);
+  } else if (fclose(marker) != 0) {
+    log_warn("Could not finish saving first-use instructions state; the notice may appear again: %s",
+             notice->text + notice->marker_offset);
+  }
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
 }
 
