@@ -68,9 +68,12 @@ Test(source_audio_contract, local_path_url_probe_preserves_preexisting_errors_wi
   CLEAR_ERRNO_ALL();
   SET_ERRNO(ERROR_NETWORK, "Earlier caller error");
   asciichat_errno_scope_t before_open = errno_checkpoint();
+  uint64_t errors_before = asciichat_error_stats_get().total_errors;
   media_source_t *second = media_source_create(MEDIA_SOURCE_FILE, path);
   cr_assert_not_null(second);
   cr_assert(errno_scope_is_clean(before_open));
+  cr_assert_eq(asciichat_error_stats_get().total_errors, errors_before,
+               "A successful local-file open must not create even dismissed URL errors");
   asciichat_error_context_t error;
   cr_assert(HAS_ERRNO(&error));
   cr_assert_eq(error.code, ERROR_NETWORK);

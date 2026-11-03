@@ -799,10 +799,10 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     // Configure FFmpeg options for HTTP streaming performance
     AVDictionary *options = NULL;
 
-    // A local filename is a normal input, so a failed URL probe is resolved
-    // here without dismissing errors that predate this classification.
+    // Local paths must not create URL errors or diagnostic notifications.
+    // Resolve a failed explicit-URL probe without dismissing older errors.
     asciichat_errno_scope_t url_scope = errno_scope_begin();
-    bool is_url = path && url_is_valid(path);
+    bool is_url = path && strstr(path, "://") && url_is_valid(path);
     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
     // For HTTP/HTTPS streams: enable fast probing and reconnection.
     if (is_url) {
