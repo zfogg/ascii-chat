@@ -20,6 +20,8 @@ typedef struct {
   acip_quic_connection_t *connection;
   mutex_t *lane;
   cond_t received;
+  void (*wake)(void *);
+  void *wake_context;
   received_packet_t *head, *tail;
   size_t bytes;
   asciichat_error_t failure;
@@ -99,6 +101,8 @@ static asciichat_error_t quic_sendv_ex(acip_transport_t *transport, const socket
   asciichat_error_t result = quic->connected
                                  ? acip_quic_connection_submit(quic->connection, options->traffic_class, packet, length)
                                  : SET_ERRNO(quic->failure, "QUIC transport is closed");
+  if (result == ASCIICHAT_OK && quic->wake)
+    quic->wake(quic->wake_context);
   lane_unlock(quic);
   buffer_release(packet);
   return result;
@@ -166,6 +170,8 @@ static asciichat_error_t quic_close_locked(quic_transport_t *quic, asciichat_err
   }
   quic->connected = false;
   quic->failure = reason;
+  quic->wake = NULL;
+  quic->wake_context = NULL;
   if (quic->lane)
     cond_broadcast(&quic->received);
   asciichat_error_t result = acip_quic_connection_clear_receiver(quic->connection, quic);
@@ -197,6 +203,21 @@ asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciicha
   asciichat_error_t result = quic_close_locked(quic, reason);
   lane_unlock(quic);
   return result;
+}
+
+asciichat_error_t acip_quic_transport_set_waker(acip_transport_t *transport, void (*wake)(void *), void *context) {
+  if (!transport || transport->methods != &quic_methods)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport waker");
+  quic_transport_t *quic = transport->impl_data;
+  lane_lock(quic);
+  if (!quic->connected) {
+    lane_unlock(quic);
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC transport is closed");
+  }
+  quic->wake = wake;
+  quic->wake_context = wake ? context : NULL;
+  lane_unlock(quic);
+  return ASCIICHAT_OK;
 }
 
 static void quic_interrupt(acip_transport_t *transport) {

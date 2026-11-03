@@ -118,9 +118,13 @@ waiting receivers; the single-lane adapter remains nonblocking. Stop and join
 all transport users before destroying it, and destroy it before its borrowed
 connection and mutex. An endpoint owner can propagate a connection failure to
 the adapter, waking receivers and preserving the error; it can then remove the
-detached connection while transport users retain the failed adapter. This does
-not yet provide the endpoint worker
-and lifecycle integration required by concurrent client/server paths.
+detached connection while transport users retain the failed adapter. A private
+worker can pump and wait on an endpoint, wake for newly admitted sends, and
+invoke a failure callback outside the lane. The callback must detach and remove
+the failed connection before reporting it handled. Owners must stop producers,
+clear their wakers, join the worker, and then destroy its borrowed resources.
+The worker and adapter are not yet integrated into the production lifecycle or
+connection selection.
 
 ## ACIP encryption audit
 

@@ -276,6 +276,15 @@ asciichat_error_t acip_quic_udp_wake(acip_quic_udp_endpoint_t *endpoint) {
   return ASCIICHAT_OK;
 }
 
+bool acip_quic_udp_contains(const acip_quic_udp_endpoint_t *endpoint, const acip_quic_connection_t *connection) {
+  if (!endpoint || !connection)
+    return false;
+  for (const udp_peer_t *peer = endpoint->peers; peer; peer = peer->next)
+    if (peer->connection == connection)
+      return true;
+  return false;
+}
+
 asciichat_error_t acip_quic_udp_remove(acip_quic_udp_endpoint_t *endpoint, acip_quic_connection_t *connection) {
   if (!endpoint || !connection)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP removal");

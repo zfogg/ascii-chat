@@ -22,3 +22,7 @@ asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *
  * mutex. Pending receives wake and return the supplied error. Once this
  * returns, the endpoint owner may remove the detached connection on the lane. */
 asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason);
+/* Configure while the transport is live. Called under the lane lock after a
+ * packet is admitted; the callback must not block or reenter transport APIs.
+ * Clear it and stop producers before destroying its context. */
+asciichat_error_t acip_quic_transport_set_waker(acip_transport_t *transport, void (*wake)(void *), void *context);
