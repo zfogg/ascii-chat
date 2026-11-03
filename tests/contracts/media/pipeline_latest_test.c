@@ -137,12 +137,22 @@ Test(media_pipeline, reusable_render_matches_owned_output) {
   image_destroy(source);
 }
 
-Test(media_pipeline, flushing_queued_frames_releases_each_owned_frame_and_slots_can_be_reused){
-  frame_slot_t slots[PIPELINE_FRAME_SLOTS]={0};image_t *image=image_new(2,2);cr_assert_not_null(image);memset(image->pixels,70,12);
-  frame_queue_t *queue=frame_queue_create(4,"display");cr_assert_not_null(queue);
-  for(unsigned i=0;i<4;++i){pipeline_frame_t *f=make_frame_copy(image,slots);cr_assert_not_null(f);cr_assert(frame_queue_push(queue,f,0));}
-  frame_queue_flush(queue,free_frame_generic);cr_assert_eq(frame_queue_count(queue),0);
-  for(unsigned i=0;i<PIPELINE_FRAME_SLOTS;++i)cr_assert_not(atomic_load_explicit(&slots[i].busy,memory_order_acquire));
+Test(media_pipeline, flushing_queued_frames_releases_each_owned_frame_and_slots_can_be_reused) {
+  frame_slot_t slots[PIPELINE_FRAME_SLOTS] = {0};
+  image_t *image = image_new(2, 2);
+  cr_assert_not_null(image);
+  memset(image->pixels, 70, 12);
+  frame_queue_t *queue = frame_queue_create(4, "display");
+  cr_assert_not_null(queue);
+  for (unsigned i = 0; i < 4; ++i) {
+    pipeline_frame_t *f = make_frame_copy(image, slots);
+    cr_assert_not_null(f);
+    cr_assert(frame_queue_push(queue, f, 0));
+  }
+  frame_queue_flush(queue, free_frame_generic);
+  cr_assert_eq(frame_queue_count(queue), 0);
+  for (unsigned i = 0; i < PIPELINE_FRAME_SLOTS; ++i)
+    cr_assert_not(atomic_load_explicit(&slots[i].busy, memory_order_acquire));
   pipeline_frame_t *f = make_frame_copy(image, slots);
   cr_assert_not_null(f);
   cr_assert_eq(f->pixels[0], 70);

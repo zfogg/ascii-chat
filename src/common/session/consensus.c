@@ -211,8 +211,7 @@ session_consensus_set_topology(session_consensus_t *consensus,
   // Validate the candidate before releasing the ring still borrowed by the
   // coordinator. A rejected membership update must preserve the active round.
   consensus_topology_t *replacement = NULL;
-  asciichat_error_t err =
-      consensus_topology_create(participant_ids, num_participants, consensus->my_id, &replacement);
+  asciichat_error_t err = consensus_topology_create(participant_ids, num_participants, consensus->my_id, &replacement);
   if (err != ASCIICHAT_OK)
     return err;
   err = consensus_coordinator_on_ring_members(consensus->coordinator, replacement);
