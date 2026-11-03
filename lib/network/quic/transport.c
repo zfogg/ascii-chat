@@ -1,4 +1,5 @@
 #include "transport.h"
+#include "datagram.h"
 
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -292,6 +293,41 @@ static size_t quic_queued(acip_transport_t *transport) {
   lane_unlock(quic);
   return bytes;
 }
+static asciichat_error_t quic_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
+  quic_transport_t *quic = transport->impl_data;
+  lane_lock(quic);
+  if (!quic->connected) {
+    asciichat_error_t result = SET_ERRNO(quic->failure, "QUIC transport is closed");
+    lane_unlock(quic);
+    return result;
+  }
+  if (!acip_quic_connection_tls_ready(quic->connection)) {
+    lane_unlock(quic);
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC capabilities are not negotiated yet");
+  }
+  size_t payload = acip_quic_connection_datagram_payload(quic->connection);
+  *out =
+      (acip_transport_capabilities_t){.independent_streams = true,
+                                      .datagrams = payload != 0,
+                                      .max_datagram_payload = payload ? payload + ACIP_QUIC_DATAGRAM_HEADER_SIZE : 0};
+  lane_unlock(quic);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t quic_validate_options(acip_transport_t *transport, const acip_send_options_t *options) {
+  if (options->delivery != ACIP_DELIVERY_DATAGRAM)
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC reliable deadlines are not available");
+  if (options->deadline_ns && options->deadline_ns <= time_get_ns())
+    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC datagram deadline expired");
+  quic_transport_t *quic = transport->impl_data;
+  lane_lock(quic);
+  asciichat_error_t result =
+      quic->connected
+          ? acip_quic_connection_validate_datagram(quic->connection, options->traffic_class, options->deadline_ns)
+          : SET_ERRNO(quic->failure, "QUIC transport is closed");
+  lane_unlock(quic);
+  return result;
+}
 static void quic_destroy_impl(acip_transport_t *transport) {
   quic_transport_t *quic = transport->impl_data;
   if (quic->lane)
@@ -307,6 +343,8 @@ static const acip_transport_methods_t quic_methods = {.send = quic_send,
                                                       .is_connected = quic_connected,
                                                       .has_pending_data = quic_pending,
                                                       .queued_bytes = quic_queued,
+                                                      .get_capabilities = quic_capabilities,
+                                                      .validate_send_options = quic_validate_options,
                                                       .destroy_impl = quic_destroy_impl};
 
 static asciichat_error_t attach_transport(acip_quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane,

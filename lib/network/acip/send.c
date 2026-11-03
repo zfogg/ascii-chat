@@ -86,15 +86,28 @@ static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const
   return result;
 }
 
+asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
+  if (!out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing transport capabilities output");
+  *out = (acip_transport_capabilities_t){0};
+  if (!transport || !transport->methods)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport capabilities query");
+  return transport->methods->get_capabilities ? transport->methods->get_capabilities(transport, out) : ASCIICHAT_OK;
+}
+
 asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                           const acip_send_options_t *options) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX || !options ||
       (unsigned)options->traffic_class > ACIP_TRAFFIC_VISUAL ||
       (options->delivery != ACIP_DELIVERY_RELIABLE && options->delivery != ACIP_DELIVERY_DATAGRAM))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport send options");
-  if ((options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns) &&
-      (!transport->methods->sendv_ex || transport->outbound))
-    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and explicit deadlines are not supported by this transport");
+  if (options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns) {
+    if (!transport->methods->sendv_ex || !transport->methods->validate_send_options)
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and deadlines are not supported by this transport");
+    asciichat_error_t result = transport->methods->validate_send_options(transport, options);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
 #ifndef __EMSCRIPTEN__
   if (transport && transport->outbound) {
     acip_admission_t admission;

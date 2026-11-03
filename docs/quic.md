@@ -221,8 +221,12 @@ path payload size, leaving space for QUIC overhead. It discards the remainder
 of a packet if the path shrinks below that size, and may discard queued media
 whose explicit monotonic deadline expires. A UDP payload already handed to the
 endpoint can still be sent after that deadline during socket backpressure.
-The private adapter supports datagram sends without the outbound scheduler;
-public capability reporting and scheduler integration remain to be added.
+The adapter exposes a negotiated capability snapshot, including a current-path
+datagram size; callers must query it again after a path change. The outbound
+scheduler preserves requested delivery and deadlines, discards expired media,
+and marks an encoded stream as needing a keyframe if it drops a queued encoded
+packet. This does not yet detect datagrams lost after submission or request a
+keyframe from the receiver.
 
 The envelope is protected by QUIC between transport endpoints, but it is not
 authenticated across a terminating intermediary. Reassembly output must pass

@@ -109,6 +109,15 @@ typedef enum {
  */
 typedef struct acip_transport acip_transport_t;
 
+/** Snapshot of negotiated transport features. Datagram payload is the maximum
+ * application data in one QUIC DATAGRAM frame on the current path, including
+ * any transport-specific envelope. Query again after path changes. */
+typedef struct {
+  bool independent_streams;
+  bool datagrams;
+  size_t max_datagram_payload;
+} acip_transport_capabilities_t;
+
 /** Ownership transfers only after successful registration. */
 typedef enum {
   ACIP_TRANSPORT_BORROWED,
@@ -228,6 +237,9 @@ typedef struct {
   /** Receives plaintext packet metadata alongside borrowed packet slices. */
   asciichat_error_t (*sendv_ex)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                 const acip_send_options_t *options);
+  asciichat_error_t (*get_capabilities)(acip_transport_t *transport, acip_transport_capabilities_t *out);
+  /** Validate optional delivery semantics without enqueuing data. */
+  asciichat_error_t (*validate_send_options)(acip_transport_t *transport, const acip_send_options_t *options);
 } acip_transport_methods_t;
 
 /**
@@ -283,6 +295,10 @@ asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket
  */
 asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                           const acip_send_options_t *options);
+
+/** A backend with no capability method reports no optional capabilities.
+ * Negotiated backends can return ERROR_INVALID_STATE until negotiation finishes. */
+asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out);
 
 asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len);
 

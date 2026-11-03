@@ -1008,6 +1008,9 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
             !duplicate);
       CHECK(acip_transport_get_type(client_transport) == ACIP_TRANSPORT_QUIC);
       CHECK(acip_transport_get_socket(client_transport) == INVALID_SOCKET_VALUE);
+      acip_transport_capabilities_t caps;
+      CHECK(acip_transport_get_capabilities(client_transport, &caps) == ASCIICHAT_OK && caps.independent_streams &&
+            caps.datagrams && caps.max_datagram_payload > 28);
       client_transport->receive_timeout_ns = 5 * NS_PER_MS_INT;
       void *empty = NULL, *allocation = NULL;
       size_t empty_length = 0;
@@ -1097,6 +1100,18 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
           ASCIICHAT_OK);
     CHECK(acip_quic_transport_set_waker(client_transport, acip_quic_worker_wake, client_worker) == ASCIICHAT_OK);
     CHECK(acip_quic_transport_set_waker(server_transport, acip_quic_worker_wake, server_worker) == ASCIICHAT_OK);
+    server_transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    CHECK(acip_outbound_create(client_transport) == ASCIICHAT_OK);
+    socket_buffer_t audio_slice = {packets[1], lengths[1]};
+    acip_send_options_t audio_options = {.traffic_class = ACIP_TRAFFIC_AUDIO,
+                                         .delivery = ACIP_DELIVERY_DATAGRAM,
+                                         .deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT};
+    CHECK(acip_transport_sendv_ex(client_transport, &audio_slice, 1, &audio_options) == ASCIICHAT_OK);
+    void *audio_received = NULL, *audio_allocation = NULL;
+    size_t audio_length = 0;
+    CHECK(acip_transport_recv(server_transport, &audio_received, &audio_length, &audio_allocation) == ASCIICHAT_OK);
+    CHECK(audio_length == lengths[1] && memcmp(audio_received, packets[1], audio_length) == 0);
+    buffer_release(audio_allocation);
     server_transport->receive_timeout_ns = 200 * NS_PER_MS_INT;
     quic_concurrent_sender_t sender = {.transport = client_transport, .packet = packets[0], .length = lengths[0]};
     asciichat_thread_t thread;

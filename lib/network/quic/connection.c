@@ -668,17 +668,25 @@ size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *conne
   return frame > ACIP_QUIC_DATAGRAM_HEADER_SIZE ? frame - ACIP_QUIC_DATAGRAM_HEADER_SIZE : 0;
 }
 
-asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow,
-                                                       const void *packet, size_t length, uint64_t deadline_ns) {
+asciichat_error_t acip_quic_connection_validate_datagram(const acip_quic_connection_t *connection,
+                                                         acip_traffic_class_t flow, uint64_t deadline_ns) {
   if (!connection || (flow != ACIP_TRAFFIC_AUDIO && flow != ACIP_TRAFFIC_VISUAL))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC datagram flow");
-  size_t unit = acip_quic_connection_datagram_payload(connection);
-  if (!unit)
+  if (!acip_quic_connection_datagram_payload(connection))
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC datagrams were not negotiated");
   if (!connection->security.crypto || !connection->peer_security_ready || !connection->media_allowed)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC media security is not ready");
   if (deadline_ns && deadline_ns <= connection->last_time_ns)
     return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC datagram deadline expired");
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow,
+                                                       const void *packet, size_t length, uint64_t deadline_ns) {
+  asciichat_error_t validation = acip_quic_connection_validate_datagram(connection, flow, deadline_ns);
+  if (validation != ASCIICHAT_OK)
+    return validation;
+  size_t unit = acip_quic_connection_datagram_payload(connection);
   if (connection->datagram_id[flow] == UINT64_MAX)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "QUIC datagram ID exhausted");
   size_t reserve = flow == ACIP_TRAFFIC_VISUAL ? ACIP_OUTBOUND_CONTROL_RESERVE + ACIP_OUTBOUND_AUDIO_RESERVE

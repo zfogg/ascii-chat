@@ -3,6 +3,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/endian.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 
@@ -15,16 +16,35 @@
 typedef struct {
   atomic_t count;
   atomic_t traffic_class;
+  atomic_t delivery, deadline, datagrams, fail_datagram, blocked;
 } capture_t;
 
 static asciichat_error_t capture_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                       const acip_send_options_t *options) {
   capture_t *capture = transport->impl_data;
-  if (count != 1 || !buffers[0].data || buffers[0].len < sizeof(packet_header_t) || !options ||
-      options->delivery != ACIP_DELIVERY_RELIABLE)
+  if (count != 1 || !buffers[0].data || buffers[0].len < sizeof(packet_header_t) || !options)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid captured packet");
+  if (options->delivery == ACIP_DELIVERY_DATAGRAM && atomic_exchange_bool(&capture->fail_datagram, false))
+    return SET_ERRNO(ERROR_BUFFER_FULL, "Simulated datagram congestion");
   atomic_store_u64(&capture->traffic_class, options->traffic_class);
+  atomic_store_u64(&capture->delivery, options->delivery);
+  atomic_store_u64(&capture->deadline, options->deadline_ns);
   atomic_fetch_add_u64(&capture->count, 1);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t capture_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
+  capture_t *capture = transport->impl_data;
+  bool enabled = atomic_load_bool(&capture->datagrams);
+  *out = (acip_transport_capabilities_t){
+      .independent_streams = true, .datagrams = enabled, .max_datagram_payload = enabled ? 1200 : 0};
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t capture_validate(acip_transport_t *transport, const acip_send_options_t *options) {
+  capture_t *capture = transport->impl_data;
+  if (options->delivery != ACIP_DELIVERY_DATAGRAM || !atomic_load_bool(&capture->datagrams))
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams unavailable");
   return ASCIICHAT_OK;
 }
 
@@ -33,10 +53,19 @@ static asciichat_error_t capture_close(acip_transport_t *transport) {
   return ASCIICHAT_OK;
 }
 
+static size_t capture_queued(acip_transport_t *transport) {
+  capture_t *capture = transport->impl_data;
+  return atomic_load_bool(&capture->blocked) ? 1 : 0;
+}
+
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
-  static const acip_transport_methods_t methods = {.sendv_ex = capture_send, .close = capture_close};
+  static const acip_transport_methods_t methods = {.sendv_ex = capture_send,
+                                                   .close = capture_close,
+                                                   .get_capabilities = capture_capabilities,
+                                                   .validate_send_options = capture_validate,
+                                                   .queued_bytes = capture_queued};
   capture_t capture = {0};
   acip_transport_t transport = {.methods = &methods, .impl_data = &capture};
   CHECK(acip_outbound_create(&transport) == ASCIICHAT_OK);
@@ -67,6 +96,59 @@ int main(void) {
   options.deadline_ns = 1;
   CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ERROR_NOT_SUPPORTED);
   CHECK(atomic_load_u64(&capture.count) == sizeof(cases) / sizeof(cases[0]));
+  acip_transport_capabilities_t caps;
+  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.independent_streams &&
+        !caps.datagrams && !caps.max_datagram_payload);
+  atomic_store_bool(&capture.datagrams, true);
+  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.datagrams &&
+        caps.max_datagram_payload == 1200);
+  header.type = HOST_TO_NET_U16(PACKET_TYPE_AUDIO_BATCH);
+  options.delivery = ACIP_DELIVERY_DATAGRAM;
+  options.deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT;
+  CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ASCIICHAT_OK);
+  uint64_t start = time_get_ns();
+  while (atomic_load_u64(&capture.count) == sizeof(cases) / sizeof(cases[0])) {
+    CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  CHECK(atomic_load_u64(&capture.delivery) == ACIP_DELIVERY_DATAGRAM &&
+        atomic_load_u64(&capture.deadline) == options.deadline_ns);
+  options.deadline_ns = 1;
+  CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ERROR_NETWORK_TIMEOUT);
+  options.deadline_ns = 0;
+  atomic_store_bool(&capture.fail_datagram, true);
+  CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ASCIICHAT_OK);
+  acip_outbound_stats_t stats;
+  start = time_get_ns();
+  do {
+    CHECK(acip_outbound_snapshot(&transport, &stats) == ASCIICHAT_OK);
+    CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    if (!stats.dropped)
+      platform_sleep_ms(1);
+  } while (!stats.dropped);
+  options.delivery = ACIP_DELIVERY_RELIABLE;
+  CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ASCIICHAT_OK);
+  start = time_get_ns();
+  while (atomic_load_u64(&capture.count) < sizeof(cases) / sizeof(cases[0]) + 2) {
+    CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  atomic_store_bool(&capture.blocked, true);
+  header.type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME_H264);
+  header.client_id = HOST_TO_NET_U32(42);
+  const uint8_t encoded_keyframe = 1;
+  socket_buffer_t encoded[] = {{&header, sizeof(header)}, {&encoded_keyframe, 1}};
+  options.traffic_class = ACIP_TRAFFIC_VISUAL;
+  options.delivery = ACIP_DELIVERY_DATAGRAM;
+  options.deadline_ns = time_get_ns() + 50 * NS_PER_MS_INT;
+  CHECK(acip_transport_sendv_ex(&transport, encoded, 2, &options) == ASCIICHAT_OK);
+  CHECK(!acip_outbound_needs_keyframe(&transport, PACKET_TYPE_IMAGE_FRAME_H264, 42));
+  start = time_get_ns();
+  while (!acip_outbound_needs_keyframe(&transport, PACKET_TYPE_IMAGE_FRAME_H264, 42)) {
+    CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  atomic_store_bool(&capture.blocked, false);
   acip_outbound_destroy(&transport);
   buffer_system_cleanup();
   log_destroy();

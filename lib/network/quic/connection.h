@@ -69,6 +69,8 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
                                               const void *packet, size_t length);
 /* Maximum ACQD payload for the current path, or zero when unavailable. */
 size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *connection);
+asciichat_error_t acip_quic_connection_validate_datagram(const acip_quic_connection_t *connection,
+                                                         acip_traffic_class_t traffic_class, uint64_t deadline_ns);
 asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *connection,
                                                        acip_traffic_class_t traffic_class, const void *packet,
                                                        size_t length, uint64_t deadline_ns);

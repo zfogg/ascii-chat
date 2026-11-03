@@ -128,6 +128,30 @@ static void expire_video(acip_outbound_t *out, uint64_t now) {
   }
 }
 
+static void expire_datagrams(acip_outbound_t *out, uint64_t now) {
+  outbound_packet_t **link = &out->head;
+  while (*link) {
+    outbound_packet_t *packet = *link;
+    if (packet->options.delivery != ACIP_DELIVERY_DATAGRAM || !packet->options.deadline_ns ||
+        packet->options.deadline_ns > now) {
+      link = &packet->next;
+      continue;
+    }
+    if (packet->encoded) {
+      outbound_packet_t identity = *packet;
+      discard_stream(out, &identity);
+      link = &out->head;
+      continue;
+    }
+    *link = packet->next;
+    out->bytes -= packet->cost;
+    --out->count;
+    ++out->stats.dropped;
+    ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
+    packet_free(out, packet);
+  }
+}
+
 // Keep the terminal wrapper plus its relevant nested cause. Follow causal IDs,
 // not merely older registry entries, and never cross this send's checkpoint.
 static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t scope,
@@ -212,6 +236,7 @@ static void *outbound_worker(void *arg) {
   while (!out->stopping && !out->failed) {
     uint64_t now = time_get_ns();
     expire_video(out, now);
+    expire_datagrams(out, now);
     outbound_packet_t *p = out->head;
     if (!p) {
       cond_wait(&out->changed, &out->mutex);
@@ -220,7 +245,7 @@ static void *outbound_worker(void *arg) {
     /* Admitted reliable traffic expires by closing the connection, never by
      * silently removing an audio or control packet. */
     uint64_t deadline = p->audio ? 5 * NS_PER_SEC_INT : 10 * NS_PER_SEC_INT;
-    if (!p->video && now - p->created > deadline) {
+    if (!p->video && p->options.delivery == ACIP_DELIVERY_RELIABLE && now - p->created > deadline) {
       asciichat_errno_scope_t scope = errno_scope_begin();
       asciichat_error_context_t cause;
       SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Outbound reliable packet expired before submission");
@@ -262,6 +287,15 @@ static void *outbound_worker(void *arg) {
     mutex_lock(&out->mutex);
     out->active_bytes = 0;
     --out->count;
+    bool datagram_drop =
+        p->options.delivery == ACIP_DELIVERY_DATAGRAM &&
+        (result == ERROR_NETWORK_TIMEOUT || result == ERROR_BUFFER_FULL || result == ERROR_NOT_SUPPORTED);
+    if (datagram_drop) {
+      if (p->encoded)
+        discard_stream(out, p);
+      ++out->stats.dropped;
+      ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
+    }
     if (result == ASCIICHAT_OK) {
       ++out->stats.submitted;
       if (p->encoded && p->keyframe)
@@ -274,7 +308,7 @@ static void *outbound_worker(void *arg) {
     } else {
       packet_free(out, p);
     }
-    if (result != ASCIICHAT_OK) {
+    if (result != ASCIICHAT_OK && !datagram_drop) {
       outbound_record_failure_and_fail_pending(out, result, &cause, &detail);
       break;
     }
@@ -383,8 +417,19 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   if ((unsigned)info.options.traffic_class > ACIP_TRAFFIC_VISUAL ||
       (info.options.delivery != ACIP_DELIVERY_RELIABLE && info.options.delivery != ACIP_DELIVERY_DATAGRAM))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid outbound send options");
-  if (info.options.delivery != ACIP_DELIVERY_RELIABLE || info.options.deadline_ns)
-    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and explicit deadlines are not supported by this transport");
+  if (info.options.delivery != ACIP_DELIVERY_RELIABLE || info.options.deadline_ns) {
+    if (!transport->methods->sendv_ex || !transport->methods->validate_send_options)
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and deadlines are not supported by this transport");
+    if (info.options.delivery == ACIP_DELIVERY_DATAGRAM &&
+        (info.options.traffic_class == ACIP_TRAFFIC_CONTROL ||
+         info.options.traffic_class != acip_packet_traffic_class(info.type)))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Datagram flow does not match packet type");
+    asciichat_error_t result = transport->methods->validate_send_options(transport, &info.options);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (info.options.deadline_ns && info.options.deadline_ns <= time_get_ns())
+      return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Outbound datagram deadline expired");
+  }
   info.encoded = info.type == PACKET_TYPE_IMAGE_FRAME_H264 || info.type == PACKET_TYPE_IMAGE_FRAME_H265;
   info.video = info.encoded || info.type == PACKET_TYPE_IMAGE_FRAME || info.type == PACKET_TYPE_ASCII_FRAME;
   info.audio = acip_packet_traffic_class(info.type) == ACIP_TRAFFIC_AUDIO;
@@ -414,6 +459,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
     return cause.code == code ? import_failure(&cause, &detail) : SET_ERRNO(code, "Outbound connection closed");
   }
   expire_video(out, info.created);
+  expire_datagrams(out, info.created);
   outbound_stream_t *stream = info.encoded ? stream_state(out, info.type, info.stream) : NULL;
   if (info.encoded && (!stream || (stream->needs_keyframe && !info.keyframe))) {
     ++out->stats.dropped;
