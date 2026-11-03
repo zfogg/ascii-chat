@@ -268,7 +268,29 @@ asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_cr
                         crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
     return protocol_fail(p, ERROR_CRYPTO, "Could not hash session password", true);
   p->state = ACDS_CREATING;
-  result = protocol_send(p, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
+  size_t endpoint_length = strnlen(params->webtransport_url, sizeof(params->webtransport_url));
+  if (endpoint_length == sizeof(params->webtransport_url) ||
+      (endpoint_length && (endpoint_length < 9 || strncmp(params->webtransport_url, "https://", 8)))) {
+    sodium_memzero(&req, sizeof(req));
+    return protocol_fail(p, ERROR_INVALID_PARAM, "Invalid public WebTransport endpoint", true);
+  }
+  if (endpoint_length || params->quic_port) {
+    uint8_t payload[sizeof(req) + 10 + sizeof(params->webtransport_url)];
+    memcpy(payload, &req, sizeof(req));
+    uint8_t *extension = payload + sizeof(req);
+    memcpy(extension, "ACQT", 4);
+    extension[4] = 1;
+    extension[5] = 0;
+    extension[6] = (uint8_t)(params->quic_port >> 8);
+    extension[7] = (uint8_t)params->quic_port;
+    extension[8] = (uint8_t)(endpoint_length >> 8);
+    extension[9] = (uint8_t)endpoint_length;
+    memcpy(extension + 10, params->webtransport_url, endpoint_length);
+    result = protocol_send(p, PACKET_TYPE_ACIP_SESSION_CREATE, payload, sizeof(req) + 10 + endpoint_length);
+    sodium_memzero(payload, sizeof(payload));
+  } else {
+    result = protocol_send(p, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
+  }
   sodium_memzero(&req, sizeof(req));
   return result;
 }
@@ -368,8 +390,6 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
       return ASCIICHAT_OK;
     if (!p->info.found)
       return protocol_fail(p, ERROR_NETWORK, "Session not found", true);
-    if (p->require_webrtc && p->info.session_type != SESSION_TYPE_WEBRTC)
-      return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session does not offer WebRTC", true);
     if (p->info.require_server_verify || p->info.require_client_verify)
       return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session requires an authorized identity", true);
     if (p->info.has_password && !p->join.has_password)
@@ -380,6 +400,22 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
     if (length < sizeof(p->joined))
       return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Truncated discovery join response", true);
     memcpy(&p->joined, payload, sizeof(p->joined));
+    p->quic_port = 0;
+    p->webtransport_url[0] = 0;
+    if (length > sizeof(p->joined)) {
+      const uint8_t *extension = (const uint8_t *)payload + sizeof(p->joined);
+      size_t extra = length - sizeof(p->joined);
+      if (extra < 10 || memcmp(extension, "ACQT", 4) || extension[4] != 1 || extension[5])
+        return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid discovery transport extension", true);
+      size_t url_length = ((size_t)extension[8] << 8) | extension[9];
+      if (url_length >= sizeof(p->webtransport_url) || extra != 10 + url_length ||
+          (url_length &&
+           (url_length < 9 || memcmp(extension + 10, "https://", 8) || memchr(extension + 10, 0, url_length))))
+        return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid discovery WebTransport endpoint", true);
+      p->quic_port = (uint16_t)((uint16_t)extension[6] << 8 | extension[7]);
+      memcpy(p->webtransport_url, extension + 10, url_length);
+      p->webtransport_url[url_length] = 0;
+    }
     p->joined.error_message[sizeof(p->joined.error_message) - 1] = 0;
     p->joined.server_address[sizeof(p->joined.server_address) - 1] = 0;
     p->joined.turn_username[sizeof(p->joined.turn_username) - 1] = 0;
@@ -387,8 +423,8 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
     if (!p->joined.success)
       return protocol_fail(p, network_error_from_acip(p->joined.error_code),
                            p->joined.error_message[0] ? p->joined.error_message : "Session join rejected", true);
-    if (p->require_webrtc && p->joined.session_type != SESSION_TYPE_WEBRTC)
-      return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session does not offer WebRTC", true);
+    if (p->require_webrtc && p->joined.session_type != SESSION_TYPE_WEBRTC && !p->webtransport_url[0])
+      return protocol_fail(p, ERROR_NOT_SUPPORTED, "This session does not offer WebTransport or WebRTC", true);
     p->state = ACDS_JOINED;
     sodium_memzero(p->join.identity_seckey, sizeof(p->join.identity_seckey));
     sodium_memzero(p->join.password, sizeof(p->join.password));

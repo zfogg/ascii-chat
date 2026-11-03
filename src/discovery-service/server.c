@@ -241,7 +241,7 @@ static void acds_client_joined(acds_server_t *server, acds_client_data_t *client
 }
 
 static void acds_on_session_create(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
-                                   void *app_ctx) {
+                                   const uint8_t *extension, size_t extension_length, void *app_ctx) {
   ASCII_OTEL_SCOPE(DISCOVERY_CREATE);
   acds_server_t *server = (acds_server_t *)app_ctx;
   acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
@@ -266,6 +266,16 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     }
     rate_limiter_record(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE);
   }
+  if (req->key_index == 0) {
+    client_data->create_transport_length = extension_length;
+    if (extension_length)
+      memcpy(client_data->create_transport_metadata, extension, extension_length);
+  } else if (extension_length != client_data->create_transport_length ||
+             (extension_length && memcmp(extension, client_data->create_transport_metadata, extension_length))) {
+    memset(&client_data->create_keys, 0, sizeof(client_data->create_keys));
+    acip_send_error(transport, ERROR_INVALID_PARAM, "Transport endpoints changed during session creation");
+    return;
+  }
   bool complete = false;
   asciichat_error_t result =
       acds_create_key_set_collect(&client_data->create_keys, req, server->config.require_server_identity, &complete);
@@ -285,8 +295,9 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     return;
   }
   acip_session_created_t resp = {0};
-  asciichat_error_t create_result = database_session_create_keys(
-      server->db, pending, client_data->create_keys.keys, client_data->create_keys.count, &server->config, &resp);
+  asciichat_error_t create_result = database_session_create_keys_with_transport(
+      server->db, pending, client_data->create_keys.keys, client_data->create_keys.count, &server->config, &resp,
+      extension, extension_length);
   if (create_result == ASCIICHAT_OK) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
     // Build complete payload: fixed response + variable STUN/TURN servers
@@ -400,7 +411,26 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
   asciichat_error_t join_result = database_session_join(server->db, req, &server->config, &resp);
   if (join_result == ASCIICHAT_OK && resp.success) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_JOINS, 1);
-    acip_send_session_joined(transport, &resp);
+    uint8_t metadata[521];
+    size_t metadata_length = 0;
+    asciichat_error_t metadata_result =
+        resp.server_address[0]
+            ? database_session_transport_get(server->db, resp.session_id, metadata, sizeof(metadata), &metadata_length)
+            : ASCIICHAT_OK;
+    if (metadata_result != ASCIICHAT_OK) {
+      database_session_leave(server->db, resp.session_id, resp.participant_id);
+      acip_send_error(transport, metadata_result, "Cannot read session transport endpoints");
+      return;
+    }
+    if (metadata_length) {
+      uint8_t response[sizeof(resp) + sizeof(metadata)];
+      memcpy(response, &resp, sizeof(resp));
+      memcpy(response + sizeof(resp), metadata, metadata_length);
+      packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(resp) + metadata_length,
+                                0);
+    } else {
+      acip_send_session_joined(transport, &resp);
+    }
 
     acds_client_joined(server, client_data, resp.session_id, resp.participant_id);
 

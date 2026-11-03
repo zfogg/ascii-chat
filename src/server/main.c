@@ -887,8 +887,8 @@ static asciichat_error_t acds_send_host_sample(uint32_t sequence) {
   if (!bytes)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate discovery host sample");
   consensus_handoff_encode(&message, bytes);
-  asciichat_error_t result = packet_send_via_transport(g_acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET,
-                                                       bytes, CONSENSUS_HANDOFF_HEADER, 0);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes,
+                                                       CONSENSUS_HANDOFF_HEADER, 0);
   if (result == ASCIICHAT_OK) {
     message.kind = HANDOFF_SAMPLE_DATA;
     consensus_handoff_encode(&message, bytes);
@@ -1480,6 +1480,10 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
   params->server_port = port;
+  if (GET_OPTION(quic_bind_address)[0])
+    params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
+  if (GET_OPTION(webtransport_bind_address)[0])
+    SAFE_STRNCPY(params->webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params->webtransport_url));
   if (params->session_type == SESSION_TYPE_DIRECT_TCP) {
     if (nat_upnp_get_endpoint(upnp_ctx, params->server_address, sizeof(params->server_address), &params->server_port) !=
         ASCIICHAT_OK) {
@@ -1725,6 +1729,11 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     return;
   }
   acds_session_create_params_t create_params = {0};
+  if (GET_OPTION(webtransport_bind_address)[0] &&
+      strlen(GET_OPTION(webtransport_public_url)) >= sizeof(create_params.webtransport_url)) {
+    log_error("WebTransport public URL exceeds the discovery endpoint limit");
+    return;
+  }
   server_prepare_discovery_request(&create_params, &policy, port, upnp_ctx, upnp_succeeded);
   acds_session_create_result_t create_result;
   asciichat_error_t result = acds_session_create(g_acds_client, &create_params, &create_result);

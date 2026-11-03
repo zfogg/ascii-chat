@@ -39,21 +39,47 @@ resolution currently uses IPv4; IPv6 literals are supported.
 
 ## Discovery route
 
-A native discovery participant can opt into `--discovery-quic` when the host
-has disclosed its endpoint and listens for native QUIC on the same UDP port as
-its advertised TCP port. The option does not disclose a private address or
-assert that the host supports QUIC; it selects the configured route explicitly.
-Use `--quic-ca-file` when the host certificate needs a private trust anchor and
-`--server-key` to pin its application identity. The same media datagram options
-are available. `--quic-fallback-port` permits the existing authenticated TCP
-fallback after a pre-TLS timeout, provided a server key is pinned. Certificate
-and authentication failures do not trigger fallback. WebRTC remains the default
-for WebRTC discovery sessions, including browser participants.
-The mixed discovery Playwright test runs two native QUIC participants and a
-browser WebRTC participant, checks media in both directions, and keeps the
-session running past the host health freshness window. The server publishes
-periodic measured host samples to ACDS so an active host is not mistaken for a
-failed one during handoff selection.
+A server can advertise separate native QUIC and browser WebTransport endpoints
+when registering with ACDS. Enable its native QUIC listener as above, and set
+`--webtransport-public-url https://HOST:PORT/acip` alongside the WebTransport
+listener options below. This URL must be reachable by participants; the bind
+address is not used as a public address. Endpoint metadata follows the existing
+address disclosure policy and is withheld when the host changes or migrates.
+
+A native participant opts into `--discovery-quic` and uses the advertised QUIC
+port. With older ACDS servers that return no transport metadata, this explicit
+option uses the advertised TCP port as the UDP port. Use `--quic-ca-file` for a
+private trust anchor and `--server-key` to pin the application identity. The
+media datagram options and authenticated pre-TLS TCP fallback also apply.
+
+A browser discovery participant automatically prefers an advertised HTTPS
+WebTransport endpoint when its browser supports WebTransport. ACDS signaling
+and handoff remain on their original authenticated connection; the media
+connection owns an independent ACIP handshake and per-flow encryption state.
+An explicit TLS, authentication, or protocol failure is terminal. Hosts without
+an advertisement, and browsers without WebTransport, retain WebRTC discovery.
+The discovery Playwright tests cover both routes. The all-QUIC case prohibits
+creating an RTCPeerConnection, checks browser upload and rendered server media
+alongside two authenticated native QUIC participants, and checks native media
+continues after the browser leaves. Both cases run past the host health
+freshness window.
+
+The optional version-1 transport extension follows the unchanged legacy
+SESSION_CREATE payload (including its reserved session name) and SESSION_JOINED
+payload. Integers in this extension use network byte order:
+
+| Offset | Size | Meaning |
+| --- | --- | --- |
+| 0 | 4 | ASCII `ACQT` |
+| 4 | 1 | Version `1` |
+| 5 | 1 | Reserved, zero |
+| 6 | 2 | Native QUIC UDP port; zero means unadvertised |
+| 8 | 2 | HTTPS WebTransport URL byte length, at most 511 |
+| 10 | variable | URL bytes, without a NUL terminator |
+
+Legacy responses without the extension remain valid. Unknown versions,
+truncated or trailing bytes, embedded NULs, and non-HTTPS URLs are rejected.
+ACDS stores the extension in the same transaction as the session and keys.
 
 ## HTTP/3 WebTransport listener
 
@@ -97,19 +123,19 @@ prefix. Receivers incrementally assemble complete packets and apply the ACIP
 size limit and CRC checks. A FIN is valid only after a complete preamble and at
 a packet boundary. Invalid preambles, invalid packets, and truncated FINs are
 protocol errors. A connection must reject duplicate streams for a class and
-direction; the endpoint will enforce this when streams are attached.
+direction; the endpoint rejects duplicate streams when they are attached.
 
 Ordering is guaranteed within a stream only. Handshake, rekey, stream setup,
 and teardown are control operations. Media must not cross a control transition
 until the receiver has acknowledged the state on which that media depends.
-The endpoint must implement these readiness barriers before it sends media.
+The endpoint enforces an authenticated READY/ACK barrier before it sends media.
 
 The class identifies a delivery flow and is not an authenticated assertion
 about the packet inside it. Plaintext packet types are checked against the flow
 before dispatch. Where ACIP encryption is active, classification is performed
 before encryption, and the receiver must validate the decrypted packet against
-the flow. Authentication, replay handling, datagrams, and fallback are not
-defined by this framing alone and remain implementation work.
+the flow. Authentication, replay handling, datagrams, and fallback are implemented above
+this stream framing.
 
 ## TLS policy
 
@@ -289,10 +315,10 @@ Later application state changes still require their own control barriers.
 
 A UDP loopback fixture exercises the existing password-authenticated ACIP
 handshake through the private adapter and then exchanges encrypted media after
-the readiness exchange. The fixture still triggers the local security
-transition; production orchestration is not connected to a public transport.
-The security codec does not itself implement rekey transitions or
-replay protection for existing connections.
+the readiness exchange. Production native and browser transports invoke this transition after their
+ACIP handshakes. Reliable sequences are checked independently per flow, and
+datagrams use a replay window. Coordinated application key-epoch transitions
+remain unfinished.
 
 ## Experimental datagram fragments
 

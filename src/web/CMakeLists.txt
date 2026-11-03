@@ -643,6 +643,9 @@ set(EXPORTED_FUNCTIONS_CLIENT
     "_client_decode_frame_data"
     _wasm_capture_transform_required _wasm_capture_transform_rgba
     _client_settings_receive _client_settings_values
+    _peer_crypto_quic_begin
+    _peer_crypto_quic_init
+    _peer_crypto_quic_packet
     _peer_crypto_error
     _peer_crypto_create
     _peer_crypto_destroy

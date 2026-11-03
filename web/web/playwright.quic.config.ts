@@ -13,6 +13,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
+        ignoreHTTPSErrors: true,
         permissions: ["camera", "microphone"],
         launchOptions: {
           ...(process.env["ASCII_CHAT_TEST_CHROMIUM"]

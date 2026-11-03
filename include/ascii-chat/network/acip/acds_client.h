@@ -185,6 +185,8 @@ typedef struct {
   char server_address[ACIP_ADDRESS_SIZE]; ///< Server address where clients should
                                           ///< connect
   uint16_t server_port;                   ///< Server port where clients should connect
+  uint16_t quic_port;
+  char webtransport_url[512];
 } acds_session_create_params_t;
 
 /**

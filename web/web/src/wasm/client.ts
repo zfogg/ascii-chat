@@ -86,6 +86,20 @@ interface ClientModuleExports {
   ): number;
   _peer_crypto_destroy(peer: number): void;
   _peer_crypto_ready(peer: number): number;
+  _peer_crypto_quic_begin(peer: number): number;
+  _peer_crypto_quic_init(peer: number): number;
+  _peer_crypto_quic_packet(
+    peer: number,
+    seal: number,
+    flow: number,
+    delivery: number,
+    input: number,
+    size: number,
+    output: number,
+    capacity: number,
+    length: number,
+    sequence: number,
+  ): number;
   _peer_crypto_error(): number;
   _peer_crypto_send(peer: number, data: number, length: number): number;
   _peer_crypto_receive(peer: number, data: number, length: number): number;
@@ -1177,6 +1191,7 @@ export function processQuicPacket(
   delivery: 0 | 1,
   packet: Uint8Array,
   quietFailure = false,
+  peer = 0,
 ): { packet: Uint8Array; sequence: bigint } {
   if (!wasmModule) throw new Error("WASM module not initialized");
   const capacity = packet.length + (operation === "seal" ? 78 : 0);
@@ -1193,8 +1208,20 @@ export function processQuicPacket(
   }
   try {
     wasmModule.HEAPU8.set(packet, input);
-    const result =
-      operation === "seal"
+    const result = peer
+      ? wasmModule._peer_crypto_quic_packet(
+          peer,
+          operation === "seal" ? 1 : 0,
+          flow,
+          delivery,
+          input,
+          packet.length,
+          output,
+          capacity,
+          length,
+          sequence,
+        )
+      : operation === "seal"
         ? wasmModule._client_quic_security_seal(
             flow,
             delivery,
@@ -1619,6 +1646,35 @@ export class PeerCryptoSession {
       return handle ? 0 : -1;
     });
     return new PeerCryptoSession(handle, send);
+  }
+
+  beginQuic(): void {
+    if (!this.handle) throw new Error("Peer crypto session is closed");
+    const result = wasmModule!._peer_crypto_quic_begin(this.handle);
+    if (result) throwWasmError(result, "Cannot start peer QUIC handshake");
+  }
+
+  initQuic(): void {
+    if (!this.handle) throw new Error("Peer crypto session is closed");
+    const result = wasmModule!._peer_crypto_quic_init(this.handle);
+    if (result) throwWasmError(result, "Peer QUIC initialization failed");
+  }
+
+  quicPacket(
+    operation: "seal" | "open",
+    flow: 0 | 1 | 2,
+    delivery: 0 | 1,
+    packet: Uint8Array,
+  ) {
+    if (!this.handle) throw new Error("Peer crypto session is closed");
+    return processQuicPacket(
+      operation,
+      flow,
+      delivery,
+      packet,
+      delivery === 1,
+      this.handle,
+    );
   }
 
   get ready(): boolean {

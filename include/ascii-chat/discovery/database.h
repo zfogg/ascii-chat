@@ -22,6 +22,11 @@
 #include "discovery-service/main.h"
 #include "../network/acip/acds.h"
 
+asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                                 const void *metadata, size_t length);
+asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata,
+                                                 size_t capacity, size_t *length);
+
 /**
  * @brief Discovery database handle (sqlite3 wrapper)
  */
@@ -68,6 +73,12 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
  * must verify each create proof before calling this persistence API. */
 asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
                                                size_t count, const acds_config_t *config, acip_session_created_t *resp);
+
+/** Persist advertised transports in the same transaction as the session and key set. */
+asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const acip_session_create_t *req,
+                                                              const uint8_t (*keys)[32], size_t count,
+                                                              const acds_config_t *config, acip_session_created_t *resp,
+                                                              const void *metadata, size_t metadata_length);
 
 /**
  * @brief Lookup session by string

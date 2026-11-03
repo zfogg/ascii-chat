@@ -31,17 +31,12 @@ def main():
         host_key = directory / "host-id"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(host_key)], check=True, timeout=15)
         acds_port, acds_ws, ws_port = [free_port() for _ in range(3)]
-        # The same number must be available for TCP and UDP; the listener binds later.
-        for _ in range(100):
+        tcp_port = free_port()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            quic_port = probe.getsockname()[1]
+        if quic_port == tcp_port:
             tcp_port = free_port()
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
-                    probe.bind(("127.0.0.1", tcp_port))
-                break
-            except OSError:
-                continue
-        else:
-            raise RuntimeError("No shared TCP/UDP port is available")
         environment = {"ASCII_CHAT_QUESTION_PROMPT_RESPONSE": "y;y;y", "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK": "1"}
         acds = host = udp_blackhole = None
         clients = []
@@ -55,7 +50,7 @@ def main():
             host = Service(binary, directory, "host", "server",
                            server_options(tcp_port, ws_port) + discovery +
                            ["--discovery", "--webrtc", "--discovery-expose-ip", "--password", "route-test-password",
-                            "--key", str(host_key), "--quic-bind-address", "127.0.0.1",
+                            "--key", str(host_key), "--quic-bind-address", "127.0.0.1", "--quic-port", str(quic_port),
                             "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
             host.wait_for("Session created:")
             session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]

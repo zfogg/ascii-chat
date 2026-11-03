@@ -1003,6 +1003,7 @@ typedef struct options_state {
   bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
   bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
   bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
+  char webtransport_public_url[OPTIONS_BUFF_SIZE];    ///< Public HTTPS WebTransport endpoint advertised through ACDS.
   int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
   int quic_fallback_port;                             ///< TCP fallback port, or zero to disable fallback.
   int max_clients;                                    ///< Maximum concurrent clients (server only)

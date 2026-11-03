@@ -61,6 +61,8 @@ typedef struct {
   network_negotiation_t negotiation;
 
   // Multi-key session creation state
+  uint8_t create_transport_metadata[521];
+  size_t create_transport_length;
   acds_create_key_set_t create_keys; ///< Pending connection-local key set
 
   // Transport abstraction

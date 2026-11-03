@@ -255,6 +255,13 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to create database schema");
   }
 
+  rc = sqlite3_exec(*db, database_queries[QUERY_SchemaSessionTransports].sql, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) {
+    sqlite3_close(*db);
+    *db = NULL;
+    return SET_ERRNO(ERROR_CONFIG, "Cannot create discovery transport metadata table");
+  }
+
   // Idempotent, transactional migration from the untyped key table. A policy
   // row is also the migration marker: reopening must never restore revoked keys.
   sqlite3_stmt *legacy_table = NULL;
@@ -422,8 +429,8 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
  * together when any member insert fails. The caller owns the connection mutex. */
 static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const acip_session_create_t *req,
                                                              const uint8_t (*keys)[32], size_t count,
-                                                             const acds_config_t *config,
-                                                             acip_session_created_t *resp) {
+                                                             const acds_config_t *config, acip_session_created_t *resp,
+                                                             const void *metadata, size_t metadata_length) {
   if (!db || !req || !keys || !config || !resp || count == 0 || count > MAX_SESSION_KEYS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key set");
   memset(resp, 0, sizeof(*resp));
@@ -457,6 +464,8 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
     if (!sodium_is_zero(keys[i], 32))
       result = database_session_add_key(db, resp->session_string, keys[i], (uint32_t)i);
   }
+  if (result == ASCIICHAT_OK && metadata_length)
+    result = database_session_transport_set(db, resp->session_id, metadata, metadata_length);
   if (result == ASCIICHAT_OK &&
       sqlite3_exec(db, database_queries[QUERY_CommitKeySet].sql, NULL, NULL, NULL) != SQLITE_OK)
     result = SET_ERRNO(ERROR_CONFIG, "Could not commit session key set");
@@ -468,18 +477,26 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   return result;
 }
 
-asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
-                                               size_t count, const acds_config_t *config,
-                                               acip_session_created_t *resp) {
+asciichat_error_t database_session_create_keys_with_transport(sqlite3 *db, const acip_session_create_t *req,
+                                                              const uint8_t (*keys)[32], size_t count,
+                                                              const acds_config_t *config, acip_session_created_t *resp,
+                                                              const void *metadata, size_t metadata_length) {
   if (!db)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing database");
   // SQLite serializes statements, but a shared connection also needs to keep
   // other client threads out of this multi-statement savepoint.
   sqlite3_mutex *mutex = sqlite3_db_mutex(db);
   sqlite3_mutex_enter(mutex);
-  asciichat_error_t result = database_session_create_keys_locked(db, req, keys, count, config, resp);
+  asciichat_error_t result =
+      database_session_create_keys_locked(db, req, keys, count, config, resp, metadata, metadata_length);
   sqlite3_mutex_leave(mutex);
   return result;
+}
+
+asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
+                                               size_t count, const acds_config_t *config,
+                                               acip_session_created_t *resp) {
+  return database_session_create_keys_with_transport(db, req, keys, count, config, resp, NULL, 0);
 }
 
 asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config,
@@ -1481,4 +1498,47 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, *sessions);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, *participants);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                                 const void *metadata, size_t length) {
+  if (!db || !session_id || !metadata || length < 10 || length > 521)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport metadata");
+  sqlite3_stmt *statement = NULL;
+  int rc = ascii_otel_sqlite_prepare(db, database_queries[QUERY_SetSessionTransports].sql, &statement);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_bind_blob(statement, 1, session_id, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_bind_blob(statement, 2, metadata, (int)length, SQLITE_TRANSIENT);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_step(statement);
+  sqlite3_finalize(statement);
+  return rc == SQLITE_DONE ? ASCIICHAT_OK : SET_ERRNO(ERROR_CONFIG, "Cannot store discovery transport metadata");
+}
+
+asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata,
+                                                 size_t capacity, size_t *length) {
+  if (!db || !session_id || !metadata || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport metadata output");
+  *length = 0;
+  sqlite3_stmt *statement = NULL;
+  int rc = ascii_otel_sqlite_prepare(db, database_queries[QUERY_GetSessionTransports].sql, &statement);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_bind_blob(statement, 1, session_id, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_step(statement);
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (rc == SQLITE_ROW) {
+    int bytes = sqlite3_column_bytes(statement, 0);
+    if (bytes < 10 || (size_t)bytes > capacity)
+      result = SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid stored discovery transport metadata size");
+    else {
+      memcpy(metadata, sqlite3_column_blob(statement, 0), (size_t)bytes);
+      *length = (size_t)bytes;
+    }
+  } else if (rc != SQLITE_DONE) {
+    result = SET_ERRNO(ERROR_CONFIG, "Cannot read discovery transport metadata");
+  }
+  sqlite3_finalize(statement);
+  return result;
 }

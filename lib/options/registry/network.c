@@ -38,6 +38,15 @@ static bool validate_webrtc_bind_address(const void *data) {
 static const bool default_quic_audio_datagrams = false;
 
 const registry_entry_t g_network_entries[] = {
+    {.long_name = "webtransport-public-url",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, webtransport_public_url),
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "Public HTTPS WebTransport endpoint advertised after discovery authentication.",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_WEBTRANSPORT_PUBLIC_URL",
+     .mode_bitmask = OPTION_MODE_SERVER,
+     .metadata = {.input_type = OPTION_INPUT_STRING}},
     {.long_name = "discovery-quic",
      .type = OPTION_TYPE_BOOL,
      .offset = offsetof(options_t, discovery_quic),

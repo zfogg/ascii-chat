@@ -29,6 +29,12 @@ export interface JoinedSession {
   hostId: Uint8Array;
   turnUsername: string;
   turnPassword: string;
+  /** Disclosed host routing metadata from the authenticated join response. */
+  serverAddress?: string;
+  serverPort?: number;
+  sessionType?: number;
+  quicPort?: number;
+  webtransportUrl?: string;
 }
 export function signalPacket(
   session: JoinedSession,

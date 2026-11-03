@@ -81,3 +81,35 @@ Test(database_lifecycle, host_migration_and_inactivity_cleanup_update_the_persis
   database_session_cleanup_expired(db);
   cr_assert_null(database_session_find_by_id(db, session.session_id));
 }
+
+Test(database_lifecycle, transport_endpoints_are_hidden_after_host_changes) {
+  uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, output[10], new_host[16] = {42};
+  size_t length = 0;
+  cr_assert_eq(database_session_transport_set(db, session.session_id, metadata, sizeof(metadata)), ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, sizeof(output), &length), ASCIICHAT_OK);
+  cr_assert_eq(length, sizeof(metadata));
+  cr_assert_arr_eq(output, metadata, sizeof(metadata));
+  cr_assert_eq(database_session_update_host(db, session.session_id, new_host, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
+  cr_assert_eq(database_session_transport_get(db, session.session_id, output, sizeof(output), &length), ASCIICHAT_OK);
+  cr_assert_eq(length, 0);
+}
+
+Test(database_lifecycle, transport_storage_failure_rolls_back_session_creation) {
+  cr_assert_eq(sqlite3_exec(db,
+                            "CREATE TRIGGER reject_transport BEFORE INSERT ON session_transports BEGIN SELECT "
+                            "RAISE(FAIL, 'test rejection'); END;",
+                            NULL, NULL, NULL),
+               SQLITE_OK);
+  acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 4};
+  uint8_t keys[1][32] = {{0}}, metadata[10] = {'A', 'C', 'Q', 'T', 1};
+  acip_session_created_t response;
+  cr_assert_neq(database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata,
+                                                            sizeof(metadata)),
+                ASCIICHAT_OK);
+  cr_assert_eq(response.session_string[0], 0);
+  sqlite3_stmt *statement = NULL;
+  cr_assert_eq(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sessions", -1, &statement, NULL), SQLITE_OK);
+  cr_assert_eq(sqlite3_step(statement), SQLITE_ROW);
+  cr_assert_eq(sqlite3_column_int(statement, 0), 1);
+  sqlite3_finalize(statement);
+}

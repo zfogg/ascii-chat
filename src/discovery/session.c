@@ -1360,6 +1360,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     acds_protocol_destroy(&protocol);
     return result;
   }
+  uint16_t advertised_quic_port = protocol.quic_port;
   acip_session_joined_t joined_value = protocol.joined;
   acip_session_joined_t *joined = &joined_value;
   void *alloc_buffer = NULL;
@@ -1418,7 +1419,8 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   if (session->session_type != SESSION_TYPE_WEBRTC && joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
-    session->host_port = joined->server_port;
+    session->host_port =
+        GET_OPTION(discovery_quic) && advertised_quic_port ? advertised_quic_port : joined->server_port;
     session->is_host = false;
 
     log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)",

@@ -179,7 +179,7 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   const acip_session_create_t *req = (const acip_session_create_t *)payload;
 
   if (req->reserved_string_len >= ACIP_MAX_SESSION_STRING_LEN ||
-      payload_len != sizeof(*req) + req->reserved_string_len ||
+      payload_len < sizeof(*req) + req->reserved_string_len ||
       !memchr(req->server_address, '\0', sizeof(req->server_address)) ||
       (req->has_password && !memchr(req->password_hash, '\0', sizeof(req->password_hash))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed SESSION_CREATE payload");
@@ -208,7 +208,19 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
     }
   }
 
-  callbacks->on_session_create(req, transport, client_ip, callbacks->app_ctx);
+  size_t base_length = sizeof(*req) + req->reserved_string_len;
+  const uint8_t *extension = (const uint8_t *)payload + base_length;
+  size_t extension_length = payload_len - base_length;
+  if (extension_length) {
+    if (extension_length < 10 || memcmp(extension, "ACQT", 4) || extension[4] != 1 || extension[5])
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport extension");
+    size_t url_length = ((size_t)extension[8] << 8) | extension[9];
+    if (url_length >= 512 || extension_length != 10 + url_length ||
+        (url_length &&
+         (url_length < 9 || memcmp(extension + 10, "https://", 8) || memchr(extension + 10, 0, url_length))))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery WebTransport endpoint");
+  }
+  callbacks->on_session_create(req, transport, client_ip, extension, extension_length, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 

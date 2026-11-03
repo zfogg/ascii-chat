@@ -9,6 +9,7 @@ import {
   generateKeypair,
   initClientWasm,
   PacketType,
+  PeerCryptoSession,
   parsePacket,
   serializePacket,
   setServerAddress,
@@ -24,6 +25,7 @@ export interface WebTransportClientOptions {
   cryptoOptions?: ClientCryptoOptions;
   preferDatagrams?: boolean;
   onTransportReady?: () => void;
+  discoveryPeer?: boolean;
 }
 
 /** Direct browser session over HTTP/3 WebTransport and authenticated ACIP. */
@@ -36,6 +38,7 @@ export class WebTransportClientSession implements ClientSession {
   private publicKey: string | null = null;
   private cancelled = false;
   private ownsWasm = false;
+  private peerCrypto: PeerCryptoSession | null = null;
   private preparing = false;
   private connectPromise: Promise<void> | null = null;
   private droppedDatagrams = 0;
@@ -57,95 +60,141 @@ export class WebTransportClientSession implements ClientSession {
     try {
       if (this.options.applicationEncryption === false)
         throw new Error("WebTransport requires ACIP application encryption");
-      const prepared = await serializeClientInitialization(async () => {
-        if (this.cancelled) return false;
-        this.preparing = true;
-        let succeeded = false;
-        try {
-          const init = {
-            ...(this.options.width !== undefined
-              ? { width: this.options.width }
-              : {}),
-            ...(this.options.height !== undefined
-              ? { height: this.options.height }
-              : {}),
-          };
-          await initClientWasm(init);
-          this.ownsWasm = true;
-          if (this.cancelled) {
-            this.releaseWasm();
-            return false;
-          }
-          await configureClientCrypto(this.options.cryptoOptions ?? {});
-          if (this.cancelled) {
-            this.releaseWasm();
-            return false;
-          }
-          const publicKey = await generateKeypair();
-          if (this.cancelled) {
-            this.releaseWasm();
-            return false;
-          }
-          const url = new URL(this.options.serverUrl);
-          if (url.protocol !== "https:")
-            throw new Error("WebTransport requires an HTTPS URL");
-          setServerAddress(url.hostname, Number(url.port) || 443);
-          this.publicKey = publicKey;
-          succeeded = true;
-          return true;
-        } finally {
-          this.preparing = false;
-          if (this.cancelled || !succeeded) this.releaseWasm();
-        }
-      });
+      const prepared = this.options.discoveryPeer
+        ? true
+        : await serializeClientInitialization(async () => {
+            if (this.cancelled) return false;
+            this.preparing = true;
+            let succeeded = false;
+            try {
+              const init = {
+                ...(this.options.width !== undefined
+                  ? { width: this.options.width }
+                  : {}),
+                ...(this.options.height !== undefined
+                  ? { height: this.options.height }
+                  : {}),
+              };
+              await initClientWasm(init);
+              this.ownsWasm = true;
+              if (this.cancelled) {
+                this.releaseWasm();
+                return false;
+              }
+              await configureClientCrypto(this.options.cryptoOptions ?? {});
+              if (this.cancelled) {
+                this.releaseWasm();
+                return false;
+              }
+              const publicKey = await generateKeypair();
+              if (this.cancelled) {
+                this.releaseWasm();
+                return false;
+              }
+              const url = new URL(this.options.serverUrl);
+              if (url.protocol !== "https:")
+                throw new Error("WebTransport requires an HTTPS URL");
+              setServerAddress(url.hostname, Number(url.port) || 443);
+              this.publicKey = publicKey;
+              succeeded = true;
+              return true;
+            } finally {
+              this.preparing = false;
+              if (this.cancelled || !succeeded) this.releaseWasm();
+            }
+          });
       if (!prepared || this.cancelled) return;
-      const channel = new WebTransportAcipChannel(this.options.serverUrl, {
-        handshake: () => {},
-        ready: () => {
-          if (this.cancelled) return;
-          this.outbound = new OutboundQueue(
-            () => channel.getBufferedAmount(),
-            (wire) => {
-              const type = new DataView(
-                wire.buffer,
-                wire.byteOffset,
-                wire.byteLength,
-              ).getUint16(8);
-              const media =
-                type === 2001 ||
-                type === 4000 ||
-                type === 4001 ||
-                (type >= 3000 && type <= 3003);
-              const datagram =
-                media &&
-                this.options.preferDatagrams !== false &&
-                channel.supportsDatagrams();
-              channel.send(
-                type,
-                wire.subarray(22),
-                datagram ? "datagram" : "reliable",
-                datagram ? performance.now() + 100 : 0,
-              );
-            },
-            (error) => this.fail(error),
-          );
-          this.setState(ConnectionState.CONNECTED);
+      if (this.options.discoveryPeer) {
+        this.peerCrypto = await PeerCryptoSession.create(
+          this.options.cryptoOptions ?? {},
+          true,
+          false,
+          (packet) => this.channel!.sendHandshake(packet),
+        );
+        if (this.cancelled) {
+          this.releaseWasm();
+          return;
+        }
+      }
+      const peer = this.peerCrypto;
+      peer?.beginQuic();
+      const channel = new WebTransportAcipChannel(
+        this.options.serverUrl,
+        {
+          handshake: (packet) => {
+            if (!peer) return;
+            peer.receive(packet);
+            if (peer.ready) channel.authenticated();
+          },
+          ready: () => {
+            if (this.cancelled) return;
+            this.outbound = new OutboundQueue(
+              () => channel.getBufferedAmount(),
+              (wire) => {
+                const type = new DataView(
+                  wire.buffer,
+                  wire.byteOffset,
+                  wire.byteLength,
+                ).getUint16(8);
+                const media =
+                  type === 2001 ||
+                  type === 4000 ||
+                  type === 4001 ||
+                  (type >= 3000 && type <= 3003);
+                const datagram =
+                  media &&
+                  this.options.preferDatagrams !== false &&
+                  channel.supportsDatagrams();
+                channel.send(
+                  type,
+                  wire.subarray(22),
+                  datagram ? "datagram" : "reliable",
+                  datagram ? performance.now() + 100 : 0,
+                );
+              },
+              (error) => this.fail(error),
+            );
+            this.setState(ConnectionState.CONNECTED);
+          },
+          packet: ({ packet }) => {
+            if (this.cancelled) return;
+            const parsed = parsePacket(packet);
+            this.onPacket?.(parsed, packet.slice(22));
+          },
+          keyframe: (type, stream) =>
+            this.outbound?.requestKeyframe(type, stream),
+          datagramDropped: () => {
+            ++this.droppedDatagrams;
+          },
+          transportReady: () => this.options.onTransportReady?.(),
+          failed: (error) => this.fail(error),
         },
-        packet: ({ packet }) => {
-          if (this.cancelled) return;
-          const parsed = parsePacket(packet);
-          this.onPacket?.(parsed, packet.slice(22));
-        },
-        keyframe: (type, stream) =>
-          this.outbound?.requestKeyframe(type, stream),
-        datagramDropped: () => {
-          ++this.droppedDatagrams;
-        },
-        transportReady: () => this.options.onTransportReady?.(),
-        failed: (error) => this.fail(error),
-      });
+        undefined,
+        peer
+          ? {
+              init: () => peer.initQuic(),
+              seal: (flow, delivery, packet) =>
+                peer.quicPacket(
+                  "seal",
+                  flow,
+                  delivery === "datagram" ? 1 : 0,
+                  packet,
+                ).packet,
+              open: (flow, delivery, packet) =>
+                peer.quicPacket(
+                  "open",
+                  flow,
+                  delivery === "datagram" ? 1 : 0,
+                  packet,
+                ),
+            }
+          : undefined,
+      );
       this.channel = channel;
-      await channel.connectWithWasmHandshake();
+      if (peer) {
+        await channel.connect();
+        if (!this.cancelled) peer.flush();
+      } else await channel.connectWithWasmHandshake();
       if (this.cancelled) channel.close();
       else if (this.state === ConnectionState.ERROR)
         throw new Error("WebTransport handshake failed");
@@ -215,6 +264,8 @@ export class WebTransportClientSession implements ClientSession {
     this.setState(ConnectionState.DISCONNECTED);
   }
   private releaseWasm(): void {
+    this.peerCrypto?.close();
+    this.peerCrypto = null;
     if (!this.ownsWasm) return;
     this.ownsWasm = false;
     cleanupClientWasm();

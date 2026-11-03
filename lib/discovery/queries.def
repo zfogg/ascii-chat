@@ -263,6 +263,9 @@ DATABASE_QUERY(GetSessionKeyPolicy, "SELECT restricted FROM session_key_policy W
 DATABASE_QUERY(BeginKeySet, "SAVEPOINT create_key_set")
 DATABASE_QUERY(CommitKeySet, "RELEASE create_key_set")
 DATABASE_QUERY(RollbackToKeySet, "ROLLBACK TO create_key_set;")
+DATABASE_QUERY(SchemaSessionTransports, "CREATE TABLE IF NOT EXISTS session_transports (session_id BLOB PRIMARY KEY REFERENCES sessions(session_id) ON DELETE CASCADE, metadata BLOB NOT NULL);")
+DATABASE_QUERY(SetSessionTransports, "INSERT OR REPLACE INTO session_transports(session_id, metadata) VALUES (?, ?);")
+DATABASE_QUERY(GetSessionTransports, "SELECT t.metadata FROM session_transports t JOIN sessions s ON s.session_id = t.session_id WHERE t.session_id = ? AND s.in_migration = 0 AND (s.host_participant_id IS NULL OR s.host_participant_id = s.initiator_id);")
 
 #define RATE_LIMIT_QUERY(name, sql) DATABASE_QUERY(name, sql)
 #include "../network/rate_limit/queries.def"

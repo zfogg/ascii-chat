@@ -42,9 +42,10 @@ export class WebTransportAcipChannel {
     private readonly url: string,
     private readonly callbacks: WebTransportAcipCallbacks,
     options?: WebTransportOptions,
+    security?: ConstructorParameters<typeof AcipQuicProtocol>[0],
   ) {
     this.protocol = new AcipQuicProtocol(
-      {
+      security ?? {
         init: initQuicSecurity,
         seal: (flow, delivery, packet) =>
           processQuicPacket(

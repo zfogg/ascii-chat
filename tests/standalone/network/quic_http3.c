@@ -1,5 +1,6 @@
 #include <ascii-chat/common.h>
 #include <network/quic/http3.h>
+#include <ascii-chat/network/acip/acds_protocol.h>
 #include <string.h>
 
 #define CHECK(expression)                                                                                              \
@@ -227,6 +228,40 @@ static void test_output_contract(void) {
   CHECK(acip_http3_server_ack(server, 3, length - first) == ASCIICHAT_OK);
   acip_http3_server_destroy(&server);
 }
+static void test_discovered_endpoint(void) {
+  const char url[] = "https://example.test:4433/acip";
+  uint8_t response[sizeof(acip_session_joined_t) + 10 + sizeof(url) - 1] = {0};
+  acip_session_joined_t joined = {.success = 1, .session_type = SESSION_TYPE_DIRECT_TCP};
+  memcpy(response, &joined, sizeof(joined));
+  uint8_t *extension = response + sizeof(joined);
+  memcpy(extension, "ACQT", 4);
+  extension[4] = 1;
+  extension[6] = 0x6a;
+  extension[7] = 0x58;
+  extension[9] = sizeof(url) - 1;
+  memcpy(extension + 10, url, sizeof(url) - 1);
+  acds_protocol_t protocol = {.state = ACDS_JOINING, .require_webrtc = true};
+  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) == ASCIICHAT_OK);
+  CHECK(protocol.quic_port == 27224 && strcmp(protocol.webtransport_url, url) == 0);
+  protocol = (acds_protocol_t){.state = ACDS_JOINING};
+  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(joined)) == ASCIICHAT_OK);
+  CHECK(!protocol.quic_port && !protocol.webtransport_url[0]);
+  for (size_t length = sizeof(joined) + 1; length < sizeof(response); ++length) {
+    protocol = (acds_protocol_t){.state = ACDS_JOINING};
+    CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, length) ==
+          ERROR_NETWORK_PROTOCOL);
+  }
+  extension[4] = 2;
+  protocol = (acds_protocol_t){.state = ACDS_JOINING};
+  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) ==
+        ERROR_NETWORK_PROTOCOL);
+  extension[4] = 1;
+  extension[10] = 'w';
+  protocol = (acds_protocol_t){.state = ACDS_JOINING};
+  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) ==
+        ERROR_NETWORK_PROTOCOL);
+}
+
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
@@ -234,6 +269,7 @@ int main(void) {
   CHECK(acip_http3_server_create("http://example", "/acip", 3, 7, 11, &invalid) == ERROR_INVALID_PARAM);
   CHECK(!invalid);
   test_output_contract();
+  test_discovered_endpoint();
   for (unsigned scenario = 0; scenario < 6; ++scenario)
     exchange(scenario);
   log_destroy();

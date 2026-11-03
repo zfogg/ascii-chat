@@ -37,7 +37,7 @@
 typedef struct {
   /** @brief Called when client requests session creation */
   void (*on_session_create)(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
-                            void *app_ctx);
+                            const uint8_t *extension, size_t extension_length, void *app_ctx);
 
   /** @brief Called when client looks up session info */
   void (*on_session_lookup)(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip,
