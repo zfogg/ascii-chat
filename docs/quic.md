@@ -74,7 +74,7 @@ The current engine rejects stream resets and STOP_SENDING as connection
 errors. A sender can queue FIN after the admitted packets on an open stream;
 it must not submit further packets to that class. ngtcp2 retransmits a lost
 FIN. A clean FIN closes that traffic stream at a packet boundary, and a
-replacement stream with the same class is rejected. Socket shutdown,
+replacement stream with the same class is rejected. Graceful connection shutdown,
 reconnection, and replay of application operations are not yet implemented;
 a future reconnect must establish new TLS and ACIP sessions before admitting
 media and must not automatically replay state-changing operations.

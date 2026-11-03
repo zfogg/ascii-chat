@@ -514,6 +514,42 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   socket_cleanup();
 }
 
+static void quic_udp_bad_identity(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
+  udp_test_state_t state = {0};
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), server_tls, udp_accept, &state,
+                                       &server) == ASCIICHAT_OK);
+  CHECK(acip_quic_udp_endpoint_create((struct sockaddr *)&loopback, sizeof(loopback), NULL, NULL, NULL, &client) ==
+        ASCIICHAT_OK);
+  struct sockaddr_storage address;
+  socklen_t address_length = 0;
+  CHECK(acip_quic_udp_endpoint_address(server, &address, &address_length) == ASCIICHAT_OK);
+  acip_quic_connection_t *connection = NULL;
+  uint64_t start = time_get_ns();
+  CHECK(acip_quic_udp_connect(client, client_tls, "other.example", (struct sockaddr *)&address, address_length, start,
+                               &connection) == ASCIICHAT_OK);
+  bool rejected = false;
+  while (time_get_ns() - start < 10 * NS_PER_SEC_INT) {
+    uint64_t now = time_get_ns();
+    acip_quic_connection_t *failed = NULL;
+    asciichat_error_t result = acip_quic_udp_pump(client, now, &failed);
+    if (result != ASCIICHAT_OK) {
+      CHECK(result == ERROR_CRYPTO && failed == connection);
+      rejected = true;
+      break;
+    }
+    CHECK(!failed);
+    CHECK(acip_quic_udp_pump(server, now, &failed) == ASCIICHAT_OK && !failed);
+    time_sleep_ns(NS_PER_MS_INT);
+  }
+  CHECK(rejected && !acip_quic_connection_tls_ready(connection));
+  acip_quic_udp_endpoint_destroy(&client);
+  acip_quic_udp_endpoint_destroy(&server);
+  socket_cleanup();
+}
+
 int main(int argc, char **argv) {
   CHECK(argc == 5);
   log_init(NULL, LOG_ERROR, false, false);
@@ -560,6 +596,7 @@ int main(int argc, char **argv) {
   CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, false, &dropped, &quic_failure) &&
         quic_failure == ERROR_CRYPTO);
   quic_udp_exchange(server, client);
+  quic_udp_bad_identity(server, client);
 
   acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;
   CHECK(acip_quic_tls_server_create("acip/1", argv[1], argv[4], &invalid) == ERROR_CRYPTO && !invalid);
