@@ -423,6 +423,12 @@ false ACDS host migration while the independent browser media context rekeys.
 
 ## Experimental datagram fragments
 
+The [transport measurements](quic-benchmarks.md) compare TCP, WebRTC, reliable
+QUIC, and QUIC datagrams under clean and impaired paths, including queue limits,
+audio interruptions, visual age, and recovery. Large fragmented datagrams can
+lose every visual packet during sustained impairment; reliable visual streams
+can retain a substantial backlog while audio and control continue independently.
+
 Native clients and servers can opt into outgoing audio datagrams with
 `--quic-audio-datagrams` and visual datagrams with `--quic-visual-datagrams`.
 Each endpoint makes these choices independently. If the peer did not negotiate

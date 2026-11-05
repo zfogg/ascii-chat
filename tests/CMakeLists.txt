@@ -2087,6 +2087,31 @@ endif()
 
 # Owned plaintext admission, real backend saturation, and codec recovery.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    add_executable(test-transport-metrics EXCLUDE_FROM_ALL standalone/network/transport_metrics.c)
+    target_link_libraries(test-transport-metrics PRIVATE ascii-chat-static libdatachannel ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-transport-metrics PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    if(WIN32)
+        target_link_libraries(test-transport-metrics PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-transport-metrics)
+    set_target_properties(test-transport-metrics PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS AND UNIX AND NOT APPLE)
+        asciichat_add_python_test(transport-metrics
+            ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/transport_metrics.py
+            --binary $<TARGET_FILE:test-transport-metrics> --runs 1
+            --transports tcp,webrtc,quic,quic-datagrams
+            --output ${CMAKE_BINARY_DIR}/test_artifacts/transport-metrics)
+        set_tests_properties(transport-metrics PROPERTIES LABELS "integration;standalone" TIMEOUT 180 RUN_SERIAL TRUE)
+        foreach(_metrics_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${_metrics_build_target})
+                add_dependencies(${_metrics_build_target} test-transport-metrics)
+            endif()
+        endforeach()
+    endif()
+endif()
+
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)
         if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_CRITERION_TESTS AND CRITERION_FOUND))
             continue()
