@@ -54,6 +54,23 @@ if(BUILD_TESTS)
     asciichat_add_python_test(standalone-upnp
         ${CMAKE_SOURCE_DIR}/tests/standalone/upnp/run.py --cc ${CMAKE_C_COMPILER})
     set_tests_properties(standalone-upnp PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+    if(NOT EMSCRIPTEN)
+        asciichat_add_python_test(quic-tls-configure
+            ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run.py
+            --cmake ${CMAKE_COMMAND} --cc ${CMAKE_C_COMPILER}
+            --module ${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
+        set_tests_properties(quic-tls-configure PROPERTIES LABELS "unit;standalone" TIMEOUT 180)
+        add_executable(test-quic-dependencies EXCLUDE_FROM_ALL standalone/quic_tls_check/dependencies.c)
+        target_link_libraries(test-quic-dependencies PRIVATE asciichat-quic)
+        set_target_properties(test-quic-dependencies PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-dependencies COMMAND test-quic-dependencies)
+        set_tests_properties(quic-dependencies PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST quic-dependencies PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        endif()
+    endif()
     if(UNIX)
         asciichat_add_python_test(standalone-log-io
             ${CMAKE_SOURCE_DIR}/tests/standalone/log_io/run.py --cc ${CMAKE_C_COMPILER})
@@ -117,7 +134,7 @@ set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 function(asciichat_configure_contract target)
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
     target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
-    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS})
+    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
@@ -670,42 +687,30 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         COMMENT "Building Criterion test executables"
     )
 
-    # Target to build all tests without running them (excluded from default build)
-    # This is the main public target that includes timing
-    # NOTE: Only available with --preset github (CI environment)
-    # For local development, use individual test targets (test_debug, test_release, etc.)
-    # Claude should NOT run the 'tests' target directly - run individual tests instead
-    if(DEFINED ENV{GITHUB_CMAKE_BINARY_DIR})
-        add_custom_target(tests
-            COMMENT "Building all test executables"
-        )
+    # Build all registered test executables without running them.
+    add_custom_target(tests
+        COMMENT "Building all test executables"
+    )
 
-        # Timer end target runs after all tests are built
-        if(TARGET tests-timer-start)
-            add_custom_target(tests-timer-end
-                COMMAND ${CMAKE_COMMAND}
-                -DACTION=end
-                -DTARGET_NAME=tests
-                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-                COMMENT "Finishing test build timing"
-                VERBATIM
-            )
-            # Timer end depends on timer start and the actual test build
-            add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-            # Main tests target depends on timer end (so timing is shown)
-            add_dependencies(tests tests-timer-end)
-        else()
-            # No timer, just depend on the build target directly
-            add_dependencies(tests tests-criterion-build)
-        endif()
+    # Timer end target runs after all tests are built
+    if(TARGET tests-timer-start)
+        add_custom_target(tests-timer-end
+            COMMAND ${CMAKE_COMMAND}
+            -DACTION=end
+            -DTARGET_NAME=tests
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMENT "Finishing test build timing"
+            VERBATIM
+        )
+        # Timer end depends on timer start and the actual test build
+        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+        # Main tests target depends on timer end (so timing is shown)
+        add_dependencies(tests tests-timer-end)
     else()
-        # For non-GitHub presets, print a helpful message
-        message(STATUS "Note: The 'tests' target is only available with --preset github")
-        message(STATUS "For local development, use individual test targets like:")
-        message(STATUS "  cmake --build build --target test_debug")
-        message(STATUS "  cmake --build build --target test_release")
+        # No timer, just depend on the build target directly
+        add_dependencies(tests tests-criterion-build)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
@@ -1412,6 +1417,114 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
 endif()
 
 if(TARGET ascii-chat-static)
+    if(TARGET tests AND TARGET test-quic-dependencies)
+        add_dependencies(tests test-quic-dependencies)
+    endif()
+    if(BUILD_TESTS AND NOT EMSCRIPTEN)
+        add_executable(test-traffic-metadata EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/traffic_metadata.c)
+        add_executable(test-quic-stream EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_stream.c)
+        add_executable(test-quic-http3 EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_http3.c)
+        target_link_libraries(test-quic-http3 PRIVATE ascii-chat-static asciichat-quic ${MIMALLOC_LIBRARIES})
+        apply_sanitizers_to_target(test-quic-http3)
+        target_include_directories(test-quic-http3 PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-http3 PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-http3 COMMAND test-quic-http3)
+        set_tests_properties(quic-http3 PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST quic-http3 PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+        if(TARGET tests)
+            add_dependencies(tests test-quic-http3)
+        endif()
+        add_executable(test-quic-tls EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/quic_tls.c)
+        target_link_libraries(test-quic-tls PRIVATE ascii-chat-static asciichat-quic ${MIMALLOC_LIBRARIES})
+        apply_sanitizers_to_target(test-quic-tls)
+        target_include_directories(test-quic-tls PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-tls PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        asciichat_add_python_test(quic-tls-identity
+            ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_handshake.py $<TARGET_FILE:test-quic-tls>)
+        set_tests_properties(quic-tls-identity PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+        if(TARGET ascii-chat)
+            asciichat_add_python_test(discovery-quic
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_quic.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(discovery-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
+            asciichat_add_python_test(discovery-auto-quic
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_auto_quic.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(discovery-auto-quic PROPERTIES LABELS "integration;standalone" TIMEOUT 150)
+            asciichat_add_python_test(discovery-quic-handoff
+                ${CMAKE_SOURCE_DIR}/tests/integration/discovery_quic_handoff.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>
+                ${CMAKE_BINARY_DIR}/test_artifacts/quic-handoff)
+            set_tests_properties(discovery-quic-handoff PROPERTIES LABELS "integration;standalone" TIMEOUT 180)
+            asciichat_add_python_test(quic-cli-server
+                ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_server.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(quic-cli-server PROPERTIES LABELS "integration;standalone" TIMEOUT 100)
+            asciichat_add_python_test(quic-cli-fallback
+                ${CMAKE_SOURCE_DIR}/tests/standalone/quic_tls_check/run_cli_fallback.py
+                $<TARGET_FILE:ascii-chat> $<TARGET_FILE:test-quic-tls>)
+            set_tests_properties(quic-cli-fallback PROPERTIES LABELS "integration;standalone" TIMEOUT 120)
+        endif()
+        target_link_libraries(test-quic-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+        if(WIN32)
+            target_link_libraries(test-quic-stream PRIVATE ws2_32)
+        endif()
+        apply_sanitizers_to_target(test-quic-stream)
+        target_include_directories(test-quic-stream PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-quic-stream PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME quic-stream COMMAND test-quic-stream)
+        set_tests_properties(quic-stream PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        target_link_libraries(test-traffic-metadata PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+        if(WIN32)
+            target_link_libraries(test-traffic-metadata PRIVATE ws2_32)
+        endif()
+        apply_sanitizers_to_target(test-traffic-metadata)
+        target_include_directories(test-traffic-metadata PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-traffic-metadata PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        add_test(NAME traffic-metadata COMMAND test-traffic-metadata)
+        set_tests_properties(traffic-metadata PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST traffic-metadata PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            set_property(TEST quic-stream PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            set_property(TEST quic-tls-identity PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            if(TEST quic-cli-server)
+                set_property(TEST quic-cli-server PROPERTY ENVIRONMENT_MODIFICATION
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                    "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            endif()
+            if(TEST quic-cli-fallback)
+                set_property(TEST quic-cli-fallback PROPERTY ENVIRONMENT_MODIFICATION
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                    "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                    "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+            endif()
+        endif()
+        foreach(quic_test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${quic_test_build_target})
+                add_dependencies(${quic_test_build_target} test-traffic-metadata test-quic-stream
+                    test-quic-tls test-quic-http3 test-quic-dependencies)
+            endif()
+        endforeach()
+    endif()
     add_executable(test-network-vectors EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/vectored_test.c)
     target_link_libraries(test-network-vectors PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     if(WIN32)
@@ -1421,6 +1534,14 @@ if(TARGET ascii-chat-static)
     target_include_directories(test-network-vectors PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-network-vectors PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
+        add_test(NAME network-media-wire COMMAND test-network-vectors --media-wire)
+        set_tests_properties(network-media-wire PROPERTIES LABELS "unit;standalone" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST network-media-wire PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
         if(TARGET tests)
             add_dependencies(tests test-network-vectors)
         endif()
@@ -1966,6 +2087,31 @@ endif()
 
 # Owned plaintext admission, real backend saturation, and codec recovery.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    add_executable(test-transport-metrics EXCLUDE_FROM_ALL standalone/network/transport_metrics.c)
+    target_link_libraries(test-transport-metrics PRIVATE ascii-chat-static libdatachannel ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-transport-metrics PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    if(WIN32)
+        target_link_libraries(test-transport-metrics PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-transport-metrics)
+    set_target_properties(test-transport-metrics PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS AND UNIX AND NOT APPLE)
+        asciichat_add_python_test(transport-metrics
+            ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/transport_metrics.py
+            --binary $<TARGET_FILE:test-transport-metrics> --runs 1
+            --transports tcp,webrtc,quic,quic-datagrams
+            --output ${CMAKE_BINARY_DIR}/test_artifacts/transport-metrics)
+        set_tests_properties(transport-metrics PROPERTIES LABELS "integration;standalone" TIMEOUT 180 RUN_SERIAL TRUE)
+        foreach(_metrics_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${_metrics_build_target})
+                add_dependencies(${_metrics_build_target} test-transport-metrics)
+            endif()
+        endforeach()
+    endif()
+endif()
+
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)
         if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_CRITERION_TESTS AND CRITERION_FOUND))
             continue()
@@ -2217,6 +2363,13 @@ if(BUILD_TESTS AND TARGET ascii-chat-shared)
     list(APPEND shared_api_tests log-viewer-rendering)
     foreach(api_test IN LISTS shared_api_tests)
         set_tests_properties(${api_test} PROPERTIES LABELS "unit" TIMEOUT 120)
+        # The Python host can import its SSL module before loading ascii-chat.
+        # Select the same OpenSSL ABI from process startup, rather than loading
+        # the runner's older libssl first under the same shared-library name.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_OPENSSL_RUNTIME_DIR)
+            set_property(TEST ${api_test} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+                "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_OPENSSL_RUNTIME_DIR}")
+        endif()
         # Python hosts the instrumented library, so load ASan before Python's allocator.
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=address"
            AND EXISTS "${ASAN_RUNTIME_LIBRARY}")

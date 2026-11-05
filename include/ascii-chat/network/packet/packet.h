@@ -331,6 +331,13 @@ typedef enum {
   PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 1108,
   /** @brief Client -> Server: "I want to proceed without encryption" (UNENCRYPTED) */
   PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 1109,
+  /** @brief Internal authenticated readiness barrier for ACIP over QUIC */
+  PACKET_TYPE_QUIC_READY = 1110,
+  /** @brief Internal authenticated request for a QUIC encoded-video keyframe */
+  PACKET_TYPE_QUIC_KEYFRAME_REQUEST = 1111,
+  PACKET_TYPE_QUIC_EPOCH_MARKER = 1112,
+  PACKET_TYPE_QUIC_REKEY_NEEDED = 1113,
+  PACKET_TYPE_QUIC_EPOCH_ACK = 1114,
 
   // ============================================================================
   // Cryptographic Rekeying (Types 1200-1299)
@@ -812,6 +819,7 @@ PACKED_ATTR /** @endcond */ auth_failure_packet_t;
 #define FEATURE_RLE_ENCODING 0x01                /**< @brief Run-length encoding support */
 #define FEATURE_DELTA_FRAMES 0x02                /**< @brief Delta frame encoding (future) */
 #define PROTOCOL_FEATURE_RECOVERABLE_ERRORS 0x04 /**< Peer accepts nonfatal audio error notifications */
+#define PROTOCOL_FEATURE_IDENTITY_SET 0x08       /**< CLIENT_HELLO accepts a bounded set of pinned Ed25519 keys */
 
 /** @} */
 

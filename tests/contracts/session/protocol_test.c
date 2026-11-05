@@ -378,6 +378,7 @@ void test_session_protocol(void) {
   test_dimensions();
   test_participant_settings();
   sink_t sinks[2] = {0};
+  sinks[0].expect_mono_expansion = true;
   const acip_transport_methods_t methods = {.sendv = send_vectors};
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},
                                     {.methods = &methods, .impl_data = &sinks[1]}};

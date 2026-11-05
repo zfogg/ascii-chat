@@ -718,12 +718,11 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return 1; // Consumed 1 argument
   }
 
-  // Check for TCP URL (tcp://) - passed through directly to FFmpeg
-  // TCP URLs are used for streaming media from custom TCP servers
-  if (strncmp(arg, "tcp://", 6) == 0) {
-    log_debug("Detected TCP URL: %s", arg);
+  // Explicit transport URLs are resolved by the connection layer.
+  if (strncmp(arg, "tcp://", 6) == 0 || strncmp(arg, "quic://", 7) == 0) {
+    log_debug("Detected transport URL: %s", arg);
     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
-    // Don't set port - TCP transport handles URL parsing internally
+    // The connection layer extracts the port from the URL.
     return 1; // Consumed 1 argument
   }
 

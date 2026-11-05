@@ -76,6 +76,7 @@
 
 #pragma once
 #include <ascii-chat/network/acip/backpressure.h>
+#include <ascii-chat/network/acip/traffic.h>
 
 #include <ascii-chat/stats/runtime.h>
 #include "../../common.h"
@@ -107,6 +108,15 @@ typedef enum {
  * Each transport implementation defines its own state structure.
  */
 typedef struct acip_transport acip_transport_t;
+
+/** Snapshot of negotiated transport features. Datagram payload is the maximum
+ * application data in one QUIC DATAGRAM frame on the current path, including
+ * any transport-specific envelope. Query again after path changes. */
+typedef struct {
+  bool independent_streams;
+  bool datagrams;
+  size_t max_datagram_payload;
+} acip_transport_capabilities_t;
 
 /** Ownership transfers only after successful registration. */
 typedef enum {
@@ -224,6 +234,16 @@ typedef struct {
   size_t (*queued_bytes)(acip_transport_t *transport);
   size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
+  /** Receives plaintext packet metadata alongside borrowed packet slices. */
+  asciichat_error_t (*sendv_ex)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                const acip_send_options_t *options);
+  asciichat_error_t (*get_capabilities)(acip_transport_t *transport, acip_transport_capabilities_t *out);
+  /** Validate optional delivery semantics without enqueuing data. */
+  asciichat_error_t (*validate_send_options)(acip_transport_t *transport, const acip_send_options_t *options);
+  /** Consume a peer request to restart an encoded stream with a keyframe. */
+  bool (*consume_keyframe_request)(acip_transport_t *transport, uint16_t type, uint32_t stream_id);
+  /** Schedule a key rotation on the transport crypto lane. */
+  asciichat_error_t (*request_rekey)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
 /**
@@ -237,9 +257,11 @@ struct acip_transport {
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
-  uint64_t receive_timeout_ns; ///< Optional TCP receive timeout override; zero uses the normal polling timeout
-  void *impl_data;             ///< Transport-specific state
-  void *user_data;             ///< Application-specific context (e.g., per-client data)
+  uint64_t receive_timeout_ns;  ///< Optional TCP receive timeout override; zero uses the normal polling timeout
+  bool prefer_visual_datagrams; ///< Select negotiated visual datagrams when supported.
+  bool prefer_audio_datagrams;  ///< Select negotiated datagrams for audio, otherwise reliable delivery.
+  void *impl_data;              ///< Transport-specific state
+  void *user_data;              ///< Application-specific context (e.g., per-client data)
 };
 
 // =============================================================================
@@ -272,6 +294,17 @@ void acip_transport_destroy(acip_transport_t *transport);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
+
+/** Send with explicit delivery metadata. Unsupported datagrams or deadlines
+ * return ERROR_NOT_SUPPORTED and are never silently changed into reliable
+ * delivery. A deadline uses time_get_ns()'s monotonic clock.
+ */
+asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                          const acip_send_options_t *options);
+
+/** A backend with no capability method reports no optional capabilities.
+ * Negotiated backends can return ERROR_INVALID_STATE until negotiation finishes. */
+asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out);
 
 asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len);
 

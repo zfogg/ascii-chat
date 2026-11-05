@@ -10,6 +10,7 @@
  */
 
 #include <ascii-chat/network/acip/acds_handlers.h>
+#include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -179,7 +180,7 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   const acip_session_create_t *req = (const acip_session_create_t *)payload;
 
   if (req->reserved_string_len >= ACIP_MAX_SESSION_STRING_LEN ||
-      payload_len != sizeof(*req) + req->reserved_string_len ||
+      payload_len < sizeof(*req) + req->reserved_string_len ||
       !memchr(req->server_address, '\0', sizeof(req->server_address)) ||
       (req->has_password && !memchr(req->password_hash, '\0', sizeof(req->password_hash))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed SESSION_CREATE payload");
@@ -208,7 +209,19 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
     }
   }
 
-  callbacks->on_session_create(req, transport, client_ip, callbacks->app_ctx);
+  size_t base_length = sizeof(*req) + req->reserved_string_len;
+  const uint8_t *extension = (const uint8_t *)payload + base_length;
+  size_t extension_length = payload_len - base_length;
+  if (extension_length) {
+    if (extension_length < 10 || memcmp(extension, "ACQT", 4) || extension[4] != 1 || extension[5])
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport extension");
+    size_t url_length = ((size_t)extension[8] << 8) | extension[9];
+    if (url_length >= 512 || extension_length != 10 + url_length ||
+        (url_length &&
+         (url_length < 9 || memcmp(extension + 10, "https://", 8) || memchr(extension + 10, 0, url_length))))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery WebTransport endpoint");
+  }
+  callbacks->on_session_create(req, transport, client_ip, extension, extension_length, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
@@ -334,16 +347,22 @@ static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_le
 static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len,
                                                        acip_transport_t *transport, const char *client_ip,
                                                        const acip_acds_callbacks_t *callbacks) {
-  if (!callbacks->on_host_announcement) {
+  if (!callbacks->on_host_announcement && !callbacks->on_host_announcement_ex)
     return ASCIICHAT_OK;
-  }
-
-  if (payload_len != sizeof(acip_host_announcement_t)) {
+  if (payload_len < sizeof(acip_host_announcement_t))
     return SET_ERRNO(ERROR_INVALID_PARAM, "HOST_ANNOUNCEMENT payload size mismatch from %s", client_ip);
-  }
-
-  const acip_host_announcement_t *announcement = (const acip_host_announcement_t *)payload;
-  callbacks->on_host_announcement(announcement, transport, client_ip, callbacks->app_ctx);
+  const acip_host_announcement_t *announcement = payload;
+  const uint8_t *metadata = (const uint8_t *)payload + sizeof(*announcement);
+  size_t metadata_length = payload_len - sizeof(*announcement);
+  uint16_t port;
+  char url[512];
+  if (acds_transport_metadata_decode(metadata, metadata_length, &port, url, sizeof(url)) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host transport metadata from %s", client_ip);
+  if (callbacks->on_host_announcement_ex)
+    callbacks->on_host_announcement_ex(announcement, metadata, metadata_length, transport, client_ip,
+                                       callbacks->app_ctx);
+  else
+    callbacks->on_host_announcement(announcement, transport, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 

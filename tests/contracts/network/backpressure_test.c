@@ -13,6 +13,7 @@
 
 typedef struct {
   atomic_t bytes, sent, closed;
+  atomic_t traffic_class;
   asciichat_error_t failure;
   bool omit_context;
   bool wrap_context;
@@ -40,6 +41,14 @@ static asciichat_error_t close_backend(acip_transport_t *transport) {
   return ASCIICHAT_OK;
 }
 static const acip_transport_methods_t methods = {.send = backend_send, .close = close_backend, .queued_bytes = queued};
+
+static asciichat_error_t backend_send_classified(acip_transport_t *transport, const socket_buffer_t *buffers,
+                                                 size_t count, const acip_send_options_t *options) {
+  cr_assert_worker(count == 1 && options && options->delivery == ACIP_DELIVERY_RELIABLE);
+  backend_t *backend = transport->impl_data;
+  atomic_store_u64(&backend->traffic_class, options->traffic_class);
+  return backend_send(transport, buffers[0].data, buffers[0].len);
+}
 
 typedef struct {
   atomic_t entered, interrupted, closing, overlaps, closes;
@@ -103,6 +112,45 @@ static void await_submitted(acip_transport_t *transport, uint64_t expected) {
     cr_assert(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
+}
+
+Test(transport_backpressure, plaintext_class_reaches_backend_and_unsupported_delivery_is_rejected) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  static const acip_transport_methods_t classified_methods = {
+      .sendv_ex = backend_send_classified, .close = close_backend, .queued_bytes = queued};
+  backend_t backend = {0};
+  acip_transport_t transport = {.methods = &classified_methods, .impl_data = &backend};
+  cr_assert_eq(acip_outbound_create(&transport), ASCIICHAT_OK);
+  const struct {
+    uint16_t type;
+    acip_traffic_class_t expected;
+    bool keyframe;
+  } cases[] = {{PACKET_TYPE_PING, ACIP_TRAFFIC_CONTROL, false},
+               {PACKET_TYPE_AUDIO_MESSAGE, ACIP_TRAFFIC_AUDIO, false},
+               {PACKET_TYPE_AUDIO_BATCH, ACIP_TRAFFIC_AUDIO, false},
+               {PACKET_TYPE_AUDIO_OPUS_BATCH, ACIP_TRAFFIC_AUDIO, false},
+               {PACKET_TYPE_ASCII_FRAME, ACIP_TRAFFIC_VISUAL, false},
+               {PACKET_TYPE_IMAGE_FRAME, ACIP_TRAFFIC_VISUAL, false},
+               {PACKET_TYPE_IMAGE_FRAME_H264, ACIP_TRAFFIC_VISUAL, true},
+               {PACKET_TYPE_IMAGE_FRAME_H265, ACIP_TRAFFIC_VISUAL, true}};
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+    cr_assert_eq(submit(&transport, cases[i].type, (uint32_t)i, 1, cases[i].keyframe), ACIP_ADMISSION_ACCEPTED);
+    await_submitted(&transport, i + 1);
+    cr_assert_eq(atomic_load_u64(&backend.traffic_class), (uint64_t)cases[i].expected);
+  }
+
+  packet_header_t header = {.type = HOST_TO_NET_U16(PACKET_TYPE_AUDIO_BATCH)};
+  socket_buffer_t buffer = {&header, sizeof(header)};
+  acip_send_options_t options = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
+  cr_assert_eq(acip_transport_sendv_ex(&transport, &buffer, 1, &options), ERROR_NOT_SUPPORTED);
+  options.delivery = ACIP_DELIVERY_RELIABLE;
+  options.deadline_ns = 1;
+  cr_assert_eq(acip_transport_sendv_ex(&transport, &buffer, 1, &options), ERROR_NOT_SUPPORTED);
+  cr_assert_eq(atomic_load_u64(&backend.sent), sizeof(cases) / sizeof(cases[0]));
+  acip_outbound_destroy(&transport);
+  buffer_system_cleanup();
+  log_destroy();
 }
 
 Test(transport_backpressure, destruction_serializes_backend_close_after_a_blocked_send_fails) {

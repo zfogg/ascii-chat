@@ -151,6 +151,11 @@ typedef struct {
   /** @brief Expected server key for verification (optional) */
   const char *server_key;
 
+  /** QUIC trust anchors and negotiated media preferences. */
+  const char *quic_ca_file;
+  bool quic_audio_datagrams;
+  bool quic_visual_datagrams;
+
   /** @brief Enable audio streaming */
   bool enable_audio;
 

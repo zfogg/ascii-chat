@@ -17,6 +17,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/network/acip/quic.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -42,7 +44,7 @@ struct network_server {
   network_connection_t *connections;
   size_t count;
   atomic_t stopping, executing;
-  bool listener_initialized, websocket_initialized, websocket_started;
+  bool listener_initialized, websocket_initialized, websocket_started, quic_failed, webtransport_failed;
 };
 
 struct network_connection {
@@ -52,6 +54,7 @@ struct network_connection {
   network_server_config_t policy;
   network_connection_t *next;
   acip_transport_t *transport;
+  acip_quic_endpoint_t *owned_quic_endpoint;
   platform_event_stream_t *stream;
   packet_decoder_t decoder;
   acip_security_t security;
@@ -107,7 +110,11 @@ asciichat_error_t network_connection_prepare_security(network_connection_t *c, b
   if (!c || c->security_claimed || network_connection_state(c) != NETWORK_NEGOTIATING)
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection security already configured");
   c->security_claimed = c->security_options = true;
-  asciichat_error_t result = acip_security_init_options(&c->security, server, c->secure, password);
+  /* QUIC protects its own endpoints, but ACIP encryption is also required
+   * for the application identity and intermediary trust boundary. */
+  bool transport_satisfies_acip_encryption = c->secure && acip_transport_get_type(c->transport) != ACIP_TRANSPORT_QUIC;
+  asciichat_error_t result =
+      acip_security_init_options(&c->security, server, transport_satisfies_acip_encryption, password);
   if (result == ASCIICHAT_OK && !server) {
     crypto_handshake_context_t *ctx = &c->security.handshake;
     SAFE_STRNCPY(ctx->server_hostname, c->peer, sizeof(ctx->server_hostname));
@@ -204,6 +211,18 @@ static void connection_finish(void *arg) {
   c->cleanup_failed = false;
   acip_transport_destroy(c->transport);
   c->transport = NULL;
+  if (c->owned_quic_endpoint) {
+    asciichat_error_t result = acip_quic_endpoint_stop(c->owned_quic_endpoint);
+    if (result != ASCIICHAT_OK)
+      result = acip_quic_endpoint_stop(c->owned_quic_endpoint);
+    if (result == ASCIICHAT_OK)
+      result = acip_quic_endpoint_destroy(&c->owned_quic_endpoint);
+    if (result != ASCIICHAT_OK) {
+      c->result = result;
+      c->cleanup_failed = true;
+      return;
+    }
+  }
   c->adopted_security = NULL;
   if (c->security_options)
     acip_security_cleanup(&c->security);
@@ -248,7 +267,9 @@ static asciichat_error_t connection_packet(const void *data, size_t length, void
   asciichat_error_t result = ASCIICHAT_OK;
   if (!c->authenticated_peer && network_connection_state(c) == NETWORK_READY && c->transport->crypto_ctx &&
       c->transport->crypto_ctx->encrypt_data) {
-    bool backend_decrypted = !c->stream && acip_transport_get_type(c->transport) == ACIP_TRANSPORT_TCP;
+    acip_transport_type_t transport_type = acip_transport_get_type(c->transport);
+    bool backend_decrypted =
+        !c->stream && (transport_type == ACIP_TRANSPORT_TCP || transport_type == ACIP_TRANSPORT_QUIC);
     if (envelope.type != PACKET_TYPE_ENCRYPTED && !backend_decrypted)
       return SET_ERRNO(ERROR_CRYPTO, "Plaintext application packet on encrypted connection");
     if (envelope.type == PACKET_TYPE_ENCRYPTED)
@@ -438,11 +459,11 @@ static void *websocket_accept(void *arg) {
   SAFE_FREE(ctx);
   return c ? connection_receive(c) : NULL;
 }
-asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer,
-                                       bool secure) {
+static asciichat_error_t server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer, bool secure,
+                                      bool ready) {
   if (!s || !transport)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing adopted connection");
-  network_connection_t *c = connection_create(s, transport, peer, secure, true);
+  network_connection_t *c = connection_create(s, transport, peer, secure, ready);
   if (!c)
     return SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Cannot admit peer connection");
   asciichat_error_t result = thread_pool_spawn(s->peers, connection_receive, c, 0, "network_peer");
@@ -452,6 +473,14 @@ asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *tr
     connection_free(c);
   }
   return result;
+}
+asciichat_error_t network_server_adopt(network_server_t *s, acip_transport_t *transport, const char *peer,
+                                       bool secure) {
+  return server_adopt(s, transport, peer, secure, true);
+}
+asciichat_error_t network_server_adopt_negotiating(network_server_t *s, acip_transport_t *transport, const char *peer,
+                                                   bool secure) {
+  return server_adopt(s, transport, peer, secure, false);
 }
 static void *websocket_run(void *arg) {
   websocket_server_run(arg);
@@ -468,6 +497,40 @@ static void server_tick(void *arg) {
   mutex_unlock(&s->registry_mutex);
   for (size_t i = 0; i < count; ++i)
     platform_event_stream_close(closing[i], ASCIICHAT_OK);
+  acip_quic_endpoint_t *listeners[] = {s->config.quic_endpoint, s->config.webtransport_endpoint};
+  bool *failed[] = {&s->quic_failed, &s->webtransport_failed};
+  for (size_t listener = 0; listener < 2 && !atomic_load_bool(&s->stopping); ++listener) {
+    if (!listeners[listener] || *failed[listener])
+      continue;
+    for (unsigned i = 0; i < 16; ++i) {
+      acip_transport_t *transport = NULL;
+      asciichat_errno_scope_t scope = errno_scope_begin();
+      asciichat_error_t result = acip_quic_accept(listeners[listener], &transport);
+      if (result == ERROR_NETWORK_TIMEOUT) {
+        errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+        break;
+      }
+      if (result != ASCIICHAT_OK) {
+        log_warn("QUIC listener stopped accepting: %s", asciichat_error_format(NULL, result));
+        *failed[listener] = true;
+        errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+        break;
+      }
+      struct sockaddr_storage address;
+      socklen_t length = 0;
+      char peer[INET6_ADDRSTRLEN] = "";
+      result = acip_quic_transport_peer_address(transport, &address, &length);
+      if (result == ASCIICHAT_OK)
+        result = format_ip_address(address.ss_family, (const struct sockaddr *)&address, peer, sizeof(peer));
+      if (result == ASCIICHAT_OK)
+        result = network_server_adopt_negotiating(s, transport, peer, true);
+      if (result != ASCIICHAT_OK) {
+        log_debug("Cannot admit QUIC peer: %s", asciichat_error_format(NULL, result));
+        acip_transport_destroy(transport);
+      }
+      errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    }
+  }
   if (atomic_load_bool(&s->stopping))
     atomic_store_bool(&s->listener.running, false);
   else if (s->config.tick)
@@ -641,6 +704,89 @@ static asciichat_error_t connection_open_tcp(const char *name, const connection_
   return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_NETWORK, "Cannot adopt connected TCP socket");
 }
 
+static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpoint,
+                                              const network_connect_config_t *settings, acip_quic_endpoint_t **owner,
+                                              acip_transport_t **transport) {
+  struct sockaddr_storage remote, local;
+  socklen_t remote_length = 0, local_length = sizeof(local);
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  asciichat_error_t result = parse_numeric_socket_address(endpoint->host, endpoint->port, &remote, &remote_length);
+  if (result != ASCIICHAT_OK) {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    char resolved[INET_ADDRSTRLEN];
+    result = platform_resolve_hostname_to_ipv4(endpoint->host, resolved, sizeof(resolved));
+    if (result != ASCIICHAT_OK)
+      return result;
+    result = parse_numeric_socket_address(resolved, endpoint->port, &remote, &remote_length);
+  } else {
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  }
+  if (result != ASCIICHAT_OK)
+    return result;
+  socket_t route = socket_create("quic_route", remote.ss_family, SOCK_DGRAM, 0);
+  if (route == INVALID_SOCKET_VALUE)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot determine QUIC local route");
+  if (socket_connect(route, (const struct sockaddr *)&remote, remote_length) != 0 ||
+      socket_getsockname(route, (struct sockaddr *)&local, &local_length) != 0) {
+    socket_close(route);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot determine QUIC local route");
+  }
+  socket_close(route);
+  if (local.ss_family == AF_INET)
+    ((struct sockaddr_in *)&local)->sin_port = 0;
+  else if (local.ss_family == AF_INET6)
+    ((struct sockaddr_in6 *)&local)->sin6_port = 0;
+  else
+    return SET_ERRNO(ERROR_NETWORK, "Unsupported QUIC local route");
+  acip_quic_config_t config = {.ca_file = settings ? settings->quic_ca_file : NULL,
+                               .enable_datagrams = true,
+                               .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
+                               .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};
+  result = acip_quic_endpoint_open((struct sockaddr *)&local, local_length, false, &config, owner);
+  if (result == ASCIICHAT_OK)
+    result = acip_quic_connect(*owner, (struct sockaddr *)&remote, remote_length, endpoint->host, transport);
+  if (result == ASCIICHAT_OK) {
+    uint64_t start = time_get_ns();
+    uint64_t timeout = (settings ? (uint64_t)settings->timeout_ms : 10000) * NS_PER_MS_INT;
+    for (;;) {
+      acip_transport_capabilities_t capabilities;
+      asciichat_errno_scope_t attempt_scope = errno_scope_begin();
+      result = acip_transport_get_capabilities(*transport, &capabilities);
+      if (result == ASCIICHAT_OK) {
+        errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+        break;
+      }
+      bool cancelled = connect_cancelled((void *)settings);
+      if (result != ERROR_INVALID_STATE || cancelled || time_get_ns() - start >= timeout) {
+        if (result == ERROR_INVALID_STATE) {
+          errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_DISMISSED);
+          result = cancelled ? SET_ERRNO(ERROR_NETWORK_CONNECT, "QUIC connection cancelled")
+                             : SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC TLS connection timed out");
+        } else {
+          errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+        }
+        break;
+      }
+      errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_DISMISSED);
+      platform_sleep_ms(5);
+    }
+  }
+  if (result != ASCIICHAT_OK) {
+    if (*transport) {
+      acip_transport_destroy(*transport);
+      *transport = NULL;
+    }
+    if (*owner) {
+      (void)acip_quic_endpoint_stop(*owner);
+      asciichat_error_t cleanup = acip_quic_endpoint_destroy(owner);
+      if (cleanup != ASCIICHAT_OK || *owner)
+        return SET_ERRNO(ERROR_THREAD, "Cannot clean up failed QUIC connection");
+    }
+    return SET_ERRNO(result, "QUIC connection establishment failed");
+  }
+  return result;
+}
+
 asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t port,
                                           const network_connect_config_t *settings, network_connection_t **out,
                                           connection_endpoint_t *resolved) {
@@ -655,13 +801,21 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   if (result != ASCIICHAT_OK)
     return result;
   acip_transport_t *transport = NULL;
+  acip_quic_endpoint_t *quic_endpoint = NULL;
   ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol",
-                         endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket" : "tcp");
+                         endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket"
+                         : endpoint.protocol == CONNECTION_ENDPOINT_QUIC    ? "quic"
+                                                                            : "tcp");
   ASCII_OTEL_ATTR_INT("server.port", endpoint.port);
   ASCII_OTEL_ATTR_INT("network.connection.timeout_ms", settings ? settings->timeout_ms
                                                        : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000
                                                                                                             : 3000);
-  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
+  if (endpoint.protocol == CONNECTION_ENDPOINT_QUIC) {
+    result = connection_open_quic(&endpoint, settings, &quic_endpoint, &transport);
+    if (result != ASCIICHAT_OK)
+      return result;
+    log_info("Connected to %s:%u using native QUIC", endpoint.host, (unsigned)endpoint.port);
+  } else if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     transport = acip_websocket_client_transport_create(name, endpoint.input, NULL);
   } else {
     result = connection_open_tcp(name, &endpoint, settings, NULL, &transport);
@@ -681,14 +835,21 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
     }
   }
   network_connection_t *c = connection_create(NULL, transport, endpoint.host,
-                                              strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0, false);
+                                              endpoint.protocol == CONNECTION_ENDPOINT_QUIC ||
+                                                  strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0,
+                                              false);
   if (!c) {
     acip_transport_destroy(transport);
+    if (quic_endpoint) {
+      (void)acip_quic_endpoint_stop(quic_endpoint);
+      (void)acip_quic_endpoint_destroy(&quic_endpoint);
+    }
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate connection");
   }
   if (resolved)
     *resolved = endpoint;
   c->port = endpoint.port;
+  c->owned_quic_endpoint = quic_endpoint;
   *out = c;
   ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTION_ESTABLISHED, 1);
   return ASCIICHAT_OK;
@@ -698,6 +859,13 @@ asciichat_error_t network_connection_adopt(acip_transport_t *transport, network_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection adoption parameters");
   *out = connection_create(NULL, transport, "peer", true, true);
   return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot own authenticated transport");
+}
+asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *transport, const char *peer, bool secure,
+                                                       network_connection_t **out) {
+  if (!transport || !out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection adoption parameters");
+  *out = connection_create(NULL, transport, peer, secure, false);
+  return *out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot own negotiating transport");
 }
 void network_connection_destroy(network_connection_t **owner) {
   if (!owner || !*owner)

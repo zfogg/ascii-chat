@@ -18,6 +18,7 @@
 typedef enum {
   CONNECTION_ENDPOINT_TCP = 0,
   CONNECTION_ENDPOINT_WEBSOCKET = 1,
+  CONNECTION_ENDPOINT_QUIC = 2,
 } connection_endpoint_protocol_t;
 
 typedef struct {
@@ -35,6 +36,7 @@ typedef struct {
  * - ws://host[:port]
  * - wss://host[:port]
  * - tcp://host[:port]
+ * - quic://host[:port]
  * - bare hostnames or host:port pairs
  *
  * Bare hostnames are treated as TCP endpoints and use default_port when the

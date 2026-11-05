@@ -1,9 +1,11 @@
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/prepare.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/util/endian.h>
+#include "quic_security.h"
 #include <emscripten.h>
 #include <string.h>
 
@@ -15,6 +17,8 @@ typedef struct peer_output {
 
 typedef struct {
   acip_security_t security;
+  browser_quic_security_t quic;
+  bool quic_handshake;
   acip_transport_t transport;
   peer_output_t *output, *tail;
   void *received;
@@ -90,6 +94,7 @@ EMSCRIPTEN_KEEPALIVE void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   while (peer->output)
     peer_crypto_output_pop(peer);
   buffer_release(peer->received);
+  browser_quic_cleanup(&peer->quic);
   acip_security_cleanup(&peer->security);
   SAFE_FREE(peer);
 }
@@ -190,8 +195,24 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
   if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload_length ||
       asciichat_crc32(payload, payload_length) != NET_TO_HOST_U32(header.crc32))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid peer packet framing");
-  if (!peer->security.ready)
-    return acip_security_receive(&peer->security, &peer->transport, type, payload, payload_length);
+  if (!peer->security.ready) {
+    asciichat_error_t result = acip_security_receive(&peer->security, &peer->transport, type, payload, payload_length);
+    if (result != ASCIICHAT_OK || !peer->quic_handshake || type != PACKET_TYPE_PROTOCOL_VERSION)
+      return result;
+    crypto_capabilities_packet_t caps = {0};
+    caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
+    caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
+    caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
+    caps.preferred_kex = KEX_ALGO_X25519;
+    caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(peer->security.mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+    caps.preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+    caps.requires_verification = peer->security.handshake.verify_server_key;
+    result = packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    if (result != ASCIICHAT_OK || !caps.requires_verification)
+      return result;
+    return packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO,
+                                     peer->security.handshake.expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE, 0);
+  }
   bool encrypt = ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode);
   if (packet_is_handshake_type(type) || (encrypt != (type == PACKET_TYPE_ENCRYPTED)))
     return SET_ERRNO(ERROR_CRYPTO, "Peer packet does not match negotiated security");
@@ -218,4 +239,57 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
       type == PACKET_TYPE_ENCRYPTED || packet_is_handshake_type(type))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid decrypted peer packet");
   return ASCIICHAT_OK;
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_init(browser_peer_crypto_t *peer) {
+  if (!peer || !peer->security.ready || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC requires an authenticated encrypted peer");
+  return acip_quic_security_init(&peer->quic.security, &peer->security.handshake.crypto_ctx, false);
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_crypto_t *peer, bool seal, uint32_t flow,
+                                                               uint32_t delivery, const uint8_t *packet, size_t length,
+                                                               uint8_t *output, size_t capacity, size_t *out_length,
+                                                               uint64_t *sequence) {
+  const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  if (!peer || !packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead ||
+      capacity < length + (seal ? overhead : 0))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer QUIC packet buffer");
+  *out_length = 0;
+  *sequence = 0;
+  uint8_t *result_packet = NULL;
+  size_t result_length = 0;
+  bool quiet = !seal && delivery == ACIP_DELIVERY_DATAGRAM;
+  asciichat_errno_scope_t scope;
+  if (quiet)
+    scope = errno_scope_begin();
+  asciichat_error_t result =
+      seal ? acip_quic_security_seal(&peer->quic.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
+                                     packet, length, &result_packet, &result_length)
+           : acip_quic_security_open_sequence(&peer->quic.security, (acip_traffic_class_t)flow,
+                                              (acip_delivery_t)delivery, packet, length, &result_packet, &result_length,
+                                              sequence);
+  bool consumed = false;
+  if (!seal && result == ASCIICHAT_OK)
+    result = browser_quic_receive(&peer->quic, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, result_packet,
+                                  result_length, &consumed);
+  if (quiet)
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  if (result == ASCIICHAT_OK && !consumed) {
+    memcpy(output, result_packet, result_length);
+    *out_length = result_length;
+  }
+  buffer_release(result_packet);
+  return result;
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_begin(browser_peer_crypto_t *peer) {
+  if (!peer || peer->security.version_received || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer QUIC handshake transition");
+  peer->quic_handshake = true;
+  return ASCIICHAT_OK;
+}
+
+EMSCRIPTEN_KEEPALIVE browser_quic_security_t *peer_quic_context(browser_peer_crypto_t *peer) {
+  return peer ? &peer->quic : NULL;
 }

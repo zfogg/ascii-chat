@@ -6,6 +6,7 @@
 #define BROWSER_PACKET_JSON_BUFFER_SIZE 1024
 
 #include "buffer_sizes.h"
+#include "quic_security.h"
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
@@ -169,6 +170,7 @@ static acip_transport_t g_wasm_transport = {.methods = &wasm_transport_methods, 
 
 // Global state for client session
 static crypto_handshake_context_t g_crypto_handshake_ctx = {0};
+static browser_quic_security_t g_quic_security = {0};
 static bool g_initialized = false;
 static bool g_handshake_complete = false;
 static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT;
@@ -446,6 +448,8 @@ void client_cleanup(void) {
   remote_render_settings = (acip_render_settings_t){0};
   errno_destroy();
 
+  // The QUIC security state borrows the handshake context.
+  browser_quic_cleanup(&g_quic_security);
   // Clean up crypto handshake context
   crypto_handshake_destroy(&g_crypto_handshake_ctx);
   memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
@@ -477,6 +481,8 @@ int client_generate_keypair(void) {
     return -1;
   }
 
+  // A replacement handshake must not retain the previous connection's sequence state.
+  browser_quic_cleanup(&g_quic_security);
   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
     crypto_handshake_destroy(&g_crypto_handshake_ctx);
@@ -845,6 +851,68 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
 
   *out_len = plaintext_len;
   return 0;
+}
+
+/* These functions operate on complete ACIP packets. The caller must serialize
+ * access with the handshake, packet codec, and rekey coordinator. */
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_init(void) {
+  if (!g_handshake_complete)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC security requires an authenticated handshake");
+  return acip_quic_security_init(&g_quic_security.security, &g_crypto_handshake_ctx.crypto_ctx, false);
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_seal(uint32_t flow, uint32_t delivery,
+                                                                 const uint8_t *packet, size_t packet_len,
+                                                                 uint8_t *output, size_t capacity, size_t *out_len) {
+  const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  if (!packet || !output || !out_len || packet_len > SIZE_MAX - overhead || capacity < packet_len + overhead)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC security output buffer");
+  *out_len = 0;
+  uint8_t *sealed = NULL;
+  size_t sealed_len = 0;
+  asciichat_error_t result =
+      acip_quic_security_seal(&g_quic_security.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, packet,
+                              packet_len, &sealed, &sealed_len);
+  if (result == ASCIICHAT_OK) {
+    memcpy(output, sealed, sealed_len);
+    *out_len = sealed_len;
+  }
+  buffer_release(sealed);
+  return result;
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_open(uint32_t flow, uint32_t delivery,
+                                                                 const uint8_t *packet, size_t packet_len,
+                                                                 uint8_t *output, size_t capacity, size_t *out_len,
+                                                                 uint64_t *sequence) {
+  if (!packet || !output || !out_len || !sequence || capacity < packet_len)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC security output buffer");
+  *out_len = 0;
+  *sequence = 0;
+  uint8_t *plain = NULL;
+  size_t plain_len = 0;
+  asciichat_error_t result;
+  if (delivery == ACIP_DELIVERY_DATAGRAM) {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    result =
+        acip_quic_security_open_sequence(&g_quic_security.security, (acip_traffic_class_t)flow,
+                                         (acip_delivery_t)delivery, packet, packet_len, &plain, &plain_len, sequence);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  } else {
+    result =
+        acip_quic_security_open_sequence(&g_quic_security.security, (acip_traffic_class_t)flow,
+                                         (acip_delivery_t)delivery, packet, packet_len, &plain, &plain_len, sequence);
+  }
+  bool consumed = false;
+  if (result == ASCIICHAT_OK)
+    result = browser_quic_receive(&g_quic_security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, plain,
+                                  plain_len, &consumed);
+  if (result == ASCIICHAT_OK && !consumed) {
+    memcpy(output, plain, plain_len);
+    *out_len = plain_len;
+  }
+  buffer_release(plain);
+  return result;
 }
 
 /**
@@ -1218,4 +1286,8 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_decode_frame_data(const void *enco
       output_length > FRAME_RENDER_MAX_BYTES)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid browser frame decompression bounds");
   return decompress_data_exact(encoded, encoded_length, output, output_length);
+}
+
+EMSCRIPTEN_KEEPALIVE browser_quic_security_t *client_quic_context(void) {
+  return &g_quic_security;
 }

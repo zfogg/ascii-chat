@@ -5,6 +5,7 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/acds_client.h>
 #include "session/host.h"
 #include "session/protocol.h"
 #include <ascii-chat/options/rcu.h>
@@ -501,8 +502,10 @@ Test(discovery_session_process, authoritative_designation_is_idempotent_and_sess
 
 typedef struct {
   acds_client_data_t client;
-  atomic_t designated, errors, opened;
+  atomic_t designated, extended, errors, opened;
   acip_host_designated_t last;
+  uint16_t quic_port;
+  char webtransport_url[512];
   bool fail_send;
 } designation_peer_t;
 
@@ -517,6 +520,13 @@ static asciichat_error_t designation_send(acip_transport_t *transport, const voi
   if (type == PACKET_TYPE_ACIP_HOST_DESIGNATED && len == sizeof(*header) + sizeof(peer->last)) {
     memcpy(&peer->last, header + 1, sizeof(peer->last));
     atomic_fetch_add_int(&peer->designated, 1);
+  } else if (type == PACKET_TYPE_ACIP_HOST_DESIGNATED && len > sizeof(*header) + sizeof(peer->last)) {
+    memcpy(&peer->last, header + 1, sizeof(peer->last));
+    if (acds_transport_metadata_decode((const uint8_t *)(header + 1) + sizeof(peer->last),
+                                       len - sizeof(*header) - sizeof(peer->last), &peer->quic_port,
+                                       peer->webtransport_url, sizeof(peer->webtransport_url)) != ASCIICHAT_OK)
+      return ERROR_NETWORK_PROTOCOL;
+    atomic_fetch_add_int(&peer->extended, 1);
   } else if (type == PACKET_TYPE_ERROR_MESSAGE) {
     atomic_fetch_add_int(&peer->errors, 1);
   }
@@ -644,6 +654,27 @@ Test(discovery_session_process, host_fanout_authority_isolation_and_reconnect, .
   announcement.host_port = 3456;
   acds_on_host_announcement(&announcement, host, "fixture", &server);
   cr_assert_eq(atomic_load_int(&replay->designated), 3, "A failed recipient must not stop fanout");
+  cr_assert_str_empty(replay->last.host_address);
+  cr_assert_eq(sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 1", NULL, NULL, NULL), SQLITE_OK);
+  uint8_t metadata[ACDS_TRANSPORT_METADATA_MAX];
+  size_t metadata_length = 0;
+  cr_assert_eq(acds_transport_metadata_encode(4567, "https://example.test:4568/acip", metadata, sizeof(metadata),
+                                              &metadata_length),
+               ASCIICHAT_OK);
+  int legacy_before = atomic_load_int(&replay->designated);
+  acds_on_host_announcement_ex(&announcement, metadata, metadata_length, host, "fixture", &server);
+  cr_assert_eq(atomic_load_int(&replay->extended), 1);
+  cr_assert_eq(atomic_load_int(&replay->designated), legacy_before + 1);
+  cr_assert_eq(replay->quic_port, 4567);
+  cr_assert_str_eq(replay->webtransport_url, "https://example.test:4568/acip");
+  metadata[7]++;
+  int errors_before = atomic_load_int(&((designation_peer_t *)host->impl_data)->errors);
+  acds_on_host_announcement_ex(&announcement, metadata, metadata_length, host, "fixture", &server);
+  cr_assert_eq(atomic_load_int(&((designation_peer_t *)host->impl_data)->errors), errors_before + 1);
+  cr_assert_eq(atomic_load_int(&replay->extended), 1);
+  cr_assert_eq(sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 0", NULL, NULL, NULL), SQLITE_OK);
+  acds_send_current_host(&server, reconnected, created.session_id);
+  cr_assert_eq(atomic_load_int(&replay->extended), 1, "Private endpoints must not leak through the extension");
   cr_assert_str_empty(replay->last.host_address);
   cr_assert_eq(network_server_stop(server.network_server), ASCIICHAT_OK);
   network_server_destroy(&server.network_server);

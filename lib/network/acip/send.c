@@ -22,6 +22,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
@@ -46,8 +47,8 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers,
-                                              size_t count) {
+static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                              const acip_send_options_t *options) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport vectors");
   size_t total = 0;
@@ -56,6 +57,8 @@ static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const
       return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid transport vector size");
     total += buffers[i].len;
   }
+  if (transport->methods->sendv_ex)
+    return transport->methods->sendv_ex(transport, buffers, count, options);
   if (transport->methods->sendv)
     return transport->methods->sendv(transport, buffers, count);
   // Message transports retain their existing queue and encryption contracts.
@@ -76,16 +79,41 @@ static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const
       memcpy(packet + offset, buffers[i].data, buffers[i].len);
     offset += buffers[i].len;
   }
+  if (!transport->methods->send) {
+    buffer_release(packet);
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Transport has no send method");
+  }
   asciichat_error_t result = transport->methods->send(transport, packet, total);
   buffer_release(packet);
   return result;
 }
 
-asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
+  if (!out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing transport capabilities output");
+  *out = (acip_transport_capabilities_t){0};
+  if (!transport || !transport->methods)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport capabilities query");
+  return transport->methods->get_capabilities ? transport->methods->get_capabilities(transport, out) : ASCIICHAT_OK;
+}
+
+asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                          const acip_send_options_t *options) {
+  if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX || !options ||
+      (unsigned)options->traffic_class > ACIP_TRAFFIC_VISUAL ||
+      (options->delivery != ACIP_DELIVERY_RELIABLE && options->delivery != ACIP_DELIVERY_DATAGRAM))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport send options");
+  if (options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns) {
+    if (!transport->methods->sendv_ex || !transport->methods->validate_send_options)
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and deadlines are not supported by this transport");
+    asciichat_error_t result = transport->methods->validate_send_options(transport, options);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
 #ifndef __EMSCRIPTEN__
   if (transport && transport->outbound) {
     acip_admission_t admission;
-    asciichat_error_t result = acip_outbound_submitv(transport, buffers, count, &admission);
+    asciichat_error_t result = acip_outbound_submitv_ex(transport, buffers, count, options, &admission);
     if (result != ASCIICHAT_OK)
       return result;
     if (admission != ACIP_ADMISSION_ACCEPTED)
@@ -93,7 +121,17 @@ asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket
     return ASCIICHAT_OK;
   }
 #endif
-  return transport_sendv_impl(transport, buffers, count);
+  return transport_sendv_impl(transport, buffers, count, options);
+}
+
+asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  acip_send_options_t options = {.traffic_class = ACIP_TRAFFIC_CONTROL, .delivery = ACIP_DELIVERY_RELIABLE};
+  if (buffers && count && buffers[0].data && buffers[0].len >= sizeof(packet_header_t)) {
+    packet_header_t header;
+    memcpy(&header, buffers[0].data, sizeof(header));
+    options.traffic_class = acip_packet_traffic_class(NET_TO_HOST_U16(header.type));
+  }
+  return acip_transport_sendv_ex(transport, buffers, count, &options);
 }
 
 asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len) {
@@ -121,7 +159,22 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
                             .client_id = client_id};
   socket_buffer_t slices[SOCKET_IOV_MAX] = {{&header, sizeof(header)}};
   memcpy(slices + 1, payload, count * sizeof(*payload));
-  asciichat_error_t result = acip_transport_sendv(transport, slices, count + 1);
+  acip_send_options_t options = {.traffic_class = acip_packet_traffic_class(type), .delivery = ACIP_DELIVERY_RELIABLE};
+  bool encoded = type == PACKET_TYPE_IMAGE_FRAME_H264 || type == PACKET_TYPE_IMAGE_FRAME_H265;
+  bool prefer_datagram = (transport->prefer_audio_datagrams && options.traffic_class == ACIP_TRAFFIC_AUDIO) ||
+                         (transport->prefer_visual_datagrams && options.traffic_class == ACIP_TRAFFIC_VISUAL &&
+                          (!encoded || client_id == 0));
+  if (prefer_datagram) {
+    acip_transport_capabilities_t caps;
+    asciichat_error_t result = acip_transport_get_capabilities(transport, &caps);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (caps.datagrams) {
+      options.delivery = ACIP_DELIVERY_DATAGRAM;
+      options.deadline_ns = time_get_ns() + 100 * NS_PER_MS_INT;
+    }
+  }
+  asciichat_error_t result = acip_transport_sendv_ex(transport, slices, count + 1, &options);
   stats_runtime_packet(transport->stats_peer, type, len, true, result == ASCIICHAT_OK);
 #ifdef ASCIICHAT_WITH_OTEL
   ASCII_OTEL_PACKET(type, len, "send", acip_transport_get_type(transport));
@@ -227,8 +280,12 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
       num_samples <= OPUS_FRAME_SAMPLES ? inline_samples : buffer_alloc(NULL, (size_t)num_samples * sizeof(uint32_t));
   if (!wire)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate PCM batch samples");
+  _Static_assert(sizeof(float) == sizeof(uint32_t), "ACIP audio requires 32-bit floats");
   for (uint32_t i = 0; i < num_samples; ++i) {
-    if (!isfinite(samples[i])) {
+    // Inspect the exponent before arithmetic, including builds that assume finite floats.
+    uint32_t sample_bits;
+    memcpy(&sample_bits, &samples[i], sizeof(sample_bits));
+    if ((sample_bits & UINT32_C(0x7f800000)) == UINT32_C(0x7f800000)) {
       if (wire != inline_samples)
         buffer_release(wire);
       return SET_ERRNO(ERROR_INVALID_PARAM, "PCM samples must be finite");

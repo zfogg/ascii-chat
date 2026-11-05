@@ -150,8 +150,14 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
   if (!connection || atomic_load_int(&connection->lifecycle.state) != SESSION_CONNECTION_STARTING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
-  asciichat_error_t result = session_connection_establish("client", address, port, NULL, &connection->network, password,
-                                                          password_capacity, client_prepare, client_detach, connection);
+  network_connect_config_t quic_config = {.timeout_ms = 10000,
+                                          .quic_ca_file = GET_OPTION(quic_ca_file)[0] ? GET_OPTION(quic_ca_file) : NULL,
+                                          .quic_audio_datagrams = GET_OPTION(quic_audio_datagrams),
+                                          .quic_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
+  const network_connect_config_t *connect_config = address && strncmp(address, "quic://", 7) == 0 ? &quic_config : NULL;
+  asciichat_error_t result =
+      session_connection_establish("client", address, port, connect_config, &connection->network, password,
+                                   password_capacity, client_prepare, client_detach, connection);
   connection->transport = network_connection_transport(connection->network);
   connection->crypto_ctx = connection->network ? network_connection_handshake(connection->network) : NULL;
   if (result != ASCIICHAT_OK)

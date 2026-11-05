@@ -297,6 +297,7 @@ static acip_transport_t *g_acds_transport = NULL;
  * Set during SESSION_JOIN, all zeros if not using ACDS.
  */
 static uint8_t g_server_participant_id[SESSION_ID_SIZE] = {0};
+static uint8_t g_server_session_id[SESSION_ID_SIZE] = {0};
 
 /**
  * @brief Global WebRTC peer manager for accepting client connections
@@ -868,36 +869,63 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
 /**
  * @brief ACDS ping thread - sends periodic keepalive PING packets
  *
- * Sends PING packet every 10 seconds to keep ACDS connection alive.
- * Prevents 15-second receive timeout on idle connections.
+ * Sends a host health sample every five seconds and a PING every ten seconds.
  *
  * @param arg Unused (server uses globals)
  * @return NULL
  */
+static asciichat_error_t acds_send_host_sample(uint32_t sequence) {
+  consensus_handoff_message_t message = {.kind = HANDOFF_SAMPLE_START,
+                                         .sequence = sequence,
+                                         .capabilities = 0,
+                                         .nat_tier = 255,
+                                         .port = (uint16_t)GET_OPTION(port)};
+  memcpy(message.session, g_server_session_id, SESSION_ID_SIZE);
+  memcpy(message.participant, g_server_participant_id, SESSION_ID_SIZE);
+  size_t length = CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES;
+  uint8_t *bytes = SAFE_CALLOC(1, length, uint8_t *);
+  if (!bytes)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate discovery host sample");
+  consensus_handoff_encode(&message, bytes);
+  asciichat_error_t result = packet_send_via_transport(g_acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes,
+                                                       CONSENSUS_HANDOFF_HEADER, 0);
+  if (result == ASCIICHAT_OK) {
+    message.kind = HANDOFF_SAMPLE_DATA;
+    consensus_handoff_encode(&message, bytes);
+    result = packet_send_via_transport(g_acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, length, 0);
+  }
+  SAFE_FREE(bytes);
+  return result;
+}
+
 static void *acds_ping_thread(void *arg) {
   (void)arg;
 
   log_debug("ACDS keepalive ping thread started");
 
+  uint32_t sequence = 0, tick = 0;
   while (!atomic_load_bool(&g_should_exit)) {
     if (!g_acds_transport) {
       log_debug("ACDS transport destroyed, exiting ping thread");
       break;
     }
 
-    // Send PING every 10 seconds to keep connection alive
-    socket_t acds_socket = g_acds_transport->methods->get_socket(g_acds_transport);
-    if (acds_socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t ping_result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_PING, NULL, 0, 0);
-      if (ping_result == ASCIICHAT_OK) {
-        log_debug("ACDS keepalive: Sent periodic PING");
-      } else {
-        log_warn("ACDS keepalive: Failed to send PING: %s", asciichat_error_format(NULL, ping_result));
+    // Send a host health sample every five seconds and PING every ten seconds.
+    ++tick;
+    if (acip_transport_is_connected(g_acds_transport)) {
+      if (memcmp(g_server_participant_id, (uint8_t[SESSION_ID_SIZE]){0}, SESSION_ID_SIZE) != 0) {
+        asciichat_error_t sample_result = acds_send_host_sample(++sequence);
+        if (sample_result != ASCIICHAT_OK)
+          log_warn("ACDS host sample failed: %s", asciichat_error_format(NULL, sample_result));
+      }
+      if (tick % 2 == 1) {
+        asciichat_error_t ping_result = packet_send_via_transport(g_acds_transport, PACKET_TYPE_PING, NULL, 0, 0);
+        if (ping_result != ASCIICHAT_OK)
+          log_warn("ACDS keepalive: Failed to send PING: %s", asciichat_error_format(NULL, ping_result));
       }
     }
 
-    // Sleep for 10 seconds before next ping (well before 15s timeout)
-    for (int i = 0; i < 100 && !atomic_load_bool(&g_should_exit); i++) {
+    for (int i = 0; i < 50 && !atomic_load_bool(&g_should_exit); i++) {
       APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(100); // Check exit flag every 100ms
     }
@@ -1452,6 +1480,10 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
   params->server_port = port;
+  if (GET_OPTION(quic_bind_address)[0])
+    params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
+  if (GET_OPTION(webtransport_bind_address)[0])
+    SAFE_STRNCPY(params->webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params->webtransport_url));
   if (params->session_type == SESSION_TYPE_DIRECT_TCP) {
     if (nat_upnp_get_endpoint(upnp_ctx, params->server_address, sizeof(params->server_address), &params->server_port) !=
         ASCIICHAT_OK) {
@@ -1494,6 +1526,7 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
               join_result.participant_id[1]);
     // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
     memcpy(g_server_participant_id, join_result.participant_id, SESSION_ID_SIZE);
+    memcpy(g_server_session_id, join_result.session_id, SESSION_ID_SIZE);
     log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
               g_server_participant_id[1]);
     memcpy(result->session_id, join_result.session_id, SESSION_ID_SIZE);
@@ -1696,6 +1729,11 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     return;
   }
   acds_session_create_params_t create_params = {0};
+  if (GET_OPTION(webtransport_bind_address)[0] &&
+      strlen(GET_OPTION(webtransport_public_url)) >= sizeof(create_params.webtransport_url)) {
+    log_error("WebTransport public URL exceeds the discovery endpoint limit");
+    return;
+  }
   server_prepare_discovery_request(&create_params, &policy, port, upnp_ctx, upnp_succeeded);
   acds_session_create_result_t create_result;
   asciichat_error_t result = acds_session_create(g_acds_client, &create_params, &create_result);

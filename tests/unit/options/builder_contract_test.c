@@ -348,3 +348,24 @@ Test(builder_contract, conflicting_color_options_return_an_owned_error_message) 
   cr_assert_eq(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
   options_config_destroy(c);
 }
+
+Test(builder_contract, string_defaults_belong_to_each_builder_and_survive_transfer) {
+  for (unsigned i = 0; i < 1100; ++i) {
+    options_builder_t *b = options_builder_create(sizeof(sample_t));
+    char initial[] = "owned default";
+    options_builder_add_string(b, "label", 0, offsetof(sample_t, label), initial, "Label", "Test", false, NULL, NULL);
+    memset(initial, 'x', sizeof(initial) - 1);
+    cr_assert_eq(b->num_descriptors, 1);
+    if (i % 2) {
+      options_builder_destroy(b);
+      continue;
+    }
+    options_config_t *c = options_builder_build(b);
+    options_builder_destroy(b);
+    sample_t sample = {0};
+    cr_assert_not_null(c);
+    cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+    cr_assert_str_eq(sample.label, "owned default");
+    options_config_destroy(c);
+  }
+}

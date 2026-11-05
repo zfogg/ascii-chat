@@ -133,6 +133,8 @@ void terminal_screen_set_output_fd(int fd);
 
 /** Handle a key while the live log viewer owns the terminal. */
 bool terminal_screen_logs_handle_key(int key);
+/** Browser/embedded sessions supply their own viewport instead of a native controller. */
+bool terminal_screen_logs_handle_key_sized(int key, terminal_size_t size);
 /** Reset the retained log-viewer position when the viewer is closed. */
 void terminal_screen_logs_reset(void);
 /** Number of rendered rows currently held above the live tail. */

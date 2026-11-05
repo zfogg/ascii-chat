@@ -1,4 +1,5 @@
 import { OutboundQueue } from "./OutboundQueue";
+import { serializeClientInitialization } from "./ClientInitialization";
 /**
  * High-level client connection manager
  * Orchestrates WebSocket, WASM crypto, and packet handling
@@ -56,10 +57,6 @@ export type PacketReceivedCallback = (
   packet: ParsedPacket,
   payload: Uint8Array,
 ) => void;
-
-// The WASM client context is shared. Drain a cancelled initialization before a
-// replacement session configures that context or installs its send callback.
-let initializationQueue: Promise<void> = Promise.resolve();
 
 export class ClientConnection {
   readonly transportType = "websocket" as const;
@@ -138,12 +135,7 @@ export class ClientConnection {
   // Initial startup and reconnect publish crypto and callbacks in the same order.
   // Cancellation is checked after every asynchronous boundary before publishing.
   private initializeWasm(): Promise<boolean> {
-    const pending = initializationQueue.then(() => this.prepareWasm());
-    initializationQueue = pending.then(
-      () => {},
-      () => {},
-    );
-    return pending;
+    return serializeClientInitialization(() => this.prepareWasm());
   }
 
   private async prepareWasm(): Promise<boolean> {

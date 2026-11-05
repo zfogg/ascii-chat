@@ -298,7 +298,9 @@ Test(discovery_key_set, restricted_sessions_still_require_passwords_and_typed_st
 }
 
 static void count_create_callback(const acip_session_create_t *req, acip_transport_t *transport, const char *ip,
-                                  void *ctx) {
+                                  const uint8_t *extension, size_t extension_length, void *ctx) {
+  (void)extension;
+  (void)extension_length;
   (void)req;
   (void)transport;
   (void)ip;
