@@ -22,6 +22,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
 #include <stdlib.h>
@@ -152,12 +153,13 @@ static bool url_is_direct_stream(const char *url) {
  * @brief Resolve URL to playable stream URL using smart routing
  */
 static asciichat_error_t media_source_resolve_url(const char *url, const char *yt_dlp_options, char *output_url,
-                                                  size_t output_size) {
+                                                  size_t output_size, char *audio_url, size_t audio_size) {
   ASCII_OTEL_SCOPE(MEDIA_SOURCE_RESOLVE_URL);
-  if (!url || !output_url || output_size < 256) {
+  if (!url || !output_url || output_size < 256 || !audio_url || audio_size < 256) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for URL resolution");
     return ERROR_INVALID_PARAM;
   }
+  audio_url[0] = '\0';
 
   // Local paths and native FFmpeg protocols never need site extraction.
   bool is_site = platform_strncasecmp(url, "http://", sizeof("http://") - 1) == 0 ||
@@ -177,12 +179,14 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
 
   // Try yt-dlp extraction (for complex sites like YouTube, Twitch, etc.)
   asciichat_errno_scope_t extraction_scope = errno_scope_begin();
-  asciichat_error_t yt_dlp_result = yt_dlp_extract_stream_url(url, yt_dlp_options, output_url, output_size);
+  asciichat_error_t yt_dlp_result =
+      yt_dlp_extract_stream_urls(url, yt_dlp_options, output_url, output_size, audio_url, audio_size);
   errno_scope_end(extraction_scope, ASCIICHAT_ERRNO_HANDLED);
   if (yt_dlp_result == ASCIICHAT_OK) {
     log_debug("yt-dlp successfully extracted stream URL");
     return ASCIICHAT_OK;
   }
+  audio_url[0] = '\0';
 
   log_debug("URL extraction failed; trying the native decoder");
 
@@ -277,11 +281,13 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
     // Resolve URL using smart FFmpeg/yt-dlp routing
     const char *effective_path = path;
-    char resolved_url[BUFFER_SIZE_XLARGE] = {0};
+    char resolved_url[MEDIA_STREAM_URL_SIZE] = {0};
+    char resolved_audio_url[MEDIA_STREAM_URL_SIZE] = {0};
     const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
 
     log_debug("Resolving URL: %s", path);
-    asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
+    asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url),
+                                                             resolved_audio_url, sizeof(resolved_audio_url));
     if (resolve_err != ASCIICHAT_OK) {
       log_debug("Failed to resolve URL %s", asciichat_error_format(NULL, resolve_err));
       // Destroy mutexes before freeing source
@@ -353,7 +359,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     ASSERT_NO_ERRNO_SINCE(prefetch_scope);
     errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     decoder_scope = errno_checkpoint();
-    source->audio_decoder = ffmpeg_decoder_create_interruptible(effective_path, cancel, data);
+    const char *audio_path = resolved_audio_url[0] ? resolved_audio_url : effective_path;
+    source->audio_decoder = ffmpeg_decoder_create_interruptible(audio_path, cancel, data);
     if (!source->audio_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
       LOG_ERRNO_IF_SET("Media initialization failed");
