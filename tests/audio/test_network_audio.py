@@ -37,6 +37,8 @@ def main():
     def launch(name, flags):
         directory = output / name
         directory.mkdir(exist_ok=True)
+        recording = directory / "audio_playback_received.wav"
+        recording.unlink(missing_ok=True)
         env = os.environ.copy()
         env.update(TEMP=str(directory), TMP=str(directory), ASCIICHAT_DUMP_AUDIO="1")
         if args.encrypted:
@@ -147,7 +149,11 @@ def main():
         for process in reversed(processes):
             if process.poll() is None:
                 process.terminate()
-                process.wait(timeout=10)
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
         for log in logs:
             log.close()
 

@@ -167,7 +167,7 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
   if (json_str && json_len > 0) {
     // Include the delimiter in the same write so concurrent records stay on separate lines.
     json_str[json_len] = '\n';
-    platform_write(fd, (const uint8_t *)json_str, json_len + 1);
+    platform_write_all(fd, (const uint8_t *)json_str, json_len + 1);
 
     /* Free serialized JSON string */
     free(json_str);
