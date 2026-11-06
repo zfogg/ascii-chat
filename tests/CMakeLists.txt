@@ -2128,6 +2128,26 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
     endforeach()
 endif()
 
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_executable(test-yt-dlp-fixture standalone/media/fake_yt_dlp.c)
+    set_target_properties(test-yt-dlp-fixture PROPERTIES OUTPUT_NAME yt-dlp
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test-fixtures")
+    add_executable(test-extractor-audio standalone/media/extractor_audio_probe.c)
+    target_link_libraries(test-extractor-audio PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-extractor-audio PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-extractor-audio)
+    set_target_properties(test-extractor-audio PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_python_test(media-extractor
+        ${CMAKE_SOURCE_DIR}/tests/integration/media_extractor.py
+        --binary $<TARGET_FILE:ascii-chat> --fixture $<TARGET_FILE:test-yt-dlp-fixture>
+        --audio-probe $<TARGET_FILE:test-extractor-audio>)
+    set_tests_properties(media-extractor PROPERTIES LABELS "integration;media" TIMEOUT 180 RUN_SERIAL TRUE)
+    if(TARGET tests)
+        add_dependencies(tests ascii-chat test-yt-dlp-fixture test-extractor-audio)
+    endif()
+endif()
+
 if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
     asciichat_add_python_test(media-sessions
         ${CMAKE_SOURCE_DIR}/tests/integration/media_sessions.py --binary $<TARGET_FILE:ascii-chat>)

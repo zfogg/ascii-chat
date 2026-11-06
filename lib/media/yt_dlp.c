@@ -1,7 +1,6 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define MEDIA_YT_DLP_YT_DLP_OPTIONS_BUFFER_SIZE 512
-#define MEDIA_YT_DLP_COMMAND_BUFFER_SIZE 4096
 #define MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE 16384
 
 #include <ascii-chat/common/limits.h>
@@ -38,7 +37,8 @@
  */
 typedef struct {
   char url[MEDIA_URL_CACHE_SIZE];                               // Original URL
-  char stream_url[MEDIA_STREAM_URL_SIZE];                       // Extracted stream URL
+  char stream_url[MEDIA_STREAM_URL_SIZE];                       // Video or combined stream URL
+  char audio_url[MEDIA_STREAM_URL_SIZE];                        // Separate audio stream, if needed
   char yt_dlp_options[MEDIA_YT_DLP_YT_DLP_OPTIONS_BUFFER_SIZE]; // yt-dlp options used
   time_t extracted_time;                                        // When URL was extracted
   bool valid;                                                   // Whether cache entry is valid
@@ -70,7 +70,8 @@ static bool yt_dlp_cache_is_valid(void) {
  * Returns true if cache hit. Check if output_url is empty to detect
  * cached failures.
  */
-static bool yt_dlp_cache_get(const char *url, const char *yt_dlp_options, char *output_url, size_t output_size) {
+static bool yt_dlp_cache_get(const char *url, const char *yt_dlp_options, char *output_url, size_t output_size,
+                             char *audio_url, size_t audio_size) {
   if (!yt_dlp_cache_is_valid()) {
     return false;
   }
@@ -89,12 +90,14 @@ static bool yt_dlp_cache_get(const char *url, const char *yt_dlp_options, char *
 
   // Return cached URL (may be empty if cached failure)
   size_t url_len = strlen(g_yt_dlp_cache.stream_url);
-  if (url_len >= output_size) {
+  if (url_len >= output_size || strlen(g_yt_dlp_cache.audio_url) >= audio_size) {
     return false;
   }
 
   SAFE_STRNCPY(output_url, g_yt_dlp_cache.stream_url, output_size - 1);
   output_url[output_size - 1] = '\0';
+  SAFE_STRNCPY(audio_url, g_yt_dlp_cache.audio_url, audio_size - 1);
+  audio_url[audio_size - 1] = '\0';
 
   if (url_len == 0) {
     log_debug("Using cached yt-dlp failure for URL (failed %ld seconds ago)",
@@ -112,7 +115,8 @@ static bool yt_dlp_cache_get(const char *url, const char *yt_dlp_options, char *
  * If stream_url is empty/NULL, caches a failure state so we don't retry
  * the same failed URL multiple times.
  */
-static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const char *stream_url) {
+static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const char *stream_url,
+                             const char *audio_url) {
   if (strlen(url) >= sizeof(g_yt_dlp_cache.url)) {
     return; // URL too long to cache
   }
@@ -122,7 +126,8 @@ static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const 
     return; // Options too long to cache
   }
 
-  if (stream_url && strlen(stream_url) >= sizeof(g_yt_dlp_cache.stream_url)) {
+  if ((stream_url && strlen(stream_url) >= sizeof(g_yt_dlp_cache.stream_url)) ||
+      (audio_url && strlen(audio_url) >= sizeof(g_yt_dlp_cache.audio_url))) {
     return; // Stream URL too long to cache
   }
 
@@ -139,6 +144,8 @@ static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const 
     g_yt_dlp_cache.stream_url[0] = '\0';
   }
   g_yt_dlp_cache.stream_url[sizeof(g_yt_dlp_cache.stream_url) - 1] = '\0';
+  SAFE_STRNCPY(g_yt_dlp_cache.audio_url, audio_url ? audio_url : "", sizeof(g_yt_dlp_cache.audio_url) - 1);
+  g_yt_dlp_cache.audio_url[sizeof(g_yt_dlp_cache.audio_url) - 1] = '\0';
 
   g_yt_dlp_cache.extracted_time = time(NULL);
   g_yt_dlp_cache.valid = true;
@@ -157,145 +164,135 @@ bool yt_dlp_is_available(void) {
   return (ret == 0);
 }
 
-asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url,
-                                            size_t output_size) {
+// Parse the documented options string into arguments without invoking a shell.
+// Quotes group whitespace; backslashes escape quotes and whitespace.
+static bool yt_dlp_parse_options(const char *options, char *storage, size_t storage_size, const char **argv,
+                                 size_t *argc, size_t argv_size) {
+  size_t used = 0;
+  const char *p = options ? options : "";
+  while (*p) {
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+      ++p;
+    if (!*p)
+      break;
+    if (*argc >= argv_size || used >= storage_size)
+      return false;
+    argv[(*argc)++] = storage + used;
+    char quote = 0;
+    while (*p && (quote || (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n'))) {
+      if ((*p == '\'' || *p == '"') && (!quote || quote == *p)) {
+        quote = quote ? 0 : *p;
+        ++p;
+        continue;
+      }
+      if (quote != '\'' && *p == '\\' && p[1] &&
+          (p[1] == quote || (!quote && (p[1] == ' ' || p[1] == '\t' || p[1] == '\'' || p[1] == '"'))))
+        ++p;
+      if (used + 1 >= storage_size)
+        return false;
+      storage[used++] = *p++;
+    }
+    if (quote || used >= storage_size)
+      return false;
+    storage[used++] = '\0';
+  }
+  return true;
+}
+
+asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp_options, char *output_url,
+                                             size_t output_size, char *audio_url, size_t audio_size) {
   ASCII_OTEL_SCOPE(YTDLP_EXTRACT);
   ASCII_OTEL_ATTR_STRING("media.extractor", "yt-dlp");
-  if (!url || !output_url || output_size < 256) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for yt-dlp URL extraction");
-    return ERROR_INVALID_PARAM;
+  if (!url || !output_url || output_size < 256 || !audio_url || audio_size < 256) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for yt-dlp URL extraction");
   }
+  output_url[0] = '\0';
+  audio_url[0] = '\0';
 
-  // Check if yt-dlp is available
-  if (!yt_dlp_is_available()) {
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp is not installed. Please install it with: "
-                                            "pip install yt-dlp (or: brew install yt-dlp on macOS)");
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
-  }
-
-  // Check if we have a cached extraction for this URL+options combination
-  char cached_url[MEDIA_STREAM_URL_SIZE] = {0};
-  if (yt_dlp_cache_get(url, yt_dlp_options, cached_url, sizeof(cached_url))) {
+  if (yt_dlp_cache_get(url, yt_dlp_options, output_url, output_size, audio_url, audio_size)) {
     ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_HIT, 1);
-    ASCII_OTEL_ATTR_STRING("cache.result", *cached_url ? "hit" : "negative_hit");
-    if (!*cached_url)
+    ASCII_OTEL_ATTR_STRING("cache.result", *output_url ? "hit" : "negative_hit");
+    if (!*output_url) {
       ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_NEGATIVE, 1);
-    if (cached_url[0] != '\0') {
-      // Cached success - return the URL
-      SAFE_STRNCPY(output_url, cached_url, output_size - 1);
-      output_url[output_size - 1] = '\0';
-      return ASCIICHAT_OK;
-    } else {
-      // Cached failure - return error without logging again
       return ERROR_YOUTUBE_EXTRACT_FAILED;
     }
+    return ASCIICHAT_OK;
   }
 
+  if (!yt_dlp_is_available()) {
+    return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp is not installed. Please install it with: "
+                                                   "pip install yt-dlp (or: brew install yt-dlp on macOS)");
+  }
   ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_MISS, 1);
   ASCII_OTEL_ATTR_STRING("cache.result", "miss");
-  // Build yt-dlp command
-  char command[MEDIA_YT_DLP_COMMAND_BUFFER_SIZE];
-  const char *opts = yt_dlp_options ? yt_dlp_options : "";
 
-  int cmd_ret;
-  if (opts[0] != '\0') {
-    // User provided custom options
-    cmd_ret = safe_snprintf(command, sizeof(command),
-                            "yt-dlp --quiet --no-warnings "
-                            "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                            "AppleWebKit/537.36' "
-                            "%s "
-                            "-f 'b' -O '%%(url)s' '%s' 2>&1",
-                            opts, url);
-  } else {
-    // No custom options, use default
-    cmd_ret = safe_snprintf(command, sizeof(command),
-                            "yt-dlp --quiet --no-warnings "
-                            "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                            "AppleWebKit/537.36' "
-                            "-f 'b' -O '%%(url)s' '%s' 2>&1",
-                            url);
+  enum { YT_DLP_MAX_ARGS = 64 };
+  const char *argv[YT_DLP_MAX_ARGS];
+  char option_storage[MEDIA_YT_DLP_YT_DLP_OPTIONS_BUFFER_SIZE];
+  size_t argc = 0;
+  argv[argc++] = "yt-dlp";
+  argv[argc++] = "--quiet";
+  argv[argc++] = "--no-warnings";
+  argv[argc++] = "--no-playlist";
+  argv[argc++] = "--user-agent";
+  argv[argc++] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+  // Reserve room for the format, output option, URL and terminating NULL.
+  if (!yt_dlp_parse_options(yt_dlp_options, option_storage, sizeof(option_storage), argv, &argc, YT_DLP_MAX_ARGS - 6)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or too long yt-dlp options");
+  }
+  argv[argc++] = "-f";
+  // Only select separate streams when no combined format is available.
+  // Prefer H.264 for fallback: some FFmpeg builds cannot decode AV1.
+  argv[argc++] = "b/bv[vcodec^=avc1]+ba/bv+ba";
+  argv[argc++] = "-g";
+  argv[argc++] = "--";
+  argv[argc++] = url;
+  argv[argc] = NULL;
+
+  // Two URLs can each occupy the full stream URL capacity, plus diagnostics.
+  char output[MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE + MEDIA_STREAM_URL_SIZE] = {0};
+  int status = 0;
+  LOG_IO("yt-dlp", { status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output)); });
+  if (status != 0 || strlen(output) == sizeof(output) - 1) {
+    yt_dlp_cache_set(url, yt_dlp_options, NULL, NULL);
+    log_error("yt-dlp failed to extract streams (exit %d): %s", status, output);
+    return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp failed to extract streams");
   }
 
-  if (cmd_ret < 0 || cmd_ret >= (int)sizeof(command)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "URL or yt-dlp options too long");
-    return ERROR_INVALID_PARAM;
-  }
-
-  log_debug("Executing yt-dlp: %s", command);
-
-  // Execute yt-dlp and capture output
-  FILE *pipe = NULL;
-  if (platform_popen("yt_dlp_extract", command, "r", &pipe) != ASCIICHAT_OK || !pipe) {
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Failed to execute yt-dlp subprocess");
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
-  }
-
-  // Read output looking for stream URL (should be last line starting with http)
-  char url_buffer[MEDIA_STREAM_URL_SIZE] = {0};
-  char full_output[MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE] = {0};
-  size_t ytdlp_output_len = 0;
-  size_t url_size = 0;
-  int c;
-
-  while ((c = fgetc(pipe)) != EOF && ytdlp_output_len < sizeof(full_output) - 1) {
-    full_output[ytdlp_output_len++] = (char)c;
-
-    // Track current line - looking for http:// or https:// stream URL
-    if ((url_size == 0 && c == 'h') || (url_size > 0 && c != '\n' && url_size < sizeof(url_buffer) - 1)) {
-      url_buffer[url_size++] = (char)c;
-    } else if (c == '\n') {
-      if (url_size > 0) {
-        url_buffer[url_size] = '\0';
-        if (url_is_valid(url_buffer)) {
-          break; // Found valid URL
-        }
+  size_t count = 0;
+  char *line = output;
+  while (*line) {
+    char *end = strpbrk(line, "\r\n");
+    if (end)
+      *end = '\0';
+    if (strncmp(line, "https://", 8) == 0 || strncmp(line, "http://", 7) == 0) {
+      size_t length = strlen(line);
+      char *dest = count == 0 ? output_url : audio_url;
+      size_t capacity = count == 0 ? output_size : audio_size;
+      if (count >= 2 || length >= capacity || !url_is_valid(line)) {
+        return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid or oversized stream URLs");
       }
-      url_size = 0; // Reset for next line
+      memcpy(dest, line, length + 1);
+      ++count;
     }
+    if (!end)
+      break;
+    line = end + 1;
+    while (*line == '\r' || *line == '\n')
+      ++line;
   }
-  full_output[ytdlp_output_len] = '\0';
-  url_buffer[url_size] = '\0';
-
-  int pclose_ret = (platform_pclose(&pipe) == ASCIICHAT_OK) ? 0 : -1;
-  if (pclose_ret != 0) {
-    yt_dlp_cache_set(url, yt_dlp_options, NULL); // Cache failure
-
-    log_debug("yt-dlp exited with code %d", pclose_ret);
-    if (ytdlp_output_len > 0) {
-      log_error("yt-dlp output:\n%s", full_output);
-      SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp failed to extract stream: %s", full_output);
-    } else {
-      SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp failed to extract stream");
-    }
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
+  if (count == 0) {
+    yt_dlp_cache_set(url, yt_dlp_options, NULL, NULL);
+    log_error("yt-dlp returned no playable stream URL: %s", output);
+    return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned no playable formats");
   }
-
-  if (url_size == 0 || (url_size == 2 && strncmp(url_buffer, "NA", 2) == 0)) {
-    yt_dlp_cache_set(url, yt_dlp_options, NULL);
-    log_error("yt-dlp returned empty output for URL: %s", url);
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned no playable formats");
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
-  }
-
-  if (url_buffer[0] != 'h' || strncmp(url_buffer, "http", 4) != 0) {
-    yt_dlp_cache_set(url, yt_dlp_options, NULL);
-    log_error("Invalid URL from yt-dlp: %s (full output: %s)", url_buffer, full_output);
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid URL");
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
-  }
-
-  if (url_size >= output_size) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Stream URL too long for output buffer (%zu bytes, max %zu)", url_size, output_size);
-    return ERROR_INVALID_PARAM;
-  }
-
-  SAFE_STRNCPY(output_url, url_buffer, output_size - 1);
-  output_url[output_size - 1] = '\0';
-
-  // Cache successful result
-  yt_dlp_cache_set(url, yt_dlp_options, output_url);
-
-  log_debug("yt-dlp successfully extracted stream URL (%zu bytes)", url_size);
+  yt_dlp_cache_set(url, yt_dlp_options, output_url, audio_url);
+  log_debug("yt-dlp extracted %zu stream URL(s)", count);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url,
+                                            size_t output_size) {
+  char audio_url[MEDIA_STREAM_URL_SIZE];
+  return yt_dlp_extract_stream_urls(url, yt_dlp_options, output_url, output_size, audio_url, sizeof(audio_url));
 }
