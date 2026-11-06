@@ -18,6 +18,8 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/util/url.h>
+#include <libavformat/avformat.h>
+#include <libavformat/avio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -199,16 +201,45 @@ static bool yt_dlp_parse_options(const char *options, char *storage, size_t stor
   return true;
 }
 
+// FFmpeg accepts network streams beyond the schemes supported by url_parse().
+static bool yt_dlp_is_stream_url(const char *line) {
+  static const char *const prefixes[] = {"http://",   "https://",  "rtmp://", "rtmps://", "rtmpe://",  "rtmpt://",
+                                         "rtmpte://", "rtmpts://", "rtsp://", "rtsps://", "rtp://",    "srtp://",
+                                         "mms://",    "mmsh://",   "mmst://", "ftp://",   "ftps://",   "sftp://",
+                                         "srt://",    "rist://",   "tcp://",  "udp://",   "udplite://"};
+  for (size_t i = 0; i < ARRAY_SIZE(prefixes); ++i) {
+    size_t length = strlen(prefixes[i]);
+    if (platform_strncasecmp(line, prefixes[i], length) != 0)
+      continue;
+    const char *authority = line + length;
+    if (!*authority || *authority == '/' || strpbrk(authority, " \t\r\n"))
+      return false;
+    if (i < 2)
+      return url_is_valid(line);
+    // RTSP is a demuxer rather than an AVIO protocol.
+    if (strcmp(prefixes[i], "rtsp://") == 0 || strcmp(prefixes[i], "rtsps://") == 0)
+      return av_find_input_format("rtsp") != NULL;
+    const char *protocol = avio_find_protocol_name(line);
+    return protocol && strcmp(protocol, "file") != 0;
+  }
+  return false;
+}
+
 asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp_options, char *output_url,
                                              size_t output_size, char *audio_url, size_t audio_size) {
   ASCII_OTEL_SCOPE(YTDLP_EXTRACT);
   ASCII_OTEL_ATTR_STRING("media.extractor", "yt-dlp");
+  if (output_url && output_size) {
+    output_url[0] = '\0';
+    output_url[output_size - 1] = '\0';
+  }
+  if (audio_url && audio_size) {
+    audio_url[0] = '\0';
+    audio_url[audio_size - 1] = '\0';
+  }
   if (!url || !output_url || output_size < 256 || !audio_url || audio_size < 256) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for yt-dlp URL extraction");
   }
-  output_url[0] = '\0';
-  audio_url[0] = '\0';
-
   if (yt_dlp_cache_get(url, yt_dlp_options, output_url, output_size, audio_url, audio_size)) {
     ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_HIT, 1);
     ASCII_OTEL_ATTR_STRING("cache.result", *output_url ? "hit" : "negative_hit");
@@ -236,14 +267,14 @@ asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp
   argv[argc++] = "--no-playlist";
   argv[argc++] = "--user-agent";
   argv[argc++] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
-  // Reserve room for the format, output option, URL and terminating NULL.
-  if (!yt_dlp_parse_options(yt_dlp_options, option_storage, sizeof(option_storage), argv, &argc, YT_DLP_MAX_ARGS - 6)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or too long yt-dlp options");
-  }
   argv[argc++] = "-f";
   // Only select separate streams when no combined format is available.
   // Prefer H.264 for fallback: some FFmpeg builds cannot decode AV1.
   argv[argc++] = "b/bv[vcodec^=avc1]+ba/bv+ba";
+  // A user-provided -f or --format overrides the default selector.
+  if (!yt_dlp_parse_options(yt_dlp_options, option_storage, sizeof(option_storage), argv, &argc, YT_DLP_MAX_ARGS - 4)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or too long yt-dlp options");
+  }
   argv[argc++] = "-g";
   argv[argc++] = "--";
   argv[argc++] = url;
@@ -265,11 +296,11 @@ asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp
     char *end = strpbrk(line, "\r\n");
     if (end)
       *end = '\0';
-    if (strncmp(line, "https://", 8) == 0 || strncmp(line, "http://", 7) == 0) {
+    if (yt_dlp_is_stream_url(line)) {
       size_t length = strlen(line);
       char *dest = count == 0 ? output_url : audio_url;
       size_t capacity = count == 0 ? output_size : audio_size;
-      if (count >= 2 || length >= capacity || !url_is_valid(line)) {
+      if (count >= 2 || length >= capacity) {
         return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid or oversized stream URLs");
       }
       memcpy(dest, line, length + 1);

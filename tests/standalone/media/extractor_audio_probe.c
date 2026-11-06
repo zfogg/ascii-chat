@@ -3,10 +3,13 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
+#include <ascii-chat/media/yt_dlp.h>
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/options/rcu.h>
+#include <string.h>
 
 int main(int argc, char **argv) {
-  if (argc != 2)
+  if (argc != 2 && argc != 3)
     return 1;
   log_init(NULL, LOG_ERROR, false, false);
   if (named_init() != ASCIICHAT_OK || options_state_init() != ASCIICHAT_OK)
@@ -14,6 +17,18 @@ int main(int argc, char **argv) {
   options_t options = options_t_new();
   if (options_state_set(&options) != ASCIICHAT_OK)
     return 3;
+  if (argc == 3) {
+    char video[MEDIA_STREAM_URL_SIZE], audio[MEDIA_STREAM_URL_SIZE];
+    memset(video, 'X', sizeof(video));
+    memset(audio, 'X', sizeof(audio));
+    asciichat_error_t result = yt_dlp_extract_stream_urls(argv[1], NULL, video, sizeof(video), audio, sizeof(audio));
+    options_state_destroy();
+    if (strcmp(argv[2], "--expect-error") == 0)
+      return result != ASCIICHAT_OK && !video[0] && !video[sizeof(video) - 1] && !audio[0] && !audio[sizeof(audio) - 1]
+                 ? 0
+                 : 6;
+    return result == ASCIICHAT_OK && strcmp(video, argv[2]) == 0 && !audio[0] ? 0 : 6;
+  }
   media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, argv[1]);
   if (!source || !media_source_has_video(source) || !media_source_has_audio(source))
     return 4;
