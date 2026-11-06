@@ -2129,6 +2129,15 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
+    add_executable(test-client-ping-sentinel standalone/network/client_ping_test.c)
+    target_link_libraries(test-client-ping-sentinel PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-client-ping-sentinel PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-client-ping-sentinel)
+    set_target_properties(test-client-ping-sentinel PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME client-ping-sentinel COMMAND test-client-ping-sentinel)
+    set_tests_properties(client-ping-sentinel PROPERTIES LABELS "unit;network" TIMEOUT 30)
     add_executable(test-yt-dlp-fixture standalone/media/fake_yt_dlp.c)
     set_target_properties(test-yt-dlp-fixture PROPERTIES OUTPUT_NAME yt-dlp
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test-fixtures")
@@ -2144,7 +2153,7 @@ if(BUILD_TESTS AND TARGET ascii-chat)
         --audio-probe $<TARGET_FILE:test-extractor-audio>)
     set_tests_properties(media-extractor PROPERTIES LABELS "integration;media" TIMEOUT 180 RUN_SERIAL TRUE)
     if(TARGET tests)
-        add_dependencies(tests ascii-chat test-yt-dlp-fixture test-extractor-audio)
+        add_dependencies(tests ascii-chat test-yt-dlp-fixture test-extractor-audio test-client-ping-sentinel)
     endif()
 endif()
 
