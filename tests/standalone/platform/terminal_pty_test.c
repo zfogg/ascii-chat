@@ -93,14 +93,20 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(ui_input_prompt("Cancel with Escape", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) != ASCIICHAT_OK);
     CLEAR_ERRNO();
     REQUIRE(ui_controller_interactive_screen() == UI_SCREEN_LOGS);
-    ui_error_popup_key(KEY_ESCAPE);
+    error_deadline = ui_input_deadline(30);
+    while (ui_error_popup_visible() && !ui_input_expired(error_deadline))
+      (void)ui_input_read_key(UI_SCREEN_LOGS);
+    REQUIRE(!ui_error_popup_visible());
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
     prompt_opts_t opts = PROMPT_OPTS_DEFAULT;
     opts.timeout_seconds = 1;
     REQUIRE(ui_input_prompt("Wait for timeout", answer, sizeof(answer), opts) == ERROR_PROMPT_TIMEOUT);
     CLEAR_ERRNO();
     REQUIRE(ui_controller_interactive_screen() == UI_SCREEN_LOGS);
-    ui_error_popup_key(KEY_ESCAPE);
+    error_deadline = ui_input_deadline(30);
+    while (ui_error_popup_visible() && !ui_input_expired(error_deadline))
+      (void)ui_input_read_key(UI_SCREEN_LOGS);
+    REQUIRE(!ui_error_popup_visible());
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
     ui_controller_remove(UI_SCREEN_LOGS);
     ui_controller_restore_terminal();

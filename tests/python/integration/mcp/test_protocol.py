@@ -44,6 +44,7 @@ class Protocol(unittest.TestCase):
     @pytest.fixture(autouse=True)
     def configure_binary(self, binary, test_environment, monkeypatch):
         self.binary = binary
+        self.test_home = test_environment["HOME"]
         for key in list(os.environ):
             if key.startswith("ASCII_CHAT_") and key not in test_environment:
                 monkeypatch.delenv(key)
@@ -51,7 +52,7 @@ class Protocol(unittest.TestCase):
             monkeypatch.setenv(key, value)
 
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="ascii-mcp-protocol-")
+        self.tmp = tempfile.TemporaryDirectory(prefix="ascii-mcp-protocol-", dir=self.test_home)
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
     def client(self, extra=(), mode_extra=()):
         c = Client(self.binary, self.directory, extra, mode_extra); self.addCleanup(c.close); return c

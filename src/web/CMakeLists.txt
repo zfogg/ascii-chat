@@ -359,7 +359,9 @@ set(LIB_SRC_COMMON
 # Mirror-specific sources (not needed by client mode)
 set(LIB_SRC_MIRROR_ONLY
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
-    ${LIB_ROOT}/audio/visualization.c # Audio waveform and spectrum rendering for mirror WASM
+    ${LIB_ROOT}/audio/visualization.c
+    ${LIB_ROOT}/video/anim/waveform.c
+    ${LIB_ROOT}/video/anim/fft.c
 )
 
 # Client-specific sources (crypto + network)
@@ -500,6 +502,8 @@ set(WEB_SRC_CLIENT
     # Local file previews share the mirror frame converter.
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
     ${LIB_ROOT}/audio/visualization.c
+    ${LIB_ROOT}/video/anim/waveform.c
+    ${LIB_ROOT}/video/anim/fft.c
     ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
     ${LIB_ROOT}/audio/processor.c
     ${LIB_ROOT}/audio/format.c

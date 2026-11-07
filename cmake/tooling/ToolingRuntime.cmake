@@ -81,6 +81,7 @@ function(ascii_build_tooling_runtime)
 
         # Always use shared library (built from OBJECT libraries for all build types)
         target_link_libraries(ascii-panic-report PRIVATE ascii-chat-shared)
+        apply_sanitizers_to_target(ascii-panic-report)
         # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
             target_link_libraries(ascii-panic-report PRIVATE ${MIMALLOC_LIBRARIES})

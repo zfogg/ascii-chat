@@ -361,21 +361,21 @@ bool update_banner_install_update(void) {
   if (test_command && test_command[0]) {
 #ifdef _WIN32
     const char *argv[] = {"cmd", "/d", "/c", test_command, NULL};
-    exit_code = platform_execute_subprocess("cmd", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("cmd", argv, NULL, 0, NULL, NULL);
 #else
     const char *argv[] = {"/bin/sh", "-c", test_command, NULL};
-    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0, NULL, NULL);
 #endif
   } else
 #endif
       if (method == INSTALL_METHOD_HOMEBREW) {
     const char *argv[] = {"brew", "upgrade", "ascii-chat", NULL};
-    exit_code = platform_execute_subprocess("brew", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("brew", argv, NULL, 0, NULL, NULL);
   } else if (method == INSTALL_METHOD_SCOOP) {
     // Scoop is a PowerShell script/shim, rather than a native executable.
     const char *argv[] = {"powershell", "-NoProfile", "-Command",
                           "$ErrorActionPreference = 'Stop'; scoop update ascii-chat; if (!$?) { exit 1 }", NULL};
-    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0, NULL, NULL);
   } else if (method == INSTALL_METHOD_ARCH_AUR) {
     const char *helper = update_check_get_aur_helper();
     if (!helper) {
@@ -385,17 +385,17 @@ bool update_banner_install_update(void) {
       return false;
     }
     const char *argv[] = {helper, "-S", "ascii-chat", NULL};
-    exit_code = platform_execute_subprocess(helper, argv, NULL, 0);
+    exit_code = platform_execute_subprocess(helper, argv, NULL, 0, NULL, NULL);
   } else {
 #ifdef _WIN32
     const char *argv[] = {
         "powershell", "-NoProfile", "-ExecutionPolicy",
         "Bypass",     "-Command",   "$ErrorActionPreference = 'Stop'; irm https://ascii-chat.com/install.ps1 | iex",
         NULL};
-    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0, NULL, NULL);
 #else
     const char *argv[] = {"bash", "-o", "pipefail", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
-    exit_code = platform_execute_subprocess("bash", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("bash", argv, NULL, 0, NULL, NULL);
 #endif
   }
   if (exit_code != 0) {
@@ -539,13 +539,13 @@ static void update_banner_open_release(void) {
   ascii_otel_ui_usage("update", "release_open_requested", 0);
 #ifdef _WIN32
   const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
-  (void)platform_execute_subprocess("cmd", argv, NULL, 0);
+  (void)platform_execute_subprocess("cmd", argv, NULL, 0, NULL, NULL);
 #elif defined(__APPLE__)
   const char *argv[] = {"open", result.release_url, NULL};
-  (void)platform_execute_subprocess("open", argv, NULL, 0);
+  (void)platform_execute_subprocess("open", argv, NULL, 0, NULL, NULL);
 #else
   const char *argv[] = {"xdg-open", result.release_url, NULL};
-  (void)platform_execute_subprocess("xdg-open", argv, NULL, 0);
+  (void)platform_execute_subprocess("xdg-open", argv, NULL, 0, NULL, NULL);
 #endif
 }
 

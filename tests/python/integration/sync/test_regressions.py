@@ -7,6 +7,7 @@ Run: python tests/python/integration/sync/test_regressions.py build/bin/test-syn
 Requires the same pyte/pywinpty (Windows) or pexpect (POSIX) as terminal_ui.py.
 """
 
+
 import os
 import re
 import subprocess

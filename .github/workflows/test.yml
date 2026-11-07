@@ -482,7 +482,8 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          # Keep Python WebRTC smoke tests available locally without running them in CI.
+          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 

@@ -104,9 +104,12 @@ class PanicReport(unittest.TestCase):
 
     def test_default_directory_uses_each_supported_environment_variable(self):
         (self.root / "ascii-instr-one.log").write_text(record())
-        for key in ("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", "TMPDIR", "TEMP", "TMP"):
+        keys = ("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", "TMPDIR", "TEMP", "TMP")
+        for key in keys:
             with self.subTest(key=key):
-                self.assertIn("(1 thread)", self.run_report(env=dict(self.env, **{key: str(self.root)})))
+                env = {name: value for name, value in self.env.items() if name not in keys}
+                env[key] = str(self.root)
+                self.assertIn("(1 thread)", self.run_report(env=env))
         self.assertIn("No instrumentation records matched", self.empty_output())
 
     def empty_output(self):

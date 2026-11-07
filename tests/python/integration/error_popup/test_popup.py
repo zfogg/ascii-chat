@@ -133,14 +133,20 @@ def navigation(args):
             assert color_of(f.term, "produce_errors") == shortcut_color
             # Internal frame counts vary by platform. Check a displayed frame
             # at the fixture error site and its function/source-line colors.
-            frame = next(((row, re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line))
+            frame_pattern = r"\[\d+\].*?(\w+)\(\)(?:.*?error_popup_fixture\.c:(\d+))?"
+            frame = next(((row, re.search(frame_pattern, line))
                           for row, line in enumerate(f.term.screen.display)
-                          if re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line)), None)
-            assert frame, "Backtrace did not identify the fixture error site"
+                          if re.search(frame_pattern, line) and ("produce_errors()" in line or "error_popup_fixture.c:" in line)), None)
+            assert frame, "Backtrace did not identify the fixture error site:\n" + "\n".join(f.term.screen.display)
             row, match = frame
             assert match is not None
             assert f.term.screen.buffer[row][match.start(1)].fg == shortcut_color
-            assert f.term.screen.buffer[row][match.start(2)].fg == thread_color
+            if match.group(2):
+                assert f.term.screen.buffer[row][match.start(2)].fg == thread_color
+            else:
+                # Some symbolizers resolve the function but omit its file and line.
+                assert re.search(r"Source: .*error_popup_fixture\.c produce_errors:\d+",
+                                 "\n".join(f.term.screen.display))
             if sys.platform == "win32":
                 assert color_of(f.term, "[asciichat.dll]", 1) == "default"
             assert name_color != shortcut_color
@@ -296,10 +302,14 @@ def layers(args):
             f.key("?", "Error Popup Keyboard Shortcuts")
             f.screenshot(f"help-{action}")
             f.key("?", "FIRST_ERROR")
+            f.absent("Error Popup Keyboard Shortcuts")
             if action == "stats":
                 for _ in range(3):
                     f.key("?", "Error Popup Keyboard Shortcuts")
                     f.key("?", "FIRST_ERROR")
+                    f.absent("Error Popup Keyboard Shortcuts")
+            # The covered prompt needs time to resume its input polling.
+            f.term.pump(1)
             f.term.write("q")
             f.absent("? Help")
             f.expect(marker)

@@ -8,31 +8,27 @@ from ascii_chat_tests.media import ppm_image
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
 
+
 import functools
 import http.server
 import json
 import os
 from pathlib import Path
 import re
-import select
 import signal
 import socket
-import struct
 import subprocess
 import sys
 import threading
 import time
 import unittest
 
-if os.name != "nt":
-    import fcntl
-    import pty
-    import termios
 
 import tomllib
 
 
 from ascii_chat_tests.process import free_port
+from ascii_chat_tests.terminal import Terminal
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.network, pytest.mark.skipif(sys.platform != "linux", reason="Linux media session fixture")]
@@ -125,7 +121,7 @@ class MediaSessions(unittest.TestCase):
             "else:\n"
             "    with open(os.environ['EXTRACTOR_TRACE'], 'a') as output:\n"
             "        output.write(json.dumps(sys.argv[-1]) + '\\n')\n"
-            "    print(os.environ['EXTRACTOR_MEDIA'])\n")
+            "    print(json.dumps({'base': {'url': os.environ['EXTRACTOR_MEDIA']}, 'formats': None}))\n")
         extractor.chmod(0o755)
         handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(self.root))
         with http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
@@ -221,70 +217,43 @@ class MediaSessions(unittest.TestCase):
         self.assertTrue(all(path.stat().st_size > 20 for path in profiles), profiles)
 
     def test_interactive_mirror_recovers_after_overlays_and_resize(self):
-        master, slave = pty.openpty()
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 45, 140, 0, 0))
-        process = subprocess.Popen(self.command(
+        term = Terminal(self.command(
             "mirror", "--file", str(self.image), "--loop", "--audio=false", "--splash-screen=false",
             "--palette", "custom", "--palette-chars", "QQ", "--color-mode", "none"),
-            env=self.env, stdin=slave, stdout=slave, stderr=slave, start_new_session=True)
-        os.close(slave)
+            rows=45, cols=140, terminal_replies=True, environment=self.env)
 
         def expect(marker, timeout=15):
-            output = bytearray()
-            deadline = time.monotonic() + timeout
-            while time.monotonic() < deadline:
-                if select.select([master], [], [], 0.1)[0]:
-                    try:
-                        output.extend(os.read(master, 65536))
-                    except OSError:
-                        break
-                    # The renderer may encode repeated cells with ECMA-48 REP.
-                    expanded = re.sub(rb"(.)\x1b\[(\d+)b",
-                                      lambda m: m[1] * (min(int(m[2]), 500) + 1), bytes(output))
-                    plain = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", expanded)
-                    if marker in plain:
-                        return bytes(output)
-            log = (self.root / "session.log").read_text(errors="replace")
-            self.fail(f"Missing {marker!r} in terminal output: {bytes(output[-3000:])!r}\nSession log:\n{log[-8000:]}")
+            return term.expect(lambda text: marker in text, f"Missing {marker!r}", timeout=timeout)
 
         try:
-            expect(b"QQQQQQQQ")
-            os.write(master, b"?")
-            expect(b"Keyboard Shortcuts")
-            os.write(master, b"\x1b[B")
-            expect(b"Volume")
-            os.write(master, b"?")
-            expect(b"QQQQQQQQ")
-            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 12, 19, 0, 0))
-            process.send_signal(signal.SIGWINCH)
-            expect(b"Terminal too small")
-            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 45, 140, 0, 0))
-            process.send_signal(signal.SIGWINCH)
-            expect(b"QQQQQQQQ")
-            os.write(master, b"o")
-            expect(b"Open media:")
-            os.write(master, b"\x1b")
-            expect(b"QQQQQQQQ")
-            os.write(master, b"]")
-            expect(b"Esc: close")
-            os.write(master, b"]")
-            expect(b"QQQQQQQQ")
-            process.send_signal(signal.SIGINT)
-            # Drain the PTY while shutdown joins the UI worker.
+            expect("QQQQQQQQ")
+            term.write("?")
+            expect("Keyboard Shortcuts")
+            term.write("\x1b[B")
+            expect("Volume")
+            term.write("?")
+            expect("QQQQQQQQ")
+            term.resize(12, 19)
+            expect("Terminal too small")
+            term.resize(45, 140)
+            expect("QQQQQQQQ")
+            term.write("o")
+            expect("Open media:")
+            term.write("\x1b")
+            expect("QQQQQQQQ")
+            term.write("]")
+            expect("Esc: close")
+            term.write("]")
+            expect("QQQQQQQQ")
+            term.write("\x03")
             deadline = time.monotonic() + 30
-            while process.poll() is None and time.monotonic() < deadline:
-                if select.select([master], [], [], 0.1)[0]:
-                    try:
-                        os.read(master, 65536)
-                    except OSError:
-                        break
-            self.assertEqual(process.wait(timeout=2), 0,
+            while term.process.isalive() and time.monotonic() < deadline:
+                term.pump(.1)
+            self.assertFalse(term.process.isalive(), "Mirror did not shut down")
+            self.assertEqual(term.process.exitstatus, 0,
                              (self.root / "session.log").read_text(errors="replace")[-8000:])
         finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait()
-            os.close(master)
+            term.close()
 
     def test_early_actions_write_coverage(self):
         if os.environ.get("ASCIICHAT_COVERAGE_BUILD") != "1":

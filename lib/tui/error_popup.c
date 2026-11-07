@@ -266,7 +266,8 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     if (trace.count) {
       backtrace_symbolize(&trace);
       if (trace.symbols)
-        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0, NULL);
+        backtrace_format_styled(&g_trace, "Backtrace", &trace, ERROR_BACKTRACE_INTERNAL_FRAMES, 0,
+                                backtrace_filter_error_internal);
       backtrace_t_free(&trace);
     }
   }
