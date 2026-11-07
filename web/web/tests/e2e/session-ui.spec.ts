@@ -260,10 +260,9 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.keyboard.press("?");
   await expect
     .poll(() => lastFrame(page))
-    .toContain("Live log viewer/searcher TUI");
-  expect(await lastFrame(page)).not.toContain("/: search logs");
+    .toContain("Log Viewer Keyboard Controls");
   await page.screenshot({ path: "artifacts/session-logs-help-web.png" });
-  await page.keyboard.press("]");
+  await page.keyboard.press("?");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.keyboard.press("Escape");
   await expect
@@ -281,7 +280,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.waitForTimeout(400);
   expect(
     (await page.evaluate(() => window.__sessionUiFrames!.slice(-5))).every(
-      (frame) => frame.includes("/: search logs"),
+      (frame) => stripVTControlCharacters(frame).includes("/: search logs"),
     ),
   ).toBe(true);
   await page.setViewportSize({ width: 360, height: 320 });
@@ -345,8 +344,10 @@ test("connected web client shows its C network logs", async ({ page }) => {
   await expect.poll(canvasFps).toBeGreaterThan(0);
   await page.screenshot({ path: "artifacts/session-logs-web-client.png" });
   await page.keyboard.press("?");
-  await expect.poll(() => lastFrame(page)).toContain("Toggle application logs");
-  await page.keyboard.press("]");
+  await expect
+    .poll(() => lastFrame(page))
+    .toContain("Log Viewer Keyboard Controls");
+  await page.keyboard.press("?");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.keyboard.press("Escape");
   await expect
