@@ -104,8 +104,8 @@ asciichat_error_t mcp_download_finalize(const mcp_policy_t *policy, yyjson_mut_d
     prefix = fallback;
   }
   size_t prefix_len = strlen(prefix);
-  n = safe_snprintf(url, sizeof(url), "%s%sdownloads/%s", prefix, prefix_len && prefix[prefix_len - 1] == '/' ? "" : "/",
-                    new_name);
+  n = safe_snprintf(url, sizeof(url), "%s%sdownloads/%s", prefix,
+                    prefix_len && prefix[prefix_len - 1] == '/' ? "" : "/", new_name);
   if (n < 0 || (size_t)n >= sizeof(url))
     return SET_ERRNO(ERROR_INVALID_STATE, "Download URL is too long");
   if (strcmp(old, new_path)) {
