@@ -120,13 +120,13 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     return respond(wsi, h, response ? 200 : 202, response);
   }
   case LWS_CALLBACK_EVENT_WAIT_CANCELLED:
-    for (int i = 0; i < MCP_MAX_JOBS; ++i)
+    for (unsigned i = 0; i < s->policy.max_jobs; ++i)
       if (s->jobs[i].started && s->jobs[i].connection && atomic_load_bool(&s->jobs[i].done))
         lws_callback_on_writable(s->jobs[i].connection);
     return 0;
   case LWS_CALLBACK_HTTP_WRITEABLE: {
     if (h->pending) {
-      for (int i = 0; i < MCP_MAX_JOBS; ++i) {
+      for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
         mcp_job_t *j = &s->jobs[i];
         if (j->started && j->connection == wsi && atomic_load_bool(&j->done)) {
           h->pending = false;
@@ -177,7 +177,7 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     return 0;
   }
   case LWS_CALLBACK_CLOSED_HTTP:
-    for (int i = 0; i < MCP_MAX_JOBS; ++i)
+    for (unsigned i = 0; i < s->policy.max_jobs; ++i)
       if (s->jobs[i].started && s->jobs[i].connection == wsi) {
         s->jobs[i].connection = NULL;
         atomic_store_bool(&s->jobs[i].cancelled, true);
@@ -271,7 +271,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
     }
     if (ui) {
       status.connected_count = 0;
-      for (int i = 0; i < MCP_MAX_JOBS; ++i)
+      for (unsigned i = 0; i < s->policy.max_jobs; ++i)
         if (s->jobs[i].started && !atomic_load_bool(&s->jobs[i].done))
           ++status.connected_count;
       if (!ui_status_display_interactive(&status))
@@ -279,7 +279,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
     }
   }
   lws_sul_cancel(&pulse.timer);
-  for (int i = 0; i < MCP_MAX_JOBS; ++i)
+  for (unsigned i = 0; i < s->policy.max_jobs; ++i)
     if (s->jobs[i].started)
       atomic_store_bool(&s->jobs[i].cancelled, true);
   mcp_jobs_reap(s, true);

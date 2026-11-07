@@ -6,6 +6,8 @@ import hashlib
 import http.client
 import json
 import os
+import re
+import shutil
 from pathlib import Path
 import socket
 import subprocess
@@ -16,6 +18,11 @@ import unittest
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.mcp]
+
+def available_cpu_count():
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+    return os.cpu_count() or 1
 
 class Client:
     def __init__(self, binary, directory, extra=(), mode_extra=()):
@@ -48,6 +55,75 @@ class Protocol(unittest.TestCase):
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
     def client(self, extra=(), mode_extra=()):
         c = Client(self.binary, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
+
+    def test_explicit_concurrency_limit_reports_busy(self):
+        c = self.client(extra=("--log-level", "info"), mode_extra=("--max-clients", "1"))
+        arguments = {"options": {"test-pattern": True, "snapshot-delay": 8}}
+        c.send("tools/call", {"name": "render_file", "arguments": arguments}, 1)
+        c.send("tools/call", {"name": "render_file", "arguments": arguments}, 2)
+        response = c.receive()
+        self.assertEqual(response["id"], 2)
+        self.assertEqual(response["error"]["code"], -32000)
+        self.assertIn("at most 1 render may run", response["error"]["message"])
+        c.send("notifications/cancelled", {"requestId": 1})
+        self.assertEqual(c.receive()["id"], 1)
+
+    def test_concurrency_configuration_precedence(self):
+        config = self.directory / "concurrency.toml"
+        config.write_text("[network]\nmax_clients = 3\n", encoding="utf-8")
+        def capacity(extra=(), env=None):
+            log_path = self.directory / "capacity.log"
+            result = subprocess.run([str(self.binary), "--log-level", "info", "--log-file", str(log_path),
+                                     *extra, "mcp-server"], input=b"", capture_output=True, env=env, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            match = re.search(r"MCP server started .*\b(\d+) render jobs\)", log_path.read_text(errors="replace"))
+            self.assertIsNotNone(match)
+            return int(match.group(1))
+        available = capacity()
+        self.assertGreaterEqual(available, 1)
+        self.assertEqual(capacity(("--config", str(config))), min(available, 3))
+        env = dict(os.environ, ASCII_CHAT_MAX_CLIENTS="2")
+        self.assertEqual(capacity(("--config", str(config)), env), min(available, 2))
+
+    def test_more_than_four_concurrent_renders(self):
+        log_path = self.directory / "concurrency.log"
+        c = self.client(extra=("--log-level", "info", "--log-file", str(log_path)),
+                        mode_extra=("--max-clients", "5"))
+        deadline = time.monotonic() + 15
+        match = None
+        while time.monotonic() < deadline:
+            if log_path.exists():
+                match = re.search(r"MCP server started .*\b(\d+) render jobs\)", log_path.read_text(errors="replace"))
+                if match:
+                    break
+            time.sleep(.05)
+        self.assertIsNotNone(match, "MCP server did not report its concurrency limit")
+        if int(match.group(1)) < 5:
+            self.skipTest("Fewer than five CPUs available")
+        arguments = {"options": {"test-pattern": True, "snapshot-delay": 8}}
+        for ident in range(1, 7):
+            c.send("tools/call", {"name": "render_file", "arguments": arguments}, ident)
+        busy = c.receive()
+        self.assertEqual(busy["id"], 6)
+        self.assertEqual(busy["error"]["code"], -32000)
+        self.assertIn("at most 5 renders", busy["error"]["message"])
+        for ident in range(1, 6):
+            c.send("notifications/cancelled", {"requestId": ident})
+        self.assertEqual({c.receive()["id"] for _ in range(5)}, set(range(1, 6)))
+
+    @unittest.skipUnless(hasattr(os, "sched_getaffinity") and shutil.which("taskset"), "Requires Linux taskset")
+    def test_default_concurrency_respects_cpu_affinity(self):
+        cpus = sorted(os.sched_getaffinity(0))
+        for count in range(1, min(2, len(cpus)) + 1):
+            affinity = ",".join(map(str, cpus[:count]))
+            for extra, expected in (([], count), (["--max-clients", "1"], 1)):
+                log_path = self.directory / f"affinity-{count}-{expected}.log"
+                result = subprocess.run(["taskset", "-c", affinity, str(self.binary), "--log-level", "info", "--log-file", str(log_path),
+                                         "mcp-server", *extra], input=b"", capture_output=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                log = log_path.read_text(errors="replace")
+                self.assertRegex(log, rf"MCP server started .*\b{expected} render jobs\)")
+
     def test_stabilization_option_for_both_renderers(self):
         c = self.client()
         c.send("tools/list", {}, 1)
@@ -104,6 +180,7 @@ class Protocol(unittest.TestCase):
         self.assertEqual(mode.returncode, 0)
         for flag in ("--transport", "--server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
             self.assertIn(flag, mode.stdout)
+        self.assertRegex(mode.stdout, r"--max-clients INTEGER\s+Maximum concurrent clients\. \(default: available CPUs\)")
         self.assertNotIn("--websocket-tls-cert", mode.stdout)
         missing_key = subprocess.run([str(self.binary), "mcp-server", "--transport", "http", "--http-tls-cert", "missing.pem"],
                                      capture_output=True, text=True, timeout=10)
@@ -156,6 +233,7 @@ class Protocol(unittest.TestCase):
                                         {"path": "x", "data_base64": "AAAA"}, {"data_base64": "!"}), 2):
             c.send("tools/call", {"name": "render_file", "arguments": arguments}, i)
             self.assertTrue(c.receive()["result"]["isError"])
+    @unittest.skipIf(available_cpu_count() < 2, "Requires two concurrent renders")
     def test_atomic_output_race(self):
         c = self.client(); output = self.directory / "winner.png"
         args = {"options": {"test-pattern": True, "snapshot-delay": .2}, "output_path": str(output)}
@@ -198,6 +276,7 @@ class Protocol(unittest.TestCase):
     def test_http_profile_and_port(self):
         self.http_profile(True)
 
+    @unittest.skipIf(available_cpu_count() < 2, "Requires two concurrent renders")
     def test_http_local_devices_and_paths(self):
         self.http_profile(False)
 

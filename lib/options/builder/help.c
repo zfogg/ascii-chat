@@ -1073,7 +1073,9 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
       if (desc->default_value && !description_has_default) {
         char default_buf[OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE];
-        int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+        int default_len = mode == MODE_MCP_SERVER && !strcmp(desc->long_name, "max-clients")
+                              ? safe_snprintf(default_buf, sizeof(default_buf), "available CPUs")
+                              : format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
           desc_len +=
               safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",

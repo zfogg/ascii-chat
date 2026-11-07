@@ -23,7 +23,6 @@ static inline yyjson_val *mcp_get(yyjson_val *obj, const char *name) {
 
 #define MCP_MAX_INPUT (24u * 1024u * 1024u)
 #define MCP_MAX_OUTPUT (8u * 1024u * 1024u)
-#define MCP_MAX_JOBS 4
 #define MCP_SESSION_ID_LENGTH 32
 
 typedef enum { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;
@@ -75,7 +74,7 @@ typedef struct mcp_job {
 
 typedef struct mcp_server {
   mcp_policy_t policy;
-  mcp_job_t jobs[MCP_MAX_JOBS];
+  mcp_job_t *jobs;
   mutex_t output_mutex;
   void *http_context;
   atomic_t stopping;

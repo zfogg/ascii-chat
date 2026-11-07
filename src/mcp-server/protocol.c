@@ -156,7 +156,7 @@ static void *run_job(void *arg) {
   return NULL;
 }
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
-  for (int i = 0; i < MCP_MAX_JOBS; ++i) {
+  for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
     if (!j->started || (!all && (!atomic_load_bool(&j->done) || (s->policy.hosted && j->connection))))
       continue;
@@ -202,7 +202,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       s->initialized = true;
     if (!strcmp(name, "notifications/cancelled")) {
       yyjson_val *cancel = mcp_get(params, "requestId");
-      for (int i = 0; i < MCP_MAX_JOBS; ++i)
+      for (unsigned i = 0; i < s->policy.max_jobs; ++i)
         if (s->jobs[i].started &&
             (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
              ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
@@ -263,8 +263,12 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       j = &s->jobs[i];
       break;
     }
-  if (!j)
-    return mcp_error(id, -32000, "Server busy; at most four renders may run concurrently");
+  if (!j) {
+    char message[128];
+    safe_snprintf(message, sizeof(message), "Server busy; at most %u render%s may run concurrently", s->policy.max_jobs,
+                  s->policy.max_jobs == 1 ? "" : "s");
+    return mcp_error(id, -32000, message);
+  }
   yyjson_val *arguments = mcp_get(params, "arguments");
   yyjson_doc *empty = NULL;
   if (!arguments) {

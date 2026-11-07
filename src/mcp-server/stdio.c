@@ -63,7 +63,7 @@ asciichat_error_t mcp_stdio_run(mcp_server_t *s) {
     mcp_jobs_reap(s, false);
   }
   SAFE_FREE(line);
-  for (int i = 0; i < MCP_MAX_JOBS; ++i)
+  for (unsigned i = 0; i < s->policy.max_jobs; ++i)
     if (s->jobs[i].started)
       atomic_store_bool(&s->jobs[i].cancelled, true);
   mcp_jobs_reap(s, true);

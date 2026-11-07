@@ -272,7 +272,8 @@ static void expect_rpc_error(mcp_server_t *server, const char *json, int code) {
 }
 
 Test(mcp_requests, protocol_envelopes_reject_invalid_types_and_worker_start_failure_releases_job) {
-  mcp_server_t server = {.policy = {.max_jobs = 1}};
+  mcp_job_t jobs[1] = {0};
+  mcp_server_t server = {.policy = {.max_jobs = 1}, .jobs = jobs};
   expect_rpc_error(&server, "[]", -32600);
   expect_rpc_error(&server, "{\"jsonrpc\":\"1.0\",\"method\":\"ping\",\"id\":1}", -32600);
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":1,\"id\":1}", -32600);
