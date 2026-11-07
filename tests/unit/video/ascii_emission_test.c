@@ -502,6 +502,29 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   decode(color, cells, 2, 1, true);
   cr_assert_eq(cells[0].fg, 0x506e8c, "glyph matching must preserve the sampled foreground color");
   SAFE_FREE(color);
+
+  rgb_pixel_t colored_pixels[16 * 16];
+  const rgb_pixel_t colors[4] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}};
+  for (int y = 0; y < 16; ++y)
+    for (int x = 0; x < 16; ++x)
+      colored_pixels[y * 16 + x] = colors[(y / 8) * 2 + x / 8];
+  image_t colored_image = {.w = 16, .h = 16, .pixels = colored_pixels};
+  const ascii_color_t color_modes[] = {ASCII_COLOR_TRUE, ASCII_COLOR_256, ASCII_COLOR_16};
+  for (size_t m = 0; m < sizeof(color_modes) / sizeof(color_modes[0]); ++m) {
+    char *output = ascii_render_glyph_match(&colored_image, color_modes[m], &simd_cells_scalar, "@");
+    cr_assert_not_null(output);
+    terminal_cell_t result[4] = {0};
+    decode(output, result, 2, 2, true);
+    for (int i = 0; i < 4; ++i) {
+      rgb_pixel_t p = colors[i];
+      int expected = color_modes[m] == ASCII_COLOR_TRUE  ? (p.r << 16) | (p.g << 8) | p.b
+                     : color_modes[m] == ASCII_COLOR_256 ? rgb_to_256color(p.r, p.g, p.b)
+                                                         : rgb_to_16color(p.r, p.g, p.b);
+      cr_assert_eq(result[i].glyph[0], '@');
+      cr_assert_eq(result[i].fg, expected, "incorrect foreground for cell %d and mode %d", i, color_modes[m]);
+    }
+    SAFE_FREE(output);
+  }
   image.w = 15;
   cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL));
 }

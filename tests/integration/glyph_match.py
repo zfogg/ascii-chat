@@ -7,6 +7,7 @@ import _environment  # noqa: F401
 
 from pathlib import Path
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -34,7 +35,6 @@ with tempfile.TemporaryDirectory() as temp:
     assert default == capture(["--renderer=luminance"]), "default must be luminance"
     glyph = capture(["--renderer=glyph"])
     assert glyph != default, "glyph mode did not change the frame"
-    import re
     standard_chars = set(b"   ...',;:clodxkO0KXNWM")
     glyph_chars = set(b"".join(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line) for line in glyph))
     assert glyph_chars - standard_chars, "default glyph mode should use the 95-glyph atlas"
