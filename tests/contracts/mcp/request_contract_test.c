@@ -256,7 +256,7 @@ Test(mcp_requests, output_staging_does_not_create_or_replace_the_published_desti
 static yyjson_mut_doc *dispatch_text(mcp_server_t *server, const char *json, void *connection) {
   yyjson_doc *doc = read_json(json);
   bool pending = true;
-  yyjson_mut_doc *response = mcp_dispatch(server, doc, connection, &pending);
+  yyjson_mut_doc *response = mcp_dispatch(server, doc, connection, NULL, &pending);
   cr_assert_not(pending);
   yyjson_doc_free(doc);
   return response;

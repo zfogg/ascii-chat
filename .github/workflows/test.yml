@@ -85,10 +85,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
-      - run: python tests/standalone/upnp/run.py
+      - run: uv sync --project tests/ascii_chat_tests --frozen
+      - run: uv run --project tests/ascii_chat_tests --frozen pytest -n 0 tests/python/standalone/test_upnp.py
 
   coverage-tools:
     needs: preflight
