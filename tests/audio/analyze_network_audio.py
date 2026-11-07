@@ -31,6 +31,19 @@ remote_rate, received = wavfile.read(
     source / "receiver" / "audio_playback_received.wav"
 )
 assert rate == remote_rate == 48000
+
+
+def normalized_audio(data):
+    if np.issubdtype(data.dtype, np.unsignedinteger):
+        midpoint = (np.iinfo(data.dtype).max + 1) / 2
+        return (data.astype(np.float64) - midpoint) / midpoint
+    if np.issubdtype(data.dtype, np.signedinteger):
+        return data.astype(np.float64) / -np.iinfo(data.dtype).min
+    return data
+
+
+capture = normalized_audio(capture)
+received = normalized_audio(received)
 for name, data in [
     ("network-microphone.wav", capture),
     ("network-received.wav", received),

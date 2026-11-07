@@ -73,7 +73,7 @@ class PanicReport(unittest.TestCase):
         line = record(3, 5, snippet="if (x) { two(); }")
         self.write(line)
         output = self.run_report("--log-file", self.log, "--raw")
-        self.assertIn(line, output)
+        self.assertTrue(output.endswith(line), output)
         self.assertNotIn("location  :", output)
 
     def test_malformed_fields_are_ignored_without_losing_valid_records(self):

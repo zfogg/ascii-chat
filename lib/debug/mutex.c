@@ -216,7 +216,7 @@ static void mutex_stack_push(uintptr_t mutex_key, const char *mutex_name, mutex_
   asciichat_error_context_t error = {0};
   if (state == MUTEX_STACK_STATE_PENDING && ascii_otel_enabled()) {
     SAFE_STRNCPY(telemetry.span_name, ascii_otel_current_operation(), sizeof(telemetry.span_name));
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
     gotel_context_t context = ascii_otel_context();
     memcpy(telemetry.trace_id, context.trace_id, sizeof(context.trace_id));
     memcpy(telemetry.span_id, context.span_id, sizeof(context.span_id));

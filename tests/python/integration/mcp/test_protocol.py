@@ -6,15 +6,23 @@ import hashlib
 import http.client
 import json
 import os
+import re
+import shutil
 from pathlib import Path
 import socket
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.mcp]
+
+def available_cpu_count():
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+    return os.cpu_count() or 1
 
 class Client:
     def __init__(self, binary, directory, extra=(), mode_extra=()):
@@ -36,6 +44,7 @@ class Protocol(unittest.TestCase):
     @pytest.fixture(autouse=True)
     def configure_binary(self, binary, test_environment, monkeypatch):
         self.binary = binary
+        self.test_home = test_environment["HOME"]
         for key in list(os.environ):
             if key.startswith("ASCII_CHAT_") and key not in test_environment:
                 monkeypatch.delenv(key)
@@ -43,10 +52,79 @@ class Protocol(unittest.TestCase):
             monkeypatch.setenv(key, value)
 
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="ascii-mcp-protocol-")
+        self.tmp = tempfile.TemporaryDirectory(prefix="ascii-mcp-protocol-", dir=self.test_home)
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
     def client(self, extra=(), mode_extra=()):
         c = Client(self.binary, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
+
+    def test_explicit_concurrency_limit_reports_busy(self):
+        c = self.client(extra=("--log-level", "info"), mode_extra=("--max-clients", "1"))
+        arguments = {"options": {"test-pattern": True, "snapshot-delay": 8}}
+        c.send("tools/call", {"name": "render_file", "arguments": arguments}, 1)
+        c.send("tools/call", {"name": "render_file", "arguments": arguments}, 2)
+        response = c.receive()
+        self.assertEqual(response["id"], 2)
+        self.assertEqual(response["error"]["code"], -32000)
+        self.assertIn("at most 1 render may run", response["error"]["message"])
+        c.send("notifications/cancelled", {"requestId": 1})
+        self.assertEqual(c.receive()["id"], 1)
+
+    def test_concurrency_configuration_precedence(self):
+        config = self.directory / "concurrency.toml"
+        config.write_text("[network]\nmax_clients = 3\n", encoding="utf-8")
+        def capacity(extra=(), env=None):
+            log_path = self.directory / "capacity.log"
+            result = subprocess.run([str(self.binary), "--log-level", "info", "--log-file", str(log_path),
+                                     *extra, "mcp-server"], input=b"", capture_output=True, env=env, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            match = re.search(r"MCP server started .*\b(\d+) render jobs\)", log_path.read_text(errors="replace"))
+            assert match is not None, "MCP server did not report its concurrency limit"
+            return int(match.group(1))
+        available = capacity()
+        self.assertGreaterEqual(available, 1)
+        self.assertEqual(capacity(("--config", str(config))), min(available, 3))
+        env = dict(os.environ, ASCII_CHAT_MAX_CLIENTS="2")
+        self.assertEqual(capacity(("--config", str(config)), env), min(available, 2))
+
+    def test_more_than_four_concurrent_renders(self):
+        log_path = self.directory / "concurrency.log"
+        c = self.client(extra=("--log-level", "info", "--log-file", str(log_path)),
+                        mode_extra=("--max-clients", "5"))
+        deadline = time.monotonic() + 15
+        match = None
+        while time.monotonic() < deadline:
+            if log_path.exists():
+                match = re.search(r"MCP server started .*\b(\d+) render jobs\)", log_path.read_text(errors="replace"))
+                if match:
+                    break
+            time.sleep(.05)
+        assert match is not None, "MCP server did not report its concurrency limit"
+        if int(match.group(1)) < 5:
+            self.skipTest("Fewer than five CPUs available")
+        arguments = {"options": {"test-pattern": True, "snapshot-delay": 8}}
+        for ident in range(1, 7):
+            c.send("tools/call", {"name": "render_file", "arguments": arguments}, ident)
+        busy = c.receive()
+        self.assertEqual(busy["id"], 6)
+        self.assertEqual(busy["error"]["code"], -32000)
+        self.assertIn("at most 5 renders", busy["error"]["message"])
+        for ident in range(1, 6):
+            c.send("notifications/cancelled", {"requestId": ident})
+        self.assertEqual({c.receive()["id"] for _ in range(5)}, set(range(1, 6)))
+
+    @unittest.skipUnless(hasattr(os, "sched_getaffinity") and shutil.which("taskset"), "Requires Linux taskset")
+    def test_default_concurrency_respects_cpu_affinity(self):
+        cpus = sorted(os.sched_getaffinity(0))
+        for count in range(1, min(2, len(cpus)) + 1):
+            affinity = ",".join(map(str, cpus[:count]))
+            for extra, expected in (([], count), (["--max-clients", "1"], 1)):
+                log_path = self.directory / f"affinity-{count}-{expected}.log"
+                result = subprocess.run(["taskset", "-c", affinity, str(self.binary), "--log-level", "info", "--log-file", str(log_path),
+                                         "mcp-server", *extra], input=b"", capture_output=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                log = log_path.read_text(errors="replace")
+                self.assertRegex(log, rf"MCP server started .*\b{expected} render jobs\)")
+
     def test_stabilization_option_for_both_renderers(self):
         c = self.client()
         c.send("tools/list", {}, 1)
@@ -103,6 +181,7 @@ class Protocol(unittest.TestCase):
         self.assertEqual(mode.returncode, 0)
         for flag in ("--transport", "--server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
             self.assertIn(flag, mode.stdout)
+        self.assertRegex(mode.stdout, r"--max-clients INTEGER\s+Maximum concurrent clients\. \(default: available CPUs\)")
         self.assertNotIn("--websocket-tls-cert", mode.stdout)
         missing_key = subprocess.run([str(self.binary), "mcp-server", "--transport", "http", "--http-tls-cert", "missing.pem"],
                                      capture_output=True, text=True, timeout=10)
@@ -111,6 +190,19 @@ class Protocol(unittest.TestCase):
         invalid_transport = subprocess.run([str(self.binary), "mcp-server", "--transport", "udp"],
                                            capture_output=True, text=True, timeout=10)
         self.assertNotEqual(invalid_transport.returncode, 0)
+
+    def test_configured_bind_addresses_are_validated(self):
+        config = self.directory / "bind.toml"
+        for key, address, valid in (("address", "127.0.0.1", True), ("address6", "::1", True),
+                                    ("address", "not-an-ip.invalid", False), ("address6", "not-an-ip.invalid", False)):
+            config.write_text(f"[network]\n{key} = '{address}'\n")
+            result = subprocess.run([str(self.binary), "--config", str(config), "mcp-server"], input=b"", capture_output=True, timeout=15)
+            self.assertEqual(result.returncode == 0, valid, (key, address, result.stderr.decode(errors="replace")))
+        generated = self.directory / "generated.toml"
+        created = subprocess.run([str(self.binary), "--config-create", str(generated)], capture_output=True, timeout=15)
+        self.assertEqual(created.returncode, 0)
+        result = subprocess.run([str(self.binary), "--config", str(generated), "mcp-server"], input=b"", capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
 
     def test_cancel_ping_and_diagnostic_stream(self):
         c = self.client(("--sync-state", "0.2"))
@@ -142,6 +234,7 @@ class Protocol(unittest.TestCase):
                                         {"path": "x", "data_base64": "AAAA"}, {"data_base64": "!"}), 2):
             c.send("tools/call", {"name": "render_file", "arguments": arguments}, i)
             self.assertTrue(c.receive()["result"]["isError"])
+    @unittest.skipIf(available_cpu_count() < 2, "Requires two concurrent renders")
     def test_atomic_output_race(self):
         c = self.client(); output = self.directory / "winner.png"
         args = {"options": {"test-pattern": True, "snapshot-delay": .2}, "output_path": str(output)}
@@ -184,6 +277,7 @@ class Protocol(unittest.TestCase):
     def test_http_profile_and_port(self):
         self.http_profile(True)
 
+    @unittest.skipIf(available_cpu_count() < 2, "Requires two concurrent renders")
     def test_http_local_devices_and_paths(self):
         self.http_profile(False)
 
@@ -203,13 +297,15 @@ class Protocol(unittest.TestCase):
             except OSError:
                 self.assertIsNone(p.poll(), "HTTP server exited"); time.sleep(.05)
         else: self.fail("HTTP server did not bind requested port")
-        def request(body, origin=None, method="POST"):
+        def request(body, origin=None, method="POST", session=None, include_headers=False):
             headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
             if origin: headers["Origin"] = origin
+            if session: headers["Mcp-Session-Id"] = session
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
             conn.request(method, "/mcp", json.dumps(body) if body else None, headers)
-            response = conn.getresponse(); status = response.status; data = response.read(); conn.close()
-            return status, json.loads(data) if data else None
+            response = conn.getresponse(); status = response.status; session_id = response.getheader("Mcp-Session-Id"); data = response.read(); conn.close()
+            result = (status, json.loads(data) if data else None)
+            return (*result, session_id) if include_headers else result
         status, response = request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         self.assertEqual(status, 200)
         tools = {tool["name"]: tool for tool in response["result"]["tools"]}
@@ -226,6 +322,30 @@ class Protocol(unittest.TestCase):
                     "test-pattern": True, "width": 40, "height": 16}}}})
             self.assertFalse(rendered["result"]["isError"], rendered)
             self.assertGreater(len(rendered["result"]["structuredContent"]["ascii"]), 100)
+            initialize = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                "protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}}
+            _, _, first_session = request(initialize, include_headers=True)
+            _, _, second_session = request(initialize, include_headers=True)
+            self.assertRegex(first_session, r"^[0-9a-f]{32}$")
+            self.assertNotEqual(first_session, second_session)
+            render = {"jsonrpc": "2.0", "id": 99, "method": "tools/call", "params": {
+                "name": "render_file", "arguments": {"options": {"test-pattern": True, "snapshot-delay": 8}}}}
+            replies = {}
+            baseline = (self.directory / "http.log").read_text(errors="replace").count("MCP render started")
+            workers = [threading.Thread(target=lambda key, token: replies.update({key: request(render, session=token)}),
+                                        args=(key, token)) for key, token in (("first", first_session), ("second", second_session))]
+            for worker in workers: worker.start()
+            deadline = time.monotonic() + 10
+            while (self.directory / "http.log").read_text(errors="replace").count("MCP render started") < baseline + 2:
+                if time.monotonic() >= deadline: self.fail("Both HTTP renders did not start")
+                time.sleep(.05)
+            cancelled = {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 99}}
+            self.assertEqual(request(cancelled, session=first_session)[0], 202)
+            for worker in workers: worker.join(timeout=20)
+            self.assertTrue(all(not worker.is_alive() for worker in workers))
+            self.assertTrue(replies["first"][1]["result"]["isError"])
+            self.assertIn("cancel", replies["first"][1]["result"]["content"][0]["text"].lower())
+            self.assertFalse(replies["second"][1]["result"]["isError"])
             for ident, renderer in enumerate(("luminance", "glyph"), 10):
                 palette = " ░▒▓█"
                 _, rendered = request({"jsonrpc": "2.0", "id": ident, "method": "tools/call", "params": {

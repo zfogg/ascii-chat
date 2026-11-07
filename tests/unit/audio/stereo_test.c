@@ -203,6 +203,23 @@ Test(stereo, processor_filters_do_not_leak_and_dynamics_share_gain) {
   audio_processor_destroy(processor);
 }
 
+Test(stereo, recording_keeps_channel_alignment_after_partial_submission) {
+  audio_recording_t *recording = NULL;
+  cr_assert_eq(audio_recording_create_channels(&recording, 2), ASCIICHAT_OK);
+  audio_recording_start(recording, 1000000000ULL);
+  const float first[] = {0.25f};
+  const float next[] = {0.5f, -0.5f};
+  float output[4];
+  audio_recording_submit(AUDIO_RECORDING_MIC, first, 1, 1000000000ULL);
+  audio_recording_submit(AUDIO_RECORDING_MIC, next, 2, 1000000001ULL);
+  audio_recording_read(recording, output, 4);
+  cr_assert_float_eq(output[0], 0.25f, 1e-6f);
+  cr_assert_float_eq(output[1], 0.0f, 1e-6f);
+  cr_assert_float_eq(output[2], 0.5f, 1e-6f);
+  cr_assert_float_eq(output[3], -0.5f, 1e-6f);
+  audio_recording_destroy(recording);
+}
+
 Test(stereo, recording_preserves_channels_and_uses_frame_timestamps) {
   audio_recording_t *recording = NULL;
   cr_assert_eq(audio_recording_create_channels(&recording, 2), ASCIICHAT_OK);

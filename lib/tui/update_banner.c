@@ -85,6 +85,10 @@ void update_banner_set_result(const update_check_result_t *result) {
     return;
   }
 
+  // Resolve the command before publishing a result to the presentation thread.
+  if (result->update_available && update_check_detect_install_method() == INSTALL_METHOD_ARCH_AUR)
+    (void)update_check_get_aur_helper();
+
   if (lifecycle_init_once(&g_update_result_lifecycle)) {
     mutex_init(&g_update_result_mutex, "update_banner_result");
     lifecycle_init_commit(&g_update_result_lifecycle);

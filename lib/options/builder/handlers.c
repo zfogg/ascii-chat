@@ -18,6 +18,8 @@
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <math.h>
 
 // Forward declarations
 static bool is_set_bool(const void *field, const option_descriptor_t *desc);
@@ -27,12 +29,12 @@ static bool is_set_double(const void *field, const option_descriptor_t *desc);
 static bool is_set_callback(const void *field, const option_descriptor_t *desc);
 static bool is_set_action(const void *field, const option_descriptor_t *desc);
 
-static void apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc);
+static asciichat_error_t apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc);
+static asciichat_error_t apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc);
+static asciichat_error_t apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc);
+static asciichat_error_t apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc);
+static asciichat_error_t apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc);
+static asciichat_error_t apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc);
 
 static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc);
 static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const option_descriptor_t *desc);
@@ -118,7 +120,7 @@ static bool is_set_action(const void *field, const option_descriptor_t *desc) {
 }
 
 // --- apply_env handlers ---
-static void apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc) {
+static asciichat_error_t apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc) {
   // Safely read the current bool value (may be uninitialized)
   unsigned char current_byte = 0;
   memcpy(&current_byte, field, 1);
@@ -132,8 +134,8 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
     default_val = (default_byte != 0);
   }
 
-  if (current_value != default_val) {
-    return; // Already set, skip env var
+  if (!env_value && current_value != default_val) {
+    return ASCIICHAT_OK; // Preserve a configured value when the environment is unset.
   }
 
   bool value = false;
@@ -148,9 +150,10 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
 
   unsigned char value_byte = value ? 1 : 0;
   memcpy(field, &value_byte, 1);
+  return ASCIICHAT_OK;
 }
 
-static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {
+static asciichat_error_t apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {
   if (env_value) {
     char *endptr;
     long parsed = strtol(env_value, &endptr, 10);
@@ -158,29 +161,30 @@ static void apply_env_int(void *field, const char *env_value, const option_descr
       int value = (int)parsed;
       memcpy(field, &value, sizeof(int));
     }
-    return;
+    return ASCIICHAT_OK;
   }
   // No env var — apply descriptor default only if field hasn't been changed from descriptor default
   int current_value = 0;
   memcpy(&current_value, field, sizeof(int));
   int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
   if (current_value != default_val)
-    return;
+    return ASCIICHAT_OK;
   if (desc->default_value) {
     int value = *(const int *)desc->default_value;
     memcpy(field, &value, sizeof(int));
   }
+  return ASCIICHAT_OK;
 }
 
-static void apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc) {
+static asciichat_error_t apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc) {
   const char *current_value = (const char *)field;
   const char *default_val = NULL;
   if (desc->default_value) {
     default_val = *(const char *const *)desc->default_value;
   }
-  if (current_value && current_value[0] != '\0') {
+  if (!env_value && current_value && current_value[0] != '\0') {
     if (!default_val || strcmp(current_value, default_val) != 0) {
-      return; // Already set, skip
+      return ASCIICHAT_OK; // Already set, skip
     }
   }
   const char *value = NULL;
@@ -189,45 +193,36 @@ static void apply_env_string(void *field, const char *env_value, const option_de
   } else if (desc->default_value) {
     value = *(const char *const *)desc->default_value;
   }
-  if (value && value[0] != '\0') {
+  if (value && (env_value || value[0] != '\0')) {
     char *dest = (char *)field;
     safe_snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
     dest[OPTIONS_BUFF_SIZE - 1] = '\0';
   }
+  return ASCIICHAT_OK;
 }
 
-static void apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc) {
-  double current_value = 0.0;
-  memcpy(&current_value, field, sizeof(double));
-  double default_val = 0.0;
-  if (desc->default_value) {
-    memcpy(&default_val, desc->default_value, sizeof(double));
-  }
-  if (current_value != default_val) {
-    return; // Already set, skip env var
-  }
-  double value = 0.0;
-  if (env_value) {
-    char *endptr;
-    value = strtod(env_value, &endptr);
-    if (*endptr != '\0') {
-      value = 0.0; // Parse failed
-    }
-  } else if (desc->default_value) {
-    value = *(const double *)desc->default_value;
-  }
+static asciichat_error_t apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc) {
+  if (!env_value)
+    return ASCIICHAT_OK; // Preserve the existing value when the environment is unset.
+  char *endptr;
+  errno = 0;
+  double value = strtod(env_value, &endptr);
+  if (endptr == env_value || *endptr != '\0' || errno == ERANGE || !isfinite(value))
+    return SET_ERRNO(ERROR_USAGE, "Invalid floating-point value for environment variable %s: %s",
+                     desc->env_var_name ? desc->env_var_name : "unknown", env_value);
   memcpy(field, &value, sizeof(double));
+  return ASCIICHAT_OK;
 }
 
-static void apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc) {
+static asciichat_error_t apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc) {
   if (!env_value || !desc || !desc->parse_fn) {
-    return;
+    return ASCIICHAT_OK;
   }
   // The legacy environment variable remains a boolean enable switch.
   if (strcmp(desc->long_name, "test-pattern") == 0) {
     *(bool *)field = strcmp(env_value, "1") == 0 || strcasecmp(env_value, "true") == 0 ||
                      strcasecmp(env_value, "yes") == 0 || strcasecmp(env_value, "on") == 0;
-    return;
+    return ASCIICHAT_OK;
   }
   char *error_msg = NULL;
   bool ok = desc->parse_fn(env_value, field, &error_msg);
@@ -238,12 +233,14 @@ static void apply_env_callback(void *field, const char *env_value, const option_
   if (error_msg) {
     SAFE_FREE(error_msg);
   }
+  return ASCIICHAT_OK;
 }
 
-static void apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc) {
+static asciichat_error_t apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc) {
   (void)field;
   (void)env_value;
   (void)desc;
+  return ASCIICHAT_OK;
 }
 
 // --- apply_cli handlers ---

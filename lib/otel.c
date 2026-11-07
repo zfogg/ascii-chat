@@ -12,7 +12,6 @@
 #define OTEL_WAIT_SNAPSHOT_CAPACITY 256
 
 #include <ascii-chat/otel.h>
-#ifdef ASCIICHAT_WITH_OTEL
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/network/acip/messages.h>
@@ -23,6 +22,7 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/tests/test_env.h>
@@ -124,6 +124,7 @@ static gotel_scope_t command_scope;
 static _Thread_local ascii_otel_scope_t *current_scope;
 static uint64_t shutdown_timeout_ns;
 static atomic_uint_fast64_t exporter_retries, exporter_batches;
+static atomic_size_t exporter_queue_capacity;
 static void exporter_event(void *context, const otlp_event_t *event) {
   (void)context;
   if (event->code == OTLP_EVT_RETRY_ARMED)
@@ -357,7 +358,7 @@ static void *export_worker(void *arg) {
       uint64_t failed = stats.dropped_err + stats.dropped_logs_err + stats.dropped_metrics_err;
       uint64_t pending = accepted > sent + failed ? accepted - sent - failed : 0;
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_QUEUE,
-                                            (double)pending / (3.0 * options_get()->otel_queue_capacity)),
+                                            (double)pending / (3.0 * atomic_load(&exporter_queue_capacity))),
                         "gotel_metric_record");
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_SENT, (double)sent), "gotel_metric_record");
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_DROP,
@@ -676,6 +677,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   gotel_set_logger(h, exporter_diagnostic, NULL);
   shutdown_timeout_ns = (uint64_t)o->otel_timeout * NS_PER_MS_INT;
   atomic_store(&stopping, false);
+  atomic_store(&exporter_queue_capacity, config.exporter.queue_capacity);
   atomic_store(&worker_done, false);
   if (acthread_create(&worker, "otel_export", export_worker, h) != 0) {
     gotel_destroy(h);
@@ -701,6 +703,7 @@ void ascii_otel_log(int level, const char *file, int line, const char *function,
     char body[OTEL_BODY_BUFFER_SIZE];
     int n = safe_vsnprintf(body, sizeof(body), format, args);
     if (n >= 0) {
+      url_redact_diagnostic(body, (size_t)n >= sizeof(body));
       otlp_severity_t severity = level >= LOG_FATAL   ? OTLP_SEVERITY_FATAL
                                  : level >= LOG_ERROR ? OTLP_SEVERITY_ERROR
                                  : level >= LOG_WARN  ? OTLP_SEVERITY_WARN
@@ -767,7 +770,12 @@ ascii_otel_operation_t ascii_otel_failure_operation(asciichat_error_t code, cons
 void ascii_otel_error_code(asciichat_error_t code, const char *message) {
   if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE)
     return;
-  ascii_otel_error(message);
+  char redacted[OTEL_BODY_BUFFER_SIZE];
+  int written = safe_snprintf(redacted, sizeof(redacted), "%s", message ? message : "");
+  if (written < 0)
+    return;
+  url_redact_diagnostic(redacted, (size_t)written >= sizeof(redacted));
+  gotel_current_error("ascii_chat.error", redacted);
   if (!ascii_otel_enabled())
     return;
   const char *origin = ascii_otel_current_operation();
@@ -785,10 +793,15 @@ void ascii_otel_error_code(asciichat_error_t code, const char *message) {
   gotel_attr_string(&report.scope, "ascii_chat.failure.operation", origin);
   gotel_attr_int(&report.scope, "asciichat_errno.code", code);
   gotel_attr_string(&report.scope, "asciichat_errno.code_message", asciichat_error_string(code));
-  gotel_error(&report.scope, category, message);
+  gotel_error(&report.scope, category, redacted);
 }
 void ascii_otel_error(const char *message) {
-  gotel_current_error("ascii_chat.error", message);
+  char redacted[OTEL_BODY_BUFFER_SIZE];
+  int written = safe_snprintf(redacted, sizeof(redacted), "%s", message ? message : "");
+  if (written < 0)
+    return;
+  url_redact_diagnostic(redacted, (size_t)written >= sizeof(redacted));
+  gotel_current_error("ascii_chat.error", redacted);
 }
 void ascii_otel_http(ascii_otel_scope_t *s, const char *hostname, const char *path) {
   if (!s->retained || !hostname || !path)
@@ -834,4 +847,3 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
     log_warn("Could not attach SQLite telemetry");
   release();
 }
-#endif

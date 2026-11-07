@@ -18,6 +18,7 @@ asciichat_error_t audio_recording_create(audio_recording_t **out);
 asciichat_error_t audio_recording_create_channels(audio_recording_t **out, unsigned channels);
 void audio_recording_destroy(audio_recording_t *recording);
 void audio_recording_start(audio_recording_t *recording, uint64_t epoch_ns);
+/* Each submission starts with channel zero; an incomplete final frame is zero-padded. */
 void audio_recording_submit(audio_recording_source_t source, const float *samples, size_t count, uint64_t start_ns);
 /* Reads a complete interval, filling missing inputs with silence and clipping the final mix. */
 void audio_recording_read(audio_recording_t *recording, float *samples, size_t count);

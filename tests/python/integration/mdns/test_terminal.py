@@ -279,7 +279,6 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
-            boundary.pump(2)
             text = boundary.expect(lambda text: re.search(r"> \[\d+\]", text)
                                    and "Auto-refresh" in text,
                                    "Boundary picker did not finish drawing its selected row and footer")

@@ -57,7 +57,8 @@ asciichat_error_t key_identity_format_terminal(const public_key_t *key, char *ou
   int cols = tty ? ui_controller_size().cols : 80;
   // Notices reserve borders, padding, and the terminal's final column.
   cols = (cols > 81 ? 80 : cols - 1) - 4;
-  return key_identity_format(key, art, tty && terminal_supports_utf8(), cols, out, size);
+  bool unicode = terminal_should_use_utf8();
+  return key_identity_format(key, art, unicode, cols, out, size);
 }
 
 const char *key_identity_art_end(const char *text) {

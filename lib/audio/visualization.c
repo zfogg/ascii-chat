@@ -52,7 +52,7 @@ static void visualization_color_for_frequency(float centroid_hz, unsigned char *
 }
 
 void visualization_color_for_level(float frequency_hz, float level, int color_mode, unsigned char *red,
-                                          unsigned char *green, unsigned char *blue) {
+                                   unsigned char *green, unsigned char *blue) {
   visualization_color_for_frequency(frequency_hz, red, green, blue);
   float brightness = 0.5f + 0.5f * level;
   float white_mix = 0.0f;
@@ -130,8 +130,8 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
 
 /* Encode the same visualization grid for native terminals and browser rasterization.
  * Half-block grids have two vertical samples per terminal row. */
-char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors,
-                                  unsigned int width, unsigned int height, bool use_color, bool flip_x, bool flip_y) {
+char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors, unsigned int width,
+                           unsigned int height, bool use_color, bool flip_x, bool flip_y) {
   int mode = GET_OPTION(render_mode);
   bool half = mode == RENDER_MODE_HALF_BLOCK;
   unsigned int rows = half ? height / 2 : height;

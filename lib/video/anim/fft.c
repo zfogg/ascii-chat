@@ -3,12 +3,27 @@
 #include "visualization_internal.h"
 
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/util/time.h>
 
 #include <math.h>
 #include <string.h>
 
 #define FFT_SIZE 1024
+#define FFT_CACHE_CELLS (MAX_TERMINAL_WIDTH * MAX_TERMINAL_HEIGHT * 2)
+#define FFT_REFRESH_NS (100 * NS_PER_MS_INT)
+
+static static_mutex_t fft_cache_mutex = STATIC_MUTEX_INIT;
+static struct {
+  char cells[FFT_CACHE_CELLS];
+  unsigned char colors[FFT_CACHE_CELLS * 3];
+  unsigned int width, height;
+  audio_visualization_source_t source;
+  int color_mode;
+  uint64_t updated_ns;
+  bool valid;
+} fft_cache;
 
 static void visualization_fft(float *real, float *imaginary) {
   for (size_t i = 1, j = 0; i < FFT_SIZE; i++) {
@@ -54,19 +69,25 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
 
   if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK)
     height *= 2;
+  static_mutex_lock_named(&fft_cache_mutex, "audio_visualization_fft_cache");
+  uint64_t now = time_get_ns();
+  if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source &&
+      fft_cache.color_mode == color_mode && now >= fft_cache.updated_ns &&
+      now - fft_cache.updated_ns < FFT_REFRESH_NS) {
+    char *frame =
+        visualization_encode(fft_cache.cells, fft_cache.colors, false, width, height, use_color, flip_x, flip_y);
+    static_mutex_unlock(&fft_cache_mutex);
+    return frame;
+  }
   float *samples = SAFE_MALLOC(VISUALIZATION_HISTORY * sizeof(float), float *);
-  if (!samples)
-    return NULL;
-  audio_visualization_read(source, samples, VISUALIZATION_HISTORY);
-  size_t cell_count = (size_t)width * height;
-  char *cells = SAFE_MALLOC(cell_count, char *);
-  unsigned char *colors = SAFE_MALLOC(cell_count * 3, unsigned char *);
-  if (!cells || !colors) {
-    SAFE_FREE(colors);
-    SAFE_FREE(cells);
-    SAFE_FREE(samples);
+  if (!samples) {
+    static_mutex_unlock(&fft_cache_mutex);
     return NULL;
   }
+  audio_visualization_read(source, samples, VISUALIZATION_HISTORY);
+  size_t cell_count = (size_t)width * height;
+  char *cells = fft_cache.cells;
+  unsigned char *colors = fft_cache.colors;
   memset(cells, ' ', cell_count);
   memset(colors, 0, cell_count * 3);
 
@@ -116,9 +137,14 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
     }
   }
 
+  fft_cache.width = width;
+  fft_cache.height = height;
+  fft_cache.source = source;
+  fft_cache.color_mode = color_mode;
+  fft_cache.updated_ns = time_get_ns();
+  fft_cache.valid = true;
   char *frame = visualization_encode(cells, colors, false, width, height, use_color, flip_x, flip_y);
-  SAFE_FREE(colors);
-  SAFE_FREE(cells);
   SAFE_FREE(samples);
+  static_mutex_unlock(&fft_cache_mutex);
   return frame;
 }

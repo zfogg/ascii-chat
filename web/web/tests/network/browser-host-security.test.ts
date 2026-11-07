@@ -212,6 +212,8 @@ it("presents a reporting participant error without retiring the host", async () 
     );
     expect(reports).toHaveLength(1);
     expect(reports[0]?.title).toBe("Client 7 error 53");
+    host.sendPacket(PacketType.ERROR_MESSAGE, payload);
+    expect(reports).toHaveLength(1);
     expect(host.getState()).toBe(ConnectionState.CONNECTED);
     expect(harness.disconnected).not.toHaveBeenCalled();
   } finally {

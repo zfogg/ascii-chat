@@ -327,14 +327,9 @@ static int ffmpeg_interrupt_callback(void *opaque) {
  */
 
 static void ffmpeg_otel_result(int result, bool streaming) {
-#ifdef ASCIICHAT_WITH_OTEL
   // EOF, buffering and application cancellation are expected control flow.
   if (result < 0 && result != AVERROR_EXIT && !(streaming && (result == AVERROR_EOF || result == AVERROR(EAGAIN))))
     gotel_current_error("ffmpeg.error", "FFmpeg operation failed");
-#else
-  (void)result;
-  (void)streaming;
-#endif
 }
 
 static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input,
@@ -816,12 +811,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
     // Configure FFmpeg options for HTTP streaming performance
     AVDictionary *options = NULL;
 
-    // Local paths must not create URL errors or diagnostic notifications.
-    // Resolve a failed explicit-URL probe without dismissing older errors.
+    // FFmpeg accepts HTTP authorities that the application URL validator rejects.
+    // Classify the protocol rather than validating the host for timeout settings.
+    bool is_http = path && (platform_strncasecmp(path, "http://", sizeof("http://") - 1) == 0 ||
+                            platform_strncasecmp(path, "https://", sizeof("https://") - 1) == 0);
     asciichat_errno_scope_t url_scope = errno_scope_begin();
-    bool is_url = path && strstr(path, "://") && url_is_valid(path);
+    bool is_url = is_http || (path && strstr(path, "://") && url_is_valid(path));
     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
-    // For HTTP/HTTPS streams: enable fast probing and reconnection.
     if (is_url) {
       if (headers && *headers)
         av_dict_set(&options, "headers", headers, 0);

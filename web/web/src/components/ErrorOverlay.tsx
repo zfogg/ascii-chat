@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   sourceUrlForFrame,
   subscribeBrowserErrors,
@@ -66,10 +66,20 @@ export function ErrorOverlay({
   productionMode?: boolean;
 }) {
   const [reports, setReports] = useState<BrowserErrorReport[]>([]);
+  const reportsRef = useRef<BrowserErrorReport[]>([]);
 
   useEffect(
     () =>
-      subscribeBrowserErrors((report) => setReports((old) => [...old, report])),
+      subscribeBrowserErrors((report) => {
+        if (reportsRef.current.length >= 32) {
+          const displaced = reportsRef.current[reportsRef.current.length - 1];
+          reportsRef.current = [...reportsRef.current.slice(0, -1), report];
+          displaced?.dismiss?.();
+        } else {
+          reportsRef.current = [...reportsRef.current, report];
+        }
+        setReports(reportsRef.current);
+      }),
     [],
   );
 
@@ -96,7 +106,10 @@ export function ErrorOverlay({
             className="border border-red-500 px-3 py-1 font-mono text-sm text-red-300 hover:bg-red-950"
             onClick={() => {
               report.dismiss?.();
-              setReports((old) => old.slice(1));
+              reportsRef.current = reportsRef.current.filter(
+                (entry) => entry.id !== report.id,
+              );
+              setReports(reportsRef.current);
             }}
           >
             Dismiss{reports.length > 1 ? ` (${reports.length})` : ""}

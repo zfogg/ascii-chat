@@ -31,9 +31,7 @@ typedef struct {
   size_t size;
   uint16_t frame_sizes[MAX_BATCH_FRAMES];
   int frame_count;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
 } audio_send_packet_t;
 
 /** Ring buffer queue for async audio packets */

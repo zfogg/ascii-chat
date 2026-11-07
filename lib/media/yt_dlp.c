@@ -19,9 +19,9 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/url.h>
+#include <yyjson.h>
 #ifndef __EMSCRIPTEN__
 #include <libavformat/avformat.h>
-#include <yyjson.h>
 #include <libavformat/avio.h>
 #endif
 #include <stdlib.h>

@@ -10,7 +10,7 @@ ascii-chat mcp-server --transport http 0.0.0.0 ::1 --port 27228
 ascii-chat --log-level debug --grep 'MCP|render' mcp-server --transport http --status-screen
 ```
 
-The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
+The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation. Concurrent render jobs default to the number of CPUs available to the process; `--max-clients` can set a lower limit. HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
 
 For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. The initial implementation uses stateless JSON responses; POST handles requests and notifications, GET/DELETE return 405. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
 

@@ -68,6 +68,10 @@ int rwlock_init(rwlock_t *rwlock, const char *name) {
   return pthread_rwlock_init((pthread_rwlock_t *)rwlock, NULL);
 }
 
+int rwlock_destroy(rwlock_t *rwlock) {
+  return pthread_rwlock_destroy((pthread_rwlock_t *)rwlock);
+}
+
 int rwlock_rdlock_impl(rwlock_t *rwlock) {
   return pthread_rwlock_rdlock((pthread_rwlock_t *)rwlock);
 }

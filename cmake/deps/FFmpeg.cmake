@@ -218,16 +218,31 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz")
         if(NOT EXISTS "${FFMPEG_TARBALL}")
             message(STATUS "  Downloading FFmpeg ${FFMPEG_VERSION}...")
-            file(DOWNLOAD
-                "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
-                "${FFMPEG_TARBALL}"
-                EXPECTED_HASH SHA256=${FFMPEG_HASH}
-                STATUS DOWNLOAD_STATUS
-            )
-            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-            if(NOT STATUS_CODE EQUAL 0)
-                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                message(FATAL_ERROR "Failed to download FFmpeg: ${ERROR_MSG}")
+            set(FFMPEG_DOWNLOAD "${FFMPEG_TARBALL}.download")
+            set(FFMPEG_DOWNLOAD_ERROR "download did not complete")
+            foreach(FFMPEG_ATTEMPT RANGE 1 3)
+                file(DOWNLOAD
+                    "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+                    "${FFMPEG_DOWNLOAD}"
+                    TIMEOUT 180 INACTIVITY_TIMEOUT 30
+                    STATUS DOWNLOAD_STATUS
+                )
+                list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+                if(STATUS_CODE EQUAL 0)
+                    file(SHA256 "${FFMPEG_DOWNLOAD}" FFMPEG_ACTUAL_HASH)
+                    if(FFMPEG_ACTUAL_HASH STREQUAL FFMPEG_HASH)
+                        file(RENAME "${FFMPEG_DOWNLOAD}" "${FFMPEG_TARBALL}")
+                        break()
+                    endif()
+                    set(FFMPEG_DOWNLOAD_ERROR "SHA256 mismatch")
+                else()
+                    list(GET DOWNLOAD_STATUS 1 FFMPEG_DOWNLOAD_ERROR)
+                endif()
+                file(REMOVE "${FFMPEG_DOWNLOAD}")
+                message(WARNING "FFmpeg download attempt ${FFMPEG_ATTEMPT} failed: ${FFMPEG_DOWNLOAD_ERROR}")
+            endforeach()
+            if(NOT EXISTS "${FFMPEG_TARBALL}")
+                message(FATAL_ERROR "Failed to download FFmpeg after 3 attempts: ${FFMPEG_DOWNLOAD_ERROR}")
             endif()
         endif()
 

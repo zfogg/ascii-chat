@@ -199,6 +199,7 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
   video_request->headers[0] = video_request->cookies[0] = '\0';
   audio_request->headers[0] = audio_request->cookies[0] = '\0';
 
+  ASCII_OTEL_ATTR_STRING("media.resolver", "ffmpeg");
   log_debug("URL extraction failed; trying the native decoder");
 
   // For complex sites, try FFmpeg as last resort
@@ -240,8 +241,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
   switch (type) {
   case MEDIA_SOURCE_WEBCAM: {
-    if (GET_OPTION(waveform) || GET_OPTION(fft))
-      break;
     // Parse webcam index from path (if provided)
     unsigned short int index = 0;
     if (path) {
@@ -256,6 +255,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     }
 
     source->webcam_index = index;
+    if (GET_OPTION(waveform) || GET_OPTION(fft))
+      break;
     asciichat_error_t webcam_error = webcam_init_context(&source->webcam_ctx, index);
     if (webcam_error != ASCIICHAT_OK) {
       asciichat_error_context_t webcam_context;
@@ -570,7 +571,8 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
   if ((!source->audio_only && source->type != MEDIA_SOURCE_WEBCAM) || source->webcam_ctx || GET_OPTION(test_pattern) ||
       GET_OPTION(waveform) || GET_OPTION(fft))
     return ASCIICHAT_OK;
-  source->webcam_index = GET_OPTION(webcam_index);
+  if (source->type != MEDIA_SOURCE_WEBCAM)
+    source->webcam_index = GET_OPTION(webcam_index);
   asciichat_error_t err = webcam_init_context(&source->webcam_ctx, source->webcam_index);
   if (err != ASCIICHAT_OK)
     return SET_ERRNO(err, "Audio-only media requires webcam %u", source->webcam_index);

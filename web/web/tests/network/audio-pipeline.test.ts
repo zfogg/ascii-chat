@@ -10,6 +10,7 @@ import { AudioPipeline } from "../../src/audio/AudioPipeline";
 import { AudioCapture } from "../../src/audio/AudioCapture";
 import { AVState } from "../../src/wasm/AVState";
 import { PacketType } from "../../src/wasm/client";
+import { saveMicrophoneLayout } from "@ascii-chat/shared/devices/microphoneLayout";
 
 vi.mock("../../src/wasm/client", () => ({
   getClientModule: () => ({}),
@@ -94,6 +95,7 @@ let captureSources: ReturnType<typeof node>[];
 let playbackSources: ReturnType<typeof node>[];
 
 beforeEach(() => {
+  saveMicrophoneLayout({ channels: 1, firstChannel: 0 });
   captureSources = [];
   playbackSources = [];
   recordingBus = {
@@ -138,6 +140,76 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("reacquires a microphone when its layout changes during startup", async () => {
+    let grant!: (stream: unknown) => void;
+    const oldStop = vi.fn();
+    getUserMedia.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          grant = resolve;
+        }),
+    );
+    const pipeline = new AudioPipeline({ localOnly: true });
+    const starting = pipeline.startCapture();
+    await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+    saveMicrophoneLayout({ channels: 2, firstChannel: 2 });
+    await pipeline.replaceMicrophone("");
+    grant({ getTracks: () => [{ stop: oldStop }] });
+    await starting;
+    expect(oldStop).toHaveBeenCalledOnce();
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    expect(getUserMedia).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        audio: expect.objectContaining({ channelCount: { ideal: 4 } }),
+      }),
+    );
+    expect(pipeline.captureActive).toBe(true);
+    pipeline.close();
+  });
+
+  it("keeps the current microphone running when a replacement processor fails", async () => {
+    const pipeline = new AudioPipeline({ localOnly: true });
+    await pipeline.startCapture();
+    const oldSource = captureSources[0]!;
+    const nextStop = vi.fn();
+    getUserMedia.mockResolvedValueOnce({
+      getTracks: () => [{ stop: nextStop }],
+    });
+    vi.mocked(AudioCapture.create).mockRejectedValueOnce(
+      new Error("processor unavailable"),
+    );
+    await expect(pipeline.replaceMicrophone("")).rejects.toThrow(
+      "processor unavailable",
+    );
+    expect(nextStop).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    expect(oldSource.disconnect).not.toHaveBeenCalled();
+    expect(pipeline.captureActive).toBe(true);
+    pipeline.close();
+  });
+
+  it("switches to a prepared replacement before stopping the old microphone", async () => {
+    const pipeline = new AudioPipeline({ localOnly: true });
+    await pipeline.startCapture();
+    const oldSource = captureSources[0]!;
+    const nextStop = vi.fn();
+    const nextProcessor = { node: node(), close: vi.fn() };
+    getUserMedia.mockResolvedValueOnce({
+      getTracks: () => [{ stop: nextStop }],
+    });
+    vi.mocked(AudioCapture.create).mockResolvedValueOnce(
+      nextProcessor as unknown as AudioCapture,
+    );
+    await pipeline.replaceMicrophone("");
+    expect(captureSources[1]!.connect).toHaveBeenCalledWith(nextProcessor.node);
+    expect(oldSource.disconnect).toHaveBeenCalledOnce();
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(nextStop).not.toHaveBeenCalled();
+    expect(pipeline.captureActive).toBe(true);
+    pipeline.close();
+    expect(nextProcessor.close).toHaveBeenCalledOnce();
+    expect(nextStop).toHaveBeenCalledOnce();
+  });
   it("records decoded peer audio with speakers disabled without acquiring a microphone", async () => {
     const pipeline = new AudioPipeline();
     expect(await pipeline.startRecording()).toBe(recordingBus.stream);

@@ -52,6 +52,7 @@
 #include <ascii-chat/video/anim/fft.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii/neon.h>
+#include <ascii-chat/platform/cpu.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -670,19 +671,20 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
       // Apply horizontal flip (X-axis)
       if (flip_x_enabled) {
 #if SIMD_SUPPORT_NEON
-        // Use NEON-accelerated flip on ARM processors
-        image_flip_horizontal_neon(flipped_image);
-#else
-        // Scalar fallback for non-NEON systems
-        for (int y = 0; y < image->h; y++) {
-          rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
-          for (int x = 0; x < image->w / 2; x++) {
-            rgb_pixel_t temp = row[x];
-            row[x] = row[image->w - 1 - x];
-            row[image->w - 1 - x] = temp;
+        if (platform_cpu_features() & CPU_FEATURE_NEON) {
+          image_flip_horizontal_neon(flipped_image);
+        } else
+#endif
+        {
+          for (int y = 0; y < image->h; y++) {
+            rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
+            for (int x = 0; x < image->w / 2; x++) {
+              rgb_pixel_t temp = row[x];
+              row[x] = row[image->w - 1 - x];
+              row[image->w - 1 - x] = temp;
+            }
           }
         }
-#endif
       }
 
       // Apply vertical flip (Y-axis)
@@ -851,7 +853,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 static char *session_display_create_visualization_frame(session_display_ctx_t *ctx) {
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
-  bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+  bool use_color = ctx->caps.color_level == TERM_COLOR_TRUECOLOR && GET_OPTION(color) != COLOR_SETTING_FALSE;
   int color_mode = colorscheme_current_background() == TERM_BACKGROUND_DARK ? AUDIO_VISUALIZATION_COLOR_BRIGHTER
                                                                             : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);
@@ -985,9 +987,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     }
   }
 
+  // Binary video owns stdout in every terminal mode.
+  const char *output = GET_OPTION(render_file);
+  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 ||
+                                            strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
   char *zalgo_frame = NULL;
   int zalgo_level = GET_OPTION(zalgo);
-  if (zalgo_level > 0) {
+  if (zalgo_level > 0 && !binary_stdout) {
     asciichat_error_t err =
         zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
     if (err == ASCIICHAT_OK) {
@@ -1022,10 +1028,6 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     splash_wait_for_animation();
   }
 
-  // Binary video owns stdout in every terminal mode.
-  const char *output = GET_OPTION(render_file);
-  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 ||
-                                            strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
   if (binary_stdout) {
     if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
       g_snapshot_first_frame_rendered = true;

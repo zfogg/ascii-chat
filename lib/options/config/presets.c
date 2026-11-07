@@ -331,6 +331,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
   options_builder_add_mode(b, "mirror", "View local media as ASCII art (no server)");
   options_builder_add_mode(b, "discovery-service", "Secure P2P session signalling");
+  options_builder_add_mode(b, "mcp-server", "MCP media rendering tools");
 
   // Add custom help sections for interactive modes (client, mirror, and discovery)
   options_builder_add_custom_section(b, "KEYBINDINGS",
