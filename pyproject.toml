@@ -15,12 +15,13 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
-addopts = ["--strict-markers", "-n", "logical"]
+addopts = ["--strict-markers", "--import-mode=importlib", "-n", "logical"]
 markers = [
   "unit: fast isolated Python tests",
   "integration: tests exercising native executables",
   "cli: native command-line contracts",
   "network: loopback networking tests",
+  "native: native library checks requiring isolated interpreters",
   "media: media processing tests",
   "terminal: PTY and terminal behavior",
   "mcp: MCP protocol tests",

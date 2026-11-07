@@ -13,6 +13,8 @@ source = { editable = "." }
 dependencies = [
     { name = "filelock" },
     { name = "fonttools" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pexpect", marker = "sys_platform != 'win32'" },
     { name = "pillow" },
     { name = "psutil" },
@@ -26,8 +28,6 @@ dependencies = [
 [package.optional-dependencies]
 audio = [
     { name = "matplotlib" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "sounddevice" },
@@ -43,7 +43,7 @@ requires-dist = [
     { name = "fonttools", specifier = ">=4.60,<5" },
     { name = "gotel", marker = "extra == 'telemetry'", git = "https://github.com/zfogg/gotel.git?subdirectory=python&rev=6fedf902c7e2cfd15bd0bc4e9c868e3f84e0f2d5" },
     { name = "matplotlib", marker = "extra == 'audio'" },
-    { name = "numpy", marker = "extra == 'audio'" },
+    { name = "numpy", specifier = ">=1.26,<3" },
     { name = "pexpect", marker = "sys_platform != 'win32'", specifier = "==4.9.0" },
     { name = "pillow", specifier = "==11.3.0" },
     { name = "psutil", specifier = ">=6" },

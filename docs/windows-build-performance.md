@@ -87,6 +87,6 @@ The C/C++ PCH regression and Windows export tests can be run separately from
 Criterion:
 
 ```powershell
-python tests/cmake/test_ccache_pch.py
-python tests/cmake/test_windows_exports.py
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/cmake/test_ccache_pch.py
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/cmake/test_windows_exports.py
 ```

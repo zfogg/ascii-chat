@@ -73,8 +73,8 @@ cmake --build build --target ascii-chat test-backpressure test-backpressure-live
 build/bin/test-backpressure
 build/bin/test-network-events
 build/bin/test-webrtc-security
-python tests/integration/transport_backpressure.py --binary build/bin/test-backpressure-live --output build/backpressure
-# Add --codecs raw,h264 on the Windows LGPL bundle.
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
+# Add --backpressure-codecs raw,h264 on the Windows LGPL bundle.
 ```
 
 Additional validation: all 185 browser tests passed, with the final deadline
