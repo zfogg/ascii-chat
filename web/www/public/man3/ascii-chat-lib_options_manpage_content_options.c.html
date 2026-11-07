@@ -1,122 +1,212 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>options.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">options.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">options.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">options.c - OPTIONS section generator for man pages.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE</b>
-    256
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">char * <b>manpage_content_generate_options</b> (const
-    <b>options_config_t</b> *config)
-  <br/>
-  Generate OPTIONS section content. void <b>manpage_content_free_options</b>
-    (char *content)
-  <br/>
-  Free generated options content.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">OPTIONS section generator for man pages.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file
-  <b>lib/options/manpage/content/options.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE___256">#define
-  OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file
-    <b>lib/options/manpage/content/options.c</b>.</p>
-<p class="Pp">Referenced by <b>manpage_content_generate_options()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_content_free_options_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_options_(char_*_content)">void
-  manpage_content_free_options (char * content)</a></h2>
-<p class="Pp">Free generated options content.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>content</i> Content to free (can be NULL)</div>
-<p class="Pp">Definition at line <b>206</b> of file
-    <b>lib/options/manpage/content/options.c</b>.</p>
-<pre>206                                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>options.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">options.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">options.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">options.c - OPTIONS section generator for man pages.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE</b>
+            256
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char * <b>manpage_content_generate_options</b> (const
+            <b>options_config_t</b> *config)
+            <br />
+            Generate OPTIONS section content. void
+            <b>manpage_content_free_options</b>
+            (char *content)
+            <br />
+            Free generated options content.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">OPTIONS section generator for man pages.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file <b>lib/options/manpage/content/options.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE___256"
+              >#define OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE
+              256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file
+            <b>lib/options/manpage/content/options.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>manpage_content_generate_options()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_content_free_options_(char_*_content)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_content_free_options_(char_*_content)"
+              >void manpage_content_free_options (char * content)</a
+            >
+          </h2>
+          <p class="Pp">Free generated options content.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>content</i> Content to free (can be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>206</b> of file
+            <b>lib/options/manpage/content/options.c</b>.
+          </p>
+          <pre>
+206                                                  {
 207   if (content) {
 208     SAFE_FREE(content);
 209   }
 210 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_content_free_options()</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>manpage_content_free_options()</b>, and
-    <b>options_config_generate_manpage_template()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_manpage_content_generate_options_(const_"><a class="permalink" href="#char_*_manpage_content_generate_options_(const_">char
-  * manpage_content_generate_options (const <b>options_config_t</b> *
-  config)</a></h2>
-<p class="Pp">Generate OPTIONS section content. Creates formatted OPTIONS
-    section from option descriptors, grouped by category with proper groff
-    formatting.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration with
-  descriptors</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Newly allocated content string (caller must free)</div>
-<p class="Pp">Definition at line <b>20</b> of file
-    <b>lib/options/manpage/content/options.c</b>.</p>
-<pre>20                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>manpage_content_free_options()</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>manpage_content_free_options()</b>, and
+            <b>options_config_generate_manpage_template()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_manpage_content_generate_options_(const_">
+            <a
+              class="permalink"
+              href="#char_*_manpage_content_generate_options_(const_"
+              >char * manpage_content_generate_options (const
+              <b>options_config_t</b> * config)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate OPTIONS section content. Creates formatted OPTIONS section
+            from option descriptors, grouped by category with proper groff
+            formatting.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration with descriptors
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Newly allocated content string (caller must free)
+          </div>
+          <p class="Pp">
+            Definition at line <b>20</b> of file
+            <b>lib/options/manpage/content/options.c</b>.
+          </p>
+          <pre>
+20                                                                        {
 21   if (!config) {
 22     char *buffer = SAFE_MALLOC(1, char *);
 23     buffer[0] = '\0';
@@ -301,41 +391,47 @@
 202   log_debug(&quot;Generated OPTIONS section (%zu bytes)&quot;, offset);
 203   return buffer;
 204 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>option_descriptor_t::arg_placeholder</b>,
-    <b>buffer_capacity()</b>, <b>option_descriptor_t::default_value</b>,
-    <b>options_config_t::descriptors</b>, <b>escape_groff_special()</b>,
-    <b>format_mode_names()</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::help_text</b>,
-    <b>option_descriptor_t::hide_from_binary_help</b>,
-    <b>option_descriptor_t::hide_from_mode_help</b>, <b>log_debug</b>,
-    <b>option_descriptor_t::long_name</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>option_descriptor_t::mode_bitmask</b>,
-    <b>options_config_t::num_descriptors</b>, <b>OPTION_MODE_BINARY</b>,
-    <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_STRING</b>,
-    <b>options_format_default_value()</b>,
-    <b>options_get_type_placeholder()</b>,
-    <b>OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE</b>,
-    <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_REALLOC</b>, <b>safe_snprintf()</b>,
-    <b>option_descriptor_t::short_name</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>manpage_content_generate_options()</b>, and
-    <b>options_config_generate_manpage_template()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>option_descriptor_t::arg_placeholder</b>,
+            <b>buffer_capacity()</b>, <b>option_descriptor_t::default_value</b>,
+            <b>options_config_t::descriptors</b>, <b>escape_groff_special()</b>,
+            <b>format_mode_names()</b>, <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::help_text</b>,
+            <b>option_descriptor_t::hide_from_binary_help</b>,
+            <b>option_descriptor_t::hide_from_mode_help</b>, <b>log_debug</b>,
+            <b>option_descriptor_t::long_name</b>,
+            <b>manpage_content_generate_options()</b>,
+            <b>option_descriptor_t::mode_bitmask</b>,
+            <b>options_config_t::num_descriptors</b>, <b>OPTION_MODE_BINARY</b>,
+            <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_STRING</b>,
+            <b>options_format_default_value()</b>,
+            <b>options_get_type_placeholder()</b>,
+            <b>OPTIONS_MANPAGE_CONTENT_OPTIONS_DEFAULT_BUFFER_SIZE</b>,
+            <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_REALLOC</b>, <b>safe_snprintf()</b>,
+            <b>option_descriptor_t::short_name</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>manpage_content_generate_options()</b>, and
+            <b>options_config_generate_manpage_template()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,100 +1,152 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client_keepalive(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client_keepalive(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client_keepalive(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client_keepalive - Connection Keepalive</p>
-<p class="Pp">
-  <br/>
-   - &#x1F493; Ping/pong keepalive and timeout detection</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>keepalive.c</b>
-  <br/>
-  &#x1F493; Client keepalive: periodic ping/pong exchange for reliable
-    connection failure detection file <b>keepalive.h</b>
-  <br/>
-  ascii-chat Client Connection Keepalive Management Interface
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>keepalive_start_thread</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  Start keepalive/ping thread. void <b>keepalive_stop_thread</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Stop keepalive/ping thread. <b>bool</b> <b>keepalive_thread_exited</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Check if keepalive thread has exited.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F493; Ping/pong keepalive and timeout detection</p>
-<p class="Pp">Connection Keepalive</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
-<p class="Pp">The keepalive subsystem manages connection liveness by sending
-    periodic ping packets and detecting pong timeouts to identify dead
-    connections.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Implementation</b>: <b>src/client/keepalive.c</b>,
-    <b>src/client/keepalive.h</b></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h1>
-<p class="Pp"><b>Timing Parameters</b>:</p>
-<ul class="Bl-bullet">
-  <li>Ping interval: 5 seconds</li>
-  <li>Pong timeout: 30 seconds</li>
-  <li>Timeout triggers reconnection</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Keepalive_Thread"><a class="permalink" href="#Keepalive_Thread">Keepalive
-  Thread</a></h1>
-<pre>static void *keepalive_thread_func(void *arg)
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_keepalive(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_keepalive(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_keepalive(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client_keepalive - Connection Keepalive</p>
+        <p class="Pp">
+          <br />
+          - &#x1F493; Ping/pong keepalive and timeout detection
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>keepalive.c</b>
+            <br />
+            &#x1F493; Client keepalive: periodic ping/pong exchange for reliable
+            connection failure detection file <b>keepalive.h</b>
+            <br />
+            ascii-chat Client Connection Keepalive Management Interface
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>keepalive_start_thread</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Start keepalive/ping thread. void <b>keepalive_stop_thread</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Stop keepalive/ping thread. <b>bool</b>
+            <b>keepalive_thread_exited</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Check if keepalive thread has exited.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x1F493; Ping/pong keepalive and timeout detection</p>
+        <p class="Pp">Connection Keepalive</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The keepalive subsystem manages connection liveness by sending
+          periodic ping packets and detecting pong timeouts to identify dead
+          connections.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Implementation</b>: <b>src/client/keepalive.c</b>,
+          <b>src/client/keepalive.h</b>
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Configuration">
+          <a class="permalink" href="#Configuration">Configuration</a>
+        </h1>
+        <p class="Pp"><b>Timing Parameters</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Ping interval: 5 seconds</li>
+          <li>Pong timeout: 30 seconds</li>
+          <li>Timeout triggers reconnection</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Keepalive_Thread">
+          <a class="permalink" href="#Keepalive_Thread">Keepalive Thread</a>
+        </h1>
+        <pre>static void *keepalive_thread_func(void *arg)
 {
 <br/>
   (void)arg;
@@ -139,44 +191,63 @@
 <br/>
   return NULL;
 }</pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Pong_Recording"><a class="permalink" href="#Pong_Recording">Pong
-  Recording</a></h1>
-<pre>void keepalive_record_pong(void)
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Pong_Recording">
+          <a class="permalink" href="#Pong_Recording">Pong Recording</a>
+        </h1>
+        <pre>void keepalive_record_pong(void)
 {
 <br/>
   // Update last pong time (called by protocol handler)
 <br/>
   g_last_pong_time = time(NULL);
 }</pre>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>src/client/keepalive.c</b>
-<p class="Pp"></p>
-<p class="Pp"><b>src/client/keepalive.h</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Client Overview</b></p>
-</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_keepalive_start_thread_("><a class="permalink" href="#int_keepalive_start_thread_(">int
-  keepalive_start_thread (<b>client_connection_t</b> * connection)</a></h2>
-<p class="Pp">#include &lt;<b>src/client/keepalive.c</b>&gt;<b></b></p>
-<p class="Pp">Start keepalive/ping thread. Start keepalive/ping thread</p>
-<p class="Pp"></p>
-<p class="Pp">Creates and starts the ping thread for connection keepalive. Must
-    be called after successful server connection establishment.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, negative on error
-<p class="Pp"></p>
-<p class="Pp">0 on success, negative on error</p>
-</div>
-<p class="Pp">Definition at line <b>216</b> of file <b>keepalive.c</b>.</p>
-<pre>216                                                             {
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>src/client/keepalive.c</b>
+          <p class="Pp"></p>
+          <p class="Pp"><b>src/client/keepalive.h</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Client Overview</b></p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_keepalive_start_thread_(">
+            <a class="permalink" href="#int_keepalive_start_thread_("
+              >int keepalive_start_thread (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/keepalive.c</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Start keepalive/ping thread. Start keepalive/ping thread
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Creates and starts the ping thread for connection keepalive. Must be
+            called after successful server connection establishment.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, negative on error
+            <p class="Pp"></p>
+            <p class="Pp">0 on success, negative on error</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>216</b> of file <b>keepalive.c</b>.
+          </p>
+          <pre>
+216                                                             {
 217   if (connection-&gt;ping_thread_created) {
 218     log_warn(&quot;Ping thread already created&quot;);
 219     return 0;
@@ -194,27 +265,45 @@
 231   connection-&gt;ping_thread_created = true;
 232   return 0;
 233 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>client_connection::client_worker_pool</b>,
-    <b>keepalive_start_thread()</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
-    <b>log_warn</b>, <b>client_connection::ping_thread_created</b>,
-    <b>client_connection::ping_thread_exited</b>, and
-    <b>thread_pool_spawn()</b>.</p>
-<p class="Pp">Referenced by <b>client_protocol_start()</b>, and
-    <b>keepalive_start_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_keepalive_stop_thread_("><a class="permalink" href="#void_keepalive_stop_thread_(">void
-  keepalive_stop_thread (<b>client_connection_t</b> * connection)</a></h2>
-<p class="Pp">#include &lt;<b>src/client/keepalive.c</b>&gt;<b></b></p>
-<p class="Pp">Stop keepalive/ping thread. Stop keepalive/ping thread</p>
-<p class="Pp"></p>
-<p class="Pp">Gracefully stops the ping thread and cleans up resources. Safe to
-    call multiple times.</p>
-<p class="Pp">Definition at line <b>243</b> of file <b>keepalive.c</b>.</p>
-<pre>243                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>client_connection::client_worker_pool</b>,
+            <b>keepalive_start_thread()</b>, <b>LOG_ERRNO_IF_SET</b>,
+            <b>log_error</b>, <b>log_warn</b>,
+            <b>client_connection::ping_thread_created</b>,
+            <b>client_connection::ping_thread_exited</b>, and
+            <b>thread_pool_spawn()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_start()</b>, and
+            <b>keepalive_start_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_keepalive_stop_thread_(">
+            <a class="permalink" href="#void_keepalive_stop_thread_("
+              >void keepalive_stop_thread (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/keepalive.c</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Stop keepalive/ping thread. Stop keepalive/ping thread
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Gracefully stops the ping thread and cleans up resources. Safe to
+            call multiple times.
+          </p>
+          <p class="Pp">
+            Definition at line <b>243</b> of file <b>keepalive.c</b>.
+          </p>
+          <pre>
+243                                                             {
 244   if (!connection)
 245     return;
 246   if (!connection-&gt;ping_thread_created) {
@@ -240,49 +329,65 @@
 266
 267   log_debug(&quot;Ping thread stopped and joined&quot;);
 268 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>keepalive_stop_thread()</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>NS_PER_MS_INT</b>, <b>client_connection::ping_thread_created</b>,
-    <b>client_connection::ping_thread_exited</b>, and
-    <b>platform_sleep_ns()</b>.</p>
-<p class="Pp">Referenced by <b>keepalive_stop_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> keepalive_thread_exited (<b>client_connection_t</b> *
-  connection)</h2>
-<p class="Pp">#include &lt;<b>src/client/keepalive.c</b>&gt;<b></b></p>
-<p class="Pp">Check if keepalive thread has exited. Check if keepalive thread
-    has exited</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if thread has exited, false otherwise
-<p class="Pp"></p>
-<p class="Pp">true if thread exited, false otherwise</p>
-</div>
-<p class="Pp">Definition at line <b>277</b> of file <b>keepalive.c</b>.</p>
-<pre>277                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>,
+            <b>keepalive_stop_thread()</b>, <b>log_debug</b>, <b>log_warn</b>,
+            <b>NS_PER_MS_INT</b>, <b>client_connection::ping_thread_created</b>,
+            <b>client_connection::ping_thread_exited</b>, and
+            <b>platform_sleep_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keepalive_stop_thread()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> keepalive_thread_exited (<b>client_connection_t</b> *
+            connection)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/keepalive.c</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Check if keepalive thread has exited. Check if keepalive thread has
+            exited
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if thread has exited, false otherwise
+            <p class="Pp"></p>
+            <p class="Pp">true if thread exited, false otherwise</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>277</b> of file <b>keepalive.c</b>.
+          </p>
+          <pre>
+277                                                               {
 278   return atomic_load_bool(&amp;connection-&gt;ping_thread_exited);
 279 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>keepalive_thread_exited()</b>, and
-    <b>client_connection::ping_thread_exited</b>.</p>
-<p class="Pp">Referenced by <b>keepalive_thread_exited()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>,
+            <b>keepalive_thread_exited()</b>, and
+            <b>client_connection::ping_thread_exited</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keepalive_thread_exited()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

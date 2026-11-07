@@ -1,139 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>progress_snapshot_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">progress_snapshot_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">progress_snapshot_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">progress_snapshot_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>started_ns</b>
-  <br/>
-  <b>uint64_t</b> <b>completed</b>
-  <br/>
-  <b>uint64_t</b> <b>total</b>
-  <br/>
-  <b>bool</b> <b>total_known</b>
-  <br/>
-  <b>bool</b> <b>finalizing</b>
-  <br/>
-  <b>bool</b> <b>failed</b>
-  <br/>
-  size_t <b>length</b>
-  <br/>
-  size_t <b>destination_length</b>
-  <br/>
-  char <b>frame</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>25</b> of file <b>render_progress.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> progress_snapshot_t::completed</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_finalize()</b>, and
-    <b>render_progress_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_progress_snapshot_t::destination_length"><a class="permalink" href="#size_t_progress_snapshot_t::destination_length">size_t
-  progress_snapshot_t::destination_length</a></h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_create()</b>, and
-    <b>render_progress_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> progress_snapshot_t::failed</h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> progress_snapshot_t::finalizing</h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_finalize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_progress_snapshot_t::frame__"><a class="permalink" href="#char_progress_snapshot_t::frame__">char
-  progress_snapshot_t::frame[]</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_create()</b>, and
-    <b>render_progress_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_progress_snapshot_t::length"><a class="permalink" href="#size_t_progress_snapshot_t::length">size_t
-  progress_snapshot_t::length</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> progress_snapshot_t::started_ns</h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_create()</b>, and
-    <b>render_progress_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> progress_snapshot_t::total</h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_begin()</b>, and
-    <b>render_progress_finalize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> progress_snapshot_t::total_known</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>render_progress.c</b>.</p>
-<p class="Pp">Referenced by <b>render_progress_begin()</b>, and
-    <b>render_progress_finalize()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>progress_snapshot_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">progress_snapshot_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">progress_snapshot_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">progress_snapshot_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>started_ns</b>
+            <br />
+            <b>uint64_t</b> <b>completed</b>
+            <br />
+            <b>uint64_t</b> <b>total</b>
+            <br />
+            <b>bool</b> <b>total_known</b>
+            <br />
+            <b>bool</b> <b>finalizing</b>
+            <br />
+            <b>bool</b> <b>failed</b>
+            <br />
+            size_t <b>length</b>
+            <br />
+            size_t <b>destination_length</b>
+            <br />
+            char <b>frame</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>25</b> of file <b>render_progress.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> progress_snapshot_t::completed</h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_progress_finalize()</b>, and
+            <b>render_progress_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_progress_snapshot_t::destination_length">
+            <a
+              class="permalink"
+              href="#size_t_progress_snapshot_t::destination_length"
+              >size_t progress_snapshot_t::destination_length</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_progress_create()</b>, and
+            <b>render_progress_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> progress_snapshot_t::failed</h2>
+          <p class="Pp">
+            Definition at line <b>31</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_progress_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> progress_snapshot_t::finalizing</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_progress_finalize()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_progress_snapshot_t::frame__">
+            <a class="permalink" href="#char_progress_snapshot_t::frame__"
+              >char progress_snapshot_t::frame[]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_progress_create()</b>, and
+            <b>render_progress_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_progress_snapshot_t::length">
+            <a class="permalink" href="#size_t_progress_snapshot_t::length"
+              >size_t progress_snapshot_t::length</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_progress_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> progress_snapshot_t::started_ns</h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_progress_create()</b>, and
+            <b>render_progress_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> progress_snapshot_t::total</h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_progress_begin()</b>, and
+            <b>render_progress_finalize()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> progress_snapshot_t::total_known</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>render_progress.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_progress_begin()</b>, and
+            <b>render_progress_finalize()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

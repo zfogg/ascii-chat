@@ -1,148 +1,240 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE</b> 256
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>discovery_session_t</b> * <b>discovery_session_create</b>
-    (const <b>discovery_config_t</b> *config)
-  <br/>
-  Create a new discovery session. <b>asciichat_error_t</b>
-    <b>discovery_session_destroy</b> (<b>discovery_session_t</b> *session)
-  <br/>
-  Destroy discovery session and free resources. <b>asciichat_error_t</b>
-    <b>discovery_session_apply_handoff</b> (<b>discovery_session_t</b> *session)
-  <br/>
-  Replace the old role after a committed handoff and media-worker shutdown.
-    Releases borrowed-role resources, resets liveness, and initializes the
-    committed successor connection. Callers must stop media workers before
-    entering this function. <b>asciichat_error_t</b>
-    <b>discovery_session_start</b> (<b>discovery_session_t</b> *session)
-  <br/>
-  Start the discovery session. <b>asciichat_error_t</b>
-    <b>discovery_session_process</b> (<b>discovery_session_t</b> *session,
-    int64_t timeout_ns)
-  <br/>
-  Process session events (call in main loop). void <b>discovery_session_stop</b>
-    (<b>discovery_session_t</b> *session)
-  <br/>
-  Stop the discovery session. <b>discovery_state_t</b>
-    <b>discovery_session_get_state</b> (const <b>discovery_session_t</b>
-    *session)
-  <br/>
-  Get current session state. <b>bool</b> <b>discovery_session_is_active</b>
-    (const <b>discovery_session_t</b> *session)
-  <br/>
-  Check if session is active (call in progress). const char *
-    <b>discovery_session_get_string</b> (const <b>discovery_session_t</b>
-    *session)
-  <br/>
-  Get session string. <b>bool</b> <b>discovery_session_is_host</b> (const
-    <b>discovery_session_t</b> *session)
-  <br/>
-  Check if we are the host. <b>session_host_t</b> *
-    <b>discovery_session_get_host</b> (<b>discovery_session_t</b> *session)
-  <br/>
-  Get host context (if we are host). <b>session_participant_t</b> *
-    <b>discovery_session_get_participant</b> (<b>discovery_session_t</b>
-    *session)
-  <br/>
-  Get participant context (if we are participant). void
-    <b>discovery_session_host_pong</b> (<b>discovery_session_t</b> *session)
-  <br/>
-  <b>asciichat_error_t</b> <b>discovery_session_check_host_alive</b>
-    (<b>discovery_session_t</b> *session)
-  <br/>
-  Check host transport availability and advance TCP ping/pong liveness. Uses
-    receiver-clock pong timestamps and bounded consecutive-failure tracking.
-    <b>asciichat_error_t</b> <b>discovery_session_handle_host_disconnect</b>
-    (<b>discovery_session_t</b> *session, <b>uint32_t</b> disconnect_reason)
-  <br/>
-  Report host loss and await the authoritative ACDS handoff decision. Records
-    the local recovery deadline origin. Advisory successor plans never authorize
-    immediate promotion or reconnection from this function.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE___256"><a class="permalink" href="#_define_DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE___256">#define
-  DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file
-    <b>src/discovery/session.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE___256"><a class="permalink" href="#_define_DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE___256">#define
-  DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_session_apply_handoff
-  (<b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Replace the old role after a committed handoff and media-worker
-    shutdown. Releases borrowed-role resources, resets liveness, and initializes
-    the committed successor connection. Callers must stop media workers before
-    entering this function.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if no handoff is pending or initialization
-  succeeds.</div>
-<p class="Pp">Apply a committed role change after media workers have
-  stopped.</p>
-<p class="Pp">Definition at line <b>1186</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>1186                                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE</b> 256
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>discovery_session_t</b> * <b>discovery_session_create</b> (const
+            <b>discovery_config_t</b> *config)
+            <br />
+            Create a new discovery session. <b>asciichat_error_t</b>
+            <b>discovery_session_destroy</b> (<b>discovery_session_t</b>
+            *session)
+            <br />
+            Destroy discovery session and free resources.
+            <b>asciichat_error_t</b> <b>discovery_session_apply_handoff</b> (<b
+              >discovery_session_t</b
+            >
+            *session)
+            <br />
+            Replace the old role after a committed handoff and media-worker
+            shutdown. Releases borrowed-role resources, resets liveness, and
+            initializes the committed successor connection. Callers must stop
+            media workers before entering this function.
+            <b>asciichat_error_t</b> <b>discovery_session_start</b> (<b
+              >discovery_session_t</b
+            >
+            *session)
+            <br />
+            Start the discovery session. <b>asciichat_error_t</b>
+            <b>discovery_session_process</b> (<b>discovery_session_t</b>
+            *session, int64_t timeout_ns)
+            <br />
+            Process session events (call in main loop). void
+            <b>discovery_session_stop</b> (<b>discovery_session_t</b>
+            *session)
+            <br />
+            Stop the discovery session. <b>discovery_state_t</b>
+            <b>discovery_session_get_state</b> (const <b>discovery_session_t</b>
+            *session)
+            <br />
+            Get current session state. <b>bool</b>
+            <b>discovery_session_is_active</b> (const
+            <b>discovery_session_t</b> *session)
+            <br />
+            Check if session is active (call in progress). const char *
+            <b>discovery_session_get_string</b> (const
+            <b>discovery_session_t</b>
+            *session)
+            <br />
+            Get session string. <b>bool</b>
+            <b>discovery_session_is_host</b> (const
+            <b>discovery_session_t</b> *session)
+            <br />
+            Check if we are the host. <b>session_host_t</b> *
+            <b>discovery_session_get_host</b> (<b>discovery_session_t</b>
+            *session)
+            <br />
+            Get host context (if we are host). <b>session_participant_t</b> *
+            <b>discovery_session_get_participant</b> (<b>discovery_session_t</b>
+            *session)
+            <br />
+            Get participant context (if we are participant). void
+            <b>discovery_session_host_pong</b> (<b>discovery_session_t</b>
+            *session)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>discovery_session_check_host_alive</b> (<b
+              >discovery_session_t</b
+            >
+            *session)
+            <br />
+            Check host transport availability and advance TCP ping/pong
+            liveness. Uses receiver-clock pong timestamps and bounded
+            consecutive-failure tracking.
+            <b>asciichat_error_t</b>
+            <b>discovery_session_handle_host_disconnect</b> (<b
+              >discovery_session_t</b
+            >
+            *session, <b>uint32_t</b> disconnect_reason)
+            <br />
+            Report host loss and await the authoritative ACDS handoff decision.
+            Records the local recovery deadline origin. Advisory successor plans
+            never authorize immediate promotion or reconnection from this
+            function.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE___256"
+              >#define DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>src/discovery/session.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE___256"
+              >#define DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>src/discovery/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_session_apply_handoff (<b
+              >discovery_session_t</b
+            >
+            * session)
+          </h2>
+          <p class="Pp">
+            Replace the old role after a committed handoff and media-worker
+            shutdown. Releases borrowed-role resources, resets liveness, and
+            initializes the committed successor connection. Callers must stop
+            media workers before entering this function.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if no handoff is pending or initialization succeeds.
+          </div>
+          <p class="Pp">
+            Apply a committed role change after media workers have stopped.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1186</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+1186                                                                                 {
 1187   if (!session || !session-&gt;handoff_pending)
 1188     return ASCIICHAT_OK;
 1189   session-&gt;handoff_pending = false;
@@ -178,55 +270,78 @@
 1219   set_state(session, session-&gt;is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
 1220   return ASCIICHAT_OK;
 1221 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_store_u64()</b>, <b>host_liveness_t::consecutive_failures</b>,
-    <b>discovery_session_apply_handoff()</b>,
-    <b>DISCOVERY_STATE_CONNECTING_HOST</b>,
-    <b>DISCOVERY_STATE_STARTING_HOST</b>,
-    <b>discovery_session_t::handoff_pending</b>,
-    <b>discovery_session_t::host_ctx</b>, <b>discovery_session_t::host_id</b>,
-    <b>discovery_session_t::host_loss_detected_ms</b>,
-    <b>discovery_session_t::is_host</b>,
-    <b>host_liveness_t::last_ping_sent_ms</b>,
-    <b>host_liveness_t::last_pong_received_ms</b>,
-    <b>discovery_session_t::liveness</b>,
-    <b>discovery_session_t::participant_ctx</b>,
-    <b>discovery_session_t::participant_id</b>,
-    <b>discovery_session_t::peer_manager</b>,
-    <b>host_liveness_t::ping_in_flight</b>, <b>session_host_destroy()</b>,
-    <b>SESSION_ID_SIZE</b>, <b>session_participant_destroy()</b>,
-    <b>discovery_session_t::session_type</b>, <b>SESSION_TYPE_WEBRTC</b>,
-    <b>discovery_session_t::webrtc_connection_initiated</b>,
-    <b>discovery_session_t::webrtc_disconnected_since_ms</b>,
-    <b>webrtc_peer_manager_destroy()</b>,
-    <b>discovery_session_t::webrtc_retry_attempt</b>, and
-    <b>discovery_session_t::webrtc_transport_ready</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_apply_handoff()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_session_check_host_alive
-  (<b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Check host transport availability and advance TCP ping/pong
-    liveness. Uses receiver-clock pong timestamps and bounded
-    consecutive-failure tracking. Detect host disconnect (check connection
-    status).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK for a live host, or a network error after
-  loss is detected.</div>
-<p class="Pp">Check host transport availability and advance TCP ping/pong
-    liveness. Uses receiver-clock pong timestamps and bounded
-    consecutive-failure tracking.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if host alive, error if disconnected</div>
-<p class="Pp">Definition at line <b>2160</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2160                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_u64()</b>,
+            <b>host_liveness_t::consecutive_failures</b>,
+            <b>discovery_session_apply_handoff()</b>,
+            <b>DISCOVERY_STATE_CONNECTING_HOST</b>,
+            <b>DISCOVERY_STATE_STARTING_HOST</b>,
+            <b>discovery_session_t::handoff_pending</b>,
+            <b>discovery_session_t::host_ctx</b>,
+            <b>discovery_session_t::host_id</b>,
+            <b>discovery_session_t::host_loss_detected_ms</b>,
+            <b>discovery_session_t::is_host</b>,
+            <b>host_liveness_t::last_ping_sent_ms</b>,
+            <b>host_liveness_t::last_pong_received_ms</b>,
+            <b>discovery_session_t::liveness</b>,
+            <b>discovery_session_t::participant_ctx</b>,
+            <b>discovery_session_t::participant_id</b>,
+            <b>discovery_session_t::peer_manager</b>,
+            <b>host_liveness_t::ping_in_flight</b>,
+            <b>session_host_destroy()</b>, <b>SESSION_ID_SIZE</b>,
+            <b>session_participant_destroy()</b>,
+            <b>discovery_session_t::session_type</b>,
+            <b>SESSION_TYPE_WEBRTC</b>,
+            <b>discovery_session_t::webrtc_connection_initiated</b>,
+            <b>discovery_session_t::webrtc_disconnected_since_ms</b>,
+            <b>webrtc_peer_manager_destroy()</b>,
+            <b>discovery_session_t::webrtc_retry_attempt</b>, and
+            <b>discovery_session_t::webrtc_transport_ready</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_session_apply_handoff()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_session_check_host_alive (<b
+              >discovery_session_t</b
+            >
+            * session)
+          </h2>
+          <p class="Pp">
+            Check host transport availability and advance TCP ping/pong
+            liveness. Uses receiver-clock pong timestamps and bounded
+            consecutive-failure tracking. Detect host disconnect (check
+            connection status).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK for a live host, or a network error after loss is
+            detected.
+          </div>
+          <p class="Pp">
+            Check host transport availability and advance TCP ping/pong
+            liveness. Uses receiver-clock pong timestamps and bounded
+            consecutive-failure tracking.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if host alive, error if disconnected
+          </div>
+          <p class="Pp">
+            Definition at line <b>2160</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2160                                                                                    {
 2161   if (!session || session-&gt;is_host) {
 2162     // We are the host, so &quot;host&quot; is always alive
 2163     return ASCIICHAT_OK;
@@ -303,38 +418,49 @@
 2234
 2235   return ASCIICHAT_OK;
 2236 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_ping()</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_load_u64()</b>, <b>host_liveness_t::consecutive_failures</b>,
-    <b>discovery_session_check_host_alive()</b>,
-    <b>DISCOVERY_STATE_MIGRATING</b>, <b>ERROR_NETWORK</b>,
-    <b>discovery_session_t::is_host</b>,
-    <b>host_liveness_t::last_ping_sent_ms</b>,
-    <b>host_liveness_t::last_pong_received_ms</b>,
-    <b>discovery_session_t::liveness</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>log_warn</b>, <b>host_liveness_t::max_failures</b>,
-    <b>discovery_session_t::participant_ctx</b>,
-    <b>host_liveness_t::ping_in_flight</b>,
-    <b>host_liveness_t::ping_interval_ms</b>,
-    <b>session_participant_get_transport()</b>,
-    <b>discovery_session_t::session_type</b>, <b>SESSION_TYPE_WEBRTC</b>,
-    <b>SET_ERRNO</b>, <b>discovery_session_t::state</b>,
-    <b>host_liveness_t::timeout_ms</b>, and
-    <b>discovery_session_t::webrtc_transport_ready</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>discovery_session_t</b> * discovery_session_create (const
-  <b>discovery_config_t</b> * config)</h2>
-<p class="Pp">Create a new discovery session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Session configuration</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">New session or NULL on error</div>
-<p class="Pp">Definition at line <b>69</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>69                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_ping()</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_load_u64()</b>,
+            <b>host_liveness_t::consecutive_failures</b>,
+            <b>discovery_session_check_host_alive()</b>,
+            <b>DISCOVERY_STATE_MIGRATING</b>, <b>ERROR_NETWORK</b>,
+            <b>discovery_session_t::is_host</b>,
+            <b>host_liveness_t::last_ping_sent_ms</b>,
+            <b>host_liveness_t::last_pong_received_ms</b>,
+            <b>discovery_session_t::liveness</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_warn</b>,
+            <b>host_liveness_t::max_failures</b>,
+            <b>discovery_session_t::participant_ctx</b>,
+            <b>host_liveness_t::ping_in_flight</b>,
+            <b>host_liveness_t::ping_interval_ms</b>,
+            <b>session_participant_get_transport()</b>,
+            <b>discovery_session_t::session_type</b>,
+            <b>SESSION_TYPE_WEBRTC</b>, <b>SET_ERRNO</b>,
+            <b>discovery_session_t::state</b>,
+            <b>host_liveness_t::timeout_ms</b>, and
+            <b>discovery_session_t::webrtc_transport_ready</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_session_check_host_alive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>discovery_session_t</b> * discovery_session_create (const
+            <b>discovery_config_t</b> * config)
+          </h2>
+          <p class="Pp">Create a new discovery session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>config</i> Session configuration</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">New session or NULL on error</div>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+69                                                                                 {
 70   if (!config) {
 71     SET_ERRNO(ERROR_INVALID_PARAM, &quot;config is NULL&quot;);
 72     return NULL;
@@ -498,81 +624,101 @@
 230   NAMED_REGISTER_ATOMIC(&amp;session-&gt;liveness.last_pong_received_ms, &quot;discovery.last_pong_received_ms&quot;, NULL);
 231   return session;
 232 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_config_t::acds_address</b>,
-    <b>discovery_session_t::acds_address</b>,
-    <b>acds_identity_default_path()</b>, <b>acds_identity_fingerprint()</b>,
-    <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
-    <b>acds_identity_save()</b>, <b>discovery_config_t::acds_port</b>,
-    <b>discovery_session_t::acds_port</b>,
-    <b>discovery_session_t::acds_transport</b>,
-    <b>discovery_config_t::acds_url</b>, <b>discovery_session_t::acds_url</b>,
-    <b>ACIP_DISCOVERY_DEFAULT_PORT</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_store_u64()</b>,
-    <b>discovery_config_t::callback_user_data</b>,
-    <b>discovery_session_t::callback_user_data</b>,
-    <b>host_liveness_t::consecutive_failures</b>,
-    <b>discovery_session_create()</b>,
-    <b>DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE</b>,
-    <b>DISCOVERY_STATE_INIT</b>, <b>ED25519_PRIVATE_KEY_SIZE</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>options_state::encrypt_key</b>,
-    <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
-    <b>errno_scope_end()</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>discovery_config_t::exit_callback_data</b>,
-    <b>discovery_session_t::exit_callback_data</b>,
-    <b>discovery_session_t::handoff_generation</b>, <b>HEX_STRING_SIZE_32</b>,
-    <b>discovery_session_t::host_ctx</b>, <b>options_state::identity_keys</b>,
-    <b>discovery_session_t::identity_pubkey</b>,
-    <b>discovery_session_t::identity_pubkeys</b>,
-    <b>discovery_session_t::identity_seckey</b>,
-    <b>discovery_session_t::identity_seckeys</b>,
-    <b>discovery_session_t::is_initiator</b>,
-    <b>host_liveness_t::last_ping_sent_ms</b>,
-    <b>host_liveness_t::last_pong_received_ms</b>,
-    <b>discovery_session_t::liveness</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>host_liveness_t::max_failures</b>,
-    <b>MAX_SESSION_KEYS</b>, <b>MS_PER_SEC_INT</b>, <b>mutex_init()</b>,
-    <b>NAMED_REGISTER_ATOMIC</b>, <b>discovery_session_t::nat_quality_mutex</b>,
-    <b>NOTICE</b>, <b>discovery_session_t::num_identity_keys</b>,
-    <b>options_state::num_identity_keys</b>,
-    <b>discovery_config_t::on_error</b>, <b>discovery_session_t::on_error</b>,
-    <b>discovery_config_t::on_session_ready</b>,
-    <b>discovery_session_t::on_session_ready</b>,
-    <b>discovery_config_t::on_state_change</b>,
-    <b>discovery_session_t::on_state_change</b>, <b>options_get()</b>,
-    <b>discovery_session_t::participant_ctx</b>,
-    <b>discovery_config_t::password</b>, <b>discovery_session_t::password</b>,
-    <b>discovery_session_t::peer_manager</b>,
-    <b>host_liveness_t::ping_in_flight</b>,
-    <b>host_liveness_t::ping_interval_ms</b>, <b>platform_access()</b>,
-    <b>PLATFORM_ACCESS_EXISTS</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_STRNCPY</b>, <b>discovery_config_t::session_string</b>,
-    <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
-    <b>discovery_config_t::should_exit_callback</b>,
-    <b>discovery_session_t::should_exit_callback</b>,
-    <b>discovery_session_t::state</b>, <b>discovery_session_t::stun_count</b>,
-    <b>discovery_session_t::stun_servers</b>,
-    <b>host_liveness_t::timeout_ms</b>, <b>discovery_session_t::turn_count</b>,
-    <b>discovery_session_t::turn_servers</b>,
-    <b>discovery_session_t::webrtc_connection_initiated</b>,
-    <b>discovery_session_t::webrtc_disconnected_since_ms</b>,
-    <b>discovery_session_t::webrtc_last_attempt_time_ms</b>,
-    <b>discovery_session_t::webrtc_retry_attempt</b>, and
-    <b>discovery_session_t::webrtc_transport_ready</b>.</p>
-<p class="Pp">Referenced by <b>discovery_main()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_session_destroy
-  (<b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Destroy discovery session and free resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session to destroy</div>
-<p class="Pp">Definition at line <b>275</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>275                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_config_t::acds_address</b>,
+            <b>discovery_session_t::acds_address</b>,
+            <b>acds_identity_default_path()</b>,
+            <b>acds_identity_fingerprint()</b>, <b>acds_identity_generate()</b>,
+            <b>acds_identity_load()</b>, <b>acds_identity_save()</b>,
+            <b>discovery_config_t::acds_port</b>,
+            <b>discovery_session_t::acds_port</b>,
+            <b>discovery_session_t::acds_transport</b>,
+            <b>discovery_config_t::acds_url</b>,
+            <b>discovery_session_t::acds_url</b>,
+            <b>ACIP_DISCOVERY_DEFAULT_PORT</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_store_u64()</b>,
+            <b>discovery_config_t::callback_user_data</b>,
+            <b>discovery_session_t::callback_user_data</b>,
+            <b>host_liveness_t::consecutive_failures</b>,
+            <b>discovery_session_create()</b>,
+            <b>DISCOVERY_SESSION_IDENTITY_PATH_BUFFER_SIZE</b>,
+            <b>DISCOVERY_STATE_INIT</b>, <b>ED25519_PRIVATE_KEY_SIZE</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>options_state::encrypt_key</b>,
+            <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>discovery_config_t::exit_callback_data</b>,
+            <b>discovery_session_t::exit_callback_data</b>,
+            <b>discovery_session_t::handoff_generation</b>,
+            <b>HEX_STRING_SIZE_32</b>, <b>discovery_session_t::host_ctx</b>,
+            <b>options_state::identity_keys</b>,
+            <b>discovery_session_t::identity_pubkey</b>,
+            <b>discovery_session_t::identity_pubkeys</b>,
+            <b>discovery_session_t::identity_seckey</b>,
+            <b>discovery_session_t::identity_seckeys</b>,
+            <b>discovery_session_t::is_initiator</b>,
+            <b>host_liveness_t::last_ping_sent_ms</b>,
+            <b>host_liveness_t::last_pong_received_ms</b>,
+            <b>discovery_session_t::liveness</b>, <b>log_debug</b>,
+            <b>log_info</b>, <b>log_warn</b>,
+            <b>host_liveness_t::max_failures</b>, <b>MAX_SESSION_KEYS</b>,
+            <b>MS_PER_SEC_INT</b>, <b>mutex_init()</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>,
+            <b>discovery_session_t::nat_quality_mutex</b>, <b>NOTICE</b>,
+            <b>discovery_session_t::num_identity_keys</b>,
+            <b>options_state::num_identity_keys</b>,
+            <b>discovery_config_t::on_error</b>,
+            <b>discovery_session_t::on_error</b>,
+            <b>discovery_config_t::on_session_ready</b>,
+            <b>discovery_session_t::on_session_ready</b>,
+            <b>discovery_config_t::on_state_change</b>,
+            <b>discovery_session_t::on_state_change</b>, <b>options_get()</b>,
+            <b>discovery_session_t::participant_ctx</b>,
+            <b>discovery_config_t::password</b>,
+            <b>discovery_session_t::password</b>,
+            <b>discovery_session_t::peer_manager</b>,
+            <b>host_liveness_t::ping_in_flight</b>,
+            <b>host_liveness_t::ping_interval_ms</b>, <b>platform_access()</b>,
+            <b>PLATFORM_ACCESS_EXISTS</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_STRNCPY</b>, <b>discovery_config_t::session_string</b>,
+            <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
+            <b>discovery_config_t::should_exit_callback</b>,
+            <b>discovery_session_t::should_exit_callback</b>,
+            <b>discovery_session_t::state</b>,
+            <b>discovery_session_t::stun_count</b>,
+            <b>discovery_session_t::stun_servers</b>,
+            <b>host_liveness_t::timeout_ms</b>,
+            <b>discovery_session_t::turn_count</b>,
+            <b>discovery_session_t::turn_servers</b>,
+            <b>discovery_session_t::webrtc_connection_initiated</b>,
+            <b>discovery_session_t::webrtc_disconnected_since_ms</b>,
+            <b>discovery_session_t::webrtc_last_attempt_time_ms</b>,
+            <b>discovery_session_t::webrtc_retry_attempt</b>, and
+            <b>discovery_session_t::webrtc_transport_ready</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_main()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_session_destroy (<b
+              >discovery_session_t</b
+            >
+            * session)
+          </h2>
+          <p class="Pp">Destroy discovery session and free resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session to destroy</div>
+          <p class="Pp">
+            Definition at line <b>275</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+275                                                                           {
 276   ASCII_OTEL_SCOPE(DISCOVERY_SHUTDOWN);
 277   if (!session) {
 278     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
@@ -639,155 +785,217 @@
 339   SAFE_FREE(session);
 340   return ASCIICHAT_OK;
 341 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::acds_connection</b>,
-    <b>discovery_session_t::acds_transport</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ASCIICHAT_OK</b>, <b>discovery_session_destroy()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
-    <b>discovery_session_t::host_ctx</b>,
-    <b>discovery_session_t::identity_seckey</b>,
-    <b>discovery_session_t::identity_seckeys</b>,
-    <b>host_liveness_t::last_pong_received_ms</b>,
-    <b>discovery_session_t::liveness</b>, <b>mutex_destroy()</b>,
-    <b>NAMED_UNREGISTER</b>, <b>discovery_session_t::nat_detection_thread</b>,
-    <b>discovery_session_t::nat_detection_thread_started</b>,
-    <b>discovery_session_t::nat_quality_mutex</b>,
-    <b>network_connection_destroy()</b>, <b>NS_PER_MS_INT</b>,
-    <b>discovery_session_t::participant_ctx</b>,
-    <b>discovery_session_t::password</b>,
-    <b>discovery_session_t::peer_manager</b>, <b>SAFE_FREE</b>,
-    <b>session_host_destroy()</b>, <b>session_participant_destroy()</b>,
-    <b>SET_ERRNO</b>, <b>discovery_session_t::stun_count</b>,
-    <b>discovery_session_t::stun_servers</b>, <b>thread_join_timeout()</b>,
-    <b>discovery_session_t::turn_count</b>,
-    <b>discovery_session_t::turn_servers</b>, and
-    <b>webrtc_peer_manager_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>discovery_main()</b>, and
-    <b>discovery_session_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_host_t</b> * discovery_session_get_host
-  (<b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Get host context (if we are host).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Host context or NULL</div>
-<p class="Pp">Definition at line <b>2134</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2134                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_t::acds_connection</b>,
+            <b>discovery_session_t::acds_transport</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_OK</b>, <b>discovery_session_destroy()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
+            <b>discovery_session_t::host_ctx</b>,
+            <b>discovery_session_t::identity_seckey</b>,
+            <b>discovery_session_t::identity_seckeys</b>,
+            <b>host_liveness_t::last_pong_received_ms</b>,
+            <b>discovery_session_t::liveness</b>, <b>mutex_destroy()</b>,
+            <b>NAMED_UNREGISTER</b>,
+            <b>discovery_session_t::nat_detection_thread</b>,
+            <b>discovery_session_t::nat_detection_thread_started</b>,
+            <b>discovery_session_t::nat_quality_mutex</b>,
+            <b>network_connection_destroy()</b>, <b>NS_PER_MS_INT</b>,
+            <b>discovery_session_t::participant_ctx</b>,
+            <b>discovery_session_t::password</b>,
+            <b>discovery_session_t::peer_manager</b>, <b>SAFE_FREE</b>,
+            <b>session_host_destroy()</b>, <b>session_participant_destroy()</b>,
+            <b>SET_ERRNO</b>, <b>discovery_session_t::stun_count</b>,
+            <b>discovery_session_t::stun_servers</b>,
+            <b>thread_join_timeout()</b>,
+            <b>discovery_session_t::turn_count</b>,
+            <b>discovery_session_t::turn_servers</b>, and
+            <b>webrtc_peer_manager_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_main()</b>, and
+            <b>discovery_session_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_host_t</b> * discovery_session_get_host (<b
+              >discovery_session_t</b
+            >
+            * session)
+          </h2>
+          <p class="Pp">Get host context (if we are host).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Host context or NULL</div>
+          <p class="Pp">
+            Definition at line <b>2134</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2134                                                                          {
 2135   if (!session) {
 2136     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
 2137     return NULL;
 2138   }
 2139   return session-&gt;host_ctx;
 2140 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_get_host()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::host_ctx</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_get_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_participant_t</b> * discovery_session_get_participant
-  (<b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Get participant context (if we are participant).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Participant context or NULL</div>
-<p class="Pp">Definition at line <b>2142</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2142                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_get_host()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::host_ctx</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_get_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_participant_t</b> * discovery_session_get_participant (<b
+              >discovery_session_t</b
+            >
+            * session)
+          </h2>
+          <p class="Pp">Get participant context (if we are participant).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Participant context or NULL</div>
+          <p class="Pp">
+            Definition at line <b>2142</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2142                                                                                        {
 2143   if (!session) {
 2144     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
 2145     return NULL;
 2146   }
 2147   return session-&gt;participant_ctx;
 2148 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_get_participant()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::participant_ctx</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_get_participant()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>discovery_state_t</b> discovery_session_get_state (const
-  <b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Get current session state.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current state</div>
-<p class="Pp">Definition at line <b>2102</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2102                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_get_participant()</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>discovery_session_t::participant_ctx</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_session_get_participant()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>discovery_state_t</b> discovery_session_get_state (const
+            <b>discovery_session_t</b> * session)
+          </h2>
+          <p class="Pp">Get current session state.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Current state</div>
+          <p class="Pp">
+            Definition at line <b>2102</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2102                                                                                   {
 2103   if (!session) {
 2104     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
 2105     return DISCOVERY_STATE_FAILED;
 2106   }
 2107   return session-&gt;state;
 2108 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_get_state()</b>,
-    <b>DISCOVERY_STATE_FAILED</b>, <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
-    and <b>discovery_session_t::state</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_get_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_discovery_session_get_string_(const_"><a class="permalink" href="#const_char_*_discovery_session_get_string_(const_">const
-  char * discovery_session_get_string (const <b>discovery_session_t</b> *
-  session)</a></h2>
-<p class="Pp">Get session string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Session string or NULL if not yet assigned</div>
-<p class="Pp">Definition at line <b>2118</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2118                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_get_state()</b>,
+            <b>DISCOVERY_STATE_FAILED</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>SET_ERRNO</b>, and <b>discovery_session_t::state</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_get_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_discovery_session_get_string_(const_">
+            <a
+              class="permalink"
+              href="#const_char_*_discovery_session_get_string_(const_"
+              >const char * discovery_session_get_string (const
+              <b>discovery_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">Get session string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Session string or NULL if not yet assigned
+          </div>
+          <p class="Pp">
+            Definition at line <b>2118</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2118                                                                              {
 2119   if (!session || session-&gt;session_string[0] == '\0') {
 2120     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session or session string is empty&quot;);
 2121     return NULL;
 2122   }
 2123   return session-&gt;session_string;
 2124 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_get_string()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::session_string</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_get_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_session_handle_host_disconnect
-  (<b>discovery_session_t</b> * session, <b>uint32_t</b> disconnect_reason)</h2>
-<p class="Pp">Report host loss and await the authoritative ACDS handoff
-    decision. Records the local recovery deadline origin. Advisory successor
-    plans never authorize immediate promotion or reconnection from this
-    function. Report host disconnect and await the ACDS recovery decision.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if the report was sent; a send error also
-  fails the session.</div>
-<p class="Pp">Report host loss and await the authoritative ACDS handoff
-    decision. Records the local recovery deadline origin. Advisory successor
-    plans never authorize immediate promotion or reconnection from this
-    function.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context
-<br/>
-<i>disconnect_reason</i> Reason code for disconnect</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if the host loss report was sent</div>
-<p class="Pp">Definition at line <b>2244</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2244                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_get_string()</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>discovery_session_t::session_string</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_get_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_session_handle_host_disconnect
+            (<b>discovery_session_t</b> * session,
+            <b>uint32_t</b> disconnect_reason)
+          </h2>
+          <p class="Pp">
+            Report host loss and await the authoritative ACDS handoff decision.
+            Records the local recovery deadline origin. Advisory successor plans
+            never authorize immediate promotion or reconnection from this
+            function. Report host disconnect and await the ACDS recovery
+            decision.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if the report was sent; a send error also fails the
+            session.
+          </div>
+          <p class="Pp">
+            Report host loss and await the authoritative ACDS handoff decision.
+            Records the local recovery deadline origin. Advisory successor plans
+            never authorize immediate promotion or reconnection from this
+            function.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session</i> Session context
+            <br />
+            <i>disconnect_reason</i> Reason code for disconnect
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if the host loss report was sent
+          </div>
+          <p class="Pp">
+            Definition at line <b>2244</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2244                                                                                                                      {
 2245   if (!session) {
 2246     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
 2247     return ERROR_INVALID_PARAM;
@@ -818,104 +1026,143 @@
 2272
 2273   return ASCIICHAT_OK;
 2274 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::acds_transport</b>,
-    <b>acip_host_lost_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>discovery_session_handle_host_disconnect()</b>,
-    <b>DISCOVERY_STATE_MIGRATING</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>discovery_session_t::host_id</b>,
-    <b>discovery_session_t::host_loss_detected_ms</b>, <b>log_warn</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_ACIP_HOST_LOST</b>,
-    <b>discovery_session_t::participant_id</b>,
-    <b>discovery_session_t::session_id</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by
-  <b>discovery_session_handle_host_disconnect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_session_host_pong_("><a class="permalink" href="#void_discovery_session_host_pong_(">void
-  discovery_session_host_pong (<b>discovery_session_t</b> * session)</a></h2>
-<p class="Pp">Record a host reply using the same clock as liveness
-  deadlines.</p>
-<p class="Pp">Definition at line <b>2150</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2150                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_t::acds_transport</b>,
+            <b>acip_host_lost_t</b>, <b>ASCIICHAT_OK</b>,
+            <b>discovery_session_handle_host_disconnect()</b>,
+            <b>DISCOVERY_STATE_MIGRATING</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>discovery_session_t::host_id</b>,
+            <b>discovery_session_t::host_loss_detected_ms</b>, <b>log_warn</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_ACIP_HOST_LOST</b>,
+            <b>discovery_session_t::participant_id</b>,
+            <b>discovery_session_t::session_id</b>, <b>SESSION_ID_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_session_handle_host_disconnect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_session_host_pong_(">
+            <a class="permalink" href="#void_discovery_session_host_pong_("
+              >void discovery_session_host_pong (<b>discovery_session_t</b> *
+              session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Record a host reply using the same clock as liveness deadlines.
+          </p>
+          <p class="Pp">
+            Definition at line <b>2150</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2150                                                                {
 2151   if (session)
 2152     atomic_store_u64(&amp;session-&gt;liveness.last_pong_received_ms, session_get_current_time_ms());
 2153 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>,
-    <b>discovery_session_host_pong()</b>,
-    <b>host_liveness_t::last_pong_received_ms</b>, and
-    <b>discovery_session_t::liveness</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_host_pong()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> discovery_session_is_active (const
-  <b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Check if session is active (call in progress).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">True if active</div>
-<p class="Pp">Definition at line <b>2110</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2110                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_u64()</b>,
+            <b>discovery_session_host_pong()</b>,
+            <b>host_liveness_t::last_pong_received_ms</b>, and
+            <b>discovery_session_t::liveness</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_host_pong()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> discovery_session_is_active (const
+            <b>discovery_session_t</b> * session)
+          </h2>
+          <p class="Pp">Check if session is active (call in progress).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">True if active</div>
+          <p class="Pp">
+            Definition at line <b>2110</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2110                                                                      {
 2111   if (!session) {
 2112     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
 2113     return false;
 2114   }
 2115   return session-&gt;state == DISCOVERY_STATE_ACTIVE;
 2116 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_is_active()</b>,
-    <b>DISCOVERY_STATE_ACTIVE</b>, <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
-    and <b>discovery_session_t::state</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_is_active()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> discovery_session_is_host (const
-  <b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Check if we are the host.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">True if we are hosting</div>
-<p class="Pp">Definition at line <b>2126</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2126                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_is_active()</b>,
+            <b>DISCOVERY_STATE_ACTIVE</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>SET_ERRNO</b>, and <b>discovery_session_t::state</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_is_active()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> discovery_session_is_host (const
+            <b>discovery_session_t</b> * session)
+          </h2>
+          <p class="Pp">Check if we are the host.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">True if we are hosting</div>
+          <p class="Pp">
+            Definition at line <b>2126</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2126                                                                    {
 2127   if (!session) {
 2128     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null session&quot;);
 2129     return false;
 2130   }
 2131   return session-&gt;is_host;
 2132 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_is_host()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::is_host</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_is_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_session_process
-  (<b>discovery_session_t</b> * session, int64_t timeout_ns)</h2>
-<p class="Pp">Process session events (call in main loop). Handles incoming ACDS
-    messages, negotiation, and state transitions.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context
-<br/>
-<i>timeout_ns</i> Max time to wait for events in nanoseconds (0 =
-  non-blocking)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error on failure</div>
-<p class="Pp">Definition at line <b>2015</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2015                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_is_host()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::is_host</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_is_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_session_process (<b
+              >discovery_session_t</b
+            >
+            * session, int64_t timeout_ns)
+          </h2>
+          <p class="Pp">
+            Process session events (call in main loop). Handles incoming ACDS
+            messages, negotiation, and state transitions.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session</i> Session context
+            <br />
+            <i>timeout_ns</i> Max time to wait for events in nanoseconds (0 =
+            non-blocking)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success, error on failure</div>
+          <p class="Pp">
+            Definition at line <b>2015</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2015                                                                                               {
 2016   if (!session) {
 2017     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
 2018   }
@@ -978,38 +1225,53 @@
 2075
 2076   return ASCIICHAT_OK;
 2077 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>discovery_session_process()</b>, <b>DISCOVERY_STATE_ACTIVE</b>,
-    <b>DISCOVERY_STATE_CONNECTING_ACDS</b>,
-    <b>DISCOVERY_STATE_CONNECTING_HOST</b>,
-    <b>DISCOVERY_STATE_CREATING_SESSION</b>, <b>DISCOVERY_STATE_ENDED</b>,
-    <b>DISCOVERY_STATE_FAILED</b>, <b>DISCOVERY_STATE_INIT</b>,
-    <b>DISCOVERY_STATE_JOINING_SESSION</b>, <b>DISCOVERY_STATE_MIGRATING</b>,
-    <b>DISCOVERY_STATE_NEGOTIATING</b>, <b>DISCOVERY_STATE_STARTING_HOST</b>,
-    <b>DISCOVERY_STATE_WAITING_PEER</b>, <b>discovery_session_t::error</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>,
-    <b>discovery_session_t::peer_manager</b>, <b>platform_sleep_us()</b>,
-    <b>discovery_session_t::session_type</b>, <b>SESSION_TYPE_WEBRTC</b>,
-    <b>SET_ERRNO</b>, <b>discovery_session_t::state</b>, and
-    <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_session_start
-  (<b>discovery_session_t</b> * session)</h2>
-<p class="Pp">Start the discovery session. Connects to ACDS and either creates
-    or joins a session.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>1473</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>1473                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>discovery_session_process()</b>,
+            <b>DISCOVERY_STATE_ACTIVE</b>,
+            <b>DISCOVERY_STATE_CONNECTING_ACDS</b>,
+            <b>DISCOVERY_STATE_CONNECTING_HOST</b>,
+            <b>DISCOVERY_STATE_CREATING_SESSION</b>,
+            <b>DISCOVERY_STATE_ENDED</b>, <b>DISCOVERY_STATE_FAILED</b>,
+            <b>DISCOVERY_STATE_INIT</b>, <b>DISCOVERY_STATE_JOINING_SESSION</b>,
+            <b>DISCOVERY_STATE_MIGRATING</b>,
+            <b>DISCOVERY_STATE_NEGOTIATING</b>,
+            <b>DISCOVERY_STATE_STARTING_HOST</b>,
+            <b>DISCOVERY_STATE_WAITING_PEER</b>,
+            <b>discovery_session_t::error</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+            <b>discovery_session_t::peer_manager</b>,
+            <b>platform_sleep_us()</b>,
+            <b>discovery_session_t::session_type</b>,
+            <b>SESSION_TYPE_WEBRTC</b>, <b>SET_ERRNO</b>,
+            <b>discovery_session_t::state</b>, and
+            <b>webrtc_peer_manager_dispatch_ready()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_session_start (<b
+              >discovery_session_t</b
+            >
+            * session)
+          </h2>
+          <p class="Pp">
+            Start the discovery session. Connects to ACDS and either creates or
+            joins a session.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp">
+            Definition at line <b>1473</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+1473                                                                         {
 1474   log_info(&quot;session=%p&quot;, session);
 1475
 1476   if (!session) {
@@ -1102,40 +1364,54 @@
 1563     return result;
 1564   }
 1565 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::acds_connection</b>,
-    <b>discovery_session_t::acds_transport</b>,
-    <b>discovery_session_t::acds_url</b>, <b>asciichat_error_format()</b>,
-    <b>ASCIICHAT_OK</b>, <b>crypto_handshake_context_t::client_private_key</b>,
-    <b>crypto_handshake_context_t::client_public_key</b>,
-    <b>crypto_handshake_init()</b>, <b>crypto_policy_resolve()</b>,
-    <b>discovery_session_start()</b>, <b>DISCOVERY_STATE_FAILED</b>,
-    <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::exit_callback_data</b>,
-    <b>discovery_session_t::identity_pubkey</b>,
-    <b>discovery_session_t::identity_seckey</b>,
-    <b>discovery_session_t::is_initiator</b>, <b>private_key_t::key</b>,
-    <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>KEY_TYPE_UNKNOWN</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>network_client_negotiate()</b>,
-    <b>network_connection_handshake()</b>, <b>NETWORK_PROTOCOL_DISCOVERY</b>,
-    <b>NS_PER_SEC_INT</b>, <b>discovery_session_t::participant_ctx</b>,
-    <b>private_key_t::public_key</b>, <b>acip_transport::receive_timeout_ns</b>,
-    <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
-    <b>discovery_session_t::should_exit_callback</b>,
-    <b>discovery_session_t::state</b>, <b>private_key_t::type</b>, and
-    <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_session_stop_("><a class="permalink" href="#void_discovery_session_stop_(">void
-  discovery_session_stop (<b>discovery_session_t</b> * session)</a></h2>
-<p class="Pp">Stop the discovery session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session context</div>
-<p class="Pp">Definition at line <b>2079</b> of file
-    <b>src/discovery/session.c</b>.</p>
-<pre>2079                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_t::acds_connection</b>,
+            <b>discovery_session_t::acds_transport</b>,
+            <b>discovery_session_t::acds_url</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>crypto_handshake_context_t::client_private_key</b>,
+            <b>crypto_handshake_context_t::client_public_key</b>,
+            <b>crypto_handshake_init()</b>, <b>crypto_policy_resolve()</b>,
+            <b>discovery_session_start()</b>, <b>DISCOVERY_STATE_FAILED</b>,
+            <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>discovery_session_t::exit_callback_data</b>,
+            <b>discovery_session_t::identity_pubkey</b>,
+            <b>discovery_session_t::identity_seckey</b>,
+            <b>discovery_session_t::is_initiator</b>, <b>private_key_t::key</b>,
+            <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>,
+            <b>KEY_TYPE_UNKNOWN</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>network_client_negotiate()</b>,
+            <b>network_connection_handshake()</b>,
+            <b>NETWORK_PROTOCOL_DISCOVERY</b>, <b>NS_PER_SEC_INT</b>,
+            <b>discovery_session_t::participant_ctx</b>,
+            <b>private_key_t::public_key</b>,
+            <b>acip_transport::receive_timeout_ns</b>,
+            <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
+            <b>discovery_session_t::should_exit_callback</b>,
+            <b>discovery_session_t::state</b>, <b>private_key_t::type</b>, and
+            <b>public_key_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_session_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_session_stop_(">
+            <a class="permalink" href="#void_discovery_session_stop_("
+              >void discovery_session_stop (<b>discovery_session_t</b> *
+              session)</a
+            >
+          </h2>
+          <p class="Pp">Stop the discovery session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session context</div>
+          <p class="Pp">
+            Definition at line <b>2079</b> of file
+            <b>src/discovery/session.c</b>.
+          </p>
+          <pre>
+2079                                                           {
 2080   ASCII_OTEL_SCOPE(DISCOVERY_SHUTDOWN);
 2081   if (!session) {
 2082     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session is NULL&quot;);
@@ -1157,30 +1433,37 @@
 2098
 2099   set_state(session, DISCOVERY_STATE_ENDED);
 2100 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::acds_transport</b>,
-    <b>acip_session_leave_t</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>discovery_session_stop()</b>, <b>DISCOVERY_STATE_ENDED</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>,
-    <b>discovery_session_t::participant_id</b>,
-    <b>discovery_session_t::session_id</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_main()</b>, and
-    <b>discovery_session_stop()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_session_t::acds_transport</b>,
+            <b>acip_session_leave_t</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>discovery_session_stop()</b>, <b>DISCOVERY_STATE_ENDED</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>,
+            <b>discovery_session_t::participant_id</b>,
+            <b>discovery_session_t::session_id</b>, <b>SESSION_ID_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_main()</b>, and
+            <b>discovery_session_stop()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

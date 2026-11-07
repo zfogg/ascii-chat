@@ -1,140 +1,221 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>pcre2.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">pcre2.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">pcre2.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">pcre2.h - &#x1F50D; Centralized PCRE2 singleton pattern for
-    efficient regex compilation</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>PCRE2_CODE_UNIT_WIDTH</b> 8
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">pcre2_code * <b>asciichat_pcre2_compile</b> (const char *pattern,
-    <b>uint32_t</b> flags)
-  <br/>
-  Compile and cache a PCRE2 regex pattern with thread-safe singleton semantics.
-    <b>pcre2_singleton_t</b> * <b>asciichat_pcre2_singleton_compile</b> (const
-    char *pattern, <b>uint32_t</b> flags)
-  <br/>
-  <b>pcre2_singleton_t</b> * <b>asciichat_pcre2_singleton_compile_owned</b>
-    (const char *pattern, <b>uint32_t</b> flags, <b>pcre2_singleton_t</b>
-    **owner)
-  <br/>
-  pcre2_code * <b>asciichat_pcre2_singleton_get_code</b>
-    (<b>pcre2_singleton_t</b> *singleton)
-  <br/>
-  Get the compiled pcre2_code from a singleton handle. <b>bool</b>
-    <b>asciichat_pcre2_singleton_is_initialized</b> (<b>pcre2_singleton_t</b>
-    *singleton)
-  <br/>
-  Check if a singleton was successfully initialized. void
-    <b>asciichat_pcre2_singleton_free</b> (<b>pcre2_singleton_t</b> *singleton)
-  <br/>
-  Free a PCRE2 singleton and its resources. void
-    <b>asciichat_pcre2_cleanup_all</b> (void)
-  <br/>
-  Free all PCRE2 singletons. char * <b>asciichat_pcre2_extract_named_group</b>
-    (pcre2_code *regex, pcre2_match_data *match_data, const char *group_name,
-    const char *subject)
-  <br/>
-  Extract named substring from PCRE2 match data. char *
-    <b>asciichat_pcre2_extract_group</b> (pcre2_match_data *match_data, int
-    group_num, const char *subject)
-  <br/>
-  Extract numbered capture group as allocated string. const char *
-    <b>asciichat_pcre2_extract_group_ptr</b> (pcre2_match_data *match_data, int
-    group_num, const char *subject, size_t *out_len)
-  <br/>
-  Extract numbered capture group as pointer into subject (non-allocating).
-    <b>bool</b> <b>asciichat_pcre2_extract_group_ulong</b> (pcre2_match_data
-    *match_data, int group_num, const char *subject, unsigned long *out_value)
-  <br/>
-  Extract numbered capture group and convert to unsigned long. int
-    <b>asciichat_pcre2_match</b> (const pcre2_code *code, PCRE2_SPTR subject,
-    PCRE2_SIZE length, PCRE2_SIZE startoffset, <b>uint32_t</b> options,
-    pcre2_match_data *match_data, pcre2_match_context *context)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F50D; Centralized PCRE2 singleton pattern for efficient regex
-    compilation</p>
-<p class="Pp">Provides thread-safe lazy initialization of PCRE2 compiled regexes
-    with automatic JIT compilation. Each regex pattern is compiled once per
-    process on first use, enabling safe concurrent reads with zero
-    initialization overhead for unused patterns.</p>
-<p class="Pp">Definition in file <b>pcre2.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_PCRE2_CODE_UNIT_WIDTH___8"><a class="permalink" href="#_define_PCRE2_CODE_UNIT_WIDTH___8">#define
-  PCRE2_CODE_UNIT_WIDTH 8</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>pcre2.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_asciichat_pcre2_cleanup_all_(void_)"><a class="permalink" href="#void_asciichat_pcre2_cleanup_all_(void_)">void
-  asciichat_pcre2_cleanup_all (void )</a></h2>
-<p class="Pp">Free all PCRE2 singletons. Free all PCRE2 singletons in the global
-    registry.</p>
-<p class="Pp"></p>
-<p class="Pp">Automatically frees all singletons created with
-    <b>asciichat_pcre2_singleton_compile()</b>. Safe to call multiple times
-    (idempotent). Should be called once during shutdown.</p>
-<p class="Pp"></p>
-<p class="Pp">Free all PCRE2 singletons.</p>
-<p class="Pp"></p>
-<p class="Pp">Walks the global registry and frees all singletons. Safe to call
-    multiple times (idempotent). Should be called once during shutdown.</p>
-<p class="Pp">Definition at line <b>248</b> of file <b>pcre2.c</b>.</p>
-<pre>248                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pcre2.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pcre2.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pcre2.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          pcre2.h - &#x1F50D; Centralized PCRE2 singleton pattern for efficient
+          regex compilation
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>PCRE2_CODE_UNIT_WIDTH</b> 8
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            pcre2_code * <b>asciichat_pcre2_compile</b> (const char *pattern,
+            <b>uint32_t</b> flags)
+            <br />
+            Compile and cache a PCRE2 regex pattern with thread-safe singleton
+            semantics.
+            <b>pcre2_singleton_t</b> *
+            <b>asciichat_pcre2_singleton_compile</b> (const char *pattern,
+            <b>uint32_t</b> flags)
+            <br />
+            <b>pcre2_singleton_t</b> *
+            <b>asciichat_pcre2_singleton_compile_owned</b> (const char *pattern,
+            <b>uint32_t</b> flags, <b>pcre2_singleton_t</b>
+            **owner)
+            <br />
+            pcre2_code * <b>asciichat_pcre2_singleton_get_code</b> (<b
+              >pcre2_singleton_t</b
+            >
+            *singleton)
+            <br />
+            Get the compiled pcre2_code from a singleton handle. <b>bool</b>
+            <b>asciichat_pcre2_singleton_is_initialized</b> (<b
+              >pcre2_singleton_t</b
+            >
+            *singleton)
+            <br />
+            Check if a singleton was successfully initialized. void
+            <b>asciichat_pcre2_singleton_free</b> (<b>pcre2_singleton_t</b>
+            *singleton)
+            <br />
+            Free a PCRE2 singleton and its resources. void
+            <b>asciichat_pcre2_cleanup_all</b> (void)
+            <br />
+            Free all PCRE2 singletons. char *
+            <b>asciichat_pcre2_extract_named_group</b>
+            (pcre2_code *regex, pcre2_match_data *match_data, const char
+            *group_name, const char *subject)
+            <br />
+            Extract named substring from PCRE2 match data. char *
+            <b>asciichat_pcre2_extract_group</b> (pcre2_match_data *match_data,
+            int group_num, const char *subject)
+            <br />
+            Extract numbered capture group as allocated string. const char *
+            <b>asciichat_pcre2_extract_group_ptr</b> (pcre2_match_data
+            *match_data, int group_num, const char *subject, size_t *out_len)
+            <br />
+            Extract numbered capture group as pointer into subject
+            (non-allocating).
+            <b>bool</b>
+            <b>asciichat_pcre2_extract_group_ulong</b> (pcre2_match_data
+            *match_data, int group_num, const char *subject, unsigned long
+            *out_value)
+            <br />
+            Extract numbered capture group and convert to unsigned long. int
+            <b>asciichat_pcre2_match</b> (const pcre2_code *code, PCRE2_SPTR
+            subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
+            <b>uint32_t</b> options, pcre2_match_data *match_data,
+            pcre2_match_context *context)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F50D; Centralized PCRE2 singleton pattern for efficient regex
+          compilation
+        </p>
+        <p class="Pp">
+          Provides thread-safe lazy initialization of PCRE2 compiled regexes
+          with automatic JIT compilation. Each regex pattern is compiled once
+          per process on first use, enabling safe concurrent reads with zero
+          initialization overhead for unused patterns.
+        </p>
+        <p class="Pp">Definition in file <b>pcre2.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PCRE2_CODE_UNIT_WIDTH___8">
+            <a class="permalink" href="#_define_PCRE2_CODE_UNIT_WIDTH___8"
+              >#define PCRE2_CODE_UNIT_WIDTH 8</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>pcre2.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_asciichat_pcre2_cleanup_all_(void_)">
+            <a
+              class="permalink"
+              href="#void_asciichat_pcre2_cleanup_all_(void_)"
+              >void asciichat_pcre2_cleanup_all (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Free all PCRE2 singletons. Free all PCRE2 singletons in the global
+            registry.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Automatically frees all singletons created with
+            <b>asciichat_pcre2_singleton_compile()</b>. Safe to call multiple
+            times (idempotent). Should be called once during shutdown.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Free all PCRE2 singletons.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Walks the global registry and frees all singletons. Safe to call
+            multiple times (idempotent). Should be called once during shutdown.
+          </p>
+          <p class="Pp">
+            Definition at line <b>248</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+248                                        {
 249   if (!lifecycle_shutdown(&amp;g_registry_lc)) {
 250     return; /* No singletons were ever created or already cleaned up */
 251   }
@@ -158,37 +239,57 @@
 269     current = next;
 270   }
 271 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_cleanup_all()</b>,
-    <b>asciichat_pcre2_singleton_free()</b>, <b>lifecycle_shutdown()</b>, and
-    <b>pcre2_singleton::next</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_cleanup_all()</b>,
-    <b>asciichat_shared_destroy()</b>, and <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="pcre2_code_*_asciichat_pcre2_compile_(const_char_*_pattern,_"><a class="permalink" href="#pcre2_code_*_asciichat_pcre2_compile_(const_char_*_pattern,_">pcre2_code
-  * asciichat_pcre2_compile (const char * pattern, <b>uint32_t</b>
-  flags)</a></h2>
-<p class="Pp">Compile and cache a PCRE2 regex pattern with thread-safe singleton
-    semantics. Allocates a singleton structure to store the pattern and flags.
-    Actual compilation happens lazily on first call to
-    <b>asciichat_pcre2_singleton_get_code()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">This function returns immediately without doing expensive regex
-    compilation. Compilation happens later when the code is first accessed.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pattern</i> PCRE2 regex pattern (e.g.,
-  &quot;^[a-z]+$&quot;)
-<br/>
-<i>flags</i> PCRE2 compile flags (e.g., PCRE2_CASELESS | PCRE2_MULTILINE)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Opaque singleton handle, or NULL on allocation
-  failure</div>
-<p class="Pp">Example:</p>
-<p class="Pp"></p>
-<pre>static pcre2_singleton_t *g_email_regex = NULL;
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_cleanup_all()</b>,
+            <b>asciichat_pcre2_singleton_free()</b>,
+            <b>lifecycle_shutdown()</b>, and <b>pcre2_singleton::next</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_cleanup_all()</b>,
+            <b>asciichat_shared_destroy()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="pcre2_code_*_asciichat_pcre2_compile_(const_char_*_pattern,_"
+          >
+            <a
+              class="permalink"
+              href="#pcre2_code_*_asciichat_pcre2_compile_(const_char_*_pattern,_"
+              >pcre2_code * asciichat_pcre2_compile (const char * pattern,
+              <b>uint32_t</b> flags)</a
+            >
+          </h2>
+          <p class="Pp">
+            Compile and cache a PCRE2 regex pattern with thread-safe singleton
+            semantics. Allocates a singleton structure to store the pattern and
+            flags. Actual compilation happens lazily on first call to
+            <b>asciichat_pcre2_singleton_get_code()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This function returns immediately without doing expensive regex
+            compilation. Compilation happens later when the code is first
+            accessed.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pattern</i> PCRE2 regex pattern (e.g., &quot;^[a-z]+$&quot;)
+            <br />
+            <i>flags</i> PCRE2 compile flags (e.g., PCRE2_CASELESS |
+            PCRE2_MULTILINE)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Opaque singleton handle, or NULL on allocation failure
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>static pcre2_singleton_t *g_email_regex = NULL;
 void init_validators() {
 <br/>
   g_email_regex = asciichat_pcre2_singleton_compile(
@@ -200,59 +301,86 @@ void init_validators() {
   );
 }
 </pre>
-<p class="Pp">
-  <br/>
-   Compile a pattern owned by the caller, who must call pcre2_code_free().</p>
-<p class="Pp"></p>
-<p class="Pp">Allocates a singleton structure and stores the pattern/flags. The
-    actual compilation happens lazily on first call to
-    <b>asciichat_pcre2_singleton_get_code()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">This function returns immediately without doing expensive regex
-    compilation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pattern</i> PCRE2 regex pattern string
-<br/>
-<i>flags</i> PCRE2 compile flags</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Opaque singleton handle, or NULL on allocation
-  failure</div>
-<p class="Pp">Definition at line <b>51</b> of file <b>pcre2.c</b>.</p>
-<pre>51                                                                          {
+          <p class="Pp">
+            <br />
+            Compile a pattern owned by the caller, who must call
+            pcre2_code_free().
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Allocates a singleton structure and stores the pattern/flags. The
+            actual compilation happens lazily on first call to
+            <b>asciichat_pcre2_singleton_get_code()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This function returns immediately without doing expensive regex
+            compilation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pattern</i> PCRE2 regex pattern string
+            <br />
+            <i>flags</i> PCRE2 compile flags
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Opaque singleton handle, or NULL on allocation failure
+          </div>
+          <p class="Pp">Definition at line <b>51</b> of file <b>pcre2.c</b>.</p>
+          <pre>
+51                                                                          {
 52   int error;
 53   PCRE2_SIZE offset;
 54   return pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED, flags, &amp;error, &amp;offset, NULL);
 55 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_compile()</b>,
-    <b>pcre2_singleton::flags</b>, and <b>pcre2_singleton::pattern</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_compile()</b>,
-    <b>log_search_enter_mode()</b>, and <b>log_search_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_asciichat_pcre2_extract_group_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject)"><a class="permalink" href="#char_*_asciichat_pcre2_extract_group_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject)">char
-  * asciichat_pcre2_extract_group (pcre2_match_data * match_data, int group_num,
-  const char * subject)</a></h2>
-<p class="Pp">Extract numbered capture group as allocated string. Extracts a
-    numbered capture group from match data and returns an allocated string. The
-    caller is responsible for freeing the returned string with
-    <b>SAFE_FREE()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>match_data</i> Match data from pcre2_match() or
-  pcre2_jit_match()
-<br/>
-<i>group_num</i> Capture group number (1-based, 0 = entire match)
-<br/>
-<i>subject</i> Original subject string that was matched</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated string containing the matched substring, or
-  NULL if group not matched</div>
-<p class="Pp">Example:</p>
-<p class="Pp"></p>
-<pre>char *foundation = asciichat_pcre2_extract_group(match_data, 1, line);
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_compile()</b>,
+            <b>pcre2_singleton::flags</b>, and <b>pcre2_singleton::pattern</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_compile()</b>,
+            <b>log_search_enter_mode()</b>, and <b>log_search_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_asciichat_pcre2_extract_group_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject)"
+          >
+            <a
+              class="permalink"
+              href="#char_*_asciichat_pcre2_extract_group_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject)"
+              >char * asciichat_pcre2_extract_group (pcre2_match_data *
+              match_data, int group_num, const char * subject)</a
+            >
+          </h2>
+          <p class="Pp">
+            Extract numbered capture group as allocated string. Extracts a
+            numbered capture group from match data and returns an allocated
+            string. The caller is responsible for freeing the returned string
+            with <b>SAFE_FREE()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
+            <br />
+            <i>group_num</i> Capture group number (1-based, 0 = entire match)
+            <br />
+            <i>subject</i> Original subject string that was matched
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated string containing the matched substring, or NULL if group
+            not matched
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>char *foundation = asciichat_pcre2_extract_group(match_data, 1, line);
 if (foundation) {
 <br/>
   // Use foundation...
@@ -260,8 +388,11 @@ if (foundation) {
   SAFE_FREE(foundation);
 }
 </pre>
-<p class="Pp">Definition at line <b>324</b> of file <b>pcre2.c</b>.</p>
-<pre>324                                                                                                       {
+          <p class="Pp">
+            Definition at line <b>324</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+324                                                                                                       {
 325   if (!match_data || !subject || group_num &lt; 0) {
 326     return NULL;
 327   }
@@ -288,44 +419,66 @@ if (foundation) {
 348
 349   return result;
 350 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_group()</b>,
-    <b>log_error</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_extract_group()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_asciichat_pcre2_extract_group_ptr_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject,_size_t_*_out_len)"><a class="permalink" href="#const_char_*_asciichat_pcre2_extract_group_ptr_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject,_size_t_*_out_len)">const
-  char * asciichat_pcre2_extract_group_ptr (pcre2_match_data * match_data, int
-  group_num, const char * subject, size_t * out_len)</a></h2>
-<p class="Pp">Extract numbered capture group as pointer into subject
-    (non-allocating). Returns a pointer to the matched substring within the
-    original subject string. No memory allocation occurs - the returned pointer
-    is only valid as long as the subject string remains valid.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>match_data</i> Match data from pcre2_match() or
-  pcre2_jit_match()
-<br/>
-<i>group_num</i> Capture group number (1-based, 0 = entire match)
-<br/>
-<i>subject</i> Original subject string that was matched
-<br/>
-<i>out_len</i> Output parameter for substring length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to matched substring within subject, or NULL if
-  group not matched</div>
-<p class="Pp">Example:</p>
-<p class="Pp"></p>
-<pre>size_t len;
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_extract_group()</b>, <b>log_error</b>,
+            and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_extract_group()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_asciichat_pcre2_extract_group_ptr_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject,_size_t_*_out_len)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_asciichat_pcre2_extract_group_ptr_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject,_size_t_*_out_len)"
+              >const char * asciichat_pcre2_extract_group_ptr (pcre2_match_data
+              * match_data, int group_num, const char * subject, size_t *
+              out_len)</a
+            >
+          </h2>
+          <p class="Pp">
+            Extract numbered capture group as pointer into subject
+            (non-allocating). Returns a pointer to the matched substring within
+            the original subject string. No memory allocation occurs - the
+            returned pointer is only valid as long as the subject string remains
+            valid.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
+            <br />
+            <i>group_num</i> Capture group number (1-based, 0 = entire match)
+            <br />
+            <i>subject</i> Original subject string that was matched
+            <br />
+            <i>out_len</i> Output parameter for substring length
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to matched substring within subject, or NULL if group not
+            matched
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>size_t len;
 const char *video_id = asciichat_pcre2_extract_group_ptr(match_data, 1, url, &amp;len);
 if (video_id) {
 <br/>
   printf(&quot;Video ID: %.*s\n&quot;, (int)len, video_id);
 }
 </pre>
-<p class="Pp">Definition at line <b>355</b> of file <b>pcre2.c</b>.</p>
-<pre>356                                                                {
+          <p class="Pp">
+            Definition at line <b>355</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+356                                                                {
 357   if (!match_data || !subject || !out_len || group_num &lt; 0) {
 358     return NULL;
 359   }
@@ -342,42 +495,55 @@ if (video_id) {
 370   *out_len = end - start;
 371   return subject + start;
 372 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_group_ptr()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_extract_group_ptr()</b>, and
-    <b>stun_servers_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_pcre2_extract_group_ulong (pcre2_match_data
-  * match_data, int group_num, const char * subject, unsigned long *
-  out_value)</h2>
-<p class="Pp">Extract numbered capture group and convert to unsigned long.
-    Extracts a numbered capture group and converts it to an unsigned long
-    integer. Handles extraction and parsing in one step.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>match_data</i> Match data from pcre2_match() or
-  pcre2_jit_match()
-<br/>
-<i>group_num</i> Capture group number (1-based, 0 = entire match)
-<br/>
-<i>subject</i> Original subject string that was matched
-<br/>
-<i>out_value</i> Output parameter for parsed integer value</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if extraction and parsing succeeded, false
-  otherwise</div>
-<p class="Pp">Example:</p>
-<p class="Pp"></p>
-<pre>unsigned long component_id;
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_extract_group_ptr()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_extract_group_ptr()</b>, and
+            <b>stun_servers_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> asciichat_pcre2_extract_group_ulong (pcre2_match_data *
+            match_data, int group_num, const char * subject, unsigned long *
+            out_value)
+          </h2>
+          <p class="Pp">
+            Extract numbered capture group and convert to unsigned long.
+            Extracts a numbered capture group and converts it to an unsigned
+            long integer. Handles extraction and parsing in one step.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
+            <br />
+            <i>group_num</i> Capture group number (1-based, 0 = entire match)
+            <br />
+            <i>subject</i> Original subject string that was matched
+            <br />
+            <i>out_value</i> Output parameter for parsed integer value
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if extraction and parsing succeeded, false otherwise
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>unsigned long component_id;
 if (asciichat_pcre2_extract_group_ulong(match_data, 2, line, &amp;component_id)) {
 <br/>
   candidate-&gt;component_id = (uint32_t)component_id;
 }
 </pre>
-<p class="Pp">Definition at line <b>377</b> of file <b>pcre2.c</b>.</p>
-<pre>378                                                                    {
+          <p class="Pp">
+            Definition at line <b>377</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+378                                                                    {
 379   if (!match_data || !subject || !out_value || group_num &lt; 0) {
 380     return false;
 381   }
@@ -413,34 +579,54 @@ if (asciichat_pcre2_extract_group_ulong(match_data, 2, line, &amp;component_id))
 411   *out_value = value;
 412   return true;
 413 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_group_ulong()</b>,
-    <b>errno</b>, and <b>UTIL_PCRE2_TEMP_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_extract_group_ulong()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_asciichat_pcre2_extract_named_group_(pcre2_code_*_regex,_pcre2_match_data_*_match_data,_const_char_*_group_name,_const_char_*_subject)"><a class="permalink" href="#char_*_asciichat_pcre2_extract_named_group_(pcre2_code_*_regex,_pcre2_match_data_*_match_data,_const_char_*_group_name,_const_char_*_subject)">char
-  * asciichat_pcre2_extract_named_group (pcre2_code * regex, pcre2_match_data *
-  match_data, const char * group_name, const char * subject)</a></h2>
-<p class="Pp">Extract named substring from PCRE2 match data. Extracts a named
-    capture group from match data and returns an allocated string. The caller is
-    responsible for freeing the returned string with <b>SAFE_FREE()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>regex</i> Compiled PCRE2 regex with named groups
-<br/>
-<i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
-<br/>
-<i>group_name</i> Name of the capture group to extract
-<br/>
-<i>subject</i> Original subject string that was matched</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated string containing the matched substring, or
-  NULL if group not matched</div>
-<p class="Pp">Example:</p>
-<p class="Pp"></p>
-<pre>pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_extract_group_ulong()</b>,
+            <b>errno</b>, and <b>UTIL_PCRE2_TEMP_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_extract_group_ulong()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_asciichat_pcre2_extract_named_group_(pcre2_code_*_regex,_pcre2_match_data_*_match_data,_const_char_*_group_name,_const_char_*_subject)"
+          >
+            <a
+              class="permalink"
+              href="#char_*_asciichat_pcre2_extract_named_group_(pcre2_code_*_regex,_pcre2_match_data_*_match_data,_const_char_*_group_name,_const_char_*_subject)"
+              >char * asciichat_pcre2_extract_named_group (pcre2_code * regex,
+              pcre2_match_data * match_data, const char * group_name, const char
+              * subject)</a
+            >
+          </h2>
+          <p class="Pp">
+            Extract named substring from PCRE2 match data. Extracts a named
+            capture group from match data and returns an allocated string. The
+            caller is responsible for freeing the returned string with
+            <b>SAFE_FREE()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>regex</i> Compiled PCRE2 regex with named groups
+            <br />
+            <i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
+            <br />
+            <i>group_name</i> Name of the capture group to extract
+            <br />
+            <i>subject</i> Original subject string that was matched
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated string containing the matched substring, or NULL if group
+            not matched
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
 int rc = pcre2_jit_match(regex, (PCRE2_SPTR)subject, strlen(subject), 0, 0, match_data, NULL);
 if (rc &gt;= 0) {
 <br/>
@@ -456,23 +642,32 @@ if (rc &gt;= 0) {
 }
 pcre2_match_data_free(match_data);
 </pre>
-<p class="Pp">Extracts a named capture group from match data and returns an
-    allocated string. The caller is responsible for freeing the returned string
-    with <b>SAFE_FREE()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>regex</i> Compiled PCRE2 regex with named groups
-<br/>
-<i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
-<br/>
-<i>group_name</i> Name of the capture group to extract
-<br/>
-<i>subject</i> Original subject string that was matched</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated string containing the matched substring, or
-  NULL if group not matched</div>
-<p class="Pp">Definition at line <b>285</b> of file <b>pcre2.c</b>.</p>
-<pre>286                                                                {
+          <p class="Pp">
+            Extracts a named capture group from match data and returns an
+            allocated string. The caller is responsible for freeing the returned
+            string with <b>SAFE_FREE()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>regex</i> Compiled PCRE2 regex with named groups
+            <br />
+            <i>match_data</i> Match data from pcre2_match() or pcre2_jit_match()
+            <br />
+            <i>group_name</i> Name of the capture group to extract
+            <br />
+            <i>subject</i> Original subject string that was matched
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated string containing the matched substring, or NULL if group
+            not matched
+          </div>
+          <p class="Pp">
+            Definition at line <b>285</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+286                                                                {
 287   if (!regex || !match_data || !group_name || !subject) {
 288     log_error(&quot;invalid parameters&quot;);
 289     return NULL;
@@ -506,44 +701,69 @@ pcre2_match_data_free(match_data);
 317
 318   return result;
 319 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
-    <b>log_error</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_extract_named_group()</b>,
-    <b>crypto_regex_extract_gpg_keygrip()</b>,
-    <b>crypto_regex_extract_pem_base64()</b>,
-    <b>crypto_regex_match_known_hosts()</b>,
-    <b>crypto_regex_match_public_key()</b>, and <b>url_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_asciichat_pcre2_match_(const_pcre2_code_*_code,_PCRE2_SPTR_subject,_PCRE2_SIZE_length,_PCRE2_SIZE_startoffset,_"><a class="permalink" href="#int_asciichat_pcre2_match_(const_pcre2_code_*_code,_PCRE2_SPTR_subject,_PCRE2_SIZE_length,_PCRE2_SIZE_startoffset,_">int
-  asciichat_pcre2_match (const pcre2_code * code, PCRE2_SPTR subject, PCRE2_SIZE
-  length, PCRE2_SIZE startoffset, <b>uint32_t</b> options, pcre2_match_data *
-  match_data, pcre2_match_context * context)</a></h2>
-<p class="Pp">Match with the JIT fast path, using the interpreter when JIT is
-    unavailable. Returns the native PCRE2 capture count or negative PCRE2 error
-    code.</p>
-<p class="Pp">Definition at line <b>415</b> of file <b>pcre2.c</b>.</p>
-<pre>416                                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_extract_named_group()</b>,
+            <b>log_error</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_extract_named_group()</b>,
+            <b>crypto_regex_extract_gpg_keygrip()</b>,
+            <b>crypto_regex_extract_pem_base64()</b>,
+            <b>crypto_regex_match_known_hosts()</b>,
+            <b>crypto_regex_match_public_key()</b>, and <b>url_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_asciichat_pcre2_match_(const_pcre2_code_*_code,_PCRE2_SPTR_subject,_PCRE2_SIZE_length,_PCRE2_SIZE_startoffset,_"
+          >
+            <a
+              class="permalink"
+              href="#int_asciichat_pcre2_match_(const_pcre2_code_*_code,_PCRE2_SPTR_subject,_PCRE2_SIZE_length,_PCRE2_SIZE_startoffset,_"
+              >int asciichat_pcre2_match (const pcre2_code * code, PCRE2_SPTR
+              subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
+              <b>uint32_t</b> options, pcre2_match_data * match_data,
+              pcre2_match_context * context)</a
+            >
+          </h2>
+          <p class="Pp">
+            Match with the JIT fast path, using the interpreter when JIT is
+            unavailable. Returns the native PCRE2 capture count or negative
+            PCRE2 error code.
+          </p>
+          <p class="Pp">
+            Definition at line <b>415</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+416                                                                                                         {
 417   int result = pcre2_jit_match(code, subject, length, startoffset, options, match_data, context);
 418   if (result == PCRE2_ERROR_JIT_BADOPTION || result == PCRE2_ERROR_JIT_STACKLIMIT)
 419     return pcre2_match(code, subject, length, startoffset, options | PCRE2_NO_JIT, match_data, context);
 420   return result;
 421 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_match()</b>, and
-    <b>pcre2_singleton::code</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_match()</b>,
-    <b>stun_servers_parse()</b>, and <b>url_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>pcre2_singleton_t</b> * asciichat_pcre2_singleton_compile
-  (const char * pattern, <b>uint32_t</b> flags)</h2>
-<p class="Pp">&lt; Per-object lifecycle for lazy compilation</p>
-<p class="Pp">Definition at line <b>57</b> of file <b>pcre2.c</b>.</p>
-<pre>57                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_match()</b>, and
+            <b>pcre2_singleton::code</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_match()</b>,
+            <b>stun_servers_parse()</b>, and <b>url_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>pcre2_singleton_t</b> * asciichat_pcre2_singleton_compile (const
+            char * pattern, <b>uint32_t</b> flags)
+          </h2>
+          <p class="Pp">&lt; Per-object lifecycle for lazy compilation</p>
+          <p class="Pp">Definition at line <b>57</b> of file <b>pcre2.c</b>.</p>
+          <pre>
+57                                                                                           {
 58   if (!pattern) {
 59     log_error(&quot;PCRE2 singleton: pattern is NULL&quot;);
 60     return NULL;
@@ -582,28 +802,38 @@ pcre2_match_data_free(match_data);
 93
 94   return singleton;
 95 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>atomic_store_u64()</b>, <b>pcre2_singleton::code</b>,
-    <b>pcre2_singleton::flags</b>, <b>pcre2_singleton::jit_stack</b>,
-    <b>pcre2_singleton::lc</b>, <b>LIFECYCLE_INIT</b>, <b>lifecycle_init()</b>,
-    <b>log_error</b>, <b>pcre2_singleton::next</b>,
-    <b>pcre2_singleton::owner</b>, <b>pcre2_singleton::pattern</b>,
-    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile_owned()</b>, and
-  <b>grep_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>pcre2_singleton_t</b> *
-  asciichat_pcre2_singleton_compile_owned (const char * pattern, <b>uint32_t</b>
-  flags, <b>pcre2_singleton_t</b> ** owner)</h2>
-<p class="Pp">Register a static owner slot, which is cleared when the singleton
-    is freed. The slot must remain valid until cleanup, and cleanup must not
-    race with users.</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>pcre2.c</b>.</p>
-<pre>98                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>atomic_store_u64()</b>, <b>pcre2_singleton::code</b>,
+            <b>pcre2_singleton::flags</b>, <b>pcre2_singleton::jit_stack</b>,
+            <b>pcre2_singleton::lc</b>, <b>LIFECYCLE_INIT</b>,
+            <b>lifecycle_init()</b>, <b>log_error</b>,
+            <b>pcre2_singleton::next</b>, <b>pcre2_singleton::owner</b>,
+            <b>pcre2_singleton::pattern</b>, <b>SAFE_FREE</b>, and
+            <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile_owned()</b>, and
+            <b>grep_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>pcre2_singleton_t</b> * asciichat_pcre2_singleton_compile_owned
+            (const char * pattern, <b>uint32_t</b> flags,
+            <b>pcre2_singleton_t</b> ** owner)
+          </h2>
+          <p class="Pp">
+            Register a static owner slot, which is cleared when the singleton is
+            freed. The slot must remain valid until cleanup, and cleanup must
+            not race with users.
+          </p>
+          <p class="Pp">Definition at line <b>97</b> of file <b>pcre2.c</b>.</p>
+          <pre>
+98                                                                                       {
 99   if (!owner) {
 100     return NULL;
 101   }
@@ -613,27 +843,41 @@ pcre2_match_data_free(match_data);
 105   }
 106   return singleton;
 107 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile_owned()</b>,
-    <b>pcre2_singleton::flags</b>, <b>pcre2_singleton::owner</b>, and
-    <b>pcre2_singleton::pattern</b>.</p>
-<p class="Pp">Referenced by
-  <b>asciichat_pcre2_singleton_compile_owned()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_asciichat_pcre2_singleton_free_("><a class="permalink" href="#void_asciichat_pcre2_singleton_free_(">void
-  asciichat_pcre2_singleton_free (<b>pcre2_singleton_t</b> * singleton)</a></h2>
-<p class="Pp">Free a PCRE2 singleton and its resources. Frees the compiled regex
-    code, JIT stack, and singleton structure. After calling this, the singleton
-    pointer is invalid and should not be used.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>singleton</i> Handle returned by
-  <b>asciichat_pcre2_singleton_compile()</b></div>
-<p class="Pp">Definition at line <b>208</b> of file <b>pcre2.c</b>.</p>
-<pre>208                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile_owned()</b>,
+            <b>pcre2_singleton::flags</b>, <b>pcre2_singleton::owner</b>, and
+            <b>pcre2_singleton::pattern</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_compile_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_asciichat_pcre2_singleton_free_(">
+            <a class="permalink" href="#void_asciichat_pcre2_singleton_free_("
+              >void asciichat_pcre2_singleton_free (<b>pcre2_singleton_t</b> *
+              singleton)</a
+            >
+          </h2>
+          <p class="Pp">
+            Free a PCRE2 singleton and its resources. Frees the compiled regex
+            code, JIT stack, and singleton structure. After calling this, the
+            singleton pointer is invalid and should not be used.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>singleton</i> Handle returned by
+            <b>asciichat_pcre2_singleton_compile()</b>
+          </div>
+          <p class="Pp">
+            Definition at line <b>208</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+208                                                                   {
 209   if (!singleton) {
 210     return;
 211   }
@@ -666,47 +910,73 @@ pcre2_match_data_free(match_data);
 238   /* Free the singleton structure itself */
 239   SAFE_FREE(singleton);
 240 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_singleton_free()</b>,
-    <b>atomic_load_u64()</b>, <b>pcre2_singleton::code</b>,
-    <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::next</b>,
-    <b>pcre2_singleton::owner</b>, <b>pcre2_singleton::pattern</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_cleanup_all()</b>, and
-    <b>asciichat_pcre2_singleton_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="pcre2_code_*_asciichat_pcre2_singleton_get_code_("><a class="permalink" href="#pcre2_code_*_asciichat_pcre2_singleton_get_code_(">pcre2_code
-  * asciichat_pcre2_singleton_get_code (<b>pcre2_singleton_t</b> *
-  singleton)</a></h2>
-<p class="Pp">Get the compiled pcre2_code from a singleton handle. Lazily
-    compiles the regex on first call. Subsequent calls return the cached code.
-    Thread-safe: multiple threads can call this concurrently; compilation
-    happens once.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>singleton</i> Handle returned by
-  <b>asciichat_pcre2_singleton_compile()</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Compiled regex code (read-only), or NULL if compilation
-  failed</div>
-<p class="Pp">Lazily compiles the regex on first call. Fast path (subsequent
-    calls) only reads a single atomic variable with no synchronization
-  overhead.</p>
-<p class="Pp"></p>
-<p class="Pp">Thread-safe: If multiple threads call this concurrently on first
-    use, only one will compile; others will wait for the code to become
-    non-NULL.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>singleton</i> Handle returned by
-  <b>asciichat_pcre2_singleton_compile()</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Compiled regex code (read-only), or NULL if compilation
-  failed</div>
-<p class="Pp">Definition at line <b>121</b> of file <b>pcre2.c</b>.</p>
-<pre>121                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_singleton_free()</b>,
+            <b>atomic_load_u64()</b>, <b>pcre2_singleton::code</b>,
+            <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::next</b>,
+            <b>pcre2_singleton::owner</b>, <b>pcre2_singleton::pattern</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_cleanup_all()</b>, and
+            <b>asciichat_pcre2_singleton_free()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="pcre2_code_*_asciichat_pcre2_singleton_get_code_(">
+            <a
+              class="permalink"
+              href="#pcre2_code_*_asciichat_pcre2_singleton_get_code_("
+              >pcre2_code * asciichat_pcre2_singleton_get_code (<b
+                >pcre2_singleton_t</b
+              >
+              * singleton)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get the compiled pcre2_code from a singleton handle. Lazily compiles
+            the regex on first call. Subsequent calls return the cached code.
+            Thread-safe: multiple threads can call this concurrently;
+            compilation happens once.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>singleton</i> Handle returned by
+            <b>asciichat_pcre2_singleton_compile()</b>
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Compiled regex code (read-only), or NULL if compilation failed
+          </div>
+          <p class="Pp">
+            Lazily compiles the regex on first call. Fast path (subsequent
+            calls) only reads a single atomic variable with no synchronization
+            overhead.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Thread-safe: If multiple threads call this concurrently on first
+            use, only one will compile; others will wait for the code to become
+            non-NULL.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>singleton</i> Handle returned by
+            <b>asciichat_pcre2_singleton_compile()</b>
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Compiled regex code (read-only), or NULL if compilation failed
+          </div>
+          <p class="Pp">
+            Definition at line <b>121</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+121                                                                              {
 122   if (!singleton) {
 123     return NULL;
 124   }
@@ -771,54 +1041,74 @@ pcre2_match_data_free(match_data);
 183
 184   return code;
 185 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_singleton_get_code()</b>,
-    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
-    <b>pcre2_singleton::code</b>, <b>pcre2_singleton::flags</b>,
-    <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::lc</b>,
-    <b>lifecycle_init()</b>, <b>lifecycle_init_commit()</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>pcre2_singleton::pattern</b>, and <b>SAFE_GETENV</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_get_code()</b>,
-    <b>grep_highlight_colored()</b>, <b>grep_init()</b>, and
-    <b>grep_should_output()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_pcre2_singleton_is_initialized
-  (<b>pcre2_singleton_t</b> * singleton)</h2>
-<p class="Pp">Check if a singleton was successfully initialized.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>singleton</i> Handle returned by
-  <b>asciichat_pcre2_singleton_compile()</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if regex compiled successfully, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>193</b> of file <b>pcre2.c</b>.</p>
-<pre>193                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_singleton_get_code()</b>,
+            <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
+            <b>pcre2_singleton::code</b>, <b>pcre2_singleton::flags</b>,
+            <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::lc</b>,
+            <b>lifecycle_init()</b>, <b>lifecycle_init_commit()</b>,
+            <b>lifecycle_is_initialized()</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>pcre2_singleton::pattern</b>, and
+            <b>SAFE_GETENV</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_get_code()</b>,
+            <b>grep_highlight_colored()</b>, <b>grep_init()</b>, and
+            <b>grep_should_output()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> asciichat_pcre2_singleton_is_initialized (<b
+              >pcre2_singleton_t</b
+            >
+            * singleton)
+          </h2>
+          <p class="Pp">Check if a singleton was successfully initialized.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>singleton</i> Handle returned by
+            <b>asciichat_pcre2_singleton_compile()</b>
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if regex compiled successfully, false otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>193</b> of file <b>pcre2.c</b>.
+          </p>
+          <pre>
+193                                                                             {
 194   if (!singleton) {
 195     return false;
 196   }
 197   return (pcre2_code *)(uintptr_t)atomic_load_u64(&amp;singleton-&gt;code) != NULL;
 198 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_singleton_is_initialized()</b>,
-    <b>atomic_load_u64()</b>, and <b>pcre2_singleton::code</b>.</p>
-<p class="Pp">Referenced by
-  <b>asciichat_pcre2_singleton_is_initialized()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_singleton_is_initialized()</b>,
+            <b>atomic_load_u64()</b>, and <b>pcre2_singleton::code</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_is_initialized()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

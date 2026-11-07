@@ -1,132 +1,198 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>frame_buffer.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">frame_buffer.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">frame_buffer.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">frame_buffer.c - Buffered terminal frame rendering
-  implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>frame_buffer</b>
-  <br/>
-  Frame buffer structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>frame_buffer_t</b> * <b>frame_buffer_create</b> (int rows, int
-    cols)
-  <br/>
-  Create a new frame buffer. void <b>frame_buffer_destroy</b>
-    (<b>frame_buffer_t</b> *buf)
-  <br/>
-  Destroy a frame buffer. void <b>frame_buffer_reset</b> (<b>frame_buffer_t</b>
-    *buf)
-  <br/>
-  Clear buffer contents while keeping allocation. void
-    <b>frame_buffer_append</b> (<b>frame_buffer_t</b> *buf, const char *str,
-    size_t len)
-  <br/>
-  Append raw bytes to the buffer. void <b>frame_buffer_printf</b>
-    (<b>frame_buffer_t</b> *buf, const char *fmt,...)
-  <br/>
-  Printf-style append to the buffer. void <b>frame_buffer_cursor_home</b>
-    (<b>frame_buffer_t</b> *buf)
-  <br/>
-  Append cursor home escape code (&#x00A0;33[H). void
-    <b>frame_buffer_clear_screen</b> (<b>frame_buffer_t</b> *buf)
-  <br/>
-  Append clear screen and home escape codes (&#x00A0;33[2J&#x00A0;33[H). void
-    <b>frame_buffer_flush</b> (<b>frame_buffer_t</b> *buf)
-  <br/>
-  Flush the entire buffer to stdout in one atomic write. void
-    <b>frame_buffer_set_screen_output_fd</b> (int fd)
-  <br/>
-  Set output file descriptor for terminal screen (splash/status) rendering. int
-    <b>frame_buffer_get_screen_output_fd</b> (void)
-  <br/>
-  Get current output file descriptor for terminal screens. size_t
-    <b>frame_buffer_get_length</b> (const <b>frame_buffer_t</b> *buf)
-  <br/>
-  Get the current content length of the frame buffer. const char *
-    <b>frame_buffer_get_content</b> (const <b>frame_buffer_t</b> *buf)
-  <br/>
-  Get a pointer to the buffer content. void <b>frame_buffer_render_border</b>
-    (<b>frame_buffer_t</b> *buf, int cols, const char *color)
-  <br/>
-  Render a horizontal border line (used by both splash and status screens). void
-    <b>frame_buffer_render_divider</b> (<b>frame_buffer_t</b> *buf, int width,
-    <b>bool</b> use_utf8, <b>bool</b> use_colors)
-  <br/>
-  int <b>frame_buffer_render_centered</b> (<b>frame_buffer_t</b> *buf, const
-    char *text, int cols)
-  <br/>
-  Render centered text (used by both splash and status screens).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Buffered terminal frame rendering implementation.</p>
-<p class="Pp">Accumulates terminal output into a growable buffer and flushes
-    atomically.</p>
-<p class="Pp">Definition in file <b>frame_buffer.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_append_("><a class="permalink" href="#void_frame_buffer_append_(">void
-  frame_buffer_append (<b>frame_buffer_t</b> * buf, const char * str, size_t
-  len)</a></h2>
-<p class="Pp">Append raw bytes to the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer
-<br/>
-<i>str</i> Pointer to data (may contain ANSI codes, not NULL-terminated)
-<br/>
-<i>len</i> Number of bytes to append</div>
-<p class="Pp">Grows the buffer as needed. Does not add newlines or NULL
-    terminators.</p>
-<p class="Pp">Definition at line <b>72</b> of file <b>frame_buffer.c</b>.</p>
-<pre>72                                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>frame_buffer.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">frame_buffer.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">frame_buffer.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          frame_buffer.c - Buffered terminal frame rendering implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>frame_buffer</b>
+            <br />
+            Frame buffer structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>frame_buffer_t</b> * <b>frame_buffer_create</b> (int rows, int
+            cols)
+            <br />
+            Create a new frame buffer. void <b>frame_buffer_destroy</b> (<b
+              >frame_buffer_t</b
+            >
+            *buf)
+            <br />
+            Destroy a frame buffer. void <b>frame_buffer_reset</b> (<b
+              >frame_buffer_t</b
+            >
+            *buf)
+            <br />
+            Clear buffer contents while keeping allocation. void
+            <b>frame_buffer_append</b> (<b>frame_buffer_t</b> *buf, const char
+            *str, size_t len)
+            <br />
+            Append raw bytes to the buffer. void <b>frame_buffer_printf</b> (<b
+              >frame_buffer_t</b
+            >
+            *buf, const char *fmt,...)
+            <br />
+            Printf-style append to the buffer. void
+            <b>frame_buffer_cursor_home</b> (<b>frame_buffer_t</b>
+            *buf)
+            <br />
+            Append cursor home escape code (&#x00A0;33[H). void
+            <b>frame_buffer_clear_screen</b> (<b>frame_buffer_t</b> *buf)
+            <br />
+            Append clear screen and home escape codes
+            (&#x00A0;33[2J&#x00A0;33[H). void
+            <b>frame_buffer_flush</b> (<b>frame_buffer_t</b> *buf)
+            <br />
+            Flush the entire buffer to stdout in one atomic write. void
+            <b>frame_buffer_set_screen_output_fd</b> (int fd)
+            <br />
+            Set output file descriptor for terminal screen (splash/status)
+            rendering. int
+            <b>frame_buffer_get_screen_output_fd</b> (void)
+            <br />
+            Get current output file descriptor for terminal screens. size_t
+            <b>frame_buffer_get_length</b> (const <b>frame_buffer_t</b> *buf)
+            <br />
+            Get the current content length of the frame buffer. const char *
+            <b>frame_buffer_get_content</b> (const <b>frame_buffer_t</b> *buf)
+            <br />
+            Get a pointer to the buffer content. void
+            <b>frame_buffer_render_border</b> (<b>frame_buffer_t</b>
+            *buf, int cols, const char *color)
+            <br />
+            Render a horizontal border line (used by both splash and status
+            screens). void
+            <b>frame_buffer_render_divider</b> (<b>frame_buffer_t</b> *buf, int
+            width, <b>bool</b> use_utf8, <b>bool</b> use_colors)
+            <br />
+            int <b>frame_buffer_render_centered</b> (<b>frame_buffer_t</b> *buf,
+            const char *text, int cols)
+            <br />
+            Render centered text (used by both splash and status screens).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Buffered terminal frame rendering implementation.</p>
+        <p class="Pp">
+          Accumulates terminal output into a growable buffer and flushes
+          atomically.
+        </p>
+        <p class="Pp">Definition in file <b>frame_buffer.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_append_(">
+            <a class="permalink" href="#void_frame_buffer_append_("
+              >void frame_buffer_append (<b>frame_buffer_t</b> * buf, const char
+              * str, size_t len)</a
+            >
+          </h2>
+          <p class="Pp">Append raw bytes to the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Frame buffer
+            <br />
+            <i>str</i> Pointer to data (may contain ANSI codes, not
+            NULL-terminated)
+            <br />
+            <i>len</i> Number of bytes to append
+          </div>
+          <p class="Pp">
+            Grows the buffer as needed. Does not add newlines or NULL
+            terminators.
+          </p>
+          <p class="Pp">
+            Definition at line <b>72</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+72                                                                            {
 73   if (!buf || !str || len == 0) {
 74     return;
 75   }
@@ -156,32 +222,46 @@
 99   memcpy(buf-&gt;data + buf-&gt;len, str, len);
 100   buf-&gt;len += len;
 101 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer::capacity</b>,
-    <b>frame_buffer::data</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer::len</b>, <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
-    <b>frame_buffer_append()</b>, <b>frame_buffer_clear_screen()</b>,
-    <b>frame_buffer_cursor_home()</b>, <b>terminal_screen_compose()</b>,
-    <b>ui_controller_write()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_error_popup_render()</b>, <b>ui_input_render()</b>,
-    <b>ui_media_panel_render()</b>, <b>ui_notice_flush_snapshot()</b>,
-    <b>ui_notice_present()</b>, <b>ui_notice_render()</b>,
-    <b>ui_scrollbar_render()</b>, <b>ui_session_media()</b>,
-    <b>ui_session_render()</b>, <b>ui_text_render_values()</b>, and
-    <b>ui_too_small_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_clear_screen_("><a class="permalink" href="#void_frame_buffer_clear_screen_(">void
-  frame_buffer_clear_screen (<b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Append clear screen and home escape codes (\033[2J\033[H).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer</div>
-<p class="Pp">Combines clear screen and cursor home into a single operation for
-    atomicity.</p>
-<p class="Pp">Definition at line <b>149</b> of file <b>frame_buffer.c</b>.</p>
-<pre>149                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer::capacity</b>, <b>frame_buffer::data</b>,
+            <b>frame_buffer_append()</b>, <b>frame_buffer::len</b>,
+            <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>,
+            <b>frame_buffer_append()</b>, <b>frame_buffer_clear_screen()</b>,
+            <b>frame_buffer_cursor_home()</b>, <b>terminal_screen_compose()</b>,
+            <b>ui_controller_write()</b>, <b>ui_error_popup_preserve()</b>,
+            <b>ui_error_popup_render()</b>, <b>ui_input_render()</b>,
+            <b>ui_media_panel_render()</b>, <b>ui_notice_flush_snapshot()</b>,
+            <b>ui_notice_present()</b>, <b>ui_notice_render()</b>,
+            <b>ui_scrollbar_render()</b>, <b>ui_session_media()</b>,
+            <b>ui_session_render()</b>, <b>ui_text_render_values()</b>, and
+            <b>ui_too_small_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_clear_screen_(">
+            <a class="permalink" href="#void_frame_buffer_clear_screen_("
+              >void frame_buffer_clear_screen (<b>frame_buffer_t</b> * buf)</a
+            >
+          </h2>
+          <p class="Pp">
+            Append clear screen and home escape codes (\033[2J\033[H).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>buf</i> Frame buffer</div>
+          <p class="Pp">
+            Combines clear screen and cursor home into a single operation for
+            atomicity.
+          </p>
+          <p class="Pp">
+            Definition at line <b>149</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+149                                                     {
 150   if (!buf) {
 151     return;
 152   }
@@ -190,29 +270,42 @@
 155   static const char clear[] = &quot;\033[2J\033[H&quot;;
 156   frame_buffer_append(buf, clear, sizeof(clear) - 1);
 157 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_append()</b>, and
-    <b>frame_buffer_clear_screen()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_clear_screen()</b>, and
-    <b>ui_session_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>frame_buffer_t</b> * frame_buffer_create (int rows, int
-  cols)</h2>
-<p class="Pp">Create a new frame buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rows</i> Terminal row count (used for initial capacity
-  estimate)
-<br/>
-<i>cols</i> Terminal column count (used for initial capacity estimate)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Newly allocated frame buffer, or NULL on allocation
-  failure</div>
-<p class="Pp">Initial capacity is set to rows * cols * 16 to account for ANSI
-    escape overhead.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>frame_buffer.c</b>.</p>
-<pre>34                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_append()</b>, and
+            <b>frame_buffer_clear_screen()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_clear_screen()</b>, and
+            <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>frame_buffer_t</b> * frame_buffer_create (int rows, int cols)
+          </h2>
+          <p class="Pp">Create a new frame buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>rows</i> Terminal row count (used for initial capacity estimate)
+            <br />
+            <i>cols</i> Terminal column count (used for initial capacity
+            estimate)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Newly allocated frame buffer, or NULL on allocation failure
+          </div>
+          <p class="Pp">
+            Initial capacity is set to rows * cols * 16 to account for ANSI
+            escape overhead.
+          </p>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+34                                                         {
 35   frame_buffer_t *buf = SAFE_MALLOC(sizeof(frame_buffer_t), frame_buffer_t *);
 36   if (!buf) {
 37     return NULL;
@@ -232,47 +325,69 @@
 51
 52   return buf;
 53 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer::capacity</b>,
-    <b>frame_buffer::data</b>, <b>frame_buffer_create()</b>,
-    <b>frame_buffer::len</b>, <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
-    <b>frame_buffer_create()</b>, <b>terminal_screen_compose()</b>,
-    <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
-    <b>ui_session_context_help_render()</b>, <b>ui_session_create()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_cursor_home_("><a class="permalink" href="#void_frame_buffer_cursor_home_(">void
-  frame_buffer_cursor_home (<b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Append cursor home escape code (\033[H).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer</div>
-<p class="Pp">Definition at line <b>141</b> of file <b>frame_buffer.c</b>.</p>
-<pre>141                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer::capacity</b>, <b>frame_buffer::data</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer::len</b>,
+            <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>,
+            <b>frame_buffer_create()</b>, <b>terminal_screen_compose()</b>,
+            <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
+            <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+            <b>ui_session_context_help_render()</b>, <b>ui_session_create()</b>,
+            and <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_cursor_home_(">
+            <a class="permalink" href="#void_frame_buffer_cursor_home_("
+              >void frame_buffer_cursor_home (<b>frame_buffer_t</b> * buf)</a
+            >
+          </h2>
+          <p class="Pp">Append cursor home escape code (\033[H).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>buf</i> Frame buffer</div>
+          <p class="Pp">
+            Definition at line <b>141</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+141                                                    {
 142   if (!buf) {
 143     return;
 144   }
 145
 146   frame_buffer_append(buf, &quot;\033[H&quot;, 3);
 147 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_append()</b>, and
-    <b>frame_buffer_cursor_home()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_cursor_home()</b>, and
-    <b>tui_stats_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_destroy_("><a class="permalink" href="#void_frame_buffer_destroy_(">void
-  frame_buffer_destroy (<b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Destroy a frame buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer to destroy (may be NULL)</div>
-<p class="Pp">Definition at line <b>55</b> of file <b>frame_buffer.c</b>.</p>
-<pre>55                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_append()</b>, and
+            <b>frame_buffer_cursor_home()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_cursor_home()</b>, and
+            <b>tui_stats_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_destroy_(">
+            <a class="permalink" href="#void_frame_buffer_destroy_("
+              >void frame_buffer_destroy (<b>frame_buffer_t</b> * buf)</a
+            >
+          </h2>
+          <p class="Pp">Destroy a frame buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Frame buffer to destroy (may be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+55                                                {
 56   if (!buf) {
 57     return;
 58   }
@@ -280,28 +395,42 @@
 60   SAFE_FREE(buf-&gt;data);
 61   SAFE_FREE(buf);
 62 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer::data</b>,
-    <b>frame_buffer_destroy()</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
-    <b>frame_buffer_destroy()</b>, <b>terminal_screen_compose()</b>,
-    <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
-    <b>ui_session_context_help_render()</b>, <b>ui_session_destroy()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_flush_("><a class="permalink" href="#void_frame_buffer_flush_(">void
-  frame_buffer_flush (<b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Flush the entire buffer to stdout in one atomic write.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer</div>
-<p class="Pp">Writes all accumulated content to stdout via
-    <b>platform_write_all()</b>, bypassing libc buffering. Safe for
-    high-frequency rendering.</p>
-<p class="Pp">Definition at line <b>162</b> of file <b>frame_buffer.c</b>.</p>
-<pre>162                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer::data</b>, <b>frame_buffer_destroy()</b>,
+            and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>,
+            <b>frame_buffer_destroy()</b>, <b>terminal_screen_compose()</b>,
+            <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
+            <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+            <b>ui_session_context_help_render()</b>,
+            <b>ui_session_destroy()</b>, and <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_flush_(">
+            <a class="permalink" href="#void_frame_buffer_flush_("
+              >void frame_buffer_flush (<b>frame_buffer_t</b> * buf)</a
+            >
+          </h2>
+          <p class="Pp">
+            Flush the entire buffer to stdout in one atomic write.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>buf</i> Frame buffer</div>
+          <p class="Pp">
+            Writes all accumulated content to stdout via
+            <b>platform_write_all()</b>, bypassing libc buffering. Safe for
+            high-frequency rendering.
+          </p>
+          <p class="Pp">
+            Definition at line <b>162</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+162                                              {
 163   if (!buf || buf-&gt;len == 0 || !buf-&gt;data) {
 164     return;
 165   }
@@ -341,102 +470,161 @@
 199   ui_output_write(g_terminal_screen_output_fd, output, output_len);
 200   SAFE_FREE(output);
 201 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer::data</b>, <b>frame_buffer_flush()</b>,
-    <b>frame_buffer::len</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
-    <b>ui_output_write()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_flush()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_frame_buffer_get_content_(const_"><a class="permalink" href="#const_char_*_frame_buffer_get_content_(const_">const
-  char * frame_buffer_get_content (const <b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Get a pointer to the buffer content.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to the buffer data (NULL if buffer is empty or
-  NULL)</div>
-<p class="Pp">Returns the raw buffer content for reading. The content is NOT
-    null-terminated. Use <b>frame_buffer_get_length()</b> to get the actual
-    size.</p>
-<p class="Pp">Definition at line <b>219</b> of file <b>frame_buffer.c</b>.</p>
-<pre>219                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer::data</b>, <b>frame_buffer_flush()</b>,
+            <b>frame_buffer::len</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+            <b>ui_output_write()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>frame_buffer_flush()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_frame_buffer_get_content_(const_">
+            <a
+              class="permalink"
+              href="#const_char_*_frame_buffer_get_content_(const_"
+              >const char * frame_buffer_get_content (const
+              <b>frame_buffer_t</b> * buf)</a
+            >
+          </h2>
+          <p class="Pp">Get a pointer to the buffer content.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>buf</i> Frame buffer</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the buffer data (NULL if buffer is empty or NULL)
+          </div>
+          <p class="Pp">
+            Returns the raw buffer content for reading. The content is NOT
+            null-terminated. Use
+            <b>frame_buffer_get_length()</b> to get the actual size.
+          </p>
+          <p class="Pp">
+            Definition at line <b>219</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+219                                                                 {
 220   if (!buf || !buf-&gt;data) {
 221     return NULL;
 222   }
 223   return buf-&gt;data;
 224 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer::data</b>, and
-    <b>frame_buffer_get_content()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
-    <b>frame_buffer_get_content()</b>, <b>terminal_screen_compose()</b>,
-    <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
-    <b>ui_session_context_help_render()</b>, <b>ui_session_help_render()</b>,
-    and <b>ui_session_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_frame_buffer_get_length_(const_"><a class="permalink" href="#size_t_frame_buffer_get_length_(const_">size_t
-  frame_buffer_get_length (const <b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Get the current content length of the frame buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of bytes currently in the buffer</div>
-<p class="Pp">Useful for debugging and verifying frame consistency.</p>
-<p class="Pp">Definition at line <b>212</b> of file <b>frame_buffer.c</b>.</p>
-<pre>212                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer::data</b>, and
+            <b>frame_buffer_get_content()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>,
+            <b>frame_buffer_get_content()</b>, <b>terminal_screen_compose()</b>,
+            <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
+            <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+            <b>ui_session_context_help_render()</b>,
+            <b>ui_session_help_render()</b>, and <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_frame_buffer_get_length_(const_">
+            <a class="permalink" href="#size_t_frame_buffer_get_length_(const_"
+              >size_t frame_buffer_get_length (const <b>frame_buffer_t</b> *
+              buf)</a
+            >
+          </h2>
+          <p class="Pp">Get the current content length of the frame buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>buf</i> Frame buffer</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of bytes currently in the buffer</div>
+          <p class="Pp">
+            Useful for debugging and verifying frame consistency.
+          </p>
+          <p class="Pp">
+            Definition at line <b>212</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+212                                                           {
 213   if (!buf) {
 214     return 0;
 215   }
 216   return buf-&gt;len;
 217 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_get_length()</b>, and
-    <b>frame_buffer::len</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
-    <b>frame_buffer_get_length()</b>, <b>terminal_screen_compose()</b>,
-    <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
-    <b>ui_session_context_help_render()</b>, <b>ui_session_frame_length()</b>,
-    <b>ui_session_help_render()</b>, and <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_frame_buffer_get_screen_output_fd_(void_)"><a class="permalink" href="#int_frame_buffer_get_screen_output_fd_(void_)">int
-  frame_buffer_get_screen_output_fd (void )</a></h2>
-<p class="Pp">Get current output file descriptor for terminal screens.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">File descriptor (STDOUT_FILENO or STDERR_FILENO)</div>
-<p class="Pp">Definition at line <b>208</b> of file <b>frame_buffer.c</b>.</p>
-<pre>208                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_get_length()</b>, and
+            <b>frame_buffer::len</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>,
+            <b>frame_buffer_get_length()</b>, <b>terminal_screen_compose()</b>,
+            <b>tui_stats_render()</b>, <b>ui_error_popup_preserve()</b>,
+            <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+            <b>ui_session_context_help_render()</b>,
+            <b>ui_session_frame_length()</b>, <b>ui_session_help_render()</b>,
+            and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_frame_buffer_get_screen_output_fd_(void_)">
+            <a
+              class="permalink"
+              href="#int_frame_buffer_get_screen_output_fd_(void_)"
+              >int frame_buffer_get_screen_output_fd (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Get current output file descriptor for terminal screens.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            File descriptor (STDOUT_FILENO or STDERR_FILENO)
+          </div>
+          <p class="Pp">
+            Definition at line <b>208</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+208                                             {
 209   return g_terminal_screen_output_fd;
 210 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_get_screen_output_fd()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_get_screen_output_fd()</b>,
-    <b>ui_buttons_render()</b>, <b>ui_error_popup_render()</b>,
-    <b>ui_media_panel_render()</b>, and <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_printf_("><a class="permalink" href="#void_frame_buffer_printf_(">void
-  frame_buffer_printf (<b>frame_buffer_t</b> * buf, const char * fmt,
-  ...)</a></h2>
-<p class="Pp">Printf-style append to the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer
-<br/>
-<i>fmt</i> Format string (standard printf syntax)
-<br/>
-<i>...</i> Arguments</div>
-<p class="Pp">Formats the string into the buffer using snprintf. Grows buffer as
-    needed.</p>
-<p class="Pp">Definition at line <b>103</b> of file <b>frame_buffer.c</b>.</p>
-<pre>103                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_get_screen_output_fd()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_get_screen_output_fd()</b>,
+            <b>ui_buttons_render()</b>, <b>ui_error_popup_render()</b>,
+            <b>ui_media_panel_render()</b>, and
+            <b>ui_status_render_header()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_printf_(">
+            <a class="permalink" href="#void_frame_buffer_printf_("
+              >void frame_buffer_printf (<b>frame_buffer_t</b> * buf, const char
+              * fmt, ...)</a
+            >
+          </h2>
+          <p class="Pp">Printf-style append to the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Frame buffer
+            <br />
+            <i>fmt</i> Format string (standard printf syntax)
+            <br />
+            <i>...</i> Arguments
+          </div>
+          <p class="Pp">
+            Formats the string into the buffer using snprintf. Grows buffer as
+            needed.
+          </p>
+          <p class="Pp">
+            Definition at line <b>103</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+103                                                                     {
 104   if (!buf || !fmt) {
 105     return;
 106   }
@@ -473,65 +661,95 @@
 137   }
 138   // If vsnprintf failed or truncated, we silently ignore (buffer may be full)
 139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer::capacity</b>,
-    <b>frame_buffer::data</b>, <b>frame_buffer_printf()</b>,
-    <b>frame_buffer::len</b>, <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_printf()</b>,
-    <b>frame_buffer_render_centered()</b>, <b>invitation_render()</b>,
-    <b>terminal_screen_compose()</b>, <b>tui_stats_render()</b>,
-    <b>ui_buttons_render()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_error_popup_render()</b>, <b>ui_input_render()</b>,
-    <b>ui_media_panel_render()</b>, <b>ui_notice_render()</b>,
-    <b>ui_popup_frame()</b>, <b>ui_popup_frame_titled()</b>,
-    <b>ui_popup_render()</b>, <b>ui_popup_rule()</b>,
-    <b>ui_scrollbar_render()</b>, <b>ui_session_render()</b>,
-    <b>ui_session_splash_render()</b>, <b>ui_spinner_render()</b>,
-    <b>ui_status_render_header()</b>, and <b>ui_table_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_render_border_("><a class="permalink" href="#void_frame_buffer_render_border_(">void
-  frame_buffer_render_border (<b>frame_buffer_t</b> * buf, int cols, const char
-  * color)</a></h2>
-<p class="Pp">Render a horizontal border line (used by both splash and status
-    screens).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer to write into
-<br/>
-<i>cols</i> Terminal width (number of columns)
-<br/>
-<i>color</i> ANSI color code (e.g., &quot;\033[1;36m&quot; for cyan) or NULL for
-  no color</div>
-<p class="Pp">Definition at line <b>238</b> of file <b>frame_buffer.c</b>.</p>
-<pre>238                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer::capacity</b>, <b>frame_buffer::data</b>,
+            <b>frame_buffer_printf()</b>, <b>frame_buffer::len</b>,
+            <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_printf()</b>,
+            <b>frame_buffer_render_centered()</b>, <b>invitation_render()</b>,
+            <b>terminal_screen_compose()</b>, <b>tui_stats_render()</b>,
+            <b>ui_buttons_render()</b>, <b>ui_error_popup_preserve()</b>,
+            <b>ui_error_popup_render()</b>, <b>ui_input_render()</b>,
+            <b>ui_media_panel_render()</b>, <b>ui_notice_render()</b>,
+            <b>ui_popup_frame()</b>, <b>ui_popup_frame_titled()</b>,
+            <b>ui_popup_render()</b>, <b>ui_popup_rule()</b>,
+            <b>ui_scrollbar_render()</b>, <b>ui_session_render()</b>,
+            <b>ui_session_splash_render()</b>, <b>ui_spinner_render()</b>,
+            <b>ui_status_render_header()</b>, and <b>ui_table_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_render_border_(">
+            <a class="permalink" href="#void_frame_buffer_render_border_("
+              >void frame_buffer_render_border (<b>frame_buffer_t</b> * buf, int
+              cols, const char * color)</a
+            >
+          </h2>
+          <p class="Pp">
+            Render a horizontal border line (used by both splash and status
+            screens).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Frame buffer to write into
+            <br />
+            <i>cols</i> Terminal width (number of columns)
+            <br />
+            <i>color</i> ANSI color code (e.g., &quot;\033[1;36m&quot; for cyan)
+            or NULL for no color
+          </div>
+          <p class="Pp">
+            Definition at line <b>238</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+238                                                                                   {
 239   render_rule(buf, cols - 1, color, terminal_should_use_utf8());
 240 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_render_border()</b>, and
-    <b>terminal_should_use_utf8()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_render_border()</b>, and
-    <b>tui_stats_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_frame_buffer_render_centered_("><a class="permalink" href="#int_frame_buffer_render_centered_(">int
-  frame_buffer_render_centered (<b>frame_buffer_t</b> * buf, const char * text,
-  int cols)</a></h2>
-<p class="Pp">Render centered text (used by both splash and status screens).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer to write into
-<br/>
-<i>text</i> Text to center (may contain ANSI codes)
-<br/>
-<i>cols</i> Terminal width</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Padding added on left side (for manual padding if
-  needed)</div>
-<p class="Pp">Automatically centers the text accounting for ANSI escape
-  codes.</p>
-<p class="Pp">Definition at line <b>246</b> of file <b>frame_buffer.c</b>.</p>
-<pre>246                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_render_border()</b>, and
+            <b>terminal_should_use_utf8()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_render_border()</b>, and
+            <b>tui_stats_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_frame_buffer_render_centered_(">
+            <a class="permalink" href="#int_frame_buffer_render_centered_("
+              >int frame_buffer_render_centered (<b>frame_buffer_t</b> * buf,
+              const char * text, int cols)</a
+            >
+          </h2>
+          <p class="Pp">
+            Render centered text (used by both splash and status screens).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Frame buffer to write into
+            <br />
+            <i>text</i> Text to center (may contain ANSI codes)
+            <br />
+            <i>cols</i> Terminal width
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Padding added on left side (for manual padding if needed)
+          </div>
+          <p class="Pp">
+            Automatically centers the text accounting for ANSI escape codes.
+          </p>
+          <p class="Pp">
+            Definition at line <b>246</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+246                                                                                   {
 247   if (!buf || !text || cols &lt;= 0) {
 248     return 0;
 249   }
@@ -554,88 +772,134 @@
 266
 267   return padding;
 268 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>display_width()</b>, <b>frame_buffer_printf()</b>,
-    and <b>frame_buffer_render_centered()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_render_centered()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_render_divider_("><a class="permalink" href="#void_frame_buffer_render_divider_(">void
-  frame_buffer_render_divider (<b>frame_buffer_t</b> * buf, int width,
-  <b>bool</b> use_utf8, <b>bool</b> use_colors)</a></h2>
-<p class="Pp">Theme-blue divider of exactly width cells, followed by a
-  newline.</p>
-<p class="Pp">Definition at line <b>242</b> of file <b>frame_buffer.c</b>.</p>
-<pre>242                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>display_width()</b>, <b>frame_buffer_printf()</b>, and
+            <b>frame_buffer_render_centered()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>frame_buffer_render_centered()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_render_divider_(">
+            <a class="permalink" href="#void_frame_buffer_render_divider_("
+              >void frame_buffer_render_divider (<b>frame_buffer_t</b> * buf,
+              int width, <b>bool</b> use_utf8, <b>bool</b> use_colors)</a
+            >
+          </h2>
+          <p class="Pp">
+            Theme-blue divider of exactly width cells, followed by a newline.
+          </p>
+          <p class="Pp">
+            Definition at line <b>242</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+242                                                                                                  {
 243   render_rule(buf, width, use_colors ? ui_text_color_prefix(LOG_COLOR_DEBUG) : NULL, use_utf8);
 244 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_render_divider()</b>,
-    <b>LOG_COLOR_DEBUG</b>, and <b>ui_text_color_prefix()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_render_divider()</b>,
-    <b>ui_session_splash_render()</b>, and <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_reset_("><a class="permalink" href="#void_frame_buffer_reset_(">void
-  frame_buffer_reset (<b>frame_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Clear buffer contents while keeping allocation. Resets the buffer
-    for a new frame without deallocating the underlying memory. More efficient
-    than destroy/create for repeated frame rendering.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Frame buffer to reset</div>
-<p class="Pp">Definition at line <b>64</b> of file <b>frame_buffer.c</b>.</p>
-<pre>64                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_render_divider()</b>,
+            <b>LOG_COLOR_DEBUG</b>, and <b>ui_text_color_prefix()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_render_divider()</b>,
+            <b>ui_session_splash_render()</b>, and
+            <b>ui_status_render_header()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_reset_(">
+            <a class="permalink" href="#void_frame_buffer_reset_("
+              >void frame_buffer_reset (<b>frame_buffer_t</b> * buf)</a
+            >
+          </h2>
+          <p class="Pp">
+            Clear buffer contents while keeping allocation. Resets the buffer
+            for a new frame without deallocating the underlying memory. More
+            efficient than destroy/create for repeated frame rendering.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>buf</i> Frame buffer to reset</div>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+64                                              {
 65   if (!buf) {
 66     return;
 67   }
 68
 69   buf-&gt;len = 0;
 70 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_reset()</b>, and
-    <b>frame_buffer::len</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_reset()</b>,
-    <b>ui_session_clear()</b>, <b>ui_session_media()</b>, and
-    <b>ui_session_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_frame_buffer_set_screen_output_fd_(int_fd)"><a class="permalink" href="#void_frame_buffer_set_screen_output_fd_(int_fd)">void
-  frame_buffer_set_screen_output_fd (int fd)</a></h2>
-<p class="Pp">Set output file descriptor for terminal screen (splash/status)
-    rendering.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor (STDOUT_FILENO for TTY,
-  STDERR_FILENO for piped output)</div>
-<p class="Pp">Controls where splash and status screens write their output. Used
-    internally by <b>terminal_screen_render()</b> for consistent output
-  routing.</p>
-<p class="Pp">Definition at line <b>203</b> of file <b>frame_buffer.c</b>.</p>
-<pre>203                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_reset()</b>, and
+            <b>frame_buffer::len</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_reset()</b>,
+            <b>ui_session_clear()</b>, <b>ui_session_media()</b>, and
+            <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_frame_buffer_set_screen_output_fd_(int_fd)">
+            <a
+              class="permalink"
+              href="#void_frame_buffer_set_screen_output_fd_(int_fd)"
+              >void frame_buffer_set_screen_output_fd (int fd)</a
+            >
+          </h2>
+          <p class="Pp">
+            Set output file descriptor for terminal screen (splash/status)
+            rendering.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor (STDOUT_FILENO for TTY, STDERR_FILENO for
+            piped output)
+          </div>
+          <p class="Pp">
+            Controls where splash and status screens write their output. Used
+            internally by
+            <b>terminal_screen_render()</b> for consistent output routing.
+          </p>
+          <p class="Pp">
+            Definition at line <b>203</b> of file <b>frame_buffer.c</b>.
+          </p>
+          <pre>
+203                                                {
 204   g_terminal_screen_output_fd = fd;
 205   colored_string_set_output_fd(fd);
 206 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string_set_output_fd()</b>, and
-    <b>frame_buffer_set_screen_output_fd()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_set_screen_output_fd()</b>, and
-    <b>terminal_screen_set_output_fd()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string_set_output_fd()</b>, and
+            <b>frame_buffer_set_screen_output_fd()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_set_screen_output_fd()</b>, and
+            <b>terminal_screen_set_output_fd()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

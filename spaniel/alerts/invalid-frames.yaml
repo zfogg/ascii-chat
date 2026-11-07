@@ -61,10 +61,10 @@ query: |
     service_name
 condition:
   kind: threshold
-  operator: '>='
+  operator: ">="
   threshold: 5
 group_by:
-- service_name
+  - service_name
 pending_for: 30s
 cooldown: 10m0s
 repeat_interval: 1h0m0s
@@ -73,6 +73,7 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-  runbook: Inspect decoder and frame-conversion errors, dimensions and codec compatibility. Expected screen_hidden, display_replaced, encode_timeout and congestion
+  runbook:
+    Inspect decoder and frame-conversion errors, dimensions and codec compatibility. Expected screen_hidden, display_replaced, encode_timeout and congestion
     drops are intentionally excluded.
   summary: At least five invalid-frame or conversion drops occurred in the last five minutes.

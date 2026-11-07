@@ -1,184 +1,313 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>notice_snapshot_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">notice_snapshot_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">notice_snapshot_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">notice_snapshot_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>ui_notice_severity_t</b> <b>severity</b>
-  <br/>
-  <b>bool</b> <b>unicode</b>
-  <br/>
-  <b>bool</b> <b>color</b>
-  <br/>
-  <b>uint64_t</b> <b>started</b>
-  <br/>
-  size_t <b>marker_offset</b>
-  <br/>
-  size_t <b>title_offset</b>
-  <br/>
-  atomic_int <b>page</b>
-  <br/>
-  atomic_int <b>pages</b>
-  <br/>
-  atomic_int <b>presented_page</b>
-  <br/>
-  int <b>rendered_page</b>
-  <br/>
-  int <b>rendered_cols</b>
-  <br/>
-  int <b>rendered_rows</b>
-  <br/>
-  char <b>text</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>173</b> of file <b>notice.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> notice_snapshot_t::color</h2>
-<p class="Pp">Definition at line <b>176</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_flush_snapshot()</b>,
-    <b>ui_notice_present()</b>, and <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_notice_snapshot_t::marker_offset"><a class="permalink" href="#size_t_notice_snapshot_t::marker_offset">size_t
-  notice_snapshot_t::marker_offset</a></h2>
-<p class="Pp">Definition at line <b>178</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_first_use_complete()</b>,
-    <b>ui_notice_first_use_key()</b>, <b>ui_notice_frame_presented()</b>,
-    <b>ui_notice_present()</b>, and <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="atomic_int_notice_snapshot_t::page"><a class="permalink" href="#atomic_int_notice_snapshot_t::page">atomic_int
-  notice_snapshot_t::page</a></h2>
-<p class="Pp">Definition at line <b>180</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_first_use_key()</b>,
-    <b>ui_notice_present()</b>, and <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="atomic_int_notice_snapshot_t::pages"><a class="permalink" href="#atomic_int_notice_snapshot_t::pages">atomic_int
-  notice_snapshot_t::pages</a></h2>
-<p class="Pp">Definition at line <b>181</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_first_use_key()</b>,
-    <b>ui_notice_present()</b>, and <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="atomic_int_notice_snapshot_t::presented_page"><a class="permalink" href="#atomic_int_notice_snapshot_t::presented_page">atomic_int
-  notice_snapshot_t::presented_page</a></h2>
-<p class="Pp">Definition at line <b>182</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_first_use_key()</b>,
-    <b>ui_notice_frame_presented()</b>, <b>ui_notice_present()</b>, and
-    <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_notice_snapshot_t::rendered_cols"><a class="permalink" href="#int_notice_snapshot_t::rendered_cols">int
-  notice_snapshot_t::rendered_cols</a></h2>
-<p class="Pp">Definition at line <b>184</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_present()</b>, and
-    <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_notice_snapshot_t::rendered_page"><a class="permalink" href="#int_notice_snapshot_t::rendered_page">int
-  notice_snapshot_t::rendered_page</a></h2>
-<p class="Pp">Definition at line <b>183</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_frame_presented()</b>,
-    <b>ui_notice_present()</b>, and <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_notice_snapshot_t::rendered_rows"><a class="permalink" href="#int_notice_snapshot_t::rendered_rows">int
-  notice_snapshot_t::rendered_rows</a></h2>
-<p class="Pp">Definition at line <b>185</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_present()</b>, and
-    <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_notice_severity_t</b> notice_snapshot_t::severity</h2>
-<p class="Pp">Definition at line <b>174</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_flush_snapshot()</b>,
-    <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>, and
-    <b>ui_notice_title()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> notice_snapshot_t::started</h2>
-<p class="Pp">Definition at line <b>177</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_present()</b>, and
-    <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_notice_snapshot_t::text__"><a class="permalink" href="#char_notice_snapshot_t::text__">char
-  notice_snapshot_t::text[]</a></h2>
-<p class="Pp">Definition at line <b>186</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_first_use_complete()</b>,
-    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>, and
-    <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_notice_snapshot_t::title_offset"><a class="permalink" href="#size_t_notice_snapshot_t::title_offset">size_t
-  notice_snapshot_t::title_offset</a></h2>
-<p class="Pp">Definition at line <b>179</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_present()</b>, and
-    <b>ui_notice_present_first_use()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> notice_snapshot_t::unicode</h2>
-<p class="Pp">Definition at line <b>175</b> of file <b>notice.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_flush_snapshot()</b>,
-    <b>ui_notice_present()</b>, and <b>ui_notice_present_first_use()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>notice_snapshot_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">notice_snapshot_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">notice_snapshot_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">notice_snapshot_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ui_notice_severity_t</b> <b>severity</b>
+            <br />
+            <b>bool</b> <b>unicode</b>
+            <br />
+            <b>bool</b> <b>color</b>
+            <br />
+            <b>uint64_t</b> <b>started</b>
+            <br />
+            size_t <b>marker_offset</b>
+            <br />
+            size_t <b>title_offset</b>
+            <br />
+            atomic_int <b>page</b>
+            <br />
+            atomic_int <b>pages</b>
+            <br />
+            atomic_int <b>presented_page</b>
+            <br />
+            int <b>rendered_page</b>
+            <br />
+            int <b>rendered_cols</b>
+            <br />
+            int <b>rendered_rows</b>
+            <br />
+            char <b>text</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>173</b> of file <b>notice.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> notice_snapshot_t::color</h2>
+          <p class="Pp">
+            Definition at line <b>176</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_flush_snapshot()</b>,
+            <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_notice_snapshot_t::marker_offset">
+            <a class="permalink" href="#size_t_notice_snapshot_t::marker_offset"
+              >size_t notice_snapshot_t::marker_offset</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>178</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_first_use_complete()</b>,
+            <b>ui_notice_first_use_key()</b>,
+            <b>ui_notice_frame_presented()</b>, <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="atomic_int_notice_snapshot_t::page">
+            <a class="permalink" href="#atomic_int_notice_snapshot_t::page"
+              >atomic_int notice_snapshot_t::page</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>180</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_first_use_key()</b>,
+            <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="atomic_int_notice_snapshot_t::pages">
+            <a class="permalink" href="#atomic_int_notice_snapshot_t::pages"
+              >atomic_int notice_snapshot_t::pages</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>181</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_first_use_key()</b>,
+            <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="atomic_int_notice_snapshot_t::presented_page">
+            <a
+              class="permalink"
+              href="#atomic_int_notice_snapshot_t::presented_page"
+              >atomic_int notice_snapshot_t::presented_page</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>182</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_first_use_key()</b>,
+            <b>ui_notice_frame_presented()</b>, <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_notice_snapshot_t::rendered_cols">
+            <a class="permalink" href="#int_notice_snapshot_t::rendered_cols"
+              >int notice_snapshot_t::rendered_cols</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>184</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_notice_snapshot_t::rendered_page">
+            <a class="permalink" href="#int_notice_snapshot_t::rendered_page"
+              >int notice_snapshot_t::rendered_page</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>183</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_frame_presented()</b>,
+            <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_notice_snapshot_t::rendered_rows">
+            <a class="permalink" href="#int_notice_snapshot_t::rendered_rows"
+              >int notice_snapshot_t::rendered_rows</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>185</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_notice_severity_t</b> notice_snapshot_t::severity
+          </h2>
+          <p class="Pp">
+            Definition at line <b>174</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_flush_snapshot()</b>,
+            <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
+            and <b>ui_notice_title()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> notice_snapshot_t::started</h2>
+          <p class="Pp">
+            Definition at line <b>177</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_notice_snapshot_t::text__">
+            <a class="permalink" href="#char_notice_snapshot_t::text__"
+              >char notice_snapshot_t::text[]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>186</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_first_use_complete()</b>,
+            <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_notice_snapshot_t::title_offset">
+            <a class="permalink" href="#size_t_notice_snapshot_t::title_offset"
+              >size_t notice_snapshot_t::title_offset</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>179</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> notice_snapshot_t::unicode</h2>
+          <p class="Pp">
+            Definition at line <b>175</b> of file <b>notice.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_flush_snapshot()</b>,
+            <b>ui_notice_present()</b>, and
+            <b>ui_notice_present_first_use()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

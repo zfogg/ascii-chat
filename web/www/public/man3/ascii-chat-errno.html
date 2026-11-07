@@ -1,103 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>errno(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">errno(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">errno(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">errno - Error stacks and recovery</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_namespace"><a class="permalink" href="#Function_namespace">Function
-  namespace</a></h1>
-<p class="Pp">Public error-state operations use the errno_* namespace: errno_set
-    and its formatted/system-error variants record failures; errno_has,
-    errno_get, and errno_clear inspect and resolve them. Scope, snapshot,
-    import, diagnostic, and shutdown operations share that prefix. SET_ERRNO and
-    the other convenience macros forward to these functions.</p>
-<p class="Pp"></p>
-<p class="Pp">The function-symbol rename requires library consumers to rebuild.
-    No legacy function aliases are exported. Existing error types, scope/history
-    types, ASCIICHAT_ERRNO_* constants, and the <b>asciichat_errno.h</b> include
-    path retain their names. General error formatting and statistics functions
-    are unchanged.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Pending_errors"><a class="permalink" href="#Pending_errors">Pending
-  errors</a></h1>
-<p class="Pp">Each registered thread has a LIFO stack in a process-wide hash
-    table. The main thread owns process shutdown; workers publish directly.
-    <b>SET_ERRNO()</b> pushes a frame and returns the supplied
-    <b>asciichat_error_t</b>. Returning an existing error propagates it without
-    adding a duplicate. Add a frame only for useful context.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>CLEAR_ERRNO()</b> removes one frame. <b>CLEAR_ERRNO_ALL()</b>
-    removes this thread's complete stack. <b>GET_ERRNO()</b> reads the top, or
-    ASCIICHAT_OK. <b>HAS_ERRNO(&amp;snapshot)</b> copies the top.
-    <b>HAS_ERRNO_CODE(code)</b> searches all pending frames, not handled
-    history. ASCIICHAT_OK is never a match. Empty stacks and unknown thread IDs
-    return false.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>CLEAR_ERRNO_TID(tid)</b>, <b>CLEAR_ERRNO_ALL_TID(tid)</b>, and
-    <b>HAS_ERRNO_CODE_TID(tid, code)</b> operate on a full-width platform thread
-    ID. Unconditional TID operations target that ID's current registration. For
-    an inspect-then-clear decision use errno_clear_if_top(tid, generation,
-    error_id); an intervening push, clear, or ID reuse makes it return false.
-    Remote clearing changes only application error state, never another thread's
-    native errno. Automatic TLS destructors unregister exited native
-  threads.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Snapshot_ownership"><a class="permalink" href="#Snapshot_ownership">Snapshot
-  ownership</a></h1>
-<p class="Pp">Contexts are self-contained values. They contain a bounded inline
-    message and raw backtrace addresses, not pointers into mutable stack nodes.
-    No snapshot destroy call is necessary. Copies remain valid after pop,
-    cross-thread clear, thread exit, or process registry shutdown. Source
-    locations refer to static compiler strings. Printing symbolizes a private
-    backtrace and frees its symbols.</p>
-<p class="Pp"></p>
-<p class="Pp">The context structure and removal of writable TLS globals change
-    the library ABI. Consumers must rebuild against the new header. Replace
-    direct writes to asciichat_errno/asciichat_errno_context with SET_ERRNO or
-    its system-error variant. Replace the old separate cross-thread setter with
-    publication by the offending thread; there is only one authoritative error
-    registry now.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Recovery_boundaries"><a class="permalink" href="#Recovery_boundaries">Recovery
-  boundaries</a></h1>
-<p class="Pp">The offending thread owns recovery policy. Libraries record and
-    return errors; application boundaries choose retry, dismissal, connection
-    teardown, or shutdown.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>asciichat_errno_scope_t attempt = errno_scope_begin();
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>errno(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">errno(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">errno(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">errno - Error stacks and recovery</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_namespace">
+          <a class="permalink" href="#Function_namespace">Function namespace</a>
+        </h1>
+        <p class="Pp">
+          Public error-state operations use the errno_* namespace: errno_set and
+          its formatted/system-error variants record failures; errno_has,
+          errno_get, and errno_clear inspect and resolve them. Scope, snapshot,
+          import, diagnostic, and shutdown operations share that prefix.
+          SET_ERRNO and the other convenience macros forward to these functions.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The function-symbol rename requires library consumers to rebuild. No
+          legacy function aliases are exported. Existing error types,
+          scope/history types, ASCIICHAT_ERRNO_* constants, and the
+          <b>asciichat_errno.h</b> include path retain their names. General
+          error formatting and statistics functions are unchanged.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Pending_errors">
+          <a class="permalink" href="#Pending_errors">Pending errors</a>
+        </h1>
+        <p class="Pp">
+          Each registered thread has a LIFO stack in a process-wide hash table.
+          The main thread owns process shutdown; workers publish directly.
+          <b>SET_ERRNO()</b> pushes a frame and returns the supplied
+          <b>asciichat_error_t</b>. Returning an existing error propagates it
+          without adding a duplicate. Add a frame only for useful context.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>CLEAR_ERRNO()</b> removes one frame.
+          <b>CLEAR_ERRNO_ALL()</b> removes this thread's complete stack.
+          <b>GET_ERRNO()</b> reads the top, or ASCIICHAT_OK.
+          <b>HAS_ERRNO(&amp;snapshot)</b> copies the top.
+          <b>HAS_ERRNO_CODE(code)</b> searches all pending frames, not handled
+          history. ASCIICHAT_OK is never a match. Empty stacks and unknown
+          thread IDs return false.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>CLEAR_ERRNO_TID(tid)</b>, <b>CLEAR_ERRNO_ALL_TID(tid)</b>, and
+          <b>HAS_ERRNO_CODE_TID(tid, code)</b> operate on a full-width platform
+          thread ID. Unconditional TID operations target that ID's current
+          registration. For an inspect-then-clear decision use
+          errno_clear_if_top(tid, generation, error_id); an intervening push,
+          clear, or ID reuse makes it return false. Remote clearing changes only
+          application error state, never another thread's native errno.
+          Automatic TLS destructors unregister exited native threads.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Snapshot_ownership">
+          <a class="permalink" href="#Snapshot_ownership">Snapshot ownership</a>
+        </h1>
+        <p class="Pp">
+          Contexts are self-contained values. They contain a bounded inline
+          message and raw backtrace addresses, not pointers into mutable stack
+          nodes. No snapshot destroy call is necessary. Copies remain valid
+          after pop, cross-thread clear, thread exit, or process registry
+          shutdown. Source locations refer to static compiler strings. Printing
+          symbolizes a private backtrace and frees its symbols.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The context structure and removal of writable TLS globals change the
+          library ABI. Consumers must rebuild against the new header. Replace
+          direct writes to asciichat_errno/asciichat_errno_context with
+          SET_ERRNO or its system-error variant. Replace the old separate
+          cross-thread setter with publication by the offending thread; there is
+          only one authoritative error registry now.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Recovery_boundaries">
+          <a class="permalink" href="#Recovery_boundaries"
+            >Recovery boundaries</a
+          >
+        </h1>
+        <p class="Pp">
+          The offending thread owns recovery policy. Libraries record and return
+          errors; application boundaries choose retry, dismissal, connection
+          teardown, or shutdown.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>asciichat_errno_scope_t attempt = errno_scope_begin();
 asciichat_error_t result = try_connection();
 if (result == ERROR_NETWORK_TIMEOUT) {
 <br/>
@@ -115,227 +166,311 @@ if (result == ERROR_NETWORK_TIMEOUT) {
 <br/>
     errno_scope_end(attempt, ASCIICHAT_ERRNO_HANDLED);
 }</pre>
-<p class="Pp"><b>HAS_ERRNO_CODE_SINCE(attempt, code)</b> searches only frames
-    newer than the checkpoint. Scopes use monotonically assigned IDs and a
-    registration generation, not depth, so concurrent removals cannot cause
-    unrelated older errors to be consumed. <b>errno_checkpoint()</b> observes a
-    suboperation without starting a new causal chain; use it for propagation
-    checks inside an existing attempt. Nested scopes resolve inner attempts
-    independently. Starting an operation also sets a cause boundary: a new
-    failure cannot cite an unrelated older operation.</p>
-<p class="Pp"></p>
-<p class="Pp">ASSERT_NO_ERRNO_SINCE detects successful operations that leave
-    newly created errors unresolved in debug builds. It does not clear errors.
-    ASSERT_NO_ERRNO checks the whole current stack. Explicitly resolve known
-    recoverable failures before declaring success; do not blanket-clear caller
-    errors.</p>
-<p class="Pp"></p>
-<p class="Pp">For a fatal worker decision, errno_request_exit(code) retains the
-    first nonzero process error independently of stack cleanup. Request normal
-    application shutdown after recording the decision. Main returns that code
-    after the mode has stopped its workers. FATAL remains available for
-    unrecoverable startup failures. A client authentication failure on the
-    server closes that connection, not every other client's session.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Causes,_history,_and_timing"><a class="permalink" href="#Causes,_history,_and_timing">Causes,
-  history, and timing</a></h1>
-<p class="Pp">A new frame links to the preceding pending frame inside its
-    operation. LOG_ERRNO_IF_SET prints the chain from outer context toward the
-    original cause. SET_ERRNO produces a debug breadcrumb rather than a separate
-    error-level incident at every propagation layer. Top-level handlers still
-    report failures explicitly.</p>
-<p class="Pp"></p>
-<p class="Pp">Every frame has a unique ID, thread generation, captured
-    system/WSA error, wall-clock timestamp, and monotonic creation time. Pending
-    age and resolution latency use only the monotonic clock. SET_ERRNO_SYS
-    captures the system error before evaluating formatting arguments, and macro
-    arguments are evaluated once.</p>
-<p class="Pp"></p>
-<p class="Pp">Popped frames become bounded history records with handled,
-    dismissed, thread-exit, or overflow outcomes. Readers can inspect a brief
-    failure even after successful recovery. This is a diagnostic history, not a
-    guaranteed-delivery event queue. Snapshots are non-destructive. History
-    overwrite counters make loss explicit.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Capacity_and_error-path_safety"><a class="permalink" href="#Capacity_and_error-path_safety">Capacity
-  and error-path safety</a></h1>
-<p class="Pp">The process reserves 1,024 frame slots, at most 64 frames per
-    thread, at most 256 registered threads, and 128 history records. Messages
-    hold 1,023 bytes plus the terminator and expose message_truncated. No
-    pending-error allocation is performed on failure, including out-of-memory
-    failures. Pop zeroes and returns a pool slot; thread exit returns all its
-    slots; shutdown zeroes stacks and history and releases the platform TLS key.
-    No message or backtrace-symbol heap allocation remains in the registry.</p>
-<p class="Pp"></p>
-<p class="Pp">Two frame slots are reserved for each thread registration,
-    preserving its root and newest error even when other threads exhaust the
-    shared pool. At a depth or shared-pool limit, the second-oldest frame is
-    evicted to preserve root and newest context. dropped_errors counts eviction
-    and failed registration. A registration limit/TLS failure records an
-    overflow history event, but cannot create a pending stack. The original
-    function return code is always preserved.</p>
-<p class="Pp"></p>
-<p class="Pp">The registry guard uses platform atomics without recursive
-    diagnostic hooks. Critical sections only manipulate bounded data; logging,
-    handlers, allocation, and backtrace symbolization run outside them. A push
-    becomes visible when it releases the guard. A later synchronized reader sees
-    it unless it has already been popped; history covers that latter case. This
-    is not a wall-clock latency guarantee and the API is not
-  async-signal-safe.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Diagnostics_workers"><a class="permalink" href="#Diagnostics_workers">Diagnostics
-  workers</a></h1>
-<p class="Pp"><b>lib/debug/sync.c</b> owns the debug_sync worker for
-    synchronization inspection, deadlock monitoring, and backtraces.
-    <b>lib/debug/stats.c</b> owns the separate debug_stats worker for error
-    totals and memory statistics. <b>lib/debug/errno.c</b> owns the debug_errno
-    worker for all pending thread stacks and handled history. All three serve
-    all five native modes: server, client, mirror, discovery-service, and
-    discovery. Independent deadlines allow delayed requests to coexist.
-    Duplicate requests for the same report coalesce at the earliest deadline.
-    Shutdown wakes and joins all three workers before diagnostic data is
-    destroyed. Signal handlers only set a request flag.</p>
-<p class="Pp"></p>
-<p class="Pp">--errno-stacks [TIME] prints pending error stacks, handled
-    history, error totals, and error registry statistics. --sync-state [TIME]
-    prints synchronization state and named registry statistics. Both options are
-    available only in Debug builds. Each schedules its own one-shot report after
-    TIME seconds (immediately when omitted); using both produces two independent
-    reports. Signal and keyboard diagnostic requests notify all three workers;
-    SIGUSR1 includes every pending thread stack. Debug builds monitor
-    synchronization automatically; Release builds do not start the diagnostics
-    workers. Error recording and searching are available in every build.
-    Backtraces follow ENABLE_ERRNO_BACKTRACES.</p>
-<p class="Pp"></p>
-<p class="Pp">WASM can call the synchronous printers and debug_sync_poll,
-    debug_errno_poll, and debug_stats_poll from its event loop; it does not
-    create a native diagnostics worker.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Recovery_and_remote_error_policy"><a class="permalink" href="#Recovery_and_remote_error_policy">Recovery
-  and remote error policy</a></h1>
-<p class="Pp">Use the return value to establish failure. Inspect only errors
-    created by that operation (HAS_ERRNO_CODE_SINCE with a checkpoint/scope) to
-    choose recovery. Resolve that operation's errors only after handling them.
-    Successful independent operations must restore their scope boundary too. Add
-    SET_ERRNO only when adding useful context; propagate the return code
-    unchanged otherwise.</p>
-<p class="Pp"></p>
-<p class="Pp">TCP timeouts are retryable only before any header bytes have
-    arrived. A partial header or any payload timeout is terminal. WebRTC retains
-    incomplete packet bytes and returns ERROR_NETWORK_INCOMPLETE while waiting;
-    five seconds from the start of the incomplete packet is a terminal deadline,
-    not reset by another fragment.</p>
-<p class="Pp"></p>
-<p class="Pp">Known local packet construction failures may drop a media frame
-    without closing the transport. Send implementations must return
-    ERROR_NETWORK if transmission could have consumed bytes; crypto and unknown
-    failures are not treated as local frame rejections. Optional audio drops are
-    recorded as handled history.</p>
-<p class="Pp"></p>
-<p class="Pp">Discovery errors map the ACIP wire namespace to application codes
-    for create, lookup and join. Public responses use an allowlist and generic
-    text; internal paths, subprocess output and backtraces stay local.
-    Session-full and rate-limit rejections use the existing retry budget with
-    bounded exponential delays up to 32 seconds. Authentication/protocol
-    rejections stop automatic retries. Snapshot mode still does not retry.</p>
-<p class="Pp"></p>
-<p class="Pp">PROTOCOL_FEATURE_RECOVERABLE_ERRORS (0x04) advertises support for
-    nonfatal audio notifications using the existing protocol version feature
-    field. The server sends an ERROR_AUDIO notification at most once per
-    connection only to an opted-in peer; older peers receive a remote log
-    instead. Video continues on ERROR_AUDIO. Error notifications and logs share
-    the media send lock to preserve packet framing.</p>
-<p class="Pp"></p>
-<p class="Pp">Admission captures the original failure before attempting
-    notification. The notification has its own recovery scope, and explicit
-    socket ownership prevents sending on descriptors already consumed by client
-    cleanup. The initial version packet is consumed before a pre-handshake
-    rejection to avoid losing that response to a reset caused by unread
-  input.</p>
-<p class="Pp"></p>
-<p class="Pp">The recovery audit covered existing scope/search/clear users
-    across native modes, network transports, discovery, media probes and
-    configuration. It also corrected positive-enum send-result checks and
-    successful-path scope leaks. Legacy APIs with documented
-    negative/status/count returns retain their own return contracts.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Operation-local_snapshots_and_worker_handoff"><a class="permalink" href="#Operation-local_snapshots_and_worker_handoff">Operation-local
-  snapshots and worker handoff</a></h1>
-<p class="Pp">errno_peek_since(checkpoint, &amp;failure) copies the newest error
-    from that operation, rejecting older frames and stale thread generations.
-    Pointer-returning APIs use this to attribute failure without reusing
-    unrelated pending errors.</p>
-<p class="Pp"></p>
-<p class="Pp">An operation can store this value snapshot under its own mutex, or
-    publish it through a joined worker result. errno_import(&amp;failure)
-    records a new caller-owned frame with the original error ID as its cause,
-    retaining the copied message, source and raw backtrace even after worker
-    exit or history eviction. It does not consume or clear the producer's
-    errors. Import once when processing an operation result, not by polling
-    arbitrary thread stacks.</p>
-<p class="Pp"></p>
-<p class="Pp">ffmpeg_decoder_poll_video distinguishes READY, WAITING, EOF and
-    FAILED; failure includes an owned snapshot. The pointer compatibility API
-    imports FAILED into the reading thread. Capture owners stop on new errors
-    and the pipeline imports its capture failure after joining, so decoder
-    failure cannot masquerade as perpetual frame starvation. Failed prefetch
-    startup fails media creation.</p>
-<p class="Pp"></p>
-<p class="Pp">PortAudio software fallback and optional router mapping attempts
-    resolve only their operation scopes. Router renewal failures enter bounded
-    handled history when the scheduler takes responsibility for retrying;
-    mapping state still tracks lease expiration. Rate-limit helpers return a
-    typed status plus an allowed output; connection owners send encrypted public
-    responses under their send lock.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Runtime_error_popup"><a class="permalink" href="#Runtime_error_popup">Runtime
-  error popup</a></h1>
-<p class="Pp">While the native terminal presenter is active, newly recorded
-    errors also enter an allocation-free, 128-entry notification journal. The
-    popup shows the symbolic and numeric code, generic meaning, contextual
-    message, system/socket error when present, and originating thread. Debug,
-    Dev, and RelWithDebInfo builds also show the source location and the
-    captured backtrace, using the same semantic formatter as terminal logs.
-    Release hides these developer diagnostics.</p>
-<p class="Pp"></p>
-<p class="Pp">Left/Right select the preceding/following error; Home/End select
-    the oldest/newest. New arrivals select the newest error. Up/Down and
-    PageUp/PageDown scroll details. Backtraces use at most 12 visible lines with
-    the shared scrollbar. Error metadata stays fixed while the trace scrolls
-    when the terminal has room for both sections; smaller terminals scroll the
-    combined details so every line remains reachable. The popup displays a
-    Dismiss all button activated by Enter and a ? Help hint. Its compact help
-    overlay lists navigation, scrolling, and dismissal shortcuts. Esc, q, and
-    Enter dismiss all errors and consume the key. Acknowledgment removes only
-    notifications through the captured cutoff ID; concurrent later arrivals
-    remain visible. It never clears a producer's pending errno stack or recovery
-    scope. Overflow keeps the newest 128 notifications and marks older entries
-    as dropped.</p>
-<p class="Pp"></p>
-<p class="Pp">The presenter composes the selected screen and retained dialog
-    layers, then errors, then keyboard help. An already open log-viewer help
-    menu also stays above errors. Help retains the underlying interactive
-    selection, including prompts and diagnostics. Below 60 columns or 14 rows
-    the popup uses the common too-small UI; dismissal keys remain active and
-    enlarging the terminal restores selection and scrolling.</p>
-<p class="Pp"></p>
-<p class="Pp">Batch output and finite snapshots keep their existing synchronous
-    behavior. UI rendering can suppress its own notifications without
-    suppressing errno storage or logging, preventing recursive popup failures.
-    Normal screen changes intentionally supersede unfinished media frames and
-    are not terminal write errors.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Tests"><a class="permalink" href="#Tests">Tests</a></h1>
-<p class="Pp">Build the production library tests without Criterion:</p>
-<p class="Pp"></p>
-<pre>cmake --preset default -B build -DBUILD_TESTS=ON
+        <p class="Pp">
+          <b>HAS_ERRNO_CODE_SINCE(attempt, code)</b> searches only frames newer
+          than the checkpoint. Scopes use monotonically assigned IDs and a
+          registration generation, not depth, so concurrent removals cannot
+          cause unrelated older errors to be consumed.
+          <b>errno_checkpoint()</b> observes a suboperation without starting a
+          new causal chain; use it for propagation checks inside an existing
+          attempt. Nested scopes resolve inner attempts independently. Starting
+          an operation also sets a cause boundary: a new failure cannot cite an
+          unrelated older operation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          ASSERT_NO_ERRNO_SINCE detects successful operations that leave newly
+          created errors unresolved in debug builds. It does not clear errors.
+          ASSERT_NO_ERRNO checks the whole current stack. Explicitly resolve
+          known recoverable failures before declaring success; do not
+          blanket-clear caller errors.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          For a fatal worker decision, errno_request_exit(code) retains the
+          first nonzero process error independently of stack cleanup. Request
+          normal application shutdown after recording the decision. Main returns
+          that code after the mode has stopped its workers. FATAL remains
+          available for unrecoverable startup failures. A client authentication
+          failure on the server closes that connection, not every other client's
+          session.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Causes,_history,_and_timing">
+          <a class="permalink" href="#Causes,_history,_and_timing"
+            >Causes, history, and timing</a
+          >
+        </h1>
+        <p class="Pp">
+          A new frame links to the preceding pending frame inside its operation.
+          LOG_ERRNO_IF_SET prints the chain from outer context toward the
+          original cause. SET_ERRNO produces a debug breadcrumb rather than a
+          separate error-level incident at every propagation layer. Top-level
+          handlers still report failures explicitly.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Every frame has a unique ID, thread generation, captured system/WSA
+          error, wall-clock timestamp, and monotonic creation time. Pending age
+          and resolution latency use only the monotonic clock. SET_ERRNO_SYS
+          captures the system error before evaluating formatting arguments, and
+          macro arguments are evaluated once.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Popped frames become bounded history records with handled, dismissed,
+          thread-exit, or overflow outcomes. Readers can inspect a brief failure
+          even after successful recovery. This is a diagnostic history, not a
+          guaranteed-delivery event queue. Snapshots are non-destructive.
+          History overwrite counters make loss explicit.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Capacity_and_error-path_safety">
+          <a class="permalink" href="#Capacity_and_error-path_safety"
+            >Capacity and error-path safety</a
+          >
+        </h1>
+        <p class="Pp">
+          The process reserves 1,024 frame slots, at most 64 frames per thread,
+          at most 256 registered threads, and 128 history records. Messages hold
+          1,023 bytes plus the terminator and expose message_truncated. No
+          pending-error allocation is performed on failure, including
+          out-of-memory failures. Pop zeroes and returns a pool slot; thread
+          exit returns all its slots; shutdown zeroes stacks and history and
+          releases the platform TLS key. No message or backtrace-symbol heap
+          allocation remains in the registry.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Two frame slots are reserved for each thread registration, preserving
+          its root and newest error even when other threads exhaust the shared
+          pool. At a depth or shared-pool limit, the second-oldest frame is
+          evicted to preserve root and newest context. dropped_errors counts
+          eviction and failed registration. A registration limit/TLS failure
+          records an overflow history event, but cannot create a pending stack.
+          The original function return code is always preserved.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The registry guard uses platform atomics without recursive diagnostic
+          hooks. Critical sections only manipulate bounded data; logging,
+          handlers, allocation, and backtrace symbolization run outside them. A
+          push becomes visible when it releases the guard. A later synchronized
+          reader sees it unless it has already been popped; history covers that
+          latter case. This is not a wall-clock latency guarantee and the API is
+          not async-signal-safe.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Diagnostics_workers">
+          <a class="permalink" href="#Diagnostics_workers"
+            >Diagnostics workers</a
+          >
+        </h1>
+        <p class="Pp">
+          <b>lib/debug/sync.c</b> owns the debug_sync worker for synchronization
+          inspection, deadlock monitoring, and backtraces.
+          <b>lib/debug/stats.c</b> owns the separate debug_stats worker for
+          error totals and memory statistics. <b>lib/debug/errno.c</b> owns the
+          debug_errno worker for all pending thread stacks and handled history.
+          All three serve all five native modes: server, client, mirror,
+          discovery-service, and discovery. Independent deadlines allow delayed
+          requests to coexist. Duplicate requests for the same report coalesce
+          at the earliest deadline. Shutdown wakes and joins all three workers
+          before diagnostic data is destroyed. Signal handlers only set a
+          request flag.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          --errno-stacks [TIME] prints pending error stacks, handled history,
+          error totals, and error registry statistics. --sync-state [TIME]
+          prints synchronization state and named registry statistics. Both
+          options are available only in Debug builds. Each schedules its own
+          one-shot report after TIME seconds (immediately when omitted); using
+          both produces two independent reports. Signal and keyboard diagnostic
+          requests notify all three workers; SIGUSR1 includes every pending
+          thread stack. Debug builds monitor synchronization automatically;
+          Release builds do not start the diagnostics workers. Error recording
+          and searching are available in every build. Backtraces follow
+          ENABLE_ERRNO_BACKTRACES.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          WASM can call the synchronous printers and debug_sync_poll,
+          debug_errno_poll, and debug_stats_poll from its event loop; it does
+          not create a native diagnostics worker.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Recovery_and_remote_error_policy">
+          <a class="permalink" href="#Recovery_and_remote_error_policy"
+            >Recovery and remote error policy</a
+          >
+        </h1>
+        <p class="Pp">
+          Use the return value to establish failure. Inspect only errors created
+          by that operation (HAS_ERRNO_CODE_SINCE with a checkpoint/scope) to
+          choose recovery. Resolve that operation's errors only after handling
+          them. Successful independent operations must restore their scope
+          boundary too. Add SET_ERRNO only when adding useful context; propagate
+          the return code unchanged otherwise.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          TCP timeouts are retryable only before any header bytes have arrived.
+          A partial header or any payload timeout is terminal. WebRTC retains
+          incomplete packet bytes and returns ERROR_NETWORK_INCOMPLETE while
+          waiting; five seconds from the start of the incomplete packet is a
+          terminal deadline, not reset by another fragment.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Known local packet construction failures may drop a media frame
+          without closing the transport. Send implementations must return
+          ERROR_NETWORK if transmission could have consumed bytes; crypto and
+          unknown failures are not treated as local frame rejections. Optional
+          audio drops are recorded as handled history.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Discovery errors map the ACIP wire namespace to application codes for
+          create, lookup and join. Public responses use an allowlist and generic
+          text; internal paths, subprocess output and backtraces stay local.
+          Session-full and rate-limit rejections use the existing retry budget
+          with bounded exponential delays up to 32 seconds.
+          Authentication/protocol rejections stop automatic retries. Snapshot
+          mode still does not retry.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          PROTOCOL_FEATURE_RECOVERABLE_ERRORS (0x04) advertises support for
+          nonfatal audio notifications using the existing protocol version
+          feature field. The server sends an ERROR_AUDIO notification at most
+          once per connection only to an opted-in peer; older peers receive a
+          remote log instead. Video continues on ERROR_AUDIO. Error
+          notifications and logs share the media send lock to preserve packet
+          framing.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Admission captures the original failure before attempting
+          notification. The notification has its own recovery scope, and
+          explicit socket ownership prevents sending on descriptors already
+          consumed by client cleanup. The initial version packet is consumed
+          before a pre-handshake rejection to avoid losing that response to a
+          reset caused by unread input.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The recovery audit covered existing scope/search/clear users across
+          native modes, network transports, discovery, media probes and
+          configuration. It also corrected positive-enum send-result checks and
+          successful-path scope leaks. Legacy APIs with documented
+          negative/status/count returns retain their own return contracts.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Operation-local_snapshots_and_worker_handoff">
+          <a
+            class="permalink"
+            href="#Operation-local_snapshots_and_worker_handoff"
+            >Operation-local snapshots and worker handoff</a
+          >
+        </h1>
+        <p class="Pp">
+          errno_peek_since(checkpoint, &amp;failure) copies the newest error
+          from that operation, rejecting older frames and stale thread
+          generations. Pointer-returning APIs use this to attribute failure
+          without reusing unrelated pending errors.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          An operation can store this value snapshot under its own mutex, or
+          publish it through a joined worker result. errno_import(&amp;failure)
+          records a new caller-owned frame with the original error ID as its
+          cause, retaining the copied message, source and raw backtrace even
+          after worker exit or history eviction. It does not consume or clear
+          the producer's errors. Import once when processing an operation
+          result, not by polling arbitrary thread stacks.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          ffmpeg_decoder_poll_video distinguishes READY, WAITING, EOF and
+          FAILED; failure includes an owned snapshot. The pointer compatibility
+          API imports FAILED into the reading thread. Capture owners stop on new
+          errors and the pipeline imports its capture failure after joining, so
+          decoder failure cannot masquerade as perpetual frame starvation.
+          Failed prefetch startup fails media creation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          PortAudio software fallback and optional router mapping attempts
+          resolve only their operation scopes. Router renewal failures enter
+          bounded handled history when the scheduler takes responsibility for
+          retrying; mapping state still tracks lease expiration. Rate-limit
+          helpers return a typed status plus an allowed output; connection
+          owners send encrypted public responses under their send lock.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Runtime_error_popup">
+          <a class="permalink" href="#Runtime_error_popup"
+            >Runtime error popup</a
+          >
+        </h1>
+        <p class="Pp">
+          While the native terminal presenter is active, newly recorded errors
+          also enter an allocation-free, 128-entry notification journal. The
+          popup shows the symbolic and numeric code, generic meaning, contextual
+          message, system/socket error when present, and originating thread.
+          Debug, Dev, and RelWithDebInfo builds also show the source location
+          and the captured backtrace, using the same semantic formatter as
+          terminal logs. Release hides these developer diagnostics.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Left/Right select the preceding/following error; Home/End select the
+          oldest/newest. New arrivals select the newest error. Up/Down and
+          PageUp/PageDown scroll details. Backtraces use at most 12 visible
+          lines with the shared scrollbar. Error metadata stays fixed while the
+          trace scrolls when the terminal has room for both sections; smaller
+          terminals scroll the combined details so every line remains reachable.
+          The popup displays a Dismiss all button activated by Enter and a ?
+          Help hint. Its compact help overlay lists navigation, scrolling, and
+          dismissal shortcuts. Esc, q, and Enter dismiss all errors and consume
+          the key. Acknowledgment removes only notifications through the
+          captured cutoff ID; concurrent later arrivals remain visible. It never
+          clears a producer's pending errno stack or recovery scope. Overflow
+          keeps the newest 128 notifications and marks older entries as dropped.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The presenter composes the selected screen and retained dialog layers,
+          then errors, then keyboard help. An already open log-viewer help menu
+          also stays above errors. Help retains the underlying interactive
+          selection, including prompts and diagnostics. Below 60 columns or 14
+          rows the popup uses the common too-small UI; dismissal keys remain
+          active and enlarging the terminal restores selection and scrolling.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Batch output and finite snapshots keep their existing synchronous
+          behavior. UI rendering can suppress its own notifications without
+          suppressing errno storage or logging, preventing recursive popup
+          failures. Normal screen changes intentionally supersede unfinished
+          media frames and are not terminal write errors.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Tests">
+          <a class="permalink" href="#Tests">Tests</a>
+        </h1>
+        <p class="Pp">Build the production library tests without Criterion:</p>
+        <p class="Pp"></p>
+        <pre>
+cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-errno-stacks
 ctest --test-dir build -R &quot;^errno-stacks$&quot; --output-on-failure
 cmake --build build --target test-error-popup-fixture
@@ -344,38 +479,45 @@ python tests/python/integration/errno_smoke/test_smoke.py build/bin/ascii-chat -
 # Linux: verify SIGUSR1 prints both reports on stdout from separate workers
 python tests/python/integration/errno_signal/test_signal.py build/bin/ascii-chat --errno-probe build/bin/test-errno-stacks
 </pre>
-<p class="Pp">Generate a real unsupported-audio fixture with FFmpeg and exercise
-    codec fallback:</p>
-<p class="Pp"></p>
-<pre>python tests/standalone/errno/codec_fixture.py build/optional-codec.mkv
+        <p class="Pp">
+          Generate a real unsupported-audio fixture with FFmpeg and exercise
+          codec fallback:
+        </p>
+        <p class="Pp"></p>
+        <pre>
+python tests/standalone/errno/codec_fixture.py build/optional-codec.mkv
 python tests/python/integration/errno_smoke/test_smoke.py build/bin/ascii-chat --codec-fixture build/optional-codec.mkv
 </pre>
-<p class="Pp">The native suite exercises root/top search, single evaluation,
-    system/WSA metadata, safe value snapshots, scoped recovery, history
-    timing/overflow, thread-ID generations, remote clearing, thread exit,
-    simultaneous writers, global/per-thread capacity, and interruptible
-    diagnostics shutdown. Run test-errno-stacks --assert-leak in a debug build
-    to verify that an unresolved successful-operation boundary exits with
-    ERROR_INVALID_STATE.</p>
-<p class="Pp"></p>
-<p class="Pp">The Python error-popup smoke test drives production rendering and
-    input through PTY on POSIX and ConPTY on Windows. It checks journal
-    acknowledgment races, multiple-error navigation, new arrivals under help,
-    dismissal without key replay, scrolling, truncation, control-character
-    sanitization, small/exact-minimum terminal sizes, overflow, colors,
-    monochrome/ASCII output, prompt preservation, and layered
-    status/splash/log/statistics/error-stack/sync/dialog screens where
-    supported. CTest selects diagnostic expectations from the build type.
-    Terminal cell dumps, ANSI streams, screenshots, logs, and result metadata
-    are saved under build/Testing/error-popup (or the corresponding build
-    directory).</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        <p class="Pp">
+          The native suite exercises root/top search, single evaluation,
+          system/WSA metadata, safe value snapshots, scoped recovery, history
+          timing/overflow, thread-ID generations, remote clearing, thread exit,
+          simultaneous writers, global/per-thread capacity, and interruptible
+          diagnostics shutdown. Run test-errno-stacks --assert-leak in a debug
+          build to verify that an unresolved successful-operation boundary exits
+          with ERROR_INVALID_STATE.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The Python error-popup smoke test drives production rendering and
+          input through PTY on POSIX and ConPTY on Windows. It checks journal
+          acknowledgment races, multiple-error navigation, new arrivals under
+          help, dismissal without key replay, scrolling, truncation,
+          control-character sanitization, small/exact-minimum terminal sizes,
+          overflow, colors, monochrome/ASCII output, prompt preservation, and
+          layered status/splash/log/statistics/error-stack/sync/dialog screens
+          where supported. CTest selects diagnostic expectations from the build
+          type. Terminal cell dumps, ANSI streams, screenshots, logs, and result
+          metadata are saved under build/Testing/error-popup (or the
+          corresponding build directory).
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

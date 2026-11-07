@@ -1,106 +1,174 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>internal.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">internal.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">internal.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">internal.h - Internal WebSocket implementation types shared
-    between transport.c and server.c.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>websocket_msg_t</b>
-  <br/>
-  WebSocket message element (individual frame or fragment). struct
-    <b>websocket_transport_data_t</b>
-  <br/>
-  WebSocket transport implementation data.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>websocket_msg_t</b> <b>websocket_recv_msg_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>websocket_transport_send</b>
-    (<b>acip_transport_t</b> *transport, const void *data, size_t len)
-  <br/>
-  void <b>websocket_transport_write_pending</b> (struct lws *wsi,
-    <b>websocket_transport_data_t</b> *ws_data)
-  <br/>
-  Drain client messages from the send queue on the service thread.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Internal WebSocket implementation types shared between transport.c
-    and server.c.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>network/websocket/internal.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>websocket_msg_t</b> <b>websocket_recv_msg_t</b></a></h2>
-<p class="Pp">Definition at line <b>36</b> of file
-    <b>network/websocket/internal.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> websocket_transport_send
-  (<b>acip_transport_t</b> * transport, const void * data, size_t len)</h2>
-<p class="Pp">Queue one packet, preserving its control budget through encryption
-    and ownership transfer.</p>
-<p class="Pp">Definition at line <b>641</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>641                                                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>internal.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">internal.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">internal.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          internal.h - Internal WebSocket implementation types shared between
+          transport.c and server.c.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>websocket_msg_t</b>
+            <br />
+            WebSocket message element (individual frame or fragment). struct
+            <b>websocket_transport_data_t</b>
+            <br />
+            WebSocket transport implementation data.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>websocket_msg_t</b> <b>websocket_recv_msg_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>websocket_transport_send</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, const void *data, size_t len)
+            <br />
+            void <b>websocket_transport_write_pending</b> (struct lws *wsi,
+            <b>websocket_transport_data_t</b> *ws_data)
+            <br />
+            Drain client messages from the send queue on the service thread.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Internal WebSocket implementation types shared between transport.c and
+          server.c.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file <b>network/websocket/internal.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_">
+            <a class="permalink" href="#typedef_"
+              >typedef <b>websocket_msg_t</b> <b>websocket_recv_msg_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file
+            <b>network/websocket/internal.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> websocket_transport_send (<b
+              >acip_transport_t</b
+            >
+            * transport, const void * data, size_t len)
+          </h2>
+          <p class="Pp">
+            Queue one packet, preserving its control budget through encryption
+            and ownership transfer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>641</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+641                                                                                                       {
 642   // NOTE: Disabled START_TIMER/STOP_TIMER due to thread safety issues with timer hashtable
 643   // causing heap-use-after-free crashes in ASAN. The timer system has race conditions
 644   // when accessed from the service thread context. See: line 325 (similar issue).
@@ -159,31 +227,45 @@
 697   }
 698   return result;
 699 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_control_domain()</b>,
-    <b>buffer_release</b>, <b>websocket_transport_data_t::connection_failed</b>,
-    <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_dev_every</b>, <b>log_error</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
-    <b>websocket_transport_data_t::owns_context</b>,
-    <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>,
-    <b>websocket_transport_data_t::state_mutex</b>,
-    <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>,
-    <b>websocket_transport_send()</b>, and
-    <b>websocket_transport_data_t::wsi</b>.</p>
-<p class="Pp">Referenced by <b>websocket_transport_send()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_transport_write_pending_(struct_lws_*_wsi,_"><a class="permalink" href="#void_websocket_transport_write_pending_(struct_lws_*_wsi,_">void
-  websocket_transport_write_pending (struct lws * wsi,
-  <b>websocket_transport_data_t</b> * ws_data)</a></h2>
-<p class="Pp">Drain client messages from the send queue on the service
-  thread.</p>
-<p class="Pp">Definition at line <b>458</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>458                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>buffer_control_domain()</b>,
+            <b>buffer_release</b>,
+            <b>websocket_transport_data_t::connection_failed</b>,
+            <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_dev_every</b>, <b>log_error</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+            <b>websocket_transport_data_t::owns_context</b>,
+            <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>,
+            <b>websocket_transport_data_t::state_mutex</b>,
+            <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>,
+            <b>websocket_transport_send()</b>, and
+            <b>websocket_transport_data_t::wsi</b>.
+          </p>
+          <p class="Pp">Referenced by <b>websocket_transport_send()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_websocket_transport_write_pending_(struct_lws_*_wsi,_"
+          >
+            <a
+              class="permalink"
+              href="#void_websocket_transport_write_pending_(struct_lws_*_wsi,_"
+              >void websocket_transport_write_pending (struct lws * wsi,
+              <b>websocket_transport_data_t</b> * ws_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Drain client messages from the send queue on the service thread.
+          </p>
+          <p class="Pp">
+            Definition at line <b>458</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+458                                                                                              {
 459   if (!ws_data || atomic_load_bool(&amp;ws_data-&gt;is_destroying))
 460     return;
 461   /* lws suppresses writable callbacks until previously buffered output is
@@ -216,36 +298,43 @@
 488    * there is no next message, so the final owner is promptly released. */
 489   lws_callback_on_writable(wsi);
 490 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>buffer_release</b>,
-    <b>cond_broadcast()</b>,
-    <b>websocket_transport_data_t::connection_failed</b>,
-    <b>websocket_msg_t::data</b>,
-    <b>websocket_transport_data_t::inflight_buffer</b>,
-    <b>websocket_transport_data_t::inflight_bytes</b>,
-    <b>websocket_transport_data_t::is_connected</b>,
-    <b>websocket_transport_data_t::is_destroying</b>,
-    <b>websocket_msg_t::len</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>websocket_transport_data_t::pending_send_bytes</b>,
-    <b>ringbuffer_read()</b>, <b>websocket_transport_data_t::send_mutex</b>,
-    <b>websocket_transport_data_t::send_queue</b>,
-    <b>websocket_transport_data_t::state_cond</b>,
-    <b>websocket_transport_data_t::state_mutex</b>, and
-    <b>websocket_transport_write_pending()</b>.</p>
-<p class="Pp">Referenced by <b>websocket_transport_write_pending()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>buffer_release</b>,
+            <b>cond_broadcast()</b>,
+            <b>websocket_transport_data_t::connection_failed</b>,
+            <b>websocket_msg_t::data</b>,
+            <b>websocket_transport_data_t::inflight_buffer</b>,
+            <b>websocket_transport_data_t::inflight_bytes</b>,
+            <b>websocket_transport_data_t::is_connected</b>,
+            <b>websocket_transport_data_t::is_destroying</b>,
+            <b>websocket_msg_t::len</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>websocket_transport_data_t::pending_send_bytes</b>,
+            <b>ringbuffer_read()</b>,
+            <b>websocket_transport_data_t::send_mutex</b>,
+            <b>websocket_transport_data_t::send_queue</b>,
+            <b>websocket_transport_data_t::state_cond</b>,
+            <b>websocket_transport_data_t::state_mutex</b>, and
+            <b>websocket_transport_write_pending()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>websocket_transport_write_pending()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

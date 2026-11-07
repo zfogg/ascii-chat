@@ -1,170 +1,294 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>webrtc_data_channel(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">webrtc_data_channel(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">webrtc_data_channel(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">webrtc_data_channel - WebRTC data channel for sending/receiving
-    messages.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">int <b>rtc_id</b>
-  <br/>
-  libdatachannel data channel ID <b>webrtc_peer_connection_t</b> * <b>pc</b>
-  <br/>
-  Parent peer connection. <b>atomic_t</b> <b>is_open</b>
-  <br/>
-  Channel open state. void(*) <b>user_on_open</b> (<b>webrtc_data_channel_t</b>
-    *dc, void *<b>user_data</b>)
-  <br/>
-  Open callback. void(*) <b>user_on_close</b> (<b>webrtc_data_channel_t</b> *dc,
-    void *<b>user_data</b>)
-  <br/>
-  Close callback. void(*) <b>user_on_error</b> (<b>webrtc_data_channel_t</b>
-    *dc, const char *error, void *<b>user_data</b>)
-  <br/>
-  Error callback. void(*) <b>user_on_message</b> (<b>webrtc_data_channel_t</b>
-    *dc, const <b>uint8_t</b> *data, size_t len, void *<b>user_data</b>)
-  <br/>
-  Message callback. void * <b>user_data</b>
-  <br/>
-  User data for per-channel callbacks.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WebRTC data channel for sending/receiving messages.</p>
-<p class="Pp">Bidirectional communication channel over a WebRTC peer connection.
-    Supports custom per-channel callbacks for open/close/error/message
-  events.</p>
-<p class="Pp">Definition at line <b>78</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> webrtc_data_channel::is_open</h2>
-<p class="Pp">Channel open state.</p>
-<p class="Pp">Definition at line <b>81</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_close_datachannel()</b>,
-    <b>webrtc_create_datachannel()</b>, <b>webrtc_datachannel_is_open()</b>,
-    <b>webrtc_datachannel_send()</b>, and
-    <b>webrtc_datachannel_set_open_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>webrtc_peer_connection_t</b>* webrtc_data_channel::pc</h2>
-<p class="Pp">Parent peer connection.</p>
-<p class="Pp">Definition at line <b>80</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_datachannel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_webrtc_data_channel::rtc_id"><a class="permalink" href="#int_webrtc_data_channel::rtc_id">int
-  webrtc_data_channel::rtc_id</a></h2>
-<p class="Pp">libdatachannel data channel ID</p>
-<p class="Pp">Definition at line <b>79</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_close_datachannel()</b>,
-    <b>webrtc_create_datachannel()</b>,
-    <b>webrtc_datachannel_get_buffered_amount()</b>,
-    <b>webrtc_datachannel_get_label()</b>,
-    <b>webrtc_datachannel_get_max_message_size()</b>,
-    <b>webrtc_datachannel_is_open()</b>, <b>webrtc_datachannel_send()</b>, and
-    <b>webrtc_datachannel_set_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_webrtc_data_channel::user_data"><a class="permalink" href="#void*_webrtc_data_channel::user_data">void*
-  webrtc_data_channel::user_data</a></h2>
-<p class="Pp">User data for per-channel callbacks.</p>
-<p class="Pp">Definition at line <b>89</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_close("><a class="permalink" href="#void(*)_webrtc_data_channel::user_on_close(">void(*)
-  webrtc_data_channel::user_on_close(<b>webrtc_data_channel_t</b> *dc, void
-  *<b>user_data</b>)</a></h2>
-<p class="Pp">Close callback.</p>
-<p class="Pp">Definition at line <b>85</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_error("><a class="permalink" href="#void(*)_webrtc_data_channel::user_on_error(">void(*)
-  webrtc_data_channel::user_on_error(<b>webrtc_data_channel_t</b> *dc, const
-  char *error, void *<b>user_data</b>)</a></h2>
-<p class="Pp">Error callback.</p>
-<p class="Pp">Definition at line <b>86</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_message("><a class="permalink" href="#void(*)_webrtc_data_channel::user_on_message(">void(*)
-  webrtc_data_channel::user_on_message(<b>webrtc_data_channel_t</b> *dc, const
-  <b>uint8_t</b> *data, size_t len, void *<b>user_data</b>)</a></h2>
-<p class="Pp">Message callback.</p>
-<p class="Pp">Definition at line <b>87</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_open("><a class="permalink" href="#void(*)_webrtc_data_channel::user_on_open(">void(*)
-  webrtc_data_channel::user_on_open(<b>webrtc_data_channel_t</b> *dc, void
-  *<b>user_data</b>)</a></h2>
-<p class="Pp">Open callback.</p>
-<p class="Pp">Definition at line <b>84</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>webrtc_data_channel(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">webrtc_data_channel(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">webrtc_data_channel(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          webrtc_data_channel - WebRTC data channel for sending/receiving
+          messages.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>rtc_id</b>
+            <br />
+            libdatachannel data channel ID <b>webrtc_peer_connection_t</b> *
+            <b>pc</b>
+            <br />
+            Parent peer connection. <b>atomic_t</b> <b>is_open</b>
+            <br />
+            Channel open state. void(*) <b>user_on_open</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, void *<b>user_data</b>)
+            <br />
+            Open callback. void(*) <b>user_on_close</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, void *<b>user_data</b>)
+            <br />
+            Close callback. void(*) <b>user_on_error</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const char *error, void *<b>user_data</b>)
+            <br />
+            Error callback. void(*) <b>user_on_message</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const <b>uint8_t</b> *data, size_t len, void *<b>user_data</b>)
+            <br />
+            Message callback. void * <b>user_data</b>
+            <br />
+            User data for per-channel callbacks.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WebRTC data channel for sending/receiving messages.</p>
+        <p class="Pp">
+          Bidirectional communication channel over a WebRTC peer connection.
+          Supports custom per-channel callbacks for open/close/error/message
+          events.
+        </p>
+        <p class="Pp">
+          Definition at line <b>78</b> of file
+          <b>lib/network/webrtc/webrtc.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> webrtc_data_channel::is_open</h2>
+          <p class="Pp">Channel open state.</p>
+          <p class="Pp">
+            Definition at line <b>81</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_close_datachannel()</b>,
+            <b>webrtc_create_datachannel()</b>,
+            <b>webrtc_datachannel_is_open()</b>,
+            <b>webrtc_datachannel_send()</b>, and
+            <b>webrtc_datachannel_set_open_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>webrtc_peer_connection_t</b>* webrtc_data_channel::pc
+          </h2>
+          <p class="Pp">Parent peer connection.</p>
+          <p class="Pp">
+            Definition at line <b>80</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_create_datachannel()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_webrtc_data_channel::rtc_id">
+            <a class="permalink" href="#int_webrtc_data_channel::rtc_id"
+              >int webrtc_data_channel::rtc_id</a
+            >
+          </h2>
+          <p class="Pp">libdatachannel data channel ID</p>
+          <p class="Pp">
+            Definition at line <b>79</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_close_datachannel()</b>,
+            <b>webrtc_create_datachannel()</b>,
+            <b>webrtc_datachannel_get_buffered_amount()</b>,
+            <b>webrtc_datachannel_get_label()</b>,
+            <b>webrtc_datachannel_get_max_message_size()</b>,
+            <b>webrtc_datachannel_is_open()</b>,
+            <b>webrtc_datachannel_send()</b>, and
+            <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_webrtc_data_channel::user_data">
+            <a class="permalink" href="#void*_webrtc_data_channel::user_data"
+              >void* webrtc_data_channel::user_data</a
+            >
+          </h2>
+          <p class="Pp">User data for per-channel callbacks.</p>
+          <p class="Pp">
+            Definition at line <b>89</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_close(">
+            <a
+              class="permalink"
+              href="#void(*)_webrtc_data_channel::user_on_close("
+              >void(*) webrtc_data_channel::user_on_close(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, void *<b>user_data</b>)</a
+            >
+          </h2>
+          <p class="Pp">Close callback.</p>
+          <p class="Pp">
+            Definition at line <b>85</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_error(">
+            <a
+              class="permalink"
+              href="#void(*)_webrtc_data_channel::user_on_error("
+              >void(*) webrtc_data_channel::user_on_error(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, const char *error, void *<b>user_data</b>)</a
+            >
+          </h2>
+          <p class="Pp">Error callback.</p>
+          <p class="Pp">
+            Definition at line <b>86</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_message(">
+            <a
+              class="permalink"
+              href="#void(*)_webrtc_data_channel::user_on_message("
+              >void(*) webrtc_data_channel::user_on_message(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, const <b>uint8_t</b> *data, size_t len, void
+              *<b>user_data</b>)</a
+            >
+          </h2>
+          <p class="Pp">Message callback.</p>
+          <p class="Pp">
+            Definition at line <b>87</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void(*)_webrtc_data_channel::user_on_open(">
+            <a
+              class="permalink"
+              href="#void(*)_webrtc_data_channel::user_on_open("
+              >void(*) webrtc_data_channel::user_on_open(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, void *<b>user_data</b>)</a
+            >
+          </h2>
+          <p class="Pp">Open callback.</p>
+          <p class="Pp">
+            Definition at line <b>84</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

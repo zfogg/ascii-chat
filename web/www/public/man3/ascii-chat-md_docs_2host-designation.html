@@ -1,109 +1,155 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>md_docs_2host-designation(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">md_docs_2host-designation(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">md_docs_2host-designation(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">md_docs_2host-designation - Discovery host designation</p>
-<p class="Pp">ACDS is authoritative about the current host. Host election and
-    quality policy remain in the existing handoff implementation.</p>
-<p class="Pp"></p>
-<p class="Pp">A joined connection may announce only its own participant ID in
-    its own session. ACDS accepts the announcement only when its host ID and
-    generation match the current handoff authority, including its committed
-    round. Before a handoff exists, authority is initialized from the persisted
-    host, or the session initiator. The endpoint must be terminated, have a
-    nonzero port and a known connection type. An empty address uses the
-    connection source address, as session creation already does. Once accepted,
-    an endpoint is immutable within a committed decision; a conflicting
-    replacement is rejected. An exact duplicate can repeat delivery.</p>
-<p class="Pp"></p>
-<p class="Pp">Authority validation, database updates and fanout are serialized
-    with handoff commits using the existing handoff mutex. HOST_DESIGNATED goes
-    to every joined connection in the session, including the announcing host,
-    through the existing pinned registry visitor. Other sessions and connections
-    that have not joined are excluded. Individual failed sends are logged
-    without stopping delivery to others. A subsequent announcement can repair
-    delivery; a joining/reconnecting participant receives the persisted
-    designation immediately after SESSION_JOINED.</p>
-<p class="Pp"></p>
-<p class="Pp">Addresses follow the same disclosure rule as SESSION_JOINED: only
-    password protected sessions or sessions with explicit public IP exposure
-    disclose them. WebRTC participants can reconcile by participant ID without
-    an address.</p>
-<p class="Pp"></p>
-<p class="Pp">HOST_ANNOUNCEMENT and HOST_DESIGNATED include a 32-bit handoff
-    generation in network byte order, initially one, plus the committed handoff
-    round (initially zero). The pair orders decisions: multiple hosts may be
-    committed within one membership generation. Preparing a successor does not
-    advance the current host decision. The extended payload requires matching
-    client/server versions; old announcement sizes fail closed. The generation
-    is scoped to the active ACDS handoff lifetime, not a durable epoch across
-    ACDS restarts.</p>
-<p class="Pp"></p>
-<p class="Pp">Clients consume designations on the ACDS signaling transport,
-    validate exact size, session, endpoint and generation, and ignore stale or
-    duplicate authority. An endpoint-less designation may be completed by an
-    endpoint for the same host and generation. Repeated handoff commits also
-    cannot queue another teardown. An unchanged host updates metadata without
-    restarting healthy media. A changed host uses the existing deferred role
-    dispatcher, which joins media workers before releasing transports. TCP
-    participants wait for a disclosed replacement endpoint; WebRTC participants
-    can switch by host ID.</p>
-<p class="Pp"></p>
-<p class="Pp">An actual host change uses the shared NOTICE_ANNOUNCE component
-    with &#x201C;The session has a new host.&#x201D; It does not capture input,
-    require acknowledgment, or introduce a modal popup over live video. Initial
-    joins and duplicate events stay quiet. This is related to #280 (popup
-    windows) and #297 (OS notifications). It does not implement a generic
-    popup/help refactor or platform OS notifications.</p>
-<p class="Pp"></p>
-<p class="Pp">Telemetry uses the existing OpenTelemetry adapter. Host-selection
-    spans distinguish initial negotiation from successor decisions, with
-    selected/committed/failed outcomes, generation/round, eligible candidate
-    count and the selected candidate's upload/NAT quality. Selection, commit and
-    failure counters and a recovery-duration histogram record decisions rather
-    than periodic ticks. Recovery duration measures observed host loss to
-    commit/failure, rather than media resumption. Designation/reconciliation
-    spans describe announcement/replay/commit sources, accepted/ignored/failed
-    outcomes and local role. Ignored designation and applied role-change
-    counters distinguish duplicates from actual transitions. Broadcast-attempted
-    means the registry visit completed, not that every recipient acknowledged
-    delivery. Attributes omit session strings, participant identifiers and
-    network addresses.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2host-designation(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2host-designation(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2host-designation(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">md_docs_2host-designation - Discovery host designation</p>
+        <p class="Pp">
+          ACDS is authoritative about the current host. Host election and
+          quality policy remain in the existing handoff implementation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          A joined connection may announce only its own participant ID in its
+          own session. ACDS accepts the announcement only when its host ID and
+          generation match the current handoff authority, including its
+          committed round. Before a handoff exists, authority is initialized
+          from the persisted host, or the session initiator. The endpoint must
+          be terminated, have a nonzero port and a known connection type. An
+          empty address uses the connection source address, as session creation
+          already does. Once accepted, an endpoint is immutable within a
+          committed decision; a conflicting replacement is rejected. An exact
+          duplicate can repeat delivery.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Authority validation, database updates and fanout are serialized with
+          handoff commits using the existing handoff mutex. HOST_DESIGNATED goes
+          to every joined connection in the session, including the announcing
+          host, through the existing pinned registry visitor. Other sessions and
+          connections that have not joined are excluded. Individual failed sends
+          are logged without stopping delivery to others. A subsequent
+          announcement can repair delivery; a joining/reconnecting participant
+          receives the persisted designation immediately after SESSION_JOINED.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Addresses follow the same disclosure rule as SESSION_JOINED: only
+          password protected sessions or sessions with explicit public IP
+          exposure disclose them. WebRTC participants can reconcile by
+          participant ID without an address.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          HOST_ANNOUNCEMENT and HOST_DESIGNATED include a 32-bit handoff
+          generation in network byte order, initially one, plus the committed
+          handoff round (initially zero). The pair orders decisions: multiple
+          hosts may be committed within one membership generation. Preparing a
+          successor does not advance the current host decision. The extended
+          payload requires matching client/server versions; old announcement
+          sizes fail closed. The generation is scoped to the active ACDS handoff
+          lifetime, not a durable epoch across ACDS restarts.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Clients consume designations on the ACDS signaling transport, validate
+          exact size, session, endpoint and generation, and ignore stale or
+          duplicate authority. An endpoint-less designation may be completed by
+          an endpoint for the same host and generation. Repeated handoff commits
+          also cannot queue another teardown. An unchanged host updates metadata
+          without restarting healthy media. A changed host uses the existing
+          deferred role dispatcher, which joins media workers before releasing
+          transports. TCP participants wait for a disclosed replacement
+          endpoint; WebRTC participants can switch by host ID.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          An actual host change uses the shared NOTICE_ANNOUNCE component with
+          &#x201C;The session has a new host.&#x201D; It does not capture input,
+          require acknowledgment, or introduce a modal popup over live video.
+          Initial joins and duplicate events stay quiet. This is related to #280
+          (popup windows) and #297 (OS notifications). It does not implement a
+          generic popup/help refactor or platform OS notifications.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Telemetry uses the existing OpenTelemetry adapter. Host-selection
+          spans distinguish initial negotiation from successor decisions, with
+          selected/committed/failed outcomes, generation/round, eligible
+          candidate count and the selected candidate's upload/NAT quality.
+          Selection, commit and failure counters and a recovery-duration
+          histogram record decisions rather than periodic ticks. Recovery
+          duration measures observed host loss to commit/failure, rather than
+          media resumption. Designation/reconciliation spans describe
+          announcement/replay/commit sources, accepted/ignored/failed outcomes
+          and local role. Ignored designation and applied role-change counters
+          distinguish duplicates from actual transitions. Broadcast-attempted
+          means the registry visit completed, not that every recipient
+          acknowledged delivery. Attributes omit session strings, participant
+          identifiers and network addresses.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

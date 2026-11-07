@@ -1,132 +1,218 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server.c - Server-side handshake protocol implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE</b> 65
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b>
-    <b>crypto_handshake_server_send_parameters</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport)
-  <br/>
-  Server: Send CRYPTO_PARAMETERS and set handshake context sizes.
-    <b>asciichat_error_t</b> <b>crypto_handshake_server_start</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport)
-  <br/>
-  Server: Start crypto handshake by sending public key. <b>asciichat_error_t</b>
-    <b>crypto_handshake_server_auth_challenge</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport,
-    <b>packet_type_t</b> packet_type, const <b>uint8_t</b> *payload, size_t
-    payload_len)
-  <br/>
-  Server: Process client's public key and send auth challenge.
-    <b>asciichat_error_t</b> <b>crypto_handshake_server_complete</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport,
-    <b>packet_type_t</b> packet_type, const <b>uint8_t</b> *payload, size_t
-    payload_len)
-  <br/>
-  Server: Process auth response and complete handshake.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Server-side handshake protocol implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>lib/crypto/handshake/server.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE___65"><a class="permalink" href="#_define_CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE___65">#define
-  CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE 65</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_start()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_auth_challenge
-  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> * transport,
-  <b>packet_type_t</b> packet_type, const <b>uint8_t</b> * payload, size_t
-  payload_len)</h2>
-<p class="Pp">Server: Process client's public key and send auth challenge.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Handshake context (must be in
-  CRYPTO_HANDSHAKE_KEY_EXCHANGE state)
-<br/>
-<i>transport</i> ACIP transport to send on
-<br/>
-<i>packet_type</i> Packet type received (should be
-  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP or PACKET_TYPE_CRYPTO_NO_ENCRYPTION)
-<br/>
-<i>payload</i> Received packet payload
-<br/>
-<i>payload_len</i> Length of received payload</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Server processes client's KEY_EXCHANGE_RESP packet and sends
-    AUTH_CHALLENGE. Computes shared secret and generates authentication
-    challenge nonce.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Packet must be received by ACIP handler before calling
-  this function
-<p class="Pp"></p>
-<p class="Pp">State transition: CRYPTO_HANDSHAKE_KEY_EXCHANGE -&gt;
-    CRYPTO_HANDSHAKE_AUTHENTICATING</p>
-</div>
-<p class="Pp">Definition at line <b>172</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>174                                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          server.c - Server-side handshake protocol implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE</b> 65
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b>
+            <b>crypto_handshake_server_send_parameters</b>
+            (<b>crypto_handshake_context_t</b> *ctx,
+            <b>acip_transport_t</b> *transport)
+            <br />
+            Server: Send CRYPTO_PARAMETERS and set handshake context sizes.
+            <b>asciichat_error_t</b> <b>crypto_handshake_server_start</b> (<b
+              >crypto_handshake_context_t</b
+            >
+            *ctx, <b>acip_transport_t</b> *transport)
+            <br />
+            Server: Start crypto handshake by sending public key.
+            <b>asciichat_error_t</b>
+            <b>crypto_handshake_server_auth_challenge</b>
+            (<b>crypto_handshake_context_t</b> *ctx,
+            <b>acip_transport_t</b> *transport,
+            <b>packet_type_t</b> packet_type, const <b>uint8_t</b> *payload,
+            size_t payload_len)
+            <br />
+            Server: Process client's public key and send auth challenge.
+            <b>asciichat_error_t</b> <b>crypto_handshake_server_complete</b> (<b
+              >crypto_handshake_context_t</b
+            >
+            *ctx, <b>acip_transport_t</b> *transport,
+            <b>packet_type_t</b> packet_type, const <b>uint8_t</b> *payload,
+            size_t payload_len)
+            <br />
+            Server: Process auth response and complete handshake.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Server-side handshake protocol implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file <b>lib/crypto/handshake/server.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE___65"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE___65"
+              >#define CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE 65</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file
+            <b>lib/crypto/handshake/server.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_server_start()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_handshake_server_auth_challenge (<b
+              >crypto_handshake_context_t</b
+            >
+            * ctx, <b>acip_transport_t</b> * transport,
+            <b>packet_type_t</b> packet_type, const <b>uint8_t</b> * payload,
+            size_t payload_len)
+          </h2>
+          <p class="Pp">
+            Server: Process client's public key and send auth challenge.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Handshake context (must be in
+            CRYPTO_HANDSHAKE_KEY_EXCHANGE state)
+            <br />
+            <i>transport</i> ACIP transport to send on
+            <br />
+            <i>packet_type</i> Packet type received (should be
+            PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP or
+            PACKET_TYPE_CRYPTO_NO_ENCRYPTION)
+            <br />
+            <i>payload</i> Received packet payload
+            <br />
+            <i>payload_len</i> Length of received payload
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Server processes client's KEY_EXCHANGE_RESP packet and sends
+            AUTH_CHALLENGE. Computes shared secret and generates authentication
+            challenge nonce.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Packet must be received by ACIP handler before calling this function
+            <p class="Pp"></p>
+            <p class="Pp">
+              State transition: CRYPTO_HANDSHAKE_KEY_EXCHANGE -&gt;
+              CRYPTO_HANDSHAKE_AUTHENTICATING
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>172</b> of file
+            <b>lib/crypto/handshake/server.c</b>.
+          </p>
+          <pre>
+174                                                                              {
 175   ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_AUTH_CHALLENGE);
 176   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
 177     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
@@ -404,84 +490,112 @@
 449
 450   return ASCIICHAT_OK;
 451 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References
-    <b>crypto_handshake_context_t::allow_unlisted_client_identity</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>AUTH_CHALLENGE_FLAGS_SIZE</b>,
-    <b>crypto_context_t::auth_challenge_size</b>,
-    <b>AUTH_FAIL_SIGNATURE_INVALID</b>, <b>crypto_context_t::auth_nonce</b>,
-    <b>AUTH_REQUIRE_CLIENT_KEY</b>, <b>AUTH_REQUIRE_PASSWORD</b>,
-    <b>crypto_handshake_context_t::client_ed25519_key</b>,
-    <b>crypto_handshake_context_t::client_ed25519_key_verified</b>,
-    <b>crypto_handshake_context_t::client_sent_identity</b>,
-    <b>crypto_handshake_context_t::client_whitelist</b>,
-    <b>public_key_t::comment</b>, <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>crypto_generate_nonce()</b>, <b>CRYPTO_HANDSHAKE_AUTHENTICATING</b>,
-    <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>, <b>CRYPTO_HANDSHAKE_READY</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>, <b>CRYPTO_OK</b>,
-    <b>crypto_result_to_string()</b>, <b>crypto_set_peer_public_key()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
-    <b>ed25519_verify_signature()</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>GPG_FINGERPRINT_HEX_BUFFER_SIZE</b>,
-    <b>crypto_context_t::handshake_complete</b>,
-    <b>crypto_context_t::has_password</b>, <b>HEX_STRING_SIZE_32</b>,
-    <b>HMAC_SHA256_SIZE</b>, <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>,
-    <b>log_debug</b>, <b>log_info</b>, <b>NOTICE</b>,
-    <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
-    <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
-    <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b>,
-    <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b>,
-    <b>crypto_context_t::public_key_size</b>,
-    <b>auth_failure_packet_t::reason_flags</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
-    <b>crypto_handshake_context_t::state</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_receive()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>, and
-    <b>network_negotiation_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_complete
-  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> * transport,
-  <b>packet_type_t</b> packet_type, const <b>uint8_t</b> * payload, size_t
-  payload_len)</h2>
-<p class="Pp">Server: Process auth response and complete handshake.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Handshake context (must be in
-  CRYPTO_HANDSHAKE_AUTHENTICATING state)
-<br/>
-<i>transport</i> ACIP transport to send on
-<br/>
-<i>packet_type</i> Packet type received (should be
-  PACKET_TYPE_CRYPTO_AUTH_RESPONSE)
-<br/>
-<i>payload</i> Received packet payload
-<br/>
-<i>payload_len</i> Length of received payload</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Server processes client's AUTH_RESPONSE packet and sends
-    SERVER_AUTH_RESP. Verifies authentication HMAC or signature and completes
-    handshake.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Packet must be received by ACIP handler before calling
-  this function
-<p class="Pp"></p>
-<p class="Pp">State transition: CRYPTO_HANDSHAKE_AUTHENTICATING -&gt;
-    CRYPTO_HANDSHAKE_READY</p>
-</div>
-<p class="Pp">Definition at line <b>453</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>455                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References
+            <b>crypto_handshake_context_t::allow_unlisted_client_identity</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>AUTH_CHALLENGE_FLAGS_SIZE</b>,
+            <b>crypto_context_t::auth_challenge_size</b>,
+            <b>AUTH_FAIL_SIGNATURE_INVALID</b>,
+            <b>crypto_context_t::auth_nonce</b>, <b>AUTH_REQUIRE_CLIENT_KEY</b>,
+            <b>AUTH_REQUIRE_PASSWORD</b>,
+            <b>crypto_handshake_context_t::client_ed25519_key</b>,
+            <b>crypto_handshake_context_t::client_ed25519_key_verified</b>,
+            <b>crypto_handshake_context_t::client_sent_identity</b>,
+            <b>crypto_handshake_context_t::client_whitelist</b>,
+            <b>public_key_t::comment</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>crypto_generate_nonce()</b>,
+            <b>CRYPTO_HANDSHAKE_AUTHENTICATING</b>,
+            <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>, <b>CRYPTO_HANDSHAKE_READY</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_validate_packet_size()</b>, <b>CRYPTO_OK</b>,
+            <b>crypto_result_to_string()</b>,
+            <b>crypto_set_peer_public_key()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ED25519_SIGNATURE_SIZE</b>, <b>ed25519_verify_signature()</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_CRYPTO_AUTH</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>GPG_FINGERPRINT_HEX_BUFFER_SIZE</b>,
+            <b>crypto_context_t::handshake_complete</b>,
+            <b>crypto_context_t::has_password</b>, <b>HEX_STRING_SIZE_32</b>,
+            <b>HMAC_SHA256_SIZE</b>, <b>public_key_t::key</b>,
+            <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>, <b>log_info</b>,
+            <b>NOTICE</b>,
+            <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+            <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b>,
+            <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b>,
+            <b>crypto_context_t::public_key_size</b>,
+            <b>auth_failure_packet_t::reason_flags</b>,
+            <b>crypto_handshake_context_t::require_client_auth</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+            <b>SET_ERRNO</b>, <b>crypto_handshake_context_t::state</b>, and
+            <b>public_key_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_receive()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>, and
+            <b>network_negotiation_receive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_handshake_server_complete (<b
+              >crypto_handshake_context_t</b
+            >
+            * ctx, <b>acip_transport_t</b> * transport,
+            <b>packet_type_t</b> packet_type, const <b>uint8_t</b> * payload,
+            size_t payload_len)
+          </h2>
+          <p class="Pp">
+            Server: Process auth response and complete handshake.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Handshake context (must be in
+            CRYPTO_HANDSHAKE_AUTHENTICATING state)
+            <br />
+            <i>transport</i> ACIP transport to send on
+            <br />
+            <i>packet_type</i> Packet type received (should be
+            PACKET_TYPE_CRYPTO_AUTH_RESPONSE)
+            <br />
+            <i>payload</i> Received packet payload
+            <br />
+            <i>payload_len</i> Length of received payload
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Server processes client's AUTH_RESPONSE packet and sends
+            SERVER_AUTH_RESP. Verifies authentication HMAC or signature and
+            completes handshake.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Packet must be received by ACIP handler before calling this function
+            <p class="Pp"></p>
+            <p class="Pp">
+              State transition: CRYPTO_HANDSHAKE_AUTHENTICATING -&gt;
+              CRYPTO_HANDSHAKE_READY
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>453</b> of file
+            <b>lib/crypto/handshake/server.c</b>.
+          </p>
+          <pre>
+455                                                                        {
 456   ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_COMPLETE);
 457   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
 458     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
@@ -678,72 +792,100 @@
 649
 650   return ASCIICHAT_OK;
 651 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>crypto_context_t::auth_challenge_size</b>,
-    <b>AUTH_FAIL_CLIENT_KEY_REJECTED</b>, <b>AUTH_FAIL_CLIENT_KEY_REQUIRED</b>,
-    <b>AUTH_FAIL_PASSWORD_INCORRECT</b>, <b>crypto_context_t::auth_nonce</b>,
-    <b>crypto_handshake_context_t::client_challenge_nonce</b>,
-    <b>crypto_handshake_context_t::client_ed25519_key</b>,
-    <b>crypto_handshake_context_t::client_ed25519_key_verified</b>,
-    <b>crypto_handshake_context_t::client_sent_identity</b>,
-    <b>public_key_t::comment</b>, <b>crypto_compute_auth_response()</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>CRYPTO_HANDSHAKE_AUTHENTICATING</b>, <b>CRYPTO_HANDSHAKE_READY</b>,
-    <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>, <b>CRYPTO_OK</b>,
-    <b>crypto_result_to_string()</b>, <b>crypto_verify_auth_response()</b>,
-    <b>ed25519_verify_signature()</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>GPG_FINGERPRINT_HEX_BUFFER_SIZE</b>,
-    <b>crypto_context_t::has_password</b>, <b>HMAC_SHA256_SIZE</b>,
-    <b>crypto_context_t::hmac_size</b>, <b>public_key_t::key</b>,
-    <b>crypto_context_t::key_exchange_complete</b>, <b>KEY_TYPE_GPG</b>,
-    <b>log_debug</b>, <b>log_info</b>, <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b>,
-    <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
-    <b>auth_failure_packet_t::reason_flags</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>, <b>SET_ERRNO</b>,
-    <b>crypto_context_t::signature_size</b>,
-    <b>crypto_handshake_context_t::state</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_receive()</b>,
-    <b>crypto_handshake_server_complete()</b>, and
-    <b>network_negotiation_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_send_parameters
-  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
-  transport)</h2>
-<p class="Pp">Server: Send CRYPTO_PARAMETERS and set handshake context
-  sizes.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Handshake context
-<br/>
-<i>transport</i> ACIP transport to send on</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Must be called before <b>crypto_handshake_server_start()</b>.
-    Builds crypto parameters based on server state (identity key presence),
-    sends them to the client, and updates context sizes to match.</p>
-<p class="Pp"></p>
-<p class="Pp">TCP server path calls this indirectly via its own negotiation in
-    src/server/crypto.c (which customizes parameters based on client
-    capabilities). WebSocket and discovery-service paths call this directly.
-    &lt;X25519 key exchange (Curve25519)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt;Ed25519 authentication (Edwards-curve signatures)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt;No authentication (plaintext mode)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt;XSalsa20-Poly1305 authenticated encryption</p>
-<p class="Pp"></p>
-<p class="Pp">&lt;No encryption (plaintext mode)</p>
-<p class="Pp">Definition at line <b>27</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>28                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>crypto_context_t::auth_challenge_size</b>,
+            <b>AUTH_FAIL_CLIENT_KEY_REJECTED</b>,
+            <b>AUTH_FAIL_CLIENT_KEY_REQUIRED</b>,
+            <b>AUTH_FAIL_PASSWORD_INCORRECT</b>,
+            <b>crypto_context_t::auth_nonce</b>,
+            <b>crypto_handshake_context_t::client_challenge_nonce</b>,
+            <b>crypto_handshake_context_t::client_ed25519_key</b>,
+            <b>crypto_handshake_context_t::client_ed25519_key_verified</b>,
+            <b>crypto_handshake_context_t::client_sent_identity</b>,
+            <b>public_key_t::comment</b>, <b>crypto_compute_auth_response()</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>CRYPTO_HANDSHAKE_AUTHENTICATING</b>,
+            <b>CRYPTO_HANDSHAKE_READY</b>,
+            <b>crypto_handshake_server_complete()</b>,
+            <b>crypto_handshake_validate_packet_size()</b>, <b>CRYPTO_OK</b>,
+            <b>crypto_result_to_string()</b>,
+            <b>crypto_verify_auth_response()</b>,
+            <b>ed25519_verify_signature()</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>GPG_FINGERPRINT_HEX_BUFFER_SIZE</b>,
+            <b>crypto_context_t::has_password</b>, <b>HMAC_SHA256_SIZE</b>,
+            <b>crypto_context_t::hmac_size</b>, <b>public_key_t::key</b>,
+            <b>crypto_context_t::key_exchange_complete</b>, <b>KEY_TYPE_GPG</b>,
+            <b>log_debug</b>, <b>log_info</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b>,
+            <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
+            <b>auth_failure_packet_t::reason_flags</b>,
+            <b>crypto_handshake_context_t::require_client_auth</b>,
+            <b>SET_ERRNO</b>, <b>crypto_context_t::signature_size</b>,
+            <b>crypto_handshake_context_t::state</b>, and
+            <b>public_key_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_receive()</b>,
+            <b>crypto_handshake_server_complete()</b>, and
+            <b>network_negotiation_receive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_handshake_server_send_parameters (<b
+              >crypto_handshake_context_t</b
+            >
+            * ctx, <b>acip_transport_t</b> * transport)
+          </h2>
+          <p class="Pp">
+            Server: Send CRYPTO_PARAMETERS and set handshake context sizes.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Handshake context
+            <br />
+            <i>transport</i> ACIP transport to send on
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Must be called before <b>crypto_handshake_server_start()</b>. Builds
+            crypto parameters based on server state (identity key presence),
+            sends them to the client, and updates context sizes to match.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            TCP server path calls this indirectly via its own negotiation in
+            src/server/crypto.c (which customizes parameters based on client
+            capabilities). WebSocket and discovery-service paths call this
+            directly. &lt;X25519 key exchange (Curve25519)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            &lt;Ed25519 authentication (Edwards-curve signatures)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt;No authentication (plaintext mode)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt;XSalsa20-Poly1305 authenticated encryption</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt;No encryption (plaintext mode)</p>
+          <p class="Pp">
+            Definition at line <b>27</b> of file
+            <b>lib/crypto/handshake/server.c</b>.
+          </p>
+          <pre>
+28                                                                                        {
 29   if (!ctx || !transport) {
 30     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, transport=%p&quot;, (void *)ctx, (void *)transport);
 31   }
@@ -787,70 +929,98 @@
 69             has_identity_key ? &quot;ED25519&quot; : &quot;NONE&quot;);
 70   return ASCIICHAT_OK;
 71 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>,
-    <b>AUTH_ALGO_NONE</b>,
-    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
-    <b>CIPHER_ALGO_NONE</b>, <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>crypto_handshake_server_send_parameters()</b>,
-    <b>crypto_handshake_set_parameters()</b>, <b>CRYPTO_SHARED_KEY_SIZE</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>crypto_parameters_packet_t::hmac_size</b>,
-    <b>KEX_ALGO_X25519</b>,
-    <b>crypto_parameters_packet_t::kex_public_key_size</b>,
-    <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
-    <b>crypto_parameters_packet_t::mac_size</b>,
-    <b>crypto_parameters_packet_t::nonce_size</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
-    <b>POLY1305_MAC_SIZE</b>, <b>crypto_context_t::public_key_size</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>,
-    <b>crypto_parameters_packet_t::selected_auth</b>,
-    <b>crypto_parameters_packet_t::selected_cipher</b>,
-    <b>crypto_parameters_packet_t::selected_kex</b>,
-    <b>crypto_handshake_context_t::server_private_key</b>, <b>SET_ERRNO</b>,
-    <b>crypto_parameters_packet_t::shared_secret_size</b>,
-    <b>crypto_parameters_packet_t::signature_size</b>,
-    <b>private_key_t::type</b>,
-    <b>crypto_parameters_packet_t::verification_enabled</b>, and
-    <b>XSALSA20_NONCE_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_receive()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>, and
-    <b>network_negotiation_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_start
-  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
-  transport)</h2>
-<p class="Pp">Server: Start crypto handshake by sending public key.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Handshake context (must be in
-  CRYPTO_HANDSHAKE_INIT state)
-<br/>
-<i>transport</i> ACIP transport to send on</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Server initiates handshake by sending KEY_EXCHANGE_INIT packet.
-    Supports both simple and authenticated formats based on server identity
-  key.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Packet formats:
-<ul class="Bl-bullet">
-  <li>Simple: [ephemeral_key:public_key_size] (when server has no identity
-    key)</li>
-  <li>Authenticated:
-      [ephemeral_key:public_key_size][identity_key:auth_public_key_size][signature:signature_size]
-      (when server has Ed25519 identity key)</li>
-</ul>
-<p class="Pp">State transition: CRYPTO_HANDSHAKE_INIT -&gt;
-    CRYPTO_HANDSHAKE_KEY_EXCHANGE</p>
-</div>
-<p class="Pp">Definition at line <b>74</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>74                                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>,
+            <b>AUTH_ALGO_NONE</b>,
+            <b>crypto_parameters_packet_t::auth_public_key_size</b>,
+            <b>CIPHER_ALGO_NONE</b>, <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>crypto_handshake_server_send_parameters()</b>,
+            <b>crypto_handshake_set_parameters()</b>,
+            <b>CRYPTO_SHARED_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>crypto_context_t::encrypt_data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>crypto_parameters_packet_t::hmac_size</b>,
+            <b>KEX_ALGO_X25519</b>,
+            <b>crypto_parameters_packet_t::kex_public_key_size</b>,
+            <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
+            <b>crypto_parameters_packet_t::mac_size</b>,
+            <b>crypto_parameters_packet_t::nonce_size</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>, <b>POLY1305_MAC_SIZE</b>,
+            <b>crypto_context_t::public_key_size</b>,
+            <b>crypto_handshake_context_t::require_client_auth</b>,
+            <b>crypto_parameters_packet_t::selected_auth</b>,
+            <b>crypto_parameters_packet_t::selected_cipher</b>,
+            <b>crypto_parameters_packet_t::selected_kex</b>,
+            <b>crypto_handshake_context_t::server_private_key</b>,
+            <b>SET_ERRNO</b>,
+            <b>crypto_parameters_packet_t::shared_secret_size</b>,
+            <b>crypto_parameters_packet_t::signature_size</b>,
+            <b>private_key_t::type</b>,
+            <b>crypto_parameters_packet_t::verification_enabled</b>, and
+            <b>XSALSA20_NONCE_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_receive()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>, and
+            <b>network_negotiation_receive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_handshake_server_start (<b
+              >crypto_handshake_context_t</b
+            >
+            * ctx, <b>acip_transport_t</b> * transport)
+          </h2>
+          <p class="Pp">
+            Server: Start crypto handshake by sending public key.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Handshake context (must be in CRYPTO_HANDSHAKE_INIT
+            state)
+            <br />
+            <i>transport</i> ACIP transport to send on
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Server initiates handshake by sending KEY_EXCHANGE_INIT packet.
+            Supports both simple and authenticated formats based on server
+            identity key.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Packet formats:
+            <ul class="Bl-bullet">
+              <li>
+                Simple: [ephemeral_key:public_key_size] (when server has no
+                identity key)
+              </li>
+              <li>
+                Authenticated:
+                [ephemeral_key:public_key_size][identity_key:auth_public_key_size][signature:signature_size]
+                (when server has Ed25519 identity key)
+              </li>
+            </ul>
+            <p class="Pp">
+              State transition: CRYPTO_HANDSHAKE_INIT -&gt;
+              CRYPTO_HANDSHAKE_KEY_EXCHANGE
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>74</b> of file
+            <b>lib/crypto/handshake/server.c</b>.
+          </p>
+          <pre>
+74                                                                                                               {
 75   ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_START);
 76   log_debug(&quot;[HANDSHAKE_START] ctx=%p, transport=%p&quot;, (void *)ctx, (void *)transport);
 77
@@ -947,43 +1117,50 @@
 168
 169   return ASCIICHAT_OK;
 170 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>crypto_context_t::auth_public_key_size</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
-    <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>,
-    <b>CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE</b>,
-    <b>crypto_handshake_server_start()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ed25519_sign_message()</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>public_key_t::key</b>,
-    <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
-    <b>crypto_context_t::public_key</b>,
-    <b>crypto_context_t::public_key_size</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
-    <b>crypto_handshake_context_t::server_private_key</b>,
-    <b>crypto_handshake_context_t::server_public_key</b>, <b>SET_ERRNO</b>,
-    <b>crypto_context_t::signature_size</b>,
-    <b>crypto_handshake_context_t::state</b>, and
-  <b>private_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_receive()</b>,
-    <b>crypto_handshake_server_start()</b>, and
-    <b>network_negotiation_receive()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>crypto_context_t::auth_public_key_size</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>CRYPTO_HANDSHAKE_INIT</b>, <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>,
+            <b>CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ed25519_sign_message()</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+            <b>HEX_STRING_SIZE_32</b>, <b>public_key_t::key</b>,
+            <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>, <b>log_error</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
+            <b>crypto_context_t::public_key</b>,
+            <b>crypto_context_t::public_key_size</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+            <b>crypto_handshake_context_t::server_private_key</b>,
+            <b>crypto_handshake_context_t::server_public_key</b>,
+            <b>SET_ERRNO</b>, <b>crypto_context_t::signature_size</b>,
+            <b>crypto_handshake_context_t::state</b>, and
+            <b>private_key_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_receive()</b>,
+            <b>crypto_handshake_server_start()</b>, and
+            <b>network_negotiation_receive()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

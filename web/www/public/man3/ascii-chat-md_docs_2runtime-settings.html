@@ -1,59 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>md_docs_2runtime-settings(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">md_docs_2runtime-settings(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">md_docs_2runtime-settings(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">md_docs_2runtime-settings - Runtime settings</p>
-<p class="Pp">Rendering changes apply while a call is running. CLI keyboard
-    controls and the browser settings panel use the same C validation and
-    transaction machinery. Changes affect the viewer who requested them. A
-    viewer cannot change another viewer&#x2019;s palette, dimensions, colors, or
-    frame rate.</p>
-<p class="Pp"></p>
-<p class="Pp">The browser reports when the host accepts a change. Hosts may cap
-    the requested frame rate; the acknowledgment contains the actual value.
-    Saved preferences stay separate from effective remote settings, so a
-    temporary server limit does not rewrite the user&#x2019;s preferences.
-    Invalid requests leave all prior values intact. Credentials, encryption,
-    authentication, and session administration are outside the rendering
-    endpoint.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Local_C_transactions"><a class="permalink" href="#Local_C_transactions">Local
-  C transactions</a></h1>
-<p class="Pp">Use <b>options_apply_patch()</b><b> from
-    </b><b>ascii-chat/options/runtime.h</b><b> for related edits:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>options_edit_t edits[] = {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2runtime-settings(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2runtime-settings(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2runtime-settings(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">md_docs_2runtime-settings - Runtime settings</p>
+        <p class="Pp">
+          Rendering changes apply while a call is running. CLI keyboard controls
+          and the browser settings panel use the same C validation and
+          transaction machinery. Changes affect the viewer who requested them. A
+          viewer cannot change another viewer&#x2019;s palette, dimensions,
+          colors, or frame rate.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The browser reports when the host accepts a change. Hosts may cap the
+          requested frame rate; the acknowledgment contains the actual value.
+          Saved preferences stay separate from effective remote settings, so a
+          temporary server limit does not rewrite the user&#x2019;s preferences.
+          Invalid requests leave all prior values intact. Credentials,
+          encryption, authentication, and session administration are outside the
+          rendering endpoint.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Local_C_transactions">
+          <a class="permalink" href="#Local_C_transactions"
+            >Local C transactions</a
+          >
+        </h1>
+        <p class="Pp">
+          Use <b>options_apply_patch()</b><b> from </b
+          ><b>ascii-chat/options/runtime.h</b><b> for related edits:</b>
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>options_edit_t edits[] = {
 <br/>
   {.name = &quot;color_mode&quot;, .type = OPTIONS_VALUE_INT,
 <br/>
@@ -70,110 +107,165 @@ options_patch_t patch = {
   .origin = OPTIONS_ORIGIN_LOCAL,
 };
 asciichat_error_t error = options_apply_patch(&amp;patch, NULL);</pre>
-<p class="Pp">The writer mutex covers reading the latest state, copying it,
-    applying every edit, validating the final candidate, and publishing one
-    immutable snapshot. An invalid field rejects the whole transaction. No-op
-    edits do not advance the revision. Existing typed setters are single-edit
-    transactions.</p>
-<p class="Pp"></p>
-<p class="Pp">Use <b>options_toggle()</b><b>, </b><b>options_adjust()</b><b>, or
-    </b><b>options_cycle()</b><b> for relative keyboard actions. They compute
-    the new value inside the transaction. When an edit depends on a previously
-    inspected state, capture it with </b><b>options_read_snapshot()</b><b> and
-    pass its revision as </b>expected_revision<b>; a stale edit returns
-    </b><b>ERROR_INVALID_STATE</b><b> and must be refreshed.</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>options_revision()</b><b> lets an owner loop coalesce
-    notifications. Read values and revision together with
-    </b><b>options_read_snapshot()</b><b>. Network sends, UI callbacks, and
-    observer notifications happen outside the options writer mutex.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Borrowed <b>options_get()</b><b> pointers remain valid until
-    options shutdown. Retired snapshots are retained until then: the previous
-    fixed-capacity deferred list could free a snapshot still held by a reader.
-    Retention grows with successful local changes (approximately
-    </b>sizeof(options_t)<b> per change); remote rendering updates use
-    per-participant state and do not retain global snapshots.</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Browser_state"><a class="permalink" href="#Browser_state">Browser
-  state</a></h1>
-<p class="Pp">runtimeOptions(module) returns a store for that specific C/WASM
-    instance. applyPatch() submits one JSON transaction. getSnapshot() returns
-    committed values and revision together. subscribe() observes changes from C
-    keyboard actions as well as JavaScript edits; React uses
-    useSyncExternalStore.</p>
-<p class="Pp"></p>
-<p class="Pp">There is no JavaScript palette/flip cache. Renderer and client
-    modules do not replace each other&#x2019;s options accessors. UI submissions
-    include only fields changed since the preceding submission, preserving
-    intervening engine changes.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Per-participant_protocol"><a class="permalink" href="#Per-participant_protocol">Per-participant
-  protocol</a></h1>
-<p class="Pp">All live remote rendering changes use ACIP_SETTINGS_SYNC (6063)
-    and ACIP_SETTINGS_ACK (6064), over the connection&#x2019;s normal encrypted
-    transport. CLIENT_CAPABILITIES initializes terminal capabilities and
-    advertises codec support. Later codec advertisements cannot overwrite
-    rendering preferences. There is no feature negotiation or alternate runtime
-    settings path. Hosts and clients must both be updated for live rendering
-    controls; older clients that only send capability updates cannot change
-    rendering after initialization.</p>
-<p class="Pp"></p>
-<p class="Pp">Each payload begins with five network-order 32-bit integers:</p>
-<p class="Pp"></p>
-<p class="Pp">Offset Field Meaning 0 schema 1 4 request Connection-local
-    correlation ID; 0 for initial host state 8 expected_revision Host revision
-    to compare, or UINT32_MAX 12 revision Committed host revision in replies 16
-    status <b>ASCIICHAT_OK</b><b> or an </b><b>asciichat_error_t</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">The remaining bytes contain a JSON object, limited to 4096 bytes.
-    A header-only request queries effective settings. Allowed fields are width,
-    height, fps, color_mode, color_filter, render_mode, palette_type,
-    palette_custom, and matrix_rain. Unknown fields, duplicate aliases, invalid
-    types, oversized payloads, invalid palettes, and stale revisions are
-    rejected.</p>
-<p class="Pp"></p>
-<p class="Pp">The host prepares dimensions, capabilities, and palette together
-    before publishing per-participant render state under its owner mutex. Every
-    validly framed request receives a full effective snapshot, including on
-    rejection. Clients correlate replies within the current connection and
-    commit effective state in C before exposing it to JavaScript.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>session_participant_request_settings()</b><b> submits this
-    request; </b><b>session_participant_receive_settings()</b><b> consumes the
-    acknowledgment and invokes the participant callbacks after releasing its
-    settings mutex. It never applies another viewer&#x2019;s preferences to
-    global options. Requests may retain the default
-    </b><b>TERM_COLOR_AUTO</b><b>: the participant resolves it to detected
-    terminal capabilities (or monochrome when detection is unreliable) before
-    validating and sending, without rewriting the caller&#x2019;s
-    preferences.</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Verification"><a class="permalink" href="#Verification">Verification</a></h1>
-<p class="Pp">test-runtime-settings is a standalone native test, including
-    Windows. It checks concurrent updates, atomic rejection, revision conflicts,
-    snapshot lifetime, animation exclusion, and independent remote viewers.</p>
-<p class="Pp"></p>
-<p class="Pp">On Windows, python tests/integration/runtime_settings_cli.py
-    build/bin/ascii-chat.exe drives real keyboard controls in isolated hidden
-    child consoles over TCP and WebSocket. Browser coverage uses the rebuilt
-    WASM artifacts and an isolated Vite server: vp exec playwright test -c
-    tests/e2e/runtime-settings.config.ts from web/web. It checks
-    native-host/browser rendering, independent viewers, C host requests, invalid
-    transactions, and the shared C keyboard UI.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        <p class="Pp">
+          The writer mutex covers reading the latest state, copying it, applying
+          every edit, validating the final candidate, and publishing one
+          immutable snapshot. An invalid field rejects the whole transaction.
+          No-op edits do not advance the revision. Existing typed setters are
+          single-edit transactions.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Use <b>options_toggle()</b><b>, </b><b>options_adjust()</b><b>, or </b
+          ><b>options_cycle()</b
+          ><b>
+            for relative keyboard actions. They compute the new value inside the
+            transaction. When an edit depends on a previously inspected state,
+            capture it with </b
+          ><b>options_read_snapshot()</b
+          ><b> and pass its revision as </b>expected_revision<b
+            >; a stale edit returns </b
+          ><b>ERROR_INVALID_STATE</b><b> and must be refreshed.</b>
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>options_revision()</b
+          ><b>
+            lets an owner loop coalesce notifications. Read values and revision
+            together with </b
+          ><b>options_read_snapshot()</b
+          ><b
+            >. Network sends, UI callbacks, and observer notifications happen
+            outside the options writer mutex.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Borrowed <b>options_get()</b
+          ><b>
+            pointers remain valid until options shutdown. Retired snapshots are
+            retained until then: the previous fixed-capacity deferred list could
+            free a snapshot still held by a reader. Retention grows with
+            successful local changes (approximately </b
+          >sizeof(options_t)<b>
+            per change); remote rendering updates use per-participant state and
+            do not retain global snapshots.</b
+          >
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Browser_state">
+          <a class="permalink" href="#Browser_state">Browser state</a>
+        </h1>
+        <p class="Pp">
+          runtimeOptions(module) returns a store for that specific C/WASM
+          instance. applyPatch() submits one JSON transaction. getSnapshot()
+          returns committed values and revision together. subscribe() observes
+          changes from C keyboard actions as well as JavaScript edits; React
+          uses useSyncExternalStore.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          There is no JavaScript palette/flip cache. Renderer and client modules
+          do not replace each other&#x2019;s options accessors. UI submissions
+          include only fields changed since the preceding submission, preserving
+          intervening engine changes.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Per-participant_protocol">
+          <a class="permalink" href="#Per-participant_protocol"
+            >Per-participant protocol</a
+          >
+        </h1>
+        <p class="Pp">
+          All live remote rendering changes use ACIP_SETTINGS_SYNC (6063) and
+          ACIP_SETTINGS_ACK (6064), over the connection&#x2019;s normal
+          encrypted transport. CLIENT_CAPABILITIES initializes terminal
+          capabilities and advertises codec support. Later codec advertisements
+          cannot overwrite rendering preferences. There is no feature
+          negotiation or alternate runtime settings path. Hosts and clients must
+          both be updated for live rendering controls; older clients that only
+          send capability updates cannot change rendering after initialization.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Each payload begins with five network-order 32-bit integers:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Offset Field Meaning 0 schema 1 4 request Connection-local correlation
+          ID; 0 for initial host state 8 expected_revision Host revision to
+          compare, or UINT32_MAX 12 revision Committed host revision in replies
+          16 status <b>ASCIICHAT_OK</b><b> or an </b><b>asciichat_error_t</b
+          ><b></b>
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The remaining bytes contain a JSON object, limited to 4096 bytes. A
+          header-only request queries effective settings. Allowed fields are
+          width, height, fps, color_mode, color_filter, render_mode,
+          palette_type, palette_custom, and matrix_rain. Unknown fields,
+          duplicate aliases, invalid types, oversized payloads, invalid
+          palettes, and stale revisions are rejected.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The host prepares dimensions, capabilities, and palette together
+          before publishing per-participant render state under its owner mutex.
+          Every validly framed request receives a full effective snapshot,
+          including on rejection. Clients correlate replies within the current
+          connection and commit effective state in C before exposing it to
+          JavaScript.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>session_participant_request_settings()</b
+          ><b> submits this request; </b
+          ><b>session_participant_receive_settings()</b
+          ><b>
+            consumes the acknowledgment and invokes the participant callbacks
+            after releasing its settings mutex. It never applies another
+            viewer&#x2019;s preferences to global options. Requests may retain
+            the default </b
+          ><b>TERM_COLOR_AUTO</b
+          ><b
+            >: the participant resolves it to detected terminal capabilities (or
+            monochrome when detection is unreliable) before validating and
+            sending, without rewriting the caller&#x2019;s preferences.</b
+          >
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Verification">
+          <a class="permalink" href="#Verification">Verification</a>
+        </h1>
+        <p class="Pp">
+          test-runtime-settings is a standalone native test, including Windows.
+          It checks concurrent updates, atomic rejection, revision conflicts,
+          snapshot lifetime, animation exclusion, and independent remote
+          viewers.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          On Windows, python tests/integration/runtime_settings_cli.py
+          build/bin/ascii-chat.exe drives real keyboard controls in isolated
+          hidden child consoles over TCP and WebSocket. Browser coverage uses
+          the rebuilt WASM artifacts and an isolated Vite server: vp exec
+          playwright test -c tests/e2e/runtime-settings.config.ts from web/web.
+          It checks native-host/browser rendering, independent viewers, C host
+          requests, invalid transactions, and the shared C keyboard UI.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

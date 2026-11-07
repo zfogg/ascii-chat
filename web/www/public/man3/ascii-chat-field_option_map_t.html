@@ -1,95 +1,144 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>field_option_map_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">field_option_map_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">field_option_map_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">field_option_map_t - Field name to registry option name
-  mapping.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">const char * <b>field</b>
-  <br/>
-  C struct field name (e.g., <i>color_mode&quot;).</i> const char *
-    <b>option</b>
-  <br/>
-  Registry option name (e.g., <i>color-mode&quot;).</i>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Field name to registry option name mapping.</p>
-<p class="Pp">Maps C struct field names (underscores) to registry option names
-    (hyphens). Some names don't map by simple substitution:</p>
-<ul class="Bl-bullet">
-  <li>discovery_port &#x2192; discovery-service-port</li>
-  <li>palette_type &#x2192; palette</li>
-  <li>reconnect_attempts &#x2192; reconnect</li>
-</ul>
-<p class="Pp">Definition at line <b>561</b> of file <b>rcu.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_field_option_map_t::field"><a class="permalink" href="#const_char*_field_option_map_t::field">const
-  char* field_option_map_t::field</a></h2>
-<p class="Pp">C struct field name (e.g., &quot;color_mode&quot;).</p>
-<p class="Pp">Definition at line <b>562</b> of file <b>rcu.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_field_option_map_t::option"><a class="permalink" href="#const_char*_field_option_map_t::option">const
-  char* field_option_map_t::option</a></h2>
-<p class="Pp">Registry option name (e.g., &quot;color-mode&quot;).</p>
-<p class="Pp">Definition at line <b>563</b> of file <b>rcu.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.25</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>field_option_map_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">field_option_map_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">field_option_map_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          field_option_map_t - Field name to registry option name mapping.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>field</b>
+            <br />
+            C struct field name (e.g., <i>color_mode&quot;).</i> const char *
+            <b>option</b>
+            <br />
+            Registry option name (e.g., <i>color-mode&quot;).</i>
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Field name to registry option name mapping.</p>
+        <p class="Pp">
+          Maps C struct field names (underscores) to registry option names
+          (hyphens). Some names don't map by simple substitution:
+        </p>
+        <ul class="Bl-bullet">
+          <li>discovery_port &#x2192; discovery-service-port</li>
+          <li>palette_type &#x2192; palette</li>
+          <li>reconnect_attempts &#x2192; reconnect</li>
+        </ul>
+        <p class="Pp">Definition at line <b>561</b> of file <b>rcu.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_field_option_map_t::field">
+            <a class="permalink" href="#const_char*_field_option_map_t::field"
+              >const char* field_option_map_t::field</a
+            >
+          </h2>
+          <p class="Pp">C struct field name (e.g., &quot;color_mode&quot;).</p>
+          <p class="Pp">Definition at line <b>562</b> of file <b>rcu.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_field_option_map_t::option">
+            <a class="permalink" href="#const_char*_field_option_map_t::option"
+              >const char* field_option_map_t::option</a
+            >
+          </h2>
+          <p class="Pp">Registry option name (e.g., &quot;color-mode&quot;).</p>
+          <p class="Pp">Definition at line <b>563</b> of file <b>rcu.c</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

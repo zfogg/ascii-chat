@@ -1,123 +1,193 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>app_callbacks.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">app_callbacks.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">app_callbacks.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">app_callbacks.h - Application-level callbacks for library
-  code.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>app_callbacks_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>APP_CALLBACK_VOID</b>(callback_name)
-  <br/>
-  #define <b>APP_CALLBACK_BOOL</b>(callback_name)
-  <br/>
-  #define <b>APP_CALLBACK_UINT64</b>(callback_name)
-  <br/>
-  #define <b>APP_CALLBACK_VOID_UINT</b>(callback_name, value)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>app_callbacks_register</b> (const <b>app_callbacks_t</b>
-    *callbacks)
-  <br/>
-  const <b>app_callbacks_t</b> * <b>app_callbacks_get</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Application-level callbacks for library code.</p>
-<p class="Pp">Allows lib/ code to call application-level functions without
-    direct dependency.</p>
-<p class="Pp">Definition in file <b>app_callbacks.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_APP_CALLBACK_BOOL(_callback_name)"><a class="permalink" href="#_define_APP_CALLBACK_BOOL(_callback_name)">#define
-  APP_CALLBACK_BOOL( callback_name)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>({                                                                                                                   \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>app_callbacks.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">app_callbacks.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">app_callbacks.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          app_callbacks.h - Application-level callbacks for library code.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>app_callbacks_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>APP_CALLBACK_VOID</b>(callback_name)
+            <br />
+            #define <b>APP_CALLBACK_BOOL</b>(callback_name)
+            <br />
+            #define <b>APP_CALLBACK_UINT64</b>(callback_name)
+            <br />
+            #define <b>APP_CALLBACK_VOID_UINT</b>(callback_name, value)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>app_callbacks_register</b> (const <b>app_callbacks_t</b>
+            *callbacks)
+            <br />
+            const <b>app_callbacks_t</b> * <b>app_callbacks_get</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Application-level callbacks for library code.</p>
+        <p class="Pp">
+          Allows lib/ code to call application-level functions without direct
+          dependency.
+        </p>
+        <p class="Pp">Definition in file <b>app_callbacks.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_APP_CALLBACK_BOOL(_callback_name)">
+            <a
+              class="permalink"
+              href="#_define_APP_CALLBACK_BOOL(_callback_name)"
+              >#define APP_CALLBACK_BOOL( callback_name)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>({                                                                                                                   \
 <br/>
   const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
 <br/>
   (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : false;                                                     \
 })</pre>
-<pre></pre>
-<p class="Pp">Call a void(void) callback and return bool Usage: bool result =
-    <b>APP_CALLBACK_BOOL(should_exit)</b></p>
-<p class="Pp">Definition at line <b>59</b> of file <b>app_callbacks.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_APP_CALLBACK_UINT64(_callback_name)"><a class="permalink" href="#_define_APP_CALLBACK_UINT64(_callback_name)">#define
-  APP_CALLBACK_UINT64( callback_name)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp">
+            Call a void(void) callback and return bool Usage: bool result =
+            <b>APP_CALLBACK_BOOL(should_exit)</b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>app_callbacks.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_APP_CALLBACK_UINT64(_callback_name)">
+            <a
+              class="permalink"
+              href="#_define_APP_CALLBACK_UINT64(_callback_name)"
+              >#define APP_CALLBACK_UINT64( callback_name)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>({                                                                                                                   \
 <br/>
   const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
 <br/>
   (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : 0ULL;                                                      \
 })</pre>
-<pre></pre>
-<p class="Pp">Call a <b>uint64_t(void)</b> callback Usage: <b>uint64_t</b> now =
-    <b>APP_CALLBACK_UINT64(platform_get_monotonic_time_us)</b></p>
-<p class="Pp">Definition at line <b>69</b> of file <b>app_callbacks.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_APP_CALLBACK_VOID(_callback_name)"><a class="permalink" href="#_define_APP_CALLBACK_VOID(_callback_name)">#define
-  APP_CALLBACK_VOID( callback_name)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp">
+            Call a <b>uint64_t(void)</b> callback Usage: <b>uint64_t</b> now =
+            <b>APP_CALLBACK_UINT64(platform_get_monotonic_time_us)</b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>app_callbacks.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_APP_CALLBACK_VOID(_callback_name)">
+            <a
+              class="permalink"
+              href="#_define_APP_CALLBACK_VOID(_callback_name)"
+              >#define APP_CALLBACK_VOID( callback_name)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
 <br/>
@@ -127,19 +197,34 @@
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp">Call a void(void) callback safely Usage:
-    <b>APP_CALLBACK_VOID(audio_stop_thread)</b></p>
-<p class="Pp">Definition at line <b>47</b> of file <b>app_callbacks.h</b>.</p>
-<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
-    <b>session_display_write_ascii_frame()</b>, <b>session_render_loop()</b>,
-    <b>ui_input_password()</b>, and <b>update_banner_install_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_APP_CALLBACK_VOID_UINT(_callback_name,__value)"><a class="permalink" href="#_define_APP_CALLBACK_VOID_UINT(_callback_name,__value)">#define
-  APP_CALLBACK_VOID_UINT( callback_name, value)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp">
+            Call a void(void) callback safely Usage:
+            <b>APP_CALLBACK_VOID(audio_stop_thread)</b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>app_callbacks.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_video_render_thread()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_render_loop()</b>, <b>ui_input_password()</b>, and
+            <b>update_banner_install_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_APP_CALLBACK_VOID_UINT(_callback_name,__value)"
+          >
+            <a
+              class="permalink"
+              href="#_define_APP_CALLBACK_VOID_UINT(_callback_name,__value)"
+              >#define APP_CALLBACK_VOID_UINT( callback_name, value)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
 <br/>
@@ -149,53 +234,79 @@
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp">Call a void(unsigned int) callback Usage:
-    <b>APP_CALLBACK_VOID_UINT(platform_sleep_ms, ms)</b></p>
-<p class="Pp">Definition at line <b>79</b> of file <b>app_callbacks.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>app_callbacks_t</b> * app_callbacks_get (void )</a></h2>
-<p class="Pp">Get registered callbacks (returns NULL if not registered)</p>
-<p class="Pp">Definition at line <b>15</b> of file <b>app_callbacks.c</b>.</p>
-<pre>15                                                {
+          <pre></pre>
+          <p class="Pp">
+            Call a void(unsigned int) callback Usage:
+            <b>APP_CALLBACK_VOID_UINT(platform_sleep_ms, ms)</b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>79</b> of file <b>app_callbacks.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>app_callbacks_t</b> * app_callbacks_get (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Get registered callbacks (returns NULL if not registered)
+          </p>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>app_callbacks.c</b>.
+          </p>
+          <pre>
+15                                                {
 16   return g_app_callbacks;
 17 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>app_callbacks_get()</b>.</p>
-<p class="Pp">Referenced by <b>app_callbacks_get()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_app_callbacks_register_(const_"><a class="permalink" href="#void_app_callbacks_register_(const_">void
-  app_callbacks_register (const <b>app_callbacks_t</b> * callbacks)</a></h2>
-<p class="Pp">Register application callbacks</p>
-<p class="Pp">Definition at line <b>11</b> of file <b>app_callbacks.c</b>.</p>
-<pre>11                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>app_callbacks_get()</b>.</p>
+          <p class="Pp">Referenced by <b>app_callbacks_get()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_app_callbacks_register_(const_">
+            <a class="permalink" href="#void_app_callbacks_register_(const_"
+              >void app_callbacks_register (const <b>app_callbacks_t</b> *
+              callbacks)</a
+            >
+          </h2>
+          <p class="Pp">Register application callbacks</p>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>app_callbacks.c</b>.
+          </p>
+          <pre>
+11                                                               {
 12   g_app_callbacks = callbacks;
 13 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>app_callbacks_register()</b>.</p>
-<p class="Pp">Referenced by <b>app_callbacks_register()</b>,
-    <b>app_callbacks_register()</b>, and <b>main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>app_callbacks_register()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>app_callbacks_register()</b>,
+            <b>app_callbacks_register()</b>, and <b>main()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

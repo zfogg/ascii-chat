@@ -1,197 +1,328 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>named.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">named.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">named.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">named.c - Format named objects in log messages (replaces hex
-    addresses with type/name descriptions).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>LOG_NAMED_ID_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>LOG_NAMED_ID_EXTENDED_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>LOG_NAMED_TYPE_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>LOG_NAMED_KW_BUFFER_SIZE</b> 32
-  <br/>
-  #define <b>LOG_NAMED_TEMP_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>LOG_NAMED_TYPE_SHORT_BUFFER_SIZE</b> 32
-  <br/>
-  #define <b>LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>LOG_NAMED_NAME_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>LOG_NAMED_ADDR_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>NAMED_FORMAT_BUFFER_SIZE</b> (4096)
-  <br/>
-  #define <b>COLORIZE_BUFFERS</b> 4
-  <br/>
-  #define <b>COLORIZE_BUFFER_SIZE</b> 512
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>log_named_format_message</b> (const char *message, char
-    *output, size_t output_size)
-  <br/>
-  Format hex addresses in a message as named object descriptions. const char *
-    <b>log_named_format_or_original</b> (const char *message)
-  <br/>
-  Format named objects in a message (thread-local buffer). const char *
-    <b>colorize_named_string</b> (const char *name_str)
-  <br/>
-  Colorize a
-    <i>type/name</i>(0xaddress)&quot;<i>string</i>for<i>display</i>in<i>memory</i>reports.<i></i>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Format named objects in log messages (replaces hex addresses with
-    type/name descriptions).</p>
-<p class="Pp">This module scans log message text for hex addresses
-    (0x[0-9a-fA-F]+) and replaces them with friendly descriptions from the named
-    object registry when available. For example, 0x7f1234567890 might become
-    &quot;mutex/recv_mutex.2 (0x7f1234567890)&quot;</p>
-<p class="Pp"></p>
-<p class="Pp">Output is colorized for better readability:</p>
-<ul class="Bl-bullet">
-  <li>Type name: yellow (LOG_COLOR_WARN)</li>
-  <li>Name: orange (LOG_COLOR_DEV)</li>
-  <li>ID value: grey (LOG_COLOR_GREY)</li>
-</ul>
-<p class="Pp">Definition in file <b>log/named.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_COLORIZE_BUFFER_SIZE___512"><a class="permalink" href="#_define_COLORIZE_BUFFER_SIZE___512">#define
-  COLORIZE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_COLORIZE_BUFFERS___4"><a class="permalink" href="#_define_COLORIZE_BUFFERS___4">#define
-  COLORIZE_BUFFERS 4</a></h2>
-<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_ADDR_BUFFER_SIZE___128"><a class="permalink" href="#_define_LOG_NAMED_ADDR_BUFFER_SIZE___128">#define
-  LOG_NAMED_ADDR_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_ID_BUFFER_SIZE___64"><a class="permalink" href="#_define_LOG_NAMED_ID_BUFFER_SIZE___64">#define
-  LOG_NAMED_ID_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_ID_EXTENDED_BUFFER_SIZE___128"><a class="permalink" href="#_define_LOG_NAMED_ID_EXTENDED_BUFFER_SIZE___128">#define
-  LOG_NAMED_ID_EXTENDED_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>log/named.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_KW_BUFFER_SIZE___32"><a class="permalink" href="#_define_LOG_NAMED_KW_BUFFER_SIZE___32">#define
-  LOG_NAMED_KW_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_LOG_NAMED_NAME_BUFFER_SIZE___256">#define
-  LOG_NAMED_NAME_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_TEMP_BUFFER_SIZE___512"><a class="permalink" href="#_define_LOG_NAMED_TEMP_BUFFER_SIZE___512">#define
-  LOG_NAMED_TEMP_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE___512"><a class="permalink" href="#_define_LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE___512">#define
-  LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_TYPE_BUFFER_SIZE___64"><a class="permalink" href="#_define_LOG_NAMED_TYPE_BUFFER_SIZE___64">#define
-  LOG_NAMED_TYPE_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>log/named.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE___256"><a class="permalink" href="#_define_LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE___256">#define
-  LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_NAMED_TYPE_SHORT_BUFFER_SIZE___32"><a class="permalink" href="#_define_LOG_NAMED_TYPE_SHORT_BUFFER_SIZE___32">#define
-  LOG_NAMED_TYPE_SHORT_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NAMED_FORMAT_BUFFER_SIZE___(4096)"><a class="permalink" href="#_define_NAMED_FORMAT_BUFFER_SIZE___(4096)">#define
-  NAMED_FORMAT_BUFFER_SIZE (4096)</a></h2>
-<p class="Pp">Definition at line <b>37</b> of file <b>log/named.c</b>.</p>
-<p class="Pp">Referenced by <b>log_named_format_or_original()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>named.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">named.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">named.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          named.c - Format named objects in log messages (replaces hex addresses
+          with type/name descriptions).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LOG_NAMED_ID_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>LOG_NAMED_ID_EXTENDED_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>LOG_NAMED_TYPE_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>LOG_NAMED_KW_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>LOG_NAMED_TEMP_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>LOG_NAMED_TYPE_SHORT_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>LOG_NAMED_NAME_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>LOG_NAMED_ADDR_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>NAMED_FORMAT_BUFFER_SIZE</b> (4096)
+            <br />
+            #define <b>COLORIZE_BUFFERS</b> 4
+            <br />
+            #define <b>COLORIZE_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>log_named_format_message</b> (const char *message, char
+            *output, size_t output_size)
+            <br />
+            Format hex addresses in a message as named object descriptions.
+            const char *
+            <b>log_named_format_or_original</b> (const char *message)
+            <br />
+            Format named objects in a message (thread-local buffer). const char
+            *
+            <b>colorize_named_string</b> (const char *name_str)
+            <br />
+            Colorize a
+            <i>type/name</i
+            >(0xaddress)&quot;<i>string</i>for<i>display</i>in<i>memory</i>reports.<i
+            ></i>
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Format named objects in log messages (replaces hex addresses with
+          type/name descriptions).
+        </p>
+        <p class="Pp">
+          This module scans log message text for hex addresses (0x[0-9a-fA-F]+)
+          and replaces them with friendly descriptions from the named object
+          registry when available. For example, 0x7f1234567890 might become
+          &quot;mutex/recv_mutex.2 (0x7f1234567890)&quot;
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Output is colorized for better readability:</p>
+        <ul class="Bl-bullet">
+          <li>Type name: yellow (LOG_COLOR_WARN)</li>
+          <li>Name: orange (LOG_COLOR_DEV)</li>
+          <li>ID value: grey (LOG_COLOR_GREY)</li>
+        </ul>
+        <p class="Pp">Definition in file <b>log/named.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_COLORIZE_BUFFER_SIZE___512">
+            <a class="permalink" href="#_define_COLORIZE_BUFFER_SIZE___512"
+              >#define COLORIZE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_COLORIZE_BUFFERS___4">
+            <a class="permalink" href="#_define_COLORIZE_BUFFERS___4"
+              >#define COLORIZE_BUFFERS 4</a
+            >
+          </h2>
+          <p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_ADDR_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_ADDR_BUFFER_SIZE___128"
+              >#define LOG_NAMED_ADDR_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_ID_BUFFER_SIZE___64">
+            <a class="permalink" href="#_define_LOG_NAMED_ID_BUFFER_SIZE___64"
+              >#define LOG_NAMED_ID_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_ID_EXTENDED_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_ID_EXTENDED_BUFFER_SIZE___128"
+              >#define LOG_NAMED_ID_EXTENDED_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>log/named.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_KW_BUFFER_SIZE___32">
+            <a class="permalink" href="#_define_LOG_NAMED_KW_BUFFER_SIZE___32"
+              >#define LOG_NAMED_KW_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_NAME_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_NAME_BUFFER_SIZE___256"
+              >#define LOG_NAMED_NAME_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_TEMP_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_TEMP_BUFFER_SIZE___512"
+              >#define LOG_NAMED_TEMP_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE___512"
+              >#define LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_TYPE_BUFFER_SIZE___64">
+            <a class="permalink" href="#_define_LOG_NAMED_TYPE_BUFFER_SIZE___64"
+              >#define LOG_NAMED_TYPE_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>log/named.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE___256"
+              >#define LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_NAMED_TYPE_SHORT_BUFFER_SIZE___32">
+            <a
+              class="permalink"
+              href="#_define_LOG_NAMED_TYPE_SHORT_BUFFER_SIZE___32"
+              >#define LOG_NAMED_TYPE_SHORT_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NAMED_FORMAT_BUFFER_SIZE___(4096)">
+            <a
+              class="permalink"
+              href="#_define_NAMED_FORMAT_BUFFER_SIZE___(4096)"
+              >#define NAMED_FORMAT_BUFFER_SIZE (4096)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file <b>log/named.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_named_format_or_original()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

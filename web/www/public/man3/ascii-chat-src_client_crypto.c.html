@@ -1,78 +1,132 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>crypto.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">crypto.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">crypto.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">crypto.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>client_crypto_init</b>
-    (<b>client_connection_t</b> *connection, const char *password)
-  <br/>
-  <b>bool</b> <b>crypto_client_should_rekey</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_initiate_rekey</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_process_rekey_request</b>
-    (<b>client_connection_t</b> *connection, const <b>uint8_t</b> *packet,
-    size_t packet_len)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_send_rekey_response</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_process_rekey_response</b>
-    (<b>client_connection_t</b> *connection, const <b>uint8_t</b> *packet,
-    size_t packet_len)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_send_rekey_complete</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> client_crypto_init
-  (<b>client_connection_t</b> * connection, const char * password)</h2>
-<p class="Pp">Definition at line <b>14</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>14                                                                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>crypto.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">crypto.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">crypto.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">crypto.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>client_crypto_init</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const char *password)
+            <br />
+            <b>bool</b> <b>crypto_client_should_rekey</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b> <b>crypto_client_initiate_rekey</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_process_rekey_request</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_send_rekey_response</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_process_rekey_response</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_send_rekey_complete</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_crypto_init (<b
+              >client_connection_t</b
+            >
+            * connection, const char * password)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+14                                                                                             {
 15   asciichat_error_t result = network_connection_prepare_security(connection-&gt;network, false, password);
 16   if (result != ASCIICHAT_OK)
 17     return result;
@@ -146,41 +200,48 @@
 85
 86   return ASCIICHAT_OK;
 87 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_client_config_init_defaults()</b>,
-    <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
-    <b>acds_session_lookup()</b>, <b>ASCIICHAT_OK</b>,
-    <b>client_connection_checkpoint()</b>, <b>client_crypto_init()</b>,
-    <b>client_connection::crypto_ctx</b>, <b>client_connection::crypto_mode</b>,
-    <b>discovery_keys_verify()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO_AUTH</b>,
-    <b>crypto_handshake_context_t::expected_server_key</b>,
-    <b>acds_session_lookup_result_t::found</b>, <b>GET_OPTION</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>acds_session_lookup_result_t::host_pubkey</b>,
-    <b>acds_client_config_t::identity_key</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>MS_PER_SEC_INT</b>, <b>client_connection::network</b>,
-    <b>network_connection_crypto_mode()</b>,
-    <b>network_connection_handshake()</b>,
-    <b>network_connection_prepare_security()</b>, <b>NOTICE</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
-    <b>acds_client_config_t::server_address</b>,
-    <b>acds_client_config_t::server_port</b>, <b>SET_ERRNO</b>,
-    <b>acds_client_config_t::timeout_ms</b>, and
-    <b>crypto_handshake_context_t::verify_server_key</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_client_config_init_defaults()</b>,
+            <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
+            <b>acds_session_lookup()</b>, <b>ASCIICHAT_OK</b>,
+            <b>client_connection_checkpoint()</b>, <b>client_crypto_init()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>client_connection::crypto_mode</b>,
+            <b>discovery_keys_verify()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO_AUTH</b>,
+            <b>crypto_handshake_context_t::expected_server_key</b>,
+            <b>acds_session_lookup_result_t::found</b>, <b>GET_OPTION</b>,
+            <b>HEX_STRING_SIZE_32</b>,
+            <b>acds_session_lookup_result_t::host_pubkey</b>,
+            <b>acds_client_config_t::identity_key</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>MS_PER_SEC_INT</b>,
+            <b>client_connection::network</b>,
+            <b>network_connection_crypto_mode()</b>,
+            <b>network_connection_handshake()</b>,
+            <b>network_connection_prepare_security()</b>, <b>NOTICE</b>,
+            <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+            <b>acds_client_config_t::server_address</b>,
+            <b>acds_client_config_t::server_port</b>, <b>SET_ERRNO</b>,
+            <b>acds_client_config_t::timeout_ms</b>, and
+            <b>crypto_handshake_context_t::verify_server_key</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

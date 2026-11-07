@@ -1,116 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mdns_snapshot_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mdns_snapshot_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mdns_snapshot_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mdns_snapshot_t - TUI-based server selection with formatted
-    display.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">int <b>count</b>
-  <br/>
-  <b>bool</b> <b>live</b>
-  <br/>
-  <b>ui_selectable_list_t</b> <b>list</b>
-  <br/>
-  char <b>input</b> [32]
-  <br/>
-  <b>ui_mdns_server_t</b> <b>servers</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">TUI-based server selection with formatted display.</p>
-<p class="Pp">Displays discovered servers in a terminal UI with the following
-    features:</p>
-<ul class="Bl-bullet">
-  <li>Clears terminal and displays formatted server list</li>
-  <li>Shows &quot;No results&quot; message if no servers available</li>
-  <li>Supports arrows/j/k, Enter, numeric entry, refresh and cancellation</li>
-  <li>Keeps the selected row visible in a terminal-sized viewport</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>servers</i> Array of discovered servers
-<br/>
-<i>count</i> Number of servers</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0-based index of selected server, or -1 to cancel</div>
-<p class="Pp">Definition at line <b>128</b> of file <b>tui/mdns.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_mdns_snapshot_t::count"><a class="permalink" href="#int_mdns_snapshot_t::count">int
-  mdns_snapshot_t::count</a></h2>
-<p class="Pp">Definition at line <b>129</b> of file <b>tui/mdns.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_mdns_snapshot_t::input_32_"><a class="permalink" href="#char_mdns_snapshot_t::input_32_">char
-  mdns_snapshot_t::input[32]</a></h2>
-<p class="Pp">Definition at line <b>132</b> of file <b>tui/mdns.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_selectable_list_t</b> mdns_snapshot_t::list</h2>
-<p class="Pp">Definition at line <b>131</b> of file <b>tui/mdns.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> mdns_snapshot_t::live</h2>
-<p class="Pp">Definition at line <b>130</b> of file <b>tui/mdns.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_mdns_server_t</b> mdns_snapshot_t::servers[]</h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>tui/mdns.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mdns_snapshot_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mdns_snapshot_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mdns_snapshot_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          mdns_snapshot_t - TUI-based server selection with formatted display.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>count</b>
+            <br />
+            <b>bool</b> <b>live</b>
+            <br />
+            <b>ui_selectable_list_t</b> <b>list</b>
+            <br />
+            char <b>input</b> [32]
+            <br />
+            <b>ui_mdns_server_t</b> <b>servers</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">TUI-based server selection with formatted display.</p>
+        <p class="Pp">
+          Displays discovered servers in a terminal UI with the following
+          features:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Clears terminal and displays formatted server list</li>
+          <li>Shows &quot;No results&quot; message if no servers available</li>
+          <li>
+            Supports arrows/j/k, Enter, numeric entry, refresh and cancellation
+          </li>
+          <li>Keeps the selected row visible in a terminal-sized viewport</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>servers</i> Array of discovered servers
+          <br />
+          <i>count</i> Number of servers
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">
+          0-based index of selected server, or -1 to cancel
+        </div>
+        <p class="Pp">
+          Definition at line <b>128</b> of file <b>tui/mdns.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_mdns_snapshot_t::count">
+            <a class="permalink" href="#int_mdns_snapshot_t::count"
+              >int mdns_snapshot_t::count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>tui/mdns.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_mdns_snapshot_t::input_32_">
+            <a class="permalink" href="#char_mdns_snapshot_t::input_32_"
+              >char mdns_snapshot_t::input[32]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>132</b> of file <b>tui/mdns.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_selectable_list_t</b> mdns_snapshot_t::list</h2>
+          <p class="Pp">
+            Definition at line <b>131</b> of file <b>tui/mdns.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> mdns_snapshot_t::live</h2>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>tui/mdns.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_mdns_server_t</b> mdns_snapshot_t::servers[]</h2>
+          <p class="Pp">
+            Definition at line <b>133</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,251 +1,390 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ascii_frame_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ascii_frame_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ascii_frame_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ascii_frame_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/video/ascii/render.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
-  Member Functions</a></h2>
-<br/>
-<p class="Pp"><b>_Alignas</b> (64) <b>uint32_t</b> inline_scratch[512 *6]
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>outbuf_t</b> <b>output</b>
-  <br/>
-  <b>outbuf_t</b> * <b>output_target</b>
-  <br/>
-  size_t <b>width</b>
-  <br/>
-  size_t <b>source_height</b>
-  <br/>
-  <b>uint32_t</b> <b>table</b> [64]
-  <br/>
-  <b>uint32_t</b> * <b>scratch</b>
-  <br/>
-  <b>uint32_t</b> * <b>packed</b>
-  <br/>
-  <b>uint32_t</b> * <b>index</b>
-  <br/>
-  <b>uint32_t</b> * <b>glyph</b>
-  <br/>
-  <b>uint32_t</b> * <b>fg</b>
-  <br/>
-  <b>uint32_t</b> * <b>bg</b>
-  <br/>
-  <b>uint8_t</b> * <b>luma</b>
-  <br/>
-  <b>ascii_stabilizer_t</b> * <b>stabilizer</b>
-  <br/>
-  size_t <b>row</b>
-  <br/>
-  <b>bool</b> <b>temporal_preselected</b>
-  <br/>
-  <b>bool</b> <b>dithered</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Prepared row storage shared by ISA-owned processing loops. No
-    pixel work occurs here.</p>
-<p class="Pp">Definition at line <b>59</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
-  Function Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="ascii_frame_t::_Alignas_(64_)"><a class="permalink" href="#ascii_frame_t::_Alignas_(64_)">ascii_frame_t::_Alignas
-  (64 )</a></h2>
-<p class="Pp">References <b>ascii_frame_emit_row()</b>,
-    <b>ascii_frame_finish()</b>, <b>ascii_frame_init()</b>,
-    <b>ASCII_INLINE_SCRATCH_COLUMNS</b>, and <b>ASCII_SCRATCH_PLANES</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::bg</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, and <b>ascii_render_halfblocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ascii_frame_t::dithered</h2>
-<p class="Pp">Definition at line <b>69</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
-    <b>ascii_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::fg</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, and <b>ascii_render_halfblocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::glyph</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
-    <b>ascii_render_glyph_match()</b>, and <b>ascii_render_halfblocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::index</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
-    <b>ascii_render_glyph_match()</b>, and <b>ascii_render_halfblocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>* ascii_frame_t::luma</h2>
-<p class="Pp">Definition at line <b>65</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>,
-    <b>ascii_frame_init()</b>, <b>ascii_render()</b>, and
-    <b>ascii_render_glyph_match()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>outbuf_t</b> ascii_frame_t::output</h2>
-<p class="Pp">Definition at line <b>60</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, and <b>ascii_frame_finish()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>outbuf_t</b>* ascii_frame_t::output_target</h2>
-<p class="Pp">Definition at line <b>61</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_finish()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::packed</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
-    <b>ascii_render_glyph_match()</b>, and <b>ascii_render_halfblocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ascii_frame_t::row"><a class="permalink" href="#size_t_ascii_frame_t::row">size_t
-  ascii_frame_t::row</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>, and
-    <b>ascii_frame_emit_row()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b>* ascii_frame_t::scratch</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_finish()</b>,
-    <b>ascii_frame_init()</b>, and <b>ascii_half_frame_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ascii_frame_t::source_height"><a class="permalink" href="#size_t_ascii_frame_t::source_height">size_t
-  ascii_frame_t::source_height</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>, and
-    <b>ascii_half_frame_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ascii_stabilizer_t</b>* ascii_frame_t::stabilizer</h2>
-<p class="Pp">Definition at line <b>66</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, and <b>ascii_render_glyph_match()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> ascii_frame_t::table[64]</h2>
-<p class="Pp">Definition at line <b>63</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>, and
-    <b>ascii_render_halfblocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ascii_frame_t::temporal_preselected</h2>
-<p class="Pp">Definition at line <b>68</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
-    <b>ascii_render_glyph_match()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ascii_frame_t::width"><a class="permalink" href="#size_t_ascii_frame_t::width">size_t
-  ascii_frame_t::width</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file
-    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
-    <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
-    <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
-    <b>ascii_render_glyph_match()</b>, and <b>ascii_render_halfblocks()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ascii_frame_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ascii_frame_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ascii_frame_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ascii_frame_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/video/ascii/render.h&gt;
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Public_Member_Functions">
+            <a class="permalink" href="#Public_Member_Functions"
+              >Public Member Functions</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>_Alignas</b> (64) <b>uint32_t</b> inline_scratch[512 *6]
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>outbuf_t</b> <b>output</b>
+            <br />
+            <b>outbuf_t</b> * <b>output_target</b>
+            <br />
+            size_t <b>width</b>
+            <br />
+            size_t <b>source_height</b>
+            <br />
+            <b>uint32_t</b> <b>table</b> [64]
+            <br />
+            <b>uint32_t</b> * <b>scratch</b>
+            <br />
+            <b>uint32_t</b> * <b>packed</b>
+            <br />
+            <b>uint32_t</b> * <b>index</b>
+            <br />
+            <b>uint32_t</b> * <b>glyph</b>
+            <br />
+            <b>uint32_t</b> * <b>fg</b>
+            <br />
+            <b>uint32_t</b> * <b>bg</b>
+            <br />
+            <b>uint8_t</b> * <b>luma</b>
+            <br />
+            <b>ascii_stabilizer_t</b> * <b>stabilizer</b>
+            <br />
+            size_t <b>row</b>
+            <br />
+            <b>bool</b> <b>temporal_preselected</b>
+            <br />
+            <b>bool</b> <b>dithered</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Prepared row storage shared by ISA-owned processing loops. No pixel
+          work occurs here.
+        </p>
+        <p class="Pp">
+          Definition at line <b>59</b> of file
+          <b>include/ascii-chat/video/ascii/render.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Member_Function_Documentation">
+          <a class="permalink" href="#Member_Function_Documentation"
+            >Member Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="ascii_frame_t::_Alignas_(64_)">
+            <a class="permalink" href="#ascii_frame_t::_Alignas_(64_)"
+              >ascii_frame_t::_Alignas (64 )</a
+            >
+          </h2>
+          <p class="Pp">
+            References <b>ascii_frame_emit_row()</b>,
+            <b>ascii_frame_finish()</b>, <b>ascii_frame_init()</b>,
+            <b>ASCII_INLINE_SCRATCH_COLUMNS</b>, and
+            <b>ASCII_SCRATCH_PLANES</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::bg</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ascii_frame_t::dithered</h2>
+          <p class="Pp">
+            Definition at line <b>69</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_row()</b>, and
+            <b>ascii_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::fg</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::glyph</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
+            <b>ascii_render_glyph_match()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::index</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
+            <b>ascii_render_glyph_match()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b>* ascii_frame_t::luma</h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_row()</b>,
+            <b>ascii_frame_init()</b>, <b>ascii_render()</b>, and
+            <b>ascii_render_glyph_match()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>outbuf_t</b> ascii_frame_t::output</h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, and <b>ascii_frame_finish()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>outbuf_t</b>* ascii_frame_t::output_target</h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_frame_finish()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> * ascii_frame_t::packed</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
+            <b>ascii_render_glyph_match()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ascii_frame_t::row">
+            <a class="permalink" href="#size_t_ascii_frame_t::row"
+              >size_t ascii_frame_t::row</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>, and
+            <b>ascii_frame_emit_row()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b>* ascii_frame_t::scratch</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_finish()</b>,
+            <b>ascii_frame_init()</b>, and <b>ascii_half_frame_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ascii_frame_t::source_height">
+            <a class="permalink" href="#size_t_ascii_frame_t::source_height"
+              >size_t ascii_frame_t::source_height</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>, and
+            <b>ascii_half_frame_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ascii_stabilizer_t</b>* ascii_frame_t::stabilizer
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, and
+            <b>ascii_render_glyph_match()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> ascii_frame_t::table[64]</h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ascii_frame_t::temporal_preselected</h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_row()</b>, and
+            <b>ascii_render_glyph_match()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ascii_frame_t::width">
+            <a class="permalink" href="#size_t_ascii_frame_t::width"
+              >size_t ascii_frame_t::width</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file
+            <b>include/ascii-chat/video/ascii/render.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_frame_emit_halfrow()</b>,
+            <b>ascii_frame_emit_row()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, <b>ascii_render()</b>,
+            <b>ascii_render_glyph_match()</b>, and
+            <b>ascii_render_halfblocks()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

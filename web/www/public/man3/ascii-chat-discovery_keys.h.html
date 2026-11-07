@@ -1,134 +1,197 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>discovery_keys.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">discovery_keys.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">discovery_keys.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">discovery_keys.h - Discovery Server Public Key Trust
-  Management.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ACDS_OFFICIAL_SERVER</b>
-    <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b>
-  <br/>
-  Official ACDS server hostname (automatic HTTPS key trust). #define
-    <b>ACDS_OFFICIAL_KEY_SSH_URL</b> 'https://discovery.ascii-chat.com/key.pub'
-  <br/>
-  Default HTTPS URLs for official ACDS keys. #define
-    <b>ACDS_OFFICIAL_KEY_GPG_URL</b> 'https://discovery.ascii-chat.com/key.gpg'
-  <br/>
-  #define <b>ACDS_KEYS_CACHE_DIR</b> 'acds_keys'
-  <br/>
-  Key cache directory (relative to config dir).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>discovery_keys_verify</b> (const char
-    *acds_server, const char *key_spec, <b>uint8_t</b> pubkey_out[32])
-  <br/>
-  Verify and load ACDS server public key. <b>asciichat_error_t</b>
-    <b>discovery_keys_download_https</b> (const char *url, <b>uint8_t</b>
-    pubkey_out[32])
-  <br/>
-  Download key from HTTPS URL. <b>asciichat_error_t</b>
-    <b>discovery_keys_load_file</b> (const char *file_path, <b>uint8_t</b>
-    pubkey_out[32])
-  <br/>
-  Load key from local file. <b>asciichat_error_t</b>
-    <b>discovery_keys_get_cache_path</b> (const char *acds_server, char
-    *path_out, size_t path_size)
-  <br/>
-  Get cached key path for ACDS server. <b>asciichat_error_t</b>
-    <b>discovery_keys_load_cached</b> (const char *acds_server, <b>uint8_t</b>
-    pubkey_out[32])
-  <br/>
-  Check if cached key exists and load it. <b>asciichat_error_t</b>
-    <b>discovery_keys_save_cached</b> (const char *acds_server, const
-    <b>uint8_t</b> pubkey[32])
-  <br/>
-  Save key to cache. <b>asciichat_error_t</b>
-    <b>discovery_keys_verify_change</b> (const char *acds_server, const
-    <b>uint8_t</b> old_pubkey[32], const <b>uint8_t</b> new_pubkey[32])
-  <br/>
-  Verify key change with user. <b>asciichat_error_t</b>
-    <b>discovery_keys_clear_cache</b> (const char *acds_server)
-  <br/>
-  Clear cached key for ACDS server.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Discovery Server Public Key Trust Management.</p>
-<p class="Pp">This module handles verification and trust management for ACDS
-    server public keys. It provides functionality to:</p>
-<ul class="Bl-bullet">
-  <li>Download keys from HTTPS URLs using lib/crypto/http_client.h</li>
-  <li>Load keys from local files (SSH/GPG formats)</li>
-  <li>Special-case automatic trust for discovery-service.ascii-chat.com</li>
-  <li>Cache keys locally and detect changes (requires user verification)</li>
-  <li>Parse github:user and gitlab:user.gpg key specifications</li>
-</ul>
-<section class="Ss">
-<h2 class="Ss" id="Trust_Model"><a class="permalink" href="#Trust_Model">Trust
-  Model</a></h2>
-<p class="Pp"><b>Official ACDS Server
-  (discovery-service.ascii-chat.com)</b>:</p>
-<ul class="Bl-bullet">
-  <li>Automatically trusts keys downloaded from
-      https://discovery-service.ascii-chat.com/key.pub or /key.gpg</li>
-  <li>First connection: downloads and caches key</li>
-  <li>Subsequent connections: uses cached key</li>
-  <li>Key changes: requires user verification (prevents MITM attacks)</li>
-</ul>
-<p class="Pp"><b>Third-Party ACDS Servers</b>:</p>
-<ul class="Bl-bullet">
-  <li>Requires explicit --discovery-service-key configuration</li>
-  <li>Can be HTTPS URL, local file path, or github:user/gitlab:user
-      specification</li>
-  <li>Keys are cached after first successful download/verification</li>
-  <li>Key changes require user verification</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage"><a class="permalink" href="#Usage">Usage</a></h2>
-<pre>// Download and verify key from HTTPS URL
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>discovery_keys.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">discovery_keys.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">discovery_keys.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          discovery_keys.h - Discovery Server Public Key Trust Management.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ACDS_OFFICIAL_SERVER</b>
+            <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b>
+            <br />
+            Official ACDS server hostname (automatic HTTPS key trust). #define
+            <b>ACDS_OFFICIAL_KEY_SSH_URL</b>
+            'https://discovery.ascii-chat.com/key.pub'
+            <br />
+            Default HTTPS URLs for official ACDS keys. #define
+            <b>ACDS_OFFICIAL_KEY_GPG_URL</b>
+            'https://discovery.ascii-chat.com/key.gpg'
+            <br />
+            #define <b>ACDS_KEYS_CACHE_DIR</b> 'acds_keys'
+            <br />
+            Key cache directory (relative to config dir).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>discovery_keys_verify</b> (const char
+            *acds_server, const char *key_spec, <b>uint8_t</b> pubkey_out[32])
+            <br />
+            Verify and load ACDS server public key. <b>asciichat_error_t</b>
+            <b>discovery_keys_download_https</b> (const char *url,
+            <b>uint8_t</b>
+            pubkey_out[32])
+            <br />
+            Download key from HTTPS URL. <b>asciichat_error_t</b>
+            <b>discovery_keys_load_file</b> (const char *file_path,
+            <b>uint8_t</b>
+            pubkey_out[32])
+            <br />
+            Load key from local file. <b>asciichat_error_t</b>
+            <b>discovery_keys_get_cache_path</b> (const char *acds_server, char
+            *path_out, size_t path_size)
+            <br />
+            Get cached key path for ACDS server. <b>asciichat_error_t</b>
+            <b>discovery_keys_load_cached</b> (const char *acds_server,
+            <b>uint8_t</b>
+            pubkey_out[32])
+            <br />
+            Check if cached key exists and load it. <b>asciichat_error_t</b>
+            <b>discovery_keys_save_cached</b> (const char *acds_server, const
+            <b>uint8_t</b> pubkey[32])
+            <br />
+            Save key to cache. <b>asciichat_error_t</b>
+            <b>discovery_keys_verify_change</b> (const char *acds_server, const
+            <b>uint8_t</b> old_pubkey[32], const <b>uint8_t</b> new_pubkey[32])
+            <br />
+            Verify key change with user. <b>asciichat_error_t</b>
+            <b>discovery_keys_clear_cache</b> (const char *acds_server)
+            <br />
+            Clear cached key for ACDS server.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Discovery Server Public Key Trust Management.</p>
+        <p class="Pp">
+          This module handles verification and trust management for ACDS server
+          public keys. It provides functionality to:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Download keys from HTTPS URLs using lib/crypto/http_client.h</li>
+          <li>Load keys from local files (SSH/GPG formats)</li>
+          <li>
+            Special-case automatic trust for discovery-service.ascii-chat.com
+          </li>
+          <li>
+            Cache keys locally and detect changes (requires user verification)
+          </li>
+          <li>Parse github:user and gitlab:user.gpg key specifications</li>
+        </ul>
+        <section class="Ss">
+          <h2 class="Ss" id="Trust_Model">
+            <a class="permalink" href="#Trust_Model">Trust Model</a>
+          </h2>
+          <p class="Pp">
+            <b>Official ACDS Server (discovery-service.ascii-chat.com)</b>:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Automatically trusts keys downloaded from
+              https://discovery-service.ascii-chat.com/key.pub or /key.gpg
+            </li>
+            <li>First connection: downloads and caches key</li>
+            <li>Subsequent connections: uses cached key</li>
+            <li>
+              Key changes: requires user verification (prevents MITM attacks)
+            </li>
+          </ul>
+          <p class="Pp"><b>Third-Party ACDS Servers</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Requires explicit --discovery-service-key configuration</li>
+            <li>
+              Can be HTTPS URL, local file path, or github:user/gitlab:user
+              specification
+            </li>
+            <li>
+              Keys are cached after first successful download/verification
+            </li>
+            <li>Key changes require user verification</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage">
+            <a class="permalink" href="#Usage">Usage</a>
+          </h2>
+          <pre>// Download and verify key from HTTPS URL
 uint8_t pubkey[32];
 asciichat_error_t result = discovery_keys_verify(&quot;acds.example.com&quot;,
 <br/>
@@ -141,60 +204,115 @@ result = discovery_keys_verify(&quot;discovery-service.ascii-chat.com&quot;, NUL
 result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;/path/to/key.pub&quot;, pubkey);
 // GitHub key
 result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&quot;, pubkey);</pre>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>discovery_keys.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_KEYS_CACHE_DIR___'acds_keys'"><a class="permalink" href="#_define_ACDS_KEYS_CACHE_DIR___'acds_keys'">#define
-  ACDS_KEYS_CACHE_DIR 'acds_keys'</a></h2>
-<p class="Pp">Key cache directory (relative to config dir).</p>
-<p class="Pp">Definition at line <b>80</b> of file <b>discovery_keys.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_get_cache_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_OFFICIAL_KEY_GPG_URL___'https://discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_KEY_GPG_URL___'https://discovery">#define
-  ACDS_OFFICIAL_KEY_GPG_URL 'https://discovery.ascii-chat.com/key.gpg'</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>discovery_keys.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_OFFICIAL_KEY_SSH_URL___'https://discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_KEY_SSH_URL___'https://discovery">#define
-  ACDS_OFFICIAL_KEY_SSH_URL 'https://discovery.ascii-chat.com/key.pub'</a></h2>
-<p class="Pp">Default HTTPS URLs for official ACDS keys.</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>discovery_keys.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER___"><a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER___">#define
-  ACDS_OFFICIAL_SERVER <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b></a></h2>
-<p class="Pp">Official ACDS server hostname (automatic HTTPS key trust).
-    References the authoritative definition from <b>network/acip/acds.h</b></p>
-<p class="Pp">Definition at line <b>69</b> of file <b>discovery_keys.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_clear_cache (const char *
-  acds_server)</h2>
-<p class="Pp">Clear cached key for ACDS server. Removes the cached key for the
-    given ACDS server. Useful for testing or forcing key re-download.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>acds_server</i> ACDS server hostname</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>222</b> of file <b>discovery_keys.c</b>.</p>
-<pre>222                                                                       {
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">January 2026</div>
+          <p class="Pp">Definition in file <b>discovery_keys.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACDS_KEYS_CACHE_DIR___'acds_keys'">
+            <a
+              class="permalink"
+              href="#_define_ACDS_KEYS_CACHE_DIR___'acds_keys'"
+              >#define ACDS_KEYS_CACHE_DIR 'acds_keys'</a
+            >
+          </h2>
+          <p class="Pp">Key cache directory (relative to config dir).</p>
+          <p class="Pp">
+            Definition at line <b>80</b> of file <b>discovery_keys.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_get_cache_path()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACDS_OFFICIAL_KEY_GPG_URL___'https://discovery"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACDS_OFFICIAL_KEY_GPG_URL___'https://discovery"
+              >#define ACDS_OFFICIAL_KEY_GPG_URL
+              'https://discovery.ascii-chat.com/key.gpg'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>75</b> of file <b>discovery_keys.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACDS_OFFICIAL_KEY_SSH_URL___'https://discovery"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACDS_OFFICIAL_KEY_SSH_URL___'https://discovery"
+              >#define ACDS_OFFICIAL_KEY_SSH_URL
+              'https://discovery.ascii-chat.com/key.pub'</a
+            >
+          </h2>
+          <p class="Pp">Default HTTPS URLs for official ACDS keys.</p>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>discovery_keys.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER___">
+            <a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER___"
+              >#define ACDS_OFFICIAL_SERVER
+              <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Official ACDS server hostname (automatic HTTPS key trust).
+            References the authoritative definition from
+            <b>network/acip/acds.h</b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>discovery_keys.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_clear_cache (const char *
+            acds_server)
+          </h2>
+          <p class="Pp">
+            Clear cached key for ACDS server. Removes the cached key for the
+            given ACDS server. Useful for testing or forcing key re-download.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>acds_server</i> ACDS server hostname</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>222</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+222                                                                       {
 223   if (!acds_server) {
 224     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 225   }
@@ -214,30 +332,43 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 239
 240   return ASCIICHAT_OK;
 241 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>discovery_keys_clear_cache()</b>, <b>discovery_keys_get_cache_path()</b>,
-    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_clear_cache()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_download_https (const
-  char * url, <b>uint8_t</b> pubkey_out[32])</h2>
-<p class="Pp">Download key from HTTPS URL. Downloads a public key from an HTTPS
-    URL using lib/crypto/http_client.h. Supports both SSH (OpenSSH format) and
-    GPG (ASCII-armored or binary) keys.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>url</i> HTTPS URL to download from
-<br/>
-<i>pubkey_out</i> Ed25519 public key output (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>91</b> of file <b>discovery_keys.c</b>.</p>
-<pre>91                                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>discovery_keys_clear_cache()</b>,
+            <b>discovery_keys_get_cache_path()</b>, <b>ERROR_FILE_OPERATION</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+            <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_keys_clear_cache()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_download_https (const char *
+            url, <b>uint8_t</b> pubkey_out[32])
+          </h2>
+          <p class="Pp">
+            Download key from HTTPS URL. Downloads a public key from an HTTPS
+            URL using lib/crypto/http_client.h. Supports both SSH (OpenSSH
+            format) and GPG (ASCII-armored or binary) keys.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>url</i> HTTPS URL to download from
+            <br />
+            <i>pubkey_out</i> Ed25519 public key output (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>91</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+91                                                                                                               {
 92   if (!url || !pubkey_out) {
 93     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 94   }
@@ -255,32 +386,47 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 106   log_debug(&quot;Successfully downloaded and parsed ACDS key from %s&quot;, url);
 107   return ASCIICHAT_OK;
 108 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>discovery_keys_download_https()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>public_key_t::key</b>, <b>log_debug</b>, <b>parse_public_key()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_download_https()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_get_cache_path (const
-  char * acds_server, char * path_out, size_t path_size)</h2>
-<p class="Pp">Get cached key path for ACDS server. Returns the local cache path
-    for a given ACDS server's key. Path:
-    ~/.config/ascii-chat/acds_keys/&lt;hostname&gt;/key.pub</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>acds_server</i> ACDS server hostname
-<br/>
-<i>path_out</i> Output buffer for cache path
-<br/>
-<i>path_size</i> Size of output buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>133</b> of file <b>discovery_keys.c</b>.</p>
-<pre>133                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>discovery_keys_download_https()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>public_key_t::key</b>,
+            <b>log_debug</b>, <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_download_https()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_get_cache_path (const char *
+            acds_server, char * path_out, size_t path_size)
+          </h2>
+          <p class="Pp">
+            Get cached key path for ACDS server. Returns the local cache path
+            for a given ACDS server's key. Path:
+            ~/.config/ascii-chat/acds_keys/&lt;hostname&gt;/key.pub
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>acds_server</i> ACDS server hostname
+            <br />
+            <i>path_out</i> Output buffer for cache path
+            <br />
+            <i>path_size</i> Size of output buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>133</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+133                                                                                                            {
 134   if (!acds_server || !path_out || path_size == 0) {
 135     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 136   }
@@ -297,32 +443,48 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 147
 148   return ASCIICHAT_OK;
 149 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_KEYS_CACHE_DIR</b>, <b>ASCIICHAT_OK</b>,
-    <b>discovery_keys_get_cache_path()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>get_config_dir()</b>,
-    <b>PATH_SEPARATOR_STR</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_clear_cache()</b>,
-    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_load_cached()</b>,
-    and <b>discovery_keys_save_cached()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_load_cached (const char *
-  acds_server, <b>uint8_t</b> pubkey_out[32])</h2>
-<p class="Pp">Check if cached key exists and load it. Attempts to load a cached
-    key for the given ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>acds_server</i> ACDS server hostname
-<br/>
-<i>pubkey_out</i> Ed25519 public key output (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if cached key exists and loaded
-  successfully, error otherwise</div>
-<p class="Pp">Definition at line <b>151</b> of file <b>discovery_keys.c</b>.</p>
-<pre>151                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_KEYS_CACHE_DIR</b>, <b>ASCIICHAT_OK</b>,
+            <b>discovery_keys_get_cache_path()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>get_config_dir()</b>,
+            <b>PATH_SEPARATOR_STR</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_clear_cache()</b>,
+            <b>discovery_keys_get_cache_path()</b>,
+            <b>discovery_keys_load_cached()</b>, and
+            <b>discovery_keys_save_cached()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_load_cached (const char *
+            acds_server, <b>uint8_t</b> pubkey_out[32])
+          </h2>
+          <p class="Pp">
+            Check if cached key exists and load it. Attempts to load a cached
+            key for the given ACDS server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>acds_server</i> ACDS server hostname
+            <br />
+            <i>pubkey_out</i> Ed25519 public key output (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if cached key exists and loaded successfully, error
+            otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>151</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+151                                                                                                                    {
 152   if (!acds_server || !pubkey_out) {
 153     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 154   }
@@ -341,35 +503,51 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 167   // Load cached key using existing infrastructure
 168   return discovery_keys_load_file(cache_path, pubkey_out);
 169 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_load_cached()</b>,
-    <b>discovery_keys_load_file()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_FILE_NOT_FOUND</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_load_cached()</b>, and
-    <b>discovery_keys_verify()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_load_file (const char *
-  file_path, <b>uint8_t</b> pubkey_out[32])</h2>
-<p class="Pp">Load key from local file. Loads a public key from a local file.
-    Supports:</p>
-<ul class="Bl-bullet">
-  <li>OpenSSH format (.pub files)</li>
-  <li>GPG ASCII-armored format (.asc, .gpg)</li>
-  <li>GPG binary format</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>file_path</i> Path to key file
-<br/>
-<i>pubkey_out</i> Ed25519 public key output (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>110</b> of file <b>discovery_keys.c</b>.</p>
-<pre>110                                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>discovery_keys_get_cache_path()</b>,
+            <b>discovery_keys_load_cached()</b>,
+            <b>discovery_keys_load_file()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_FILE_NOT_FOUND</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_load_cached()</b>, and
+            <b>discovery_keys_verify()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_load_file (const char *
+            file_path, <b>uint8_t</b> pubkey_out[32])
+          </h2>
+          <p class="Pp">
+            Load key from local file. Loads a public key from a local file.
+            Supports:
+          </p>
+          <ul class="Bl-bullet">
+            <li>OpenSSH format (.pub files)</li>
+            <li>GPG ASCII-armored format (.asc, .gpg)</li>
+            <li>GPG binary format</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>file_path</i> Path to key file
+            <br />
+            <i>pubkey_out</i> Ed25519 public key output (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>110</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+110                                                                                                                {
 111   if (!file_path || !pubkey_out) {
 112     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 113   }
@@ -387,29 +565,43 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 125   log_debug(&quot;Successfully loaded ACDS key from file: %s&quot;, file_path);
 126   return ASCIICHAT_OK;
 127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>discovery_keys_load_file()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>public_key_t::key</b>, <b>log_debug</b>,
-    <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_load_cached()</b>, and
-    <b>discovery_keys_load_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_save_cached (const char *
-  acds_server, const <b>uint8_t</b> pubkey[32])</h2>
-<p class="Pp">Save key to cache. Caches a public key for the given ACDS
-  server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>acds_server</i> ACDS server hostname
-<br/>
-<i>pubkey</i> Public key to cache (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>171</b> of file <b>discovery_keys.c</b>.</p>
-<pre>171                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>discovery_keys_load_file()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>public_key_t::key</b>,
+            <b>log_debug</b>, <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_load_cached()</b>, and
+            <b>discovery_keys_load_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_save_cached (const char *
+            acds_server, const <b>uint8_t</b> pubkey[32])
+          </h2>
+          <p class="Pp">
+            Save key to cache. Caches a public key for the given ACDS server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>acds_server</i> ACDS server hostname
+            <br />
+            <i>pubkey</i> Public key to cache (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>171</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+171                                                                                                                      {
 172   if (!acds_server || !pubkey) {
 173     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 174   }
@@ -459,72 +651,104 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 218   log_debug(&quot;Cached ACDS key for server: %s&quot;, acds_server);
 219   return ASCIICHAT_OK;
 220 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE</b>,
-    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_save_cached()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_FILE_OPERATION</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>platform_fopen()</b>,
-    <b>platform_is_directory()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>platform_mkdir_recursive()</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
-    <b>SET_ERRNO_SYS</b>, and <b>SSH_ED25519_WIRE_KEY_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_save_cached()</b>, and
-    <b>discovery_keys_verify()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_verify (const char *
-  acds_server, const char * key_spec, <b>uint8_t</b> pubkey_out[32])</h2>
-<p class="Pp">Verify and load ACDS server public key. This function handles all
-    ACDS key verification scenarios:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Automatic Trust (discovery-service.ascii-chat.com
-  only)</b>:</p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>If acds_server == &quot;discovery-service.ascii-chat.com&quot; and
-      key_spec == NULL:</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Downloads from ACDS_OFFICIAL_KEY_SSH_URL or ACDS_OFFICIAL_KEY_GPG_URL</dd>
-  <dt> &#x2022;</dt>
-  <dd>Caches key locally</dd>
-  <dt> &#x2022;</dt>
-  <dd>Trusts without user verification (first time)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Requires user verification if key changes</dd>
-</dl>
-<p class="Pp"><b>Explicit Key Specification</b>:</p>
-<ul class="Bl-bullet">
-  <li>HTTPS URL: Downloads key from URL, caches it</li>
-  <li>Local file: Loads key from file path</li>
-  <li>github:user: Fetches SSH or GPG key from GitHub</li>
-  <li>gitlab:user.gpg: Fetches GPG key from GitLab</li>
-</ul>
-<p class="Pp"><b>Caching Behavior</b>:</p>
-<ul class="Bl-bullet">
-  <li>Keys are cached in ~/.config/ascii-chat/acds_keys/&lt;hostname&gt;/</li>
-  <li>Cache invalidation requires user confirmation (prevents MITM attacks)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>acds_server</i> ACDS server hostname (e.g.,
-  &quot;acds.example.com&quot;)
-<br/>
-<i>key_spec</i> Key specification:
-<ul class="Bl-bullet">
-  <li>NULL: automatic trust for discovery-service.ascii-chat.com only</li>
-  <li>HTTPS URL: https://example.com/key.pub</li>
-  <li>File path: /path/to/key.pub or ~/.ssh/server.pub</li>
-  <li>GitHub: github:username</li>
-  <li>GitLab: gitlab:username.gpg</li>
-</ul>
-<p class="Pp"><i>pubkey_out</i> Ed25519 public key output (32 bytes)</p>
-</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>278</b> of file <b>discovery_keys.c</b>.</p>
-<pre>279                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE</b>,
+            <b>discovery_keys_get_cache_path()</b>,
+            <b>discovery_keys_save_cached()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_debug</b>, <b>platform_fopen()</b>,
+            <b>platform_is_directory()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+            <b>platform_mkdir_recursive()</b>, <b>safe_snprintf()</b>,
+            <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, and
+            <b>SSH_ED25519_WIRE_KEY_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_save_cached()</b>, and
+            <b>discovery_keys_verify()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_verify (const char *
+            acds_server, const char * key_spec, <b>uint8_t</b> pubkey_out[32])
+          </h2>
+          <p class="Pp">
+            Verify and load ACDS server public key. This function handles all
+            ACDS key verification scenarios:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Automatic Trust (discovery-service.ascii-chat.com only)</b>:
+          </p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              If acds_server == &quot;discovery-service.ascii-chat.com&quot; and
+              key_spec == NULL:
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Downloads from ACDS_OFFICIAL_KEY_SSH_URL or
+              ACDS_OFFICIAL_KEY_GPG_URL
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Caches key locally</dd>
+            <dt>&#x2022;</dt>
+            <dd>Trusts without user verification (first time)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Requires user verification if key changes</dd>
+          </dl>
+          <p class="Pp"><b>Explicit Key Specification</b>:</p>
+          <ul class="Bl-bullet">
+            <li>HTTPS URL: Downloads key from URL, caches it</li>
+            <li>Local file: Loads key from file path</li>
+            <li>github:user: Fetches SSH or GPG key from GitHub</li>
+            <li>gitlab:user.gpg: Fetches GPG key from GitLab</li>
+          </ul>
+          <p class="Pp"><b>Caching Behavior</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Keys are cached in
+              ~/.config/ascii-chat/acds_keys/&lt;hostname&gt;/
+            </li>
+            <li>
+              Cache invalidation requires user confirmation (prevents MITM
+              attacks)
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>acds_server</i> ACDS server hostname (e.g.,
+            &quot;acds.example.com&quot;)
+            <br />
+            <i>key_spec</i> Key specification:
+            <ul class="Bl-bullet">
+              <li>
+                NULL: automatic trust for discovery-service.ascii-chat.com only
+              </li>
+              <li>HTTPS URL: https://example.com/key.pub</li>
+              <li>File path: /path/to/key.pub or ~/.ssh/server.pub</li>
+              <li>GitHub: github:username</li>
+              <li>GitLab: gitlab:username.gpg</li>
+            </ul>
+            <p class="Pp">
+              <i>pubkey_out</i> Ed25519 public key output (32 bytes)
+            </p>
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>278</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+279                                                                                      {
 280   if (!acds_server || !pubkey_out) {
 281     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 282   }
@@ -614,44 +838,59 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 366   log_debug(&quot;ACDS key verification successful for: %s&quot;, acds_server);
 367   return ASCIICHAT_OK;
 368 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_OFFICIAL_KEY_GPG_URL</b>,
-    <b>ACDS_OFFICIAL_KEY_SSH_URL</b>, <b>ACDS_OFFICIAL_SERVER</b>,
-    <b>ASCIICHAT_OK</b>, <b>discovery_keys_load_cached()</b>,
-    <b>discovery_keys_save_cached()</b>, <b>discovery_keys_verify()</b>,
-    <b>discovery_keys_verify_change()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
-    <b>public_key_t::key</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_init()</b>, and
-    <b>discovery_keys_verify()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_verify_change (const char
-  * acds_server, const <b>uint8_t</b> old_pubkey[32], const <b>uint8_t</b>
-  new_pubkey[32])</h2>
-<p class="Pp">Verify key change with user. When a cached key doesn't match the
-    newly downloaded/loaded key, prompts the user to verify the change.</p>
-<p class="Pp"></p>
-<p class="Pp">Displays:</p>
-<ul class="Bl-bullet">
-  <li>Old key fingerprint (SHA256)</li>
-  <li>New key fingerprint (SHA256)</li>
-  <li>Warning about potential MITM attack</li>
-  <li>Prompt: &quot;Accept new key? (y/N): &quot;</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>acds_server</i> ACDS server hostname
-<br/>
-<i>old_pubkey</i> Previous cached key (32 bytes)
-<br/>
-<i>new_pubkey</i> New downloaded key (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if
-  declined</div>
-<p class="Pp">Definition at line <b>247</b> of file <b>discovery_keys.c</b>.</p>
-<pre>249                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_OFFICIAL_KEY_GPG_URL</b>,
+            <b>ACDS_OFFICIAL_KEY_SSH_URL</b>, <b>ACDS_OFFICIAL_SERVER</b>,
+            <b>ASCIICHAT_OK</b>, <b>discovery_keys_load_cached()</b>,
+            <b>discovery_keys_save_cached()</b>, <b>discovery_keys_verify()</b>,
+            <b>discovery_keys_verify_change()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+            <b>public_key_t::key</b>, <b>log_debug</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_crypto_init()</b>, and
+            <b>discovery_keys_verify()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_keys_verify_change (const char *
+            acds_server, const <b>uint8_t</b> old_pubkey[32], const
+            <b>uint8_t</b> new_pubkey[32])
+          </h2>
+          <p class="Pp">
+            Verify key change with user. When a cached key doesn't match the
+            newly downloaded/loaded key, prompts the user to verify the change.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Displays:</p>
+          <ul class="Bl-bullet">
+            <li>Old key fingerprint (SHA256)</li>
+            <li>New key fingerprint (SHA256)</li>
+            <li>Warning about potential MITM attack</li>
+            <li>Prompt: &quot;Accept new key? (y/N): &quot;</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>acds_server</i> ACDS server hostname
+            <br />
+            <i>old_pubkey</i> Previous cached key (32 bytes)
+            <br />
+            <i>new_pubkey</i> New downloaded key (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if declined
+          </div>
+          <p class="Pp">
+            Definition at line <b>247</b> of file <b>discovery_keys.c</b>.
+          </p>
+          <pre>
+249                                                                                                   {
 250   if (!acds_server || !old_pubkey || !new_pubkey) {
 251     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 252   }
@@ -675,30 +914,37 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 270   log_info(&quot;User accepted ACDS key change for: %s&quot;, acds_server);
 271   return ASCIICHAT_OK;
 272 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>compute_key_fingerprint()</b>,
-    <b>CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE</b>,
-    <b>CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE</b>,
-    <b>discovery_keys_verify_change()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>log_info</b>, <b>safe_snprintf()</b>,
-    <b>SET_ERRNO</b>, <b>ui_notice_confirm_kind()</b>, <b>UI_NOTICE_DANGER</b>,
-    and <b>UI_PROMPT_DISCOVERY_KEY_CHANGE</b>.</p>
-<p class="Pp">Referenced by <b>discovery_keys_verify()</b>, and
-    <b>discovery_keys_verify_change()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>compute_key_fingerprint()</b>,
+            <b>CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE</b>,
+            <b>CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE</b>,
+            <b>discovery_keys_verify_change()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CRYPTO_VERIFICATION</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>HEX_STRING_SIZE_32</b>,
+            <b>log_info</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
+            <b>ui_notice_confirm_kind()</b>, <b>UI_NOTICE_DANGER</b>, and
+            <b>UI_PROMPT_DISCOVERY_KEY_CHANGE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_keys_verify()</b>, and
+            <b>discovery_keys_verify_change()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,98 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>md_docs_2glyph-match-prototype(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">md_docs_2glyph-match-prototype(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">md_docs_2glyph-match-prototype(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">md_docs_2glyph-match-prototype - Experimental glyph matching</p>
-<p class="Pp">--renderer=glyph enables a prototype foreground renderer in
-    mirror, client, discovery, and MCP rendering. It fits an 8&#x00D7;8 pixel
-    patch per terminal cell, averages that patch to 4&#x00D7;4, and compares its
-    luminance and local structure with 95 printable ASCII glyph masks generated
-    from DejaVu Sans Mono 2.37. The score balances normalized glyph density
-    against per-sample deviations from the cell's mean. Foreground color uses
-    the same nearest-neighbor sample as the current renderer. The default
-    luminance renderer is unchanged.</p>
-<p class="Pp"></p>
-<p class="Pp">The design was informed by Chafa, inspected at
-    c897fce60cc4e947a254770ea1c2e320d58e7dce. Chafa uses 8&#x00D7;8 symbol
-    coverage, selects candidates (or evaluates the whole set), estimates colors
-    and scores the reconstructed cell. This prototype is an independent, smaller
-    implementation; it does not copy Chafa code or glyph definitions. The
-    generated font masks carry the license in
-  lib/video/ascii/DEJAVU-LICENSE.</p>
-<p class="Pp"></p>
-<p class="Pp">The atlas assumes DejaVu Sans Mono and a dark background. Other
-    fonts, terminal color themes, and glyph rasterization can change the result.
-    The prototype supports printable ASCII palettes. It falls back to luminance
-    for Unicode palettes and in background and half-block modes. Optional
-    --stabilize reduces frame-to-frame flicker in foreground, background, and
-    half-block modes. The 8&#x00D7; sampling limits the viewport to
-    480&#x00D7;270 cells under the current image size limit; larger viewports
-    fall back to the current renderer. It is a visual experiment, not a
-    replacement for the default renderer.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Visual_comparison"><a class="permalink" href="#Visual_comparison">Visual
-  comparison</a></h1>
-<p class="Pp">These are side-by-side captures from Windows x64 debug builds at
-    80&#x00D7;32 cells, truecolor, 8 fps. The emitted terminal frames were
-    rasterized with Pillow and the same DejaVu font used for the atlas. The
-    app-produced GIFs repeated their first image in this run, so they were not
-    used for the comparisons. The left side uses the current renderer and the
-    right side uses --renderer=glyph. The first three animations are roughly two
-    seconds; their PNGs show frame 7. The website demo still shows frame 49. The
-    two renderings of each test pattern were captured in separate runs and can
-    differ slightly in animation phase. The FFmpeg clip is deterministic and was
-    generated as shown below.</p>
-<p class="Pp"></p>
-<p class="Pp">The comparisons cover test patterns 0 and 1, FFmpeg testsrc, and a
-    silent 30-second excerpt of the website demo from 0:45 to 1:15. The source
-    of the latter is web/www/public/assets/demo-video-white-knuckles.webm. Each
-    side was captured separately at 8 fps and combined by frame index, so small
-    differences in capture timing remain. The generated media is kept outside
-    the repository.</p>
-<p class="Pp"></p>
-<p class="Pp">The current renderer uses the standard 23-character ramp. The
-    prototype searches 95 printable glyphs by default and scores their local
-    shapes. An explicitly selected ASCII palette restricts the candidates; a
-    Unicode palette currently uses luminance rendering. Both preserve the
-    sampled foreground color.</p>
-<p class="Pp"></p>
-<p class="Pp">Matching sometimes introduces directional glyphs at shape
-    boundaries, while flat bands gain conspicuous repeated characters. The
-    examples do not establish an overall quality improvement; font, image
-    content, and motion need further evaluation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>ffmpeg -f lavfi -i 'testsrc=duration=3:size=640x480:rate=8' -c:v mpeg4 -q:v 2 demo.mp4
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2glyph-match-prototype(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2glyph-match-prototype(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2glyph-match-prototype(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2glyph-match-prototype - Experimental glyph matching
+        </p>
+        <p class="Pp">
+          --renderer=glyph enables a prototype foreground renderer in mirror,
+          client, discovery, and MCP rendering. It fits an 8&#x00D7;8 pixel
+          patch per terminal cell, averages that patch to 4&#x00D7;4, and
+          compares its luminance and local structure with 95 printable ASCII
+          glyph masks generated from DejaVu Sans Mono 2.37. The score balances
+          normalized glyph density against per-sample deviations from the cell's
+          mean. Foreground color uses the same nearest-neighbor sample as the
+          current renderer. The default luminance renderer is unchanged.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The design was informed by Chafa, inspected at
+          c897fce60cc4e947a254770ea1c2e320d58e7dce. Chafa uses 8&#x00D7;8 symbol
+          coverage, selects candidates (or evaluates the whole set), estimates
+          colors and scores the reconstructed cell. This prototype is an
+          independent, smaller implementation; it does not copy Chafa code or
+          glyph definitions. The generated font masks carry the license in
+          lib/video/ascii/DEJAVU-LICENSE.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The atlas assumes DejaVu Sans Mono and a dark background. Other fonts,
+          terminal color themes, and glyph rasterization can change the result.
+          The prototype supports printable ASCII palettes. It falls back to
+          luminance for Unicode palettes and in background and half-block modes.
+          Optional --stabilize reduces frame-to-frame flicker in foreground,
+          background, and half-block modes. The 8&#x00D7; sampling limits the
+          viewport to 480&#x00D7;270 cells under the current image size limit;
+          larger viewports fall back to the current renderer. It is a visual
+          experiment, not a replacement for the default renderer.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Visual_comparison">
+          <a class="permalink" href="#Visual_comparison">Visual comparison</a>
+        </h1>
+        <p class="Pp">
+          These are side-by-side captures from Windows x64 debug builds at
+          80&#x00D7;32 cells, truecolor, 8 fps. The emitted terminal frames were
+          rasterized with Pillow and the same DejaVu font used for the atlas.
+          The app-produced GIFs repeated their first image in this run, so they
+          were not used for the comparisons. The left side uses the current
+          renderer and the right side uses --renderer=glyph. The first three
+          animations are roughly two seconds; their PNGs show frame 7. The
+          website demo still shows frame 49. The two renderings of each test
+          pattern were captured in separate runs and can differ slightly in
+          animation phase. The FFmpeg clip is deterministic and was generated as
+          shown below.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The comparisons cover test patterns 0 and 1, FFmpeg testsrc, and a
+          silent 30-second excerpt of the website demo from 0:45 to 1:15. The
+          source of the latter is
+          web/www/public/assets/demo-video-white-knuckles.webm. Each side was
+          captured separately at 8 fps and combined by frame index, so small
+          differences in capture timing remain. The generated media is kept
+          outside the repository.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The current renderer uses the standard 23-character ramp. The
+          prototype searches 95 printable glyphs by default and scores their
+          local shapes. An explicitly selected ASCII palette restricts the
+          candidates; a Unicode palette currently uses luminance rendering. Both
+          preserve the sampled foreground color.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Matching sometimes introduces directional glyphs at shape boundaries,
+          while flat bands gain conspicuous repeated characters. The examples do
+          not establish an overall quality improvement; font, image content, and
+          motion need further evaluation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>ffmpeg -f lavfi -i 'testsrc=duration=3:size=640x480:rate=8' -c:v mpeg4 -q:v 2 demo.mp4
 ascii-chat mirror --test-pattern=0 --snapshot --snapshot-delay=2 --audio=false --fps=8 \
 <br/>
   --width=80 --height=32 --color-mode=truecolor --render-file=baseline.gif &gt; pattern0-baseline.log 2&gt;&amp;1
@@ -122,29 +169,38 @@ ascii-chat --quiet --no-check-update mirror \
 <br/>
   --color-mode=truecolor --renderer=glyph &gt; glyph.log 2&gt;&amp;1
 python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 DejaVuSansMono.ttf</pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Renderer-only_timing"><a class="permalink" href="#Renderer-only_timing">Renderer-only
-  timing</a></h1>
-<p class="Pp">On a Ryzen 7 5800X, WSL2 x86-64 Linux, Clang 14, Release -O3, AVX2
-    dispatch, 80&#x00D7;32 truecolor cells, three runs of 200 measured
-    iterations after five warmups:</p>
-<p class="Pp"></p>
-<p class="Pp">Renderer Mean time per frame across each run Current 0.016, 0.020,
-    0.015 ms Glyph match 2.293, 2.327, 2.332 ms</p>
-<p class="Pp"></p>
-<p class="Pp">The test uses the first frame of the FFmpeg clip, cropped to the
-    viewport and nearest-neighbor sampled to 640&#x00D7;256. The baseline takes
-    one sample per cell; the matcher receives the 8&#x00D7;8 patch. Both calls
-    allocate and emit text. Timings exclude image fitting/resizing, capture,
-    encoding, terminal writes, and the rest of the application. The matching
-    stage is roughly 145&#x00D7; slower using the median values in this small
-    benchmark, though still below a 16.7 ms frame budget by itself. This is not
-    an end-to-end throughput guarantee; concurrent load and other platforms can
-    differ.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>ffmpeg -v error -i demo.mp4 -vf 'crop=240:480:200:0,scale=640:256:flags=neighbor' \
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Renderer-only_timing">
+          <a class="permalink" href="#Renderer-only_timing"
+            >Renderer-only timing</a
+          >
+        </h1>
+        <p class="Pp">
+          On a Ryzen 7 5800X, WSL2 x86-64 Linux, Clang 14, Release -O3, AVX2
+          dispatch, 80&#x00D7;32 truecolor cells, three runs of 200 measured
+          iterations after five warmups:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Renderer Mean time per frame across each run Current 0.016, 0.020,
+          0.015 ms Glyph match 2.293, 2.327, 2.332 ms
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The test uses the first frame of the FFmpeg clip, cropped to the
+          viewport and nearest-neighbor sampled to 640&#x00D7;256. The baseline
+          takes one sample per cell; the matcher receives the 8&#x00D7;8 patch.
+          Both calls allocate and emit text. Timings exclude image
+          fitting/resizing, capture, encoding, terminal writes, and the rest of
+          the application. The matching stage is roughly 145&#x00D7; slower
+          using the median values in this small benchmark, though still below a
+          16.7 ms frame budget by itself. This is not an end-to-end throughput
+          guarantee; concurrent load and other platforms can differ.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>ffmpeg -v error -i demo.mp4 -vf 'crop=240:480:200:0,scale=640:256:flags=neighbor' \
 <br/>
   -frames:v 1 -pix_fmt rgb24 -f rawvideo benchmark.rgb
 cmake -S tests/simd -B /tmp/glyph-simd -G Ninja -DTEST_EMISSION=ON \
@@ -153,13 +209,13 @@ cmake -S tests/simd -B /tmp/glyph-simd -G Ninja -DTEST_EMISSION=ON \
 cmake --build /tmp/glyph-simd --target emission-test glyph-benchmark
 ctest --test-dir /tmp/glyph-simd -R simd-emission --output-on-failure
 /tmp/glyph-simd/glyph-benchmark benchmark.rgb</pre>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

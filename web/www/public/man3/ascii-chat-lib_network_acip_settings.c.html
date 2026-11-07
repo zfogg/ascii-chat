@@ -1,82 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>settings.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">settings.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">settings.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">settings.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>acip_render_settings_options</b> (const
-    <b>acip_render_settings_t</b> *state, <b>options_t</b> *values)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_render_settings_prepare</b>
-    (<b>acip_render_settings_t</b> *candidate, const <b>options_t</b> *values)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_render_settings_capabilities</b>
-    (<b>acip_render_settings_t</b> *state, const
-    <b>terminal_capabilities_packet_t</b> *packet)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_settings_decode</b> (const void *payload,
-    size_t length, <b>acip_settings_header_t</b> *header, const char **json,
-    size_t *json_length)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_settings_encode</b> (const
-    <b>acip_settings_header_t</b> *header, const char *json, <b>uint8_t</b>
-    *buffer, size_t capacity, size_t *length)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_settings_request</b>
-    (<b>acip_render_settings_t</b> *state, const void *payload, size_t length,
-    <b>uint8_t</b> *reply, size_t capacity, size_t *reply_length)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_settings_send</b> (<b>acip_transport_t</b>
-    *transport, const <b>options_t</b> *values, <b>uint32_t</b> request,
-    <b>uint32_t</b> expected_revision)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_render_settings_capabilities
-  (<b>acip_render_settings_t</b> * state, const
-  <b>terminal_capabilities_packet_t</b> * packet)</h2>
-<p class="Pp">Definition at line <b>81</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>82                                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>settings.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">settings.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">settings.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">settings.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>acip_render_settings_options</b> (const
+            <b>acip_render_settings_t</b> *state, <b>options_t</b> *values)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_render_settings_prepare</b> (<b
+              >acip_render_settings_t</b
+            >
+            *candidate, const <b>options_t</b> *values)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>acip_render_settings_capabilities</b> (<b
+              >acip_render_settings_t</b
+            >
+            *state, const <b>terminal_capabilities_packet_t</b> *packet)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_settings_decode</b> (const void
+            *payload, size_t length, <b>acip_settings_header_t</b> *header,
+            const char **json, size_t *json_length)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_settings_encode</b> (const
+            <b>acip_settings_header_t</b> *header, const char *json,
+            <b>uint8_t</b>
+            *buffer, size_t capacity, size_t *length)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_settings_request</b> (<b
+              >acip_render_settings_t</b
+            >
+            *state, const void *payload, size_t length, <b>uint8_t</b> *reply,
+            size_t capacity, size_t *reply_length)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_settings_send</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, const <b>options_t</b> *values, <b>uint32_t</b> request,
+            <b>uint32_t</b> expected_revision)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_render_settings_capabilities (<b
+              >acip_render_settings_t</b
+            >
+            * state, const <b>terminal_capabilities_packet_t</b> * packet)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+82                                                                                                   {
 83   if (!state || !packet || !memchr(packet-&gt;palette_custom, 0, sizeof(packet-&gt;palette_custom)))
 84     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid render capabilities&quot;);
 85   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
@@ -102,44 +153,60 @@
 105   SAFE_FREE(values);
 106   return result;
 107 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_render_settings_capabilities()</b>,
-    <b>acip_render_settings_options()</b>, <b>ASCIICHAT_OK</b>,
-    <b>terminal_capabilities_packet_t::capabilities</b>,
-    <b>terminal_capabilities_t::capabilities</b>,
-    <b>acip_render_settings_t::caps</b>, <b>options_state::color_filter</b>,
-    <b>terminal_capabilities_packet_t::color_filter</b>,
-    <b>terminal_capabilities_packet_t::color_level</b>,
-    <b>options_state::color_mode</b>,
-    <b>terminal_capabilities_packet_t::desired_fps</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>options_state::fps</b>,
-    <b>options_state::height</b>, <b>terminal_capabilities_packet_t::height</b>,
-    <b>options_state::matrix_rain</b>, <b>NET_TO_HOST_U16</b>,
-    <b>NET_TO_HOST_U32</b>, <b>options_state::palette_custom</b>,
-    <b>terminal_capabilities_packet_t::palette_custom</b>,
-    <b>PALETTE_STANDARD</b>, <b>options_state::palette_type</b>,
-    <b>terminal_capabilities_packet_t::palette_type</b>, <b>PALETTE_UNSET</b>,
-    <b>options_state::render_mode</b>,
-    <b>terminal_capabilities_packet_t::render_mode</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>TERM_CAP_MATRIX_RAIN</b>,
-    <b>terminal_capabilities_packet_t::utf8_support</b>,
-    <b>terminal_capabilities_t::utf8_support</b>,
-    <b>terminal_capabilities_packet_t::wants_padding</b>,
-    <b>terminal_capabilities_t::wants_padding</b>, <b>options_state::width</b>,
-    and <b>terminal_capabilities_packet_t::width</b>.</p>
-<p class="Pp">Referenced by <b>acip_render_settings_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_render_settings_options_(const_"><a class="permalink" href="#void_acip_render_settings_options_(const_">void
-  acip_render_settings_options (const <b>acip_render_settings_t</b> * state,
-  <b>options_t</b> * values)</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>8                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_capabilities()</b>,
+            <b>acip_render_settings_options()</b>, <b>ASCIICHAT_OK</b>,
+            <b>terminal_capabilities_packet_t::capabilities</b>,
+            <b>terminal_capabilities_t::capabilities</b>,
+            <b>acip_render_settings_t::caps</b>,
+            <b>options_state::color_filter</b>,
+            <b>terminal_capabilities_packet_t::color_filter</b>,
+            <b>terminal_capabilities_packet_t::color_level</b>,
+            <b>options_state::color_mode</b>,
+            <b>terminal_capabilities_packet_t::desired_fps</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>options_state::fps</b>,
+            <b>options_state::height</b>,
+            <b>terminal_capabilities_packet_t::height</b>,
+            <b>options_state::matrix_rain</b>, <b>NET_TO_HOST_U16</b>,
+            <b>NET_TO_HOST_U32</b>, <b>options_state::palette_custom</b>,
+            <b>terminal_capabilities_packet_t::palette_custom</b>,
+            <b>PALETTE_STANDARD</b>, <b>options_state::palette_type</b>,
+            <b>terminal_capabilities_packet_t::palette_type</b>,
+            <b>PALETTE_UNSET</b>, <b>options_state::render_mode</b>,
+            <b>terminal_capabilities_packet_t::render_mode</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, <b>TERM_CAP_MATRIX_RAIN</b>,
+            <b>terminal_capabilities_packet_t::utf8_support</b>,
+            <b>terminal_capabilities_t::utf8_support</b>,
+            <b>terminal_capabilities_packet_t::wants_padding</b>,
+            <b>terminal_capabilities_t::wants_padding</b>,
+            <b>options_state::width</b>, and
+            <b>terminal_capabilities_packet_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_render_settings_capabilities()</b>,
+            <b>handle_client_capabilities_packet()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_render_settings_options_(const_">
+            <a
+              class="permalink"
+              href="#void_acip_render_settings_options_(const_"
+              >void acip_render_settings_options (const
+              <b>acip_render_settings_t</b> * state, <b>options_t</b> *
+              values)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+8                                                                                           {
 9   *values = options_t_new();
 10   values-&gt;width = state-&gt;width;
 11   values-&gt;height = state-&gt;height;
@@ -155,42 +222,57 @@
 21   values-&gt;palette_custom_set = values-&gt;palette_custom[0] != 0;
 22   values-&gt;matrix_rain = (state-&gt;caps.capabilities &amp; TERM_CAP_MATRIX_RAIN) != 0;
 23 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_render_settings_options()</b>,
-    <b>terminal_capabilities_t::capabilities</b>,
-    <b>acip_render_settings_t::caps</b>, <b>options_state::color_filter</b>,
-    <b>terminal_capabilities_t::color_filter</b>,
-    <b>terminal_capabilities_t::color_level</b>,
-    <b>options_state::color_mode</b>,
-    <b>terminal_capabilities_t::desired_fps</b>, <b>options_state::fps</b>,
-    <b>acip_render_settings_t::height</b>, <b>options_state::height</b>,
-    <b>options_state::matrix_rain</b>, <b>options_t_new()</b>,
-    <b>options_state::palette_custom</b>,
-    <b>terminal_capabilities_t::palette_custom</b>,
-    <b>options_state::palette_custom_set</b>,
-    <b>options_state::palette_explicit</b>,
-    <b>terminal_capabilities_t::palette_explicit</b>, <b>PALETTE_STANDARD</b>,
-    <b>options_state::palette_type</b>,
-    <b>terminal_capabilities_t::palette_type</b>,
-    <b>options_state::render_mode</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>options_state::renderer</b>,
-    <b>SAFE_STRNCPY</b>, <b>options_state::stabilize</b>,
-    <b>terminal_capabilities_t::stabilize</b>, <b>TERM_CAP_MATRIX_RAIN</b>,
-    <b>terminal_capabilities_t::text_renderer</b>,
-    <b>acip_render_settings_t::width</b>, and <b>options_state::width</b>.</p>
-<p class="Pp">Referenced by <b>acip_render_settings_capabilities()</b>,
-    <b>acip_render_settings_options()</b>, <b>acip_settings_request()</b>,
-    <b>client_settings_receive()</b>, <b>client_settings_values()</b>, and
-    <b>session_protocol_dispatch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_render_settings_prepare
-  (<b>acip_render_settings_t</b> * candidate, const <b>options_t</b> *
-  values)</h2>
-<p class="Pp">Definition at line <b>25</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>25                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_options()</b>,
+            <b>terminal_capabilities_t::capabilities</b>,
+            <b>acip_render_settings_t::caps</b>,
+            <b>options_state::color_filter</b>,
+            <b>terminal_capabilities_t::color_filter</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>options_state::color_mode</b>,
+            <b>terminal_capabilities_t::desired_fps</b>,
+            <b>options_state::fps</b>, <b>acip_render_settings_t::height</b>,
+            <b>options_state::height</b>, <b>options_state::matrix_rain</b>,
+            <b>options_t_new()</b>, <b>options_state::palette_custom</b>,
+            <b>terminal_capabilities_t::palette_custom</b>,
+            <b>options_state::palette_custom_set</b>,
+            <b>options_state::palette_explicit</b>,
+            <b>terminal_capabilities_t::palette_explicit</b>,
+            <b>PALETTE_STANDARD</b>, <b>options_state::palette_type</b>,
+            <b>terminal_capabilities_t::palette_type</b>,
+            <b>options_state::render_mode</b>,
+            <b>terminal_capabilities_t::render_mode</b>,
+            <b>options_state::renderer</b>, <b>SAFE_STRNCPY</b>,
+            <b>options_state::stabilize</b>,
+            <b>terminal_capabilities_t::stabilize</b>,
+            <b>TERM_CAP_MATRIX_RAIN</b>,
+            <b>terminal_capabilities_t::text_renderer</b>,
+            <b>acip_render_settings_t::width</b>, and
+            <b>options_state::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_render_settings_capabilities()</b>,
+            <b>acip_render_settings_options()</b>,
+            <b>acip_settings_request()</b>, <b>client_settings_receive()</b>,
+            <b>client_settings_values()</b>, and
+            <b>session_protocol_dispatch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_render_settings_prepare (<b
+              >acip_render_settings_t</b
+            >
+            * candidate, const <b>options_t</b> * values)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+25                                                                                                            {
 26   if (!candidate || !values || values-&gt;width &lt; 1 || values-&gt;width &gt; 4096 || values-&gt;height &lt; 1 ||
 27       values-&gt;height &gt; 4096 || (uint64_t)values-&gt;width * values-&gt;height &gt; 1048576 || values-&gt;fps &lt; 1 ||
 28       values-&gt;fps &gt; 144 || values-&gt;color_mode &lt; TERM_COLOR_NONE || values-&gt;color_mode &gt; TERM_COLOR_TRUECOLOR ||
@@ -233,52 +315,68 @@
 65   *candidate = next;
 66   return ASCIICHAT_OK;
 67 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_render_settings_prepare()</b>,
-    <b>ASCII_RENDERER_GLYPH</b>, <b>ASCIICHAT_OK</b>,
-    <b>terminal_capabilities_t::capabilities</b>,
-    <b>acip_render_settings_t::caps</b>,
-    <b>terminal_capabilities_t::color_count</b>,
-    <b>options_state::color_filter</b>,
-    <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_COUNT</b>,
-    <b>terminal_capabilities_t::color_level</b>,
-    <b>options_state::color_mode</b>,
-    <b>terminal_capabilities_t::desired_fps</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>options_state::fps</b>, <b>acip_render_settings_t::fps_limit</b>,
-    <b>acip_render_settings_t::height</b>, <b>options_state::height</b>,
-    <b>initialize_client_palette()</b>,
-    <b>acip_render_settings_t::luminance</b>, <b>options_state::matrix_rain</b>,
-    <b>acip_render_settings_t::palette</b>, <b>PALETTE_COUNT</b>,
-    <b>options_state::palette_custom</b>,
-    <b>terminal_capabilities_t::palette_custom</b>,
-    <b>options_state::palette_explicit</b>,
-    <b>terminal_capabilities_t::palette_explicit</b>,
-    <b>acip_render_settings_t::palette_length</b>, <b>PALETTE_STANDARD</b>,
-    <b>options_state::palette_type</b>,
-    <b>terminal_capabilities_t::palette_type</b>,
-    <b>options_state::render_mode</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>RENDER_MODE_HALF_BLOCK</b>, <b>options_state::renderer</b>,
-    <b>acip_render_settings_t::revision</b>, <b>SAFE_STRNCPY</b>,
-    <b>SET_ERRNO</b>, <b>options_state::stabilize</b>,
-    <b>terminal_capabilities_t::stabilize</b>, <b>TERM_CAP_MATRIX_RAIN</b>,
-    <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>, <b>TERM_COLOR_NONE</b>,
-    <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_capabilities_t::text_renderer</b>,
-    <b>terminal_capabilities_t::wants_background</b>,
-    <b>acip_render_settings_t::width</b>, and <b>options_state::width</b>.</p>
-<p class="Pp">Referenced by <b>acip_render_settings_prepare()</b>,
-    <b>client_settings_receive()</b>,
-    <b>session_participant_request_settings()</b>, and
-    <b>session_protocol_dispatch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_settings_decode (const void *
-  payload, size_t length, <b>acip_settings_header_t</b> * header, const char **
-  json, size_t * json_length)</h2>
-<p class="Pp">Definition at line <b>109</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>110                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_prepare()</b>,
+            <b>ASCII_RENDERER_GLYPH</b>, <b>ASCIICHAT_OK</b>,
+            <b>terminal_capabilities_t::capabilities</b>,
+            <b>acip_render_settings_t::caps</b>,
+            <b>terminal_capabilities_t::color_count</b>,
+            <b>options_state::color_filter</b>,
+            <b>terminal_capabilities_t::color_filter</b>,
+            <b>COLOR_FILTER_COUNT</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>options_state::color_mode</b>,
+            <b>terminal_capabilities_t::desired_fps</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>options_state::fps</b>,
+            <b>acip_render_settings_t::fps_limit</b>,
+            <b>acip_render_settings_t::height</b>, <b>options_state::height</b>,
+            <b>initialize_client_palette()</b>,
+            <b>acip_render_settings_t::luminance</b>,
+            <b>options_state::matrix_rain</b>,
+            <b>acip_render_settings_t::palette</b>, <b>PALETTE_COUNT</b>,
+            <b>options_state::palette_custom</b>,
+            <b>terminal_capabilities_t::palette_custom</b>,
+            <b>options_state::palette_explicit</b>,
+            <b>terminal_capabilities_t::palette_explicit</b>,
+            <b>acip_render_settings_t::palette_length</b>,
+            <b>PALETTE_STANDARD</b>, <b>options_state::palette_type</b>,
+            <b>terminal_capabilities_t::palette_type</b>,
+            <b>options_state::render_mode</b>,
+            <b>terminal_capabilities_t::render_mode</b>,
+            <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
+            <b>options_state::renderer</b>,
+            <b>acip_render_settings_t::revision</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, <b>options_state::stabilize</b>,
+            <b>terminal_capabilities_t::stabilize</b>,
+            <b>TERM_CAP_MATRIX_RAIN</b>, <b>TERM_COLOR_16</b>,
+            <b>TERM_COLOR_256</b>, <b>TERM_COLOR_NONE</b>,
+            <b>TERM_COLOR_TRUECOLOR</b>,
+            <b>terminal_capabilities_t::text_renderer</b>,
+            <b>terminal_capabilities_t::wants_background</b>,
+            <b>acip_render_settings_t::width</b>, and
+            <b>options_state::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_render_settings_prepare()</b>,
+            <b>client_settings_receive()</b>,
+            <b>session_participant_request_settings()</b>, and
+            <b>session_protocol_dispatch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_settings_decode (const void * payload,
+            size_t length, <b>acip_settings_header_t</b> * header, const char **
+            json, size_t * json_length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>109</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+110                                                                                {
 111   if (!payload || !header || !json || !json_length || length &lt; ACIP_SETTINGS_HEADER_SIZE ||
 112       length &gt; ACIP_SETTINGS_MAX_SIZE)
 113     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid settings packet length&quot;);
@@ -292,26 +390,35 @@
 121   *json_length = length - ACIP_SETTINGS_HEADER_SIZE;
 122   return ASCIICHAT_OK;
 123 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_settings_decode()</b>,
-    <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ACIP_SETTINGS_MAX_SIZE</b>,
-    <b>ACIP_SETTINGS_SCHEMA</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>NET_TO_HOST_U32</b>, <b>acip_settings_header_t::schema</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_settings_decode()</b>,
-    <b>acip_settings_request()</b>, <b>client_settings_receive()</b>,
-    <b>session_participant_receive_settings()</b>, and
-    <b>session_protocol_dispatch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_settings_encode (const
-  <b>acip_settings_header_t</b> * header, const char * json, <b>uint8_t</b> *
-  buffer, size_t capacity, size_t * length)</h2>
-<p class="Pp">Definition at line <b>125</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>126                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_settings_decode()</b>,
+            <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ACIP_SETTINGS_MAX_SIZE</b>,
+            <b>ACIP_SETTINGS_SCHEMA</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>NET_TO_HOST_U32</b>, <b>acip_settings_header_t::schema</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_settings_decode()</b>,
+            <b>acip_settings_request()</b>, <b>client_settings_receive()</b>,
+            <b>session_participant_receive_settings()</b>, and
+            <b>session_protocol_dispatch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_settings_encode (const
+            <b>acip_settings_header_t</b> * header, const char * json,
+            <b>uint8_t</b> * buffer, size_t capacity, size_t * length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>125</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+126                                                                         {
 127   if (!header || !json || !buffer || !length)
 128     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing settings encoding argument&quot;);
 129   size_t size = strlen(json);
@@ -325,30 +432,43 @@
 137   *length = sizeof(fields) + size;
 138   return ASCIICHAT_OK;
 139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_settings_encode()</b>,
-    <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>,
-    <b>acip_settings_header_t::expected_revision</b>, <b>HOST_TO_NET_U32</b>,
-    <b>acip_settings_header_t::request</b>,
-    <b>acip_settings_header_t::revision</b>,
-    <b>acip_settings_header_t::schema</b>, <b>SET_ERRNO</b>, and
-    <b>acip_settings_header_t::status</b>.</p>
-<p class="Pp">Referenced by <b>acip_settings_encode()</b>,
-    <b>acip_settings_request()</b>, <b>acip_settings_send()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_settings_request
-  (<b>acip_render_settings_t</b> * state, const void * payload, size_t length,
-  <b>uint8_t</b> * reply, size_t capacity, size_t * reply_length)</h2>
-<p class="Pp">A rejected request returns current effective values without
-    changing state.</p>
-<p class="Pp">Definition at line <b>141</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>142                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_settings_encode()</b>,
+            <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>acip_settings_header_t::expected_revision</b>,
+            <b>HOST_TO_NET_U32</b>, <b>acip_settings_header_t::request</b>,
+            <b>acip_settings_header_t::revision</b>,
+            <b>acip_settings_header_t::schema</b>, <b>SET_ERRNO</b>, and
+            <b>acip_settings_header_t::status</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_settings_encode()</b>,
+            <b>acip_settings_request()</b>, <b>acip_settings_send()</b>,
+            <b>handle_client_capabilities_packet()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_settings_request (<b
+              >acip_render_settings_t</b
+            >
+            * state, const void * payload, size_t length, <b>uint8_t</b> *
+            reply, size_t capacity, size_t * reply_length)
+          </h2>
+          <p class="Pp">
+            A rejected request returns current effective values without changing
+            state.
+          </p>
+          <p class="Pp">
+            Definition at line <b>141</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+142                                                                                                {
 143   acip_settings_header_t header = {0};
 144   const char *json = NULL;
 145   size_t json_length = 0;
@@ -381,30 +501,40 @@
 172   SAFE_FREE(current);
 173   return encoded;
 174 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_render_settings_options()</b>,
-    <b>acip_settings_decode()</b>, <b>acip_settings_encode()</b>,
-    <b>acip_settings_request()</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
-    <b>ASCIICHAT_OK</b>, <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>acip_settings_header_t::expected_revision</b>,
-    <b>options_prepare_json()</b>, <b>options_values_json()</b>,
-    <b>acip_render_settings_t::revision</b>,
-    <b>acip_settings_header_t::revision</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, and
-    <b>acip_settings_header_t::status</b>.</p>
-<p class="Pp">Referenced by <b>acip_settings_request()</b>,
-    <b>handle_runtime_settings()</b>, and
-  <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_settings_send
-  (<b>acip_transport_t</b> * transport, const <b>options_t</b> * values,
-  <b>uint32_t</b> request, <b>uint32_t</b> expected_revision)</h2>
-<p class="Pp">Definition at line <b>176</b> of file
-    <b>lib/network/acip/settings.c</b>.</p>
-<pre>177                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_options()</b>,
+            <b>acip_settings_decode()</b>, <b>acip_settings_encode()</b>,
+            <b>acip_settings_request()</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
+            <b>ASCIICHAT_OK</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+            <b>acip_settings_header_t::expected_revision</b>,
+            <b>options_prepare_json()</b>, <b>options_values_json()</b>,
+            <b>acip_render_settings_t::revision</b>,
+            <b>acip_settings_header_t::revision</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, and
+            <b>acip_settings_header_t::status</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_settings_request()</b>,
+            <b>handle_runtime_settings()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_settings_send (<b>acip_transport_t</b>
+            * transport, const <b>options_t</b> * values,
+            <b>uint32_t</b> request, <b>uint32_t</b> expected_revision)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>176</b> of file
+            <b>lib/network/acip/settings.c</b>.
+          </p>
+          <pre>
+177                                                                  {
 178   char *json = options_values_json(values, true);
 179   if (!json)
 180     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot encode render preferences&quot;);
@@ -418,28 +548,35 @@
 188   SAFE_FREE(json);
 189   return result;
 190 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_settings_encode()</b>,
-    <b>ACIP_SETTINGS_MAX_SIZE</b>, <b>ACIP_SETTINGS_SCHEMA</b>,
-    <b>acip_settings_send()</b>, <b>ASCIICHAT_OK</b>, <b>ERROR_MEMORY</b>,
-    <b>options_values_json()</b>, <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>, <b>SAFE_FREE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_settings_send()</b>, and
-    <b>session_participant_request_settings()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_settings_encode()</b>,
+            <b>ACIP_SETTINGS_MAX_SIZE</b>, <b>ACIP_SETTINGS_SCHEMA</b>,
+            <b>acip_settings_send()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_MEMORY</b>, <b>options_values_json()</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>, <b>SAFE_FREE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_settings_send()</b>, and
+            <b>session_participant_request_settings()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

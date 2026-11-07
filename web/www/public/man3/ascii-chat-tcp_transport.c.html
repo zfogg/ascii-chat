@@ -1,91 +1,140 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>transport.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">transport.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">transport.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">transport.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>tcp_transport_data_t</b>
-  <br/>
-  TCP transport implementation data.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_tcp_transport_set_zerocopy</b>
-    (<b>acip_transport_t</b> *transport, <b>bool</b> enabled)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const char *name,
-    <b>socket_t</b> sockfd, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create TCP transport from existing socket. <b>acip_transport_t</b> *
-    <b>acip_tcp_transport_create_owned</b> (const char *name, <b>socket_t</b>
-    sockfd, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create a TCP transport that owns its connected socket. void
-    <b>acip_transport_destroy</b> (<b>acip_transport_t</b> *transport)
-  <br/>
-  Destroy transport and free all resources.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create (const char *
-  name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)</h2>
-<p class="Pp">Create TCP transport from existing socket.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
-  (required, e.g., &quot;transport_client_5&quot;)
-<br/>
-<i>sockfd</i> Connected socket descriptor
-<br/>
-<i>crypto_ctx</i> Optional crypto context (may be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller retains socket ownership (transport doesn't close
-  on destroy)</div>
-<p class="Pp">Definition at line <b>286</b> of file <b>tcp/transport.c</b>.</p>
-<pre>286                                                                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>transport.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">transport.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">transport.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">transport.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>tcp_transport_data_t</b>
+            <br />
+            TCP transport implementation data.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_tcp_transport_set_zerocopy</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>bool</b> enabled)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const
+            char *name, <b>socket_t</b> sockfd,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create TCP transport from existing socket. <b>acip_transport_t</b> *
+            <b>acip_tcp_transport_create_owned</b> (const char *name,
+            <b>socket_t</b> sockfd, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create a TCP transport that owns its connected socket. void
+            <b>acip_transport_destroy</b> (<b>acip_transport_t</b> *transport)
+            <br />
+            Destroy transport and free all resources.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_tcp_transport_create (const char *
+            name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)
+          </h2>
+          <p class="Pp">Create TCP transport from existing socket.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for tracking this transport (required, e.g.,
+            &quot;transport_client_5&quot;)
+            <br />
+            <i>sockfd</i> Connected socket descriptor
+            <br />
+            <i>crypto_ctx</i> Optional crypto context (may be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on error</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller retains socket ownership (transport doesn't close on destroy)
+          </div>
+          <p class="Pp">
+            Definition at line <b>286</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+286                                                                                                              {
 287   if (!name) {
 288     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
 289     return NULL;
@@ -175,63 +224,95 @@
 373 #endif
 374   return transport;
 375 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>tcp_transport_data_t::is_connected</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>acip_transport::methods</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>tcp_transport_data_t::owns_socket</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRERROR</b>, <b>tcp_transport_data_t::send_mutex</b>,
-    <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
-    <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>tcp_transport_data_t::sockfd</b>,
-    <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_open()</b>, and
-    <b>tcp_transport_data_t::zerocopy_disabled</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>, and
-    <b>acip_tcp_transport_create_owned()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create_owned (const
-  char * name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> *
-  crypto_ctx)</h2>
-<p class="Pp">Create a TCP transport that owns its connected socket.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for the transport
-<br/>
-<i>sockfd</i> Connected socket; ownership transfers only on success
-<br/>
-<i>crypto_ctx</i> Optional borrowed crypto context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error Closing or destroying
-  the transport closes the socket.</div>
-<p class="Pp">Definition at line <b>377</b> of file <b>tcp/transport.c</b>.</p>
-<pre>377                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
+            <b>errno</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+            <b>INVALID_SOCKET_VALUE</b>,
+            <b>tcp_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>acip_transport::methods</b>, <b>mutex_init()</b>,
+            <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>tcp_transport_data_t::owns_socket</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRERROR</b>,
+            <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>,
+            <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
+            <b>SOCKET_STREAM_SEND_BUFFER</b>,
+            <b>tcp_transport_data_t::sockfd</b>,
+            <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_open()</b>,
+            and <b>tcp_transport_data_t::zerocopy_disabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create()</b>, and
+            <b>acip_tcp_transport_create_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_tcp_transport_create_owned (const
+            char * name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Create a TCP transport that owns its connected socket.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for the transport
+            <br />
+            <i>sockfd</i> Connected socket; ownership transfers only on success
+            <br />
+            <i>crypto_ctx</i> Optional borrowed crypto context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Transport instance or NULL on error Closing or destroying the
+            transport closes the socket.
+          </div>
+          <p class="Pp">
+            Definition at line <b>377</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+377                                                                                                                    {
 378   acip_transport_t *transport = acip_tcp_transport_create(name, sockfd, crypto_ctx);
 379   if (transport)
 380     ((tcp_transport_data_t *)transport-&gt;impl_data)-&gt;owns_socket = true;
 381   return transport;
 382 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_tcp_transport_create_owned()</b>, and
-    <b>acip_transport::impl_data</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create_owned()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_tcp_transport_set_zerocopy
-  (<b>acip_transport_t</b> * transport, <b>bool</b> enabled)</h2>
-<p class="Pp">Override the automatic kernel copy-avoidance policy for this TCP
-    transport. Large Linux encrypted sends may pin pages; other platforms fall
-    back to vectors. Copy avoidance is attempted automatically and disabled
-    after copied completions.</p>
-<p class="Pp">Definition at line <b>109</b> of file <b>tcp/transport.c</b>.</p>
-<pre>109                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_tcp_transport_create()</b>,
+            <b>acip_tcp_transport_create_owned()</b>, and
+            <b>acip_transport::impl_data</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_tcp_transport_set_zerocopy (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>bool</b> enabled)
+          </h2>
+          <p class="Pp">
+            Override the automatic kernel copy-avoidance policy for this TCP
+            transport. Large Linux encrypted sends may pin pages; other
+            platforms fall back to vectors. Copy avoidance is attempted
+            automatically and disabled after copied completions.
+          </p>
+          <p class="Pp">
+            Definition at line <b>109</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+109                                                                                              {
 110   if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_TCP)
 111     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Expected TCP transport&quot;);
 112   tcp_transport_data_t *tcp = transport-&gt;impl_data;
@@ -240,30 +321,45 @@
 115   mutex_unlock(&amp;tcp-&gt;send_mutex);
 116   return ASCIICHAT_OK;
 117 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_set_zerocopy()</b>,
-    <b>ACIP_TRANSPORT_TCP</b>, <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acip_transport::impl_data</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>, and
-    <b>tcp_transport_data_t::zerocopy_disabled</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_set_zerocopy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_transport_destroy_("><a class="permalink" href="#void_acip_transport_destroy_(">void
-  acip_transport_destroy (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Destroy transport and free all resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport to destroy (may be NULL)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Calls close() first if still connected
-<p class="Pp"></p>
-<p class="Pp">Frees the transport structure itself</p>
-<p class="Pp"></p>
-<p class="Pp">Safe to pass NULL</p>
-</div>
-<p class="Pp">Definition at line <b>388</b> of file <b>tcp/transport.c</b>.</p>
-<pre>388                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_tcp_transport_set_zerocopy()</b>,
+            <b>ACIP_TRANSPORT_TCP</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>acip_transport::impl_data</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>, and
+            <b>tcp_transport_data_t::zerocopy_disabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_set_zerocopy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_transport_destroy_(">
+            <a class="permalink" href="#void_acip_transport_destroy_("
+              >void acip_transport_destroy (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">Destroy transport and free all resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport to destroy (may be NULL)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Calls close() first if still connected
+            <p class="Pp"></p>
+            <p class="Pp">Frees the transport structure itself</p>
+            <p class="Pp"></p>
+            <p class="Pp">Safe to pass NULL</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>388</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+388                                                          {
 389   if (!transport) {
 390     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
 391     return;
@@ -321,36 +417,44 @@
 443
 444   log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
 445 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_destroy()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>acip_transport_methods_t::close</b>,
-    <b>acip_transport_methods_t::destroy_impl</b>,
-    <b>acip_transport_methods_t::get_type</b>, <b>acip_transport::impl_data</b>,
-    <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_warn</b>, <b>acip_transport::methods</b>, <b>NAMED_UNREGISTER</b>,
-    <b>SAFE_FREE</b>, <b>acip_transport::stats_peer</b>, and
-    <b>stats_runtime_peer_close()</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>,
-    <b>acip_async_tcp_client_create()</b>,
-    <b>acip_async_tcp_transport_create()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, and
-    <b>network_connection_open()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_destroy()</b>,
+            <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
+            <b>acip_transport_methods_t::close</b>,
+            <b>acip_transport_methods_t::destroy_impl</b>,
+            <b>acip_transport_methods_t::get_type</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>acip_transport::methods</b>,
+            <b>NAMED_UNREGISTER</b>, <b>SAFE_FREE</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_peer_close()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_accepted_create()</b>,
+            <b>acip_async_tcp_client_create()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acip_websocket_server_transport_create()</b>, and
+            <b>network_connection_open()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

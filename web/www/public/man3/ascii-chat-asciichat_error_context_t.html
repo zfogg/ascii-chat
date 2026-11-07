@@ -1,216 +1,367 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>asciichat_error_context_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">asciichat_error_context_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">asciichat_error_context_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">asciichat_error_context_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>code</b>
-  <br/>
-  const char * <b>file</b>
-  <br/>
-  int <b>line</b>
-  <br/>
-  const char * <b>function</b>
-  <br/>
-  char <b>context_message</b> [1024]
-  <br/>
-  <b>uint64_t</b> <b>timestamp</b>
-  <br/>
-  Microseconds since epoch, for logs. <b>uint64_t</b> <b>created_ns</b>
-  <br/>
-  Monotonic time, for age. <b>uint64_t</b> <b>error_id</b>
-  <br/>
-  <b>uint64_t</b> <b>cause_id</b>
-  <br/>
-  <b>uint64_t</b> <b>thread_id</b>
-  <br/>
-  <b>uint64_t</b> <b>generation</b>
-  <br/>
-  int <b>system_errno</b>
-  <br/>
-  int <b>wsa_error</b>
-  <br/>
-  <b>backtrace_t</b> <b>backtrace</b>
-  <br/>
-  <b>bool</b> <b>has_system_error</b>
-  <br/>
-  <b>bool</b> <b>has_wsa_error</b>
-  <br/>
-  <b>bool</b> <b>message_truncated</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">A self-contained value snapshot. Source locations refer to static
-    compiler strings; messages and raw addresses are copied. Printing symbolizes
-    and frees a private backtrace. Struct assignment is safe; no destroy call is
-    needed.</p>
-<p class="Pp">Definition at line <b>49</b> of file <b>asciichat_errno.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>backtrace_t</b> asciichat_error_context_t::backtrace</h2>
-<p class="Pp">Definition at line <b>63</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_import()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::cause_id</h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_import()</b>, and
-    <b>errno_print_chain()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_error_context_t::code</h2>
-<p class="Pp">Definition at line <b>50</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>,
-    <b>action_completions()</b>, <b>capture_init()</b>, <b>errno_import()</b>,
-    <b>ffmpeg_decoder_poll_video()</b>, <b>log_net_message()</b>,
-    <b>options_config_validate()</b>, <b>session_capture_create()</b>,
-    <b>session_pipeline_destroy()</b>, <b>session_render_loop()</b>, and
-    <b>wasm_error_code()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_asciichat_error_context_t::context_message_1024_"><a class="permalink" href="#char_asciichat_error_context_t::context_message_1024_">char
-  asciichat_error_context_t::context_message[1024]</a></h2>
-<p class="Pp">Definition at line <b>54</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>action_create_config()</b>,
-    <b>action_create_manpage()</b>, <b>client_get_crypto_error_message()</b>,
-    <b>main()</b>, <b>mcp_dispatch()</b>,
-    <b>media_source_create_interruptible()</b>,
-    <b>packet_format_error_stack()</b>, <b>parse_log_file()</b>,
-    <b>peer_crypto_error()</b>, <b>session_display_create()</b>,
-    <b>session_display_init_render_file()</b>,
-    <b>session_frame_validate_contract()</b>,
-    <b>session_handle_keyboard_input()</b>, and <b>wasm_error_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::created_ns</h2>
-<p class="Pp">Monotonic time, for age.</p>
-<p class="Pp">Definition at line <b>56</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_import()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::error_id</h2>
-<p class="Pp">Definition at line <b>57</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_clear_if_current()</b>,
-    <b>errno_import()</b>, <b>errno_title_snapshot()</b>,
-    <b>ui_errno_stacks_handle_key()</b>, and <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_asciichat_error_context_t::file"><a class="permalink" href="#const_char*_asciichat_error_context_t::file">const
-  char* asciichat_error_context_t::file</a></h2>
-<p class="Pp">Definition at line <b>51</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_format_error_stack()</b>,
-    <b>wasm_error_file()</b>, and <b>wasm_error_full_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_asciichat_error_context_t::function"><a class="permalink" href="#const_char*_asciichat_error_context_t::function">const
-  char* asciichat_error_context_t::function</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_format_error_stack()</b>, and
-    <b>wasm_error_function()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::generation</h2>
-<p class="Pp">Definition at line <b>60</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_title_snapshot()</b>, and
-    <b>ui_errno_stacks_handle_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_error_context_t::has_system_error</h2>
-<p class="Pp">Definition at line <b>64</b> of file <b>asciichat_errno.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_error_context_t::has_wsa_error</h2>
-<p class="Pp">Definition at line <b>65</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_has_wsa_error()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_asciichat_error_context_t::line"><a class="permalink" href="#int_asciichat_error_context_t::line">int
-  asciichat_error_context_t::line</a></h2>
-<p class="Pp">Definition at line <b>52</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_format_error_stack()</b>, and
-    <b>wasm_error_line()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_error_context_t::message_truncated</h2>
-<p class="Pp">Definition at line <b>66</b> of file <b>asciichat_errno.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_asciichat_error_context_t::system_errno"><a class="permalink" href="#int_asciichat_error_context_t::system_errno">int
-  asciichat_error_context_t::system_errno</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file <b>asciichat_errno.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::thread_id</h2>
-<p class="Pp">Definition at line <b>59</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_import()</b>,
-    <b>errno_title_snapshot()</b>, and <b>ui_errno_stacks_handle_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::timestamp</h2>
-<p class="Pp">Microseconds since epoch, for logs.</p>
-<p class="Pp">Definition at line <b>55</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_import()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_asciichat_error_context_t::wsa_error"><a class="permalink" href="#int_asciichat_error_context_t::wsa_error">int
-  asciichat_error_context_t::wsa_error</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>asciichat_error_context_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">asciichat_error_context_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">asciichat_error_context_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">asciichat_error_context_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>code</b>
+            <br />
+            const char * <b>file</b>
+            <br />
+            int <b>line</b>
+            <br />
+            const char * <b>function</b>
+            <br />
+            char <b>context_message</b> [1024]
+            <br />
+            <b>uint64_t</b> <b>timestamp</b>
+            <br />
+            Microseconds since epoch, for logs. <b>uint64_t</b>
+            <b>created_ns</b>
+            <br />
+            Monotonic time, for age. <b>uint64_t</b> <b>error_id</b>
+            <br />
+            <b>uint64_t</b> <b>cause_id</b>
+            <br />
+            <b>uint64_t</b> <b>thread_id</b>
+            <br />
+            <b>uint64_t</b> <b>generation</b>
+            <br />
+            int <b>system_errno</b>
+            <br />
+            int <b>wsa_error</b>
+            <br />
+            <b>backtrace_t</b> <b>backtrace</b>
+            <br />
+            <b>bool</b> <b>has_system_error</b>
+            <br />
+            <b>bool</b> <b>has_wsa_error</b>
+            <br />
+            <b>bool</b> <b>message_truncated</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          A self-contained value snapshot. Source locations refer to static
+          compiler strings; messages and raw addresses are copied. Printing
+          symbolizes and frees a private backtrace. Struct assignment is safe;
+          no destroy call is needed.
+        </p>
+        <p class="Pp">
+          Definition at line <b>49</b> of file <b>asciichat_errno.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>backtrace_t</b> asciichat_error_context_t::backtrace
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>errno_import()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_error_context_t::cause_id
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_import()</b>, and <b>errno_print_chain()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> asciichat_error_context_t::code
+          </h2>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>action_completions()</b>, <b>capture_init()</b>,
+            <b>errno_import()</b>, <b>ffmpeg_decoder_poll_video()</b>,
+            <b>log_net_message()</b>, <b>options_config_validate()</b>,
+            <b>session_capture_create()</b>, <b>session_pipeline_destroy()</b>,
+            <b>session_render_loop()</b>, and <b>wasm_error_code()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_asciichat_error_context_t::context_message_1024_"
+          >
+            <a
+              class="permalink"
+              href="#char_asciichat_error_context_t::context_message_1024_"
+              >char asciichat_error_context_t::context_message[1024]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>action_create_config()</b>,
+            <b>action_create_manpage()</b>,
+            <b>client_get_crypto_error_message()</b>, <b>main()</b>,
+            <b>mcp_dispatch()</b>, <b>media_source_create_interruptible()</b>,
+            <b>packet_format_error_stack()</b>, <b>parse_log_file()</b>,
+            <b>peer_crypto_error()</b>, <b>session_display_create()</b>,
+            <b>session_display_init_render_file()</b>,
+            <b>session_frame_validate_contract()</b>,
+            <b>session_handle_keyboard_input()</b>, and
+            <b>wasm_error_message()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_error_context_t::created_ns
+          </h2>
+          <p class="Pp">Monotonic time, for age.</p>
+          <p class="Pp">
+            Definition at line <b>56</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>errno_import()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_error_context_t::error_id
+          </h2>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_clear_if_current()</b>,
+            <b>errno_import()</b>, <b>errno_title_snapshot()</b>,
+            <b>ui_errno_stacks_handle_key()</b>, and
+            <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_asciichat_error_context_t::file">
+            <a
+              class="permalink"
+              href="#const_char*_asciichat_error_context_t::file"
+              >const char* asciichat_error_context_t::file</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>51</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>packet_format_error_stack()</b>,
+            <b>wasm_error_file()</b>, and <b>wasm_error_full_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_asciichat_error_context_t::function">
+            <a
+              class="permalink"
+              href="#const_char*_asciichat_error_context_t::function"
+              >const char* asciichat_error_context_t::function</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>packet_format_error_stack()</b>, and
+            <b>wasm_error_function()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_error_context_t::generation
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_title_snapshot()</b>, and
+            <b>ui_errno_stacks_handle_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> asciichat_error_context_t::has_system_error
+          </h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>asciichat_errno.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> asciichat_error_context_t::has_wsa_error
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>errno_has_wsa_error()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_asciichat_error_context_t::line">
+            <a class="permalink" href="#int_asciichat_error_context_t::line"
+              >int asciichat_error_context_t::line</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>packet_format_error_stack()</b>, and
+            <b>wasm_error_line()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> asciichat_error_context_t::message_truncated
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>asciichat_errno.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_asciichat_error_context_t::system_errno">
+            <a
+              class="permalink"
+              href="#int_asciichat_error_context_t::system_errno"
+              >int asciichat_error_context_t::system_errno</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>asciichat_errno.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_error_context_t::thread_id
+          </h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_import()</b>, <b>errno_title_snapshot()</b>,
+            and <b>ui_errno_stacks_handle_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_error_context_t::timestamp
+          </h2>
+          <p class="Pp">Microseconds since epoch, for logs.</p>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>errno_import()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_asciichat_error_context_t::wsa_error">
+            <a
+              class="permalink"
+              href="#int_asciichat_error_context_t::wsa_error"
+              >int asciichat_error_context_t::wsa_error</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

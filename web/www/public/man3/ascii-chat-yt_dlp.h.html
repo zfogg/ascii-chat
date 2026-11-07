@@ -1,167 +1,259 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>yt_dlp.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">yt_dlp.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">yt_dlp.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">yt_dlp.h - yt-dlp stream URL extraction</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>yt_dlp_request_options_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp"><b>enum </b>{ <b>YT_DLP_HEADERS_CAPACITY</b> = 8192,
-    <b>YT_DLP_COOKIES_CAPACITY</b> = 8192, <b>YT_DLP_PROXY_CAPACITY</b> = 2048 }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>yt_dlp_extract_with_options</b> (const
-    char *url, const char *yt_dlp_options, char *output_url, size_t output_size,
-    char *audio_url, size_t audio_size, <b>yt_dlp_request_options_t</b>
-    *video_options, <b>yt_dlp_request_options_t</b> *audio_options,
-    <b>bool</b>(*cancel)(void *), void *data)
-  <br/>
-  <b>asciichat_error_t</b> <b>yt_dlp_extract_stream_urls</b> (const char *url,
-    const char *yt_dlp_options, char *output_url, size_t output_size, char
-    *audio_url, size_t audio_size)
-  <br/>
-  Extract stream URL using yt-dlp with optional parameters.
-    <b>asciichat_error_t</b> <b>yt_dlp_extract_stream_urls_interruptible</b>
-    (const char *url, const char *yt_dlp_options, char *output_url, size_t
-    output_size, char *audio_url, size_t audio_size, <b>bool</b>(*cancel)(void
-    *), void *data)
-  <br/>
-  <b>asciichat_error_t</b> <b>yt_dlp_extract_stream_url</b> (const char *url,
-    const char *yt_dlp_options, char *output_url, size_t output_size)
-  <br/>
-  <b>bool</b> <b>yt_dlp_is_available</b> (void)
-  <br/>
-  Check if yt-dlp is installed and accessible.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">yt-dlp stream URL extraction</p>
-<p class="Pp">Encapsulates yt-dlp subprocess logic for extracting playable
-    stream URLs from URLs that yt-dlp supports (YouTube, Twitch, etc.)</p>
-<p class="Pp">Definition in file <b>yt_dlp.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="anonymous_enum"><a class="permalink" href="#anonymous_enum">anonymous
-  enum</a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="YT_DLP_HEADERS_CAPACITY"><a class="permalink" href="#YT_DLP_HEADERS_CAPACITY"><b><i>YT_DLP_HEADERS_CAPACITY
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="YT_DLP_COOKIES_CAPACITY"><a class="permalink" href="#YT_DLP_COOKIES_CAPACITY"><b><i>YT_DLP_COOKIES_CAPACITY
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="YT_DLP_PROXY_CAPACITY"><a class="permalink" href="#YT_DLP_PROXY_CAPACITY"><b><i>YT_DLP_PROXY_CAPACITY
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>16</b> of file <b>yt_dlp.h</b>.</p>
-<pre>16 { YT_DLP_HEADERS_CAPACITY = 8192, YT_DLP_COOKIES_CAPACITY = 8192, YT_DLP_PROXY_CAPACITY = 2048 };</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> yt_dlp_extract_stream_url (const char *
-  url, const char * yt_dlp_options, char * output_url, size_t output_size)</h2>
-<p class="Pp">Extract the first playable stream URL. Prefer the two-output API
-    for audio.</p>
-<p class="Pp">Definition at line <b>553</b> of file <b>yt_dlp.c</b>.</p>
-<pre>554                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>yt_dlp.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">yt_dlp.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">yt_dlp.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">yt_dlp.h - yt-dlp stream URL extraction</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>yt_dlp_request_options_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>enum </b>{ <b>YT_DLP_HEADERS_CAPACITY</b> = 8192,
+            <b>YT_DLP_COOKIES_CAPACITY</b> = 8192,
+            <b>YT_DLP_PROXY_CAPACITY</b> = 2048 }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>yt_dlp_extract_with_options</b> (const
+            char *url, const char *yt_dlp_options, char *output_url, size_t
+            output_size, char *audio_url, size_t audio_size,
+            <b>yt_dlp_request_options_t</b> *video_options,
+            <b>yt_dlp_request_options_t</b> *audio_options,
+            <b>bool</b>(*cancel)(void *), void *data)
+            <br />
+            <b>asciichat_error_t</b> <b>yt_dlp_extract_stream_urls</b> (const
+            char *url, const char *yt_dlp_options, char *output_url, size_t
+            output_size, char *audio_url, size_t audio_size)
+            <br />
+            Extract stream URL using yt-dlp with optional parameters.
+            <b>asciichat_error_t</b>
+            <b>yt_dlp_extract_stream_urls_interruptible</b> (const char *url,
+            const char *yt_dlp_options, char *output_url, size_t output_size,
+            char *audio_url, size_t audio_size, <b>bool</b>(*cancel)(void *),
+            void *data)
+            <br />
+            <b>asciichat_error_t</b> <b>yt_dlp_extract_stream_url</b> (const
+            char *url, const char *yt_dlp_options, char *output_url, size_t
+            output_size)
+            <br />
+            <b>bool</b> <b>yt_dlp_is_available</b> (void)
+            <br />
+            Check if yt-dlp is installed and accessible.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">yt-dlp stream URL extraction</p>
+        <p class="Pp">
+          Encapsulates yt-dlp subprocess logic for extracting playable stream
+          URLs from URLs that yt-dlp supports (YouTube, Twitch, etc.)
+        </p>
+        <p class="Pp">Definition in file <b>yt_dlp.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="anonymous_enum">
+            <a class="permalink" href="#anonymous_enum">anonymous enum</a>
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="YT_DLP_HEADERS_CAPACITY">
+              <a class="permalink" href="#YT_DLP_HEADERS_CAPACITY"
+                ><b><i>YT_DLP_HEADERS_CAPACITY </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="YT_DLP_COOKIES_CAPACITY">
+              <a class="permalink" href="#YT_DLP_COOKIES_CAPACITY"
+                ><b><i>YT_DLP_COOKIES_CAPACITY </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="YT_DLP_PROXY_CAPACITY">
+              <a class="permalink" href="#YT_DLP_PROXY_CAPACITY"
+                ><b><i>YT_DLP_PROXY_CAPACITY </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>yt_dlp.h</b>.
+          </p>
+          <pre>
+16 { YT_DLP_HEADERS_CAPACITY = 8192, YT_DLP_COOKIES_CAPACITY = 8192, YT_DLP_PROXY_CAPACITY = 2048 };</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> yt_dlp_extract_stream_url (const char *
+            url, const char * yt_dlp_options, char * output_url, size_t
+            output_size)
+          </h2>
+          <p class="Pp">
+            Extract the first playable stream URL. Prefer the two-output API for
+            audio.
+          </p>
+          <p class="Pp">
+            Definition at line <b>553</b> of file <b>yt_dlp.c</b>.
+          </p>
+          <pre>
+554                                                                 {
 555   char audio_url[MEDIA_STREAM_URL_SIZE];
 556   return yt_dlp_extract_stream_urls(url, yt_dlp_options, output_url, output_size, audio_url, sizeof(audio_url));
 557 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>MEDIA_STREAM_URL_SIZE</b>,
-    <b>yt_dlp_extract_stream_url()</b>, and
-  <b>yt_dlp_extract_stream_urls()</b>.</p>
-<p class="Pp">Referenced by <b>yt_dlp_extract_stream_url()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> yt_dlp_extract_stream_urls_interruptible
-  (const char * url, const char * yt_dlp_options, char * output_url, size_t
-  output_size, char * audio_url, size_t audio_size, <b>bool</b>(* cancel )(void
-  *), void * data)</h2>
-<p class="Pp">Definition at line <b>539</b> of file <b>yt_dlp.c</b>.</p>
-<pre>541                                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>MEDIA_STREAM_URL_SIZE</b>,
+            <b>yt_dlp_extract_stream_url()</b>, and
+            <b>yt_dlp_extract_stream_urls()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>yt_dlp_extract_stream_url()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> yt_dlp_extract_stream_urls_interruptible
+            (const char * url, const char * yt_dlp_options, char * output_url,
+            size_t output_size, char * audio_url, size_t audio_size,
+            <b>bool</b>(* cancel )(void *), void * data)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>539</b> of file <b>yt_dlp.c</b>.
+          </p>
+          <pre>
+541                                                                                                                   {
 542   yt_dlp_request_options_t video_request, audio_request;
 543   return yt_dlp_extract_with_options(url, yt_dlp_options, output_url, output_size, audio_url, audio_size,
 544                                      &amp;video_request, &amp;audio_request, cancel, data);
 545 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>yt_dlp_extract_stream_urls_interruptible()</b>, and
-    <b>yt_dlp_extract_with_options()</b>.</p>
-<p class="Pp">Referenced by <b>yt_dlp_extract_stream_urls()</b>, and
-    <b>yt_dlp_extract_stream_urls_interruptible()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> yt_dlp_extract_with_options (const char
-  * url, const char * yt_dlp_options, char * output_url, size_t output_size,
-  char * audio_url, size_t audio_size, <b>yt_dlp_request_options_t</b> *
-  video_options, <b>yt_dlp_request_options_t</b> * audio_options, <b>bool</b>(*
-  cancel )(void *), void * data)</h2>
-<p class="Pp">Definition at line <b>372</b> of file <b>yt_dlp.c</b>.</p>
-<pre>376                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>yt_dlp_extract_stream_urls_interruptible()</b>, and
+            <b>yt_dlp_extract_with_options()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>yt_dlp_extract_stream_urls()</b>, and
+            <b>yt_dlp_extract_stream_urls_interruptible()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> yt_dlp_extract_with_options (const char *
+            url, const char * yt_dlp_options, char * output_url, size_t
+            output_size, char * audio_url, size_t audio_size,
+            <b>yt_dlp_request_options_t</b> * video_options,
+            <b>yt_dlp_request_options_t</b> * audio_options, <b>bool</b>(*
+            cancel )(void *), void * data)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>372</b> of file <b>yt_dlp.c</b>.
+          </p>
+          <pre>
+376                                                           {
 377   if (!video_request || !audio_request)
 378     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing yt-dlp request options output&quot;);
 379   memset(video_request, 0, sizeof(*video_request));
@@ -323,33 +415,41 @@
 535   log_debug(&quot;yt-dlp extracted %zu stream URL(s)&quot;, count);
 536   return ASCIICHAT_OK;
 537 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_ATTR_STRING</b>,
-    <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>ERROR_YOUTUBE_EXTRACT_FAILED</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>LOG_IO_IF</b>, <b>MEDIA_STREAM_URL_SIZE</b>,
-    <b>MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE</b>,
-    <b>MEDIA_YT_DLP_YT_DLP_OPTIONS_BUFFER_SIZE</b>,
-    <b>platform_execute_subprocess()</b>, <b>platform_isatty()</b>,
-    <b>platform_strncasecmp()</b>, <b>yt_dlp_request_options_t::proxy</b>,
-    <b>yt_dlp_request_options_t::proxy_specified</b>, <b>SET_ERRNO</b>, and
-    <b>yt_dlp_extract_with_options()</b>.</p>
-<p class="Pp">Referenced by <b>yt_dlp_extract_stream_urls_interruptible()</b>,
-    and <b>yt_dlp_extract_with_options()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_STRING</b>,
+            <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NOT_SUPPORTED</b>, <b>ERROR_YOUTUBE_EXTRACT_FAILED</b>,
+            <b>log_debug</b>, <b>log_error</b>, <b>LOG_IO_IF</b>,
+            <b>MEDIA_STREAM_URL_SIZE</b>,
+            <b>MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE</b>,
+            <b>MEDIA_YT_DLP_YT_DLP_OPTIONS_BUFFER_SIZE</b>,
+            <b>platform_execute_subprocess()</b>, <b>platform_isatty()</b>,
+            <b>platform_strncasecmp()</b>,
+            <b>yt_dlp_request_options_t::proxy</b>,
+            <b>yt_dlp_request_options_t::proxy_specified</b>, <b>SET_ERRNO</b>,
+            and <b>yt_dlp_extract_with_options()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>yt_dlp_extract_stream_urls_interruptible()</b>, and
+            <b>yt_dlp_extract_with_options()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

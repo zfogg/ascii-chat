@@ -1,144 +1,237 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>renderer.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">renderer.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">renderer.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">renderer.c - render_file_* &#x2014; ties together font resolution,
-    platform renderer, FFmpeg encoder</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>render_file_ctx_s</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>RENDER_AUTO_FONT_SIZE_PT</b> 12.0
-  <br/>
-  #define <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b> 1280
-  <br/>
-  #define <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b> 3.0
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>render_file_create</b> (const char
-    *output_path, int cols, int rows, int fps, int theme,
-    <b>render_file_ctx_t</b> **out)
-  <br/>
-  void <b>render_file_set_live_timing</b> (<b>render_file_ctx_t</b> *ctx)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_write_frame</b>
-    (<b>render_file_ctx_t</b> *ctx, const char *frame, <b>uint64_t</b>
-    captured_ns)
-  <br/>
-  void <b>render_file_begin_drain</b> (<b>render_file_ctx_t</b> *ctx,
-    <b>uint64_t</b> total, <b>bool</b> total_known)
-  <br/>
-  void <b>render_file_set_snapshot_actual_duration</b> (<b>render_file_ctx_t</b>
-    *ctx, double actual_duration_sec)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b>render_file_ctx_t</b>
-    *ctx)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">render_file_* &#x2014; ties together font resolution, platform
-    renderer, FFmpeg encoder</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>renderer.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_RENDER_AUTO_FONT_SIZE_PT___12"><a class="permalink" href="#_define_RENDER_AUTO_FONT_SIZE_PT___12">#define
-  RENDER_AUTO_FONT_SIZE_PT 12.0</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_RENDER_AUTO_MIN_FONT_SIZE_PT___3"><a class="permalink" href="#_define_RENDER_AUTO_MIN_FONT_SIZE_PT___3">#define
-  RENDER_AUTO_MIN_FONT_SIZE_PT 3.0</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_RENDER_AUTO_VIDEO_MAX_DIMENSION___1280"><a class="permalink" href="#_define_RENDER_AUTO_VIDEO_MAX_DIMENSION___1280">#define
-  RENDER_AUTO_VIDEO_MAX_DIMENSION 1280</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_begin_drain_("><a class="permalink" href="#void_render_file_begin_drain_(">void
-  render_file_begin_drain (<b>render_file_ctx_t</b> * ctx, <b>uint64_t</b>
-  total, <b>bool</b> total_known)</a></h2>
-<p class="Pp">Definition at line <b>345</b> of file <b>renderer.c</b>.</p>
-<pre>345                                                                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>renderer.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">renderer.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">renderer.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          renderer.c - render_file_* &#x2014; ties together font resolution,
+          platform renderer, FFmpeg encoder
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>render_file_ctx_s</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>RENDER_AUTO_FONT_SIZE_PT</b> 12.0
+            <br />
+            #define <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b> 1280
+            <br />
+            #define <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b> 3.0
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>render_file_create</b> (const char
+            *output_path, int cols, int rows, int fps, int theme,
+            <b>render_file_ctx_t</b> **out)
+            <br />
+            void <b>render_file_set_live_timing</b> (<b>render_file_ctx_t</b>
+            *ctx)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_write_frame</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx, const char *frame, <b>uint64_t</b>
+            captured_ns)
+            <br />
+            void <b>render_file_begin_drain</b> (<b>render_file_ctx_t</b> *ctx,
+            <b>uint64_t</b> total, <b>bool</b> total_known)
+            <br />
+            void <b>render_file_set_snapshot_actual_duration</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx, double actual_duration_sec)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          render_file_* &#x2014; ties together font resolution, platform
+          renderer, FFmpeg encoder
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>renderer.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RENDER_AUTO_FONT_SIZE_PT___12">
+            <a class="permalink" href="#_define_RENDER_AUTO_FONT_SIZE_PT___12"
+              >#define RENDER_AUTO_FONT_SIZE_PT 12.0</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>renderer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RENDER_AUTO_MIN_FONT_SIZE_PT___3">
+            <a
+              class="permalink"
+              href="#_define_RENDER_AUTO_MIN_FONT_SIZE_PT___3"
+              >#define RENDER_AUTO_MIN_FONT_SIZE_PT 3.0</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>renderer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RENDER_AUTO_VIDEO_MAX_DIMENSION___1280">
+            <a
+              class="permalink"
+              href="#_define_RENDER_AUTO_VIDEO_MAX_DIMENSION___1280"
+              >#define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>renderer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_begin_drain_(">
+            <a class="permalink" href="#void_render_file_begin_drain_("
+              >void render_file_begin_drain (<b>render_file_ctx_t</b> * ctx,
+              <b>uint64_t</b> total, <b>bool</b> total_known)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>345</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+345                                                                                        {
 346   if (ctx)
 347     render_progress_begin(ctx-&gt;progress, total, total_known);
 348 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::progress</b>,
-    <b>render_file_begin_drain()</b>, and <b>render_progress_begin()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_begin_drain()</b>, and
-    <b>session_display_begin_drain()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_create (const char *
-  output_path, int cols, int rows, int fps, int theme, <b>render_file_ctx_t</b>
-  ** out)</h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>renderer.c</b>.</p>
-<pre>47                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::progress</b>,
+            <b>render_file_begin_drain()</b>, and
+            <b>render_progress_begin()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_begin_drain()</b>, and
+            <b>session_display_begin_drain()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_create (const char *
+            output_path, int cols, int rows, int fps, int theme,
+            <b>render_file_ctx_t</b> ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+47                                                               {
 48   if (!output_path || !out || cols &lt;= 0 || rows &lt;= 0)
 49     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing render output, grid, or context&quot;);
 50   *out = NULL;
@@ -339,43 +432,58 @@
 245   *out = ctx;
 246   return ASCIICHAT_OK;
 247 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_buf_size</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>,
-    <b>audio_recording_create_channels()</b>,
-    <b>render_file_ctx_s::audio_sample_rate</b>,
-    <b>colorscheme_current_background()</b>, <b>render_file_ctx_s::encoder</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>ffmpeg_encoder_create_scaled()</b>, <b>ffmpeg_encoder_destroy()</b>,
-    <b>term_renderer_config_t::font_size_pt</b>,
-    <b>term_renderer_config_t::font_spec</b>, <b>render_file_ctx_s::fps</b>,
-    <b>GET_OPTION</b>, <b>render_file_ctx_s::kitty</b>,
-    <b>render_file_ctx_s::kitty_only</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>log_info</b>, <b>log_warn</b>, <b>NAMED_REGISTER_CONTEXT</b>,
-    <b>platform_font_resolve()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>render_file_ctx_s::progress</b>, <b>render_file_ctx_s::recording</b>,
-    <b>RENDER_AUTO_FONT_SIZE_PT</b>, <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b>,
-    <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b>, <b>render_file_create()</b>,
-    <b>render_progress_create()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>TERM_BACKGROUND_DARK</b>, <b>term_renderer_create()</b>,
-    <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>,
-    <b>TERM_RENDERER_THEME_AUTO</b>, <b>TERM_RENDERER_THEME_DARK</b>,
-    <b>TERM_RENDERER_THEME_LIGHT</b>, <b>term_renderer_width_px()</b>,
-    <b>terminal_is_stdout_tty()</b>, <b>ui_controller_title_render()</b>, and
-    <b>UI_TITLE_RENDERING</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_create()</b>, and
-  <b>session_display_init_render_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_destroy
-  (<b>render_file_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>356</b> of file <b>renderer.c</b>.</p>
-<pre>356                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>render_file_ctx_s::audio_buf_size</b>,
+            <b>render_file_ctx_s::audio_read_buf</b>,
+            <b>audio_recording_create_channels()</b>,
+            <b>render_file_ctx_s::audio_sample_rate</b>,
+            <b>colorscheme_current_background()</b>,
+            <b>render_file_ctx_s::encoder</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NOT_SUPPORTED</b>, <b>ffmpeg_encoder_create_scaled()</b>,
+            <b>ffmpeg_encoder_destroy()</b>,
+            <b>term_renderer_config_t::font_size_pt</b>,
+            <b>term_renderer_config_t::font_spec</b>,
+            <b>render_file_ctx_s::fps</b>, <b>GET_OPTION</b>,
+            <b>render_file_ctx_s::kitty</b>,
+            <b>render_file_ctx_s::kitty_only</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>NAMED_REGISTER_CONTEXT</b>, <b>platform_font_resolve()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_ctx_s::recording</b>,
+            <b>RENDER_AUTO_FONT_SIZE_PT</b>,
+            <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b>,
+            <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b>, <b>render_file_create()</b>,
+            <b>render_progress_create()</b>, <b>render_file_ctx_s::renderer</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+            <b>TERM_BACKGROUND_DARK</b>, <b>term_renderer_create()</b>,
+            <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>,
+            <b>TERM_RENDERER_THEME_AUTO</b>, <b>TERM_RENDERER_THEME_DARK</b>,
+            <b>TERM_RENDERER_THEME_LIGHT</b>, <b>term_renderer_width_px()</b>,
+            <b>terminal_is_stdout_tty()</b>,
+            <b>ui_controller_title_render()</b>, and <b>UI_TITLE_RENDERING</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_file_create()</b>, and
+            <b>session_display_init_render_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_destroy (<b
+              >render_file_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>356</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+356                                                               {
 357   if (!ctx)
 358     return ASCIICHAT_OK;
 359   NAMED_UNREGISTER(ctx);
@@ -411,76 +519,113 @@
 389   SAFE_FREE(ctx);
 390   return err;
 391 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_buf_size</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>, <b>audio_recording_destroy()</b>,
-    <b>audio_recording_read()</b>,
-    <b>render_file_ctx_s::audio_samples_written</b>,
-    <b>render_file_ctx_s::audio_target</b>, <b>render_file_ctx_s::encoder</b>,
-    <b>render_file_ctx_s::error</b>, <b>ERROR_MEDIA_INIT</b>,
-    <b>ffmpeg_encoder_destroy()</b>, <b>ffmpeg_encoder_write_audio()</b>,
-    <b>render_file_ctx_s::frames_written</b>, <b>render_file_ctx_s::kitty</b>,
-    <b>kitty_image_write()</b>, <b>NAMED_UNREGISTER</b>,
-    <b>render_file_ctx_s::progress</b>, <b>render_file_ctx_s::recording</b>,
-    <b>render_file_destroy()</b>, <b>render_progress_destroy()</b>,
-    <b>render_progress_finalize()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>term_renderer_destroy()</b>,
-    <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
-    <b>term_renderer_pixels()</b>, <b>term_renderer_width_px()</b>,
-    <b>ui_controller_title_render()</b>, <b>UI_TITLE_FAILED</b>,
-    <b>UI_TITLE_FINALIZING</b>, and <b>UI_TITLE_IDLE</b>.</p>
-<p class="Pp">Referenced by <b>render_file_destroy()</b>,
-    <b>render_file_destroy()</b>, and
-    <b>session_display_finish_render_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_live_timing_("><a class="permalink" href="#void_render_file_set_live_timing_(">void
-  render_file_set_live_timing (<b>render_file_ctx_t</b> * ctx)</a></h2>
-<p class="Pp">Definition at line <b>249</b> of file <b>renderer.c</b>.</p>
-<pre>249                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>render_file_ctx_s::audio_buf_size</b>,
+            <b>render_file_ctx_s::audio_read_buf</b>,
+            <b>audio_recording_destroy()</b>, <b>audio_recording_read()</b>,
+            <b>render_file_ctx_s::audio_samples_written</b>,
+            <b>render_file_ctx_s::audio_target</b>,
+            <b>render_file_ctx_s::encoder</b>, <b>render_file_ctx_s::error</b>,
+            <b>ERROR_MEDIA_INIT</b>, <b>ffmpeg_encoder_destroy()</b>,
+            <b>ffmpeg_encoder_write_audio()</b>,
+            <b>render_file_ctx_s::frames_written</b>,
+            <b>render_file_ctx_s::kitty</b>, <b>kitty_image_write()</b>,
+            <b>NAMED_UNREGISTER</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_ctx_s::recording</b>, <b>render_file_destroy()</b>,
+            <b>render_progress_destroy()</b>, <b>render_progress_finalize()</b>,
+            <b>render_file_ctx_s::renderer</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, <b>term_renderer_destroy()</b>,
+            <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
+            <b>term_renderer_pixels()</b>, <b>term_renderer_width_px()</b>,
+            <b>ui_controller_title_render()</b>, <b>UI_TITLE_FAILED</b>,
+            <b>UI_TITLE_FINALIZING</b>, and <b>UI_TITLE_IDLE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_destroy()</b>,
+            <b>render_file_destroy()</b>, and
+            <b>session_display_finish_render_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_live_timing_(">
+            <a class="permalink" href="#void_render_file_set_live_timing_("
+              >void render_file_set_live_timing (<b>render_file_ctx_t</b> *
+              ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>249</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+249                                                          {
 250   if (ctx) {
 251     ctx-&gt;live_timing = true;
 252     if (ctx-&gt;encoder)
 253       ffmpeg_encoder_set_live_timing(ctx-&gt;encoder);
 254   }
 255 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::encoder</b>,
-    <b>ffmpeg_encoder_set_live_timing()</b>,
-    <b>render_file_ctx_s::live_timing</b>, and
-    <b>render_file_set_live_timing()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_set_live_timing()</b>,
-    <b>session_display_render_frame()</b>, and
-    <b>session_display_set_render_live_timing()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
-  render_file_set_snapshot_actual_duration (<b>render_file_ctx_t</b> * ctx,
-  double actual_duration_sec)</a></h2>
-<p class="Pp">Definition at line <b>350</b> of file <b>renderer.c</b>.</p>
-<pre>350                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::encoder</b>,
+            <b>ffmpeg_encoder_set_live_timing()</b>,
+            <b>render_file_ctx_s::live_timing</b>, and
+            <b>render_file_set_live_timing()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_set_live_timing()</b>,
+            <b>session_display_render_frame()</b>, and
+            <b>session_display_set_render_live_timing()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_(">
+            <a
+              class="permalink"
+              href="#void_render_file_set_snapshot_actual_duration_("
+              >void render_file_set_snapshot_actual_duration (<b
+                >render_file_ctx_t</b
+              >
+              * ctx, double actual_duration_sec)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>350</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+350                                                                                                   {
 351   if (!ctx || !ctx-&gt;encoder)
 352     return;
 353   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
 354 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::encoder</b>,
-    <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>, and
-    <b>render_file_set_snapshot_actual_duration()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_set_snapshot_actual_duration()</b>,
-    <b>render_file_set_snapshot_actual_duration()</b>, and
-    <b>session_display_set_snapshot_actual_duration()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_write_frame
-  (<b>render_file_ctx_t</b> * ctx, const char * frame, <b>uint64_t</b>
-  captured_ns)</h2>
-<p class="Pp">Definition at line <b>331</b> of file <b>renderer.c</b>.</p>
-<pre>331                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::encoder</b>,
+            <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>, and
+            <b>render_file_set_snapshot_actual_duration()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_set_snapshot_actual_duration()</b>,
+            <b>render_file_set_snapshot_actual_duration()</b>, and
+            <b>session_display_set_snapshot_actual_duration()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_write_frame (<b
+              >render_file_ctx_t</b
+            >
+            * ctx, const char * frame, <b>uint64_t</b> captured_ns)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>331</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+331                                                                                                            {
 332   if (!ctx || !frame)
 333     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing render context or frame&quot;);
 334   if (ctx-&gt;error != ASCIICHAT_OK)
@@ -493,28 +638,35 @@
 341     ctx-&gt;error = err;
 342   return err;
 343 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>render_file_ctx_s::error</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>render_file_ctx_s::progress</b>,
-    <b>render_file_write_frame()</b>, <b>render_progress_frame()</b>,
-    <b>SET_ERRNO</b>, <b>ui_controller_title_render()</b>, and
-    <b>UI_TITLE_FAILED</b>.</p>
-<p class="Pp">Referenced by <b>render_file_write_frame()</b>,
-    <b>render_file_write_frame()</b>, <b>session_display_encode_frame()</b>, and
-    <b>session_display_render_frame()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>render_file_ctx_s::error</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_write_frame()</b>, <b>render_progress_frame()</b>,
+            <b>SET_ERRNO</b>, <b>ui_controller_title_render()</b>, and
+            <b>UI_TITLE_FAILED</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_write_frame()</b>,
+            <b>render_file_write_frame()</b>,
+            <b>session_display_encode_frame()</b>, and
+            <b>session_display_render_frame()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

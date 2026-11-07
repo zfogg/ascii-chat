@@ -1,158 +1,250 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>tcp_server_config_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">tcp_server_config_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">tcp_server_config_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">tcp_server_config_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/network/tcp/server.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">int <b>port</b>
-  <br/>
-  TCP listen port. const char * <b>ipv4_address</b>
-  <br/>
-  IPv4 bind address (NULL or empty = don't bind). const char *
-    <b>ipv6_address</b>
-  <br/>
-  IPv6 bind address (NULL or empty = don't bind). <b>bool</b> <b>bind_ipv4</b>
-  <br/>
-  Whether to bind IPv4 socket. <b>bool</b> <b>bind_ipv6</b>
-  <br/>
-  Whether to bind IPv6 socket. <b>platform_event_accept_fn</b>
-    <b>event_handler</b>
-  <br/>
-  Required asynchronous accept handler. void(*) <b>tick_fn</b> (void
-    *<b>user_data</b>)
-  <br/>
-  Optional periodic callback on the tcp_server_run thread. void *
-    <b>tick_user_data</b>
-  <br/>
-  void * <b>user_data</b>
-  <br/>
-  User data passed to each client handler.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>17</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> tcp_server_config_t::bind_ipv4</h2>
-<p class="Pp">Whether to bind IPv4 socket.</p>
-<p class="Pp">Definition at line <b>21</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> tcp_server_config_t::bind_ipv6</h2>
-<p class="Pp">Whether to bind IPv6 socket.</p>
-<p class="Pp">Definition at line <b>22</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>platform_event_accept_fn</b>
-  tcp_server_config_t::event_handler</h2>
-<p class="Pp">Required asynchronous accept handler.</p>
-<p class="Pp">Definition at line <b>23</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_tcp_server_config_t::ipv4_address"><a class="permalink" href="#const_char*_tcp_server_config_t::ipv4_address">const
-  char* tcp_server_config_t::ipv4_address</a></h2>
-<p class="Pp">IPv4 bind address (NULL or empty = don't bind).</p>
-<p class="Pp">Definition at line <b>19</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_tcp_server_config_t::ipv6_address"><a class="permalink" href="#const_char*_tcp_server_config_t::ipv6_address">const
-  char* tcp_server_config_t::ipv6_address</a></h2>
-<p class="Pp">IPv6 bind address (NULL or empty = don't bind).</p>
-<p class="Pp">Definition at line <b>20</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_tcp_server_config_t::port"><a class="permalink" href="#int_tcp_server_config_t::port">int
-  tcp_server_config_t::port</a></h2>
-<p class="Pp">TCP listen port.</p>
-<p class="Pp">Definition at line <b>18</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*)_tcp_server_config_t::tick_fn(void_*"><a class="permalink" href="#void(*)_tcp_server_config_t::tick_fn(void_*">void(*)
-  tcp_server_config_t::tick_fn(void *<b>user_data</b>)</a></h2>
-<p class="Pp">Optional periodic callback on the tcp_server_run thread.</p>
-<p class="Pp">Definition at line <b>24</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_tcp_server_config_t::tick_user_data"><a class="permalink" href="#void*_tcp_server_config_t::tick_user_data">void*
-  tcp_server_config_t::tick_user_data</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_tcp_server_config_t::user_data"><a class="permalink" href="#void*_tcp_server_config_t::user_data">void*
-  tcp_server_config_t::user_data</a></h2>
-<p class="Pp">User data passed to each client handler.</p>
-<p class="Pp">Definition at line <b>26</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>tcp_server_config_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">tcp_server_config_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">tcp_server_config_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">tcp_server_config_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/network/tcp/server.h&gt;
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>port</b>
+            <br />
+            TCP listen port. const char * <b>ipv4_address</b>
+            <br />
+            IPv4 bind address (NULL or empty = don't bind). const char *
+            <b>ipv6_address</b>
+            <br />
+            IPv6 bind address (NULL or empty = don't bind). <b>bool</b>
+            <b>bind_ipv4</b>
+            <br />
+            Whether to bind IPv4 socket. <b>bool</b> <b>bind_ipv6</b>
+            <br />
+            Whether to bind IPv6 socket. <b>platform_event_accept_fn</b>
+            <b>event_handler</b>
+            <br />
+            Required asynchronous accept handler. void(*) <b>tick_fn</b> (void
+            *<b>user_data</b>)
+            <br />
+            Optional periodic callback on the tcp_server_run thread. void *
+            <b>tick_user_data</b>
+            <br />
+            void * <b>user_data</b>
+            <br />
+            User data passed to each client handler.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>17</b> of file
+          <b>include/ascii-chat/network/tcp/server.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> tcp_server_config_t::bind_ipv4</h2>
+          <p class="Pp">Whether to bind IPv4 socket.</p>
+          <p class="Pp">
+            Definition at line <b>21</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> tcp_server_config_t::bind_ipv6</h2>
+          <p class="Pp">Whether to bind IPv6 socket.</p>
+          <p class="Pp">
+            Definition at line <b>22</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>platform_event_accept_fn</b> tcp_server_config_t::event_handler
+          </h2>
+          <p class="Pp">Required asynchronous accept handler.</p>
+          <p class="Pp">
+            Definition at line <b>23</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_tcp_server_config_t::ipv4_address">
+            <a
+              class="permalink"
+              href="#const_char*_tcp_server_config_t::ipv4_address"
+              >const char* tcp_server_config_t::ipv4_address</a
+            >
+          </h2>
+          <p class="Pp">IPv4 bind address (NULL or empty = don't bind).</p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_tcp_server_config_t::ipv6_address">
+            <a
+              class="permalink"
+              href="#const_char*_tcp_server_config_t::ipv6_address"
+              >const char* tcp_server_config_t::ipv6_address</a
+            >
+          </h2>
+          <p class="Pp">IPv6 bind address (NULL or empty = don't bind).</p>
+          <p class="Pp">
+            Definition at line <b>20</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_tcp_server_config_t::port">
+            <a class="permalink" href="#int_tcp_server_config_t::port"
+              >int tcp_server_config_t::port</a
+            >
+          </h2>
+          <p class="Pp">TCP listen port.</p>
+          <p class="Pp">
+            Definition at line <b>18</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void(*)_tcp_server_config_t::tick_fn(void_*">
+            <a
+              class="permalink"
+              href="#void(*)_tcp_server_config_t::tick_fn(void_*"
+              >void(*) tcp_server_config_t::tick_fn(void *<b>user_data</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Optional periodic callback on the tcp_server_run thread.
+          </p>
+          <p class="Pp">
+            Definition at line <b>24</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_tcp_server_config_t::tick_user_data">
+            <a
+              class="permalink"
+              href="#void*_tcp_server_config_t::tick_user_data"
+              >void* tcp_server_config_t::tick_user_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_tcp_server_config_t::user_data">
+            <a class="permalink" href="#void*_tcp_server_config_t::user_data"
+              >void* tcp_server_config_t::user_data</a
+            >
+          </h2>
+          <p class="Pp">User data passed to each client handler.</p>
+          <p class="Pp">
+            Definition at line <b>26</b> of file
+            <b>include/ascii-chat/network/tcp/server.h</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

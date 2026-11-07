@@ -1,421 +1,689 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>webrtc(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">webrtc(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">webrtc(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">webrtc - WebRTC P2P Connections</p>
-<p class="Pp">
-  <br/>
-   - WebRTC DataChannel transport for ACIP packets.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>ice_selected_pair.cpp</b>
-  <br/>
-  C++ implementation for retrieving selected ICE candidate pair. file
-    <b>ice.h</b>
-  <br/>
-  ICE (Interactive Connectivity Establishment) for WebRTC. file <b>sdp.h</b>
-  <br/>
-  SDP (Session Description Protocol) for WebRTC audio/video negotiation.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>webrtc_config_t</b>
-  <br/>
-  WebRTC configuration. struct <b>webrtc_datachannel_callbacks_t</b>
-  <br/>
-  DataChannel callback structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>webrtc_peer_connection</b>
-    <b>webrtc_peer_connection_t</b>
-  <br/>
-  typedef struct <b>webrtc_data_channel</b> <b>webrtc_data_channel_t</b>
-  <br/>
-  typedef void(*) <b>webrtc_state_callback_t</b>(<b>webrtc_peer_connection_t</b>
-    *pc, <b>webrtc_state_t</b> state, void *user_data)
-  <br/>
-  Callback for state changes. typedef void(*)
-    <b>webrtc_local_description_callback_t</b>(<b>webrtc_peer_connection_t</b>
-    *pc, const char *sdp, const char *type, void *user_data)
-  <br/>
-  Callback for local SDP offer/answer generation. typedef void(*)
-    <b>webrtc_local_candidate_callback_t</b>(<b>webrtc_peer_connection_t</b>
-    *pc, const char *candidate, const char *mid, void *user_data)
-  <br/>
-  Callback for local ICE candidate discovery. typedef void(*)
-    <b>webrtc_gathering_state_callback_t</b>(<b>webrtc_peer_connection_t</b>
-    *pc, <b>webrtc_gathering_state_t</b> state, void *user_data)
-  <br/>
-  Callback for ICE gathering state changes. typedef void(*)
-    <b>webrtc_datachannel_open_callback_t</b>(<b>webrtc_data_channel_t</b> *dc,
-    void *user_data)
-  <br/>
-  Callback for DataChannel open event. typedef void(*)
-    <b>webrtc_datachannel_message_callback_t</b>(<b>webrtc_data_channel_t</b>
-    *dc, const <b>uint8_t</b> *data, size_t size, void *user_data)
-  <br/>
-  Callback for DataChannel message received. typedef void(*)
-    <b>webrtc_datachannel_error_callback_t</b>(<b>webrtc_data_channel_t</b> *dc,
-    const char *error, void *user_data)
-  <br/>
-  Callback for DataChannel error.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>webrtc_state_t</b> { <b>WEBRTC_STATE_NEW</b> = 0,
-    <b>WEBRTC_STATE_CONNECTING</b>, <b>WEBRTC_STATE_CONNECTED</b>,
-    <b>WEBRTC_STATE_DISCONNECTED</b>, <b>WEBRTC_STATE_FAILED</b>,
-    <b>WEBRTC_STATE_CLOSED</b> }
-  <br/>
-  WebRTC connection state. enum <b>webrtc_gathering_state_t</b> {
-    <b>WEBRTC_GATHERING_NEW</b> = 0, <b>WEBRTC_GATHERING_GATHERING</b>,
-    <b>WEBRTC_GATHERING_COMPLETE</b> }
-  <br/>
-  ICE gathering state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>webrtc_init</b> (void)
-  <br/>
-  Initialize WebRTC library (libdatachannel). void <b>webrtc_destroy</b> (void)
-  <br/>
-  Cleanup WebRTC library resources. <b>asciichat_error_t</b>
-    <b>webrtc_create_peer_connection</b> (const <b>webrtc_config_t</b> *config,
-    <b>webrtc_peer_connection_t</b> **pc_out)
-  <br/>
-  Create a new WebRTC peer connection. void <b>webrtc_close_peer_connection</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Close and destroy a peer connection. <b>webrtc_state_t</b>
-    <b>webrtc_get_state</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get current connection state. <b>webrtc_gathering_state_t</b>
-    <b>webrtc_get_gathering_state</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get current ICE gathering state. <b>bool</b>
-    <b>webrtc_is_gathering_timed_out</b> (<b>webrtc_peer_connection_t</b> *pc,
-    <b>uint32_t</b> timeout_ms)
-  <br/>
-  Check if ICE gathering has timed out. void * <b>webrtc_get_user_data</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get user data pointer from connection. <b>asciichat_error_t</b>
-    <b>webrtc_create_offer</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Create and set local SDP offer (for connection initiator).
-    <b>asciichat_error_t</b> <b>webrtc_set_remote_description</b>
-    (<b>webrtc_peer_connection_t</b> *pc, const char *sdp, const char *type)
-  <br/>
-  Set remote SDP offer/answer. <b>asciichat_error_t</b>
-    <b>webrtc_add_remote_candidate</b> (<b>webrtc_peer_connection_t</b> *pc,
-    const char *candidate, const char *mid)
-  <br/>
-  Add remote ICE candidate. <b>asciichat_error_t</b>
-    <b>webrtc_create_datachannel</b> (<b>webrtc_peer_connection_t</b> *pc, const
-    char *label, <b>webrtc_data_channel_t</b> **dc_out)
-  <br/>
-  Create a DataChannel (for connection initiator). <b>asciichat_error_t</b>
-    <b>webrtc_datachannel_send</b> (<b>webrtc_data_channel_t</b> *dc, const
-    <b>uint8_t</b> *data, size_t size)
-  <br/>
-  Send data over DataChannel. <b>asciichat_error_t</b>
-    <b>webrtc_datachannel_get_buffered_amount</b> (<b>webrtc_data_channel_t</b>
-    *dc, size_t *amount)
-  <br/>
-  <b>asciichat_error_t</b> <b>webrtc_datachannel_get_max_message_size</b>
-    (<b>webrtc_data_channel_t</b> *dc, size_t *size)
-  <br/>
-  <b>bool</b> <b>webrtc_datachannel_is_open</b> (<b>webrtc_data_channel_t</b>
-    *dc)
-  <br/>
-  Check if DataChannel is open and ready. void
-    <b>webrtc_datachannel_set_open_state</b> (<b>webrtc_data_channel_t</b> *dc,
-    <b>bool</b> is_open)
-  <br/>
-  Set DataChannel open state (internal use). const char *
-    <b>webrtc_datachannel_get_label</b> (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Get DataChannel label. <b>asciichat_error_t</b>
-    <b>webrtc_datachannel_set_callbacks</b> (<b>webrtc_data_channel_t</b> *dc,
-    const <b>webrtc_datachannel_callbacks_t</b> *callbacks)
-  <br/>
-  Set DataChannel callbacks. void <b>webrtc_close_datachannel</b>
-    (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Close a DataChannel. void <b>webrtc_datachannel_destroy</b>
-    (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Destroy a DataChannel and free resources. void
-    <b>webrtc_peer_connection_close</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Close a peer connection. void <b>webrtc_peer_connection_destroy</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Destroy a peer connection and free resources. int <b>webrtc_get_rtc_id</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get the internal libdatachannel peer connection ID.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WebRTC DataChannel transport for ACIP packets.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>webrtc_data_channel</b>
-  <b>webrtc_data_channel_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>36</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_datachannel_error_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_datachannel_error_callback_t(">typedef
-  void(*) webrtc_datachannel_error_callback_t(<b>webrtc_data_channel_t</b> *dc,
-  const char *error, void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for DataChannel error.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel
-<br/>
-<i>error</i> Error message (null-terminated)
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>123</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_datachannel_message_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_datachannel_message_callback_t(">typedef
-  void(*) webrtc_datachannel_message_callback_t(<b>webrtc_data_channel_t</b>
-  *dc, const <b>uint8_t</b> *data, size_t size, void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for DataChannel message received.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel
-<br/>
-<i>data</i> Message data (binary)
-<br/>
-<i>size</i> Message size in bytes
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>114</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_datachannel_open_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_datachannel_open_callback_t(">typedef
-  void(*) webrtc_datachannel_open_callback_t(<b>webrtc_data_channel_t</b> *dc,
-  void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for DataChannel open event.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel that opened
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>105</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_gathering_state_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_gathering_state_callback_t(">typedef
-  void(*) webrtc_gathering_state_callback_t(<b>webrtc_peer_connection_t</b> *pc,
-  <b>webrtc_gathering_state_t</b> state, void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for ICE gathering state changes.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>state</i> New gathering state
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>97</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_local_candidate_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_local_candidate_callback_t(">typedef
-  void(*) webrtc_local_candidate_callback_t(<b>webrtc_peer_connection_t</b> *pc,
-  const char *candidate, const char *mid, void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for local ICE candidate discovery.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>candidate</i> ICE candidate string (null-terminated)
-<br/>
-<i>mid</i> Media stream ID (null-terminated)
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Application should send this candidate to the remote peer via
-    signaling channel (ACDS).</p>
-<p class="Pp">Definition at line <b>88</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_local_description_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_local_description_callback_t(">typedef
-  void(*) webrtc_local_description_callback_t(<b>webrtc_peer_connection_t</b>
-  *pc, const char *sdp, const char *type, void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for local SDP offer/answer generation.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>sdp</i> SDP string (null-terminated)
-<br/>
-<i>type</i> SDP type (&quot;offer&quot; or &quot;answer&quot;)
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Application should send this SDP to the remote peer via signaling
-    channel (ACDS).</p>
-<p class="Pp">Definition at line <b>76</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>webrtc_peer_connection</b>
-  <b>webrtc_peer_connection_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>35</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_webrtc_state_callback_t("><a class="permalink" href="#typedef_void(*)_webrtc_state_callback_t(">typedef
-  void(*) webrtc_state_callback_t(<b>webrtc_peer_connection_t</b> *pc,
-  <b>webrtc_state_t</b> state, void *user_data)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Callback for state changes.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>state</i> New connection state
-<br/>
-<i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>65</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">enum <b>webrtc_gathering_state_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">ICE gathering state.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="WEBRTC_GATHERING_NEW"><a class="permalink" href="#WEBRTC_GATHERING_NEW"><b><i>WEBRTC_GATHERING_NEW
-    </i></b></a></dt>
-  <dd>Not started.</dd>
-  <dt id="WEBRTC_GATHERING_GATHERING"><a class="permalink" href="#WEBRTC_GATHERING_GATHERING"><b><i>WEBRTC_GATHERING_GATHERING
-    </i></b></a></dt>
-  <dd>Gathering candidates.</dd>
-  <dt id="WEBRTC_GATHERING_COMPLETE"><a class="permalink" href="#WEBRTC_GATHERING_COMPLETE"><b><i>WEBRTC_GATHERING_COMPLETE
-    </i></b></a></dt>
-  <dd>All candidates gathered.</dd>
-</dl>
-<p class="Pp">Definition at line <b>53</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-<pre>53              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>webrtc(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">webrtc(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">webrtc(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">webrtc - WebRTC P2P Connections</p>
+        <p class="Pp">
+          <br />
+          - WebRTC DataChannel transport for ACIP packets.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>ice_selected_pair.cpp</b>
+            <br />
+            C++ implementation for retrieving selected ICE candidate pair. file
+            <b>ice.h</b>
+            <br />
+            ICE (Interactive Connectivity Establishment) for WebRTC. file
+            <b>sdp.h</b>
+            <br />
+            SDP (Session Description Protocol) for WebRTC audio/video
+            negotiation.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>webrtc_config_t</b>
+            <br />
+            WebRTC configuration. struct <b>webrtc_datachannel_callbacks_t</b>
+            <br />
+            DataChannel callback structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>webrtc_peer_connection</b>
+            <b>webrtc_peer_connection_t</b>
+            <br />
+            typedef struct <b>webrtc_data_channel</b>
+            <b>webrtc_data_channel_t</b>
+            <br />
+            typedef void(*) <b>webrtc_state_callback_t</b>(<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, <b>webrtc_state_t</b> state, void *user_data)
+            <br />
+            Callback for state changes. typedef void(*)
+            <b>webrtc_local_description_callback_t</b>(<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, const char *sdp, const char *type, void *user_data)
+            <br />
+            Callback for local SDP offer/answer generation. typedef void(*)
+            <b>webrtc_local_candidate_callback_t</b>(<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, const char *candidate, const char *mid, void *user_data)
+            <br />
+            Callback for local ICE candidate discovery. typedef void(*)
+            <b>webrtc_gathering_state_callback_t</b>(<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, <b>webrtc_gathering_state_t</b> state, void *user_data)
+            <br />
+            Callback for ICE gathering state changes. typedef void(*)
+            <b>webrtc_datachannel_open_callback_t</b>(<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, void *user_data)
+            <br />
+            Callback for DataChannel open event. typedef void(*)
+            <b>webrtc_datachannel_message_callback_t</b>(<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const <b>uint8_t</b> *data, size_t size, void *user_data)
+            <br />
+            Callback for DataChannel message received. typedef void(*)
+            <b>webrtc_datachannel_error_callback_t</b>(<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const char *error, void *user_data)
+            <br />
+            Callback for DataChannel error.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>webrtc_state_t</b> { <b>WEBRTC_STATE_NEW</b> = 0,
+            <b>WEBRTC_STATE_CONNECTING</b>, <b>WEBRTC_STATE_CONNECTED</b>,
+            <b>WEBRTC_STATE_DISCONNECTED</b>, <b>WEBRTC_STATE_FAILED</b>,
+            <b>WEBRTC_STATE_CLOSED</b> }
+            <br />
+            WebRTC connection state. enum <b>webrtc_gathering_state_t</b> {
+            <b>WEBRTC_GATHERING_NEW</b> = 0, <b>WEBRTC_GATHERING_GATHERING</b>,
+            <b>WEBRTC_GATHERING_COMPLETE</b> }
+            <br />
+            ICE gathering state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>webrtc_init</b> (void)
+            <br />
+            Initialize WebRTC library (libdatachannel). void
+            <b>webrtc_destroy</b> (void)
+            <br />
+            Cleanup WebRTC library resources. <b>asciichat_error_t</b>
+            <b>webrtc_create_peer_connection</b> (const
+            <b>webrtc_config_t</b> *config,
+            <b>webrtc_peer_connection_t</b> **pc_out)
+            <br />
+            Create a new WebRTC peer connection. void
+            <b>webrtc_close_peer_connection</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Close and destroy a peer connection. <b>webrtc_state_t</b>
+            <b>webrtc_get_state</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get current connection state. <b>webrtc_gathering_state_t</b>
+            <b>webrtc_get_gathering_state</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get current ICE gathering state. <b>bool</b>
+            <b>webrtc_is_gathering_timed_out</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, <b>uint32_t</b> timeout_ms)
+            <br />
+            Check if ICE gathering has timed out. void *
+            <b>webrtc_get_user_data</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get user data pointer from connection. <b>asciichat_error_t</b>
+            <b>webrtc_create_offer</b> (<b>webrtc_peer_connection_t</b> *pc)
+            <br />
+            Create and set local SDP offer (for connection initiator).
+            <b>asciichat_error_t</b> <b>webrtc_set_remote_description</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, const char *sdp, const char *type)
+            <br />
+            Set remote SDP offer/answer. <b>asciichat_error_t</b>
+            <b>webrtc_add_remote_candidate</b> (<b>webrtc_peer_connection_t</b>
+            *pc, const char *candidate, const char *mid)
+            <br />
+            Add remote ICE candidate. <b>asciichat_error_t</b>
+            <b>webrtc_create_datachannel</b> (<b>webrtc_peer_connection_t</b>
+            *pc, const char *label, <b>webrtc_data_channel_t</b> **dc_out)
+            <br />
+            Create a DataChannel (for connection initiator).
+            <b>asciichat_error_t</b> <b>webrtc_datachannel_send</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const <b>uint8_t</b> *data, size_t size)
+            <br />
+            Send data over DataChannel. <b>asciichat_error_t</b>
+            <b>webrtc_datachannel_get_buffered_amount</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, size_t *amount)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>webrtc_datachannel_get_max_message_size</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, size_t *size)
+            <br />
+            <b>bool</b> <b>webrtc_datachannel_is_open</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc)
+            <br />
+            Check if DataChannel is open and ready. void
+            <b>webrtc_datachannel_set_open_state</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, <b>bool</b> is_open)
+            <br />
+            Set DataChannel open state (internal use). const char *
+            <b>webrtc_datachannel_get_label</b> (<b>webrtc_data_channel_t</b>
+            *dc)
+            <br />
+            Get DataChannel label. <b>asciichat_error_t</b>
+            <b>webrtc_datachannel_set_callbacks</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const <b>webrtc_datachannel_callbacks_t</b> *callbacks)
+            <br />
+            Set DataChannel callbacks. void <b>webrtc_close_datachannel</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc)
+            <br />
+            Close a DataChannel. void <b>webrtc_datachannel_destroy</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc)
+            <br />
+            Destroy a DataChannel and free resources. void
+            <b>webrtc_peer_connection_close</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Close a peer connection. void
+            <b>webrtc_peer_connection_destroy</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc)
+            <br />
+            Destroy a peer connection and free resources. int
+            <b>webrtc_get_rtc_id</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get the internal libdatachannel peer connection ID.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WebRTC DataChannel transport for ACIP packets.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>webrtc_data_channel</b>
+            <b>webrtc_data_channel_t</b>
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>36</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_webrtc_datachannel_error_callback_t("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_datachannel_error_callback_t("
+              >typedef void(*) webrtc_datachannel_error_callback_t(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, const char *error, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for DataChannel error.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dc</i> Data channel
+            <br />
+            <i>error</i> Error message (null-terminated)
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Definition at line <b>123</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_webrtc_datachannel_message_callback_t("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_datachannel_message_callback_t("
+              >typedef void(*) webrtc_datachannel_message_callback_t(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, const <b>uint8_t</b> *data, size_t size, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for DataChannel message received.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dc</i> Data channel
+            <br />
+            <i>data</i> Message data (binary)
+            <br />
+            <i>size</i> Message size in bytes
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Definition at line <b>114</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_webrtc_datachannel_open_callback_t("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_datachannel_open_callback_t("
+              >typedef void(*) webrtc_datachannel_open_callback_t(<b
+                >webrtc_data_channel_t</b
+              >
+              *dc, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for DataChannel open event.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dc</i> Data channel that opened
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Definition at line <b>105</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_webrtc_gathering_state_callback_t("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_gathering_state_callback_t("
+              >typedef void(*) webrtc_gathering_state_callback_t(<b
+                >webrtc_peer_connection_t</b
+              >
+              *pc, <b>webrtc_gathering_state_t</b> state, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for ICE gathering state changes.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>state</i> New gathering state
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Definition at line <b>97</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_webrtc_local_candidate_callback_t("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_local_candidate_callback_t("
+              >typedef void(*) webrtc_local_candidate_callback_t(<b
+                >webrtc_peer_connection_t</b
+              >
+              *pc, const char *candidate, const char *mid, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for local ICE candidate discovery.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>candidate</i> ICE candidate string (null-terminated)
+            <br />
+            <i>mid</i> Media stream ID (null-terminated)
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Application should send this candidate to the remote peer via
+            signaling channel (ACDS).
+          </p>
+          <p class="Pp">
+            Definition at line <b>88</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_webrtc_local_description_callback_t("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_local_description_callback_t("
+              >typedef void(*) webrtc_local_description_callback_t(<b
+                >webrtc_peer_connection_t</b
+              >
+              *pc, const char *sdp, const char *type, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for local SDP offer/answer generation.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>sdp</i> SDP string (null-terminated)
+            <br />
+            <i>type</i> SDP type (&quot;offer&quot; or &quot;answer&quot;)
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Application should send this SDP to the remote peer via signaling
+            channel (ACDS).
+          </p>
+          <p class="Pp">
+            Definition at line <b>76</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>webrtc_peer_connection</b>
+            <b>webrtc_peer_connection_t</b>
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>35</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_void(*)_webrtc_state_callback_t(">
+            <a
+              class="permalink"
+              href="#typedef_void(*)_webrtc_state_callback_t("
+              >typedef void(*) webrtc_state_callback_t(<b
+                >webrtc_peer_connection_t</b
+              >
+              *pc, <b>webrtc_state_t</b> state, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Callback for state changes.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>state</i> New connection state
+            <br />
+            <i>user_data</i> User-provided context pointer
+          </div>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>webrtc_gathering_state_t</b></h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">ICE gathering state.</p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="WEBRTC_GATHERING_NEW">
+              <a class="permalink" href="#WEBRTC_GATHERING_NEW"
+                ><b><i>WEBRTC_GATHERING_NEW </i></b></a
+              >
+            </dt>
+            <dd>Not started.</dd>
+            <dt id="WEBRTC_GATHERING_GATHERING">
+              <a class="permalink" href="#WEBRTC_GATHERING_GATHERING"
+                ><b><i>WEBRTC_GATHERING_GATHERING </i></b></a
+              >
+            </dt>
+            <dd>Gathering candidates.</dd>
+            <dt id="WEBRTC_GATHERING_COMPLETE">
+              <a class="permalink" href="#WEBRTC_GATHERING_COMPLETE"
+                ><b><i>WEBRTC_GATHERING_COMPLETE </i></b></a
+              >
+            </dt>
+            <dd>All candidates gathered.</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>53</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+          <pre>
+53              {
 54   WEBRTC_GATHERING_NEW = 0,
 55   WEBRTC_GATHERING_GATHERING,
 56   WEBRTC_GATHERING_COMPLETE
 57 } webrtc_gathering_state_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">enum <b>webrtc_state_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">WebRTC connection state.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="WEBRTC_STATE_NEW"><a class="permalink" href="#WEBRTC_STATE_NEW"><b><i>WEBRTC_STATE_NEW
-    </i></b></a></dt>
-  <dd>Connection created but not started.</dd>
-  <dt id="WEBRTC_STATE_CONNECTING"><a class="permalink" href="#WEBRTC_STATE_CONNECTING"><b><i>WEBRTC_STATE_CONNECTING
-    </i></b></a></dt>
-  <dd>ICE gathering/connection in progress.</dd>
-  <dt id="WEBRTC_STATE_CONNECTED"><a class="permalink" href="#WEBRTC_STATE_CONNECTED"><b><i>WEBRTC_STATE_CONNECTED
-    </i></b></a></dt>
-  <dd>DataChannel established and ready.</dd>
-  <dt id="WEBRTC_STATE_DISCONNECTED"><a class="permalink" href="#WEBRTC_STATE_DISCONNECTED"><b><i>WEBRTC_STATE_DISCONNECTED
-    </i></b></a></dt>
-  <dd>Connection lost.</dd>
-  <dt id="WEBRTC_STATE_FAILED"><a class="permalink" href="#WEBRTC_STATE_FAILED"><b><i>WEBRTC_STATE_FAILED
-    </i></b></a></dt>
-  <dd>Connection failed (fatal).</dd>
-  <dt id="WEBRTC_STATE_CLOSED"><a class="permalink" href="#WEBRTC_STATE_CLOSED"><b><i>WEBRTC_STATE_CLOSED
-    </i></b></a></dt>
-  <dd>Connection closed cleanly.</dd>
-</dl>
-<p class="Pp">Definition at line <b>41</b> of file
-    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
-<pre>41              {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>webrtc_state_t</b></h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">WebRTC connection state.</p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="WEBRTC_STATE_NEW">
+              <a class="permalink" href="#WEBRTC_STATE_NEW"
+                ><b><i>WEBRTC_STATE_NEW </i></b></a
+              >
+            </dt>
+            <dd>Connection created but not started.</dd>
+            <dt id="WEBRTC_STATE_CONNECTING">
+              <a class="permalink" href="#WEBRTC_STATE_CONNECTING"
+                ><b><i>WEBRTC_STATE_CONNECTING </i></b></a
+              >
+            </dt>
+            <dd>ICE gathering/connection in progress.</dd>
+            <dt id="WEBRTC_STATE_CONNECTED">
+              <a class="permalink" href="#WEBRTC_STATE_CONNECTED"
+                ><b><i>WEBRTC_STATE_CONNECTED </i></b></a
+              >
+            </dt>
+            <dd>DataChannel established and ready.</dd>
+            <dt id="WEBRTC_STATE_DISCONNECTED">
+              <a class="permalink" href="#WEBRTC_STATE_DISCONNECTED"
+                ><b><i>WEBRTC_STATE_DISCONNECTED </i></b></a
+              >
+            </dt>
+            <dd>Connection lost.</dd>
+            <dt id="WEBRTC_STATE_FAILED">
+              <a class="permalink" href="#WEBRTC_STATE_FAILED"
+                ><b><i>WEBRTC_STATE_FAILED </i></b></a
+              >
+            </dt>
+            <dd>Connection failed (fatal).</dd>
+            <dt id="WEBRTC_STATE_CLOSED">
+              <a class="permalink" href="#WEBRTC_STATE_CLOSED"
+                ><b><i>WEBRTC_STATE_CLOSED </i></b></a
+              >
+            </dt>
+            <dd>Connection closed cleanly.</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>41</b> of file
+            <b>include/ascii-chat/network/webrtc/webrtc.h</b>.
+          </p>
+          <pre>
+41              {
 42   WEBRTC_STATE_NEW = 0,
 43   WEBRTC_STATE_CONNECTING,
 44   WEBRTC_STATE_CONNECTED,
@@ -423,32 +691,49 @@
 46   WEBRTC_STATE_FAILED,
 47   WEBRTC_STATE_CLOSED
 48 } webrtc_state_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_add_remote_candidate
-  (<b>webrtc_peer_connection_t</b> * pc, const char * candidate, const char *
-  mid)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Add remote ICE candidate.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>candidate</i> ICE candidate string (null-terminated)
-<br/>
-<i>mid</i> Media stream ID (null-terminated, can be empty)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Adds a remote ICE candidate received via signaling channel.</p>
-<p class="Pp">Definition at line <b>798</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>798                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_add_remote_candidate (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc, const char * candidate, const char * mid)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Add remote ICE candidate.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>candidate</i> ICE candidate string (null-terminated)
+            <br />
+            <i>mid</i> Media stream ID (null-terminated, can be empty)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Adds a remote ICE candidate received via signaling channel.
+          </p>
+          <p class="Pp">
+            Definition at line <b>798</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+798                                                                                                                     {
 799   if (!pc || !candidate) {
 800     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 801   }
@@ -464,28 +749,43 @@
 811   log_debug(&quot;Added remote ICE candidate (pc_id=%d)&quot;, pc-&gt;rtc_id);
 812   return ASCIICHAT_OK;
 813 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_add_remote_candidate()</b>.</p>
-<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>,
-    <b>webrtc_add_remote_candidate()</b>, and
-    <b>webrtc_peer_manager_handle_ice()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_close_datachannel_("><a class="permalink" href="#void_webrtc_close_datachannel_(">void
-  webrtc_close_datachannel (<b>webrtc_data_channel_t</b> * dc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Close a DataChannel.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel to close</div>
-<p class="Pp">Closes the channel gracefully. Safe to call with NULL pointer.</p>
-<p class="Pp">Definition at line <b>948</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>948                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_add_remote_candidate()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ice_add_remote_candidate()</b>,
+            <b>webrtc_add_remote_candidate()</b>, and
+            <b>webrtc_peer_manager_handle_ice()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_close_datachannel_(">
+            <a class="permalink" href="#void_webrtc_close_datachannel_("
+              >void webrtc_close_datachannel (<b>webrtc_data_channel_t</b> *
+              dc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Close a DataChannel.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>dc</i> Data channel to close</div>
+          <p class="Pp">
+            Closes the channel gracefully. Safe to call with NULL pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>948</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+948                                                          {
 949   if (!dc) {
 950     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
 951     return;
@@ -503,29 +803,46 @@
 963   dc-&gt;rtc_id = -1;
 964   atomic_store_bool(&amp;dc-&gt;is_open, false);
 965 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>webrtc_data_channel::is_open</b>, <b>log_debug</b>,
-    <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_close_datachannel()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_close_datachannel()</b>,
-    <b>webrtc_close_peer_connection()</b>, and
-    <b>webrtc_datachannel_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_close_peer_connection_("><a class="permalink" href="#void_webrtc_close_peer_connection_(">void
-  webrtc_close_peer_connection (<b>webrtc_peer_connection_t</b> * pc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Close and destroy a peer connection.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection to close</div>
-<p class="Pp">Closes the connection gracefully and frees all resources. Safe to
-    call with NULL pointer.</p>
-<p class="Pp">Definition at line <b>673</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>673                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>webrtc_data_channel::is_open</b>, <b>log_debug</b>,
+            <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_close_datachannel()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_close_datachannel()</b>,
+            <b>webrtc_close_peer_connection()</b>, and
+            <b>webrtc_datachannel_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_close_peer_connection_(">
+            <a class="permalink" href="#void_webrtc_close_peer_connection_("
+              >void webrtc_close_peer_connection (<b
+                >webrtc_peer_connection_t</b
+              >
+              * pc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Close and destroy a peer connection.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection to close</div>
+          <p class="Pp">
+            Closes the connection gracefully and frees all resources. Safe to
+            call with NULL pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>673</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+673                                                                 {
 674   if (!pc) {
 675     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid peer connection&quot;);
 676     return;
@@ -544,35 +861,51 @@
 689
 690   SAFE_FREE(pc);
 691 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_peer_connection::dc</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
-    <b>webrtc_close_datachannel()</b>, and
-    <b>webrtc_close_peer_connection()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_close_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_create_datachannel
-  (<b>webrtc_peer_connection_t</b> * pc, const char * label,
-  <b>webrtc_data_channel_t</b> ** dc_out)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Create a DataChannel (for connection initiator).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>label</i> Channel label (e.g., &quot;acip&quot;)
-<br/>
-<i>dc_out</i> Output parameter for data channel handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Creates a new DataChannel. The initiator should create the
-    channel, while the responder receives it via the datachannel callback.</p>
-<p class="Pp">Definition at line <b>819</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>820                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>webrtc_peer_connection::dc</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, <b>webrtc_close_datachannel()</b>, and
+            <b>webrtc_close_peer_connection()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_close_peer_connection()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_create_datachannel (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc, const char * label, <b>webrtc_data_channel_t</b> ** dc_out)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Create a DataChannel (for connection initiator).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>label</i> Channel label (e.g., &quot;acip&quot;)
+            <br />
+            <i>dc_out</i> Output parameter for data channel handle
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Creates a new DataChannel. The initiator should create the channel,
+            while the responder receives it via the datachannel callback.
+          </p>
+          <p class="Pp">
+            Definition at line <b>819</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+820                                                                             {
 821   if (!pc || !label || !dc_out) {
 822     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 823   }
@@ -614,34 +947,52 @@
 859   log_debug(&quot;Created DataChannel '%s' (dc_id=%d, pc_id=%d)&quot;, label, dc_id, pc-&gt;rtc_id);
 860   return ASCIICHAT_OK;
 861 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>webrtc_peer_connection::config</b>, <b>webrtc_peer_connection::dc</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>webrtc_data_channel::is_open</b>, <b>log_debug</b>,
-    <b>NAMED_REGISTER_DATACHANNEL</b>,
-    <b>webrtc_config_t::on_datachannel_message</b>,
-    <b>webrtc_data_channel::pc</b>, <b>webrtc_data_channel::rtc_id</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_CALLOC</b>, <b>SET_ERRNO</b>,
-    and <b>webrtc_create_datachannel()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_datachannel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_create_offer
-  (<b>webrtc_peer_connection_t</b> * pc)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Create and set local SDP offer (for connection initiator).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Triggers ICE gathering and local description callback with the SDP
-    offer. Use this when initiating a connection to a remote peer.</p>
-<p class="Pp">Definition at line <b>748</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>748                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>webrtc_peer_connection::config</b>,
+            <b>webrtc_peer_connection::dc</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+            <b>webrtc_data_channel::is_open</b>, <b>log_debug</b>,
+            <b>NAMED_REGISTER_DATACHANNEL</b>,
+            <b>webrtc_config_t::on_datachannel_message</b>,
+            <b>webrtc_data_channel::pc</b>, <b>webrtc_data_channel::rtc_id</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_CALLOC</b>,
+            <b>SET_ERRNO</b>, and <b>webrtc_create_datachannel()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_create_datachannel()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_create_offer (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Create and set local SDP offer (for connection initiator).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Triggers ICE gathering and local description callback with the SDP
+            offer. Use this when initiating a connection to a remote peer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>748</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+748                                                                     {
 749   if (!pc) {
 750     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid peer connection&quot;);
 751   }
@@ -656,33 +1007,47 @@
 760   log_debug(&quot;Creating SDP offer (pc_id=%d)&quot;, pc-&gt;rtc_id);
 761   return ASCIICHAT_OK;
 762 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_create_offer()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_offer()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_create_peer_connection (const
-  <b>webrtc_config_t</b> * config, <b>webrtc_peer_connection_t</b> **
-  pc_out)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Create a new WebRTC peer connection.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Configuration including ICE servers and
-  callbacks
-<br/>
-<i>pc_out</i> Output parameter for peer connection handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Creates a new peer connection with the specified configuration.
-    The connection starts in WEBRTC_STATE_NEW state.</p>
-<p class="Pp">Definition at line <b>533</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>533                                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_create_offer()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_create_offer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_create_peer_connection (const
+            <b>webrtc_config_t</b> * config, <b>webrtc_peer_connection_t</b> **
+            pc_out)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Create a new WebRTC peer connection.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Configuration including ICE servers and callbacks
+            <br />
+            <i>pc_out</i> Output parameter for peer connection handle
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Creates a new peer connection with the specified configuration. The
+            connection starts in WEBRTC_STATE_NEW state.
+          </p>
+          <p class="Pp">
+            Definition at line <b>533</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+533                                                                                                                   {
 534   if (!config || !pc_out) {
 535     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid config or output parameter&quot;);
 536   }
@@ -821,43 +1186,63 @@
 669   log_debug(&quot;Created WebRTC peer connection (id=%d)&quot;, pc_id);
 670   return ASCIICHAT_OK;
 671 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_OUTBOUND_SCTP_RESERVE</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_store_u64()</b>, <b>webrtc_config_t::bind_address</b>,
-    <b>webrtc_peer_connection::config</b>, <b>webrtc_peer_connection::dc</b>,
-    <b>ERROR_INIT</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK</b>,
-    <b>webrtc_peer_connection::gathering_start_time_ms</b>,
-    <b>webrtc_peer_connection::gathering_state</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>NAMED_REGISTER</b>, <b>NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE</b>,
-    <b>webrtc_peer_connection::port_reservation</b>,
-    <b>webrtc_config_t::relay_only</b>, <b>webrtc_peer_connection::rtc_id</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>,
-    <b>webrtc_peer_connection::state</b>, <b>webrtc_config_t::stun_count</b>,
-    <b>webrtc_config_t::stun_servers</b>, <b>webrtc_config_t::turn_count</b>,
-    <b>webrtc_config_t::turn_credential</b>, <b>turn_server_t</b>,
-    <b>webrtc_config_t::turn_servers</b>, <b>webrtc_config_t::turn_username</b>,
-    <b>webrtc_create_peer_connection()</b>,
-    <b>WEBRTC_ESCAPED_AUTH_BUFFER_SIZE</b>, <b>WEBRTC_GATHERING_NEW</b>,
-    <b>WEBRTC_STATE_NEW</b>, and <b>WEBRTC_TURN_URL_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_datachannel_destroy_("><a class="permalink" href="#void_webrtc_datachannel_destroy_(">void
-  webrtc_datachannel_destroy (<b>webrtc_data_channel_t</b> * dc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Destroy a DataChannel and free resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel to destroy</div>
-<p class="Pp">Frees all resources associated with the DataChannel. Automatically
-    closes the channel if still open. Safe to call with NULL pointer.</p>
-<p class="Pp">Definition at line <b>1013</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>1013                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_OUTBOUND_SCTP_RESERVE</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_u64()</b>, <b>webrtc_config_t::bind_address</b>,
+            <b>webrtc_peer_connection::config</b>,
+            <b>webrtc_peer_connection::dc</b>, <b>ERROR_INIT</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>,
+            <b>webrtc_peer_connection::gathering_start_time_ms</b>,
+            <b>webrtc_peer_connection::gathering_state</b>,
+            <b>INVALID_SOCKET_VALUE</b>, <b>lifecycle_is_initialized()</b>,
+            <b>log_debug</b>, <b>log_info</b>, <b>NAMED_REGISTER</b>,
+            <b>NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE</b>,
+            <b>webrtc_peer_connection::port_reservation</b>,
+            <b>webrtc_config_t::relay_only</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>,
+            <b>SET_ERRNO</b>, <b>webrtc_peer_connection::state</b>,
+            <b>webrtc_config_t::stun_count</b>,
+            <b>webrtc_config_t::stun_servers</b>,
+            <b>webrtc_config_t::turn_count</b>,
+            <b>webrtc_config_t::turn_credential</b>, <b>turn_server_t</b>,
+            <b>webrtc_config_t::turn_servers</b>,
+            <b>webrtc_config_t::turn_username</b>,
+            <b>webrtc_create_peer_connection()</b>,
+            <b>WEBRTC_ESCAPED_AUTH_BUFFER_SIZE</b>, <b>WEBRTC_GATHERING_NEW</b>,
+            <b>WEBRTC_STATE_NEW</b>, and <b>WEBRTC_TURN_URL_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_datachannel_destroy_(">
+            <a class="permalink" href="#void_webrtc_datachannel_destroy_("
+              >void webrtc_datachannel_destroy (<b>webrtc_data_channel_t</b> *
+              dc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Destroy a DataChannel and free resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>dc</i> Data channel to destroy</div>
+          <p class="Pp">
+            Frees all resources associated with the DataChannel. Automatically
+            closes the channel if still open. Safe to call with NULL pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1013</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+1013                                                            {
 1014   if (!dc) {
 1015     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null data channel&quot;);
 1016     return;
@@ -867,21 +1252,32 @@
 1020   webrtc_close_datachannel(dc);
 1021   SAFE_FREE(dc);
 1022 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>SAFE_FREE</b>,
-    <b>SET_ERRNO</b>, <b>webrtc_close_datachannel()</b>, and
-    <b>webrtc_datachannel_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_datachannel_get_buffered_amount
-  (<b>webrtc_data_channel_t</b> * dc, size_t * amount)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>863</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>863                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, <b>webrtc_close_datachannel()</b>, and
+            <b>webrtc_datachannel_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_datachannel_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_datachannel_get_buffered_amount (<b
+              >webrtc_data_channel_t</b
+            >
+            * dc, size_t * amount)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>863</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+863                                                                                                     {
 864   if (!dc || dc-&gt;rtc_id &lt; 0 || !amount)
 865     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel and amount are required&quot;);
 866   int result = rtcGetBufferedAmount(dc-&gt;rtc_id);
@@ -890,27 +1286,46 @@
 869   *amount = (size_t)result;
 870   return ASCIICHAT_OK;
 871 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>,
-    and <b>webrtc_datachannel_get_buffered_amount()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_get_buffered_amount()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_webrtc_datachannel_get_label_("><a class="permalink" href="#const_char_*_webrtc_datachannel_get_label_(">const
-  char * webrtc_datachannel_get_label (<b>webrtc_data_channel_t</b> *
-  dc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Get DataChannel label.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Label string (null-terminated), or NULL on error</div>
-<p class="Pp">Definition at line <b>933</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>933                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>webrtc_data_channel::rtc_id</b>,
+            <b>SET_ERRNO</b>, and
+            <b>webrtc_datachannel_get_buffered_amount()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_get_buffered_amount()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_webrtc_datachannel_get_label_(">
+            <a
+              class="permalink"
+              href="#const_char_*_webrtc_datachannel_get_label_("
+              >const char * webrtc_datachannel_get_label (<b
+                >webrtc_data_channel_t</b
+              >
+              * dc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Get DataChannel label.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>dc</i> Data channel</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Label string (null-terminated), or NULL on error
+          </div>
+          <p class="Pp">
+            Definition at line <b>933</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+933                                                                     {
 934   if (!dc || dc-&gt;rtc_id &lt; 0) {
 935     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
 936     return NULL;
@@ -924,21 +1339,33 @@
 944
 945   return label;
 946 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
-    <b>NETWORK_WEBRTC_LABEL_BUFFER_SIZE</b>, <b>webrtc_data_channel::rtc_id</b>,
-    <b>SET_ERRNO</b>, and <b>webrtc_datachannel_get_label()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_get_label()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_datachannel_get_max_message_size
-  (<b>webrtc_data_channel_t</b> * dc, size_t * size)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>873</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>873                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>,
+            <b>NETWORK_WEBRTC_LABEL_BUFFER_SIZE</b>,
+            <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_datachannel_get_label()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_datachannel_get_label()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_datachannel_get_max_message_size (<b
+              >webrtc_data_channel_t</b
+            >
+            * dc, size_t * size)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>873</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+873                                                                                                    {
 874   if (!dc || dc-&gt;rtc_id &lt; 0 || !size)
 875     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel and max message size are required&quot;);
 876   int result = rtcMaxMessageSize(dc-&gt;rtc_id);
@@ -947,60 +1374,88 @@
 879   *size = (size_t)result;
 880   return ASCIICHAT_OK;
 881 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>,
-    and <b>webrtc_datachannel_get_max_message_size()</b>.</p>
-<p class="Pp">Referenced by
-  <b>webrtc_datachannel_get_max_message_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> webrtc_datachannel_is_open
-  (<b>webrtc_data_channel_t</b> * dc)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Check if DataChannel is open and ready.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if open, false otherwise</div>
-<p class="Pp">Definition at line <b>917</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>917                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>webrtc_data_channel::rtc_id</b>,
+            <b>SET_ERRNO</b>, and
+            <b>webrtc_datachannel_get_max_message_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_get_max_message_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> webrtc_datachannel_is_open (<b>webrtc_data_channel_t</b>
+            * dc)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Check if DataChannel is open and ready.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>dc</i> Data channel</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if open, false otherwise</div>
+          <p class="Pp">
+            Definition at line <b>917</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+917                                                            {
 918   if (!dc) {
 919     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
 920     return false;
 921   }
 922   return dc-&gt;rtc_id &gt;= 0 &amp;&amp; atomic_load_bool(&amp;dc-&gt;is_open);
 923 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>webrtc_data_channel::is_open</b>, <b>webrtc_data_channel::rtc_id</b>,
-    <b>SET_ERRNO</b>, and <b>webrtc_datachannel_is_open()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_is_open()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_datachannel_send
-  (<b>webrtc_data_channel_t</b> * dc, const <b>uint8_t</b> * data, size_t
-  size)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Send data over DataChannel.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel
-<br/>
-<i>data</i> Data buffer (binary)
-<br/>
-<i>size</i> Data size in bytes</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Sends binary data over the DataChannel. Returns error if channel
-    is not open.</p>
-<p class="Pp">Definition at line <b>883</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>883                                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>webrtc_data_channel::is_open</b>,
+            <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_datachannel_is_open()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_datachannel_is_open()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_datachannel_send (<b
+              >webrtc_data_channel_t</b
+            >
+            * dc, const <b>uint8_t</b> * data, size_t size)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Send data over DataChannel.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dc</i> Data channel
+            <br />
+            <i>data</i> Data buffer (binary)
+            <br />
+            <i>size</i> Data size in bytes
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Sends binary data over the DataChannel. Returns error if channel is
+            not open.
+          </p>
+          <p class="Pp">
+            Definition at line <b>883</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+883                                                                                                        {
 884   if (!dc || dc-&gt;rtc_id &lt; 0 || !data) {
 885     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 886   }
@@ -1033,33 +1488,49 @@
 913   log_dev(&quot;&#x2605; WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes&quot;, size);
 914   return ASCIICHAT_OK;
 915 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
-    <b>webrtc_data_channel::is_open</b>, <b>log_dev</b>, <b>log_error</b>,
-    <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_datachannel_send()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_send()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_datachannel_set_callbacks
-  (<b>webrtc_data_channel_t</b> * dc, const
-  <b>webrtc_datachannel_callbacks_t</b> * callbacks)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Set DataChannel callbacks.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel
-<br/>
-<i>callbacks</i> Callback structure</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Registers callbacks for DataChannel events. Any NULL callback
-    pointer is ignored.</p>
-<p class="Pp">Definition at line <b>971</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>972                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+            <b>webrtc_data_channel::is_open</b>, <b>log_dev</b>,
+            <b>log_error</b>, <b>webrtc_data_channel::rtc_id</b>,
+            <b>SET_ERRNO</b>, and <b>webrtc_datachannel_send()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_datachannel_send()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_datachannel_set_callbacks (<b
+              >webrtc_data_channel_t</b
+            >
+            * dc, const <b>webrtc_datachannel_callbacks_t</b> * callbacks)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Set DataChannel callbacks.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dc</i> Data channel
+            <br />
+            <i>callbacks</i> Callback structure
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Registers callbacks for DataChannel events. Any NULL callback
+            pointer is ignored.
+          </p>
+          <p class="Pp">
+            Definition at line <b>971</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+972                                                                                                     {
 973   if (!dc) {
 974     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
 975   }
@@ -1099,233 +1570,350 @@
 1009   log_debug(&quot;Set DataChannel callbacks (dc_id=%d)&quot;, dc-&gt;rtc_id);
 1010   return ASCIICHAT_OK;
 1011 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_debug</b>, <b>webrtc_datachannel_callbacks_t::on_close</b>,
-    <b>webrtc_datachannel_callbacks_t::on_error</b>,
-    <b>webrtc_datachannel_callbacks_t::on_message</b>,
-    <b>webrtc_datachannel_callbacks_t::on_open</b>,
-    <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>,
-    <b>webrtc_data_channel::user_data</b>,
-    <b>webrtc_datachannel_callbacks_t::user_data</b>,
-    <b>webrtc_data_channel::user_on_close</b>,
-    <b>webrtc_data_channel::user_on_error</b>,
-    <b>webrtc_data_channel::user_on_message</b>,
-    <b>webrtc_data_channel::user_on_open</b>, and
-    <b>webrtc_datachannel_set_callbacks()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_datachannel_set_open_state_("><a class="permalink" href="#void_webrtc_datachannel_set_open_state_(">void
-  webrtc_datachannel_set_open_state (<b>webrtc_data_channel_t</b> * dc,
-  <b>bool</b> is_open)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Set DataChannel open state (internal use).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dc</i> Data channel
-<br/>
-<i>is_open</i> Open state to set</div>
-<p class="Pp">Internal function for transport layer to manually set open state
-    when callbacks are replaced after the DataChannel is already open.</p>
-<p class="Pp">Definition at line <b>925</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>925                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_debug</b>, <b>webrtc_datachannel_callbacks_t::on_close</b>,
+            <b>webrtc_datachannel_callbacks_t::on_error</b>,
+            <b>webrtc_datachannel_callbacks_t::on_message</b>,
+            <b>webrtc_datachannel_callbacks_t::on_open</b>,
+            <b>webrtc_data_channel::rtc_id</b>, <b>SET_ERRNO</b>,
+            <b>webrtc_data_channel::user_data</b>,
+            <b>webrtc_datachannel_callbacks_t::user_data</b>,
+            <b>webrtc_data_channel::user_on_close</b>,
+            <b>webrtc_data_channel::user_on_error</b>,
+            <b>webrtc_data_channel::user_on_message</b>,
+            <b>webrtc_data_channel::user_on_open</b>, and
+            <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_datachannel_set_open_state_(">
+            <a
+              class="permalink"
+              href="#void_webrtc_datachannel_set_open_state_("
+              >void webrtc_datachannel_set_open_state (<b
+                >webrtc_data_channel_t</b
+              >
+              * dc, <b>bool</b> is_open)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Set DataChannel open state (internal use).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dc</i> Data channel
+            <br />
+            <i>is_open</i> Open state to set
+          </div>
+          <p class="Pp">
+            Internal function for transport layer to manually set open state
+            when callbacks are replaced after the DataChannel is already open.
+          </p>
+          <p class="Pp">
+            Definition at line <b>925</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+925                                                                                 {
 926   if (!dc) {
 927     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
 928     return;
 929   }
 930   atomic_store_bool(&amp;dc-&gt;is_open, is_open);
 931 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>webrtc_data_channel::is_open</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_datachannel_set_open_state()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_set_open_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_destroy_(void_)"><a class="permalink" href="#void_webrtc_destroy_(void_)">void
-  webrtc_destroy (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Cleanup WebRTC library resources. Should be called at program exit
-    after all connections are closed. Thread-safe and idempotent.</p>
-<p class="Pp">Definition at line <b>512</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>512                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>webrtc_data_channel::is_open</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_datachannel_set_open_state()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_datachannel_set_open_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_destroy_(void_)">
+            <a class="permalink" href="#void_webrtc_destroy_(void_)"
+              >void webrtc_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Cleanup WebRTC library resources. Should be called at program exit
+            after all connections are closed. Thread-safe and idempotent.
+          </p>
+          <p class="Pp">
+            Definition at line <b>512</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+512                           {
 513   webrtc_release();
 514 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>webrtc_gathering_state_t</b> webrtc_get_gathering_state
-  (<b>webrtc_peer_connection_t</b> * pc)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Get current ICE gathering state.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current gathering state</div>
-<p class="Pp">Definition at line <b>701</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>701                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>webrtc_destroy()</b>.</p>
+          <p class="Pp">Referenced by <b>webrtc_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>webrtc_gathering_state_t</b> webrtc_get_gathering_state (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Get current ICE gathering state.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Current gathering state</div>
+          <p class="Pp">
+            Definition at line <b>701</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+701                                                                                   {
 702   if (!pc) {
 703     log_warn(&quot;Peer connection is NULL&quot;);
 704     return WEBRTC_GATHERING_NEW;
 705   }
 706   return (webrtc_gathering_state_t)atomic_load_u64(&amp;pc-&gt;gathering_state);
 707 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>webrtc_peer_connection::gathering_state</b>, <b>log_warn</b>,
-    <b>WEBRTC_GATHERING_NEW</b>, and <b>webrtc_get_gathering_state()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_get_gathering_state()</b>, and
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_webrtc_get_rtc_id_("><a class="permalink" href="#int_webrtc_get_rtc_id_(">int
-  webrtc_get_rtc_id (<b>webrtc_peer_connection_t</b> * pc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Get the internal libdatachannel peer connection ID. Helper
-    function for C++ code that needs access to internal rtc_id without exposing
-    the full structure definition.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">libdatachannel peer connection ID, or -1 if pc is
-  NULL</div>
-<p class="Pp">Helper function for C++ code that needs access to internal rtc_id
-    without exposing the full structure definition.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">libdatachannel peer connection ID, or -1 if pc is
-  NULL</div>
-<p class="Pp">Helper function for C++ code that needs access to internal rtc_id
-    without exposing the full structure definition.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection to query</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">libdatachannel peer connection ID, or -1 if pc is
-  NULL</div>
-<p class="Pp">Definition at line <b>1062</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>1062                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>webrtc_peer_connection::gathering_state</b>, <b>log_warn</b>,
+            <b>WEBRTC_GATHERING_NEW</b>, and
+            <b>webrtc_get_gathering_state()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_get_gathering_state()</b>, and
+            <b>webrtc_peer_manager_check_gathering_timeouts()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_webrtc_get_rtc_id_(">
+            <a class="permalink" href="#int_webrtc_get_rtc_id_("
+              >int webrtc_get_rtc_id (<b>webrtc_peer_connection_t</b> * pc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Get the internal libdatachannel peer connection ID. Helper function
+            for C++ code that needs access to internal rtc_id without exposing
+            the full structure definition.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            libdatachannel peer connection ID, or -1 if pc is NULL
+          </div>
+          <p class="Pp">
+            Helper function for C++ code that needs access to internal rtc_id
+            without exposing the full structure definition.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            libdatachannel peer connection ID, or -1 if pc is NULL
+          </div>
+          <p class="Pp">
+            Helper function for C++ code that needs access to internal rtc_id
+            without exposing the full structure definition.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection to query</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            libdatachannel peer connection ID, or -1 if pc is NULL
+          </div>
+          <p class="Pp">
+            Definition at line <b>1062</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+1062                                                     {
 1063   if (!pc) {
 1064     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
 1065     return -1;
 1066   }
 1067   return pc-&gt;rtc_id;
 1068 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_get_rtc_id()</b>.</p>
-<p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>, and
-    <b>webrtc_get_rtc_id()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>webrtc_state_t</b> webrtc_get_state
-  (<b>webrtc_peer_connection_t</b> * pc)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Get current connection state.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current state</div>
-<p class="Pp">Definition at line <b>693</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>693                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_get_rtc_id()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ice_get_selected_pair_impl()</b>, and
+            <b>webrtc_get_rtc_id()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>webrtc_state_t</b> webrtc_get_state (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Get current connection state.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Current state</div>
+          <p class="Pp">
+            Definition at line <b>693</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+693                                                               {
 694   if (!pc) {
 695     log_warn(&quot;Peer connection is NULL&quot;);
 696     return WEBRTC_STATE_CLOSED;
 697   }
 698   return (webrtc_state_t)atomic_load_u64(&amp;pc-&gt;state);
 699 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, <b>log_warn</b>,
-    <b>webrtc_peer_connection::state</b>, <b>webrtc_get_state()</b>, and
-    <b>WEBRTC_STATE_CLOSED</b>.</p>
-<p class="Pp">Referenced by <b>ice_is_connected()</b>,
-    <b>webrtc_get_state()</b>,
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
-    <b>webrtc_peer_manager_get_state()</b>, and
-    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_webrtc_get_user_data_("><a class="permalink" href="#void_*_webrtc_get_user_data_(">void
-  * webrtc_get_user_data (<b>webrtc_peer_connection_t</b> * pc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Get user data pointer from connection.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">User data pointer (from <b>webrtc_config_t</b>)</div>
-<p class="Pp">Definition at line <b>736</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>736                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, <b>log_warn</b>,
+            <b>webrtc_peer_connection::state</b>, <b>webrtc_get_state()</b>, and
+            <b>WEBRTC_STATE_CLOSED</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ice_is_connected()</b>, <b>webrtc_get_state()</b>,
+            <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+            <b>webrtc_peer_manager_get_state()</b>, and
+            <b>webrtc_peer_manager_handle_sdp()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_webrtc_get_user_data_(">
+            <a class="permalink" href="#void_*_webrtc_get_user_data_("
+              >void * webrtc_get_user_data (<b>webrtc_peer_connection_t</b> *
+              pc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Get user data pointer from connection.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            User data pointer (from <b>webrtc_config_t</b>)
+          </div>
+          <p class="Pp">
+            Definition at line <b>736</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+736                                                          {
 737   if (!pc) {
 738     log_warn(&quot;Peer connection is NULL&quot;);
 739     return NULL;
 740   }
 741   return pc-&gt;config.user_data;
 742 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_peer_connection::config</b>, <b>log_warn</b>,
-    <b>webrtc_config_t::user_data</b>, and <b>webrtc_get_user_data()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_get_user_data()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_init (void )</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Initialize WebRTC library (libdatachannel).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Must be called once before creating any peer connections.
-    Thread-safe and idempotent (safe to call multiple times).</p>
-<p class="Pp">Definition at line <b>508</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>508                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>webrtc_peer_connection::config</b>, <b>log_warn</b>,
+            <b>webrtc_config_t::user_data</b>, and
+            <b>webrtc_get_user_data()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_get_user_data()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> webrtc_init (void )</h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Initialize WebRTC library (libdatachannel).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Must be called once before creating any peer connections.
+            Thread-safe and idempotent (safe to call multiple times).
+          </p>
+          <p class="Pp">
+            Definition at line <b>508</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+508                                     {
 509   return webrtc_ensure_initialized();
 510 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_init()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> webrtc_is_gathering_timed_out
-  (<b>webrtc_peer_connection_t</b> * pc, <b>uint32_t</b> timeout_ms)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Check if ICE gathering has timed out.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>timeout_ms</i> Timeout in milliseconds</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if gathering is in progress and has exceeded
-  timeout, false otherwise</div>
-<p class="Pp">Definition at line <b>709</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>709                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>webrtc_init()</b>.</p>
+          <p class="Pp">Referenced by <b>webrtc_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> webrtc_is_gathering_timed_out (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc, <b>uint32_t</b> timeout_ms)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Check if ICE gathering has timed out.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>timeout_ms</i> Timeout in milliseconds
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if gathering is in progress and has exceeded timeout, false
+            otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>709</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+709                                                                                       {
 710   if (!pc) {
 711     return false;
 712   }
@@ -1351,29 +1939,47 @@
 732
 733   return false;
 734 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>webrtc_peer_connection::gathering_start_time_ms</b>,
-    <b>webrtc_peer_connection::gathering_state</b>,
-    <b>platform_get_monotonic_time_us()</b>, <b>WEBRTC_GATHERING_GATHERING</b>,
-    and <b>webrtc_is_gathering_timed_out()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_is_gathering_timed_out()</b>, and
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_peer_connection_close_("><a class="permalink" href="#void_webrtc_peer_connection_close_(">void
-  webrtc_peer_connection_close (<b>webrtc_peer_connection_t</b> * pc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Close a peer connection.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection to close</div>
-<p class="Pp">Closes the peer connection gracefully. Safe to call with NULL
-    pointer.</p>
-<p class="Pp">Definition at line <b>1028</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>1028                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>webrtc_peer_connection::gathering_start_time_ms</b>,
+            <b>webrtc_peer_connection::gathering_state</b>,
+            <b>platform_get_monotonic_time_us()</b>,
+            <b>WEBRTC_GATHERING_GATHERING</b>, and
+            <b>webrtc_is_gathering_timed_out()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_is_gathering_timed_out()</b>, and
+            <b>webrtc_peer_manager_check_gathering_timeouts()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_peer_connection_close_(">
+            <a class="permalink" href="#void_webrtc_peer_connection_close_("
+              >void webrtc_peer_connection_close (<b
+                >webrtc_peer_connection_t</b
+              >
+              * pc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Close a peer connection.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection to close</div>
+          <p class="Pp">
+            Closes the peer connection gracefully. Safe to call with NULL
+            pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1028</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+1028                                                                 {
 1029   if (!pc) {
 1030     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
 1031     return;
@@ -1383,27 +1989,42 @@
 1035   webrtc_mapping_close(pc);
 1036   log_debug(&quot;Closed peer connection (pc_id=%d)&quot;, pc-&gt;rtc_id);
 1037 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_peer_connection_close()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_peer_connection_close()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_peer_connection_destroy_("><a class="permalink" href="#void_webrtc_peer_connection_destroy_(">void
-  webrtc_peer_connection_destroy (<b>webrtc_peer_connection_t</b> * pc)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Destroy a peer connection and free resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection to destroy</div>
-<p class="Pp">Frees all resources associated with the peer connection.
-    Automatically closes the connection if still open. Safe to call with NULL
-    pointer.</p>
-<p class="Pp">Definition at line <b>1039</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>1039                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_peer_connection_close()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_peer_connection_close()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_peer_connection_destroy_(">
+            <a class="permalink" href="#void_webrtc_peer_connection_destroy_("
+              >void webrtc_peer_connection_destroy (<b
+                >webrtc_peer_connection_t</b
+              >
+              * pc)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Destroy a peer connection and free resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pc</i> Peer connection to destroy</div>
+          <p class="Pp">
+            Frees all resources associated with the peer connection.
+            Automatically closes the connection if still open. Safe to call with
+            NULL pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1039</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+1039                                                                   {
 1040   if (!pc) {
 1041     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
 1042     return;
@@ -1416,33 +2037,51 @@
 1049
 1050   SAFE_FREE(pc);
 1051 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
-    and <b>webrtc_peer_connection_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_peer_connection_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webrtc_set_remote_description
-  (<b>webrtc_peer_connection_t</b> * pc, const char * sdp, const char *
-  type)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b></b></p>
-<p class="Pp">Set remote SDP offer/answer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection
-<br/>
-<i>sdp</i> Remote SDP string (null-terminated)
-<br/>
-<i>type</i> SDP type (&quot;offer&quot; or &quot;answer&quot;)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Sets the remote peer's SDP. If this is an offer, triggers
-    automatic answer generation via the local description callback.</p>
-<p class="Pp">Definition at line <b>764</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>764                                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, and <b>webrtc_peer_connection_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_peer_connection_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webrtc_set_remote_description (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc, const char * sdp, const char * type)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/webrtc.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Set remote SDP offer/answer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pc</i> Peer connection
+            <br />
+            <i>sdp</i> Remote SDP string (null-terminated)
+            <br />
+            <i>type</i> SDP type (&quot;offer&quot; or &quot;answer&quot;)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Sets the remote peer's SDP. If this is an offer, triggers automatic
+            answer generation via the local description callback.
+          </p>
+          <p class="Pp">
+            Definition at line <b>764</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <pre>
+764                                                                                                                  {
 765   if (!pc || !sdp || !type) {
 766     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 767   }
@@ -1471,26 +2110,32 @@
 790   log_debug(&quot;Set remote SDP description (pc_id=%d, type=%s)&quot;, pc-&gt;rtc_id, type);
 791   return ASCIICHAT_OK;
 792 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>webrtc_peer_connection::dc</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>, <b>log_debug</b>,
-    <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
-    <b>webrtc_set_remote_description()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_peer_manager_handle_sdp()</b>, and
-    <b>webrtc_set_remote_description()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>webrtc_peer_connection::dc</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+            <b>webrtc_peer_connection::rtc_id</b>, <b>SET_ERRNO</b>, and
+            <b>webrtc_set_remote_description()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_peer_manager_handle_sdp()</b>, and
+            <b>webrtc_set_remote_description()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

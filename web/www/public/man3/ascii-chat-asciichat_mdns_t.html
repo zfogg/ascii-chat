@@ -1,250 +1,377 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>asciichat_mdns_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">asciichat_mdns_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">asciichat_mdns_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">asciichat_mdns_t - Internal mDNS context structure.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">int <b>socket_fd</b>
-  <br/>
-  <b>asciichat_mdns_discovery_callback_fn</b> <b>callback</b>
-  <br/>
-  void * <b>callback_data</b>
-  <br/>
-  <b>uint8_t</b> * <b>buffer</b>
-  <br/>
-  size_t <b>buffer_capacity</b>
-  <br/>
-  <b>bool</b> <b>advertising</b>
-  <br/>
-  _Atomic <b>bool</b> <b>stop_advertising</b>
-  <br/>
-  <b>asciichat_thread_t</b> <b>advertiser</b>
-  <br/>
-  char <b>service_type</b> [256]
-  <br/>
-  char <b>instance</b> [256]
-  <br/>
-  char <b>host</b> [256]
-  <br/>
-  char <b>query_service</b> [256]
-  <br/>
-  char <b>txt</b> [16][<b>NETWORK_MDNS_TXT_BUFFER_SIZE</b>]
-  <br/>
-  mdns_record_t <b>ptr</b>
-  <br/>
-  mdns_record_t <b>additional</b> [18]
-  <br/>
-  size_t <b>additional_count</b>
-  <br/>
-  <b>asciichat_mdns_discovery_t</b> <b>discovered</b> [64]
-  <br/>
-  size_t <b>discovered_count</b>
-  <br/>
-  <b>uint16_t</b> <b>query_id</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Internal mDNS context structure.</p>
-<p class="Pp">Definition at line <b>52</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="mdns_record_t_asciichat_mdns_t::additional_18_"><a class="permalink" href="#mdns_record_t_asciichat_mdns_t::additional_18_">mdns_record_t
-  asciichat_mdns_t::additional[18]</a></h2>
-<p class="Pp">Definition at line <b>64</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_asciichat_mdns_t::additional_count"><a class="permalink" href="#size_t_asciichat_mdns_t::additional_count">size_t
-  asciichat_mdns_t::additional_count</a></h2>
-<p class="Pp">Definition at line <b>65</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b> asciichat_mdns_t::advertiser</h2>
-<p class="Pp">Definition at line <b>60</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_mdns_t::advertising</h2>
-<p class="Pp">Definition at line <b>58</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_query()</b>, and <b>asciichat_mdns_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>* asciichat_mdns_t::buffer</h2>
-<p class="Pp">I/O buffer for mDNS packets</p>
-<p class="Pp">Definition at line <b>56</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>, and
-    <b>asciichat_mdns_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_asciichat_mdns_t::buffer_capacity"><a class="permalink" href="#size_t_asciichat_mdns_t::buffer_capacity">size_t
-  asciichat_mdns_t::buffer_capacity</a></h2>
-<p class="Pp">Buffer capacity</p>
-<p class="Pp">Definition at line <b>57</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_init()</b>, and <b>asciichat_mdns_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_mdns_discovery_callback_fn</b>
-  asciichat_mdns_t::callback</h2>
-<p class="Pp">Discovery callback</p>
-<p class="Pp">Definition at line <b>54</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_asciichat_mdns_t::callback_data"><a class="permalink" href="#void*_asciichat_mdns_t::callback_data">void*
-  asciichat_mdns_t::callback_data</a></h2>
-<p class="Pp">User data for callback</p>
-<p class="Pp">Definition at line <b>55</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_mdns_discovery_t</b>
-  asciichat_mdns_t::discovered[64]</h2>
-<p class="Pp">Definition at line <b>66</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_asciichat_mdns_t::discovered_count"><a class="permalink" href="#size_t_asciichat_mdns_t::discovered_count">size_t
-  asciichat_mdns_t::discovered_count</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_asciichat_mdns_t::host_256_"><a class="permalink" href="#char_asciichat_mdns_t::host_256_">char
-  asciichat_mdns_t::host[256]</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_asciichat_mdns_t::instance_256_"><a class="permalink" href="#char_asciichat_mdns_t::instance_256_">char
-  asciichat_mdns_t::instance[256]</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="mdns_record_t_asciichat_mdns_t::ptr"><a class="permalink" href="#mdns_record_t_asciichat_mdns_t::ptr">mdns_record_t
-  asciichat_mdns_t::ptr</a></h2>
-<p class="Pp">Definition at line <b>64</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint16_t</b> asciichat_mdns_t::query_id</h2>
-<p class="Pp">Current query ID</p>
-<p class="Pp">Definition at line <b>68</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>, and
-    <b>asciichat_mdns_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_asciichat_mdns_t::query_service_256_"><a class="permalink" href="#char_asciichat_mdns_t::query_service_256_">char
-  asciichat_mdns_t::query_service[256]</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_asciichat_mdns_t::service_type_256_"><a class="permalink" href="#char_asciichat_mdns_t::service_type_256_">char
-  asciichat_mdns_t::service_type[256]</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_asciichat_mdns_t::socket_fd"><a class="permalink" href="#int_asciichat_mdns_t::socket_fd">int
-  asciichat_mdns_t::socket_fd</a></h2>
-<p class="Pp">UDP socket for mDNS</p>
-<p class="Pp">Definition at line <b>53</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_get_socket()</b>,
-    <b>asciichat_mdns_init()</b>, <b>asciichat_mdns_query()</b>, and
-    <b>asciichat_mdns_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_Atomic_"><a class="permalink" href="#_Atomic_">_Atomic
-  <b>bool</b> asciichat_mdns_t::stop_advertising</a></h2>
-<p class="Pp">Definition at line <b>59</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_asciichat_mdns_t::txt_16__"><a class="permalink" href="#char_asciichat_mdns_t::txt_16__">char
-  asciichat_mdns_t::txt[16][<b>NETWORK_MDNS_TXT_BUFFER_SIZE</b>]</a></h2>
-<p class="Pp">Definition at line <b>63</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>asciichat_mdns_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">asciichat_mdns_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">asciichat_mdns_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">asciichat_mdns_t - Internal mDNS context structure.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>socket_fd</b>
+            <br />
+            <b>asciichat_mdns_discovery_callback_fn</b> <b>callback</b>
+            <br />
+            void * <b>callback_data</b>
+            <br />
+            <b>uint8_t</b> * <b>buffer</b>
+            <br />
+            size_t <b>buffer_capacity</b>
+            <br />
+            <b>bool</b> <b>advertising</b>
+            <br />
+            _Atomic <b>bool</b> <b>stop_advertising</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>advertiser</b>
+            <br />
+            char <b>service_type</b> [256]
+            <br />
+            char <b>instance</b> [256]
+            <br />
+            char <b>host</b> [256]
+            <br />
+            char <b>query_service</b> [256]
+            <br />
+            char <b>txt</b> [16][<b>NETWORK_MDNS_TXT_BUFFER_SIZE</b>]
+            <br />
+            mdns_record_t <b>ptr</b>
+            <br />
+            mdns_record_t <b>additional</b> [18]
+            <br />
+            size_t <b>additional_count</b>
+            <br />
+            <b>asciichat_mdns_discovery_t</b> <b>discovered</b> [64]
+            <br />
+            size_t <b>discovered_count</b>
+            <br />
+            <b>uint16_t</b> <b>query_id</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Internal mDNS context structure.</p>
+        <p class="Pp">
+          Definition at line <b>52</b> of file <b>network/mdns/mdns.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="mdns_record_t_asciichat_mdns_t::additional_18_">
+            <a
+              class="permalink"
+              href="#mdns_record_t_asciichat_mdns_t::additional_18_"
+              >mdns_record_t asciichat_mdns_t::additional[18]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_asciichat_mdns_t::additional_count">
+            <a
+              class="permalink"
+              href="#size_t_asciichat_mdns_t::additional_count"
+              >size_t asciichat_mdns_t::additional_count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> asciichat_mdns_t::advertiser
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> asciichat_mdns_t::advertising</h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_advertise()</b>,
+            <b>asciichat_mdns_query()</b>, and <b>asciichat_mdns_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b>* asciichat_mdns_t::buffer</h2>
+          <p class="Pp">I/O buffer for mDNS packets</p>
+          <p class="Pp">
+            Definition at line <b>56</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_advertise()</b>,
+            <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>, and
+            <b>asciichat_mdns_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_asciichat_mdns_t::buffer_capacity">
+            <a
+              class="permalink"
+              href="#size_t_asciichat_mdns_t::buffer_capacity"
+              >size_t asciichat_mdns_t::buffer_capacity</a
+            >
+          </h2>
+          <p class="Pp">Buffer capacity</p>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_advertise()</b>,
+            <b>asciichat_mdns_init()</b>, and <b>asciichat_mdns_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_mdns_discovery_callback_fn</b>
+            asciichat_mdns_t::callback
+          </h2>
+          <p class="Pp">Discovery callback</p>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_asciichat_mdns_t::callback_data">
+            <a class="permalink" href="#void*_asciichat_mdns_t::callback_data"
+              >void* asciichat_mdns_t::callback_data</a
+            >
+          </h2>
+          <p class="Pp">User data for callback</p>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_mdns_discovery_t</b> asciichat_mdns_t::discovered[64]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_asciichat_mdns_t::discovered_count">
+            <a
+              class="permalink"
+              href="#size_t_asciichat_mdns_t::discovered_count"
+              >size_t asciichat_mdns_t::discovered_count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_asciichat_mdns_t::host_256_">
+            <a class="permalink" href="#char_asciichat_mdns_t::host_256_"
+              >char asciichat_mdns_t::host[256]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_asciichat_mdns_t::instance_256_">
+            <a class="permalink" href="#char_asciichat_mdns_t::instance_256_"
+              >char asciichat_mdns_t::instance[256]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="mdns_record_t_asciichat_mdns_t::ptr">
+            <a class="permalink" href="#mdns_record_t_asciichat_mdns_t::ptr"
+              >mdns_record_t asciichat_mdns_t::ptr</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint16_t</b> asciichat_mdns_t::query_id</h2>
+          <p class="Pp">Current query ID</p>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_query()</b>, and
+            <b>asciichat_mdns_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_asciichat_mdns_t::query_service_256_">
+            <a
+              class="permalink"
+              href="#char_asciichat_mdns_t::query_service_256_"
+              >char asciichat_mdns_t::query_service[256]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_asciichat_mdns_t::service_type_256_">
+            <a
+              class="permalink"
+              href="#char_asciichat_mdns_t::service_type_256_"
+              >char asciichat_mdns_t::service_type[256]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_asciichat_mdns_t::socket_fd">
+            <a class="permalink" href="#int_asciichat_mdns_t::socket_fd"
+              >int asciichat_mdns_t::socket_fd</a
+            >
+          </h2>
+          <p class="Pp">UDP socket for mDNS</p>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_advertise()</b>,
+            <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_get_socket()</b>,
+            <b>asciichat_mdns_init()</b>, <b>asciichat_mdns_query()</b>, and
+            <b>asciichat_mdns_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_Atomic_">
+            <a class="permalink" href="#_Atomic_"
+              >_Atomic <b>bool</b> asciichat_mdns_t::stop_advertising</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_asciichat_mdns_t::txt_16__">
+            <a class="permalink" href="#char_asciichat_mdns_t::txt_16__"
+              >char
+              asciichat_mdns_t::txt[16][<b>NETWORK_MDNS_TXT_BUFFER_SIZE</b>]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_advertise()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

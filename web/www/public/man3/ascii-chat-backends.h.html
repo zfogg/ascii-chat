@@ -1,64 +1,107 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>backends.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">backends.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">backends.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">backends.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">char * <b>digital_rain_render_at</b> (<b>digital_rain_t</b> *rain,
-    const char *frame, float seconds)
-  <br/>
-  char * <b>rainbow_render_ansi_at</b> (const char *frame, float seconds)
-  <br/>
-  <b>asciichat_error_t</b> <b>test_pattern_render_at</b> (struct
-    <b>test_pattern</b> *pattern, int index, double time_ms, <b>bool</b>
-    cadence)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_digital_rain_render_at_("><a class="permalink" href="#char_*_digital_rain_render_at_(">char
-  * digital_rain_render_at (<b>digital_rain_t</b> * rain, const char * frame,
-  float seconds)</a></h2>
-<p class="Pp">Definition at line <b>382</b> of file <b>digital_rain.c</b>.</p>
-<pre>382                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>backends.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">backends.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">backends.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">backends.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char * <b>digital_rain_render_at</b> (<b>digital_rain_t</b> *rain,
+            const char *frame, float seconds)
+            <br />
+            char * <b>rainbow_render_ansi_at</b> (const char *frame, float
+            seconds)
+            <br />
+            <b>asciichat_error_t</b> <b>test_pattern_render_at</b> (struct
+            <b>test_pattern</b> *pattern, int index, double time_ms, <b>bool</b>
+            cadence)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_digital_rain_render_at_(">
+            <a class="permalink" href="#char_*_digital_rain_render_at_("
+              >char * digital_rain_render_at (<b>digital_rain_t</b> * rain,
+              const char * frame, float seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>382</b> of file <b>digital_rain.c</b>.
+          </p>
+          <pre>
+382                                                                                      {
 383   if (!rain || !frame) {
 384     log_error(&quot;NULL parameter&quot;);
 385     return NULL;
@@ -180,24 +223,42 @@
 501   rain-&gt;first_frame = false;
 502   return output;
 503 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>digital_rain::brightness_decay</b>,
-    <b>digital_rain::color_b</b>, <b>color_filter_calculate_rainbow()</b>,
-    <b>digital_rain::color_g</b>, <b>digital_rain::color_r</b>,
-    <b>digital_rain_render_at()</b>, <b>digital_rain::first_frame</b>,
-    <b>log_error</b>, <b>digital_rain::num_columns</b>,
-    <b>digital_rain::previous_brightness</b>, <b>digital_rain::rainbow_mode</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>digital_rain::time</b>, and
-    <b>utf8_decode()</b>.</p>
-<p class="Pp">Referenced by <b>animation_apply()</b>, and
-    <b>digital_rain_render_at()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_rainbow_render_ansi_at_(const_char_*_frame,_float_seconds)"><a class="permalink" href="#char_*_rainbow_render_ansi_at_(const_char_*_frame,_float_seconds)">char
-  * rainbow_render_ansi_at (const char * frame, float seconds)</a></h2>
-<p class="Pp">Definition at line <b>365</b> of file <b>color_filter.c</b>.</p>
-<pre>365                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>digital_rain::brightness_decay</b>,
+            <b>digital_rain::color_b</b>,
+            <b>color_filter_calculate_rainbow()</b>,
+            <b>digital_rain::color_g</b>, <b>digital_rain::color_r</b>,
+            <b>digital_rain_render_at()</b>, <b>digital_rain::first_frame</b>,
+            <b>log_error</b>, <b>digital_rain::num_columns</b>,
+            <b>digital_rain::previous_brightness</b>,
+            <b>digital_rain::rainbow_mode</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>digital_rain::time</b>, and
+            <b>utf8_decode()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>digital_rain_render_at()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_rainbow_render_ansi_at_(const_char_*_frame,_float_seconds)"
+          >
+            <a
+              class="permalink"
+              href="#char_*_rainbow_render_ansi_at_(const_char_*_frame,_float_seconds)"
+              >char * rainbow_render_ansi_at (const char * frame, float
+              seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>365</b> of file <b>color_filter.c</b>.
+          </p>
+          <pre>
+365                                                                           {
 366   if (!ansi_string) {
 367     return NULL;
 368   }
@@ -274,21 +335,30 @@
 439
 440   return new_result;
 441 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_calculate_rainbow()</b>,
-    <b>rainbow_render_ansi_at()</b>, <b>SAFE_MALLOC</b>, and
-    <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>animation_apply()</b>, and
-    <b>rainbow_render_ansi_at()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> test_pattern_render_at (struct
-  <b>test_pattern</b> * pattern, int index, double time_ms, <b>bool</b>
-  cadence)</h2>
-<p class="Pp">Definition at line <b>155</b> of file
-    <b>lib/video/anim/test_pattern.c</b>.</p>
-<pre>155                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_filter_calculate_rainbow()</b>,
+            <b>rainbow_render_ansi_at()</b>, <b>SAFE_MALLOC</b>, and
+            <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>rainbow_render_ansi_at()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> test_pattern_render_at (struct
+            <b>test_pattern</b> * pattern, int index, double time_ms,
+            <b>bool</b> cadence)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>155</b> of file
+            <b>lib/video/anim/test_pattern.c</b>.
+          </p>
+          <pre>
+155                                                                                                      {
 156   if (!p || !p-&gt;image || index &lt; 0 || index &gt; 1 || !isfinite(time_ms) || time_ms &lt; 0)
 157     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid test pattern frame parameters&quot;);
 158   int w = p-&gt;image-&gt;w, h = p-&gt;image-&gt;h;
@@ -374,27 +444,34 @@
 238   render_test_label(p-&gt;image);
 239   return ASCIICHAT_OK;
 240 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>rgb_pixel_t::g</b>, <b>image_t::h</b>,
-    <b>test_pattern::image</b>, <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>,
-    <b>SET_ERRNO</b>, <b>TEST_PATTERN_GRADIENT_INTERVALS</b>,
-    <b>test_pattern_render_at()</b>, and <b>image_t::w</b>.</p>
-<p class="Pp">Referenced by <b>animation_apply()</b>, and
-    <b>test_pattern_render_at()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>rgb_pixel_t::g</b>,
+            <b>image_t::h</b>, <b>test_pattern::image</b>,
+            <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>, <b>SET_ERRNO</b>,
+            <b>TEST_PATTERN_GRADIENT_INTERVALS</b>,
+            <b>test_pattern_render_at()</b>, and <b>image_t::w</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>test_pattern_render_at()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,366 +1,494 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>packet(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">packet(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">packet(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">packet - Packet Types</p>
-<p class="Pp">
-  <br/>
-   - &#x1F4E8; Network protocol packet type definitions and structures</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>packet_header_t</b>
-  <br/>
-  Network packet header structure. struct <b>size_packet_t</b>
-  <br/>
-  Terminal size update packet. struct <b>client_info_packet_t</b>
-  <br/>
-  Client information packet structure. struct <b>stream_header_t</b>
-  <br/>
-  Stream header packet structure. struct <b>client_list_packet_t</b>
-  <br/>
-  Client list packet structure. struct <b>server_state_packet_t</b>
-  <br/>
-  Server state packet structure. struct <b>auth_failure_packet_t</b>
-  <br/>
-  Authentication failure packet structure. struct
-    <b>protocol_version_packet_t</b>
-  <br/>
-  Protocol version negotiation packet structure (Packet Type 1). struct
-    <b>ascii_frame_packet_t</b>
-  <br/>
-  ASCII frame packet structure (Packet Type 2). struct
-    <b>image_frame_packet_t</b>
-  <br/>
-  Image frame packet structure (Packet Type 3). struct
-    <b>audio_batch_packet_t</b>
-  <br/>
-  Audio batch packet structure (Packet Type 28). struct
-    <b>crypto_capabilities_packet_t</b>
-  <br/>
-  Crypto capabilities packet structure (Packet Type 14). struct
-    <b>crypto_parameters_packet_t</b>
-  <br/>
-  Crypto parameters packet structure (Packet Type 15). struct
-    <b>terminal_capabilities_packet_t</b>
-  <br/>
-  Terminal capabilities packet structure (Packet Type 5).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>packet_type_t</b> { <b>PACKET_TYPE_PROTOCOL_VERSION</b> =
-    1, <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b> = 1000,
-    <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b> = 1100,
-    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b> = 1101,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b> = 1102,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b> = 1103,
-    <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b> = 1104,
-    <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b> = 1105,
-    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b> = 1106,
-    <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b> = 1107,
-    <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b> = 1108,
-    <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b> = 1109, <b>PACKET_TYPE_ENCRYPTED</b>
-    = 1200, <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b> = 1201,
-    <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b> = 1202,
-    <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b> = 1203,
-    <b>PACKET_TYPE_SIZE_MESSAGE</b> = 2000, <b>PACKET_TYPE_AUDIO_MESSAGE</b> =
-    2001, <b>PACKET_TYPE_TEXT_MESSAGE</b> = 2002,
-    <b>PACKET_TYPE_ERROR_MESSAGE</b> = 2003, <b>PACKET_TYPE_REMOTE_LOG</b> =
-    2004, <b>PACKET_TYPE_ASCII_FRAME</b> = 3000, <b>PACKET_TYPE_IMAGE_FRAME</b>
-    = 3001, <b>PACKET_TYPE_IMAGE_FRAME_H265</b> = 3002,
-    <b>PACKET_TYPE_IMAGE_FRAME_H264</b> = 3003, <b>PACKET_TYPE_AUDIO_BATCH</b> =
-    4000, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b> = 4001,
-    <b>PACKET_TYPE_CLIENT_CAPABILITIES</b> = 5000, <b>PACKET_TYPE_PING</b> =
-    5001, <b>PACKET_TYPE_PONG</b> = 5002, <b>PACKET_TYPE_CLIENT_JOIN</b> = 5003,
-    <b>PACKET_TYPE_CLIENT_LEAVE</b> = 5004, <b>PACKET_TYPE_STREAM_START</b> =
-    5005, <b>PACKET_TYPE_STREAM_STOP</b> = 5006,
-    <b>PACKET_TYPE_CLEAR_CONSOLE</b> = 5007, <b>PACKET_TYPE_SERVER_STATE</b> =
-    5008, <b>PACKET_TYPE_ACIP_SESSION_CREATE</b> = 6000,
-    <b>PACKET_TYPE_ACIP_SESSION_CREATED</b> = 6001,
-    <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b> = 6002,
-    <b>PACKET_TYPE_ACIP_SESSION_INFO</b> = 6003,
-    <b>PACKET_TYPE_ACIP_SESSION_JOIN</b> = 6004,
-    <b>PACKET_TYPE_ACIP_SESSION_JOINED</b> = 6005,
-    <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b> = 6006,
-    <b>PACKET_TYPE_ACIP_SESSION_END</b> = 6007,
-    <b>PACKET_TYPE_ACIP_SESSION_RECONNECT</b> = 6008,
-    <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b> = 6009,
-    <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b> = 6010,
-    <b>PACKET_TYPE_ACIP_STRING_RESERVE</b> = 6020,
-    <b>PACKET_TYPE_ACIP_STRING_RESERVED</b> = 6021,
-    <b>PACKET_TYPE_ACIP_STRING_RENEW</b> = 6022,
-    <b>PACKET_TYPE_ACIP_STRING_RELEASE</b> = 6023,
-    <b>PACKET_TYPE_ACIP_PARTICIPANT_LIST</b> = 6050,
-    <b>PACKET_TYPE_ACIP_RING_COLLECT</b> = 6051,
-    <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b> = 6060,
-    <b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b> = 6061,
-    <b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b> = 6062,
-    <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b> = 6063,
-    <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b> = 6064,
-    <b>PACKET_TYPE_ACIP_HOST_LOST</b> = 6065,
-    <b>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED</b> = 6066,
-    <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b> = 6067,
-    <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b> = 6068,
-    <b>PACKET_TYPE_ACIP_BANDWIDTH_TEST</b> = 6070,
-    <b>PACKET_TYPE_ACIP_BANDWIDTH_RESULT</b> = 6071,
-    <b>PACKET_TYPE_ACIP_BROADCAST_ACK</b> = 6075,
-    <b>PACKET_TYPE_RING_MEMBERS</b> = 6100,
-    <b>PACKET_TYPE_STATS_COLLECTION_START</b> = 6101,
-    <b>PACKET_TYPE_STATS_UPDATE</b> = 6102,
-    <b>PACKET_TYPE_RING_ELECTION_RESULT</b> = 6103, <b>PACKET_TYPE_STATS_ACK</b>
-    = 6104, <b>PACKET_TYPE_ACIP_DISCOVERY_PING</b> = 6190,
-    <b>PACKET_TYPE_ACIP_ERROR</b> = 6199 }
-  <br/>
-  Network protocol packet type enumeration. enum <b>auth_failure_reason_t</b> {
-    <b>AUTH_FAIL_PASSWORD_REQUIRED</b> = 0x01,
-    <b>AUTH_FAIL_PASSWORD_INCORRECT</b> = 0x02,
-    <b>AUTH_FAIL_CLIENT_KEY_REQUIRED</b> = 0x04,
-    <b>AUTH_FAIL_CLIENT_KEY_REJECTED</b> = 0x08,
-    <b>AUTH_FAIL_SIGNATURE_INVALID</b> = 0x10 }
-  <br/>
-  Authentication failure reason flags.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Network_Protocol_Constants"><a class="permalink" href="#Network_Protocol_Constants">Network
-  Protocol Constants</a></h2>
-<br/>
-<p class="Pp">#define <b>LARGE_PACKET_THRESHOLD</b> (100 * 1024)
-  <br/>
-  Large packet size threshold (100KB). #define <b>MAX_PACKET_SIZE</b> ((size_t)5
-    * 1024 * 1024)
-  <br/>
-  Maximum packet size (5MB). #define <b>MAX_ERROR_MESSAGE_LENGTH</b> 4096
-  <br/>
-  Maximum error message length (512 bytes). #define
-    <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b> 512
-  <br/>
-  Maximum remote log message length (512 bytes).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Timeout_Configuration_Constants"><a class="permalink" href="#Timeout_Configuration_Constants">Timeout
-  Configuration Constants</a></h2>
-<p class="Pp">Timeout constants for handling packets of different sizes. Large
-    packets require extended timeouts for successful transmission.
-  <br/>
-  #define <b>BASE_SEND_TIMEOUT</b> (5LL * <b>NS_PER_SEC_INT</b>)
-  <br/>
-  Base send timeout in nanoseconds (5 seconds). #define
-    <b>LARGE_PACKET_EXTRA_TIMEOUT_PER_MB</b> (800LL * <b>NS_PER_MS_INT</b>)
-  <br/>
-  Extra timeout per MB for large packets (0.8 seconds per MB). #define
-    <b>MIN_CLIENT_TIMEOUT</b> (10LL * <b>NS_PER_SEC_INT</b>)
-  <br/>
-  Minimum client timeout in nanoseconds (10 seconds). #define
-    <b>MAX_CLIENT_TIMEOUT</b> (60LL * <b>NS_PER_SEC_INT</b>)
-  <br/>
-  Maximum client timeout in nanoseconds (60 seconds).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Audio_Batching_Constants"><a class="permalink" href="#Audio_Batching_Constants">Audio
-  Batching Constants</a></h2>
-<p class="Pp">Audio batching configuration for efficient audio transmission.
-    Batched audio reduces packet overhead and improves bandwidth usage.
-  <br/>
-  #define <b>AUDIO_BATCH_COUNT</b> 32
-  <br/>
-  Number of audio chunks per batch (4 chunks). #define
-    <b>AUDIO_BATCH_SAMPLES</b> (<b>AUDIO_SAMPLES_PER_PACKET</b> *
-    <b>AUDIO_BATCH_COUNT</b>)
-  <br/>
-  Total samples in audio batch (8192 samples). #define <b>AUDIO_BATCH_MS</b> 186
-  <br/>
-  Audio batch duration in milliseconds (~186ms). #define
-    <b>AUDIO_SAMPLES_PER_PACKET</b> 256
-  <br/>
-  Samples per audio packet (256 samples).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">Protocol Constants</h2>
-<br/>
-<p class="Pp">#define <b>PACKET_MAGIC</b> <b>MAGIC_PACKET_VALID</b>
-  <br/>
-  Packet magic number (alias for MAGIC_PACKET_VALID).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Multi-User_Protocol_Constants"><a class="permalink" href="#Multi-User_Protocol_Constants">Multi-User
-  Protocol Constants</a></h2>
-<br/>
-<p class="Pp">#define <b>ASCIICHAT_DEFAULT_DISPLAY_NAME</b> 'AsciiChatter'
-  <br/>
-  Default display name for clients without a custom name.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4E8; Network protocol packet type definitions and
-  structures</p>
-<p class="Pp">Packet Types README</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
-<p class="Pp">The packet types system defines all network protocol messages used
-    in ascii-chat. This includes protocol negotiation, media streaming
-    (video/audio), control messages, cryptographic handshake, and multi-user
-    protocol extensions.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Implementation</b>: lib/network/packet_types.h</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key Features</b>:</p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Comprehensive packet type enumeration (33 packet types)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Packed structures for wire format compatibility</dd>
-  <dt> &#x2022;</dt>
-  <dd>Protocol versioning and capability negotiation</dd>
-  <dt> &#x2022;</dt>
-  <dd>Handshake packet detection for crypto routing</dd>
-  <dt> &#x2022;</dt>
-  <dd>Network byte order for cross-platform compatibility</dd>
-  <dt> &#x2022;</dt>
-  <dd>Magic number validation for packet detection</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Packet_Categories"><a class="permalink" href="#Packet_Categories">Packet
-  Categories</a></h1>
-<p class="Pp">Packet types are organized into logical categories:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Protocol Negotiation</b> (Type 1):</p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>PACKET_TYPE_PROTOCOL_VERSION: Initial handshake for version and
-      capabilities</dd>
-</dl>
-<p class="Pp"><b>Media Packets</b> (Types 2-4, 28):</p>
-<ul class="Bl-bullet">
-  <li>PACKET_TYPE_ASCII_FRAME (2): Complete ASCII art frame with metadata</li>
-  <li>PACKET_TYPE_IMAGE_FRAME (3): Raw RGB image from webcam</li>
-  <li>PACKET_TYPE_AUDIO (4): Single audio packet (legacy)</li>
-  <li>PACKET_TYPE_AUDIO_BATCH (28): Batched audio packets (efficient)</li>
-</ul>
-<p class="Pp"><b>Control Packets</b> (Types 5-7, 12-13):</p>
-<ul class="Bl-bullet">
-  <li>PACKET_TYPE_CLIENT_CAPABILITIES (5): Terminal capabilities report</li>
-  <li>PACKET_TYPE_PING (6): Keepalive ping</li>
-  <li>PACKET_TYPE_PONG (7): Keepalive pong response</li>
-  <li>PACKET_TYPE_CLEAR_CONSOLE (12): Server requests console clear</li>
-  <li>PACKET_TYPE_SERVER_STATE (13): Server broadcasts current state</li>
-</ul>
-<p class="Pp"><b>Multi-User Protocol</b> (Types 8-11):</p>
-<ul class="Bl-bullet">
-  <li>PACKET_TYPE_CLIENT_JOIN (8): Client announces capability to send
-    media</li>
-  <li>PACKET_TYPE_CLIENT_LEAVE (9): Clean disconnect notification</li>
-  <li>PACKET_TYPE_STREAM_START (10): Client requests to start streaming</li>
-  <li>PACKET_TYPE_STREAM_STOP (11): Client stops sending media</li>
-</ul>
-<p class="Pp"><b>Crypto Handshake</b> (Types 14-23):</p>
-<ul class="Bl-bullet">
-  <li><b>UNENCRYPTED</b> - These packets must NEVER be encrypted</li>
-  <li>PACKET_TYPE_CRYPTO_CAPABILITIES (14): Client &#x2192; Server: Supported
-      algorithms</li>
-  <li>PACKET_TYPE_CRYPTO_PARAMETERS (15): Server &#x2192; Client: Chosen
-      algorithms + sizes</li>
-  <li>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT (16): Server &#x2192; Client: Server
-      public key</li>
-  <li>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP (17): Client &#x2192; Server: Client
-      public key</li>
-  <li>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE (18): Server &#x2192; Client:
-      Authentication nonce</li>
-  <li>PACKET_TYPE_CRYPTO_AUTH_RESPONSE (19): Client &#x2192; Server: HMAC
-      response</li>
-  <li>PACKET_TYPE_CRYPTO_AUTH_FAILED (20): Server &#x2192; Client:
-      Authentication rejected</li>
-  <li>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP (21): Server &#x2192; Client: Server
-      proves knowledge</li>
-  <li>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE (22): Server &#x2192; Client:
-      Encryption ready</li>
-  <li>PACKET_TYPE_CRYPTO_NO_ENCRYPTION (23): Client &#x2192; Server: Proceed
-      without encryption</li>
-  <li>PACKET_TYPE_ENCRYPTED (24): Encrypted session packets (after
-    handshake)</li>
-</ul>
-<p class="Pp"><b>Crypto Rekeying</b> (Types 25-27):</p>
-<ul class="Bl-bullet">
-  <li><b>UNENCRYPTED during rekey</b> - Must bypass encryption during rekey
-      handshake</li>
-  <li>PACKET_TYPE_CRYPTO_REKEY_REQUEST (25): Initiator &#x2192; Responder: New
-      ephemeral key</li>
-  <li>PACKET_TYPE_CRYPTO_REKEY_RESPONSE (26): Responder &#x2192; Initiator: New
-      ephemeral key</li>
-  <li>PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27): Encrypted with NEW key (but still
-      handshake)</li>
-</ul>
-<p class="Pp"><b>Message Packets</b> (Types 29-33):</p>
-<ul class="Bl-bullet">
-  <li>PACKET_TYPE_SIZE_MESSAGE (29): Terminal size notification</li>
-  <li>PACKET_TYPE_AUDIO_MESSAGE (30): Audio metadata message</li>
-  <li>PACKET_TYPE_TEXT_MESSAGE (31): Text chat message (future)</li>
-  <li>PACKET_TYPE_ERROR_MESSAGE (32): Protocol/handshake error reporting</li>
-  <li>PACKET_TYPE_REMOTE_LOG (33): Bidirectional remote logging payload</li>
-</ul>
-<section class="Ss">
-<h2 class="Ss" id="Remote_Log_Packet_(Type_33)"><a class="permalink" href="#Remote_Log_Packet_(Type_33)">Remote
-  Log Packet (Type 33)</a></h2>
-<p class="Pp">Remote logging packets allow the server and client to forward
-    diagnostic log entries to each other over the established connection. They
-    carry the log level, direction hint, optional flags, and a UTF-8 text
-    payload limited to 512 bytes.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>packet(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">packet(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">packet(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">packet - Packet Types</p>
+        <p class="Pp">
+          <br />
+          - &#x1F4E8; Network protocol packet type definitions and structures
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>packet_header_t</b>
+            <br />
+            Network packet header structure. struct <b>size_packet_t</b>
+            <br />
+            Terminal size update packet. struct <b>client_info_packet_t</b>
+            <br />
+            Client information packet structure. struct <b>stream_header_t</b>
+            <br />
+            Stream header packet structure. struct <b>client_list_packet_t</b>
+            <br />
+            Client list packet structure. struct <b>server_state_packet_t</b>
+            <br />
+            Server state packet structure. struct <b>auth_failure_packet_t</b>
+            <br />
+            Authentication failure packet structure. struct
+            <b>protocol_version_packet_t</b>
+            <br />
+            Protocol version negotiation packet structure (Packet Type 1).
+            struct
+            <b>ascii_frame_packet_t</b>
+            <br />
+            ASCII frame packet structure (Packet Type 2). struct
+            <b>image_frame_packet_t</b>
+            <br />
+            Image frame packet structure (Packet Type 3). struct
+            <b>audio_batch_packet_t</b>
+            <br />
+            Audio batch packet structure (Packet Type 28). struct
+            <b>crypto_capabilities_packet_t</b>
+            <br />
+            Crypto capabilities packet structure (Packet Type 14). struct
+            <b>crypto_parameters_packet_t</b>
+            <br />
+            Crypto parameters packet structure (Packet Type 15). struct
+            <b>terminal_capabilities_packet_t</b>
+            <br />
+            Terminal capabilities packet structure (Packet Type 5).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>packet_type_t</b> { <b>PACKET_TYPE_PROTOCOL_VERSION</b> = 1,
+            <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b> = 1000,
+            <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b> = 1100,
+            <b>PACKET_TYPE_CRYPTO_PARAMETERS</b> = 1101,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b> = 1102,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b> = 1103,
+            <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b> = 1104,
+            <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b> = 1105,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b> = 1106,
+            <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b> = 1107,
+            <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b> = 1108,
+            <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b> = 1109,
+            <b>PACKET_TYPE_ENCRYPTED</b> = 1200,
+            <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b> = 1201,
+            <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b> = 1202,
+            <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b> = 1203,
+            <b>PACKET_TYPE_SIZE_MESSAGE</b> = 2000,
+            <b>PACKET_TYPE_AUDIO_MESSAGE</b> = 2001,
+            <b>PACKET_TYPE_TEXT_MESSAGE</b> = 2002,
+            <b>PACKET_TYPE_ERROR_MESSAGE</b> = 2003,
+            <b>PACKET_TYPE_REMOTE_LOG</b> = 2004,
+            <b>PACKET_TYPE_ASCII_FRAME</b> = 3000,
+            <b>PACKET_TYPE_IMAGE_FRAME</b> = 3001,
+            <b>PACKET_TYPE_IMAGE_FRAME_H265</b> = 3002,
+            <b>PACKET_TYPE_IMAGE_FRAME_H264</b> = 3003,
+            <b>PACKET_TYPE_AUDIO_BATCH</b> = 4000,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b> = 4001,
+            <b>PACKET_TYPE_CLIENT_CAPABILITIES</b> = 5000,
+            <b>PACKET_TYPE_PING</b> = 5001, <b>PACKET_TYPE_PONG</b> = 5002,
+            <b>PACKET_TYPE_CLIENT_JOIN</b> = 5003,
+            <b>PACKET_TYPE_CLIENT_LEAVE</b> = 5004,
+            <b>PACKET_TYPE_STREAM_START</b> = 5005,
+            <b>PACKET_TYPE_STREAM_STOP</b> = 5006,
+            <b>PACKET_TYPE_CLEAR_CONSOLE</b> = 5007,
+            <b>PACKET_TYPE_SERVER_STATE</b> = 5008,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATE</b> = 6000,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATED</b> = 6001,
+            <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b> = 6002,
+            <b>PACKET_TYPE_ACIP_SESSION_INFO</b> = 6003,
+            <b>PACKET_TYPE_ACIP_SESSION_JOIN</b> = 6004,
+            <b>PACKET_TYPE_ACIP_SESSION_JOINED</b> = 6005,
+            <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b> = 6006,
+            <b>PACKET_TYPE_ACIP_SESSION_END</b> = 6007,
+            <b>PACKET_TYPE_ACIP_SESSION_RECONNECT</b> = 6008,
+            <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b> = 6009,
+            <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b> = 6010,
+            <b>PACKET_TYPE_ACIP_STRING_RESERVE</b> = 6020,
+            <b>PACKET_TYPE_ACIP_STRING_RESERVED</b> = 6021,
+            <b>PACKET_TYPE_ACIP_STRING_RENEW</b> = 6022,
+            <b>PACKET_TYPE_ACIP_STRING_RELEASE</b> = 6023,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LIST</b> = 6050,
+            <b>PACKET_TYPE_ACIP_RING_COLLECT</b> = 6051,
+            <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b> = 6060,
+            <b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b> = 6061,
+            <b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b> = 6062,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b> = 6063,
+            <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b> = 6064,
+            <b>PACKET_TYPE_ACIP_HOST_LOST</b> = 6065,
+            <b>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED</b> = 6066,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b> = 6067,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b> = 6068,
+            <b>PACKET_TYPE_ACIP_BANDWIDTH_TEST</b> = 6070,
+            <b>PACKET_TYPE_ACIP_BANDWIDTH_RESULT</b> = 6071,
+            <b>PACKET_TYPE_ACIP_BROADCAST_ACK</b> = 6075,
+            <b>PACKET_TYPE_RING_MEMBERS</b> = 6100,
+            <b>PACKET_TYPE_STATS_COLLECTION_START</b> = 6101,
+            <b>PACKET_TYPE_STATS_UPDATE</b> = 6102,
+            <b>PACKET_TYPE_RING_ELECTION_RESULT</b> = 6103,
+            <b>PACKET_TYPE_STATS_ACK</b> = 6104,
+            <b>PACKET_TYPE_ACIP_DISCOVERY_PING</b> = 6190,
+            <b>PACKET_TYPE_ACIP_ERROR</b> = 6199 }
+            <br />
+            Network protocol packet type enumeration. enum
+            <b>auth_failure_reason_t</b> { <b>AUTH_FAIL_PASSWORD_REQUIRED</b> =
+            0x01, <b>AUTH_FAIL_PASSWORD_INCORRECT</b> = 0x02,
+            <b>AUTH_FAIL_CLIENT_KEY_REQUIRED</b> = 0x04,
+            <b>AUTH_FAIL_CLIENT_KEY_REJECTED</b> = 0x08,
+            <b>AUTH_FAIL_SIGNATURE_INVALID</b> = 0x10 }
+            <br />
+            Authentication failure reason flags.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Network_Protocol_Constants">
+            <a class="permalink" href="#Network_Protocol_Constants"
+              >Network Protocol Constants</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LARGE_PACKET_THRESHOLD</b> (100 * 1024)
+            <br />
+            Large packet size threshold (100KB). #define
+            <b>MAX_PACKET_SIZE</b> ((size_t)5 * 1024 * 1024)
+            <br />
+            Maximum packet size (5MB). #define
+            <b>MAX_ERROR_MESSAGE_LENGTH</b> 4096
+            <br />
+            Maximum error message length (512 bytes). #define
+            <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b> 512
+            <br />
+            Maximum remote log message length (512 bytes).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timeout_Configuration_Constants">
+            <a class="permalink" href="#Timeout_Configuration_Constants"
+              >Timeout Configuration Constants</a
+            >
+          </h2>
+          <p class="Pp">
+            Timeout constants for handling packets of different sizes. Large
+            packets require extended timeouts for successful transmission.
+            <br />
+            #define <b>BASE_SEND_TIMEOUT</b> (5LL * <b>NS_PER_SEC_INT</b>)
+            <br />
+            Base send timeout in nanoseconds (5 seconds). #define
+            <b>LARGE_PACKET_EXTRA_TIMEOUT_PER_MB</b> (800LL *
+            <b>NS_PER_MS_INT</b>)
+            <br />
+            Extra timeout per MB for large packets (0.8 seconds per MB). #define
+            <b>MIN_CLIENT_TIMEOUT</b> (10LL * <b>NS_PER_SEC_INT</b>)
+            <br />
+            Minimum client timeout in nanoseconds (10 seconds). #define
+            <b>MAX_CLIENT_TIMEOUT</b> (60LL * <b>NS_PER_SEC_INT</b>)
+            <br />
+            Maximum client timeout in nanoseconds (60 seconds).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Audio_Batching_Constants">
+            <a class="permalink" href="#Audio_Batching_Constants"
+              >Audio Batching Constants</a
+            >
+          </h2>
+          <p class="Pp">
+            Audio batching configuration for efficient audio transmission.
+            Batched audio reduces packet overhead and improves bandwidth usage.
+            <br />
+            #define <b>AUDIO_BATCH_COUNT</b> 32
+            <br />
+            Number of audio chunks per batch (4 chunks). #define
+            <b>AUDIO_BATCH_SAMPLES</b> (<b>AUDIO_SAMPLES_PER_PACKET</b> *
+            <b>AUDIO_BATCH_COUNT</b>)
+            <br />
+            Total samples in audio batch (8192 samples). #define
+            <b>AUDIO_BATCH_MS</b> 186
+            <br />
+            Audio batch duration in milliseconds (~186ms). #define
+            <b>AUDIO_SAMPLES_PER_PACKET</b> 256
+            <br />
+            Samples per audio packet (256 samples).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Protocol Constants</h2>
+          <br />
+          <p class="Pp">
+            #define <b>PACKET_MAGIC</b> <b>MAGIC_PACKET_VALID</b>
+            <br />
+            Packet magic number (alias for MAGIC_PACKET_VALID).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Multi-User_Protocol_Constants">
+            <a class="permalink" href="#Multi-User_Protocol_Constants"
+              >Multi-User Protocol Constants</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ASCIICHAT_DEFAULT_DISPLAY_NAME</b> 'AsciiChatter'
+            <br />
+            Default display name for clients without a custom name.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4E8; Network protocol packet type definitions and structures
+        </p>
+        <p class="Pp">Packet Types README</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The packet types system defines all network protocol messages used in
+          ascii-chat. This includes protocol negotiation, media streaming
+          (video/audio), control messages, cryptographic handshake, and
+          multi-user protocol extensions.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Implementation</b>: lib/network/packet_types.h</p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Key Features</b>:</p>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>Comprehensive packet type enumeration (33 packet types)</dd>
+        </dl>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>Packed structures for wire format compatibility</dd>
+          <dt>&#x2022;</dt>
+          <dd>Protocol versioning and capability negotiation</dd>
+          <dt>&#x2022;</dt>
+          <dd>Handshake packet detection for crypto routing</dd>
+          <dt>&#x2022;</dt>
+          <dd>Network byte order for cross-platform compatibility</dd>
+          <dt>&#x2022;</dt>
+          <dd>Magic number validation for packet detection</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Packet_Categories">
+          <a class="permalink" href="#Packet_Categories">Packet Categories</a>
+        </h1>
+        <p class="Pp">Packet types are organized into logical categories:</p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Protocol Negotiation</b> (Type 1):</p>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>
+            PACKET_TYPE_PROTOCOL_VERSION: Initial handshake for version and
+            capabilities
+          </dd>
+        </dl>
+        <p class="Pp"><b>Media Packets</b> (Types 2-4, 28):</p>
+        <ul class="Bl-bullet">
+          <li>
+            PACKET_TYPE_ASCII_FRAME (2): Complete ASCII art frame with metadata
+          </li>
+          <li>PACKET_TYPE_IMAGE_FRAME (3): Raw RGB image from webcam</li>
+          <li>PACKET_TYPE_AUDIO (4): Single audio packet (legacy)</li>
+          <li>
+            PACKET_TYPE_AUDIO_BATCH (28): Batched audio packets (efficient)
+          </li>
+        </ul>
+        <p class="Pp"><b>Control Packets</b> (Types 5-7, 12-13):</p>
+        <ul class="Bl-bullet">
+          <li>
+            PACKET_TYPE_CLIENT_CAPABILITIES (5): Terminal capabilities report
+          </li>
+          <li>PACKET_TYPE_PING (6): Keepalive ping</li>
+          <li>PACKET_TYPE_PONG (7): Keepalive pong response</li>
+          <li>PACKET_TYPE_CLEAR_CONSOLE (12): Server requests console clear</li>
+          <li>
+            PACKET_TYPE_SERVER_STATE (13): Server broadcasts current state
+          </li>
+        </ul>
+        <p class="Pp"><b>Multi-User Protocol</b> (Types 8-11):</p>
+        <ul class="Bl-bullet">
+          <li>
+            PACKET_TYPE_CLIENT_JOIN (8): Client announces capability to send
+            media
+          </li>
+          <li>PACKET_TYPE_CLIENT_LEAVE (9): Clean disconnect notification</li>
+          <li>
+            PACKET_TYPE_STREAM_START (10): Client requests to start streaming
+          </li>
+          <li>PACKET_TYPE_STREAM_STOP (11): Client stops sending media</li>
+        </ul>
+        <p class="Pp"><b>Crypto Handshake</b> (Types 14-23):</p>
+        <ul class="Bl-bullet">
+          <li><b>UNENCRYPTED</b> - These packets must NEVER be encrypted</li>
+          <li>
+            PACKET_TYPE_CRYPTO_CAPABILITIES (14): Client &#x2192; Server:
+            Supported algorithms
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_PARAMETERS (15): Server &#x2192; Client: Chosen
+            algorithms + sizes
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT (16): Server &#x2192; Client:
+            Server public key
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP (17): Client &#x2192; Server:
+            Client public key
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_AUTH_CHALLENGE (18): Server &#x2192; Client:
+            Authentication nonce
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_AUTH_RESPONSE (19): Client &#x2192; Server: HMAC
+            response
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_AUTH_FAILED (20): Server &#x2192; Client:
+            Authentication rejected
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP (21): Server &#x2192; Client:
+            Server proves knowledge
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE (22): Server &#x2192; Client:
+            Encryption ready
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_NO_ENCRYPTION (23): Client &#x2192; Server:
+            Proceed without encryption
+          </li>
+          <li>
+            PACKET_TYPE_ENCRYPTED (24): Encrypted session packets (after
+            handshake)
+          </li>
+        </ul>
+        <p class="Pp"><b>Crypto Rekeying</b> (Types 25-27):</p>
+        <ul class="Bl-bullet">
+          <li>
+            <b>UNENCRYPTED during rekey</b> - Must bypass encryption during
+            rekey handshake
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_REKEY_REQUEST (25): Initiator &#x2192; Responder:
+            New ephemeral key
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_REKEY_RESPONSE (26): Responder &#x2192;
+            Initiator: New ephemeral key
+          </li>
+          <li>
+            PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27): Encrypted with NEW key (but
+            still handshake)
+          </li>
+        </ul>
+        <p class="Pp"><b>Message Packets</b> (Types 29-33):</p>
+        <ul class="Bl-bullet">
+          <li>PACKET_TYPE_SIZE_MESSAGE (29): Terminal size notification</li>
+          <li>PACKET_TYPE_AUDIO_MESSAGE (30): Audio metadata message</li>
+          <li>PACKET_TYPE_TEXT_MESSAGE (31): Text chat message (future)</li>
+          <li>
+            PACKET_TYPE_ERROR_MESSAGE (32): Protocol/handshake error reporting
+          </li>
+          <li>
+            PACKET_TYPE_REMOTE_LOG (33): Bidirectional remote logging payload
+          </li>
+        </ul>
+        <section class="Ss">
+          <h2 class="Ss" id="Remote_Log_Packet_(Type_33)">
+            <a class="permalink" href="#Remote_Log_Packet_(Type_33)"
+              >Remote Log Packet (Type 33)</a
+            >
+          </h2>
+          <p class="Pp">
+            Remote logging packets allow the server and client to forward
+            diagnostic log entries to each other over the established
+            connection. They carry the log level, direction hint, optional
+            flags, and a UTF-8 text payload limited to 512 bytes.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint8_t  log_level;      // Matches log_level_t (LOG_DEV .. LOG_FATAL)
 <br/>
@@ -370,38 +498,49 @@
 <br/>
     uint32_t message_length; // Payload size (0-512)
 } PACKED_ATTR remote_log_packet_t;</pre>
-<p class="Pp">Direction values**:</p>
-<ul class="Bl-bullet">
-  <li><b>REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT</b> (1)<b> &#x2013; Sent by the
-      server to a client</b></li>
-  <li><b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b> (2)<b> &#x2013; Sent by the
-      client to the server</b>
-    <p class="Pp"></p>
-  </li>
-</ul>
-<p class="Pp">Flags**:</p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>REMOTE_LOG_FLAG_TRUNCATED</b><b> &#x2013; Sender truncated the payload
-      to fit the limit</b></dd>
-</dl>
-<p class="Pp">Messages are encrypted automatically once the crypto handshake
-    completes, but fall back to plaintext during handshake so early errors can
-    still be reported. Receivers must always prefix their local log output with
-    a &#x201C;remote&#x201D; annotation to make the source of the message
-    obvious.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Packet_Structure"><a class="permalink" href="#Packet_Structure">Packet
-  Structure</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Packet_Header"><a class="permalink" href="#Packet_Header">Packet
-  Header</a></h2>
-<p class="Pp">All packets begin with a standard header:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+          <p class="Pp">Direction values**:</p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT</b> (1)<b>
+                &#x2013; Sent by the server to a client</b
+              >
+            </li>
+            <li>
+              <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b> (2)<b>
+                &#x2013; Sent by the client to the server</b
+              >
+              <p class="Pp"></p>
+            </li>
+          </ul>
+          <p class="Pp">Flags**:</p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>REMOTE_LOG_FLAG_TRUNCATED</b
+              ><b> &#x2013; Sender truncated the payload to fit the limit</b>
+            </dd>
+          </dl>
+          <p class="Pp">
+            Messages are encrypted automatically once the crypto handshake
+            completes, but fall back to plaintext during handshake so early
+            errors can still be reported. Receivers must always prefix their
+            local log output with a &#x201C;remote&#x201D; annotation to make
+            the source of the message obvious.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Packet_Structure">
+          <a class="permalink" href="#Packet_Structure">Packet Structure</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Packet_Header">
+            <a class="permalink" href="#Packet_Header">Packet Header</a>
+          </h2>
+          <p class="Pp">All packets begin with a standard header:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t magic;     // PACKET_MAGIC (0xDEADBEEF) for validation
 <br/>
@@ -413,25 +552,35 @@
 <br/>
     uint32_t client_id; // Client ID (0 = server, &gt;0 = client identifier)
 } PACKED_ATTR packet_header_t;</pre>
-<p class="Pp"><b>Header fields</b>:</p>
-<ul class="Bl-bullet">
-  <li>magic: Must be <b>PACKET_MAGIC</b><b> (0xDEADBEEF) or packet is
-      invalid</b></li>
-  <li>type: Packet type enumeration value (<b>packet_type_t</b>, 1-33)</li>
-  <li>length: Payload data length in bytes (0 for header-only packets)</li>
-  <li>crc32: CRC32 checksum of payload data (not including header)</li>
-  <li>client_id: Identifies source (0 for server, 1-9 for clients)</li>
-</ul>
-<p class="Pp"><b>Wire format</b>:</p>
-<ul class="Bl-bullet">
-  <li>Structure is packed (no padding between fields)</li>
-  <li>Total header size: 18 bytes (4+2+4+4+4)</li>
-  <li>Network byte order (big-endian) for multi-byte fields</li>
-  <li>Magic number validation catches corrupted packets</li>
-</ul>
-<p class="Pp"><b>Example packet construction</b>:</p>
-<p class="Pp"></p>
-<pre>packet_header_t header = {
+          <p class="Pp"><b>Header fields</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              magic: Must be <b>PACKET_MAGIC</b
+              ><b> (0xDEADBEEF) or packet is invalid</b>
+            </li>
+            <li>
+              type: Packet type enumeration value (<b>packet_type_t</b>, 1-33)
+            </li>
+            <li>
+              length: Payload data length in bytes (0 for header-only packets)
+            </li>
+            <li>
+              crc32: CRC32 checksum of payload data (not including header)
+            </li>
+            <li>
+              client_id: Identifies source (0 for server, 1-9 for clients)
+            </li>
+          </ul>
+          <p class="Pp"><b>Wire format</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Structure is packed (no padding between fields)</li>
+            <li>Total header size: 18 bytes (4+2+4+4+4)</li>
+            <li>Network byte order (big-endian) for multi-byte fields</li>
+            <li>Magic number validation catches corrupted packets</li>
+          </ul>
+          <p class="Pp"><b>Example packet construction</b>:</p>
+          <p class="Pp"></p>
+          <pre>packet_header_t header = {
 <br/>
     .magic = PACKET_MAGIC,
 <br/>
@@ -444,32 +593,42 @@
     .client_id = 3  // Frame from client 3
 };
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Handshake_Packet_Detection"><a class="permalink" href="#Handshake_Packet_Detection">Handshake
-  Packet Detection</a></h2>
-<p class="Pp">Critical function for routing crypto handshake packets:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool packet_is_handshake_type(packet_type_t type);</pre>
-<p class="Pp">Returns <b>true</b><b> for:</b></p>
-<ul class="Bl-bullet">
-  <li>Initial crypto handshake packets (types 14-23)</li>
-  <li>Rekey packets (types 25-27)</li>
-</ul>
-<p class="Pp">Returns <b>false</b><b> for:</b></p>
-<ul class="Bl-bullet">
-  <li>All other packet types (including PACKET_TYPE_ENCRYPTED = 24)</li>
-  <li>PACKET_TYPE_ERROR_MESSAGE (32) &#x2013; sent plaintext only before
-      encryption is active</li>
-  <li>PACKET_TYPE_REMOTE_LOG (33) &#x2013; encrypted when session keys are
-      ready, plaintext otherwise
-    <p class="Pp"></p>
-  </li>
-</ul>
-<p class="Pp"><b>Usage</b>:</p>
-<p class="Pp"></p>
-<pre>// Before encrypting packet
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Handshake_Packet_Detection">
+            <a class="permalink" href="#Handshake_Packet_Detection"
+              >Handshake Packet Detection</a
+            >
+          </h2>
+          <p class="Pp">
+            Critical function for routing crypto handshake packets:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>bool packet_is_handshake_type(packet_type_t type);</pre>
+          <p class="Pp">Returns <b>true</b><b> for:</b></p>
+          <ul class="Bl-bullet">
+            <li>Initial crypto handshake packets (types 14-23)</li>
+            <li>Rekey packets (types 25-27)</li>
+          </ul>
+          <p class="Pp">Returns <b>false</b><b> for:</b></p>
+          <ul class="Bl-bullet">
+            <li>
+              All other packet types (including PACKET_TYPE_ENCRYPTED = 24)
+            </li>
+            <li>
+              PACKET_TYPE_ERROR_MESSAGE (32) &#x2013; sent plaintext only before
+              encryption is active
+            </li>
+            <li>
+              PACKET_TYPE_REMOTE_LOG (33) &#x2013; encrypted when session keys
+              are ready, plaintext otherwise
+              <p class="Pp"></p>
+            </li>
+          </ul>
+          <p class="Pp"><b>Usage</b>:</p>
+          <p class="Pp"></p>
+          <pre>// Before encrypting packet
 if (!packet_is_handshake_type(header.type)) {
 <br/>
     // Encrypt payload
@@ -486,23 +645,31 @@ if (!packet_is_handshake_type(header.type)) {
     // header.type remains unchanged
 }
 </pre>
-<p class="Pp"><b>Warning</b>: Encrypting handshake packets will break the crypto
-    handshake. Always check with packet_is_handshake_type() before encryption.
-    Error packets may be sent plaintext prior to handshake completion (or when
-    encryption is disabled), but must be encrypted once a session key is
-    established.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Protocol_Negotiation"><a class="permalink" href="#Protocol_Negotiation">Protocol
-  Negotiation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Protocol_Version_Packet"><a class="permalink" href="#Protocol_Version_Packet">Protocol
-  Version Packet</a></h2>
-<p class="Pp">First packet exchanged between client and server:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+          <p class="Pp">
+            <b>Warning</b>: Encrypting handshake packets will break the crypto
+            handshake. Always check with packet_is_handshake_type() before
+            encryption. Error packets may be sent plaintext prior to handshake
+            completion (or when encryption is disabled), but must be encrypted
+            once a session key is established.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Protocol_Negotiation">
+          <a class="permalink" href="#Protocol_Negotiation"
+            >Protocol Negotiation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Protocol_Version_Packet">
+            <a class="permalink" href="#Protocol_Version_Packet"
+              >Protocol Version Packet</a
+            >
+          </h2>
+          <p class="Pp">First packet exchanged between client and server:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint16_t protocol_version;      // Major version (e.g., 1)
 <br/>
@@ -518,9 +685,9 @@ if (!packet_is_handshake_type(header.type)) {
 <br/>
     uint8_t reserved[7];            // Padding to 16 bytes
 } PACKED_ATTR protocol_version_packet_t;</pre>
-<p class="Pp"><b>Version negotiation flow</b>:</p>
-<p class="Pp"></p>
-<pre>// Client sends version packet
+          <p class="Pp"><b>Version negotiation flow</b>:</p>
+          <p class="Pp"></p>
+          <pre>// Client sends version packet
 protocol_version_packet_t client_version = {
 <br/>
     .protocol_version = 1,
@@ -553,26 +720,34 @@ protocol_version_packet_t server_version = {
 };
 send_packet(socket, PACKET_TYPE_PROTOCOL_VERSION, &amp;server_version, sizeof(server_version));
 </pre>
-<p class="Pp"><b>Version compatibility</b>:</p>
-<ul class="Bl-bullet">
-  <li>Major version mismatch: Connection rejected</li>
-  <li>Minor revision mismatch: OK (server uses newer features, client ignores
-      unknown)</li>
-  <li>Compression negotiation: Both parties choose lowest common
-    denominator</li>
-</ul>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Frame_Packets"><a class="permalink" href="#Frame_Packets">Frame
-  Packets</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="ASCII_Frame_Packet"><a class="permalink" href="#ASCII_Frame_Packet">ASCII
-  Frame Packet</a></h2>
-<p class="Pp">Complete ASCII art frame with compression support:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+          <p class="Pp"><b>Version compatibility</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Major version mismatch: Connection rejected</li>
+            <li>
+              Minor revision mismatch: OK (server uses newer features, client
+              ignores unknown)
+            </li>
+            <li>
+              Compression negotiation: Both parties choose lowest common
+              denominator
+            </li>
+          </ul>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Frame_Packets">
+          <a class="permalink" href="#Frame_Packets">Frame Packets</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="ASCII_Frame_Packet">
+            <a class="permalink" href="#ASCII_Frame_Packet"
+              >ASCII Frame Packet</a
+            >
+          </h2>
+          <p class="Pp">Complete ASCII art frame with compression support:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t width;           // Terminal width in characters
 <br/>
@@ -586,15 +761,17 @@ send_packet(socket, PACKET_TYPE_PROTOCOL_VERSION, &amp;server_version, sizeof(se
 <br/>
     uint32_t flags;           // Bit flags: HAS_COLOR, IS_COMPRESSED, etc.
 } PACKED_ATTR ascii_frame_packet_t;</pre>
-<p class="Pp"><b>Payload structure</b>:</p>
-<ul class="Bl-bullet">
-  <li>Header: <b>ascii_frame_packet_t</b><b> (24 bytes)</b></li>
-  <li>Data: char data[original_size] or char
-    compressed_data[compressed_size]</li>
-</ul>
-<p class="Pp"><b>Compression handling</b>:</p>
-<p class="Pp"></p>
-<pre>// Server: Send ASCII frame
+          <p class="Pp"><b>Payload structure</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Header: <b>ascii_frame_packet_t</b><b> (24 bytes)</b></li>
+            <li>
+              Data: char data[original_size] or char
+              compressed_data[compressed_size]
+            </li>
+          </ul>
+          <p class="Pp"><b>Compression handling</b>:</p>
+          <p class="Pp"></p>
+          <pre>// Server: Send ASCII frame
 ascii_frame_packet_t header = {
 <br/>
     .width = 160,
@@ -631,14 +808,17 @@ if (header.original_size &gt; COMPRESS_THRESHOLD) {
     }
 }
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Image_Frame_Packet"><a class="permalink" href="#Image_Frame_Packet">Image
-  Frame Packet</a></h2>
-<p class="Pp">Raw RGB image from webcam:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Image_Frame_Packet">
+            <a class="permalink" href="#Image_Frame_Packet"
+              >Image Frame Packet</a
+            >
+          </h2>
+          <p class="Pp">Raw RGB image from webcam:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t width;           // Image width in pixels
 <br/>
@@ -652,15 +832,18 @@ if (header.original_size &gt; COMPRESS_THRESHOLD) {
 <br/>
     uint32_t timestamp;       // When frame was captured
 } PACKED_ATTR image_frame_packet_t;</pre>
-<p class="Pp"><b>Payload structure</b>:</p>
-<ul class="Bl-bullet">
-  <li>Header: <b>image_frame_packet_t</b><b> (24 bytes)</b></li>
-  <li>Data: <b>rgb_pixel_t</b> pixels[width * height]<b> or compressed
-    data</b></li>
-</ul>
-<p class="Pp"><b>Usage</b> (client &#x2192; server):</p>
-<p class="Pp"></p>
-<pre>// Capture frame from webcam
+          <p class="Pp"><b>Payload structure</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Header: <b>image_frame_packet_t</b><b> (24 bytes)</b></li>
+            <li>
+              Data: <b>rgb_pixel_t</b> pixels[width * height]<b>
+                or compressed data</b
+              >
+            </li>
+          </ul>
+          <p class="Pp"><b>Usage</b> (client &#x2192; server):</p>
+          <p class="Pp"></p>
+          <pre>// Capture frame from webcam
 uint8_t *rgb_frame = capture_webcam_frame(&amp;width, &amp;height);
 // Create image frame packet
 image_frame_packet_t header = {
@@ -681,37 +864,51 @@ image_frame_packet_t header = {
 send_packet(socket, PACKET_TYPE_IMAGE_FRAME, &amp;header, sizeof(header));
 send_packet_data(socket, rgb_frame, width * height * 3);
 </pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Audio_Packets"><a class="permalink" href="#Audio_Packets">Audio
-  Packets</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Single_Audio_Packet_(Legacy)"><a class="permalink" href="#Single_Audio_Packet_(Legacy)">Single
-  Audio Packet (Legacy)</a></h2>
-<p class="Pp">PACKET_TYPE_AUDIO (type 4) is the legacy single-packet format:</p>
-<ul class="Bl-bullet">
-  <li>Fixed size: 256 samples per packet</li>
-  <li>Format: float samples[256]</li>
-  <li>Sample rate: Negotiated in protocol version packet</li>
-  <li>Channels: Usually mono (1 channel)</li>
-</ul>
-<p class="Pp"><b>Disadvantages</b>:</p>
-<ul class="Bl-bullet">
-  <li>High packet overhead (1 packet per 256 samples)</li>
-  <li>At 44.1 kHz: 188 packets/second</li>
-  <li>Each packet: 18-byte header + 1024-byte payload = 1042 bytes</li>
-  <li>Total overhead: 188 &#x00D7; 18 = 3.4 KB/sec (0.34% of bandwidth)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Batched_Audio_Packet_(Efficient)"><a class="permalink" href="#Batched_Audio_Packet_(Efficient)">Batched
-  Audio Packet (Efficient)</a></h2>
-<p class="Pp">PACKET_TYPE_AUDIO_BATCH (type 28) batches multiple audio
-  chunks:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Audio_Packets">
+          <a class="permalink" href="#Audio_Packets">Audio Packets</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Single_Audio_Packet_(Legacy)">
+            <a class="permalink" href="#Single_Audio_Packet_(Legacy)"
+              >Single Audio Packet (Legacy)</a
+            >
+          </h2>
+          <p class="Pp">
+            PACKET_TYPE_AUDIO (type 4) is the legacy single-packet format:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Fixed size: 256 samples per packet</li>
+            <li>Format: float samples[256]</li>
+            <li>Sample rate: Negotiated in protocol version packet</li>
+            <li>Channels: Usually mono (1 channel)</li>
+          </ul>
+          <p class="Pp"><b>Disadvantages</b>:</p>
+          <ul class="Bl-bullet">
+            <li>High packet overhead (1 packet per 256 samples)</li>
+            <li>At 44.1 kHz: 188 packets/second</li>
+            <li>
+              Each packet: 18-byte header + 1024-byte payload = 1042 bytes
+            </li>
+            <li>
+              Total overhead: 188 &#x00D7; 18 = 3.4 KB/sec (0.34% of bandwidth)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Batched_Audio_Packet_(Efficient)">
+            <a class="permalink" href="#Batched_Audio_Packet_(Efficient)"
+              >Batched Audio Packet (Efficient)</a
+            >
+          </h2>
+          <p class="Pp">
+            PACKET_TYPE_AUDIO_BATCH (type 28) batches multiple audio chunks:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t batch_count;   // Number of chunks (usually 4)
 <br/>
@@ -721,21 +918,26 @@ send_packet_data(socket, rgb_frame, width * height * 3);
 <br/>
     uint32_t channels;      // 1=mono, 2=stereo
 } PACKED_ATTR audio_batch_packet_t;</pre>
-<p class="Pp"><b>Payload structure</b>:</p>
-<ul class="Bl-bullet">
-  <li>Header: <b>audio_batch_packet_t</b><b> (16 bytes)</b></li>
-  <li>Data: float samples[total_samples] (interleaved if stereo)</li>
-</ul>
-<p class="Pp"><b>Benefits</b>:</p>
-<ul class="Bl-bullet">
-  <li>Reduced packet overhead: 4 chunks per packet = 75% fewer packets</li>
-  <li>At 44.1 kHz: 47 packets/second (was 188)</li>
-  <li>Packet overhead: 47 &#x00D7; 18 = 846 bytes/sec (0.08% of bandwidth)</li>
-  <li><b>80% reduction in packet overhead</b></li>
-</ul>
-<p class="Pp"><b>Example</b>:</p>
-<p class="Pp"></p>
-<pre>// Capture 4 audio chunks (256 samples each = 1024 total)
+          <p class="Pp"><b>Payload structure</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Header: <b>audio_batch_packet_t</b><b> (16 bytes)</b></li>
+            <li>Data: float samples[total_samples] (interleaved if stereo)</li>
+          </ul>
+          <p class="Pp"><b>Benefits</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Reduced packet overhead: 4 chunks per packet = 75% fewer packets
+            </li>
+            <li>At 44.1 kHz: 47 packets/second (was 188)</li>
+            <li>
+              Packet overhead: 47 &#x00D7; 18 = 846 bytes/sec (0.08% of
+              bandwidth)
+            </li>
+            <li><b>80% reduction in packet overhead</b></li>
+          </ul>
+          <p class="Pp"><b>Example</b>:</p>
+          <p class="Pp"></p>
+          <pre>// Capture 4 audio chunks (256 samples each = 1024 total)
 float samples[1024];
 capture_audio_chunks(samples, 4);
 // Create batch packet
@@ -753,18 +955,22 @@ audio_batch_packet_t header = {
 send_packet(socket, PACKET_TYPE_AUDIO_BATCH, &amp;header, sizeof(header));
 send_packet_data(socket, samples, sizeof(samples));
 </pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Control_Packets"><a class="permalink" href="#Control_Packets">Control
-  Packets</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Client_Capabilities"><a class="permalink" href="#Client_Capabilities">Client
-  Capabilities</a></h2>
-<p class="Pp">Client reports terminal capabilities to server:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Control_Packets">
+          <a class="permalink" href="#Control_Packets">Control Packets</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Client_Capabilities">
+            <a class="permalink" href="#Client_Capabilities"
+              >Client Capabilities</a
+            >
+          </h2>
+          <p class="Pp">Client reports terminal capabilities to server:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t capabilities;      // Bitmask: TERM_CAP_* flags
 <br/>
@@ -792,9 +998,9 @@ send_packet_data(socket, samples, sizeof(samples));
 <br/>
     uint8_t reserved[2];
 } PACKED_ATTR terminal_capabilities_packet_t;</pre>
-<p class="Pp"><b>Usage</b>:</p>
-<p class="Pp"></p>
-<pre>terminal_capabilities_packet_t caps = {
+          <p class="Pp"><b>Usage</b>:</p>
+          <p class="Pp"></p>
+          <pre>terminal_capabilities_packet_t caps = {
 <br/>
     .capabilities = TERM_CAP_VIDEO | TERM_CAP_AUDIO | TERM_CAP_COLOR,
 <br/>
@@ -820,14 +1026,19 @@ strncpy(caps.term_type, getenv(&quot;TERM&quot;), sizeof(caps.term_type) - 1);
 strncpy(caps.colorterm, getenv(&quot;COLORTERM&quot;), sizeof(caps.colorterm) - 1);
 send_packet(socket, PACKET_TYPE_CLIENT_CAPABILITIES, &amp;caps, sizeof(caps));
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Ping/Pong_Keepalive"><a class="permalink" href="#Ping/Pong_Keepalive">Ping/Pong
-  Keepalive</a></h2>
-<p class="Pp">Maintains connection alive and detects dead connections:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Server: Send ping every 30 seconds
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Ping/Pong_Keepalive">
+            <a class="permalink" href="#Ping/Pong_Keepalive"
+              >Ping/Pong Keepalive</a
+            >
+          </h2>
+          <p class="Pp">
+            Maintains connection alive and detects dead connections:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Server: Send ping every 30 seconds
 void keepalive_thread(void *arg) {
 <br/>
     while (running) {
@@ -875,19 +1086,26 @@ void handle_packet(packet_header_t *header, void *payload) {
 <br/>
     }
 }</pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Crypto_Handshake_Packets"><a class="permalink" href="#Crypto_Handshake_Packets">Crypto
-  Handshake Packets</a></h1>
-<p class="Pp">All crypto handshake packets (types 14-23, 25-27) must be sent
-    UNENCRYPTED. Use packet_is_handshake_type() to check before encryption.</p>
-<section class="Ss">
-<h2 class="Ss" id="Handshake_Flow"><a class="permalink" href="#Handshake_Flow">Handshake
-  Flow</a></h2>
-<p class="Pp"><b>Phase 1: Capability Exchange</b></p>
-<p class="Pp"></p>
-<pre>// Client &#x2192; Server: Supported algorithms
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Crypto_Handshake_Packets">
+          <a class="permalink" href="#Crypto_Handshake_Packets"
+            >Crypto Handshake Packets</a
+          >
+        </h1>
+        <p class="Pp">
+          All crypto handshake packets (types 14-23, 25-27) must be sent
+          UNENCRYPTED. Use packet_is_handshake_type() to check before
+          encryption.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Handshake_Flow">
+            <a class="permalink" href="#Handshake_Flow">Handshake Flow</a>
+          </h2>
+          <p class="Pp"><b>Phase 1: Capability Exchange</b></p>
+          <p class="Pp"></p>
+          <pre>// Client &#x2192; Server: Supported algorithms
 crypto_capabilities_packet_t client_caps = {
 <br/>
     .supported_kex_algorithms = KEX_ALGO_X25519,
@@ -932,9 +1150,9 @@ crypto_parameters_packet_t server_params = {
 };
 send_packet(socket, PACKET_TYPE_CRYPTO_PARAMETERS, &amp;server_params, sizeof(server_params));
 </pre>
-<p class="Pp"><b>Phase 2: Key Exchange</b></p>
-<p class="Pp"></p>
-<pre>// Server &#x2192; Client: Server's ephemeral public key
+          <p class="Pp"><b>Phase 2: Key Exchange</b></p>
+          <p class="Pp"></p>
+          <pre>// Server &#x2192; Client: Server's ephemeral public key
 uint8_t server_pubkey[32];
 crypto_generate_keypair(server_pubkey, server_secret);
 send_packet(socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,
@@ -947,9 +1165,9 @@ send_packet(socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,
 <br/>
             client_pubkey, 32);
 </pre>
-<p class="Pp"><b>Phase 3: Authentication</b></p>
-<p class="Pp"></p>
-<pre>// Server &#x2192; Client: Authentication challenge nonce
+          <p class="Pp"><b>Phase 3: Authentication</b></p>
+          <p class="Pp"></p>
+          <pre>// Server &#x2192; Client: Authentication challenge nonce
 uint8_t challenge[32];
 randombytes_buf(challenge, 32);
 send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge, 32);
@@ -970,25 +1188,30 @@ uint8_t server_hmac[32];
 compute_hmac(server_identity_key, client_hmac, 32, server_hmac);
 send_packet(socket, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac, 32);
 </pre>
-<p class="Pp"><b>Phase 4: Handshake Complete</b></p>
-<p class="Pp"></p>
-<pre>// Server &#x2192; Client: Encryption ready
+          <p class="Pp"><b>Phase 4: Handshake Complete</b></p>
+          <p class="Pp"></p>
+          <pre>
+// Server &#x2192; Client: Encryption ready
 send_packet(socket, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0);
 // Now all subsequent packets use PACKET_TYPE_ENCRYPTED (type 24)
 // with encrypted payloads
 </pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Multi-User_Protocol"><a class="permalink" href="#Multi-User_Protocol">Multi-User
-  Protocol</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Client_Join"><a class="permalink" href="#Client_Join">Client
-  Join</a></h2>
-<p class="Pp">Client announces capability to send video/audio:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Multi-User_Protocol">
+          <a class="permalink" href="#Multi-User_Protocol"
+            >Multi-User Protocol</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Client_Join">
+            <a class="permalink" href="#Client_Join">Client Join</a>
+          </h2>
+          <p class="Pp">Client announces capability to send video/audio:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t client_id;                      // Unique client ID
 <br/>
@@ -1004,14 +1227,17 @@ client_info_packet_t join = {
 };
 strncpy(join.display_name, &quot;Alice&quot;, MAX_DISPLAY_NAME_LEN - 1);
 send_packet(socket, PACKET_TYPE_CLIENT_JOIN, &amp;join, sizeof(join));</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Server_State_Broadcast"><a class="permalink" href="#Server_State_Broadcast">Server
-  State Broadcast</a></h2>
-<p class="Pp">Server broadcasts current state to all clients:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Server_State_Broadcast">
+            <a class="permalink" href="#Server_State_Broadcast"
+              >Server State Broadcast</a
+            >
+          </h2>
+          <p class="Pp">Server broadcasts current state to all clients:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t connected_client_count;  // Number of connected clients
 <br/>
@@ -1032,46 +1258,68 @@ for (int i = 0; i &lt; connected_clients; i++) {
 <br/>
                 &amp;state, sizeof(state));
 }</pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Protocol_Versioning"><a class="permalink" href="#Protocol_Versioning">Protocol
-  Versioning</a></h1>
-<p class="Pp">ascii-chat uses semantic versioning for protocol
-  compatibility:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Version Format</b>:</p>
-<ul class="Bl-bullet">
-  <li>Major version: Incompatible protocol changes (client/server must
-    match)</li>
-  <li>Minor revision: Backward-compatible additions (server can be newer)</li>
-</ul>
-<p class="Pp"><b>Compatibility Rules</b>:</p>
-<ul class="Bl-bullet">
-  <li>Major version mismatch: Connection rejected</li>
-  <li>Minor revision mismatch: OK (server uses newer features, client ignores
-      unknown)</li>
-  <li>Client sends: protocol_version=1, revision=0</li>
-  <li>Server responds: protocol_version=1, revision=X (X can be &gt;= 0)</li>
-</ul>
-<p class="Pp"><b>Future Protocol Changes</b>:</p>
-<ul class="Bl-bullet">
-  <li>Major version bump: Complete protocol redesign</li>
-  <li>Minor revision bump: New packet types, new flags, extended structures</li>
-  <li>Reserved fields: Structures include reserved fields for future
-    expansion</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Wire_Format"><a class="permalink" href="#Wire_Format">Wire
-  Format</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Byte_Order"><a class="permalink" href="#Byte_Order">Byte
-  Order</a></h2>
-<p class="Pp">All multi-byte fields use network byte order (big-endian):</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Host to network (before sending)
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Protocol_Versioning">
+          <a class="permalink" href="#Protocol_Versioning"
+            >Protocol Versioning</a
+          >
+        </h1>
+        <p class="Pp">
+          ascii-chat uses semantic versioning for protocol compatibility:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Version Format</b>:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Major version: Incompatible protocol changes (client/server must
+            match)
+          </li>
+          <li>
+            Minor revision: Backward-compatible additions (server can be newer)
+          </li>
+        </ul>
+        <p class="Pp"><b>Compatibility Rules</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Major version mismatch: Connection rejected</li>
+          <li>
+            Minor revision mismatch: OK (server uses newer features, client
+            ignores unknown)
+          </li>
+          <li>Client sends: protocol_version=1, revision=0</li>
+          <li>
+            Server responds: protocol_version=1, revision=X (X can be &gt;= 0)
+          </li>
+        </ul>
+        <p class="Pp"><b>Future Protocol Changes</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Major version bump: Complete protocol redesign</li>
+          <li>
+            Minor revision bump: New packet types, new flags, extended
+            structures
+          </li>
+          <li>
+            Reserved fields: Structures include reserved fields for future
+            expansion
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Wire_Format">
+          <a class="permalink" href="#Wire_Format">Wire Format</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Byte_Order">
+            <a class="permalink" href="#Byte_Order">Byte Order</a>
+          </h2>
+          <p class="Pp">
+            All multi-byte fields use network byte order (big-endian):
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Host to network (before sending)
 header.magic = htonl(PACKET_MAGIC);
 header.type = htons(PACKET_TYPE_ASCII_FRAME);
 header.length = htonl(payload_length);
@@ -1083,20 +1331,22 @@ header.type = ntohs(header.type);
 header.length = ntohl(header.length);
 header.crc32 = ntohl(header.crc32);
 header.client_id = ntohl(header.client_id);</pre>
-<p class="Pp"><b>Platform-specific functions</b>:</p>
-<ul class="Bl-bullet">
-  <li>POSIX: htonl(), htons(), ntohl(), ntohs()</li>
-  <li>Windows: htonl(), htons(), ntohl(), ntohs() (winsock.h)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Structure_Packing"><a class="permalink" href="#Structure_Packing">Structure
-  Packing</a></h2>
-<p class="Pp">Structures are packed (no padding) for wire format
-  compatibility:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#ifdef _WIN32
+          <p class="Pp"><b>Platform-specific functions</b>:</p>
+          <ul class="Bl-bullet">
+            <li>POSIX: htonl(), htons(), ntohl(), ntohs()</li>
+            <li>Windows: htonl(), htons(), ntohl(), ntohs() (winsock.h)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Structure_Packing">
+            <a class="permalink" href="#Structure_Packing">Structure Packing</a>
+          </h2>
+          <p class="Pp">
+            Structures are packed (no padding) for wire format compatibility:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>#ifdef _WIN32
 #pragma pack(push, 1)
 #endif
 typedef struct {
@@ -1110,56 +1360,59 @@ typedef struct {
 #ifdef _WIN32
 #pragma pack(pop)
 #endif</pre>
-<p class="Pp"><b>Warning</b>: Packed structures may not be naturally aligned.
-    Accessing fields may cause unaligned memory access (slower on some CPUs).
-    ascii-chat structures are designed to avoid this issue.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
-  Practices</a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Always validate magic number</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>if (header.magic != PACKET_MAGIC) {
+          <p class="Pp">
+            <b>Warning</b>: Packed structures may not be naturally aligned.
+            Accessing fields may cause unaligned memory access (slower on some
+            CPUs). ascii-chat structures are designed to avoid this issue.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Best_Practices">
+          <a class="permalink" href="#Best_Practices">Best Practices</a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd><b>Always validate magic number</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>if (header.magic != PACKET_MAGIC) {
 <br/>
     log_error(&quot;Invalid packet magic: 0x%08X&quot;, header.magic);
 <br/>
     return ERROR_NETWORK_PROTOCOL;
 }
 </pre>
-<dl class="Bl-tag">
-  <dt>2.</dt>
-  <dd><b>Check handshake types before encryption</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>if (!packet_is_handshake_type(header.type)) {
+        <dl class="Bl-tag">
+          <dt>2.</dt>
+          <dd><b>Check handshake types before encryption</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>if (!packet_is_handshake_type(header.type)) {
 <br/>
     // Encrypt payload
 <br/>
     encrypt_packet(&amp;header, payload, payload_len);
 }
 </pre>
-<dl class="Bl-tag">
-  <dt>3.</dt>
-  <dd><b>Validate payload length</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>if (header.length &gt; MAX_PACKET_SIZE) {
+        <dl class="Bl-tag">
+          <dt>3.</dt>
+          <dd><b>Validate payload length</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>if (header.length &gt; MAX_PACKET_SIZE) {
 <br/>
     log_error(&quot;Packet too large: %u bytes&quot;, header.length);
 <br/>
     return ERROR_NETWORK_PROTOCOL;
 }
 </pre>
-<dl class="Bl-tag">
-  <dt>4.</dt>
-  <dd><b>Verify CRC32 checksums</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>uint32_t computed_crc = crc32_compute(payload, header.length);
+        <dl class="Bl-tag">
+          <dt>4.</dt>
+          <dd><b>Verify CRC32 checksums</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>uint32_t computed_crc = crc32_compute(payload, header.length);
 if (computed_crc != header.crc32) {
 <br/>
     log_error(&quot;CRC32 mismatch: expected 0x%08X, got 0x%08X&quot;,
@@ -1169,24 +1422,25 @@ if (computed_crc != header.crc32) {
     return ERROR_NETWORK_PROTOCOL;
 }
 </pre>
-<dl class="Bl-tag">
-  <dt>5.</dt>
-  <dd><b>Use network byte order</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>// Before sending
+        <dl class="Bl-tag">
+          <dt>5.</dt>
+          <dd><b>Use network byte order</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>
+// Before sending
 header.magic = htonl(PACKET_MAGIC);
 header.length = htonl(payload_length);
 // After receiving
 header.magic = ntohl(header.magic);
 header.length = ntohl(header.length);
 </pre>
-<dl class="Bl-tag">
-  <dt>6.</dt>
-  <dd><b>Handle unknown packet types gracefully</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>switch (header.type) {
+        <dl class="Bl-tag">
+          <dt>6.</dt>
+          <dd><b>Handle unknown packet types gracefully</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>switch (header.type) {
 <br/>
     case PACKET_TYPE_ASCII_FRAME:
 <br/>
@@ -1205,522 +1459,992 @@ header.length = ntohl(header.length);
         break;
 }
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh">Protocol Constants</h1>
-<p class="Pp"><b>Packet Size Limits</b>:</p>
-<p class="Pp"></p>
-<pre>#define LARGE_PACKET_THRESHOLD (100 * 1024)  // 100 KB - triggers extended timeout
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">Protocol Constants</h1>
+        <p class="Pp"><b>Packet Size Limits</b>:</p>
+        <p class="Pp"></p>
+        <pre>
+#define LARGE_PACKET_THRESHOLD (100 * 1024)  // 100 KB - triggers extended timeout
 #define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)  // 5 MB - absolute maximum
 </pre>
-<p class="Pp"><b>Timeout Configuration</b>:</p>
-<p class="Pp"></p>
-<pre>#define BASE_SEND_TIMEOUT 5  // Base timeout in seconds
+        <p class="Pp"><b>Timeout Configuration</b>:</p>
+        <p class="Pp"></p>
+        <pre>
+#define BASE_SEND_TIMEOUT 5  // Base timeout in seconds
 #define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8  // Extra timeout per MB
 #define MIN_CLIENT_TIMEOUT 10  // Minimum client timeout
 #define MAX_CLIENT_TIMEOUT 60  // Maximum client timeout
 </pre>
-<p class="Pp"><b>Audio Configuration</b>:</p>
-<p class="Pp"></p>
-<pre>#define AUDIO_SAMPLES_PER_PACKET 256  // Samples per single audio packet
+        <p class="Pp"><b>Audio Configuration</b>:</p>
+        <p class="Pp"></p>
+        <pre>
+#define AUDIO_SAMPLES_PER_PACKET 256  // Samples per single audio packet
 #define AUDIO_BATCH_COUNT 4  // Chunks per batch packet
 #define AUDIO_BATCH_SAMPLES 1024  // Total samples in batch (256 * 4)
 #define AUDIO_BATCH_MS 23  // Duration at 44.1 kHz (~23ms)
 </pre>
-<p class="Pp"><b>Magic Numbers</b>:</p>
-<p class="Pp"></p>
-<pre>#define PACKET_MAGIC 0xDEADBEEF  // Packet header magic number
+        <p class="Pp"><b>Magic Numbers</b>:</p>
+        <p class="Pp"></p>
+        <pre>
+#define PACKET_MAGIC 0xDEADBEEF  // Packet header magic number
 #define FRAME_MAGIC 0xDEADBEEF   // Frame buffer magic (different context)
 #define FRAME_FREED 0xFEEDFACE   // Freed frame marker
 </pre>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">network/packet_types.h
-<p class="Pp"></p>
-<p class="Pp">network/packet.h</p>
-<p class="Pp"></p>
-<p class="Pp">network/av.h</p>
-</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCIICHAT_DEFAULT_DISPLAY_NAME___'AsciiChatter'"><a class="permalink" href="#_define_ASCIICHAT_DEFAULT_DISPLAY_NAME___'AsciiChatter'">#define
-  ASCIICHAT_DEFAULT_DISPLAY_NAME 'AsciiChatter'</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Default display name for clients without a custom name. Used when
-    a client connects without specifying a display name.</p>
-<p class="Pp">Definition at line <b>635</b> of file <b>packet.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_BATCH_COUNT___32"><a class="permalink" href="#_define_AUDIO_BATCH_COUNT___32">#define
-  AUDIO_BATCH_COUNT 32</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Number of audio chunks per batch (4 chunks). Number of audio
-    chunks aggregated into a single batch packet for efficiency.</p>
-<p class="Pp">Definition at line <b>214</b> of file <b>packet.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_BATCH_MS___186"><a class="permalink" href="#_define_AUDIO_BATCH_MS___186">#define
-  AUDIO_BATCH_MS 186</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Audio batch duration in milliseconds (~186ms). Approximate
-    duration of audio batch at 44.1kHz sample rate.</p>
-<p class="Pp">Definition at line <b>233</b> of file <b>packet.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_BATCH_SAMPLES___("><a class="permalink" href="#_define_AUDIO_BATCH_SAMPLES___(">#define
-  AUDIO_BATCH_SAMPLES (<b>AUDIO_SAMPLES_PER_PACKET</b> *
-  <b>AUDIO_BATCH_COUNT</b>)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Total samples in audio batch (8192 samples). Total audio samples
-    across all chunks in a batch. At 44.1kHz, this equals ~185.8ms of audio.</p>
-<p class="Pp">Definition at line <b>224</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_SAMPLES_PER_PACKET___256"><a class="permalink" href="#_define_AUDIO_SAMPLES_PER_PACKET___256">#define
-  AUDIO_SAMPLES_PER_PACKET 256</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Samples per audio packet (256 samples). Number of audio samples in
-    a single audio packet. Smaller packets provide lower latency at the cost of
-    increased packet overhead.</p>
-<p class="Pp">Definition at line <b>243</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_BASE_SEND_TIMEOUT___(5LL_*_"><a class="permalink" href="#_define_BASE_SEND_TIMEOUT___(5LL_*_">#define
-  BASE_SEND_TIMEOUT (5LL * <b>NS_PER_SEC_INT</b>)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Base send timeout in nanoseconds (5 seconds). Default timeout for
-    sending packets. Used as base value for calculating timeouts for large
-    packets.</p>
-<p class="Pp">Definition at line <b>163</b> of file <b>packet.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LARGE_PACKET_EXTRA_TIMEOUT_PER_MB___(800LL_*_"><a class="permalink" href="#_define_LARGE_PACKET_EXTRA_TIMEOUT_PER_MB___(800LL_*_">#define
-  LARGE_PACKET_EXTRA_TIMEOUT_PER_MB (800LL * <b>NS_PER_MS_INT</b>)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Extra timeout per MB for large packets (0.8 seconds per MB).
-    Additional timeout added per MB for large packets to prevent premature
-    timeout failures.</p>
-<p class="Pp">Definition at line <b>173</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LARGE_PACKET_THRESHOLD___(100_*_1024)"><a class="permalink" href="#_define_LARGE_PACKET_THRESHOLD___(100_*_1024)">#define
-  LARGE_PACKET_THRESHOLD (100 * 1024)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Large packet size threshold (100KB). Packets larger than this
-    threshold are considered &quot;large&quot; and may receive extended timeouts
-    or compression treatment.</p>
-<p class="Pp">Definition at line <b>113</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_CLIENT_TIMEOUT___(60LL_*_"><a class="permalink" href="#_define_MAX_CLIENT_TIMEOUT___(60LL_*_">#define
-  MAX_CLIENT_TIMEOUT (60LL * <b>NS_PER_SEC_INT</b>)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum client timeout in nanoseconds (60 seconds). Maximum
-    timeout value for client operations. Prevents excessively long waits for
-    dead connections.</p>
-<p class="Pp">Definition at line <b>193</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_ERROR_MESSAGE_LENGTH___4096"><a class="permalink" href="#_define_MAX_ERROR_MESSAGE_LENGTH___4096">#define
-  MAX_ERROR_MESSAGE_LENGTH 4096</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum error message length (512 bytes). Error packets include a
-    message payload. This defines the maximum number of bytes allowed in the
-    message portion to prevent excessive allocations and potential abuse.</p>
-<p class="Pp">Definition at line <b>132</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_error()</b>,
-    <b>network_error_decode()</b>, <b>packet_parse_error_message()</b>, and
-    <b>packet_send_error()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_PACKET_SIZE___((size_t)5_*_1024_*_1024)"><a class="permalink" href="#_define_MAX_PACKET_SIZE___((size_t)5_*_1024_*_1024)">#define
-  MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum packet size (5MB). Absolute maximum size for any packet.
-    Packets larger than this are rejected to prevent memory exhaustion
-  attacks.</p>
-<p class="Pp">Definition at line <b>123</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_audio_batch()</b>,
-    <b>acip_send_audio_opus_batch()</b>, <b>packet_decoder_feed()</b>,
-    <b>packet_send()</b>, <b>packet_send_via_transportv()</b>,
-    <b>receive_packet_secure_with_timeout()</b>, and
-    <b>send_packet_secure()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_REMOTE_LOG_MESSAGE_LENGTH___512"><a class="permalink" href="#_define_MAX_REMOTE_LOG_MESSAGE_LENGTH___512">#define
-  MAX_REMOTE_LOG_MESSAGE_LENGTH 512</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum remote log message length (512 bytes). Remote logging
-    packets mirror the error packet structure but are intended for diagnostic
-    log forwarding between client and server. Limiting the payload size keeps
-    allocations predictable and prevents log flooding over the network.</p>
-<p class="Pp">Definition at line <b>142</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_remote_log_packet_from_client()</b>,
-    <b>packet_parse_remote_log()</b>, and <b>packet_send_remote_log()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MIN_CLIENT_TIMEOUT___(10LL_*_"><a class="permalink" href="#_define_MIN_CLIENT_TIMEOUT___(10LL_*_">#define
-  MIN_CLIENT_TIMEOUT (10LL * <b>NS_PER_SEC_INT</b>)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Minimum client timeout in nanoseconds (10 seconds). Minimum
-    timeout value for client operations. Set to server timeout plus buffer for
-    reliable operation.</p>
-<p class="Pp">Definition at line <b>183</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PACKET_MAGIC___"><a class="permalink" href="#_define_PACKET_MAGIC___">#define
-  PACKET_MAGIC <b>MAGIC_PACKET_VALID</b></a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Packet magic number (alias for MAGIC_PACKET_VALID). Magic number
-    used in packet headers for packet validation. Defined once in
-    <b>util/magic.h</b> (0xA5C11C4A1 = &quot;ASCIICHAT&quot; in hex) and
-    imported here for use in packet validation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>MAGIC_PACKET_VALID</b></div>
-<p class="Pp">Definition at line <b>263</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_receive_packet()</b>,
-    <b>acip_packet_encrypt()</b>, <b>client_parse_packet()</b>,
-    <b>client_serialize_packet()</b>, <b>packet_decoder_feed()</b>,
-    <b>packet_queue_validate_packet()</b>, <b>packet_send()</b>,
-    <b>packet_send_via_transportv()</b>, <b>peer_crypto_receive()</b>,
-    <b>receive_packet_secure_with_timeout()</b>, and
-    <b>send_packet_secure()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">enum <b>auth_failure_reason_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Authentication failure reason flags. Bitmask enumeration for
-    authentication failure reasons. Multiple flags can be combined to indicate
-    multiple failure causes.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="AUTH_FAIL_PASSWORD_REQUIRED"><a class="permalink" href="#AUTH_FAIL_PASSWORD_REQUIRED"><b><i>AUTH_FAIL_PASSWORD_REQUIRED
-    </i></b></a></dt>
-  <dd>Server requires password but client didn't provide one.</dd>
-  <dt id="AUTH_FAIL_PASSWORD_INCORRECT"><a class="permalink" href="#AUTH_FAIL_PASSWORD_INCORRECT"><b><i>AUTH_FAIL_PASSWORD_INCORRECT
-    </i></b></a></dt>
-  <dd>Password verification failed (incorrect password).</dd>
-  <dt id="AUTH_FAIL_CLIENT_KEY_REQUIRED"><a class="permalink" href="#AUTH_FAIL_CLIENT_KEY_REQUIRED"><b><i>AUTH_FAIL_CLIENT_KEY_REQUIRED
-    </i></b></a></dt>
-  <dd>Server requires client key but client didn't provide one.</dd>
-  <dt id="AUTH_FAIL_CLIENT_KEY_REJECTED"><a class="permalink" href="#AUTH_FAIL_CLIENT_KEY_REJECTED"><b><i>AUTH_FAIL_CLIENT_KEY_REJECTED
-    </i></b></a></dt>
-  <dd>Client key not in whitelist (access denied).</dd>
-  <dt id="AUTH_FAIL_SIGNATURE_INVALID"><a class="permalink" href="#AUTH_FAIL_SIGNATURE_INVALID"><b><i>AUTH_FAIL_SIGNATURE_INVALID
-    </i></b></a></dt>
-  <dd>Client signature verification failed (invalid signature).</dd>
-</dl>
-<p class="Pp">Definition at line <b>771</b> of file <b>packet.h</b>.</p>
-<pre>771              {
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          network/packet_types.h
+          <p class="Pp"></p>
+          <p class="Pp">network/packet.h</p>
+          <p class="Pp"></p>
+          <p class="Pp">network/av.h</p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCIICHAT_DEFAULT_DISPLAY_NAME___'AsciiChatter'"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCIICHAT_DEFAULT_DISPLAY_NAME___'AsciiChatter'"
+              >#define ASCIICHAT_DEFAULT_DISPLAY_NAME 'AsciiChatter'</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Default display name for clients without a custom name. Used when a
+            client connects without specifying a display name.
+          </p>
+          <p class="Pp">
+            Definition at line <b>635</b> of file <b>packet.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_BATCH_COUNT___32">
+            <a class="permalink" href="#_define_AUDIO_BATCH_COUNT___32"
+              >#define AUDIO_BATCH_COUNT 32</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Number of audio chunks per batch (4 chunks). Number of audio chunks
+            aggregated into a single batch packet for efficiency.
+          </p>
+          <p class="Pp">
+            Definition at line <b>214</b> of file <b>packet.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_BATCH_MS___186">
+            <a class="permalink" href="#_define_AUDIO_BATCH_MS___186"
+              >#define AUDIO_BATCH_MS 186</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Audio batch duration in milliseconds (~186ms). Approximate duration
+            of audio batch at 44.1kHz sample rate.
+          </p>
+          <p class="Pp">
+            Definition at line <b>233</b> of file <b>packet.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_BATCH_SAMPLES___(">
+            <a class="permalink" href="#_define_AUDIO_BATCH_SAMPLES___("
+              >#define AUDIO_BATCH_SAMPLES (<b>AUDIO_SAMPLES_PER_PACKET</b> *
+              <b>AUDIO_BATCH_COUNT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Total samples in audio batch (8192 samples). Total audio samples
+            across all chunks in a batch. At 44.1kHz, this equals ~185.8ms of
+            audio.
+          </p>
+          <p class="Pp">
+            Definition at line <b>224</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_SAMPLES_PER_PACKET___256">
+            <a class="permalink" href="#_define_AUDIO_SAMPLES_PER_PACKET___256"
+              >#define AUDIO_SAMPLES_PER_PACKET 256</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Samples per audio packet (256 samples). Number of audio samples in a
+            single audio packet. Smaller packets provide lower latency at the
+            cost of increased packet overhead.
+          </p>
+          <p class="Pp">
+            Definition at line <b>243</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>handle_audio_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BASE_SEND_TIMEOUT___(5LL_*_">
+            <a class="permalink" href="#_define_BASE_SEND_TIMEOUT___(5LL_*_"
+              >#define BASE_SEND_TIMEOUT (5LL * <b>NS_PER_SEC_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Base send timeout in nanoseconds (5 seconds). Default timeout for
+            sending packets. Used as base value for calculating timeouts for
+            large packets.
+          </p>
+          <p class="Pp">
+            Definition at line <b>163</b> of file <b>packet.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_LARGE_PACKET_EXTRA_TIMEOUT_PER_MB___(800LL_*_"
+          >
+            <a
+              class="permalink"
+              href="#_define_LARGE_PACKET_EXTRA_TIMEOUT_PER_MB___(800LL_*_"
+              >#define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB (800LL *
+              <b>NS_PER_MS_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Extra timeout per MB for large packets (0.8 seconds per MB).
+            Additional timeout added per MB for large packets to prevent
+            premature timeout failures.
+          </p>
+          <p class="Pp">
+            Definition at line <b>173</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LARGE_PACKET_THRESHOLD___(100_*_1024)">
+            <a
+              class="permalink"
+              href="#_define_LARGE_PACKET_THRESHOLD___(100_*_1024)"
+              >#define LARGE_PACKET_THRESHOLD (100 * 1024)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Large packet size threshold (100KB). Packets larger than this
+            threshold are considered &quot;large&quot; and may receive extended
+            timeouts or compression treatment.
+          </p>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_CLIENT_TIMEOUT___(60LL_*_">
+            <a class="permalink" href="#_define_MAX_CLIENT_TIMEOUT___(60LL_*_"
+              >#define MAX_CLIENT_TIMEOUT (60LL * <b>NS_PER_SEC_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Maximum client timeout in nanoseconds (60 seconds). Maximum timeout
+            value for client operations. Prevents excessively long waits for
+            dead connections.
+          </p>
+          <p class="Pp">
+            Definition at line <b>193</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_ERROR_MESSAGE_LENGTH___4096">
+            <a class="permalink" href="#_define_MAX_ERROR_MESSAGE_LENGTH___4096"
+              >#define MAX_ERROR_MESSAGE_LENGTH 4096</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Maximum error message length (512 bytes). Error packets include a
+            message payload. This defines the maximum number of bytes allowed in
+            the message portion to prevent excessive allocations and potential
+            abuse.
+          </p>
+          <p class="Pp">
+            Definition at line <b>132</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_error()</b>,
+            <b>network_error_decode()</b>, <b>packet_parse_error_message()</b>,
+            and <b>packet_send_error()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_MAX_PACKET_SIZE___((size_t)5_*_1024_*_1024)"
+          >
+            <a
+              class="permalink"
+              href="#_define_MAX_PACKET_SIZE___((size_t)5_*_1024_*_1024)"
+              >#define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Maximum packet size (5MB). Absolute maximum size for any packet.
+            Packets larger than this are rejected to prevent memory exhaustion
+            attacks.
+          </p>
+          <p class="Pp">
+            Definition at line <b>123</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_audio_batch()</b>,
+            <b>acip_send_audio_opus_batch()</b>, <b>packet_decoder_feed()</b>,
+            <b>packet_send()</b>, <b>packet_send_via_transportv()</b>,
+            <b>receive_packet_secure_with_timeout()</b>, and
+            <b>send_packet_secure()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_REMOTE_LOG_MESSAGE_LENGTH___512">
+            <a
+              class="permalink"
+              href="#_define_MAX_REMOTE_LOG_MESSAGE_LENGTH___512"
+              >#define MAX_REMOTE_LOG_MESSAGE_LENGTH 512</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Maximum remote log message length (512 bytes). Remote logging
+            packets mirror the error packet structure but are intended for
+            diagnostic log forwarding between client and server. Limiting the
+            payload size keeps allocations predictable and prevents log flooding
+            over the network.
+          </p>
+          <p class="Pp">
+            Definition at line <b>142</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_remote_log_packet_from_client()</b>,
+            <b>packet_parse_remote_log()</b>, and
+            <b>packet_send_remote_log()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MIN_CLIENT_TIMEOUT___(10LL_*_">
+            <a class="permalink" href="#_define_MIN_CLIENT_TIMEOUT___(10LL_*_"
+              >#define MIN_CLIENT_TIMEOUT (10LL * <b>NS_PER_SEC_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Minimum client timeout in nanoseconds (10 seconds). Minimum timeout
+            value for client operations. Set to server timeout plus buffer for
+            reliable operation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>183</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_send_timeout_ns()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PACKET_MAGIC___">
+            <a class="permalink" href="#_define_PACKET_MAGIC___"
+              >#define PACKET_MAGIC <b>MAGIC_PACKET_VALID</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Packet magic number (alias for MAGIC_PACKET_VALID). Magic number
+            used in packet headers for packet validation. Defined once in
+            <b>util/magic.h</b> (0xA5C11C4A1 = &quot;ASCIICHAT&quot; in hex) and
+            imported here for use in packet validation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent"><b>MAGIC_PACKET_VALID</b></div>
+          <p class="Pp">
+            Definition at line <b>263</b> of file <b>packet.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_receive_packet()</b>,
+            <b>acip_packet_encrypt()</b>, <b>client_parse_packet()</b>,
+            <b>client_serialize_packet()</b>, <b>packet_decoder_feed()</b>,
+            <b>packet_queue_validate_packet()</b>, <b>packet_send()</b>,
+            <b>packet_send_via_transportv()</b>, <b>peer_crypto_receive()</b>,
+            <b>receive_packet_secure_with_timeout()</b>, and
+            <b>send_packet_secure()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>auth_failure_reason_t</b></h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Authentication failure reason flags. Bitmask enumeration for
+            authentication failure reasons. Multiple flags can be combined to
+            indicate multiple failure causes.
+          </p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="AUTH_FAIL_PASSWORD_REQUIRED">
+              <a class="permalink" href="#AUTH_FAIL_PASSWORD_REQUIRED"
+                ><b><i>AUTH_FAIL_PASSWORD_REQUIRED </i></b></a
+              >
+            </dt>
+            <dd>Server requires password but client didn't provide one.</dd>
+            <dt id="AUTH_FAIL_PASSWORD_INCORRECT">
+              <a class="permalink" href="#AUTH_FAIL_PASSWORD_INCORRECT"
+                ><b><i>AUTH_FAIL_PASSWORD_INCORRECT </i></b></a
+              >
+            </dt>
+            <dd>Password verification failed (incorrect password).</dd>
+            <dt id="AUTH_FAIL_CLIENT_KEY_REQUIRED">
+              <a class="permalink" href="#AUTH_FAIL_CLIENT_KEY_REQUIRED"
+                ><b><i>AUTH_FAIL_CLIENT_KEY_REQUIRED </i></b></a
+              >
+            </dt>
+            <dd>Server requires client key but client didn't provide one.</dd>
+            <dt id="AUTH_FAIL_CLIENT_KEY_REJECTED">
+              <a class="permalink" href="#AUTH_FAIL_CLIENT_KEY_REJECTED"
+                ><b><i>AUTH_FAIL_CLIENT_KEY_REJECTED </i></b></a
+              >
+            </dt>
+            <dd>Client key not in whitelist (access denied).</dd>
+            <dt id="AUTH_FAIL_SIGNATURE_INVALID">
+              <a class="permalink" href="#AUTH_FAIL_SIGNATURE_INVALID"
+                ><b><i>AUTH_FAIL_SIGNATURE_INVALID </i></b></a
+              >
+            </dt>
+            <dd>Client signature verification failed (invalid signature).</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>771</b> of file <b>packet.h</b>.
+          </p>
+          <pre>
+771              {
 773   AUTH_FAIL_PASSWORD_REQUIRED = 0x01,
 775   AUTH_FAIL_PASSWORD_INCORRECT = 0x02,
 777   AUTH_FAIL_CLIENT_KEY_REQUIRED = 0x04,
 779   AUTH_FAIL_CLIENT_KEY_REJECTED = 0x08,
 781   AUTH_FAIL_SIGNATURE_INVALID = 0x10
 782 } auth_failure_reason_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">enum <b>packet_type_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b></b></p>
-<p class="Pp">Network protocol packet type enumeration. Defines all packet types
-    used in the ascii-chat network protocol. Packet types are organized by
-    priority: protocol negotiation, then all cryptographic operations, then
-    media, control, audio, and messages.</p>
-<p class="Pp"></p>
-<p class="Pp">PACKET CATEGORIES (with expansion room):</p>
-<ul class="Bl-bullet">
-  <li>1: Protocol negotiation</li>
-  <li>2-1001: Cryptographic operations (1000 space reserved)</li>
-</ul>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>2: Client hello (expansion room: 3-101)</dd>
-  <dt> &#x2022;</dt>
-  <dd>102-201: Handshake/exchange (expansion room: 113-201)</dd>
-  <dt> &#x2022;</dt>
-  <dd>202-301: Rekeying (expansion room: 205-301)</dd>
-</dl>
-<ul class="Bl-bullet">
-  <li>1002-2001: Message packets (1000 space reserved)</li>
-  <li>2002-3001: Media frame packets (1000 space reserved)</li>
-  <li>3002-4001: Audio packets (1000 space reserved)</li>
-  <li>4002-5001: Control/state packets (1000 space reserved)</li>
-  <li>6001+: Discovery/ACIP protocol</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Crypto handshake packets (2-12) and rekey packets (14-16)
-  are ALWAYS sent unencrypted. Use packet_is_handshake_type() to check.
-<p class="Pp"></p>
-<p class="Pp">PACKET_TYPE_ENCRYPTED (13) is used for encrypted session packets
-    after handshake completion.</p>
-</div>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="PACKET_TYPE_PROTOCOL_VERSION"><a class="permalink" href="#PACKET_TYPE_PROTOCOL_VERSION"><b><i>PACKET_TYPE_PROTOCOL_VERSION
-    </i></b></a></dt>
-  <dd>Protocol version and capabilities negotiation.</dd>
-  <dt id="PACKET_TYPE_CRYPTO_CLIENT_HELLO"><a class="permalink" href="#PACKET_TYPE_CRYPTO_CLIENT_HELLO"><b><i>PACKET_TYPE_CRYPTO_CLIENT_HELLO
-    </i></b></a></dt>
-  <dd>Client -&gt; Server: Expected server key fingerprint for multi-key
-      selection (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_CAPABILITIES"><a class="permalink" href="#PACKET_TYPE_CRYPTO_CAPABILITIES"><b><i>PACKET_TYPE_CRYPTO_CAPABILITIES
-    </i></b></a></dt>
-  <dd>Client -&gt; Server: Supported crypto algorithms (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_PARAMETERS"><a class="permalink" href="#PACKET_TYPE_CRYPTO_PARAMETERS"><b><i>PACKET_TYPE_CRYPTO_PARAMETERS
-    </i></b></a></dt>
-  <dd>Server -&gt; Client: Chosen algorithms + data sizes (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT"><a class="permalink" href="#PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT"><b><i>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT
-    </i></b></a></dt>
-  <dd>Server -&gt; Client: {server_pubkey[32]} (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP"><a class="permalink" href="#PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP"><b><i>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP
-    </i></b></a></dt>
-  <dd>Client -&gt; Server: {client_pubkey[32]} (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_AUTH_CHALLENGE"><a class="permalink" href="#PACKET_TYPE_CRYPTO_AUTH_CHALLENGE"><b><i>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE
-    </i></b></a></dt>
-  <dd>Server -&gt; Client: {nonce[32]} (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_AUTH_RESPONSE"><a class="permalink" href="#PACKET_TYPE_CRYPTO_AUTH_RESPONSE"><b><i>PACKET_TYPE_CRYPTO_AUTH_RESPONSE
-    </i></b></a></dt>
-  <dd>Client -&gt; Server: {HMAC[32]} (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_AUTH_FAILED"><a class="permalink" href="#PACKET_TYPE_CRYPTO_AUTH_FAILED"><b><i>PACKET_TYPE_CRYPTO_AUTH_FAILED
-    </i></b></a></dt>
-  <dd>Server -&gt; Client: &quot;authentication failed&quot; (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP"><a class="permalink" href="#PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP"><b><i>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP
-    </i></b></a></dt>
-  <dd>Server -&gt; Client: {HMAC[32]} server proves knowledge
-    (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE"><a class="permalink" href="#PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE"><b><i>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE
-    </i></b></a></dt>
-  <dd>Server -&gt; Client: &quot;encryption ready&quot; (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_NO_ENCRYPTION"><a class="permalink" href="#PACKET_TYPE_CRYPTO_NO_ENCRYPTION"><b><i>PACKET_TYPE_CRYPTO_NO_ENCRYPTION
-    </i></b></a></dt>
-  <dd>Client -&gt; Server: &quot;I want to proceed without encryption&quot;
-      (UNENCRYPTED).</dd>
-  <dt id="PACKET_TYPE_ENCRYPTED"><a class="permalink" href="#PACKET_TYPE_ENCRYPTED"><b><i>PACKET_TYPE_ENCRYPTED
-    </i></b></a></dt>
-  <dd>Encrypted packet (after handshake completion).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_REKEY_REQUEST"><a class="permalink" href="#PACKET_TYPE_CRYPTO_REKEY_REQUEST"><b><i>PACKET_TYPE_CRYPTO_REKEY_REQUEST
-    </i></b></a></dt>
-  <dd>Initiator -&gt; Responder: {new_ephemeral_pk[32]} (UNENCRYPTED during
-      rekey).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_REKEY_RESPONSE"><a class="permalink" href="#PACKET_TYPE_CRYPTO_REKEY_RESPONSE"><b><i>PACKET_TYPE_CRYPTO_REKEY_RESPONSE
-    </i></b></a></dt>
-  <dd>Responder -&gt; Initiator: {new_ephemeral_pk[32]} (UNENCRYPTED during
-      rekey).</dd>
-  <dt id="PACKET_TYPE_CRYPTO_REKEY_COMPLETE"><a class="permalink" href="#PACKET_TYPE_CRYPTO_REKEY_COMPLETE"><b><i>PACKET_TYPE_CRYPTO_REKEY_COMPLETE
-    </i></b></a></dt>
-  <dd>Initiator -&gt; Responder: Empty (encrypted with NEW key, but still
-      handshake).</dd>
-  <dt id="PACKET_TYPE_SIZE_MESSAGE"><a class="permalink" href="#PACKET_TYPE_SIZE_MESSAGE"><b><i>PACKET_TYPE_SIZE_MESSAGE
-    </i></b></a></dt>
-  <dd>Terminal size message.</dd>
-  <dt id="PACKET_TYPE_AUDIO_MESSAGE"><a class="permalink" href="#PACKET_TYPE_AUDIO_MESSAGE"><b><i>PACKET_TYPE_AUDIO_MESSAGE
-    </i></b></a></dt>
-  <dd>Audio message.</dd>
-  <dt id="PACKET_TYPE_TEXT_MESSAGE"><a class="permalink" href="#PACKET_TYPE_TEXT_MESSAGE"><b><i>PACKET_TYPE_TEXT_MESSAGE
-    </i></b></a></dt>
-  <dd>Text message.</dd>
-  <dt id="PACKET_TYPE_ERROR_MESSAGE"><a class="permalink" href="#PACKET_TYPE_ERROR_MESSAGE"><b><i>PACKET_TYPE_ERROR_MESSAGE
-    </i></b></a></dt>
-  <dd>Error packet with <b>asciichat_error_t</b> code and human-readable
-      message.</dd>
-  <dt id="PACKET_TYPE_REMOTE_LOG"><a class="permalink" href="#PACKET_TYPE_REMOTE_LOG"><b><i>PACKET_TYPE_REMOTE_LOG
-    </i></b></a></dt>
-  <dd>Bidirectional remote logging packet.</dd>
-  <dt id="PACKET_TYPE_ASCII_FRAME"><a class="permalink" href="#PACKET_TYPE_ASCII_FRAME"><b><i>PACKET_TYPE_ASCII_FRAME
-    </i></b></a></dt>
-  <dd>Complete ASCII frame with all metadata.</dd>
-  <dt id="PACKET_TYPE_IMAGE_FRAME"><a class="permalink" href="#PACKET_TYPE_IMAGE_FRAME"><b><i>PACKET_TYPE_IMAGE_FRAME
-    </i></b></a></dt>
-  <dd>Complete RGB image with dimensions.</dd>
-  <dt id="PACKET_TYPE_IMAGE_FRAME_H265"><a class="permalink" href="#PACKET_TYPE_IMAGE_FRAME_H265"><b><i>PACKET_TYPE_IMAGE_FRAME_H265
-    </i></b></a></dt>
-  <dd>H.265-encoded frame from client (HEVC/H.265 codec).</dd>
-  <dt id="PACKET_TYPE_IMAGE_FRAME_H264"><a class="permalink" href="#PACKET_TYPE_IMAGE_FRAME_H264"><b><i>PACKET_TYPE_IMAGE_FRAME_H264
-    </i></b></a></dt>
-  <dd>H.264 Annex B access unit: flags:u8, width:u16be, height:u16be, data.</dd>
-  <dt id="PACKET_TYPE_AUDIO_BATCH"><a class="permalink" href="#PACKET_TYPE_AUDIO_BATCH"><b><i>PACKET_TYPE_AUDIO_BATCH
-    </i></b></a></dt>
-  <dd>Batched audio packets for efficiency.</dd>
-  <dt id="PACKET_TYPE_AUDIO_OPUS_BATCH"><a class="permalink" href="#PACKET_TYPE_AUDIO_OPUS_BATCH"><b><i>PACKET_TYPE_AUDIO_OPUS_BATCH
-    </i></b></a></dt>
-  <dd>Batched Opus-encoded audio frames.</dd>
-  <dt id="PACKET_TYPE_CLIENT_CAPABILITIES"><a class="permalink" href="#PACKET_TYPE_CLIENT_CAPABILITIES"><b><i>PACKET_TYPE_CLIENT_CAPABILITIES
-    </i></b></a></dt>
-  <dd>Client reports terminal capabilities.</dd>
-  <dt id="PACKET_TYPE_PING"><a class="permalink" href="#PACKET_TYPE_PING"><b><i>PACKET_TYPE_PING
-    </i></b></a></dt>
-  <dd>Keepalive ping packet.</dd>
-  <dt id="PACKET_TYPE_PONG"><a class="permalink" href="#PACKET_TYPE_PONG"><b><i>PACKET_TYPE_PONG
-    </i></b></a></dt>
-  <dd>Keepalive pong response.</dd>
-  <dt id="PACKET_TYPE_CLIENT_JOIN"><a class="permalink" href="#PACKET_TYPE_CLIENT_JOIN"><b><i>PACKET_TYPE_CLIENT_JOIN
-    </i></b></a></dt>
-  <dd>Client announces capability to send media.</dd>
-  <dt id="PACKET_TYPE_CLIENT_LEAVE"><a class="permalink" href="#PACKET_TYPE_CLIENT_LEAVE"><b><i>PACKET_TYPE_CLIENT_LEAVE
-    </i></b></a></dt>
-  <dd>Clean disconnect notification.</dd>
-  <dt id="PACKET_TYPE_STREAM_START"><a class="permalink" href="#PACKET_TYPE_STREAM_START"><b><i>PACKET_TYPE_STREAM_START
-    </i></b></a></dt>
-  <dd>Client requests to start sending video/audio.</dd>
-  <dt id="PACKET_TYPE_STREAM_STOP"><a class="permalink" href="#PACKET_TYPE_STREAM_STOP"><b><i>PACKET_TYPE_STREAM_STOP
-    </i></b></a></dt>
-  <dd>Client stops sending media.</dd>
-  <dt id="PACKET_TYPE_CLEAR_CONSOLE"><a class="permalink" href="#PACKET_TYPE_CLEAR_CONSOLE"><b><i>PACKET_TYPE_CLEAR_CONSOLE
-    </i></b></a></dt>
-  <dd>Server tells client to clear console.</dd>
-  <dt id="PACKET_TYPE_SERVER_STATE"><a class="permalink" href="#PACKET_TYPE_SERVER_STATE"><b><i>PACKET_TYPE_SERVER_STATE
-    </i></b></a></dt>
-  <dd>Server sends current state to clients.</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_CREATE"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_CREATE"><b><i>PACKET_TYPE_ACIP_SESSION_CREATE
-    </i></b></a></dt>
-  <dd>Create new session (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_CREATED"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_CREATED"><b><i>PACKET_TYPE_ACIP_SESSION_CREATED
-    </i></b></a></dt>
-  <dd>Session created response (Discovery Server -&gt; Client).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_LOOKUP"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_LOOKUP"><b><i>PACKET_TYPE_ACIP_SESSION_LOOKUP
-    </i></b></a></dt>
-  <dd>Lookup session by string (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_INFO"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_INFO"><b><i>PACKET_TYPE_ACIP_SESSION_INFO
-    </i></b></a></dt>
-  <dd>Session info response (Discovery Server -&gt; Client).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_JOIN"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_JOIN"><b><i>PACKET_TYPE_ACIP_SESSION_JOIN
-    </i></b></a></dt>
-  <dd>Join existing session (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_JOINED"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_JOINED"><b><i>PACKET_TYPE_ACIP_SESSION_JOINED
-    </i></b></a></dt>
-  <dd>Session joined response (Discovery Server -&gt; Client).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_LEAVE"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_LEAVE"><b><i>PACKET_TYPE_ACIP_SESSION_LEAVE
-    </i></b></a></dt>
-  <dd>Leave session (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_END"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_END"><b><i>PACKET_TYPE_ACIP_SESSION_END
-    </i></b></a></dt>
-  <dd>End session (Host -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_SESSION_RECONNECT"><a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_RECONNECT"><b><i>PACKET_TYPE_ACIP_SESSION_RECONNECT
-    </i></b></a></dt>
-  <dd>Reconnect to session (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_WEBRTC_SDP"><a class="permalink" href="#PACKET_TYPE_ACIP_WEBRTC_SDP"><b><i>PACKET_TYPE_ACIP_WEBRTC_SDP
-    </i></b></a></dt>
-  <dd>WebRTC SDP offer/answer (bidirectional).</dd>
-  <dt id="PACKET_TYPE_ACIP_WEBRTC_ICE"><a class="permalink" href="#PACKET_TYPE_ACIP_WEBRTC_ICE"><b><i>PACKET_TYPE_ACIP_WEBRTC_ICE
-    </i></b></a></dt>
-  <dd>WebRTC ICE candidate (bidirectional).</dd>
-  <dt id="PACKET_TYPE_ACIP_STRING_RESERVE"><a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RESERVE"><b><i>PACKET_TYPE_ACIP_STRING_RESERVE
-    </i></b></a></dt>
-  <dd>Reserve session string (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_STRING_RESERVED"><a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RESERVED"><b><i>PACKET_TYPE_ACIP_STRING_RESERVED
-    </i></b></a></dt>
-  <dd>String reserved response (Discovery Server -&gt; Client).</dd>
-  <dt id="PACKET_TYPE_ACIP_STRING_RENEW"><a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RENEW"><b><i>PACKET_TYPE_ACIP_STRING_RENEW
-    </i></b></a></dt>
-  <dd>Renew string reservation (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_STRING_RELEASE"><a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RELEASE"><b><i>PACKET_TYPE_ACIP_STRING_RELEASE
-    </i></b></a></dt>
-  <dd>Release string reservation (Client -&gt; Discovery Server).</dd>
-  <dt id="PACKET_TYPE_ACIP_PARTICIPANT_LIST"><a class="permalink" href="#PACKET_TYPE_ACIP_PARTICIPANT_LIST"><b><i>PACKET_TYPE_ACIP_PARTICIPANT_LIST
-    </i></b></a></dt>
-  <dd>Participant list with ring order (ACDS -&gt; Participants).</dd>
-  <dt id="PACKET_TYPE_ACIP_RING_COLLECT"><a class="permalink" href="#PACKET_TYPE_ACIP_RING_COLLECT"><b><i>PACKET_TYPE_ACIP_RING_COLLECT
-    </i></b></a></dt>
-  <dd>Ring collect request (Participant -&gt; Next Participant).</dd>
-  <dt id="PACKET_TYPE_ACIP_NETWORK_QUALITY"><a class="permalink" href="#PACKET_TYPE_ACIP_NETWORK_QUALITY"><b><i>PACKET_TYPE_ACIP_NETWORK_QUALITY
-    </i></b></a></dt>
-  <dd>NETWORK_QUALITY exchange (unified packet for all quality metrics).</dd>
-  <dt id="PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT"><a class="permalink" href="#PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT"><b><i>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT
-    </i></b></a></dt>
-  <dd>Host announcement (Participant -&gt; ACDS, &quot;I won
-    negotiation&quot;).</dd>
-  <dt id="PACKET_TYPE_ACIP_HOST_DESIGNATED"><a class="permalink" href="#PACKET_TYPE_ACIP_HOST_DESIGNATED"><b><i>PACKET_TYPE_ACIP_HOST_DESIGNATED
-    </i></b></a></dt>
-  <dd>Host designated (ACDS -&gt; All Participants).</dd>
-  <dt id="PACKET_TYPE_ACIP_SETTINGS_SYNC"><a class="permalink" href="#PACKET_TYPE_ACIP_SETTINGS_SYNC"><b><i>PACKET_TYPE_ACIP_SETTINGS_SYNC
-    </i></b></a></dt>
-  <dd>Settings sync (Initiator -&gt; Host -&gt; All Participants).</dd>
-  <dt id="PACKET_TYPE_ACIP_SETTINGS_ACK"><a class="permalink" href="#PACKET_TYPE_ACIP_SETTINGS_ACK"><b><i>PACKET_TYPE_ACIP_SETTINGS_ACK
-    </i></b></a></dt>
-  <dd>Settings acknowledgment (Participant -&gt; Initiator).</dd>
-  <dt id="PACKET_TYPE_ACIP_HOST_LOST"><a class="permalink" href="#PACKET_TYPE_ACIP_HOST_LOST"><b><i>PACKET_TYPE_ACIP_HOST_LOST
-    </i></b></a></dt>
-  <dd>Host lost notification - lightweight (Participant -&gt; ACDS).</dd>
-  <dt id="PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED"><a class="permalink" href="#PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED"><b><i>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED
-    </i></b></a></dt>
-  <dd>Future host elected announcement (Quorum Leader -&gt; ACDS -&gt; All
-      Participants).</dd>
-  <dt id="PACKET_TYPE_ACIP_PARTICIPANT_JOINED"><a class="permalink" href="#PACKET_TYPE_ACIP_PARTICIPANT_JOINED"><b><i>PACKET_TYPE_ACIP_PARTICIPANT_JOINED
-    </i></b></a></dt>
-  <dd>Participant joined notification (ACDS -&gt; Existing Participants).</dd>
-  <dt id="PACKET_TYPE_ACIP_PARTICIPANT_LEFT"><a class="permalink" href="#PACKET_TYPE_ACIP_PARTICIPANT_LEFT"><b><i>PACKET_TYPE_ACIP_PARTICIPANT_LEFT
-    </i></b></a></dt>
-  <dd>Participant left notification (ACDS -&gt; Remaining Participants).</dd>
-  <dt id="PACKET_TYPE_ACIP_BANDWIDTH_TEST"><a class="permalink" href="#PACKET_TYPE_ACIP_BANDWIDTH_TEST"><b><i>PACKET_TYPE_ACIP_BANDWIDTH_TEST
-    </i></b></a></dt>
-  <dd>Bandwidth test request (Client -&gt; ACDS).</dd>
-  <dt id="PACKET_TYPE_ACIP_BANDWIDTH_RESULT"><a class="permalink" href="#PACKET_TYPE_ACIP_BANDWIDTH_RESULT"><b><i>PACKET_TYPE_ACIP_BANDWIDTH_RESULT
-    </i></b></a></dt>
-  <dd>Bandwidth test results (ACDS -&gt; Client).</dd>
-  <dt id="PACKET_TYPE_ACIP_BROADCAST_ACK"><a class="permalink" href="#PACKET_TYPE_ACIP_BROADCAST_ACK"><b><i>PACKET_TYPE_ACIP_BROADCAST_ACK
-    </i></b></a></dt>
-  <dd>Broadcast acknowledgment for reliable delivery.</dd>
-  <dt id="PACKET_TYPE_RING_MEMBERS"><a class="permalink" href="#PACKET_TYPE_RING_MEMBERS"><b><i>PACKET_TYPE_RING_MEMBERS
-    </i></b></a></dt>
-  <dd>Ring member list announcement (ACDS -&gt; All Participants).</dd>
-  <dt id="PACKET_TYPE_STATS_COLLECTION_START"><a class="permalink" href="#PACKET_TYPE_STATS_COLLECTION_START"><b><i>PACKET_TYPE_STATS_COLLECTION_START
-    </i></b></a></dt>
-  <dd>Start statistics collection phase (Coordinator -&gt; All
-    Participants).</dd>
-  <dt id="PACKET_TYPE_STATS_UPDATE"><a class="permalink" href="#PACKET_TYPE_STATS_UPDATE"><b><i>PACKET_TYPE_STATS_UPDATE
-    </i></b></a></dt>
-  <dd>Statistics update during collection phase (Participant -&gt; Next
-      Participant).</dd>
-  <dt id="PACKET_TYPE_RING_ELECTION_RESULT"><a class="permalink" href="#PACKET_TYPE_RING_ELECTION_RESULT"><b><i>PACKET_TYPE_RING_ELECTION_RESULT
-    </i></b></a></dt>
-  <dd>Final election result (Quorum Leader -&gt; All Participants).</dd>
-  <dt id="PACKET_TYPE_STATS_ACK"><a class="permalink" href="#PACKET_TYPE_STATS_ACK"><b><i>PACKET_TYPE_STATS_ACK
-    </i></b></a></dt>
-  <dd>Acknowledgment of statistics update (Participant -&gt; Sender).</dd>
-  <dt id="PACKET_TYPE_ACIP_DISCOVERY_PING"><a class="permalink" href="#PACKET_TYPE_ACIP_DISCOVERY_PING"><b><i>PACKET_TYPE_ACIP_DISCOVERY_PING
-    </i></b></a></dt>
-  <dd>Discovery server ping (keepalive).</dd>
-  <dt id="PACKET_TYPE_ACIP_ERROR"><a class="permalink" href="#PACKET_TYPE_ACIP_ERROR"><b><i>PACKET_TYPE_ACIP_ERROR
-    </i></b></a></dt>
-  <dd>Generic error response (Discovery Server -&gt; Client).</dd>
-</dl>
-<p class="Pp">Definition at line <b>294</b> of file <b>packet.h</b>.</p>
-<pre>294              {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>packet_type_t</b></h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/packet/packet.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Network protocol packet type enumeration. Defines all packet types
+            used in the ascii-chat network protocol. Packet types are organized
+            by priority: protocol negotiation, then all cryptographic
+            operations, then media, control, audio, and messages.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">PACKET CATEGORIES (with expansion room):</p>
+          <ul class="Bl-bullet">
+            <li>1: Protocol negotiation</li>
+            <li>2-1001: Cryptographic operations (1000 space reserved)</li>
+          </ul>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>2: Client hello (expansion room: 3-101)</dd>
+            <dt>&#x2022;</dt>
+            <dd>102-201: Handshake/exchange (expansion room: 113-201)</dd>
+            <dt>&#x2022;</dt>
+            <dd>202-301: Rekeying (expansion room: 205-301)</dd>
+          </dl>
+          <ul class="Bl-bullet">
+            <li>1002-2001: Message packets (1000 space reserved)</li>
+            <li>2002-3001: Media frame packets (1000 space reserved)</li>
+            <li>3002-4001: Audio packets (1000 space reserved)</li>
+            <li>4002-5001: Control/state packets (1000 space reserved)</li>
+            <li>6001+: Discovery/ACIP protocol</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Crypto handshake packets (2-12) and rekey packets (14-16) are ALWAYS
+            sent unencrypted. Use packet_is_handshake_type() to check.
+            <p class="Pp"></p>
+            <p class="Pp">
+              PACKET_TYPE_ENCRYPTED (13) is used for encrypted session packets
+              after handshake completion.
+            </p>
+          </div>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="PACKET_TYPE_PROTOCOL_VERSION">
+              <a class="permalink" href="#PACKET_TYPE_PROTOCOL_VERSION"
+                ><b><i>PACKET_TYPE_PROTOCOL_VERSION </i></b></a
+              >
+            </dt>
+            <dd>Protocol version and capabilities negotiation.</dd>
+            <dt id="PACKET_TYPE_CRYPTO_CLIENT_HELLO">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_CLIENT_HELLO"
+                ><b><i>PACKET_TYPE_CRYPTO_CLIENT_HELLO </i></b></a
+              >
+            </dt>
+            <dd>
+              Client -&gt; Server: Expected server key fingerprint for multi-key
+              selection (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_CAPABILITIES">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_CAPABILITIES"
+                ><b><i>PACKET_TYPE_CRYPTO_CAPABILITIES </i></b></a
+              >
+            </dt>
+            <dd>
+              Client -&gt; Server: Supported crypto algorithms (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_PARAMETERS">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_PARAMETERS"
+                ><b><i>PACKET_TYPE_CRYPTO_PARAMETERS </i></b></a
+              >
+            </dt>
+            <dd>
+              Server -&gt; Client: Chosen algorithms + data sizes (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT"
+                ><b><i>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT </i></b></a
+              >
+            </dt>
+            <dd>Server -&gt; Client: {server_pubkey[32]} (UNENCRYPTED).</dd>
+            <dt id="PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP"
+                ><b><i>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP </i></b></a
+              >
+            </dt>
+            <dd>Client -&gt; Server: {client_pubkey[32]} (UNENCRYPTED).</dd>
+            <dt id="PACKET_TYPE_CRYPTO_AUTH_CHALLENGE">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_AUTH_CHALLENGE"
+                ><b><i>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE </i></b></a
+              >
+            </dt>
+            <dd>Server -&gt; Client: {nonce[32]} (UNENCRYPTED).</dd>
+            <dt id="PACKET_TYPE_CRYPTO_AUTH_RESPONSE">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_AUTH_RESPONSE"
+                ><b><i>PACKET_TYPE_CRYPTO_AUTH_RESPONSE </i></b></a
+              >
+            </dt>
+            <dd>Client -&gt; Server: {HMAC[32]} (UNENCRYPTED).</dd>
+            <dt id="PACKET_TYPE_CRYPTO_AUTH_FAILED">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_AUTH_FAILED"
+                ><b><i>PACKET_TYPE_CRYPTO_AUTH_FAILED </i></b></a
+              >
+            </dt>
+            <dd>
+              Server -&gt; Client: &quot;authentication failed&quot;
+              (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP"
+                ><b><i>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP </i></b></a
+              >
+            </dt>
+            <dd>
+              Server -&gt; Client: {HMAC[32]} server proves knowledge
+              (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE"
+                ><b><i>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE </i></b></a
+              >
+            </dt>
+            <dd>
+              Server -&gt; Client: &quot;encryption ready&quot; (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_NO_ENCRYPTION">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_NO_ENCRYPTION"
+                ><b><i>PACKET_TYPE_CRYPTO_NO_ENCRYPTION </i></b></a
+              >
+            </dt>
+            <dd>
+              Client -&gt; Server: &quot;I want to proceed without
+              encryption&quot; (UNENCRYPTED).
+            </dd>
+            <dt id="PACKET_TYPE_ENCRYPTED">
+              <a class="permalink" href="#PACKET_TYPE_ENCRYPTED"
+                ><b><i>PACKET_TYPE_ENCRYPTED </i></b></a
+              >
+            </dt>
+            <dd>Encrypted packet (after handshake completion).</dd>
+            <dt id="PACKET_TYPE_CRYPTO_REKEY_REQUEST">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_REKEY_REQUEST"
+                ><b><i>PACKET_TYPE_CRYPTO_REKEY_REQUEST </i></b></a
+              >
+            </dt>
+            <dd>
+              Initiator -&gt; Responder: {new_ephemeral_pk[32]} (UNENCRYPTED
+              during rekey).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_REKEY_RESPONSE">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_REKEY_RESPONSE"
+                ><b><i>PACKET_TYPE_CRYPTO_REKEY_RESPONSE </i></b></a
+              >
+            </dt>
+            <dd>
+              Responder -&gt; Initiator: {new_ephemeral_pk[32]} (UNENCRYPTED
+              during rekey).
+            </dd>
+            <dt id="PACKET_TYPE_CRYPTO_REKEY_COMPLETE">
+              <a class="permalink" href="#PACKET_TYPE_CRYPTO_REKEY_COMPLETE"
+                ><b><i>PACKET_TYPE_CRYPTO_REKEY_COMPLETE </i></b></a
+              >
+            </dt>
+            <dd>
+              Initiator -&gt; Responder: Empty (encrypted with NEW key, but
+              still handshake).
+            </dd>
+            <dt id="PACKET_TYPE_SIZE_MESSAGE">
+              <a class="permalink" href="#PACKET_TYPE_SIZE_MESSAGE"
+                ><b><i>PACKET_TYPE_SIZE_MESSAGE </i></b></a
+              >
+            </dt>
+            <dd>Terminal size message.</dd>
+            <dt id="PACKET_TYPE_AUDIO_MESSAGE">
+              <a class="permalink" href="#PACKET_TYPE_AUDIO_MESSAGE"
+                ><b><i>PACKET_TYPE_AUDIO_MESSAGE </i></b></a
+              >
+            </dt>
+            <dd>Audio message.</dd>
+            <dt id="PACKET_TYPE_TEXT_MESSAGE">
+              <a class="permalink" href="#PACKET_TYPE_TEXT_MESSAGE"
+                ><b><i>PACKET_TYPE_TEXT_MESSAGE </i></b></a
+              >
+            </dt>
+            <dd>Text message.</dd>
+            <dt id="PACKET_TYPE_ERROR_MESSAGE">
+              <a class="permalink" href="#PACKET_TYPE_ERROR_MESSAGE"
+                ><b><i>PACKET_TYPE_ERROR_MESSAGE </i></b></a
+              >
+            </dt>
+            <dd>
+              Error packet with <b>asciichat_error_t</b> code and human-readable
+              message.
+            </dd>
+            <dt id="PACKET_TYPE_REMOTE_LOG">
+              <a class="permalink" href="#PACKET_TYPE_REMOTE_LOG"
+                ><b><i>PACKET_TYPE_REMOTE_LOG </i></b></a
+              >
+            </dt>
+            <dd>Bidirectional remote logging packet.</dd>
+            <dt id="PACKET_TYPE_ASCII_FRAME">
+              <a class="permalink" href="#PACKET_TYPE_ASCII_FRAME"
+                ><b><i>PACKET_TYPE_ASCII_FRAME </i></b></a
+              >
+            </dt>
+            <dd>Complete ASCII frame with all metadata.</dd>
+            <dt id="PACKET_TYPE_IMAGE_FRAME">
+              <a class="permalink" href="#PACKET_TYPE_IMAGE_FRAME"
+                ><b><i>PACKET_TYPE_IMAGE_FRAME </i></b></a
+              >
+            </dt>
+            <dd>Complete RGB image with dimensions.</dd>
+            <dt id="PACKET_TYPE_IMAGE_FRAME_H265">
+              <a class="permalink" href="#PACKET_TYPE_IMAGE_FRAME_H265"
+                ><b><i>PACKET_TYPE_IMAGE_FRAME_H265 </i></b></a
+              >
+            </dt>
+            <dd>H.265-encoded frame from client (HEVC/H.265 codec).</dd>
+            <dt id="PACKET_TYPE_IMAGE_FRAME_H264">
+              <a class="permalink" href="#PACKET_TYPE_IMAGE_FRAME_H264"
+                ><b><i>PACKET_TYPE_IMAGE_FRAME_H264 </i></b></a
+              >
+            </dt>
+            <dd>
+              H.264 Annex B access unit: flags:u8, width:u16be, height:u16be,
+              data.
+            </dd>
+            <dt id="PACKET_TYPE_AUDIO_BATCH">
+              <a class="permalink" href="#PACKET_TYPE_AUDIO_BATCH"
+                ><b><i>PACKET_TYPE_AUDIO_BATCH </i></b></a
+              >
+            </dt>
+            <dd>Batched audio packets for efficiency.</dd>
+            <dt id="PACKET_TYPE_AUDIO_OPUS_BATCH">
+              <a class="permalink" href="#PACKET_TYPE_AUDIO_OPUS_BATCH"
+                ><b><i>PACKET_TYPE_AUDIO_OPUS_BATCH </i></b></a
+              >
+            </dt>
+            <dd>Batched Opus-encoded audio frames.</dd>
+            <dt id="PACKET_TYPE_CLIENT_CAPABILITIES">
+              <a class="permalink" href="#PACKET_TYPE_CLIENT_CAPABILITIES"
+                ><b><i>PACKET_TYPE_CLIENT_CAPABILITIES </i></b></a
+              >
+            </dt>
+            <dd>Client reports terminal capabilities.</dd>
+            <dt id="PACKET_TYPE_PING">
+              <a class="permalink" href="#PACKET_TYPE_PING"
+                ><b><i>PACKET_TYPE_PING </i></b></a
+              >
+            </dt>
+            <dd>Keepalive ping packet.</dd>
+            <dt id="PACKET_TYPE_PONG">
+              <a class="permalink" href="#PACKET_TYPE_PONG"
+                ><b><i>PACKET_TYPE_PONG </i></b></a
+              >
+            </dt>
+            <dd>Keepalive pong response.</dd>
+            <dt id="PACKET_TYPE_CLIENT_JOIN">
+              <a class="permalink" href="#PACKET_TYPE_CLIENT_JOIN"
+                ><b><i>PACKET_TYPE_CLIENT_JOIN </i></b></a
+              >
+            </dt>
+            <dd>Client announces capability to send media.</dd>
+            <dt id="PACKET_TYPE_CLIENT_LEAVE">
+              <a class="permalink" href="#PACKET_TYPE_CLIENT_LEAVE"
+                ><b><i>PACKET_TYPE_CLIENT_LEAVE </i></b></a
+              >
+            </dt>
+            <dd>Clean disconnect notification.</dd>
+            <dt id="PACKET_TYPE_STREAM_START">
+              <a class="permalink" href="#PACKET_TYPE_STREAM_START"
+                ><b><i>PACKET_TYPE_STREAM_START </i></b></a
+              >
+            </dt>
+            <dd>Client requests to start sending video/audio.</dd>
+            <dt id="PACKET_TYPE_STREAM_STOP">
+              <a class="permalink" href="#PACKET_TYPE_STREAM_STOP"
+                ><b><i>PACKET_TYPE_STREAM_STOP </i></b></a
+              >
+            </dt>
+            <dd>Client stops sending media.</dd>
+            <dt id="PACKET_TYPE_CLEAR_CONSOLE">
+              <a class="permalink" href="#PACKET_TYPE_CLEAR_CONSOLE"
+                ><b><i>PACKET_TYPE_CLEAR_CONSOLE </i></b></a
+              >
+            </dt>
+            <dd>Server tells client to clear console.</dd>
+            <dt id="PACKET_TYPE_SERVER_STATE">
+              <a class="permalink" href="#PACKET_TYPE_SERVER_STATE"
+                ><b><i>PACKET_TYPE_SERVER_STATE </i></b></a
+              >
+            </dt>
+            <dd>Server sends current state to clients.</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_CREATE">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_CREATE"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_CREATE </i></b></a
+              >
+            </dt>
+            <dd>Create new session (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_CREATED">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_CREATED"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_CREATED </i></b></a
+              >
+            </dt>
+            <dd>Session created response (Discovery Server -&gt; Client).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_LOOKUP">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_LOOKUP"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_LOOKUP </i></b></a
+              >
+            </dt>
+            <dd>Lookup session by string (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_INFO">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_INFO"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_INFO </i></b></a
+              >
+            </dt>
+            <dd>Session info response (Discovery Server -&gt; Client).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_JOIN">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_JOIN"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_JOIN </i></b></a
+              >
+            </dt>
+            <dd>Join existing session (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_JOINED">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_JOINED"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_JOINED </i></b></a
+              >
+            </dt>
+            <dd>Session joined response (Discovery Server -&gt; Client).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_LEAVE">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_LEAVE"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_LEAVE </i></b></a
+              >
+            </dt>
+            <dd>Leave session (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_END">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_END"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_END </i></b></a
+              >
+            </dt>
+            <dd>End session (Host -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_SESSION_RECONNECT">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SESSION_RECONNECT"
+                ><b><i>PACKET_TYPE_ACIP_SESSION_RECONNECT </i></b></a
+              >
+            </dt>
+            <dd>Reconnect to session (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_WEBRTC_SDP">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_WEBRTC_SDP"
+                ><b><i>PACKET_TYPE_ACIP_WEBRTC_SDP </i></b></a
+              >
+            </dt>
+            <dd>WebRTC SDP offer/answer (bidirectional).</dd>
+            <dt id="PACKET_TYPE_ACIP_WEBRTC_ICE">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_WEBRTC_ICE"
+                ><b><i>PACKET_TYPE_ACIP_WEBRTC_ICE </i></b></a
+              >
+            </dt>
+            <dd>WebRTC ICE candidate (bidirectional).</dd>
+            <dt id="PACKET_TYPE_ACIP_STRING_RESERVE">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RESERVE"
+                ><b><i>PACKET_TYPE_ACIP_STRING_RESERVE </i></b></a
+              >
+            </dt>
+            <dd>Reserve session string (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_STRING_RESERVED">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RESERVED"
+                ><b><i>PACKET_TYPE_ACIP_STRING_RESERVED </i></b></a
+              >
+            </dt>
+            <dd>String reserved response (Discovery Server -&gt; Client).</dd>
+            <dt id="PACKET_TYPE_ACIP_STRING_RENEW">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RENEW"
+                ><b><i>PACKET_TYPE_ACIP_STRING_RENEW </i></b></a
+              >
+            </dt>
+            <dd>Renew string reservation (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_STRING_RELEASE">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_STRING_RELEASE"
+                ><b><i>PACKET_TYPE_ACIP_STRING_RELEASE </i></b></a
+              >
+            </dt>
+            <dd>Release string reservation (Client -&gt; Discovery Server).</dd>
+            <dt id="PACKET_TYPE_ACIP_PARTICIPANT_LIST">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_PARTICIPANT_LIST"
+                ><b><i>PACKET_TYPE_ACIP_PARTICIPANT_LIST </i></b></a
+              >
+            </dt>
+            <dd>Participant list with ring order (ACDS -&gt; Participants).</dd>
+            <dt id="PACKET_TYPE_ACIP_RING_COLLECT">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_RING_COLLECT"
+                ><b><i>PACKET_TYPE_ACIP_RING_COLLECT </i></b></a
+              >
+            </dt>
+            <dd>Ring collect request (Participant -&gt; Next Participant).</dd>
+            <dt id="PACKET_TYPE_ACIP_NETWORK_QUALITY">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_NETWORK_QUALITY"
+                ><b><i>PACKET_TYPE_ACIP_NETWORK_QUALITY </i></b></a
+              >
+            </dt>
+            <dd>
+              NETWORK_QUALITY exchange (unified packet for all quality metrics).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT"
+                ><b><i>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT </i></b></a
+              >
+            </dt>
+            <dd>
+              Host announcement (Participant -&gt; ACDS, &quot;I won
+              negotiation&quot;).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_HOST_DESIGNATED">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_HOST_DESIGNATED"
+                ><b><i>PACKET_TYPE_ACIP_HOST_DESIGNATED </i></b></a
+              >
+            </dt>
+            <dd>Host designated (ACDS -&gt; All Participants).</dd>
+            <dt id="PACKET_TYPE_ACIP_SETTINGS_SYNC">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SETTINGS_SYNC"
+                ><b><i>PACKET_TYPE_ACIP_SETTINGS_SYNC </i></b></a
+              >
+            </dt>
+            <dd>
+              Settings sync (Initiator -&gt; Host -&gt; All Participants).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_SETTINGS_ACK">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_SETTINGS_ACK"
+                ><b><i>PACKET_TYPE_ACIP_SETTINGS_ACK </i></b></a
+              >
+            </dt>
+            <dd>Settings acknowledgment (Participant -&gt; Initiator).</dd>
+            <dt id="PACKET_TYPE_ACIP_HOST_LOST">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_HOST_LOST"
+                ><b><i>PACKET_TYPE_ACIP_HOST_LOST </i></b></a
+              >
+            </dt>
+            <dd>
+              Host lost notification - lightweight (Participant -&gt; ACDS).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED"
+                ><b><i>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED </i></b></a
+              >
+            </dt>
+            <dd>
+              Future host elected announcement (Quorum Leader -&gt; ACDS -&gt;
+              All Participants).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_PARTICIPANT_JOINED">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_PARTICIPANT_JOINED"
+                ><b><i>PACKET_TYPE_ACIP_PARTICIPANT_JOINED </i></b></a
+              >
+            </dt>
+            <dd>
+              Participant joined notification (ACDS -&gt; Existing
+              Participants).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_PARTICIPANT_LEFT">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_PARTICIPANT_LEFT"
+                ><b><i>PACKET_TYPE_ACIP_PARTICIPANT_LEFT </i></b></a
+              >
+            </dt>
+            <dd>
+              Participant left notification (ACDS -&gt; Remaining Participants).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_BANDWIDTH_TEST">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_BANDWIDTH_TEST"
+                ><b><i>PACKET_TYPE_ACIP_BANDWIDTH_TEST </i></b></a
+              >
+            </dt>
+            <dd>Bandwidth test request (Client -&gt; ACDS).</dd>
+            <dt id="PACKET_TYPE_ACIP_BANDWIDTH_RESULT">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_BANDWIDTH_RESULT"
+                ><b><i>PACKET_TYPE_ACIP_BANDWIDTH_RESULT </i></b></a
+              >
+            </dt>
+            <dd>Bandwidth test results (ACDS -&gt; Client).</dd>
+            <dt id="PACKET_TYPE_ACIP_BROADCAST_ACK">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_BROADCAST_ACK"
+                ><b><i>PACKET_TYPE_ACIP_BROADCAST_ACK </i></b></a
+              >
+            </dt>
+            <dd>Broadcast acknowledgment for reliable delivery.</dd>
+            <dt id="PACKET_TYPE_RING_MEMBERS">
+              <a class="permalink" href="#PACKET_TYPE_RING_MEMBERS"
+                ><b><i>PACKET_TYPE_RING_MEMBERS </i></b></a
+              >
+            </dt>
+            <dd>
+              Ring member list announcement (ACDS -&gt; All Participants).
+            </dd>
+            <dt id="PACKET_TYPE_STATS_COLLECTION_START">
+              <a class="permalink" href="#PACKET_TYPE_STATS_COLLECTION_START"
+                ><b><i>PACKET_TYPE_STATS_COLLECTION_START </i></b></a
+              >
+            </dt>
+            <dd>
+              Start statistics collection phase (Coordinator -&gt; All
+              Participants).
+            </dd>
+            <dt id="PACKET_TYPE_STATS_UPDATE">
+              <a class="permalink" href="#PACKET_TYPE_STATS_UPDATE"
+                ><b><i>PACKET_TYPE_STATS_UPDATE </i></b></a
+              >
+            </dt>
+            <dd>
+              Statistics update during collection phase (Participant -&gt; Next
+              Participant).
+            </dd>
+            <dt id="PACKET_TYPE_RING_ELECTION_RESULT">
+              <a class="permalink" href="#PACKET_TYPE_RING_ELECTION_RESULT"
+                ><b><i>PACKET_TYPE_RING_ELECTION_RESULT </i></b></a
+              >
+            </dt>
+            <dd>
+              Final election result (Quorum Leader -&gt; All Participants).
+            </dd>
+            <dt id="PACKET_TYPE_STATS_ACK">
+              <a class="permalink" href="#PACKET_TYPE_STATS_ACK"
+                ><b><i>PACKET_TYPE_STATS_ACK </i></b></a
+              >
+            </dt>
+            <dd>
+              Acknowledgment of statistics update (Participant -&gt; Sender).
+            </dd>
+            <dt id="PACKET_TYPE_ACIP_DISCOVERY_PING">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_DISCOVERY_PING"
+                ><b><i>PACKET_TYPE_ACIP_DISCOVERY_PING </i></b></a
+              >
+            </dt>
+            <dd>Discovery server ping (keepalive).</dd>
+            <dt id="PACKET_TYPE_ACIP_ERROR">
+              <a class="permalink" href="#PACKET_TYPE_ACIP_ERROR"
+                ><b><i>PACKET_TYPE_ACIP_ERROR </i></b></a
+              >
+            </dt>
+            <dd>Generic error response (Discovery Server -&gt; Client).</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>294</b> of file <b>packet.h</b>.
+          </p>
+          <pre>
+294              {
 296   PACKET_TYPE_PROTOCOL_VERSION = 1,
 297
 298   // ============================================================================
@@ -1875,20 +2599,22 @@ header.length = ntohl(header.length);
 517   PACKET_TYPE_ACIP_DISCOVERY_PING = 6190,
 519   PACKET_TYPE_ACIP_ERROR = 6199
 520 } packet_type_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

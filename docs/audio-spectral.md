@@ -55,14 +55,14 @@ both adds both processors' latency. Existing server configurations that used
 The microphone flag is now `--spectral-audio` (`ASCII_CHAT_SPECTRAL_AUDIO` in
 the environment).
 
-| Option | Effect |
-| --- | --- |
-| `--audio-fft-size 512/1024/2048` | Frequency resolution versus delay; default 1024 |
-| `--audio-spectral-gate=false` | Disable adaptive per-bin gating |
-| `--audio-multiband` | Four-band compression at 250, 2000, and 8000 Hz |
-| `--audio-adaptive-eq` | Slowly balance band energy, bounded to +/-3 dB |
-| `--audio-spectral-agc` | Spectral RMS gain control, bounded to 0.25–4x |
-| `--audio-pitch-correct` | Experimental monophonic correction to the nearest semitone (capture only) |
+| Option                           | Effect                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| `--audio-fft-size 512/1024/2048` | Frequency resolution versus delay; default 1024                           |
+| `--audio-spectral-gate=false`    | Disable adaptive per-bin gating                                           |
+| `--audio-multiband`              | Four-band compression at 250, 2000, and 8000 Hz                           |
+| `--audio-adaptive-eq`            | Slowly balance band energy, bounded to +/-3 dB                            |
+| `--audio-spectral-agc`           | Spectral RMS gain control, bounded to 0.25–4x                             |
+| `--audio-pitch-correct`          | Experimental monophonic correction to the nearest semitone (capture only) |
 
 The normal `ASCII_CHAT_...` environment variables and registry configuration apply.
 The FFT size is validated before audio startup. Effects are selected when creating

@@ -1,208 +1,313 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>search.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">search.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">search.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">search.c - Interactive search filtering implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>log_search_state_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>LOG_SEARCH_OUTPUT_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>MAX_LOG_SEARCH_PATTERNS</b> 32
-  <br/>
-  Maximum number of patterns to support. #define
-    <b>LOG_SEARCH_INPUT_BUFFER_SIZE</b> 256
-  <br/>
-  Input buffer size. #define <b>LOG_SEARCH_DEBOUNCE_NS</b> 200000000ULL
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>log_search_init</b> (void)
-  <br/>
-  Initialize interactive grep subsystem. void <b>log_search_destroy</b> (void)
-  <br/>
-  Clean up interactive grep subsystem. void <b>log_search_enter_mode</b> (void)
-  <br/>
-  Enter search mode (user pressed '/'). void <b>log_search_exit_mode</b>
-    (<b>bool</b> accept)
-  <br/>
-  Exit search mode. <b>bool</b> <b>log_search_is_entering_atomic</b> (void)
-  <br/>
-  Check if grep is in entering mode (async-signal-safe). void
-    <b>log_search_signal_cancel</b> (void)
-  <br/>
-  Cancel grep mode from a signal handler (async-signal-safe). <b>bool</b>
-    <b>log_search_check_signal_cancel</b> (void)
-  <br/>
-  Check and clear the signal-cancel flag. <b>bool</b>
-    <b>log_search_is_entering</b> (void)
-  <br/>
-  Check if currently in input mode (typing pattern). <b>bool</b>
-    <b>log_search_is_active</b> (void)
-  <br/>
-  Check if filtering is active. <b>bool</b> <b>log_search_should_handle</b> (int
-    key)
-  <br/>
-  Check if a key should be handled by grep module. void
-    <b>log_search_process_pending</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>log_search_insert_text</b> (const char *text)
-  <br/>
-  <b>asciichat_error_t</b> <b>log_search_handle_key</b> (<b>keyboard_key_t</b>
-    key)
-  <br/>
-  Process keyboard input for grep. <b>asciichat_error_t</b>
-    <b>log_search_gather_and_filter_logs</b> (<b>session_log_entry_t</b>
-    **out_entries, size_t *out_count)
-  <br/>
-  Gather and filter logs for display. <b>asciichat_error_t</b>
-    <b>log_search_filter_buffer</b> (<b>session_log_buffer_t</b> *log_buf,
-    <b>session_log_entry_t</b> **out_entries, size_t *out_count)
-  <br/>
-  void <b>log_search_render_input_line</b> (int width)
-  <br/>
-  Render grep input line at bottom of screen. <b>bool</b>
-    <b>log_search_get_match_info</b> (const char *message, size_t
-    *out_match_start, size_t *out_match_len)
-  <br/>
-  Get match info for highlighting a log message. <b>bool</b>
-    <b>log_search_needs_rerender</b> (void)
-  <br/>
-  Check if screen needs immediate re-render. <b>bool</b>
-    <b>log_search_get_global_highlight</b> (void)
-  <br/>
-  Check if global highlighting (/g flag) is enabled in current pattern. void *
-    <b>log_search_get_pattern_singleton</b> (void)
-  <br/>
-  void * <b>log_search_get_mutex</b> (void)
-  <br/>
-  Get the mutex protecting grep state. int <b>log_search_get_input_len</b>
-    (void)
-  <br/>
-  Get current input buffer length (must hold mutex). int
-    <b>log_search_get_cursor_position</b> (void)
-  <br/>
-  Get current cursor position in input buffer (must hold mutex). const char *
-    <b>log_search_get_input_buffer</b> (void)
-  <br/>
-  Get current input buffer content (must hold mutex). <b>bool</b>
-    <b>log_search_get_case_insensitive</b> (void)
-  <br/>
-  Check if case-insensitive flag is set (must hold mutex).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Interactive search filtering implementation.</p>
-<p class="Pp">Implements vim-style / search functionality for terminal screens.
-    Supports full /pattern/flags syntax with real-time filtering.</p>
-<p class="Pp">Definition in file <b>search.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_SEARCH_DEBOUNCE_NS___200000000ULL"><a class="permalink" href="#_define_LOG_SEARCH_DEBOUNCE_NS___200000000ULL">#define
-  LOG_SEARCH_DEBOUNCE_NS 200000000ULL</a></h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>log_search_handle_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_SEARCH_INPUT_BUFFER_SIZE___256"><a class="permalink" href="#_define_LOG_SEARCH_INPUT_BUFFER_SIZE___256">#define
-  LOG_SEARCH_INPUT_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Input buffer size.</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>log_search_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_SEARCH_OUTPUT_BUFFER_SIZE___512"><a class="permalink" href="#_define_LOG_SEARCH_OUTPUT_BUFFER_SIZE___512">#define
-  LOG_SEARCH_OUTPUT_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>search.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_LOG_SEARCH_PATTERNS___32"><a class="permalink" href="#_define_MAX_LOG_SEARCH_PATTERNS___32">#define
-  MAX_LOG_SEARCH_PATTERNS 32</a></h2>
-<p class="Pp">Maximum number of patterns to support.</p>
-<p class="Pp">Definition at line <b>41</b> of file <b>search.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_check_signal_cancel (void )</h2>
-<p class="Pp">Check and clear the signal-cancel flag.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if grep was cancelled by a signal since last
-  check</div>
-<p class="Pp">Called by the status screen loop to detect signal-initiated
-    cancellation.</p>
-<p class="Pp">Definition at line <b>391</b> of file <b>search.c</b>.</p>
-<pre>392                                     {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>search.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">search.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">search.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          search.c - Interactive search filtering implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>log_search_state_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LOG_SEARCH_OUTPUT_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>MAX_LOG_SEARCH_PATTERNS</b> 32
+            <br />
+            Maximum number of patterns to support. #define
+            <b>LOG_SEARCH_INPUT_BUFFER_SIZE</b> 256
+            <br />
+            Input buffer size. #define
+            <b>LOG_SEARCH_DEBOUNCE_NS</b> 200000000ULL
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>log_search_init</b> (void)
+            <br />
+            Initialize interactive grep subsystem. void
+            <b>log_search_destroy</b> (void)
+            <br />
+            Clean up interactive grep subsystem. void
+            <b>log_search_enter_mode</b> (void)
+            <br />
+            Enter search mode (user pressed '/'). void
+            <b>log_search_exit_mode</b> (<b>bool</b>
+            accept)
+            <br />
+            Exit search mode. <b>bool</b>
+            <b>log_search_is_entering_atomic</b> (void)
+            <br />
+            Check if grep is in entering mode (async-signal-safe). void
+            <b>log_search_signal_cancel</b> (void)
+            <br />
+            Cancel grep mode from a signal handler (async-signal-safe).
+            <b>bool</b> <b>log_search_check_signal_cancel</b> (void)
+            <br />
+            Check and clear the signal-cancel flag. <b>bool</b>
+            <b>log_search_is_entering</b> (void)
+            <br />
+            Check if currently in input mode (typing pattern). <b>bool</b>
+            <b>log_search_is_active</b> (void)
+            <br />
+            Check if filtering is active. <b>bool</b>
+            <b>log_search_should_handle</b> (int key)
+            <br />
+            Check if a key should be handled by grep module. void
+            <b>log_search_process_pending</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>log_search_insert_text</b> (const char
+            *text)
+            <br />
+            <b>asciichat_error_t</b> <b>log_search_handle_key</b> (<b
+              >keyboard_key_t</b
+            >
+            key)
+            <br />
+            Process keyboard input for grep. <b>asciichat_error_t</b>
+            <b>log_search_gather_and_filter_logs</b> (<b>session_log_entry_t</b>
+            **out_entries, size_t *out_count)
+            <br />
+            Gather and filter logs for display. <b>asciichat_error_t</b>
+            <b>log_search_filter_buffer</b> (<b>session_log_buffer_t</b>
+            *log_buf, <b>session_log_entry_t</b> **out_entries, size_t
+            *out_count)
+            <br />
+            void <b>log_search_render_input_line</b> (int width)
+            <br />
+            Render grep input line at bottom of screen. <b>bool</b>
+            <b>log_search_get_match_info</b> (const char *message, size_t
+            *out_match_start, size_t *out_match_len)
+            <br />
+            Get match info for highlighting a log message. <b>bool</b>
+            <b>log_search_needs_rerender</b> (void)
+            <br />
+            Check if screen needs immediate re-render. <b>bool</b>
+            <b>log_search_get_global_highlight</b> (void)
+            <br />
+            Check if global highlighting (/g flag) is enabled in current
+            pattern. void *
+            <b>log_search_get_pattern_singleton</b> (void)
+            <br />
+            void * <b>log_search_get_mutex</b> (void)
+            <br />
+            Get the mutex protecting grep state. int
+            <b>log_search_get_input_len</b>
+            (void)
+            <br />
+            Get current input buffer length (must hold mutex). int
+            <b>log_search_get_cursor_position</b> (void)
+            <br />
+            Get current cursor position in input buffer (must hold mutex). const
+            char *
+            <b>log_search_get_input_buffer</b> (void)
+            <br />
+            Get current input buffer content (must hold mutex). <b>bool</b>
+            <b>log_search_get_case_insensitive</b> (void)
+            <br />
+            Check if case-insensitive flag is set (must hold mutex).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Interactive search filtering implementation.</p>
+        <p class="Pp">
+          Implements vim-style / search functionality for terminal screens.
+          Supports full /pattern/flags syntax with real-time filtering.
+        </p>
+        <p class="Pp">Definition in file <b>search.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_SEARCH_DEBOUNCE_NS___200000000ULL">
+            <a
+              class="permalink"
+              href="#_define_LOG_SEARCH_DEBOUNCE_NS___200000000ULL"
+              >#define LOG_SEARCH_DEBOUNCE_NS 200000000ULL</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_search_handle_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_SEARCH_INPUT_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_LOG_SEARCH_INPUT_BUFFER_SIZE___256"
+              >#define LOG_SEARCH_INPUT_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Input buffer size.</p>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_search_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_SEARCH_OUTPUT_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_LOG_SEARCH_OUTPUT_BUFFER_SIZE___512"
+              >#define LOG_SEARCH_OUTPUT_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>search.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_LOG_SEARCH_PATTERNS___32">
+            <a class="permalink" href="#_define_MAX_LOG_SEARCH_PATTERNS___32"
+              >#define MAX_LOG_SEARCH_PATTERNS 32</a
+            >
+          </h2>
+          <p class="Pp">Maximum number of patterns to support.</p>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>search.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_search_check_signal_cancel (void )</h2>
+          <p class="Pp">Check and clear the signal-cancel flag.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if grep was cancelled by a signal since last check
+          </div>
+          <p class="Pp">
+            Called by the status screen loop to detect signal-initiated
+            cancellation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>391</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+392                                     {
 393   atomic_store_bool(&amp;g_search_state.signal_cancelled, true);
 394 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-    <b>log_search_signal_cancel()</b>.</p>
-<p class="Pp">Referenced by <b>log_search_copy_pattern()</b>, and
-    <b>log_search_is_entering()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_search_destroy_(void_)"><a class="permalink" href="#void_log_search_destroy_(void_)">void
-  log_search_destroy (void )</a></h2>
-<p class="Pp">Clean up interactive grep subsystem. Frees all allocated
-    resources. Safe to call multiple times.</p>
-<p class="Pp">Definition at line <b>195</b> of file <b>search.c</b>.</p>
-<pre>198                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, and
+            <b>log_search_signal_cancel()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_copy_pattern()</b>, and
+            <b>log_search_is_entering()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_search_destroy_(void_)">
+            <a class="permalink" href="#void_log_search_destroy_(void_)"
+              >void log_search_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Clean up interactive grep subsystem. Frees all allocated resources.
+            Safe to call multiple times.
+          </p>
+          <p class="Pp">
+            Definition at line <b>195</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+198                               {
 199   if (!lifecycle_shutdown(&amp;g_log_search_lifecycle)) {
 200     return; // Already shut down or never initialized
 201   }
@@ -217,19 +322,27 @@
 210     }
 211   }
 212 </pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
-<p class="Pp">Referenced by <b>log_system_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_search_enter_mode_(void_)"><a class="permalink" href="#void_log_search_enter_mode_(void_)">void
-  log_search_enter_mode (void )</a></h2>
-<p class="Pp">Enter search mode (user pressed '/'). Saves current CLI --grep
-    patterns, activates input mode, and prepares for interactive pattern
-  entry.</p>
-<p class="Pp">Definition at line <b>218</b> of file <b>search.c</b>.</p>
-<pre>221                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+          <p class="Pp">Referenced by <b>log_system_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_search_enter_mode_(void_)">
+            <a class="permalink" href="#void_log_search_enter_mode_(void_)"
+              >void log_search_enter_mode (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Enter search mode (user pressed '/'). Saves current CLI --grep
+            patterns, activates input mode, and prepares for interactive pattern
+            entry.
+          </p>
+          <p class="Pp">
+            Definition at line <b>218</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+221                                  {
 222   ascii_otel_ui_usage(&quot;logs&quot;, &quot;search_started&quot;, 0);
 223   // Ensure cursor is visible for user typing
 224   (void)terminal_cursor_show();
@@ -300,37 +413,55 @@
 289   g_search_state.mode = LOG_SEARCH_MODE_ENTERING;
 290   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ENTERING);
 291   atomic_store_bool(&amp;g_search_state.needs_rerender, true);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_ui_usage()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_pcre2_compile()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_int()</b>, <b>grep_parse_result_t::case_insensitive</b>,
-    <b>grep_parse_result_t::context_after</b>,
-    <b>grep_parse_result_t::context_before</b>,
-    <b>flow_control_debounce_cancel()</b>,
-    <b>grep_parse_result_t::global_flag</b>, <b>grep_get_last_pattern()</b>,
-    <b>grep_parse_pattern()</b>, <b>grep_save_patterns()</b>,
-    <b>grep_parse_result_t::invert</b>,
-    <b>grep_parse_result_t::is_fixed_string</b>, <b>log_search_enter_mode()</b>,
-    <b>LOG_SEARCH_MODE_ENTERING</b>, <b>log_warn</b>, <b>mutex_lock</b>,
-    <b>grep_parse_result_t::pattern</b>,
-    <b>grep_parse_result_t::pcre2_options</b>, <b>terminal_cursor_show()</b>,
-    and <b>grep_parse_result_t::valid</b>.</p>
-<p class="Pp">Referenced by <b>log_search_enter_mode()</b>,
-    <b>ui_status_display()</b>, and <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_search_exit_mode_("><a class="permalink" href="#void_log_search_exit_mode_(">void
-  log_search_exit_mode (<b>bool</b> accept)</a></h2>
-<p class="Pp">Exit search mode.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>accept</i> If true, compile and activate typed
-  pattern; if false, restore previous patterns</div>
-<p class="Pp">If accepting: Parses pattern with /pattern/flags syntax, compiles
-    with PCRE2, and activates filtering. If canceling: Restores CLI --grep
-    patterns.</p>
-<p class="Pp">Definition at line <b>293</b> of file <b>search.c</b>.</p>
-<pre>296                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_ui_usage()</b>, <b>ASCIICHAT_OK</b>,
+            <b>asciichat_pcre2_compile()</b>, <b>atomic_store_bool()</b>,
+            <b>atomic_store_int()</b>,
+            <b>grep_parse_result_t::case_insensitive</b>,
+            <b>grep_parse_result_t::context_after</b>,
+            <b>grep_parse_result_t::context_before</b>,
+            <b>flow_control_debounce_cancel()</b>,
+            <b>grep_parse_result_t::global_flag</b>,
+            <b>grep_get_last_pattern()</b>, <b>grep_parse_pattern()</b>,
+            <b>grep_save_patterns()</b>, <b>grep_parse_result_t::invert</b>,
+            <b>grep_parse_result_t::is_fixed_string</b>,
+            <b>log_search_enter_mode()</b>, <b>LOG_SEARCH_MODE_ENTERING</b>,
+            <b>log_warn</b>, <b>mutex_lock</b>,
+            <b>grep_parse_result_t::pattern</b>,
+            <b>grep_parse_result_t::pcre2_options</b>,
+            <b>terminal_cursor_show()</b>, and
+            <b>grep_parse_result_t::valid</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_enter_mode()</b>,
+            <b>ui_status_display()</b>, and
+            <b>ui_status_display_interactive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_search_exit_mode_(">
+            <a class="permalink" href="#void_log_search_exit_mode_("
+              >void log_search_exit_mode (<b>bool</b> accept)</a
+            >
+          </h2>
+          <p class="Pp">Exit search mode.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>accept</i> If true, compile and activate typed pattern; if false,
+            restore previous patterns
+          </div>
+          <p class="Pp">
+            If accepting: Parses pattern with /pattern/flags syntax, compiles
+            with PCRE2, and activates filtering. If canceling: Restores CLI
+            --grep patterns.
+          </p>
+          <p class="Pp">
+            Definition at line <b>293</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+296                                        {
 297   mutex_lock(&amp;g_search_state.mutex);
 298
 299   if (g_search_state.mode == LOG_SEARCH_MODE_INACTIVE || (accept &amp;&amp; g_search_state.mode != LOG_SEARCH_MODE_ENTERING)) {
@@ -412,18 +543,27 @@
 375
 376   ascii_otel_ui_usage(&quot;logs&quot;, &quot;filter_applied&quot;, 0);
 377   g_search_state.mode = LOG_SEARCH_MODE_ACTIVE;</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_logs_key()</b>, and
-    <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_search_filter_buffer
-  (<b>session_log_buffer_t</b> * log_buf, <b>session_log_entry_t</b> **
-  out_entries, size_t * out_count)</h2>
-<p class="Pp">Definition at line <b>557</b> of file <b>search.c</b>.</p>
-<pre>562                                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>mutex_unlock</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_session_logs_key()</b>, and
+            <b>ui_status_display_interactive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_search_filter_buffer (<b
+              >session_log_buffer_t</b
+            >
+            * log_buf, <b>session_log_entry_t</b> ** out_entries, size_t *
+            out_count)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>557</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+562                                                                                                           {
 563   session_log_buffer_t *logs = log_get_history_buffer();
 564   return log_search_filter_buffer(logs ? logs : log_get_session_log_buffer(), out_entries, out_count);
 565 }
@@ -574,79 +714,133 @@
 710
 711   // Free match data
 712   if (match_data) {</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_get_history_buffer()</b>,
-    <b>log_get_session_log_buffer()</b>, <b>log_search_filter_buffer()</b>, and
-    <b>log_search_gather_and_filter_logs()</b>.</p>
-<p class="Pp">Referenced by <b>log_search_filter_buffer()</b>, and
-    <b>terminal_screen_compose()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_search_gather_and_filter_logs
-  (<b>session_log_entry_t</b> ** out_entries, size_t * out_count)</h2>
-<p class="Pp">Gather and filter logs for display.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>out_entries</i> Output array of filtered log entries
-  (caller must free with SAFE_FREE)
-<br/>
-<i>out_count</i> Output count of filtered entries</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Hybrid approach:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>If --log-file specified: tail last N KB, parse entries</dd>
-  <dt>2.</dt>
-  <dd>Fetch entries from in-memory <b>session_log_buffer</b> (up to 100
-    entries)</dd>
-  <dt>3.</dt>
-  <dd>Merge and deduplicate by timestamp</dd>
-  <dt>4.</dt>
-  <dd>Filter combined set with active PCRE2 patterns</dd>
-  <dt>5.</dt>
-  <dd>Return filtered entries (caller must free)</dd>
-</dl>
-<p class="Pp">If no log file or read error: Falls back to in-memory buffer
-  only.</p>
-<p class="Pp">Definition at line <b>552</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>log_search_filter_buffer()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_get_case_insensitive (void )</h2>
-<p class="Pp">Check if case-insensitive flag is set (must hold mutex).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if /i flag is set, false otherwise</div>
-<p class="Pp">Must be called while holding the mutex from
-    <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>979</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>grep_highlight_colored()</b>, and
-    <b>log_search_copy_pattern()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_log_search_get_cursor_position_(void_)"><a class="permalink" href="#int_log_search_get_cursor_position_(void_)">int
-  log_search_get_cursor_position (void )</a></h2>
-<p class="Pp">Get current cursor position in input buffer (must hold mutex).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Cursor position (0-based index within input buffer)</div>
-<p class="Pp">Must be called while holding the mutex from
-    <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>971</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>log_search_copy_pattern()</b>, and
-    <b>terminal_screen_compose()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_get_global_highlight (void )</h2>
-<p class="Pp">Check if global highlighting (/g flag) is enabled in current
-    pattern.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if interactive grep is active and /g flag is set,
-  false otherwise</div>
-<p class="Pp">Used by filter highlighting code to determine if all matches
-    should be highlighted or just the first match. Returns false when
-    interactive grep is inactive.</p>
-<p class="Pp">Definition at line <b>923</b> of file <b>search.c</b>.</p>
-<pre>926                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_get_history_buffer()</b>,
+            <b>log_get_session_log_buffer()</b>,
+            <b>log_search_filter_buffer()</b>, and
+            <b>log_search_gather_and_filter_logs()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_filter_buffer()</b>, and
+            <b>terminal_screen_compose()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_search_gather_and_filter_logs (<b
+              >session_log_entry_t</b
+            >
+            ** out_entries, size_t * out_count)
+          </h2>
+          <p class="Pp">Gather and filter logs for display.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>out_entries</i> Output array of filtered log entries (caller must
+            free with SAFE_FREE)
+            <br />
+            <i>out_count</i> Output count of filtered entries
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Hybrid approach:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>If --log-file specified: tail last N KB, parse entries</dd>
+            <dt>2.</dt>
+            <dd>
+              Fetch entries from in-memory <b>session_log_buffer</b> (up to 100
+              entries)
+            </dd>
+            <dt>3.</dt>
+            <dd>Merge and deduplicate by timestamp</dd>
+            <dt>4.</dt>
+            <dd>Filter combined set with active PCRE2 patterns</dd>
+            <dt>5.</dt>
+            <dd>Return filtered entries (caller must free)</dd>
+          </dl>
+          <p class="Pp">
+            If no log file or read error: Falls back to in-memory buffer only.
+          </p>
+          <p class="Pp">
+            Definition at line <b>552</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_search_filter_buffer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> log_search_get_case_insensitive (void )
+          </h2>
+          <p class="Pp">
+            Check if case-insensitive flag is set (must hold mutex).
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if /i flag is set, false otherwise</div>
+          <p class="Pp">
+            Must be called while holding the mutex from
+            <b>log_search_get_mutex()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>979</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>grep_highlight_colored()</b>, and
+            <b>log_search_copy_pattern()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_log_search_get_cursor_position_(void_)">
+            <a
+              class="permalink"
+              href="#int_log_search_get_cursor_position_(void_)"
+              >int log_search_get_cursor_position (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Get current cursor position in input buffer (must hold mutex).
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Cursor position (0-based index within input buffer)
+          </div>
+          <p class="Pp">
+            Must be called while holding the mutex from
+            <b>log_search_get_mutex()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>971</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_copy_pattern()</b>, and
+            <b>terminal_screen_compose()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> log_search_get_global_highlight (void )
+          </h2>
+          <p class="Pp">
+            Check if global highlighting (/g flag) is enabled in current
+            pattern.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if interactive grep is active and /g flag is set, false
+            otherwise
+          </div>
+          <p class="Pp">
+            Used by filter highlighting code to determine if all matches should
+            be highlighted or just the first match. Returns false when
+            interactive grep is inactive.
+          </p>
+          <p class="Pp">
+            Definition at line <b>923</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+926                                      {
 927   bool needs = atomic_load_bool(&amp;g_search_state.needs_rerender);
 928   if (needs) {
 929     atomic_store_bool(&amp;g_search_state.needs_rerender, false);
@@ -657,56 +851,92 @@
 934 /* ============================================================================
 935  * Query Functions
 936  * ========================================================================== */</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    and <b>log_search_needs_rerender()</b>.</p>
-<p class="Pp">Referenced by <b>grep_highlight_colored()</b>, and
-    <b>log_search_get_pattern_singleton()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_log_search_get_input_buffer_(void_)"><a class="permalink" href="#const_char_*_log_search_get_input_buffer_(void_)">const
-  char * log_search_get_input_buffer (void )</a></h2>
-<p class="Pp">Get current input buffer content (must hold mutex).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to the input buffer (valid only while holding
-  mutex)</div>
-<p class="Pp">Must be called while holding the mutex from
-    <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>975</b> of file <b>search.c</b>.</p>
-<p class="Pp">References <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Referenced by <b>grep_highlight_colored()</b>,
-    <b>log_search_copy_pattern()</b>, and <b>terminal_screen_compose()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_log_search_get_input_len_(void_)"><a class="permalink" href="#int_log_search_get_input_len_(void_)">int
-  log_search_get_input_len (void )</a></h2>
-<p class="Pp">Get current input buffer length (must hold mutex).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Length of the current grep input pattern</div>
-<p class="Pp">Must be called while holding the mutex from
-    <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>967</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>grep_highlight_colored()</b>, and
-    <b>log_search_copy_pattern()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_get_match_info (const char * message,
-  size_t * out_match_start, size_t * out_match_len)</h2>
-<p class="Pp">Get match info for highlighting a log message.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>message</i> Log message to check
-<br/>
-<i>out_match_start</i> Output: start position of match in plain text
-<br/>
-<i>out_match_len</i> Output: length of match</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if message matches current filter pattern, false
-  otherwise</div>
-<p class="Pp">Used by display code to apply highlighting to matching portions of
-    logs. Returns match position for use with log_filter_highlight().</p>
-<p class="Pp">Definition at line <b>756</b> of file <b>search.c</b>.</p>
-<pre>766                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+            and <b>log_search_needs_rerender()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>grep_highlight_colored()</b>, and
+            <b>log_search_get_pattern_singleton()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_log_search_get_input_buffer_(void_)">
+            <a
+              class="permalink"
+              href="#const_char_*_log_search_get_input_buffer_(void_)"
+              >const char * log_search_get_input_buffer (void )</a
+            >
+          </h2>
+          <p class="Pp">Get current input buffer content (must hold mutex).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the input buffer (valid only while holding mutex)
+          </div>
+          <p class="Pp">
+            Must be called while holding the mutex from
+            <b>log_search_get_mutex()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>975</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">References <b>log_search_get_mutex()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>grep_highlight_colored()</b>,
+            <b>log_search_copy_pattern()</b>, and
+            <b>terminal_screen_compose()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_log_search_get_input_len_(void_)">
+            <a class="permalink" href="#int_log_search_get_input_len_(void_)"
+              >int log_search_get_input_len (void )</a
+            >
+          </h2>
+          <p class="Pp">Get current input buffer length (must hold mutex).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Length of the current grep input pattern</div>
+          <p class="Pp">
+            Must be called while holding the mutex from
+            <b>log_search_get_mutex()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>967</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>grep_highlight_colored()</b>, and
+            <b>log_search_copy_pattern()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> log_search_get_match_info (const char * message, size_t
+            * out_match_start, size_t * out_match_len)
+          </h2>
+          <p class="Pp">Get match info for highlighting a log message.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>message</i> Log message to check
+            <br />
+            <i>out_match_start</i> Output: start position of match in plain text
+            <br />
+            <i>out_match_len</i> Output: length of match
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if message matches current filter pattern, false otherwise
+          </div>
+          <p class="Pp">
+            Used by display code to apply highlighting to matching portions of
+            logs. Returns match position for use with log_filter_highlight().
+          </p>
+          <p class="Pp">
+            Definition at line <b>756</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+766                                                                                                     {
 767   if (!message || !out_match_start || !out_match_len) {
 768     return false;
 769   }
@@ -846,30 +1076,50 @@
 903             char_end++;
 904           }
 905 </pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_log_search_get_mutex_(void_)"><a class="permalink" href="#void_*_log_search_get_mutex_(void_)">void
-  * log_search_get_mutex (void )</a></h2>
-<p class="Pp">Get the mutex protecting grep state.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to the grep state mutex (internal use only)</div>
-<p class="Pp">Used by terminal rendering to perform atomic read of grep input
-    for consistent rendering without flicker.</p>
-<p class="Pp">Definition at line <b>963</b> of file <b>search.c</b>.</p>
-<pre>965                                                                                {</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>log_search_copy_pattern()</b>,
-    <b>log_search_get_input_buffer()</b>, and
-  <b>terminal_screen_compose()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_log_search_get_pattern_singleton_(void_)"><a class="permalink" href="#void_*_log_search_get_pattern_singleton_(void_)">void
-  * log_search_get_pattern_singleton (void )</a></h2>
-<p class="Pp">Definition at line <b>938</b> of file <b>search.c</b>.</p>
-<pre>938                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_log_search_get_mutex_(void_)">
+            <a class="permalink" href="#void_*_log_search_get_mutex_(void_)"
+              >void * log_search_get_mutex (void )</a
+            >
+          </h2>
+          <p class="Pp">Get the mutex protecting grep state.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the grep state mutex (internal use only)
+          </div>
+          <p class="Pp">
+            Used by terminal rendering to perform atomic read of grep input for
+            consistent rendering without flicker.
+          </p>
+          <p class="Pp">
+            Definition at line <b>963</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+965                                                                                {</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>log_search_copy_pattern()</b>,
+            <b>log_search_get_input_buffer()</b>, and
+            <b>terminal_screen_compose()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_log_search_get_pattern_singleton_(void_)">
+            <a
+              class="permalink"
+              href="#void_*_log_search_get_pattern_singleton_(void_)"
+              >void * log_search_get_pattern_singleton (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>938</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+938                                            {
 939   // Use atomic read to avoid mutex contention with keyboard handler
 940   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
 941   if (mode == LOG_SEARCH_MODE_INACTIVE) {
@@ -889,30 +1139,45 @@
 955   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
 956   if (mode == LOG_SEARCH_MODE_INACTIVE) {
 957     return NULL;</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>,
-    <b>log_search_get_global_highlight()</b>, <b>LOG_SEARCH_MODE_INACTIVE</b>,
-    <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>grep_highlight_colored()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_search_handle_key
-  (<b>keyboard_key_t</b> key)</h2>
-<p class="Pp">Process keyboard input for grep.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>key</i> The keyboard key to process</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Uses <b>keyboard_read_line_interactive()</b> to handle text
-    editing. Supports backspace, delete, arrows, home, end, enter, escape,
-    UTF-8.</p>
-<p class="Pp"></p>
-<p class="Pp">Pattern validation happens live via validator callback. Enter
-    compiles and activates pattern. Escape cancels and restores previous
-    patterns.</p>
-<p class="Pp">Definition at line <b>491</b> of file <b>search.c</b>.</p>
-<pre>501                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_int()</b>,
+            <b>log_search_get_global_highlight()</b>,
+            <b>LOG_SEARCH_MODE_INACTIVE</b>, <b>mutex_lock</b>, and
+            <b>mutex_unlock</b>.
+          </p>
+          <p class="Pp">Referenced by <b>grep_highlight_colored()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_search_handle_key (<b
+              >keyboard_key_t</b
+            >
+            key)
+          </h2>
+          <p class="Pp">Process keyboard input for grep.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>key</i> The keyboard key to process</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Uses <b>keyboard_read_line_interactive()</b> to handle text editing.
+            Supports backspace, delete, arrows, home, end, enter, escape, UTF-8.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Pattern validation happens live via validator callback. Enter
+            compiles and activates pattern. Escape cancels and restores previous
+            patterns.
+          </p>
+          <p class="Pp">
+            Definition at line <b>491</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+501                                                             {
 502   mutex_lock(&amp;g_search_state.mutex);
 503
 504   // If not in input mode, check if user pressed '/'
@@ -958,23 +1223,34 @@
 544   case LINE_EDIT_CONTINUE:
 545     flow_control_debounce_trigger(&amp;g_search_state.debounce, time_get_ns(), LOG_SEARCH_DEBOUNCE_NS);
 546     mutex_unlock(&amp;g_search_state.mutex);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>flow_control_debounce_trigger()</b>, <b>LOG_SEARCH_DEBOUNCE_NS</b>, and
-    <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_logs_key()</b>, and
-    <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_search_init (void )</h2>
-<p class="Pp">Initialize interactive grep subsystem.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Must be called before using any other log_search functions.
-    Initializes state, mutex, and loads CLI --grep patterns if any.</p>
-<p class="Pp">Definition at line <b>136</b> of file <b>search.c</b>.</p>
-<pre>139                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>flow_control_debounce_trigger()</b>,
+            <b>LOG_SEARCH_DEBOUNCE_NS</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_logs_key()</b>, and
+            <b>ui_status_display_interactive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> log_search_init (void )</h2>
+          <p class="Pp">Initialize interactive grep subsystem.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Must be called before using any other log_search functions.
+            Initializes state, mutex, and loads CLI --grep patterns if any.
+          </p>
+          <p class="Pp">
+            Definition at line <b>136</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+139                                         {
 140   // Use lifecycle API for unified initialization
 141   if (!lifecycle_init_once(&amp;g_log_search_lifecycle)) {
 142     // Already initialized.
@@ -1029,33 +1305,45 @@
 191   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
 192   lifecycle_init_commit(&amp;g_log_search_lifecycle);
 193 </pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_pcre2_compile()</b>,
-    <b>atomic_store_bool()</b>, <b>atomic_store_int()</b>,
-    <b>grep_parse_result_t::case_insensitive</b>,
-    <b>grep_parse_result_t::context_after</b>,
-    <b>grep_parse_result_t::context_before</b>, <b>ERROR_THREAD</b>,
-    <b>grep_parse_result_t::global_flag</b>, <b>grep_get_last_pattern()</b>,
-    <b>grep_parse_pattern()</b>, <b>grep_parse_result_t::invert</b>,
-    <b>grep_parse_result_t::is_fixed_string</b>, <b>lifecycle_init_abort()</b>,
-    <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>,
-    <b>log_search_init()</b>, <b>LOG_SEARCH_INPUT_BUFFER_SIZE</b>,
-    <b>LOG_SEARCH_MODE_ACTIVE</b>, <b>LOG_SEARCH_MODE_INACTIVE</b>,
-    <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>grep_parse_result_t::pattern</b>,
-    <b>grep_parse_result_t::pcre2_options</b>, <b>SAFE_STRNCPY</b>,
-    <b>SET_ERRNO</b>, and <b>grep_parse_result_t::valid</b>.</p>
-<p class="Pp">Referenced by <b>log_search_init()</b>,
-    <b>terminal_screen_log_init()</b>, and <b>ui_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_search_insert_text (const char *
-  text)</h2>
-<p class="Pp">Atomically insert UTF-8 paste into an active search; controls
-    become spaces.</p>
-<p class="Pp">Definition at line <b>463</b> of file <b>search.c</b>.</p>
-<pre>473                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>asciichat_pcre2_compile()</b>,
+            <b>atomic_store_bool()</b>, <b>atomic_store_int()</b>,
+            <b>grep_parse_result_t::case_insensitive</b>,
+            <b>grep_parse_result_t::context_after</b>,
+            <b>grep_parse_result_t::context_before</b>, <b>ERROR_THREAD</b>,
+            <b>grep_parse_result_t::global_flag</b>,
+            <b>grep_get_last_pattern()</b>, <b>grep_parse_pattern()</b>,
+            <b>grep_parse_result_t::invert</b>,
+            <b>grep_parse_result_t::is_fixed_string</b>,
+            <b>lifecycle_init_abort()</b>, <b>lifecycle_init_commit()</b>,
+            <b>lifecycle_init_once()</b>, <b>log_search_init()</b>,
+            <b>LOG_SEARCH_INPUT_BUFFER_SIZE</b>, <b>LOG_SEARCH_MODE_ACTIVE</b>,
+            <b>LOG_SEARCH_MODE_INACTIVE</b>, <b>mutex_init()</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>grep_parse_result_t::pattern</b>,
+            <b>grep_parse_result_t::pcre2_options</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, and <b>grep_parse_result_t::valid</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_init()</b>,
+            <b>terminal_screen_log_init()</b>, and <b>ui_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_search_insert_text (const char * text)
+          </h2>
+          <p class="Pp">
+            Atomically insert UTF-8 paste into an active search; controls become
+            spaces.
+          </p>
+          <p class="Pp">
+            Definition at line <b>463</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+473                                                            {
 474   if (!text || strlen(text) &gt;= LOG_SEARCH_INPUT_BUFFER_SIZE)
 475     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Search paste exceeds input capacity&quot;);
 476   if (!log_search_is_entering())
@@ -1072,86 +1360,130 @@
 487   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING)
 488     result = SET_ERRNO(ERROR_INVALID_STATE, &quot;Search input is not active&quot;);
 489   else {</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>flow_control_debounce_take_ready()</b>, <b>LOG_SEARCH_MODE_ENTERING</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>ui_input_read_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_is_active (void )</h2>
-<p class="Pp">Check if filtering is active.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if in GREP_MODE_ENTERING or GREP_MODE_ACTIVE, false
-  if INACTIVE</div>
-<p class="Pp">Definition at line <b>401</b> of file <b>search.c</b>.</p>
-<pre>401                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>,
+            <b>flow_control_debounce_take_ready()</b>,
+            <b>LOG_SEARCH_MODE_ENTERING</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_input_read_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_search_is_active (void )</h2>
+          <p class="Pp">Check if filtering is active.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if in GREP_MODE_ENTERING or GREP_MODE_ACTIVE, false if INACTIVE
+          </div>
+          <p class="Pp">
+            Definition at line <b>401</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+401                                   {
 402   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
 403   return atomic_load_int(&amp;g_search_state.mode_atomic) == LOG_SEARCH_MODE_ENTERING;
 404 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>,
-    <b>log_search_is_entering()</b>, and <b>LOG_SEARCH_MODE_ENTERING</b>.</p>
-<p class="Pp">Referenced by <b>grep_highlight_colored()</b>,
-    <b>terminal_screen_compose()</b>, <b>ui_session_logs_key()</b>, and
-    <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_is_entering (void )</h2>
-<p class="Pp">Check if currently in input mode (typing pattern).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if in GREP_MODE_ENTERING, false otherwise</div>
-<p class="Pp">Definition at line <b>396</b> of file <b>search.c</b>.</p>
-<pre>396                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_int()</b>,
+            <b>log_search_is_entering()</b>, and
+            <b>LOG_SEARCH_MODE_ENTERING</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>grep_highlight_colored()</b>,
+            <b>terminal_screen_compose()</b>, <b>ui_session_logs_key()</b>, and
+            <b>ui_status_display_interactive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_search_is_entering (void )</h2>
+          <p class="Pp">Check if currently in input mode (typing pattern).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if in GREP_MODE_ENTERING, false otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>396</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+396                                           {
 397   bool expected = true;
 398   return atomic_cas_bool(&amp;g_search_state.signal_cancelled, &amp;expected, false);
 399 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_bool()</b>, and
-    <b>log_search_check_signal_cancel()</b>.</p>
-<p class="Pp">Referenced by <b>log_search_is_active()</b>,
-    <b>session_handle_keyboard_input()</b>, <b>terminal_screen_compose()</b>,
-    <b>terminal_screen_render()</b>, <b>ui_input_poll_sync()</b>, and
-    <b>ui_input_read_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_is_entering_atomic (void )</h2>
-<p class="Pp">Check if grep is in entering mode (async-signal-safe).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if in GREP_MODE_ENTERING</div>
-<p class="Pp">Uses atomic load only (no mutex). Safe to call from signal
-    handlers.</p>
-<p class="Pp">Definition at line <b>383</b> of file <b>search.c</b>.</p>
-<p class="Pp">Referenced by <b>log_search_copy_pattern()</b>, and
-    <b>log_search_signal_cancel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_needs_rerender (void )</h2>
-<p class="Pp">Check if screen needs immediate re-render.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if pattern changed and re-render needed, false
-  otherwise</div>
-<p class="Pp">Uses atomic flag for lock-free checking in render loops.
-    Automatically clears flag after returning true.</p>
-<p class="Pp">Definition at line <b>911</b> of file <b>search.c</b>.</p>
-<pre>915                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_cas_bool()</b>, and
+            <b>log_search_check_signal_cancel()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_is_active()</b>,
+            <b>session_handle_keyboard_input()</b>,
+            <b>terminal_screen_compose()</b>, <b>terminal_screen_render()</b>,
+            <b>ui_input_poll_sync()</b>, and <b>ui_input_read_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_search_is_entering_atomic (void )</h2>
+          <p class="Pp">
+            Check if grep is in entering mode (async-signal-safe).
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if in GREP_MODE_ENTERING</div>
+          <p class="Pp">
+            Uses atomic load only (no mutex). Safe to call from signal handlers.
+          </p>
+          <p class="Pp">
+            Definition at line <b>383</b> of file <b>search.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_copy_pattern()</b>, and
+            <b>log_search_signal_cancel()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_search_needs_rerender (void )</h2>
+          <p class="Pp">Check if screen needs immediate re-render.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if pattern changed and re-render needed, false otherwise
+          </div>
+          <p class="Pp">
+            Uses atomic flag for lock-free checking in render loops.
+            Automatically clears flag after returning true.
+          </p>
+          <p class="Pp">
+            Definition at line <b>911</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+915                                                                        {
 916     if (patterns_copy[i])
 917       pcre2_code_free(patterns_copy[i]);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>log_search_copy_pattern()</b>, and
-    <b>log_search_get_global_highlight()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_search_process_pending_(void_)"><a class="permalink" href="#void_log_search_process_pending_(void_)">void
-  log_search_process_pending (void )</a></h2>
-<p class="Pp">Apply a pending interactive-search action after its debounce
-    interval.</p>
-<p class="Pp">Definition at line <b>452</b> of file <b>search.c</b>.</p>
-<pre>452            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>log_search_copy_pattern()</b>, and
+            <b>log_search_get_global_highlight()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_search_process_pending_(void_)">
+            <a class="permalink" href="#void_log_search_process_pending_(void_)"
+              >void log_search_process_pending (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Apply a pending interactive-search action after its debounce
+            interval.
+          </p>
+          <p class="Pp">
+            Definition at line <b>452</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+452            {
 453       g_search_state.fixed_string = true;
 454     }
 455   }
@@ -1161,23 +1493,35 @@
 459   g_search_state.context_after = parsed.context_after;
 460 }
 461 </pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>terminal_screen_compose()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_search_render_input_line_(int_width)"><a class="permalink" href="#void_log_search_render_input_line_(int_width)">void
-  log_search_render_input_line (int width)</a></h2>
-<p class="Pp">Render grep input line at bottom of screen.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>width</i> Terminal width in columns</div>
-<p class="Pp">Renders: /&lt;pattern&gt;/flags&#x2588; with cursor position
-    indicated. Cursor shown as block character or with background color.</p>
-<p class="Pp"></p>
-<p class="Pp">If pattern is invalid (validator returns false), shows red
-    background.</p>
-<p class="Pp">Definition at line <b>718</b> of file <b>search.c</b>.</p>
-<pre>728                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>terminal_screen_compose()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_search_render_input_line_(int_width)">
+            <a
+              class="permalink"
+              href="#void_log_search_render_input_line_(int_width)"
+              >void log_search_render_input_line (int width)</a
+            >
+          </h2>
+          <p class="Pp">Render grep input line at bottom of screen.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>width</i> Terminal width in columns</div>
+          <p class="Pp">
+            Renders: /&lt;pattern&gt;/flags&#x2588; with cursor position
+            indicated. Cursor shown as block character or with background color.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            If pattern is invalid (validator returns false), shows red
+            background.
+          </p>
+          <p class="Pp">
+            Definition at line <b>718</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+728                                              {
 729   (void)width; // Reserved for future use (line truncation)
 730
 731   mutex_lock(&amp;g_search_state.mutex);
@@ -1200,25 +1544,31 @@
 748
 749     // After writing, cursor is at: column = 1 (for &quot;/&quot;) + len + 1
 750     // We want it at: column = 1 (for &quot;/&quot;) + cursor_position + 1</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>SAFE_FREE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_search_should_handle (int key)</h2>
-<p class="Pp">Check if a key should be handled by grep module.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>key</i> Keyboard key code</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if grep should handle this key, false to pass
-  through</div>
-<p class="Pp">Returns true for:</p>
-<ul class="Bl-bullet">
-  <li></li>
-  <li>All keys when in GREP_MODE_ENTERING (to edit pattern)</li>
-</ul>
-<p class="Pp">Definition at line <b>410</b> of file <b>search.c</b>.</p>
-<pre>415                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, and <b>SAFE_FREE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_search_should_handle (int key)</h2>
+          <p class="Pp">Check if a key should be handled by grep module.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>key</i> Keyboard key code</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if grep should handle this key, false to pass through
+          </div>
+          <p class="Pp">Returns true for:</p>
+          <ul class="Bl-bullet">
+            <li></li>
+            <li>All keys when in GREP_MODE_ENTERING (to edit pattern)</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>410</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+415                                        {
 416   mutex_lock(&amp;g_search_state.mutex);
 417
 418   // If in input mode, handle all keys
@@ -1227,43 +1577,61 @@
 421     return true;
 422   }
 423 </pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>LOG_SEARCH_MODE_ENTERING</b>,
-    <b>log_search_should_handle()</b>, <b>mutex_lock</b>, and
-    <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>log_search_should_handle()</b>,
-    <b>ui_session_logs_key()</b>, and
-  <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_search_signal_cancel_(void_)"><a class="permalink" href="#void_log_search_signal_cancel_(void_)">void
-  log_search_signal_cancel (void )</a></h2>
-<p class="Pp">Cancel grep mode from a signal handler (async-signal-safe). Sets
-    an atomic flag that the status screen loop checks on its next iteration.
-    Does not use mutexes or allocate memory.</p>
-<p class="Pp">Definition at line <b>387</b> of file <b>search.c</b>.</p>
-<pre>388                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>LOG_SEARCH_MODE_ENTERING</b>,
+            <b>log_search_should_handle()</b>, <b>mutex_lock</b>, and
+            <b>mutex_unlock</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_should_handle()</b>,
+            <b>ui_session_logs_key()</b>, and
+            <b>ui_status_display_interactive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_search_signal_cancel_(void_)">
+            <a class="permalink" href="#void_log_search_signal_cancel_(void_)"
+              >void log_search_signal_cancel (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Cancel grep mode from a signal handler (async-signal-safe). Sets an
+            atomic flag that the status screen loop checks on its next
+            iteration. Does not use mutexes or allocate memory.
+          </p>
+          <p class="Pp">
+            Definition at line <b>387</b> of file <b>search.c</b>.
+          </p>
+          <pre>
+388                                          {
 389   return atomic_load_int(&amp;g_search_state.mode_atomic) == LOG_SEARCH_MODE_ENTERING;</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>,
-    <b>log_search_is_entering_atomic()</b>, and
-  <b>LOG_SEARCH_MODE_ENTERING</b>.</p>
-<p class="Pp">Referenced by <b>log_search_check_signal_cancel()</b>, and
-    <b>log_search_copy_pattern()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_int()</b>,
+            <b>log_search_is_entering_atomic()</b>, and
+            <b>LOG_SEARCH_MODE_ENTERING</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_search_check_signal_cancel()</b>, and
+            <b>log_search_copy_pattern()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,134 +1,209 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>nat.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">nat.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">nat.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">nat.c - NAT quality detection for discovery mode host
-  selection.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>DISCOVERY_NAT_PORT_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>STUN_BINDING_HEADER_SIZE</b> 20
-  <br/>
-  #define <b>STUN_PROBE_RESPONSE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>BANDWIDTH_OVERRIDE_RATIO</b> 10
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>nat_quality_init</b> (<b>nat_quality_t</b> *quality)
-  <br/>
-  Initialize NAT quality structure with defaults. int <b>nat_compute_tier</b>
-    (const <b>nat_quality_t</b> *quality)
-  <br/>
-  Compute NAT tier for host selection (0=best, 4=worst). int
-    <b>nat_compare_quality</b> (const <b>nat_quality_t</b> *ours, const
-    <b>nat_quality_t</b> *theirs, <b>bool</b> we_are_initiator)
-  <br/>
-  Compare two NAT qualities and determine who should host.
-    <b>asciichat_error_t</b> <b>nat_detect_quality</b> (<b>nat_quality_t</b>
-    *quality, const char *stun_server, <b>uint16_t</b> local_port)
-  <br/>
-  Detect NAT quality using all available methods. const char *
-    <b>nat_type_to_string</b> (<b>acip_nat_type_t</b> type)
-  <br/>
-  Get human-readable description of NAT type.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">NAT quality detection for discovery mode host selection.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>nat.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_BANDWIDTH_OVERRIDE_RATIO___10"><a class="permalink" href="#_define_BANDWIDTH_OVERRIDE_RATIO___10">#define
-  BANDWIDTH_OVERRIDE_RATIO 10</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>nat.c</b>.</p>
-<p class="Pp">Referenced by <b>nat_compare_quality()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DISCOVERY_NAT_PORT_BUFFER_SIZE___16"><a class="permalink" href="#_define_DISCOVERY_NAT_PORT_BUFFER_SIZE___16">#define
-  DISCOVERY_NAT_PORT_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>nat.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_STUN_BINDING_HEADER_SIZE___20"><a class="permalink" href="#_define_STUN_BINDING_HEADER_SIZE___20">#define
-  STUN_BINDING_HEADER_SIZE 20</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>nat.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_STUN_PROBE_RESPONSE_BUFFER_SIZE___512"><a class="permalink" href="#_define_STUN_PROBE_RESPONSE_BUFFER_SIZE___512">#define
-  STUN_PROBE_RESPONSE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>nat.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_nat_compare_quality_(const_"><a class="permalink" href="#int_nat_compare_quality_(const_">int
-  nat_compare_quality (const <b>nat_quality_t</b> * ours, const
-  <b>nat_quality_t</b> * theirs, <b>bool</b> we_are_initiator)</a></h2>
-<p class="Pp">Compare two NAT qualities and determine who should host. Algorithm
-    is deterministic - both sides get the same result. Uses NAT tier priority
-    with bandwidth as tiebreaker.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ours</i> Our NAT quality
-<br/>
-<i>theirs</i> Peer's NAT quality
-<br/>
-<i>we_are_initiator</i> True if we started the session</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">-1 = we host, 0 = equal (initiator wins), 1 = they
-  host</div>
-<p class="Pp">Definition at line <b>59</b> of file <b>nat.c</b>.</p>
-<pre>59                                                                                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>nat.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">nat.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">nat.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          nat.c - NAT quality detection for discovery mode host selection.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DISCOVERY_NAT_PORT_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>STUN_BINDING_HEADER_SIZE</b> 20
+            <br />
+            #define <b>STUN_PROBE_RESPONSE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>BANDWIDTH_OVERRIDE_RATIO</b> 10
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>nat_quality_init</b> (<b>nat_quality_t</b> *quality)
+            <br />
+            Initialize NAT quality structure with defaults. int
+            <b>nat_compute_tier</b> (const <b>nat_quality_t</b> *quality)
+            <br />
+            Compute NAT tier for host selection (0=best, 4=worst). int
+            <b>nat_compare_quality</b> (const <b>nat_quality_t</b> *ours, const
+            <b>nat_quality_t</b> *theirs, <b>bool</b> we_are_initiator)
+            <br />
+            Compare two NAT qualities and determine who should host.
+            <b>asciichat_error_t</b> <b>nat_detect_quality</b> (<b
+              >nat_quality_t</b
+            >
+            *quality, const char *stun_server, <b>uint16_t</b> local_port)
+            <br />
+            Detect NAT quality using all available methods. const char *
+            <b>nat_type_to_string</b> (<b>acip_nat_type_t</b> type)
+            <br />
+            Get human-readable description of NAT type.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          NAT quality detection for discovery mode host selection.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>nat.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BANDWIDTH_OVERRIDE_RATIO___10">
+            <a class="permalink" href="#_define_BANDWIDTH_OVERRIDE_RATIO___10"
+              >#define BANDWIDTH_OVERRIDE_RATIO 10</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>35</b> of file <b>nat.c</b>.</p>
+          <p class="Pp">Referenced by <b>nat_compare_quality()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DISCOVERY_NAT_PORT_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_NAT_PORT_BUFFER_SIZE___16"
+              >#define DISCOVERY_NAT_PORT_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>8</b> of file <b>nat.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_BINDING_HEADER_SIZE___20">
+            <a class="permalink" href="#_define_STUN_BINDING_HEADER_SIZE___20"
+              >#define STUN_BINDING_HEADER_SIZE 20</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>11</b> of file <b>nat.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_PROBE_RESPONSE_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_STUN_PROBE_RESPONSE_BUFFER_SIZE___512"
+              >#define STUN_PROBE_RESPONSE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>12</b> of file <b>nat.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_nat_compare_quality_(const_">
+            <a class="permalink" href="#int_nat_compare_quality_(const_"
+              >int nat_compare_quality (const <b>nat_quality_t</b> * ours, const
+              <b>nat_quality_t</b> * theirs, <b>bool</b> we_are_initiator)</a
+            >
+          </h2>
+          <p class="Pp">
+            Compare two NAT qualities and determine who should host. Algorithm
+            is deterministic - both sides get the same result. Uses NAT tier
+            priority with bandwidth as tiebreaker.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ours</i> Our NAT quality
+            <br />
+            <i>theirs</i> Peer's NAT quality
+            <br />
+            <i>we_are_initiator</i> True if we started the session
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            -1 = we host, 0 = equal (initiator wins), 1 = they host
+          </div>
+          <p class="Pp">Definition at line <b>59</b> of file <b>nat.c</b>.</p>
+          <pre>
+59                                                                                                        {
 60   if (!ours || !theirs) {
 61     return we_are_initiator ? -1 : 1;
 62   }
@@ -182,25 +257,35 @@
 110   log_debug(&quot;NAT compare: equal quality, initiator wins (we_are_initiator=%d)&quot;, we_are_initiator);
 111   return we_are_initiator ? -1 : 1;
 112 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>BANDWIDTH_OVERRIDE_RATIO</b>, <b>log_debug</b>,
-    <b>nat_compare_quality()</b>, <b>nat_compute_tier()</b>,
-    <b>nat_quality_t::rtt_to_acds_ns</b>, and
-  <b>nat_quality_t::upload_kbps</b>.</p>
-<p class="Pp">Referenced by <b>nat_compare_quality()</b>, and
-    <b>negotiate_determine_result()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_nat_compute_tier_(const_"><a class="permalink" href="#int_nat_compute_tier_(const_">int
-  nat_compute_tier (const <b>nat_quality_t</b> * quality)</a></h2>
-<p class="Pp">Compute NAT tier for host selection (0=best, 4=worst).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> NAT quality</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Tier value</div>
-<p class="Pp">Definition at line <b>44</b> of file <b>nat.c</b>.</p>
-<pre>44                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>BANDWIDTH_OVERRIDE_RATIO</b>, <b>log_debug</b>,
+            <b>nat_compare_quality()</b>, <b>nat_compute_tier()</b>,
+            <b>nat_quality_t::rtt_to_acds_ns</b>, and
+            <b>nat_quality_t::upload_kbps</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_compare_quality()</b>, and
+            <b>negotiate_determine_result()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_nat_compute_tier_(const_">
+            <a class="permalink" href="#int_nat_compute_tier_(const_"
+              >int nat_compute_tier (const <b>nat_quality_t</b> * quality)</a
+            >
+          </h2>
+          <p class="Pp">
+            Compute NAT tier for host selection (0=best, 4=worst).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>quality</i> NAT quality</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Tier value</div>
+          <p class="Pp">Definition at line <b>44</b> of file <b>nat.c</b>.</p>
+          <pre>
+44                                                    {
 45   if (!quality)
 46     return 4;
 47
@@ -214,34 +299,49 @@
 55     return 3; // STUN hole-punchable
 56   return 4;   // TURN relay required
 57 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_RESTRICTED</b>,
-    <b>nat_quality_t::has_public_ip</b>, <b>nat_quality_t::lan_reachable</b>,
-    <b>nat_compute_tier()</b>, <b>nat_quality_t::nat_type</b>, and
-    <b>nat_quality_t::upnp_available</b>.</p>
-<p class="Pp">Referenced by <b>nat_compare_quality()</b>,
-    <b>nat_compute_tier()</b>, and <b>nat_detect_quality()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> nat_detect_quality (<b>nat_quality_t</b>
-  * quality, const char * stun_server, <b>uint16_t</b> local_port)</h2>
-<p class="Pp">Detect NAT quality using all available methods. Runs an
-    observational STUN probe and records configured candidate support. Does not
-    create router mappings; those belong to the listening server. Results are
-    stored in the provided <b>nat_quality_t</b> structure.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> Output structure for results
-<br/>
-<i>stun_server</i> STUN server URL (e.g.,
-  &quot;stun:stun.l.google.com:19302&quot;)
-<br/>
-<i>local_port</i> Local port to use for detection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>302</b> of file <b>nat.c</b>.</p>
-<pre>302                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_NAT_TYPE_RESTRICTED</b>,
+            <b>nat_quality_t::has_public_ip</b>,
+            <b>nat_quality_t::lan_reachable</b>, <b>nat_compute_tier()</b>,
+            <b>nat_quality_t::nat_type</b>, and
+            <b>nat_quality_t::upnp_available</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_compare_quality()</b>,
+            <b>nat_compute_tier()</b>, and <b>nat_detect_quality()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> nat_detect_quality (<b>nat_quality_t</b> *
+            quality, const char * stun_server, <b>uint16_t</b> local_port)
+          </h2>
+          <p class="Pp">
+            Detect NAT quality using all available methods. Runs an
+            observational STUN probe and records configured candidate support.
+            Does not create router mappings; those belong to the listening
+            server. Results are stored in the provided
+            <b>nat_quality_t</b> structure.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>quality</i> Output structure for results
+            <br />
+            <i>stun_server</i> STUN server URL (e.g.,
+            &quot;stun:stun.l.google.com:19302&quot;)
+            <br />
+            <i>local_port</i> Local port to use for detection
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>302</b> of file <b>nat.c</b>.</p>
+          <pre>
+302                                                                                                            {
 303   if (!quality) {
 304     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;quality is NULL&quot;);
 305   }
@@ -292,54 +392,69 @@
 350
 351   return ASCIICHAT_OK;
 352 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_ERRNO_DISMISSED</b>,
-    <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
-    <b>nat_quality_t::detection_complete</b>,
-    <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
-    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>nat_quality_t::has_host_candidates</b>,
-    <b>nat_quality_t::has_public_ip</b>,
-    <b>nat_quality_t::has_relay_candidates</b>,
-    <b>nat_quality_t::has_srflx_candidates</b>, <b>log_debug</b>,
-    <b>log_info</b>, <b>nat_compute_tier()</b>, <b>nat_detect_quality()</b>,
-    <b>nat_quality_init()</b>, <b>nat_quality_t::nat_type</b>,
-    <b>nat_type_to_string()</b>, <b>options_get()</b>, <b>SET_ERRNO</b>,
-    <b>options_state::turn_servers</b>, and
-    <b>nat_quality_t::upnp_available</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_nat_quality_init_("><a class="permalink" href="#void_nat_quality_init_(">void
-  nat_quality_init (<b>nat_quality_t</b> * quality)</a></h2>
-<p class="Pp">Initialize NAT quality structure with defaults.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>quality</i> Structure to initialize</div>
-<p class="Pp">Definition at line <b>37</b> of file <b>nat.c</b>.</p>
-<pre>37                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_DISMISSED</b>,
+            <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
+            <b>nat_quality_t::detection_complete</b>,
+            <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>nat_quality_t::has_host_candidates</b>,
+            <b>nat_quality_t::has_public_ip</b>,
+            <b>nat_quality_t::has_relay_candidates</b>,
+            <b>nat_quality_t::has_srflx_candidates</b>, <b>log_debug</b>,
+            <b>log_info</b>, <b>nat_compute_tier()</b>,
+            <b>nat_detect_quality()</b>, <b>nat_quality_init()</b>,
+            <b>nat_quality_t::nat_type</b>, <b>nat_type_to_string()</b>,
+            <b>options_get()</b>, <b>SET_ERRNO</b>,
+            <b>options_state::turn_servers</b>, and
+            <b>nat_quality_t::upnp_available</b>.
+          </p>
+          <p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_nat_quality_init_(">
+            <a class="permalink" href="#void_nat_quality_init_("
+              >void nat_quality_init (<b>nat_quality_t</b> * quality)</a
+            >
+          </h2>
+          <p class="Pp">Initialize NAT quality structure with defaults.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>quality</i> Structure to initialize</div>
+          <p class="Pp">Definition at line <b>37</b> of file <b>nat.c</b>.</p>
+          <pre>
+37                                               {
 38   if (!quality)
 39     return;
 40   memset(quality, 0, sizeof(nat_quality_t));
 41   quality-&gt;nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Assume worst case
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_SYMMETRIC</b>,
-    <b>nat_quality_init()</b>, and <b>nat_quality_t::nat_type</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_init()</b>, and <b>negotiate_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_nat_type_to_string_("><a class="permalink" href="#const_char_*_nat_type_to_string_(">const
-  char * nat_type_to_string (<b>acip_nat_type_t</b> type)</a></h2>
-<p class="Pp">Get human-readable description of NAT type.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>type</i> NAT type</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">String description</div>
-<p class="Pp">Definition at line <b>354</b> of file <b>nat.c</b>.</p>
-<pre>354                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_NAT_TYPE_SYMMETRIC</b>,
+            <b>nat_quality_init()</b>, and <b>nat_quality_t::nat_type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_detect_quality()</b>,
+            <b>nat_quality_init()</b>, and <b>negotiate_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_nat_type_to_string_(">
+            <a class="permalink" href="#const_char_*_nat_type_to_string_("
+              >const char * nat_type_to_string (<b>acip_nat_type_t</b> type)</a
+            >
+          </h2>
+          <p class="Pp">Get human-readable description of NAT type.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>type</i> NAT type</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">String description</div>
+          <p class="Pp">Definition at line <b>354</b> of file <b>nat.c</b>.</p>
+          <pre>
+354                                                      {
 355   switch (type) {
 356   case ACIP_NAT_TYPE_OPEN:
 357     return &quot;Open (Public IP)&quot;;
@@ -355,26 +470,32 @@
 367     return &quot;Unknown&quot;;
 368   }
 369 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_NAT_TYPE_FULL_CONE</b>,
-    <b>ACIP_NAT_TYPE_OPEN</b>, <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b>,
-    <b>ACIP_NAT_TYPE_RESTRICTED</b>, <b>ACIP_NAT_TYPE_SYMMETRIC</b>, and
-    <b>nat_type_to_string()</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>, and
-    <b>nat_type_to_string()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_NAT_TYPE_FULL_CONE</b>,
+            <b>ACIP_NAT_TYPE_OPEN</b>, <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b>,
+            <b>ACIP_NAT_TYPE_RESTRICTED</b>, <b>ACIP_NAT_TYPE_SYMMETRIC</b>, and
+            <b>nat_type_to_string()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>nat_detect_quality()</b>, and
+            <b>nat_type_to_string()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

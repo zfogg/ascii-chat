@@ -1,180 +1,266 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>reader.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">reader.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">reader.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">reader.h - Read ANSI ASCII frames from file descriptor, chunked by
-    height.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>terminal_fd_reader_create</b> (int fd,
-    int frame_height, <b>terminal_fd_reader_t</b> **out)
-  <br/>
-  Create a terminal FD reader from a file descriptor. <b>asciichat_error_t</b>
-    <b>terminal_fd_reader_next</b> (<b>terminal_fd_reader_t</b> *reader, char
-    **out_frame)
-  <br/>
-  Read next frame from file descriptor. void <b>terminal_fd_reader_destroy</b>
-    (<b>terminal_fd_reader_t</b> *reader)
-  <br/>
-  Destroy terminal FD reader.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Read ANSI ASCII frames from file descriptor, chunked by
-  height.</p>
-<p class="Pp">Reads ASCII frames from any file descriptor (stdin, file, pipe)
-    and chunks them by height (number of lines) as specified. Supports reading
-    ANSI-colored ASCII art frames in batches.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Definition in file <b>reader.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_create (int fd, int
-  frame_height, <b>terminal_fd_reader_t</b> ** out)</h2>
-<p class="Pp">Create a terminal FD reader from a file descriptor.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor to read from (e.g.,
-  STDIN_FILENO, open file)
-<br/>
-<i>frame_height</i> Number of lines per frame (required - used for frame
-  boundaries)
-<br/>
-<i>out</i> Pointer to store reader context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Width is auto-detected from the first frame's line length.</p>
-<p class="Pp">Definition at line <b>309</b> of file
-    <b>platform/wasm/terminal.c</b>.</p>
-<pre>309                                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>reader.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">reader.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">reader.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          reader.h - Read ANSI ASCII frames from file descriptor, chunked by
+          height.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>terminal_fd_reader_create</b> (int fd,
+            int frame_height, <b>terminal_fd_reader_t</b> **out)
+            <br />
+            Create a terminal FD reader from a file descriptor.
+            <b>asciichat_error_t</b> <b>terminal_fd_reader_next</b> (<b
+              >terminal_fd_reader_t</b
+            >
+            *reader, char **out_frame)
+            <br />
+            Read next frame from file descriptor. void
+            <b>terminal_fd_reader_destroy</b> (<b>terminal_fd_reader_t</b>
+            *reader)
+            <br />
+            Destroy terminal FD reader.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Read ANSI ASCII frames from file descriptor, chunked by height.
+        </p>
+        <p class="Pp">
+          Reads ASCII frames from any file descriptor (stdin, file, pipe) and
+          chunks them by height (number of lines) as specified. Supports reading
+          ANSI-colored ASCII art frames in batches.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">Definition in file <b>reader.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> terminal_fd_reader_create (int fd, int
+            frame_height, <b>terminal_fd_reader_t</b> ** out)
+          </h2>
+          <p class="Pp">Create a terminal FD reader from a file descriptor.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor to read from (e.g., STDIN_FILENO, open
+            file)
+            <br />
+            <i>frame_height</i> Number of lines per frame (required - used for
+            frame boundaries)
+            <br />
+            <i>out</i> Pointer to store reader context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp">
+            Width is auto-detected from the first frame's line length.
+          </p>
+          <p class="Pp">
+            Definition at line <b>309</b> of file
+            <b>platform/wasm/terminal.c</b>.
+          </p>
+          <pre>
+309                                                                                                   {
 310   (void)fd;
 311   (void)frame_height;
 312   if (out)
 313     *out = NULL;
 314   return ASCIICHAT_OK;
 315 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>terminal_fd_reader_s::eof_reached</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>terminal_fd_reader_s::first_frame_processed</b>,
-    <b>terminal_fd_reader_s::fp</b>, <b>terminal_fd_reader_s::frame_height</b>,
-    <b>terminal_fd_reader_s::frame_width</b>,
-    <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
-    <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
-    <b>platform_fdopen()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, and
-    <b>terminal_fd_reader_create()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_fd_reader_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_fd_reader_destroy_("><a class="permalink" href="#void_terminal_fd_reader_destroy_(">void
-  terminal_fd_reader_destroy (<b>terminal_fd_reader_t</b> * reader)</a></h2>
-<p class="Pp">Destroy terminal FD reader.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
-<p class="Pp">Definition at line <b>317</b> of file
-    <b>platform/wasm/terminal.c</b>.</p>
-<pre>317                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>terminal_fd_reader_s::eof_reached</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>terminal_fd_reader_s::first_frame_processed</b>,
+            <b>terminal_fd_reader_s::fp</b>,
+            <b>terminal_fd_reader_s::frame_height</b>,
+            <b>terminal_fd_reader_s::frame_width</b>,
+            <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
+            <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
+            <b>platform_fdopen()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>,
+            <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, and
+            <b>terminal_fd_reader_create()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>terminal_fd_reader_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_terminal_fd_reader_destroy_(">
+            <a class="permalink" href="#void_terminal_fd_reader_destroy_("
+              >void terminal_fd_reader_destroy (<b>terminal_fd_reader_t</b> *
+              reader)</a
+            >
+          </h2>
+          <p class="Pp">Destroy terminal FD reader.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
+          <p class="Pp">
+            Definition at line <b>317</b> of file
+            <b>platform/wasm/terminal.c</b>.
+          </p>
+          <pre>
+317                                                               {
 318   (void)reader;
 319 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_fd_reader_s::fp</b>,
-    <b>terminal_fd_reader_s::line_buffer</b>, <b>SAFE_FREE</b>, and
-    <b>terminal_fd_reader_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_fd_reader_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_next
-  (<b>terminal_fd_reader_t</b> * reader, char ** out_frame)</h2>
-<p class="Pp">Read next frame from file descriptor. Reads frame_height lines
-    from the FD and returns them as a single frame string. Returns NULL in
-    out_frame when EOF is reached.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>reader</i> Reader context
-<br/>
-<i>out_frame</i> Pointer to store frame data (NULL when EOF, must free with
-  SAFE_FREE)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
-<p class="Pp">Definition at line <b>321</b> of file
-    <b>platform/wasm/terminal.c</b>.</p>
-<pre>321                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_fd_reader_s::fp</b>,
+            <b>terminal_fd_reader_s::line_buffer</b>, <b>SAFE_FREE</b>, and
+            <b>terminal_fd_reader_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>terminal_fd_reader_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> terminal_fd_reader_next (<b
+              >terminal_fd_reader_t</b
+            >
+            * reader, char ** out_frame)
+          </h2>
+          <p class="Pp">
+            Read next frame from file descriptor. Reads frame_height lines from
+            the FD and returns them as a single frame string. Returns NULL in
+            out_frame when EOF is reached.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>reader</i> Reader context
+            <br />
+            <i>out_frame</i> Pointer to store frame data (NULL when EOF, must
+            free with SAFE_FREE)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
+          <p class="Pp">
+            Definition at line <b>321</b> of file
+            <b>platform/wasm/terminal.c</b>.
+          </p>
+          <pre>
+321                                                                                           {
 322   (void)reader;
 323   if (out_frame)
 324     *out_frame = NULL;
 325   return ASCIICHAT_OK;
 326 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>display_width()</b>,
-    <b>terminal_fd_reader_s::eof_reached</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>terminal_fd_reader_s::first_frame_processed</b>,
-    <b>terminal_fd_reader_s::fp</b>, <b>terminal_fd_reader_s::frame_height</b>,
-    <b>terminal_fd_reader_s::frame_width</b>,
-    <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
-    <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
-    <b>log_debug_every</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>NS_PER_SEC_INT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, and <b>terminal_fd_reader_next()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_fd_reader_next()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>display_width()</b>,
+            <b>terminal_fd_reader_s::eof_reached</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>terminal_fd_reader_s::first_frame_processed</b>,
+            <b>terminal_fd_reader_s::fp</b>,
+            <b>terminal_fd_reader_s::frame_height</b>,
+            <b>terminal_fd_reader_s::frame_width</b>,
+            <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
+            <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
+            <b>log_debug_every</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>NS_PER_SEC_INT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SET_ERRNO</b>, and <b>terminal_fd_reader_next()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>terminal_fd_reader_next()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

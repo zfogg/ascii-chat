@@ -1,154 +1,245 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>pipeline.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">pipeline.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">pipeline.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">pipeline.c - Three-thread render pipeline implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>pipeline_frame_t</b>
-  <br/>
-  struct <b>frame_slot_s</b>
-  <br/>
-  struct <b>frame_queue_s</b>
-  <br/>
-  struct <b>session_pipeline_s</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>PIPELINE_FRAME_SLOTS</b> 3
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>frame_slot_s</b> <b>frame_slot_t</b>
-  <br/>
-  typedef struct <b>frame_queue_s</b> <b>frame_queue_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>session_pipeline_create</b>
-    (<b>session_capture_ctx_t</b> *capture, <b>session_display_ctx_t</b>
-    *display, <b>session_pipeline_t</b> **out)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_pipeline_run_main</b>
-    (<b>session_pipeline_t</b> *pipeline, <b>session_should_exit_fn</b>
-    should_exit, <b>session_keyboard_handler_fn</b> keyboard_handler, void
-    *user_data)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_pipeline_destroy</b>
-    (<b>session_pipeline_t</b> *pipeline)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>g_snapshot_first_frame_rendered</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Three-thread render pipeline implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>pipeline.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_PIPELINE_FRAME_SLOTS___3"><a class="permalink" href="#_define_PIPELINE_FRAME_SLOTS___3">#define
-  PIPELINE_FRAME_SLOTS 3</a></h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>frame_queue_s</b> <b>frame_queue_t</b></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>frame_slot_s</b> <b>frame_slot_t</b></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>pipeline.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_pipeline_create
-  (<b>session_capture_ctx_t</b> * capture, <b>session_display_ctx_t</b> *
-  display, <b>session_pipeline_t</b> ** out)</h2>
-<p class="Pp">Create and start the capture thread and (if --render-file) encode
-    thread.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capture</i> Capture context (must have real
-  <b>media_source_t</b> for synchronous mode)
-<br/>
-<i>display</i> Display context (may have render_file set for --render-file mode)
-<br/>
-<i>out</i> Pointer to receive allocated pipeline context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The pipeline does NOT own capture or display &#x2014;
-  caller must keep them alive until <b>session_pipeline_destroy()</b>
-  returns.</div>
-<p class="Pp">Definition at line <b>522</b> of file <b>pipeline.c</b>.</p>
-<pre>523                                                                     {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pipeline.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pipeline.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pipeline.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          pipeline.c - Three-thread render pipeline implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>pipeline_frame_t</b>
+            <br />
+            struct <b>frame_slot_s</b>
+            <br />
+            struct <b>frame_queue_s</b>
+            <br />
+            struct <b>session_pipeline_s</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>PIPELINE_FRAME_SLOTS</b> 3
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>frame_slot_s</b> <b>frame_slot_t</b>
+            <br />
+            typedef struct <b>frame_queue_s</b> <b>frame_queue_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>session_pipeline_create</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *capture, <b>session_display_ctx_t</b> *display,
+            <b>session_pipeline_t</b> **out)
+            <br />
+            <b>asciichat_error_t</b> <b>session_pipeline_run_main</b> (<b
+              >session_pipeline_t</b
+            >
+            *pipeline, <b>session_should_exit_fn</b> should_exit,
+            <b>session_keyboard_handler_fn</b> keyboard_handler, void
+            *user_data)
+            <br />
+            <b>asciichat_error_t</b> <b>session_pipeline_destroy</b> (<b
+              >session_pipeline_t</b
+            >
+            *pipeline)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>g_snapshot_first_frame_rendered</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Three-thread render pipeline implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>pipeline.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PIPELINE_FRAME_SLOTS___3">
+            <a class="permalink" href="#_define_PIPELINE_FRAME_SLOTS___3"
+              >#define PIPELINE_FRAME_SLOTS 3</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>frame_queue_s</b> <b>frame_queue_t</b>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>frame_slot_s</b> <b>frame_slot_t</b>
+          </h2>
+          <p class="Pp">
+            Definition at line <b>39</b> of file <b>pipeline.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_pipeline_create (<b
+              >session_capture_ctx_t</b
+            >
+            * capture, <b>session_display_ctx_t</b> * display,
+            <b>session_pipeline_t</b> ** out)
+          </h2>
+          <p class="Pp">
+            Create and start the capture thread and (if --render-file) encode
+            thread.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capture</i> Capture context (must have real
+            <b>media_source_t</b> for synchronous mode)
+            <br />
+            <i>display</i> Display context (may have render_file set for
+            --render-file mode)
+            <br />
+            <i>out</i> Pointer to receive allocated pipeline context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The pipeline does NOT own capture or display &#x2014; caller must
+            keep them alive until
+            <b>session_pipeline_destroy()</b> returns.
+          </div>
+          <p class="Pp">
+            Definition at line <b>522</b> of file <b>pipeline.c</b>.
+          </p>
+          <pre>
+523                                                                     {
 524   if (!capture || !display || !out) {
 525     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL argument&quot;);
 526   }
@@ -217,49 +308,65 @@
 589   *out = p;
 590   return ASCIICHAT_OK;
 591 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_ptr_exchange()</b>, <b>atomic_ptr_store()</b>,
-    <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
-    <b>frame_slot_s::busy</b>, <b>session_pipeline_s::capture</b>,
-    <b>session_pipeline_s::capture_finished</b>,
-    <b>session_pipeline_s::capture_tid</b>, <b>session_pipeline_s::display</b>,
-    <b>session_pipeline_s::display_pending</b>,
-    <b>session_pipeline_s::display_ready</b>,
-    <b>session_pipeline_s::encode_queue</b>,
-    <b>session_pipeline_s::encode_tid</b>, <b>ERROR_INIT</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>session_pipeline_s::first_frame_ns</b>,
-    <b>session_pipeline_s::frame_slots</b>,
-    <b>session_pipeline_s::has_render_file</b>, <b>log_debug</b>,
-    <b>media_source_get_type()</b>, <b>MEDIA_SOURCE_STDIN</b>,
-    <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_ATOMIC_PTR</b>,
-    <b>NAMED_UNREGISTER</b>, <b>PIPELINE_FRAME_SLOTS</b>,
-    <b>platform_wakeup_create()</b>, <b>platform_wakeup_destroy()</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>session_capture_get_media_source()</b>,
-    <b>session_display_get_render_fps()</b>,
-    <b>session_display_has_render_file()</b>,
-    <b>session_display_set_render_live_timing()</b>,
-    <b>session_pipeline_create()</b>, <b>SET_ERRNO</b>,
-    <b>session_pipeline_s::stop</b>, and <b>thread_join</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
-    <b>session_render_loop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_pipeline_destroy
-  (<b>session_pipeline_t</b> * pipeline)</h2>
-<p class="Pp">Stop threads and free pipeline.</p>
-<p class="Pp"></p>
-<p class="Pp">Waits for capture and encode threads to exit cleanly.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline context (safe to call with
-  NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK</div>
-<p class="Pp">Definition at line <b>728</b> of file <b>pipeline.c</b>.</p>
-<pre>728                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_ptr_exchange()</b>, <b>atomic_ptr_store()</b>,
+            <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+            <b>frame_slot_s::busy</b>, <b>session_pipeline_s::capture</b>,
+            <b>session_pipeline_s::capture_finished</b>,
+            <b>session_pipeline_s::capture_tid</b>,
+            <b>session_pipeline_s::display</b>,
+            <b>session_pipeline_s::display_pending</b>,
+            <b>session_pipeline_s::display_ready</b>,
+            <b>session_pipeline_s::encode_queue</b>,
+            <b>session_pipeline_s::encode_tid</b>, <b>ERROR_INIT</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>session_pipeline_s::first_frame_ns</b>,
+            <b>session_pipeline_s::frame_slots</b>,
+            <b>session_pipeline_s::has_render_file</b>, <b>log_debug</b>,
+            <b>media_source_get_type()</b>, <b>MEDIA_SOURCE_STDIN</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_ATOMIC_PTR</b>,
+            <b>NAMED_UNREGISTER</b>, <b>PIPELINE_FRAME_SLOTS</b>,
+            <b>platform_wakeup_create()</b>, <b>platform_wakeup_destroy()</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+            <b>session_capture_get_media_source()</b>,
+            <b>session_display_get_render_fps()</b>,
+            <b>session_display_has_render_file()</b>,
+            <b>session_display_set_render_live_timing()</b>,
+            <b>session_pipeline_create()</b>, <b>SET_ERRNO</b>,
+            <b>session_pipeline_s::stop</b>, and <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>, and
+            <b>session_render_loop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_pipeline_destroy (<b
+              >session_pipeline_t</b
+            >
+            * pipeline)
+          </h2>
+          <p class="Pp">Stop threads and free pipeline.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Waits for capture and encode threads to exit cleanly.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline context (safe to call with NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK</div>
+          <p class="Pp">
+            Definition at line <b>728</b> of file <b>pipeline.c</b>.
+          </p>
+          <pre>
+728                                                                          {
 729   if (!pipeline)
 730     return ASCIICHAT_OK;
 731
@@ -314,62 +421,81 @@
 780   log_debug(&quot;[PIPELINE] Pipeline destroyed&quot;);
 781   return err;
 782 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_pipeline_progress()</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_ptr_exchange()</b>,
-    <b>atomic_store_bool()</b>, <b>session_pipeline_s::capture_failure</b>,
-    <b>session_pipeline_s::capture_finished</b>,
-    <b>session_pipeline_s::capture_tid</b>,
-    <b>asciichat_error_context_t::code</b>, <b>cond_broadcast()</b>,
-    <b>session_pipeline_s::display</b>,
-    <b>session_pipeline_s::display_pending</b>,
-    <b>session_pipeline_s::display_ready</b>,
-    <b>session_pipeline_s::encode_error</b>,
-    <b>session_pipeline_s::encode_queue</b>,
-    <b>session_pipeline_s::encode_tid</b>, <b>errno_import()</b>,
-    <b>ERROR_THREAD</b>, <b>session_pipeline_s::frame_slots</b>,
-    <b>session_pipeline_s::frames_accepted</b>,
-    <b>session_pipeline_s::input_tid</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>frame_queue_s::mu</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NAMED_UNREGISTER</b>,
-    <b>frame_queue_s::not_empty</b>, <b>frame_queue_s::not_full</b>,
-    <b>platform_wakeup_destroy()</b>, <b>platform_wakeup_signal()</b>,
-    <b>SAFE_FREE</b>, <b>session_display_begin_drain()</b>,
-    <b>session_pipeline_destroy()</b>, <b>SET_ERRNO</b>,
-    <b>session_pipeline_s::stop</b>, <b>thread_is_initialized()</b>, and
-    <b>thread_join</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_destroy()</b>, and
-    <b>session_render_loop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_pipeline_run_main
-  (<b>session_pipeline_t</b> * pipeline, <b>session_should_exit_fn</b>
-  should_exit, <b>session_keyboard_handler_fn</b> keyboard_handler, void *
-  user_data)</h2>
-<p class="Pp">Main thread loop: drives terminal output and keyboard
-  handling.</p>
-<p class="Pp"></p>
-<p class="Pp">Pops frames from display queue, converts to ASCII, writes to
-    terminal. Handles snapshot delay timer and exit conditions.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline context created by
-  <b>session_pipeline_create()</b>
-<br/>
-<i>should_exit</i> Callback to check if rendering should stop
-<br/>
-<i>keyboard_handler</i> Optional keyboard handler callback
-<br/>
-<i>user_data</i> Opaque data passed to callbacks</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function blocks until <b>should_exit()</b> returns
-  true or capture ends. Signals capture/encode threads to stop before
-  returning.</div>
-<p class="Pp">Definition at line <b>611</b> of file <b>pipeline.c</b>.</p>
-<pre>612                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_pipeline_progress()</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_ptr_exchange()</b>,
+            <b>atomic_store_bool()</b>,
+            <b>session_pipeline_s::capture_failure</b>,
+            <b>session_pipeline_s::capture_finished</b>,
+            <b>session_pipeline_s::capture_tid</b>,
+            <b>asciichat_error_context_t::code</b>, <b>cond_broadcast()</b>,
+            <b>session_pipeline_s::display</b>,
+            <b>session_pipeline_s::display_pending</b>,
+            <b>session_pipeline_s::display_ready</b>,
+            <b>session_pipeline_s::encode_error</b>,
+            <b>session_pipeline_s::encode_queue</b>,
+            <b>session_pipeline_s::encode_tid</b>, <b>errno_import()</b>,
+            <b>ERROR_THREAD</b>, <b>session_pipeline_s::frame_slots</b>,
+            <b>session_pipeline_s::frames_accepted</b>,
+            <b>session_pipeline_s::input_tid</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>frame_queue_s::mu</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NAMED_UNREGISTER</b>,
+            <b>frame_queue_s::not_empty</b>, <b>frame_queue_s::not_full</b>,
+            <b>platform_wakeup_destroy()</b>, <b>platform_wakeup_signal()</b>,
+            <b>SAFE_FREE</b>, <b>session_display_begin_drain()</b>,
+            <b>session_pipeline_destroy()</b>, <b>SET_ERRNO</b>,
+            <b>session_pipeline_s::stop</b>, <b>thread_is_initialized()</b>, and
+            <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_destroy()</b>, and
+            <b>session_render_loop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_pipeline_run_main (<b
+              >session_pipeline_t</b
+            >
+            * pipeline, <b>session_should_exit_fn</b> should_exit,
+            <b>session_keyboard_handler_fn</b> keyboard_handler, void *
+            user_data)
+          </h2>
+          <p class="Pp">
+            Main thread loop: drives terminal output and keyboard handling.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Pops frames from display queue, converts to ASCII, writes to
+            terminal. Handles snapshot delay timer and exit conditions.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline context created by
+            <b>session_pipeline_create()</b>
+            <br />
+            <i>should_exit</i> Callback to check if rendering should stop
+            <br />
+            <i>keyboard_handler</i> Optional keyboard handler callback
+            <br />
+            <i>user_data</i> Opaque data passed to callbacks
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function blocks until <b>should_exit()</b> returns true or
+            capture ends. Signals capture/encode threads to stop before
+            returning.
+          </div>
+          <p class="Pp">
+            Definition at line <b>611</b> of file <b>pipeline.c</b>.
+          </p>
+          <pre>
+612                                                                                                            {
 613   if (!pipeline || !should_exit) {
 614     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL argument&quot;);
 615   }
@@ -484,68 +610,85 @@
 724
 725   return ASCIICHAT_OK;
 726 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>pipeline_frame_t::acquisition_started_ns</b>,
-    <b>acthread_create</b>, <b>ascii_otel_metric()</b>,
-    <b>ascii_otel_pipeline_progress()</b>, <b>ascii_otel_scope_int()</b>,
-    <b>ASCII_OTEL_SCOPE_PARENT</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_ptr_exchange()</b>,
-    <b>atomic_ptr_load()</b>, <b>atomic_store_bool()</b>,
-    <b>session_pipeline_s::capture</b>,
-    <b>session_pipeline_s::capture_finished</b>,
-    <b>pipeline_frame_t::captured_ns</b>, <b>session_pipeline_s::display</b>,
-    <b>session_pipeline_s::display_pending</b>,
-    <b>session_pipeline_s::display_ready</b>, <b>ERROR_INIT</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
-    <b>pipeline_frame_t::fresh</b>, <b>GET_OPTION</b>,
-    <b>pipeline_frame_t::h</b>, <b>session_pipeline_s::input_data</b>,
-    <b>session_pipeline_s::input_start_status</b>,
-    <b>session_pipeline_s::input_tid</b>,
-    <b>session_pipeline_s::keyboard_handler</b>, <b>log_debug</b>,
-    <b>log_debug_every</b>, <b>log_error</b>, <b>log_error_every</b>,
-    <b>NS_PER_MS_INT</b>, <b>pipeline_frame_t::pixels</b>,
-    <b>platform_sleep_ms()</b>, <b>platform_wakeup_wait()</b>,
-    <b>session_capture_complete_open()</b>,
-    <b>session_capture_source_epoch()</b>,
-    <b>session_display_convert_to_ascii_reuse()</b>,
-    <b>session_display_release_ascii()</b>,
-    <b>session_display_reset_stabilizer()</b>,
-    <b>session_display_write_ascii_frame()</b>,
-    <b>session_pipeline_run_main()</b>, <b>SET_ERRNO</b>,
-    <b>session_pipeline_s::should_exit</b>, <b>should_exit()</b>,
-    <b>pipeline_frame_t::source_epoch</b>, <b>session_pipeline_s::stop</b>,
-    <b>pipeline_frame_t::telemetry_context</b>, <b>thread_is_initialized()</b>,
-    <b>thread_join</b>, <b>time_get_ns()</b>,
-    <b>ui_controller_current_screen()</b>,
-    <b>ui_controller_frame_acquired_at()</b>, <b>UI_SCREEN_LOGS</b>,
-    <b>UI_SCREEN_PROMPT</b>, <b>US_PER_SEC_INT</b>, and
-    <b>pipeline_frame_t::w</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_run_main()</b>, and
-    <b>session_render_loop()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> g_snapshot_first_frame_rendered [extern]</h2>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>src/common/session/render.c</b>.</p>
-<p class="Pp">Referenced by <b>session_display_write_ascii_frame()</b>, and
-    <b>session_render_loop()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>pipeline_frame_t::acquisition_started_ns</b>,
+            <b>acthread_create</b>, <b>ascii_otel_metric()</b>,
+            <b>ascii_otel_pipeline_progress()</b>,
+            <b>ascii_otel_scope_int()</b>, <b>ASCII_OTEL_SCOPE_PARENT</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>atomic_ptr_exchange()</b>, <b>atomic_ptr_load()</b>,
+            <b>atomic_store_bool()</b>, <b>session_pipeline_s::capture</b>,
+            <b>session_pipeline_s::capture_finished</b>,
+            <b>pipeline_frame_t::captured_ns</b>,
+            <b>session_pipeline_s::display</b>,
+            <b>session_pipeline_s::display_pending</b>,
+            <b>session_pipeline_s::display_ready</b>, <b>ERROR_INIT</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
+            <b>pipeline_frame_t::fresh</b>, <b>GET_OPTION</b>,
+            <b>pipeline_frame_t::h</b>, <b>session_pipeline_s::input_data</b>,
+            <b>session_pipeline_s::input_start_status</b>,
+            <b>session_pipeline_s::input_tid</b>,
+            <b>session_pipeline_s::keyboard_handler</b>, <b>log_debug</b>,
+            <b>log_debug_every</b>, <b>log_error</b>, <b>log_error_every</b>,
+            <b>NS_PER_MS_INT</b>, <b>pipeline_frame_t::pixels</b>,
+            <b>platform_sleep_ms()</b>, <b>platform_wakeup_wait()</b>,
+            <b>session_capture_complete_open()</b>,
+            <b>session_capture_source_epoch()</b>,
+            <b>session_display_convert_to_ascii_reuse()</b>,
+            <b>session_display_release_ascii()</b>,
+            <b>session_display_reset_stabilizer()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_pipeline_run_main()</b>, <b>SET_ERRNO</b>,
+            <b>session_pipeline_s::should_exit</b>, <b>should_exit()</b>,
+            <b>pipeline_frame_t::source_epoch</b>,
+            <b>session_pipeline_s::stop</b>,
+            <b>pipeline_frame_t::telemetry_context</b>,
+            <b>thread_is_initialized()</b>, <b>thread_join</b>,
+            <b>time_get_ns()</b>, <b>ui_controller_current_screen()</b>,
+            <b>ui_controller_frame_acquired_at()</b>, <b>UI_SCREEN_LOGS</b>,
+            <b>UI_SCREEN_PROMPT</b>, <b>US_PER_SEC_INT</b>, and
+            <b>pipeline_frame_t::w</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_run_main()</b>, and
+            <b>session_render_loop()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> g_snapshot_first_frame_rendered [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file
+            <b>src/common/session/render.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_display_write_ascii_frame()</b>, and
+            <b>session_render_loop()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

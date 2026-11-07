@@ -1,249 +1,331 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>video_frame(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">video_frame(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">video_frame(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">video_frame - Video Frame Buffers</p>
-<p class="Pp">
-  <br/>
-   - &#x1F4F9; High-performance video frame management with double-buffering and
-    lock-free operations</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>video_frame.c</b>
-  <br/>
-  &#x1F3AC; Video frame buffer management for client-specific ASCII rendering
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>video_frame_t</b>
-  <br/>
-  Video frame structure. struct <b>video_frame_buffer_t</b>
-  <br/>
-  Video frame buffer manager. struct <b>video_frame_stats_t</b>
-  <br/>
-  Frame statistics structure. struct <b>simple_frame_swap_t</b>
-  <br/>
-  Simple atomic frame swap structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>VIDEO_FRAME_BUFFER_SIZE</b>
-    <b>MAX_FRAME_BUFFER_SIZE</b>
-  <br/>
-  Video frame buffer size (2MB per frame). #define <b>MAX_FRAME_BUFFERS</b> 2
-  <br/>
-  Maximum number of frame buffers (double buffering).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>video_frame_buffer_t</b> * <b>video_frame_buffer_create</b>
-    (const char *client_id)
-  <br/>
-  Create a double-buffered video frame manager. void
-    <b>video_frame_buffer_destroy</b> (<b>video_frame_buffer_t</b> *vfb)
-  <br/>
-  Destroy frame buffer and free all resources. <b>video_frame_t</b> *
-    <b>video_frame_begin_write</b> (<b>video_frame_buffer_t</b> *vfb)
-  <br/>
-  Writer API: Start writing a new frame. void <b>video_frame_commit</b>
-    (<b>video_frame_buffer_t</b> *vfb)
-  <br/>
-  Writer API: Commit the frame and swap buffers. const <b>video_frame_t</b> *
-    <b>video_frame_get_latest</b> (<b>video_frame_buffer_t</b> *vfb)
-  <br/>
-  Reader API: Get latest frame if available. const <b>video_frame_t</b> *
-    <b>video_frame_peek_latest</b> (<b>video_frame_buffer_t</b> *vfb)
-  <br/>
-  void <b>video_frame_get_stats</b> (<b>video_frame_buffer_t</b> *vfb,
-    <b>video_frame_stats_t</b> *stats)
-  <br/>
-  Get frame statistics for quality monitoring. <b>simple_frame_swap_t</b> *
-    <b>simple_frame_swap_create</b> (void)
-  <br/>
-  Create a simple atomic frame swap. void <b>simple_frame_swap_destroy</b>
-    (<b>simple_frame_swap_t</b> *sfs)
-  <br/>
-  Destroy simple frame swap and free resources. void
-    <b>simple_frame_swap_update</b> (<b>simple_frame_swap_t</b> *sfs, const void
-    *data, size_t size)
-  <br/>
-  Update frame data in simple frame swap. const <b>video_frame_t</b> *
-    <b>simple_frame_swap_get</b> (<b>simple_frame_swap_t</b> *sfs)
-  <br/>
-  Get current frame from simple frame swap.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4F9; High-performance video frame management with
-    double-buffering and lock-free operations</p>
-<p class="Pp">This header provides a high-performance video frame management
-    system inspired by WebRTC, Zoom, and Google Meet architectures. It
-    implements a lock-free double-buffering system with atomic pointer swaps for
-    zero-copy frame transfer.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CORE_FEATURES:"><a class="permalink" href="#CORE_FEATURES:">CORE
-  FEATURES: </a></h1>
-<ul class="Bl-bullet">
-  <li>Zero-copy frame transfer (pointer swaps only)</li>
-  <li>Lock-free read operations (reader never blocks writer)</li>
-  <li>Latest-frame-wins semantics (old frames are dropped, not queued)</li>
-  <li>Double buffering with atomic pointer swaps</li>
-  <li>Comprehensive quality metrics tracking</li>
-  <li>Pre-allocated buffers for zero-allocation operation</li>
-  <li>Frame sequence numbering for drop detection</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ARCHITECTURE:"><a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE:
-  </a></h1>
-<p class="Pp">The system uses a double-buffering pattern:</p>
-<ul class="Bl-bullet">
-  <li>Front Buffer: Currently being displayed (reader owns)</li>
-  <li>Back Buffer: Currently being written (writer owns)</li>
-  <li>Atomic swap: Makes new frame available without blocking</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="WRITER_API:"><a class="permalink" href="#WRITER_API:">WRITER
-  API: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Call <b>video_frame_begin_write()</b> to get back buffer pointer</dd>
-  <dt>2.</dt>
-  <dd>Write frame data directly to back buffer</dd>
-  <dt>3.</dt>
-  <dd>Call <b>video_frame_commit()</b> to atomically swap buffers</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="READER_API:"><a class="permalink" href="#READER_API:">READER
-  API: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Call <b>video_frame_get_latest()</b> to get current frame</dd>
-  <dt>2.</dt>
-  <dd>Returns NULL if no new frame since last read</dd>
-  <dt>3.</dt>
-  <dd>Lock-free operation never blocks writer</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_BENEFITS:"><a class="permalink" href="#PERFORMANCE_BENEFITS:">PERFORMANCE
-  BENEFITS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Zero-copy eliminates memcpy overhead</li>
-  <li>Lock-free reads minimize latency</li>
-  <li>Pre-allocated buffers avoid runtime allocations</li>
-  <li>Latest-frame-wins prevents buffer buildup</li>
-  <li>Metrics enable adaptive quality control</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="QUALITY_METRICS:"><a class="permalink" href="#QUALITY_METRICS:">QUALITY
-  METRICS: </a></h1>
-<p class="Pp">The system tracks:</p>
-<ul class="Bl-bullet">
-  <li>Total frames received</li>
-  <li>Total frames dropped</li>
-  <li>Frame drop rate</li>
-  <li>Average decode time</li>
-  <li>Average render time</li>
-</ul>
-<p class="Pp">These metrics enable adaptive streaming quality based on
-    performance.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Frame data is not owned by the frame structure - it
-  points to pre-allocated buffers managed by the frame buffer.
-<p class="Pp"></p>
-<p class="Pp">The writer must call <b>video_frame_commit()</b> after writing
-    each frame to make it available to readers.</p>
-<p class="Pp"></p>
-<p class="Pp">Readers should check for NULL returns from
-    <b>video_frame_get_latest()</b> to handle cases where no new frame is
-    available.</p>
-</div>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">October 2025</div>
-<p class="Pp">Video Frame README</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
-<p class="Pp">The Video Frame module provides structures and utilities for
-    managing video frames throughout the ascii-chat pipeline. It handles RGB
-    image data, frame metadata, and efficient frame lifecycle management.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Implementation</b>: lib/video_frame.h</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key Features</b>:</p>
-<ul class="Bl-bullet">
-  <li>Zero-copy frame transfer (pointer swaps only)</li>
-  <li>Lock-free double-buffering system</li>
-  <li>Latest-frame-wins semantics (old frames dropped, not queued)</li>
-  <li>Pre-allocated buffers for zero-allocation operation</li>
-  <li>RGB24 image frame representation</li>
-  <li>Frame metadata (timestamp, dimensions, client ID)</li>
-  <li>Frame sequence numbering for drop detection</li>
-  <li>Comprehensive quality metrics tracking</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Frame_Structure"><a class="permalink" href="#Frame_Structure">Frame
-  Structure</a></h1>
-<p class="Pp"><b></b><b>video_frame_t</b><b></b><b>:</b></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>video_frame(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">video_frame(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">video_frame(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">video_frame - Video Frame Buffers</p>
+        <p class="Pp">
+          <br />
+          - &#x1F4F9; High-performance video frame management with
+          double-buffering and lock-free operations
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>video_frame.c</b>
+            <br />
+            &#x1F3AC; Video frame buffer management for client-specific ASCII
+            rendering
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>video_frame_t</b>
+            <br />
+            Video frame structure. struct <b>video_frame_buffer_t</b>
+            <br />
+            Video frame buffer manager. struct <b>video_frame_stats_t</b>
+            <br />
+            Frame statistics structure. struct <b>simple_frame_swap_t</b>
+            <br />
+            Simple atomic frame swap structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>VIDEO_FRAME_BUFFER_SIZE</b>
+            <b>MAX_FRAME_BUFFER_SIZE</b>
+            <br />
+            Video frame buffer size (2MB per frame). #define
+            <b>MAX_FRAME_BUFFERS</b> 2
+            <br />
+            Maximum number of frame buffers (double buffering).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>video_frame_buffer_t</b> * <b>video_frame_buffer_create</b>
+            (const char *client_id)
+            <br />
+            Create a double-buffered video frame manager. void
+            <b>video_frame_buffer_destroy</b> (<b>video_frame_buffer_t</b> *vfb)
+            <br />
+            Destroy frame buffer and free all resources. <b>video_frame_t</b> *
+            <b>video_frame_begin_write</b> (<b>video_frame_buffer_t</b> *vfb)
+            <br />
+            Writer API: Start writing a new frame. void
+            <b>video_frame_commit</b> (<b>video_frame_buffer_t</b>
+            *vfb)
+            <br />
+            Writer API: Commit the frame and swap buffers. const
+            <b>video_frame_t</b> * <b>video_frame_get_latest</b> (<b
+              >video_frame_buffer_t</b
+            >
+            *vfb)
+            <br />
+            Reader API: Get latest frame if available. const
+            <b>video_frame_t</b> * <b>video_frame_peek_latest</b> (<b
+              >video_frame_buffer_t</b
+            >
+            *vfb)
+            <br />
+            void <b>video_frame_get_stats</b> (<b>video_frame_buffer_t</b> *vfb,
+            <b>video_frame_stats_t</b> *stats)
+            <br />
+            Get frame statistics for quality monitoring.
+            <b>simple_frame_swap_t</b> * <b>simple_frame_swap_create</b> (void)
+            <br />
+            Create a simple atomic frame swap. void
+            <b>simple_frame_swap_destroy</b> (<b>simple_frame_swap_t</b>
+            *sfs)
+            <br />
+            Destroy simple frame swap and free resources. void
+            <b>simple_frame_swap_update</b> (<b>simple_frame_swap_t</b> *sfs,
+            const void *data, size_t size)
+            <br />
+            Update frame data in simple frame swap. const <b>video_frame_t</b> *
+            <b>simple_frame_swap_get</b> (<b>simple_frame_swap_t</b> *sfs)
+            <br />
+            Get current frame from simple frame swap.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4F9; High-performance video frame management with
+          double-buffering and lock-free operations
+        </p>
+        <p class="Pp">
+          This header provides a high-performance video frame management system
+          inspired by WebRTC, Zoom, and Google Meet architectures. It implements
+          a lock-free double-buffering system with atomic pointer swaps for
+          zero-copy frame transfer.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="CORE_FEATURES:">
+          <a class="permalink" href="#CORE_FEATURES:">CORE FEATURES: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Zero-copy frame transfer (pointer swaps only)</li>
+          <li>Lock-free read operations (reader never blocks writer)</li>
+          <li>
+            Latest-frame-wins semantics (old frames are dropped, not queued)
+          </li>
+          <li>Double buffering with atomic pointer swaps</li>
+          <li>Comprehensive quality metrics tracking</li>
+          <li>Pre-allocated buffers for zero-allocation operation</li>
+          <li>Frame sequence numbering for drop detection</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ARCHITECTURE:">
+          <a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE: </a>
+        </h1>
+        <p class="Pp">The system uses a double-buffering pattern:</p>
+        <ul class="Bl-bullet">
+          <li>Front Buffer: Currently being displayed (reader owns)</li>
+          <li>Back Buffer: Currently being written (writer owns)</li>
+          <li>Atomic swap: Makes new frame available without blocking</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WRITER_API:">
+          <a class="permalink" href="#WRITER_API:">WRITER API: </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>
+            Call <b>video_frame_begin_write()</b> to get back buffer pointer
+          </dd>
+          <dt>2.</dt>
+          <dd>Write frame data directly to back buffer</dd>
+          <dt>3.</dt>
+          <dd>Call <b>video_frame_commit()</b> to atomically swap buffers</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="READER_API:">
+          <a class="permalink" href="#READER_API:">READER API: </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>Call <b>video_frame_get_latest()</b> to get current frame</dd>
+          <dt>2.</dt>
+          <dd>Returns NULL if no new frame since last read</dd>
+          <dt>3.</dt>
+          <dd>Lock-free operation never blocks writer</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_BENEFITS:">
+          <a class="permalink" href="#PERFORMANCE_BENEFITS:"
+            >PERFORMANCE BENEFITS:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Zero-copy eliminates memcpy overhead</li>
+          <li>Lock-free reads minimize latency</li>
+          <li>Pre-allocated buffers avoid runtime allocations</li>
+          <li>Latest-frame-wins prevents buffer buildup</li>
+          <li>Metrics enable adaptive quality control</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="QUALITY_METRICS:">
+          <a class="permalink" href="#QUALITY_METRICS:">QUALITY METRICS: </a>
+        </h1>
+        <p class="Pp">The system tracks:</p>
+        <ul class="Bl-bullet">
+          <li>Total frames received</li>
+          <li>Total frames dropped</li>
+          <li>Frame drop rate</li>
+          <li>Average decode time</li>
+          <li>Average render time</li>
+        </ul>
+        <p class="Pp">
+          These metrics enable adaptive streaming quality based on performance.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Frame data is not owned by the frame structure - it points to
+          pre-allocated buffers managed by the frame buffer.
+          <p class="Pp"></p>
+          <p class="Pp">
+            The writer must call <b>video_frame_commit()</b> after writing each
+            frame to make it available to readers.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Readers should check for NULL returns from
+            <b>video_frame_get_latest()</b> to handle cases where no new frame
+            is available.
+          </p>
+        </div>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">October 2025</div>
+        <p class="Pp">Video Frame README</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The Video Frame module provides structures and utilities for managing
+          video frames throughout the ascii-chat pipeline. It handles RGB image
+          data, frame metadata, and efficient frame lifecycle management.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Implementation</b>: lib/video_frame.h</p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Key Features</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Zero-copy frame transfer (pointer swaps only)</li>
+          <li>Lock-free double-buffering system</li>
+          <li>Latest-frame-wins semantics (old frames dropped, not queued)</li>
+          <li>Pre-allocated buffers for zero-allocation operation</li>
+          <li>RGB24 image frame representation</li>
+          <li>Frame metadata (timestamp, dimensions, client ID)</li>
+          <li>Frame sequence numbering for drop detection</li>
+          <li>Comprehensive quality metrics tracking</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Frame_Structure">
+          <a class="permalink" href="#Frame_Structure">Frame Structure</a>
+        </h1>
+        <p class="Pp"><b></b><b>video_frame_t</b><b></b><b>:</b></p>
+        <p class="Pp"></p>
+        <pre>typedef struct {
 <br/>
     uint8_t *data;        // RGB24 pixel data
 <br/>
@@ -260,36 +342,44 @@
     bool owns_data;       // Whether this frame owns the data buffer
 } video_frame_t;
 </pre>
-<p class="Pp"><b>Frame Properties</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>data</b>: RGB24 format (3 bytes per pixel: R, G, B)</li>
-  <li><b>width/height</b>: Frame dimensions</li>
-  <li><b>data_size</b>: Always equals width * height * 3</li>
-  <li><b>client_id</b>: Which client this frame belongs to</li>
-  <li><b>timestamp</b>: Microsecond-precision capture time</li>
-  <li><b>owns_data</b>: Memory ownership flag</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Operations"><a class="permalink" href="#Operations">Operations</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Double-Buffering_API"><a class="permalink" href="#Double-Buffering_API">Double-Buffering
-  API</a></h2>
-<p class="Pp">The recommended way to use video frames is through the lock-free
-    double-buffering API:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Writer API</b> (producer thread):</p>
-<p class="Pp"></p>
-<pre>// 1. Get pointer to back buffer for writing
+        <p class="Pp"><b>Frame Properties</b>:</p>
+        <ul class="Bl-bullet">
+          <li><b>data</b>: RGB24 format (3 bytes per pixel: R, G, B)</li>
+          <li><b>width/height</b>: Frame dimensions</li>
+          <li><b>data_size</b>: Always equals width * height * 3</li>
+          <li><b>client_id</b>: Which client this frame belongs to</li>
+          <li><b>timestamp</b>: Microsecond-precision capture time</li>
+          <li><b>owns_data</b>: Memory ownership flag</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Operations">
+          <a class="permalink" href="#Operations">Operations</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Double-Buffering_API">
+            <a class="permalink" href="#Double-Buffering_API"
+              >Double-Buffering API</a
+            >
+          </h2>
+          <p class="Pp">
+            The recommended way to use video frames is through the lock-free
+            double-buffering API:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Writer API</b> (producer thread):</p>
+          <p class="Pp"></p>
+          <pre>
+// 1. Get pointer to back buffer for writing
 uint8_t *write_buffer = video_frame_begin_write(frame_buffer);
 // 2. Write frame data directly to back buffer
 memcpy(write_buffer, captured_rgb_data, width * height * 3);
 // 3. Atomically swap buffers to make frame available
 video_frame_commit(frame_buffer, width, height);
 </pre>
-<p class="Pp"><b>Reader API</b> (consumer thread):</p>
-<p class="Pp"></p>
-<pre>// Get latest frame (returns NULL if no new frame since last read)
+          <p class="Pp"><b>Reader API</b> (consumer thread):</p>
+          <p class="Pp"></p>
+          <pre>// Get latest frame (returns NULL if no new frame since last read)
 video_frame_t *frame = video_frame_get_latest(frame_buffer);
 if (frame) {
 <br/>
@@ -298,16 +388,21 @@ if (frame) {
     render_ascii(frame-&gt;data, frame-&gt;width, frame-&gt;height);
 }
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Manual_Creation_(for_special_cases)"><a class="permalink" href="#Manual_Creation_(for_special_cases)">Manual
-  Creation (for special cases)</a></h2>
-<p class="Pp">For cases where you need standalone frames without the
-    double-buffering system:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Create from Existing Data</b>:</p>
-<p class="Pp"></p>
-<pre>video_frame_t frame = {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Manual_Creation_(for_special_cases)">
+            <a class="permalink" href="#Manual_Creation_(for_special_cases)"
+              >Manual Creation (for special cases)</a
+            >
+          </h2>
+          <p class="Pp">
+            For cases where you need standalone frames without the
+            double-buffering system:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Create from Existing Data</b>:</p>
+          <p class="Pp"></p>
+          <pre>video_frame_t frame = {
 <br/>
     .data = existing_rgb_data,
 <br/>
@@ -324,13 +419,15 @@ if (frame) {
     .owns_data = false  // Don't free existing_rgb_data
 };
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Access"><a class="permalink" href="#Data_Access">Data
-  Access</a></h2>
-<p class="Pp"><b>Pixel Access</b>:</p>
-<p class="Pp"></p>
-<pre>// Get pixel at (x, y)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Access">
+            <a class="permalink" href="#Data_Access">Data Access</a>
+          </h2>
+          <p class="Pp"><b>Pixel Access</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// Get pixel at (x, y)
 size_t offset = (y * frame-&gt;width + x) * 3;
 uint8_t r = frame-&gt;data[offset + 0];
 uint8_t g = frame-&gt;data[offset + 1];
@@ -340,9 +437,9 @@ frame-&gt;data[offset + 0] = 255;  // R
 frame-&gt;data[offset + 1] = 128;  // G
 frame-&gt;data[offset + 2] = 0;    // B
 </pre>
-<p class="Pp"><b>Row Access</b>:</p>
-<p class="Pp"></p>
-<pre>// Get pointer to row y
+          <p class="Pp"><b>Row Access</b>:</p>
+          <p class="Pp"></p>
+          <pre>// Get pointer to row y
 uint8_t *row = &amp;frame-&gt;data[y * frame-&gt;width * 3];
 // Process entire row
 for (uint32_t x = 0; x &lt; frame-&gt;width; x++) {
@@ -356,12 +453,15 @@ for (uint32_t x = 0; x &lt; frame-&gt;width; x++) {
     // Process pixel...
 }
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Copying"><a class="permalink" href="#Copying">Copying</a></h2>
-<p class="Pp"><b>Deep Copy</b>:</p>
-<p class="Pp"></p>
-<pre>video_frame_t *copy = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Copying">
+            <a class="permalink" href="#Copying">Copying</a>
+          </h2>
+          <p class="Pp"><b>Deep Copy</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+video_frame_t *copy = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
 copy-&gt;width = src-&gt;width;
 copy-&gt;height = src-&gt;height;
 copy-&gt;data_size = src-&gt;data_size;
@@ -372,17 +472,20 @@ copy-&gt;owns_data = true;
 copy-&gt;data = SAFE_MALLOC(copy-&gt;data_size, uint8_t *);
 memcpy(copy-&gt;data, src-&gt;data, copy-&gt;data_size);
 </pre>
-<p class="Pp"><b>Shallow Copy</b> (reference):</p>
-<p class="Pp"></p>
-<pre>video_frame_t reference = *src;
+          <p class="Pp"><b>Shallow Copy</b> (reference):</p>
+          <p class="Pp"></p>
+          <pre>
+video_frame_t reference = *src;
 reference.owns_data = false;  // Don't free the data when done
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Cleanup"><a class="permalink" href="#Cleanup">Cleanup</a></h2>
-<p class="Pp"><b>Free Frame</b>:</p>
-<p class="Pp"></p>
-<pre>if (frame-&gt;owns_data &amp;&amp; frame-&gt;data) {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Cleanup">
+            <a class="permalink" href="#Cleanup">Cleanup</a>
+          </h2>
+          <p class="Pp"><b>Free Frame</b>:</p>
+          <p class="Pp"></p>
+          <pre>if (frame-&gt;owns_data &amp;&amp; frame-&gt;data) {
 <br/>
     free(frame-&gt;data);
 <br/>
@@ -391,13 +494,15 @@ reference.owns_data = false;  // Don't free the data when done
 free(frame);
 frame = NULL;
 </pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Validation"><a class="permalink" href="#Validation">Validation</a></h1>
-<p class="Pp"><b>Validate Frame</b>:</p>
-<p class="Pp"></p>
-<pre>bool is_valid_frame(const video_frame_t *frame) {
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Validation">
+          <a class="permalink" href="#Validation">Validation</a>
+        </h1>
+        <p class="Pp"><b>Validate Frame</b>:</p>
+        <p class="Pp"></p>
+        <pre>bool is_valid_frame(const video_frame_t *frame) {
 <br/>
     if (!frame) return false;
 <br/>
@@ -410,29 +515,34 @@ frame = NULL;
     return true;
 }
 </pre>
-<p class="Pp"><b>Check Frame Dimensions</b>:</p>
-<p class="Pp"></p>
-<pre>if (frame-&gt;width &gt; MAX_WIDTH || frame-&gt;height &gt; MAX_HEIGHT) {
+        <p class="Pp"><b>Check Frame Dimensions</b>:</p>
+        <p class="Pp"></p>
+        <pre>if (frame-&gt;width &gt; MAX_WIDTH || frame-&gt;height &gt; MAX_HEIGHT) {
 <br/>
     log_error(&quot;Frame dimensions too large: %ux%u&quot;, frame-&gt;width, frame-&gt;height);
 <br/>
     return ERROR_INVALID_PARAM;
 }
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Ownership_Rules"><a class="permalink" href="#Ownership_Rules">Ownership
-  Rules</a></h1>
-<p class="Pp"><b>Ownership Flag</b>:</p>
-<ul class="Bl-bullet">
-  <li>owns_data = <b>true</b><b>: Frame owns the data buffer, must free on
-      cleanup</b></li>
-  <li>owns_data = <b>false</b><b>: Frame references external data, do NOT
-      free</b></li>
-</ul>
-<p class="Pp"><b>Ownership Transfer</b>:</p>
-<p class="Pp"></p>
-<pre>// Sender transfers ownership
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Ownership_Rules">
+          <a class="permalink" href="#Ownership_Rules">Ownership Rules</a>
+        </h1>
+        <p class="Pp"><b>Ownership Flag</b>:</p>
+        <ul class="Bl-bullet">
+          <li>
+            owns_data = <b>true</b
+            ><b>: Frame owns the data buffer, must free on cleanup</b>
+          </li>
+          <li>
+            owns_data = <b>false</b
+            ><b>: Frame references external data, do NOT free</b>
+          </li>
+        </ul>
+        <p class="Pp"><b>Ownership Transfer</b>:</p>
+        <p class="Pp"></p>
+        <pre>// Sender transfers ownership
 video_frame_t *frame = create_frame();
 frame-&gt;owns_data = true;
 send_to_queue(frame);
@@ -446,13 +556,17 @@ if (received-&gt;owns_data) {
     free(received-&gt;data);
 }
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Frame_Pipeline"><a class="permalink" href="#Frame_Pipeline">Frame
-  Pipeline</a></h1>
-<p class="Pp"><b>Capture &#x2192; Process &#x2192; Encode &#x2192; Send</b>:</p>
-<p class="Pp"></p>
-<pre>// 1. Capture from webcam
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Frame_Pipeline">
+          <a class="permalink" href="#Frame_Pipeline">Frame Pipeline</a>
+        </h1>
+        <p class="Pp">
+          <b>Capture &#x2192; Process &#x2192; Encode &#x2192; Send</b>:
+        </p>
+        <p class="Pp"></p>
+        <pre>
+// 1. Capture from webcam
 video_frame_t *frame = webcam_capture();
 frame-&gt;owns_data = true;
 frame-&gt;timestamp = get_timestamp_usec();
@@ -469,13 +583,14 @@ if (processed-&gt;owns_data) free(processed-&gt;data);
 free(processed);
 free(ascii);
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Memory_Management"><a class="permalink" href="#Memory_Management">Memory
-  Management</a></h1>
-<p class="Pp"><b>Allocation Strategy</b>:</p>
-<p class="Pp"></p>
-<pre>// Calculate size with overflow protection
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Memory_Management">
+          <a class="permalink" href="#Memory_Management">Memory Management</a>
+        </h1>
+        <p class="Pp"><b>Allocation Strategy</b>:</p>
+        <p class="Pp"></p>
+        <pre>// Calculate size with overflow protection
 size_t data_size = (size_t)width * (size_t)height * 3;
 // Allocate frame data
 uint8_t *data = SAFE_MALLOC(data_size, uint8_t *);
@@ -484,9 +599,9 @@ if (!data) {
     return SET_ERRNO(ERROR_OUT_OF_MEMORY, &quot;Failed to allocate frame data&quot;);
 }
 </pre>
-<p class="Pp"><b>Buffer Reuse</b>:</p>
-<p class="Pp"></p>
-<pre>// Reuse existing buffer if same size
+        <p class="Pp"><b>Buffer Reuse</b>:</p>
+        <p class="Pp"></p>
+        <pre>// Reuse existing buffer if same size
 if (frame-&gt;data_size == new_size) {
 <br/>
     // Reuse existing buffer
@@ -503,12 +618,14 @@ if (frame-&gt;data_size == new_size) {
     frame-&gt;data_size = new_size;
 }
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Timestamps"><a class="permalink" href="#Timestamps">Timestamps</a></h1>
-<p class="Pp"><b>Microsecond Precision</b>:</p>
-<p class="Pp"></p>
-<pre>#include &lt;sys/time.h&gt;
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Timestamps">
+          <a class="permalink" href="#Timestamps">Timestamps</a>
+        </h1>
+        <p class="Pp"><b>Microsecond Precision</b>:</p>
+        <p class="Pp"></p>
+        <pre>#include &lt;sys/time.h&gt;
 uint64_t get_timestamp_usec(void) {
 <br/>
     struct timeval tv;
@@ -519,9 +636,9 @@ uint64_t get_timestamp_usec(void) {
 }
 frame-&gt;timestamp = get_timestamp_usec();
 </pre>
-<p class="Pp"><b>Calculate Frame Age</b>:</p>
-<p class="Pp"></p>
-<pre>uint64_t now = get_timestamp_usec();
+        <p class="Pp"><b>Calculate Frame Age</b>:</p>
+        <p class="Pp"></p>
+        <pre>uint64_t now = get_timestamp_usec();
 uint64_t age_usec = now - frame-&gt;timestamp;
 double age_ms = age_usec / 1000.0;
 if (age_ms &gt; 100.0) {
@@ -529,35 +646,39 @@ if (age_ms &gt; 100.0) {
     log_warn(&quot;Frame is stale: %.1fms old&quot;, age_ms);
 }
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
-  Practices</a></h1>
-<p class="Pp"><b>DO</b>:</p>
-<ul class="Bl-bullet">
-  <li>Always set owns_data correctly</li>
-  <li>Validate frame dimensions before allocation</li>
-  <li>Use overflow-safe size calculations</li>
-  <li>Set timestamp when capturing frames</li>
-  <li>Free frames when done</li>
-  <li>Check for NULL before dereferencing</li>
-</ul>
-<p class="Pp"><b>DON'T</b>:</p>
-<ul class="Bl-bullet">
-  <li>Don't free frame-&gt;data if owns_data is false</li>
-  <li>Don't use frame after freeing</li>
-  <li>Don't assume frame-&gt;data is aligned</li>
-  <li>Don't modify shared frame data</li>
-  <li>Don't forget to set client_id</li>
-  <li>Don't use stale frames (check timestamp)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Integration_Example"><a class="permalink" href="#Integration_Example">Integration
-  Example</a></h1>
-<p class="Pp"><b>Complete Usage</b>:</p>
-<p class="Pp"></p>
-<pre>// Capture frame
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Best_Practices">
+          <a class="permalink" href="#Best_Practices">Best Practices</a>
+        </h1>
+        <p class="Pp"><b>DO</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Always set owns_data correctly</li>
+          <li>Validate frame dimensions before allocation</li>
+          <li>Use overflow-safe size calculations</li>
+          <li>Set timestamp when capturing frames</li>
+          <li>Free frames when done</li>
+          <li>Check for NULL before dereferencing</li>
+        </ul>
+        <p class="Pp"><b>DON'T</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Don't free frame-&gt;data if owns_data is false</li>
+          <li>Don't use frame after freeing</li>
+          <li>Don't assume frame-&gt;data is aligned</li>
+          <li>Don't modify shared frame data</li>
+          <li>Don't forget to set client_id</li>
+          <li>Don't use stale frames (check timestamp)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Integration_Example">
+          <a class="permalink" href="#Integration_Example"
+            >Integration Example</a
+          >
+        </h1>
+        <p class="Pp"><b>Complete Usage</b>:</p>
+        <p class="Pp"></p>
+        <pre>// Capture frame
 video_frame_t *frame = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
 frame-&gt;width = 640;
 frame-&gt;height = 480;
@@ -581,65 +702,98 @@ if (frame-&gt;owns_data &amp;&amp; frame-&gt;data) {
 }
 free(frame);
 </pre>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>video_frame.h</b>
-<p class="Pp"></p>
-<p class="Pp">video/image.h</p>
-<p class="Pp"></p>
-<p class="Pp">os/webcam.h</p>
-</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_FRAME_BUFFERS___2"><a class="permalink" href="#_define_MAX_FRAME_BUFFERS___2">#define
-  MAX_FRAME_BUFFERS 2</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum number of frame buffers (double buffering).</p>
-<p class="Pp">Definition at line <b>95</b> of file <b>video_frame.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VIDEO_FRAME_BUFFER_SIZE___"><a class="permalink" href="#_define_VIDEO_FRAME_BUFFER_SIZE___">#define
-  VIDEO_FRAME_BUFFER_SIZE <b>MAX_FRAME_BUFFER_SIZE</b></a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Video frame buffer size (2MB per frame).</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>video_frame.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>simple_frame_swap_t</b> * simple_frame_swap_create (void
-  )</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Create a simple atomic frame swap.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to newly created frame swap, or NULL on
-  failure</div>
-<p class="Pp">Creates a lightweight frame swap structure for basic use cases
-    that don't need statistics tracking. Uses atomic pointer swaps for lock-free
-    operation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is a simpler alternative to
-  <b>video_frame_buffer_t</b>.
-<p class="Pp"></p>
-<p class="Pp">Pre-allocates two frame structures that alternate on each
-  update.</p>
-<p class="Pp"></p>
-<p class="Pp">No statistics tracking (lighter weight than full frame
-  buffer).</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Must call <b>simple_frame_swap_destroy()</b> to free
-  resources.</div>
-<p class="Pp">Definition at line <b>225</b> of file <b>video_frame.c</b>.</p>
-<pre>225                                                     {
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>video_frame.h</b>
+          <p class="Pp"></p>
+          <p class="Pp">video/image.h</p>
+          <p class="Pp"></p>
+          <p class="Pp">os/webcam.h</p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_FRAME_BUFFERS___2">
+            <a class="permalink" href="#_define_MAX_FRAME_BUFFERS___2"
+              >#define MAX_FRAME_BUFFERS 2</a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Maximum number of frame buffers (double buffering).</p>
+          <p class="Pp">
+            Definition at line <b>95</b> of file <b>video_frame.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VIDEO_FRAME_BUFFER_SIZE___">
+            <a class="permalink" href="#_define_VIDEO_FRAME_BUFFER_SIZE___"
+              >#define VIDEO_FRAME_BUFFER_SIZE <b>MAX_FRAME_BUFFER_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Video frame buffer size (2MB per frame).</p>
+          <p class="Pp">
+            Definition at line <b>93</b> of file <b>video_frame.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>simple_frame_swap_t</b> * simple_frame_swap_create (void )
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Create a simple atomic frame swap.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to newly created frame swap, or NULL on failure
+          </div>
+          <p class="Pp">
+            Creates a lightweight frame swap structure for basic use cases that
+            don't need statistics tracking. Uses atomic pointer swaps for
+            lock-free operation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is a simpler alternative to <b>video_frame_buffer_t</b>.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Pre-allocates two frame structures that alternate on each update.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              No statistics tracking (lighter weight than full frame buffer).
+            </p>
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            Must call <b>simple_frame_swap_destroy()</b> to free resources.
+          </div>
+          <p class="Pp">
+            Definition at line <b>225</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+225                                                     {
 226   simple_frame_swap_t *sfs = SAFE_CALLOC(1, sizeof(simple_frame_swap_t), simple_frame_swap_t *);
 227
 228   // Pre-allocate both frames
@@ -652,28 +806,44 @@ free(frame);
 235
 236   return sfs;
 237 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
-    <b>simple_frame_swap_t::current_frame</b>, <b>video_frame_t::data</b>,
-    <b>simple_frame_swap_t::frame_a</b>, <b>simple_frame_swap_t::frame_b</b>,
-    <b>MAX_FRAME_BUFFER_SIZE</b>, <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>,
-    <b>simple_frame_swap_create()</b>, and
-    <b>simple_frame_swap_t::use_frame_a</b>.</p>
-<p class="Pp">Referenced by <b>simple_frame_swap_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_simple_frame_swap_destroy_("><a class="permalink" href="#void_simple_frame_swap_destroy_(">void
-  simple_frame_swap_destroy (<b>simple_frame_swap_t</b> * sfs)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Destroy simple frame swap and free resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sfs</i> Frame swap to destroy (can be NULL)</div>
-<p class="Pp">Destroys the simple frame swap and frees all associated resources.
-    Safe to call multiple times or with NULL pointer.</p>
-<p class="Pp">Definition at line <b>239</b> of file <b>video_frame.c</b>.</p>
-<pre>239                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+            <b>simple_frame_swap_t::current_frame</b>,
+            <b>video_frame_t::data</b>, <b>simple_frame_swap_t::frame_a</b>,
+            <b>simple_frame_swap_t::frame_b</b>, <b>MAX_FRAME_BUFFER_SIZE</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>,
+            <b>simple_frame_swap_create()</b>, and
+            <b>simple_frame_swap_t::use_frame_a</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simple_frame_swap_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simple_frame_swap_destroy_(">
+            <a class="permalink" href="#void_simple_frame_swap_destroy_("
+              >void simple_frame_swap_destroy (<b>simple_frame_swap_t</b> *
+              sfs)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Destroy simple frame swap and free resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>sfs</i> Frame swap to destroy (can be NULL)
+          </div>
+          <p class="Pp">
+            Destroys the simple frame swap and frees all associated resources.
+            Safe to call multiple times or with NULL pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>239</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+239                                                          {
 240   if (!sfs) {
 241     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Simple frame swap is NULL&quot;);
 242     return;
@@ -682,37 +852,52 @@ free(frame);
 245   SAFE_FREE(sfs-&gt;frame_b.data);
 246   SAFE_FREE(sfs);
 247 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>simple_frame_swap_t::frame_a</b>, <b>simple_frame_swap_t::frame_b</b>,
-    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and
-  <b>simple_frame_swap_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>simple_frame_swap_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>video_frame_t</b> * simple_frame_swap_get
-  (<b>simple_frame_swap_t</b> * sfs)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Get current frame from simple frame swap.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sfs</i> Frame swap (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to current frame, or NULL if no frame
-  available</div>
-<p class="Pp">Gets a pointer to the current frame. This is a lock-free read
-    operation that reads the atomic frame pointer. Returns NULL if no frame has
-    been updated yet.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Frame pointer is valid until next
-  <b>simple_frame_swap_update()</b> call.
-<p class="Pp"></p>
-<p class="Pp">Lock-free operation (uses atomic pointer read).</p>
-</div>
-<p class="Pp">Definition at line <b>273</b> of file <b>video_frame.c</b>.</p>
-<pre>273                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>simple_frame_swap_t::frame_a</b>,
+            <b>simple_frame_swap_t::frame_b</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, and <b>simple_frame_swap_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simple_frame_swap_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>video_frame_t</b> * simple_frame_swap_get (<b
+              >simple_frame_swap_t</b
+            >
+            * sfs)
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Get current frame from simple frame swap.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>sfs</i> Frame swap (must not be NULL)</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to current frame, or NULL if no frame available
+          </div>
+          <p class="Pp">
+            Gets a pointer to the current frame. This is a lock-free read
+            operation that reads the atomic frame pointer. Returns NULL if no
+            frame has been updated yet.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Frame pointer is valid until next
+            <b>simple_frame_swap_update()</b> call.
+            <p class="Pp"></p>
+            <p class="Pp">Lock-free operation (uses atomic pointer read).</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>273</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+273                                                                      {
 274   if (!sfs) {
 275     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Simple frame swap is NULL&quot;);
 276     return NULL;
@@ -720,44 +905,63 @@ free(frame);
 278   uintptr_t frame_ptr = atomic_load_u64(&amp;sfs-&gt;current_frame);
 279   return (const video_frame_t *)(void *)frame_ptr; // NOLINT(bugprone-casting-through-void,performance-no-int-to-ptr)
 280 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>simple_frame_swap_t::current_frame</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>SET_ERRNO</b>, and <b>simple_frame_swap_get()</b>.</p>
-<p class="Pp">Referenced by <b>simple_frame_swap_get()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_simple_frame_swap_update_("><a class="permalink" href="#void_simple_frame_swap_update_(">void
-  simple_frame_swap_update (<b>simple_frame_swap_t</b> * sfs, const void * data,
-  size_t size)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Update frame data in simple frame swap.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sfs</i> Frame swap (must not be NULL)
-<br/>
-<i>data</i> Frame data pointer (must not be NULL)
-<br/>
-<i>size</i> Size of frame data in bytes</div>
-<p class="Pp">Updates the current frame with new data. Atomically swaps the
-    active frame pointer to make new data available to readers. This is a
-    zero-copy operation (only pointer is updated, data is not copied).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Frame data should remain valid until next update or
-  destruction.
-<p class="Pp"></p>
-<p class="Pp">Atomic pointer swap ensures readers see consistent frame
-  pointer.</p>
-<p class="Pp"></p>
-<p class="Pp">Alternates between frame_a and frame_b on each update.</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Frame data pointer must remain valid until next
-  update.</div>
-<p class="Pp">Definition at line <b>249</b> of file <b>video_frame.c</b>.</p>
-<pre>249                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>simple_frame_swap_t::current_frame</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>, and
+            <b>simple_frame_swap_get()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simple_frame_swap_get()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simple_frame_swap_update_(">
+            <a class="permalink" href="#void_simple_frame_swap_update_("
+              >void simple_frame_swap_update (<b>simple_frame_swap_t</b> * sfs,
+              const void * data, size_t size)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Update frame data in simple frame swap.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>sfs</i> Frame swap (must not be NULL)
+            <br />
+            <i>data</i> Frame data pointer (must not be NULL)
+            <br />
+            <i>size</i> Size of frame data in bytes
+          </div>
+          <p class="Pp">
+            Updates the current frame with new data. Atomically swaps the active
+            frame pointer to make new data available to readers. This is a
+            zero-copy operation (only pointer is updated, data is not copied).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Frame data should remain valid until next update or destruction.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Atomic pointer swap ensures readers see consistent frame pointer.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Alternates between frame_a and frame_b on each update.
+            </p>
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            Frame data pointer must remain valid until next update.
+          </div>
+          <p class="Pp">
+            Definition at line <b>249</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+249                                                                                        {
 250   if (!sfs || !data) {
 251     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Simple frame swap or data is NULL&quot;);
 252     return;
@@ -780,49 +984,74 @@ free(frame);
 269     atomic_store_bool(&amp;sfs-&gt;use_frame_a, !use_a);
 270   }
 271 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>video_frame_t::capture_timestamp_ns</b>,
-    <b>simple_frame_swap_t::current_frame</b>, <b>video_frame_t::data</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>simple_frame_swap_t::frame_a</b>,
-    <b>simple_frame_swap_t::frame_b</b>, <b>MAX_FRAME_BUFFER_SIZE</b>,
-    <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>, <b>simple_frame_swap_update()</b>,
-    <b>video_frame_t::size</b>, <b>time_get_ns()</b>, and
-    <b>simple_frame_swap_t::use_frame_a</b>.</p>
-<p class="Pp">Referenced by <b>simple_frame_swap_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>video_frame_t</b> * video_frame_begin_write
-  (<b>video_frame_buffer_t</b> * vfb)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Writer API: Start writing a new frame.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>vfb</i> Frame buffer manager (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to back buffer for writing, or NULL on
-  error</div>
-<p class="Pp">Gets a pointer to the back buffer for writing a new frame. Writer
-    thread can write frame data directly to this buffer. MUST call
-    <b>video_frame_commit()</b> after writing to make the frame available to
-    readers.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Writer should fill in all frame fields (data, size,
-  width, height, etc.).
-<p class="Pp"></p>
-<p class="Pp">Back buffer is exclusive to writer until
-    <b>video_frame_commit()</b> is called.</p>
-<p class="Pp"></p>
-<p class="Pp">If previous frame wasn't committed, it will be lost
-    (latest-frame-wins).</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Must call <b>video_frame_commit()</b> after writing to
-  make frame available.</div>
-<p class="Pp">Definition at line <b>128</b> of file <b>video_frame.c</b>.</p>
-<pre>128                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+            <b>atomic_store_u64()</b>,
+            <b>video_frame_t::capture_timestamp_ns</b>,
+            <b>simple_frame_swap_t::current_frame</b>,
+            <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>simple_frame_swap_t::frame_a</b>,
+            <b>simple_frame_swap_t::frame_b</b>, <b>MAX_FRAME_BUFFER_SIZE</b>,
+            <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>,
+            <b>simple_frame_swap_update()</b>, <b>video_frame_t::size</b>,
+            <b>time_get_ns()</b>, and <b>simple_frame_swap_t::use_frame_a</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simple_frame_swap_update()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>video_frame_t</b> * video_frame_begin_write (<b
+              >video_frame_buffer_t</b
+            >
+            * vfb)
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Writer API: Start writing a new frame.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>vfb</i> Frame buffer manager (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to back buffer for writing, or NULL on error
+          </div>
+          <p class="Pp">
+            Gets a pointer to the back buffer for writing a new frame. Writer
+            thread can write frame data directly to this buffer. MUST call
+            <b>video_frame_commit()</b> after writing to make the frame
+            available to readers.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Writer should fill in all frame fields (data, size, width, height,
+            etc.).
+            <p class="Pp"></p>
+            <p class="Pp">
+              Back buffer is exclusive to writer until
+              <b>video_frame_commit()</b> is called.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              If previous frame wasn't committed, it will be lost
+              (latest-frame-wins).
+            </p>
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            Must call <b>video_frame_commit()</b> after writing to make frame
+            available.
+          </div>
+          <p class="Pp">
+            Definition at line <b>128</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+128                                                                   {
 129   if (!vfb) {
 130     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Video frame buffer is NULL&quot;);
 131     return NULL;
@@ -835,46 +1064,67 @@ free(frame);
 138   // Writer always owns the back buffer
 139   return vfb-&gt;back_buffer;
 140 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>video_frame_buffer_t::back_buffer</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>SET_ERRNO</b>, and
-    <b>video_frame_begin_write()</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>,
-    <b>handle_image_frame_packet()</b>, and
-  <b>video_frame_begin_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>video_frame_buffer_t</b> * video_frame_buffer_create (const
-  char * client_id)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Create a double-buffered video frame manager.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Client ID for this frame buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to newly created frame buffer, or NULL on
-  failure</div>
-<p class="Pp">Creates a new video frame buffer manager with double buffering.
-    Pre-allocates all buffers (frame structures and data buffers) for
-    zero-allocation operation. Initializes atomic counters and synchronization
-    primitives.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Pre-allocates 2MB &#x00D7; 2 buffers = 4MB total per
-  frame buffer.
-<p class="Pp"></p>
-<p class="Pp">Frame buffers are reused forever (no runtime allocations).</p>
-<p class="Pp"></p>
-<p class="Pp">Thread-safe: Can be used concurrently by writer and reader
-    threads.</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Must call <b>video_frame_buffer_destroy()</b> to free
-  resources.</div>
-<p class="Pp">Definition at line <b>18</b> of file <b>video_frame.c</b>.</p>
-<pre>18                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>video_frame_buffer_t::back_buffer</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>SET_ERRNO</b>, and <b>video_frame_begin_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_image_frame_h265_packet()</b>,
+            <b>handle_image_frame_packet()</b>, and
+            <b>video_frame_begin_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>video_frame_buffer_t</b> * video_frame_buffer_create (const char
+            * client_id)
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Create a double-buffered video frame manager.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_id</i> Client ID for this frame buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to newly created frame buffer, or NULL on failure
+          </div>
+          <p class="Pp">
+            Creates a new video frame buffer manager with double buffering.
+            Pre-allocates all buffers (frame structures and data buffers) for
+            zero-allocation operation. Initializes atomic counters and
+            synchronization primitives.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Pre-allocates 2MB &#x00D7; 2 buffers = 4MB total per frame buffer.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Frame buffers are reused forever (no runtime allocations).
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Thread-safe: Can be used concurrently by writer and reader
+              threads.
+            </p>
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            Must call <b>video_frame_buffer_destroy()</b> to free resources.
+          </div>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+18                                                                        {
 19   if (client_id == 0) {
 20     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client ID is 0&quot;);
 21     return NULL;
@@ -956,45 +1206,64 @@ free(frame);
 97
 98   return vfb;
 99 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>video_frame_buffer_t::allocated_buffer_size</b>,
-    <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
-    <b>video_frame_buffer_t::back_buffer</b>, <b>buffer_alloc()</b>,
-    <b>buffer_release</b>, <b>video_frame_buffer_t::client_id</b>,
-    <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_PLATFORM_INIT</b>, <b>video_frame_buffer_t::frames</b>,
-    <b>video_frame_buffer_t::front_buffer</b>,
-    <b>video_frame_buffer_t::last_frame_sequence</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>MAX_FRAME_BUFFER_SIZE</b>,
-    <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NAMED_REGISTER_VIDEO_FRAME_BUFFER</b>,
-    <b>video_frame_buffer_t::new_frame_available</b>, <b>SAFE_CALLOC</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRCPY</b>, <b>SET_ERRNO</b>,
-    <b>video_frame_buffer_t::swap_mutex</b>,
-    <b>video_frame_buffer_t::total_frames_dropped</b>,
-    <b>video_frame_buffer_t::total_frames_received</b>, and
-    <b>video_frame_buffer_create()</b>.</p>
-<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_video_frame_buffer_destroy_("><a class="permalink" href="#void_video_frame_buffer_destroy_(">void
-  video_frame_buffer_destroy (<b>video_frame_buffer_t</b> * vfb)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Destroy frame buffer and free all resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>vfb</i> Frame buffer to destroy (can be NULL)</div>
-<p class="Pp">Destroys the frame buffer and frees all pre-allocated buffers and
-    internal structures. Safe to call multiple times or with NULL pointer.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">All frame data and statistics are lost after
-  destruction.</div>
-<p class="Pp">Definition at line <b>101</b> of file <b>video_frame.c</b>.</p>
-<pre>101                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>video_frame_buffer_t::allocated_buffer_size</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+            <b>video_frame_buffer_t::back_buffer</b>, <b>buffer_alloc()</b>,
+            <b>buffer_release</b>, <b>video_frame_buffer_t::client_id</b>,
+            <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_PLATFORM_INIT</b>,
+            <b>video_frame_buffer_t::frames</b>,
+            <b>video_frame_buffer_t::front_buffer</b>,
+            <b>video_frame_buffer_t::last_frame_sequence</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>MAX_FRAME_BUFFER_SIZE</b>,
+            <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+            <b>NAMED_REGISTER_VIDEO_FRAME_BUFFER</b>,
+            <b>video_frame_buffer_t::new_frame_available</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SAFE_STRCPY</b>, <b>SET_ERRNO</b>,
+            <b>video_frame_buffer_t::swap_mutex</b>,
+            <b>video_frame_buffer_t::total_frames_dropped</b>,
+            <b>video_frame_buffer_t::total_frames_received</b>, and
+            <b>video_frame_buffer_create()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>video_frame_buffer_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_video_frame_buffer_destroy_(">
+            <a class="permalink" href="#void_video_frame_buffer_destroy_("
+              >void video_frame_buffer_destroy (<b>video_frame_buffer_t</b> *
+              vfb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Destroy frame buffer and free all resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>vfb</i> Frame buffer to destroy (can be NULL)
+          </div>
+          <p class="Pp">
+            Destroys the frame buffer and frees all pre-allocated buffers and
+            internal structures. Safe to call multiple times or with NULL
+            pointer.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            All frame data and statistics are lost after destruction.
+          </div>
+          <p class="Pp">
+            Definition at line <b>101</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+101                                                            {
 102   if (!vfb) {
 103     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Video frame buffer is NULL&quot;);
 104     return;
@@ -1020,48 +1289,72 @@ free(frame);
 124
 125   SAFE_FREE(vfb);
 126 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>buffer_release</b>, <b>video_frame_buffer_t::client_id</b>,
-    <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>video_frame_buffer_t::frames</b>,
-    <b>video_frame_buffer_t::last_frame_sequence</b>, <b>mutex_destroy()</b>,
-    <b>NAMED_UNREGISTER</b>, <b>video_frame_buffer_t::new_frame_available</b>,
-    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>video_frame_buffer_t::swap_mutex</b>,
-    <b>video_frame_buffer_t::total_frames_dropped</b>,
-    <b>video_frame_buffer_t::total_frames_received</b>, and
-    <b>video_frame_buffer_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>, and
-    <b>video_frame_buffer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_video_frame_commit_("><a class="permalink" href="#void_video_frame_commit_(">void
-  video_frame_commit (<b>video_frame_buffer_t</b> * vfb)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Writer API: Commit the frame and swap buffers.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>vfb</i> Frame buffer manager (must not be NULL)</div>
-<p class="Pp">Commits the current back buffer and atomically swaps it with the
-    front buffer. Makes the new frame available to readers immediately. This is
-    a brief critical section (uses mutex), but readers continue reading from old
-    front buffer during swap, so they never block.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">After this call, the previously written frame becomes the
-  front buffer.
-<p class="Pp"></p>
-<p class="Pp">Atomic flag is set to signal readers that a new frame is
-    available.</p>
-<p class="Pp"></p>
-<p class="Pp">Frame statistics are updated (total_frames_received, etc.).</p>
-<p class="Pp"></p>
-<p class="Pp">Thread-safe: Writer can commit while reader is reading (no
-    blocking).</p>
-</div>
-<p class="Pp">Definition at line <b>142</b> of file <b>video_frame.c</b>.</p>
-<pre>142                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>buffer_release</b>, <b>video_frame_buffer_t::client_id</b>,
+            <b>video_frame_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>video_frame_buffer_t::frames</b>,
+            <b>video_frame_buffer_t::last_frame_sequence</b>,
+            <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>,
+            <b>video_frame_buffer_t::new_frame_available</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, <b>video_frame_buffer_t::swap_mutex</b>,
+            <b>video_frame_buffer_t::total_frames_dropped</b>,
+            <b>video_frame_buffer_t::total_frames_received</b>, and
+            <b>video_frame_buffer_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>cleanup_client_media_buffers()</b>, and
+            <b>video_frame_buffer_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_video_frame_commit_(">
+            <a class="permalink" href="#void_video_frame_commit_("
+              >void video_frame_commit (<b>video_frame_buffer_t</b> * vfb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Writer API: Commit the frame and swap buffers.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>vfb</i> Frame buffer manager (must not be NULL)
+          </div>
+          <p class="Pp">
+            Commits the current back buffer and atomically swaps it with the
+            front buffer. Makes the new frame available to readers immediately.
+            This is a brief critical section (uses mutex), but readers continue
+            reading from old front buffer during swap, so they never block.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            After this call, the previously written frame becomes the front
+            buffer.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Atomic flag is set to signal readers that a new frame is
+              available.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Frame statistics are updated (total_frames_received, etc.).
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Thread-safe: Writer can commit while reader is reading (no
+              blocking).
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>142</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+142                                                    {
 143   if (!vfb) {
 144     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Video frame buffer or active is NULL&quot;);
 145     return;
@@ -1093,53 +1386,78 @@ free(frame);
 171   atomic_fetch_add_u64(&amp;vfb-&gt;total_frames_received, 1);
 172   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
 173 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>video_frame_buffer_t::back_buffer</b>,
-    <b>video_frame_buffer_t::client_id</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>video_frame_buffer_t::front_buffer</b>,
-    <b>log_dev_every</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>video_frame_buffer_t::new_frame_available</b>, <b>SET_ERRNO</b>,
-    <b>video_frame_t::size</b>, <b>stats_counter_add()</b>,
-    <b>STATS_COUNTER_FRAMES_DROPPED</b>, <b>STATS_COUNTER_FRAMES_ENQUEUED</b>,
-    <b>STATS_COUNTER_QUEUE_DROPS</b>, <b>stats_runtime_scope()</b>,
-    <b>video_frame_buffer_t::swap_mutex</b>,
-    <b>video_frame_buffer_t::total_frames_dropped</b>,
-    <b>video_frame_buffer_t::total_frames_received</b>, <b>US_PER_MS_INT</b>,
-    and <b>video_frame_commit()</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>,
-    <b>handle_image_frame_packet()</b>, and <b>video_frame_commit()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>video_frame_t</b> * video_frame_get_latest
-  (<b>video_frame_buffer_t</b> * vfb)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Reader API: Get latest frame if available.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>vfb</i> Frame buffer manager (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to latest frame, or NULL if no new frame
-  available</div>
-<p class="Pp">Gets a pointer to the latest frame if one is available. Returns
-    NULL if no new frame has been committed since the last call. This is a
-    lock-free operation that never blocks the writer thread.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Frame pointer is valid until next
-  <b>video_frame_commit()</b> call.
-<p class="Pp"></p>
-<p class="Pp">Lock-free read operation (uses atomic flag check).</p>
-<p class="Pp"></p>
-<p class="Pp">Reader should check for NULL returns and handle accordingly.</p>
-<p class="Pp"></p>
-<p class="Pp">Thread-safe: Reader can read while writer is writing (no
-    blocking).</p>
-</div>
-<p class="Pp">Definition at line <b>175</b> of file <b>video_frame.c</b>.</p>
-<pre>175                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
+            <b>atomic_store_bool()</b>,
+            <b>video_frame_buffer_t::back_buffer</b>,
+            <b>video_frame_buffer_t::client_id</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>,
+            <b>video_frame_buffer_t::front_buffer</b>, <b>log_dev_every</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>video_frame_buffer_t::new_frame_available</b>, <b>SET_ERRNO</b>,
+            <b>video_frame_t::size</b>, <b>stats_counter_add()</b>,
+            <b>STATS_COUNTER_FRAMES_DROPPED</b>,
+            <b>STATS_COUNTER_FRAMES_ENQUEUED</b>,
+            <b>STATS_COUNTER_QUEUE_DROPS</b>, <b>stats_runtime_scope()</b>,
+            <b>video_frame_buffer_t::swap_mutex</b>,
+            <b>video_frame_buffer_t::total_frames_dropped</b>,
+            <b>video_frame_buffer_t::total_frames_received</b>,
+            <b>US_PER_MS_INT</b>, and <b>video_frame_commit()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_image_frame_h265_packet()</b>,
+            <b>handle_image_frame_packet()</b>, and <b>video_frame_commit()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>video_frame_t</b> * video_frame_get_latest (<b
+              >video_frame_buffer_t</b
+            >
+            * vfb)
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Reader API: Get latest frame if available.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>vfb</i> Frame buffer manager (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to latest frame, or NULL if no new frame available
+          </div>
+          <p class="Pp">
+            Gets a pointer to the latest frame if one is available. Returns NULL
+            if no new frame has been committed since the last call. This is a
+            lock-free operation that never blocks the writer thread.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Frame pointer is valid until next <b>video_frame_commit()</b> call.
+            <p class="Pp"></p>
+            <p class="Pp">Lock-free read operation (uses atomic flag check).</p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Reader should check for NULL returns and handle accordingly.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Thread-safe: Reader can read while writer is writing (no
+              blocking).
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>175</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+175                                                                        {
 176   if (!vfb) {
 177     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Video frame buffer is not active&quot;);
 178     return NULL;
@@ -1160,40 +1478,57 @@ free(frame);
 193
 194   return result;
 195 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>video_frame_buffer_t::front_buffer</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>video_frame_buffer_t::new_frame_available</b>,
-    <b>SET_ERRNO</b>, <b>video_frame_buffer_t::swap_mutex</b>, and
-    <b>video_frame_get_latest()</b>.</p>
-<p class="Pp">Referenced by <b>video_frame_get_latest()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_video_frame_get_stats_("><a class="permalink" href="#void_video_frame_get_stats_(">void
-  video_frame_get_stats (<b>video_frame_buffer_t</b> * vfb,
-  <b>video_frame_stats_t</b> * stats)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b></p>
-<p class="Pp">Get frame statistics for quality monitoring.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>vfb</i> Frame buffer manager (must not be NULL)
-<br/>
-<i>stats</i> Output structure for statistics (must not be NULL)</div>
-<p class="Pp">Retrieves aggregated statistics from the frame buffer including
-    total frames, dropped frames, drop rate, and average processing times.
-    Useful for adaptive streaming quality control.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">All statistics are calculated atomically from atomic
-  counters.
-<p class="Pp"></p>
-<p class="Pp">Drop rate is calculated as dropped_frames / total_frames.</p>
-</div>
-<p class="Pp">Definition at line <b>207</b> of file <b>video_frame.c</b>.</p>
-<pre>207                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>video_frame_buffer_t::front_buffer</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>,
+            <b>video_frame_buffer_t::new_frame_available</b>, <b>SET_ERRNO</b>,
+            <b>video_frame_buffer_t::swap_mutex</b>, and
+            <b>video_frame_get_latest()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>video_frame_get_latest()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_video_frame_get_stats_(">
+            <a class="permalink" href="#void_video_frame_get_stats_("
+              >void video_frame_get_stats (<b>video_frame_buffer_t</b> * vfb,
+              <b>video_frame_stats_t</b> * stats)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Get frame statistics for quality monitoring.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>vfb</i> Frame buffer manager (must not be NULL)
+            <br />
+            <i>stats</i> Output structure for statistics (must not be NULL)
+          </div>
+          <p class="Pp">
+            Retrieves aggregated statistics from the frame buffer including
+            total frames, dropped frames, drop rate, and average processing
+            times. Useful for adaptive streaming quality control.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            All statistics are calculated atomically from atomic counters.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Drop rate is calculated as dropped_frames / total_frames.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>207</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+207                                                                                   {
 208   if (!vfb || !stats) {
 209     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Video frame buffer or stats is NULL&quot;);
 210     return;
@@ -1209,32 +1544,44 @@ free(frame);
 220   stats-&gt;avg_decode_time_ns = atomic_load_u64(&amp;vfb-&gt;avg_decode_time_ns);
 221   stats-&gt;avg_render_time_ns = atomic_load_u64(&amp;vfb-&gt;avg_render_time_ns);
 222 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>atomic_load_u64()</b>, <b>video_frame_buffer_t::avg_decode_time_ns</b>,
-    <b>video_frame_stats_t::avg_decode_time_ns</b>,
-    <b>video_frame_buffer_t::avg_render_time_ns</b>,
-    <b>video_frame_stats_t::avg_render_time_ns</b>,
-    <b>video_frame_stats_t::drop_rate</b>,
-    <b>video_frame_stats_t::dropped_frames</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>SET_ERRNO</b>,
-    <b>video_frame_stats_t::total_frames</b>,
-    <b>video_frame_buffer_t::total_frames_dropped</b>,
-    <b>video_frame_buffer_t::total_frames_received</b>, and
-    <b>video_frame_get_stats()</b>.</p>
-<p class="Pp">Referenced by <b>video_frame_get_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>video_frame_t</b> * video_frame_peek_latest
-  (<b>video_frame_buffer_t</b> * vfb)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b>Return the
-    latest committed frame without consuming the new-frame flag. The returned
-    pointer has the same borrowed lifetime as
-    </b><b>video_frame_get_latest()</b><b>.</b></p>
-<p class="Pp">Definition at line <b>197</b> of file <b>video_frame.c</b>.</p>
-<pre>197                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>atomic_load_u64()</b>,
+            <b>video_frame_buffer_t::avg_decode_time_ns</b>,
+            <b>video_frame_stats_t::avg_decode_time_ns</b>,
+            <b>video_frame_buffer_t::avg_render_time_ns</b>,
+            <b>video_frame_stats_t::avg_render_time_ns</b>,
+            <b>video_frame_stats_t::drop_rate</b>,
+            <b>video_frame_stats_t::dropped_frames</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>SET_ERRNO</b>, <b>video_frame_stats_t::total_frames</b>,
+            <b>video_frame_buffer_t::total_frames_dropped</b>,
+            <b>video_frame_buffer_t::total_frames_received</b>, and
+            <b>video_frame_get_stats()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>video_frame_get_stats()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>video_frame_t</b> * video_frame_peek_latest (<b
+              >video_frame_buffer_t</b
+            >
+            * vfb)
+          </h2>
+          <p class="Pp">
+            #include
+            &lt;<b>include/ascii-chat/video/rgba/video_frame.h</b>&gt;<b
+              >Return the latest committed frame without consuming the new-frame
+              flag. The returned pointer has the same borrowed lifetime as </b
+            ><b>video_frame_get_latest()</b><b>.</b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>197</b> of file <b>video_frame.c</b>.
+          </p>
+          <pre>
+197                                                                         {
 198   if (!vfb || !vfb-&gt;active)
 199     return NULL;
 200   mutex_lock(&amp;vfb-&gt;swap_mutex);
@@ -1243,26 +1590,30 @@ free(frame);
 203   mutex_unlock(&amp;vfb-&gt;swap_mutex);
 204   return result;
 205 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>video_frame_buffer_t::active</b>,
-    <b>video_frame_buffer_t::front_buffer</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>video_frame_t::size</b>,
-    <b>video_frame_buffer_t::swap_mutex</b>, and
-    <b>video_frame_peek_latest()</b>.</p>
-<p class="Pp">Referenced by <b>video_frame_peek_latest()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>video_frame_buffer_t::active</b>,
+            <b>video_frame_buffer_t::front_buffer</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>video_frame_t::size</b>,
+            <b>video_frame_buffer_t::swap_mutex</b>, and
+            <b>video_frame_peek_latest()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>video_frame_peek_latest()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

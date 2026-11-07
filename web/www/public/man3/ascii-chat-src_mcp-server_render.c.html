@@ -1,87 +1,142 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>render.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">render.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">render.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">render.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>render_worker_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MCP_RENDER_ENV_CAPACITY</b> 16
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>mcp_render_execute</b> (<b>mcp_render_request_t</b> *r,
-    <b>atomic_t</b> *cancelled, <b>mcp_render_result_t</b> *result)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_RENDER_ENV_CAPACITY___16"><a class="permalink" href="#_define_MCP_RENDER_ENV_CAPACITY___16">#define
-  MCP_RENDER_ENV_CAPACITY 16</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-    <b>src/mcp-server/render.c</b>.</p>
-<p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_render_execute_("><a class="permalink" href="#void_mcp_render_execute_(">void
-  mcp_render_execute (<b>mcp_render_request_t</b> * r, <b>atomic_t</b> *
-  cancelled, <b>mcp_render_result_t</b> * result)</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file
-    <b>src/mcp-server/render.c</b>.</p>
-<pre>107                                                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>render.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">render.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">render.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">render.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>render_worker_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MCP_RENDER_ENV_CAPACITY</b> 16
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>mcp_render_execute</b> (<b>mcp_render_request_t</b> *r,
+            <b>atomic_t</b> *cancelled, <b>mcp_render_result_t</b> *result)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_RENDER_ENV_CAPACITY___16">
+            <a class="permalink" href="#_define_MCP_RENDER_ENV_CAPACITY___16"
+              >#define MCP_RENDER_ENV_CAPACITY 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>src/mcp-server/render.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_render_execute_(">
+            <a class="permalink" href="#void_mcp_render_execute_("
+              >void mcp_render_execute (<b>mcp_render_request_t</b> * r,
+              <b>atomic_t</b> * cancelled, <b>mcp_render_result_t</b> *
+              result)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>107</b> of file
+            <b>src/mcp-server/render.c</b>.
+          </p>
+          <pre>
+107                                                                                                    {
 108   memset(result, 0, sizeof(*result));
 109   render_worker_t w = {.cancelled = cancelled, .result = result, .started = time_get_ns(), .timeout = r-&gt;timeout_ms};
 110   result-&gt;text = SAFE_CALLOC(MCP_MAX_OUTPUT + 1, 1, char *);
@@ -163,37 +218,42 @@
 186     SAFE_STRNCPY(result-&gt;output_path, r-&gt;output_path, sizeof(result-&gt;output_path));
 187   }
 188 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_render_request_t::argv</b>,
-    <b>mcp_render_request_t::capture_webcam</b>,
-    <b>mcp_render_result_t::elapsed_ms</b>, <b>mcp_render_result_t::error</b>,
-    <b>render_worker_t::errors</b>, <b>render_worker_t::failed</b>,
-    <b>mcp_render_result_t::length</b>, <b>render_worker_t::loop</b>,
-    <b>MCP_MAX_OUTPUT</b>, <b>MCP_RENDER_ENV_CAPACITY</b>,
-    <b>mcp_render_execute()</b>, <b>render_worker_t::output</b>,
-    <b>mcp_render_request_t::output_path</b>,
-    <b>mcp_render_result_t::output_path</b>, <b>platform_getenv()</b>,
-    <b>platform_strdup()</b>, <b>render_worker_t::process</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
-    <b>mcp_render_request_t::stage_file</b>, <b>render_worker_t::started</b>,
-    <b>mcp_render_result_t::text</b>, <b>time_get_ns()</b>,
-    <b>mcp_render_request_t::timeout_ms</b>, and
-  <b>render_worker_t::timer</b>.</p>
-<p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argv</b>,
+            <b>mcp_render_request_t::capture_webcam</b>,
+            <b>mcp_render_result_t::elapsed_ms</b>,
+            <b>mcp_render_result_t::error</b>, <b>render_worker_t::errors</b>,
+            <b>render_worker_t::failed</b>, <b>mcp_render_result_t::length</b>,
+            <b>render_worker_t::loop</b>, <b>MCP_MAX_OUTPUT</b>,
+            <b>MCP_RENDER_ENV_CAPACITY</b>, <b>mcp_render_execute()</b>,
+            <b>render_worker_t::output</b>,
+            <b>mcp_render_request_t::output_path</b>,
+            <b>mcp_render_result_t::output_path</b>, <b>platform_getenv()</b>,
+            <b>platform_strdup()</b>, <b>render_worker_t::process</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+            <b>mcp_render_request_t::stage_file</b>,
+            <b>render_worker_t::started</b>, <b>mcp_render_result_t::text</b>,
+            <b>time_get_ns()</b>, <b>mcp_render_request_t::timeout_ms</b>, and
+            <b>render_worker_t::timer</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

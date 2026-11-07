@@ -1,174 +1,343 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_status.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_status.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_status.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_status.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>log_row_ref_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE</b> 600
-  <br/>
-  #define <b>TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE</b> 12
-  <br/>
-  #define <b>TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>TUI_SESSION_STATUS_TEXT_BUFFER_SIZE</b> 2048
-  <br/>
-  #define <b>TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>TUI_SESSION_STATUS_KEYS_BUFFER_SIZE</b> 96
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>ui_status_render_header</b> (<b>frame_buffer_t</b> *buf,
-    <b>terminal_size_t</b> term_size, void *user_data)
-  <br/>
-  void <b>terminal_screen_compose</b> (<b>frame_buffer_t</b> *output,
-    <b>terminal_size_t</b> size, const <b>terminal_screen_config_t</b> *config,
-    <b>session_log_buffer_t</b> *logs)
-  <br/>
-  void <b>terminal_screen_logs_render_help</b> (<b>frame_buffer_t</b> *output,
-    <b>terminal_size_t</b> size)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE___512">#define
-  TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE___512">#define
-  TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE___128">#define
-  TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_logs_render_help()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE___64"><a class="permalink" href="#_define_TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE___64">#define
-  TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE___64"><a class="permalink" href="#_define_TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE___64">#define
-  TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_KEYS_BUFFER_SIZE___96"><a class="permalink" href="#_define_TUI_SESSION_STATUS_KEYS_BUFFER_SIZE___96">#define
-  TUI_SESSION_STATUS_KEYS_BUFFER_SIZE 96</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_logs_render_help()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE___512">#define
-  TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE___600"><a class="permalink" href="#_define_TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE___600">#define
-  TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE 600</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE___512">#define
-  TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_TEXT_BUFFER_SIZE___2048"><a class="permalink" href="#_define_TUI_SESSION_STATUS_TEXT_BUFFER_SIZE___2048">#define
-  TUI_SESSION_STATUS_TEXT_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_compose()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE___12"><a class="permalink" href="#_define_TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE___12">#define
-  TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE 12</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>session_status.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_screen_compose_("><a class="permalink" href="#void_terminal_screen_compose_(">void
-  terminal_screen_compose (<b>frame_buffer_t</b> * output,
-  <b>terminal_size_t</b> size, const <b>terminal_screen_config_t</b> * config,
-  <b>session_log_buffer_t</b> * logs)</a></h2>
-<p class="Pp">Compose the existing status/splash UI without terminal I/O.</p>
-<p class="Pp">Definition at line <b>251</b> of file <b>session_status.c</b>.</p>
-<pre>252                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_status.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_status.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_status.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_status.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>log_row_ref_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE</b> 512
+            <br />
+            #define
+            <b>TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE</b> 512
+            <br />
+            #define
+            <b>TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE</b> 600
+            <br />
+            #define <b>TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE</b> 12
+            <br />
+            #define <b>TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE</b> 512
+            <br />
+            #define
+            <b>TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>TUI_SESSION_STATUS_TEXT_BUFFER_SIZE</b> 2048
+            <br />
+            #define <b>TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>TUI_SESSION_STATUS_KEYS_BUFFER_SIZE</b> 96
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_status_render_header</b> (<b>frame_buffer_t</b> *buf,
+            <b>terminal_size_t</b> term_size, void *user_data)
+            <br />
+            void <b>terminal_screen_compose</b> (<b>frame_buffer_t</b> *output,
+            <b>terminal_size_t</b> size, const
+            <b>terminal_screen_config_t</b> *config,
+            <b>session_log_buffer_t</b> *logs)
+            <br />
+            void <b>terminal_screen_logs_render_help</b> (<b>frame_buffer_t</b>
+            *output, <b>terminal_size_t</b> size)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE___512"
+              >#define TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE___512"
+              >#define TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE___128"
+              >#define TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_logs_render_help()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE___64"
+              >#define TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE___64"
+              >#define TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_SESSION_STATUS_KEYS_BUFFER_SIZE___96">
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_KEYS_BUFFER_SIZE___96"
+              >#define TUI_SESSION_STATUS_KEYS_BUFFER_SIZE 96</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_logs_render_help()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE___512"
+              >#define TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE___600"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE___600"
+              >#define TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE 600</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE___512"
+              >#define TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE
+              512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_TEXT_BUFFER_SIZE___2048"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_TEXT_BUFFER_SIZE___2048"
+              >#define TUI_SESSION_STATUS_TEXT_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>terminal_screen_compose()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE___12"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE___12"
+              >#define TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE 12</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>session_status.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_status_render_header()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_terminal_screen_compose_(">
+            <a class="permalink" href="#void_terminal_screen_compose_("
+              >void terminal_screen_compose (<b>frame_buffer_t</b> * output,
+              <b>terminal_size_t</b> size, const
+              <b>terminal_screen_config_t</b> * config,
+              <b>session_log_buffer_t</b> * logs)</a
+            >
+          </h2>
+          <p class="Pp">
+            Compose the existing status/splash UI without terminal I/O.
+          </p>
+          <p class="Pp">
+            Definition at line <b>251</b> of file <b>session_status.c</b>.
+          </p>
+          <pre>
+252                                                          {
 253   if (!output || !config || !config-&gt;render_header || size.cols &lt; 1 || size.rows &lt; 1)
 254     return;
 255   if (config-&gt;show_logs)
@@ -295,42 +464,57 @@
 376   }
 377   frame_buffer_destroy(body);
 378 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_size_t::cols</b>, <b>display_height()</b>,
-    <b>terminal_screen_config_t::fixed_header_lines</b>,
-    <b>frame_buffer_append()</b>, <b>frame_buffer_create()</b>,
-    <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
-    <b>frame_buffer_get_length()</b>, <b>frame_buffer_printf()</b>,
-    <b>terminal_screen_config_t::hide_cursor</b>,
-    <b>log_search_filter_buffer()</b>, <b>log_search_get_cursor_position()</b>,
-    <b>log_search_get_input_buffer()</b>, <b>log_search_get_mutex()</b>,
-    <b>log_search_is_active()</b>, <b>log_search_is_entering()</b>,
-    <b>log_search_process_pending()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>terminal_screen_config_t::render_header</b>,
-    <b>terminal_size_t::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>terminal_screen_config_t::screen</b>,
-    <b>session_log_entry_t::sequence</b>,
-    <b>session_log_buffer_get_recent()</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
-    <b>terminal_screen_config_t::show_logs</b>,
-    <b>terminal_screen_compose()</b>, <b>terminal_screen_logs_help_open()</b>,
-    <b>terminal_screen_logs_help_too_small()</b>,
-    <b>terminal_screen_logs_last_tail_sequence()</b>,
-    <b>terminal_screen_logs_render_help()</b>,
-    <b>terminal_screen_logs_retain_position()</b>,
-    <b>TUI_SESSION_STATUS_TEXT_BUFFER_SIZE</b>, <b>UI_SCREEN_SPLASH</b>,
-    <b>ui_scrollbar_render()</b>, and
-    <b>terminal_screen_config_t::user_data</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_compose()</b>, and
-    <b>ui_session_logs_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_screen_logs_render_help_("><a class="permalink" href="#void_terminal_screen_logs_render_help_(">void
-  terminal_screen_logs_render_help (<b>frame_buffer_t</b> * output,
-  <b>terminal_size_t</b> size)</a></h2>
-<p class="Pp">Recompose log-viewer help above modal error notifications.</p>
-<p class="Pp">Definition at line <b>380</b> of file <b>session_status.c</b>.</p>
-<pre>380                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>, <b>display_height()</b>,
+            <b>terminal_screen_config_t::fixed_header_lines</b>,
+            <b>frame_buffer_append()</b>, <b>frame_buffer_create()</b>,
+            <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
+            <b>frame_buffer_get_length()</b>, <b>frame_buffer_printf()</b>,
+            <b>terminal_screen_config_t::hide_cursor</b>,
+            <b>log_search_filter_buffer()</b>,
+            <b>log_search_get_cursor_position()</b>,
+            <b>log_search_get_input_buffer()</b>, <b>log_search_get_mutex()</b>,
+            <b>log_search_is_active()</b>, <b>log_search_is_entering()</b>,
+            <b>log_search_process_pending()</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>terminal_screen_config_t::render_header</b>,
+            <b>terminal_size_t::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>terminal_screen_config_t::screen</b>,
+            <b>session_log_entry_t::sequence</b>,
+            <b>session_log_buffer_get_recent()</b>,
+            <b>SESSION_LOG_BUFFER_SIZE</b>,
+            <b>terminal_screen_config_t::show_logs</b>,
+            <b>terminal_screen_compose()</b>,
+            <b>terminal_screen_logs_help_open()</b>,
+            <b>terminal_screen_logs_help_too_small()</b>,
+            <b>terminal_screen_logs_last_tail_sequence()</b>,
+            <b>terminal_screen_logs_render_help()</b>,
+            <b>terminal_screen_logs_retain_position()</b>,
+            <b>TUI_SESSION_STATUS_TEXT_BUFFER_SIZE</b>, <b>UI_SCREEN_SPLASH</b>,
+            <b>ui_scrollbar_render()</b>, and
+            <b>terminal_screen_config_t::user_data</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_compose()</b>, and
+            <b>ui_session_logs_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_terminal_screen_logs_render_help_(">
+            <a class="permalink" href="#void_terminal_screen_logs_render_help_("
+              >void terminal_screen_logs_render_help (<b>frame_buffer_t</b> *
+              output, <b>terminal_size_t</b> size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Recompose log-viewer help above modal error notifications.
+          </p>
+          <p class="Pp">
+            Definition at line <b>380</b> of file <b>session_status.c</b>.
+          </p>
+          <pre>
+380                                                                                     {
 381   const ui_help_entry_t entries[] = {{&quot;j / Down&quot;, &quot;newer line&quot;},
 382                                      {&quot;k / Up&quot;, &quot;older line&quot;},
 383                                      {&quot;Ctrl-D / Right&quot;, &quot;half page newer&quot;},
@@ -344,25 +528,36 @@
 391                          .footer = footer};
 392   (void)ui_help_menu_render(output, size, &amp;menu);
 393 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_screen_logs_render_help()</b>,
-    <b>TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_KEYS_BUFFER_SIZE</b>, <b>ui_help_keys()</b>, and
-    <b>ui_help_menu_render()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_compose()</b>, and
-    <b>terminal_screen_logs_render_help()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_status_render_header_("><a class="permalink" href="#void_ui_status_render_header_(">void
-  ui_status_render_header (<b>frame_buffer_t</b> * buffer,
-  <b>terminal_size_t</b> size, void * status)</a></h2>
-<p class="Pp">Server status presentation shared by native and browser
-  sessions.</p>
-<p class="Pp"></p>
-<p class="Pp">The same four-line status header in every host.</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>session_status.c</b>.</p>
-<pre>33                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_screen_logs_render_help()</b>,
+            <b>TUI_SESSION_STATUS_FOOTER_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_KEYS_BUFFER_SIZE</b>, <b>ui_help_keys()</b>,
+            and <b>ui_help_menu_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_compose()</b>, and
+            <b>terminal_screen_logs_render_help()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_status_render_header_(">
+            <a class="permalink" href="#void_ui_status_render_header_("
+              >void ui_status_render_header (<b>frame_buffer_t</b> * buffer,
+              <b>terminal_size_t</b> size, void * status)</a
+            >
+          </h2>
+          <p class="Pp">
+            Server status presentation shared by native and browser sessions.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The same four-line status header in every host.</p>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>session_status.c</b>.
+          </p>
+          <pre>
+33                                                                                               {
 34   const ui_status_t *status = (const ui_status_t *)user_data;
 35   if (!status) {
 36     return;
@@ -461,44 +656,52 @@
 129   // Line 4: Bottom border
 130   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 131 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
-    <b>ui_status_t::connected_count</b>, <b>ui_status_t::detail</b>,
-    <b>display_center_horizontal()</b>, <b>extract_ip_from_address()</b>,
-    <b>format_uptime_hms()</b>, <b>frame_buffer_get_screen_output_fd()</b>,
-    <b>frame_buffer_printf()</b>, <b>frame_buffer_render_divider()</b>,
-    <b>get_ip_type_string()</b>, <b>GET_OPTION</b>,
-    <b>ui_status_t::ipv4_address</b>, <b>ui_status_t::ipv4_bound</b>,
-    <b>ui_status_t::ipv6_address</b>, <b>ui_status_t::ipv6_bound</b>,
-    <b>LOG_COLOR_DEBUG</b>, <b>ui_status_t::mode_name</b>, <b>SAFE_STRNCPY</b>,
-    <b>SEC_PER_HOUR</b>, <b>SEC_PER_MIN</b>, <b>ui_status_t::session_string</b>,
-    <b>ui_status_t::start_time</b>, <b>terminal_should_color_output()</b>,
-    <b>terminal_should_use_utf8()</b>, <b>truncate_with_ellipsis()</b>,
-    <b>TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE</b>, and
-    <b>ui_status_render_header()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_logs_render()</b>,
-    <b>ui_status_display()</b>, <b>ui_status_display_interactive()</b>, and
-    <b>ui_status_render_header()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>ui_status_t::connected_count</b>, <b>ui_status_t::detail</b>,
+            <b>display_center_horizontal()</b>,
+            <b>extract_ip_from_address()</b>, <b>format_uptime_hms()</b>,
+            <b>frame_buffer_get_screen_output_fd()</b>,
+            <b>frame_buffer_printf()</b>, <b>frame_buffer_render_divider()</b>,
+            <b>get_ip_type_string()</b>, <b>GET_OPTION</b>,
+            <b>ui_status_t::ipv4_address</b>, <b>ui_status_t::ipv4_bound</b>,
+            <b>ui_status_t::ipv6_address</b>, <b>ui_status_t::ipv6_bound</b>,
+            <b>LOG_COLOR_DEBUG</b>, <b>ui_status_t::mode_name</b>,
+            <b>SAFE_STRNCPY</b>, <b>SEC_PER_HOUR</b>, <b>SEC_PER_MIN</b>,
+            <b>ui_status_t::session_string</b>, <b>ui_status_t::start_time</b>,
+            <b>terminal_should_color_output()</b>,
+            <b>terminal_should_use_utf8()</b>, <b>truncate_with_ellipsis()</b>,
+            <b>TUI_SESSION_STATUS_ADDR_LINE_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_ADDR_LINE_TRUNCATED_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_IPV4_ONLY_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_IPV6_ONLY_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_STATUS_LINE_COLORED_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE</b>, and
+            <b>ui_status_render_header()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_logs_render()</b>,
+            <b>ui_status_display()</b>, <b>ui_status_display_interactive()</b>,
+            and <b>ui_status_render_header()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

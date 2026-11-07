@@ -1,107 +1,162 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>query(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">query(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">query(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">query - Query</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>query.h</b>
-  <br/>
-  Runtime variable query tool API for debug builds.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>query_init</b> (int preferred_port)
-  <br/>
-  Initialize the query tool by spawning the controller process. void
-    <b>query_destroy</b> (void)
-  <br/>
-  Shutdown the query tool and terminate the controller process. <b>bool</b>
-    <b>query_is_active</b> (void)
-  <br/>
-  Check if the query tool controller is currently active. int
-    <b>query_get_port</b> (void)
-  <br/>
-  Get the port number of the active query server.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Convenience_Macros"><a class="permalink" href="#Convenience_Macros">Convenience
-  Macros</a></h2>
-<p class="Pp">These macros provide a convenient interface that compiles out
-    completely in release builds. Use these instead of calling the functions
-    directly.
-  <br/>
-  #define <b>QUERY_INIT</b>(port)
-  <br/>
-  Initialize query tool (debug builds only). #define <b>QUERY_SHUTDOWN</b>()
-  <br/>
-  Shutdown query tool (debug builds only). #define <b>QUERY_ACTIVE</b>()
-  <br/>
-  Check if query tool is active (debug builds only). #define <b>QUERY_PORT</b>()
-  <br/>
-  Get query server port (debug builds only).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">This header provides the public C API for the query tool, which
-    enables runtime variable inspection via HTTP queries. The tool uses an
-    external LLDB process to attach to the running application and read variable
-    values.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
-<ul class="Bl-bullet">
-  <li>Target process (ascii-chat) runs normally with debug symbols</li>
-  <li>Controller process (ascii-query-server) attaches via LLDB</li>
-  <li>HTTP server in controller accepts curl requests</li>
-  <li>When target is stopped at breakpoint, controller is still running</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Example_Usage"><a class="permalink" href="#Example_Usage">Example
-  Usage</a></h2>
-<pre>// In your application startup (debug builds only)
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>query(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">query(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">query(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">query - Query</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>query.h</b>
+            <br />
+            Runtime variable query tool API for debug builds.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>query_init</b> (int preferred_port)
+            <br />
+            Initialize the query tool by spawning the controller process. void
+            <b>query_destroy</b> (void)
+            <br />
+            Shutdown the query tool and terminate the controller process.
+            <b>bool</b> <b>query_is_active</b> (void)
+            <br />
+            Check if the query tool controller is currently active. int
+            <b>query_get_port</b> (void)
+            <br />
+            Get the port number of the active query server.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Convenience_Macros">
+            <a class="permalink" href="#Convenience_Macros"
+              >Convenience Macros</a
+            >
+          </h2>
+          <p class="Pp">
+            These macros provide a convenient interface that compiles out
+            completely in release builds. Use these instead of calling the
+            functions directly.
+            <br />
+            #define <b>QUERY_INIT</b>(port)
+            <br />
+            Initialize query tool (debug builds only). #define
+            <b>QUERY_SHUTDOWN</b>()
+            <br />
+            Shutdown query tool (debug builds only). #define
+            <b>QUERY_ACTIVE</b>()
+            <br />
+            Check if query tool is active (debug builds only). #define
+            <b>QUERY_PORT</b>()
+            <br />
+            Get query server port (debug builds only).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          This header provides the public C API for the query tool, which
+          enables runtime variable inspection via HTTP queries. The tool uses an
+          external LLDB process to attach to the running application and read
+          variable values.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Target process (ascii-chat) runs normally with debug symbols
+            </li>
+            <li>Controller process (ascii-query-server) attaches via LLDB</li>
+            <li>HTTP server in controller accepts curl requests</li>
+            <li>
+              When target is stopped at breakpoint, controller is still running
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Example_Usage">
+            <a class="permalink" href="#Example_Usage">Example Usage</a>
+          </h2>
+          <pre>// In your application startup (debug builds only)
 int port = QUERY_INIT(9999);
 if (port &gt; 0) {
 <br/>
@@ -114,97 +169,150 @@ if (port &gt; 0) {
 // curl -X POST 'localhost:9999/continue'
 // On shutdown
 QUERY_SHUTDOWN();</pre>
-<p class="Pp">Note: All functions and macros compile out completely in release
-    builds (when NDEBUG is defined). The query tool has zero runtime overhead in
-    production builds.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>docs/tooling/query.md</b> for full documentation
-<p class="Pp"></p>
-<p class="Pp"><b>docs/tooling/QUERY_TOOL_PLAN.md</b> for implementation
-  details</p>
-</div>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_QUERY_ACTIVE()"><a class="permalink" href="#_define_QUERY_ACTIVE()">#define
-  QUERY_ACTIVE()</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>query_is_active()</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Check if query tool is active (debug builds only).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if active, false otherwise (always false in release
-  builds)</div>
-<p class="Pp">Definition at line <b>134</b> of file <b>query.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_QUERY_INIT(_port)"><a class="permalink" href="#_define_QUERY_INIT(_port)">#define
-  QUERY_INIT( port)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>query_init(port)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Initialize query tool (debug builds only).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>port</i> Preferred HTTP server port</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Port number on success, -1 on failure (or in release
-  builds)</div>
-<p class="Pp">Definition at line <b>123</b> of file <b>query.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_QUERY_PORT()"><a class="permalink" href="#_define_QUERY_PORT()">#define
-  QUERY_PORT()</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>query_get_port()</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Get query server port (debug builds only).</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Port number if active, -1 otherwise (always -1 in release
-  builds)</div>
-<p class="Pp">Definition at line <b>140</b> of file <b>query.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_QUERY_SHUTDOWN()"><a class="permalink" href="#_define_QUERY_SHUTDOWN()">#define
-  QUERY_SHUTDOWN()</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>query_destroy()</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Shutdown query tool (debug builds only).</p>
-<p class="Pp">Definition at line <b>128</b> of file <b>query.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_query_destroy_(void_)"><a class="permalink" href="#void_query_destroy_(void_)">void
-  query_destroy (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b></p>
-<p class="Pp">Shutdown the query tool and terminate the controller process. This
-    function cleanly terminates the ascii-query-server process. The target
-    process continues running normally after shutdown.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call even if <b>query_init()</b> was not called
-  or failed
-<p class="Pp"></p>
-<p class="Pp">Only available in debug builds (NDEBUG not defined)</p>
-</div>
-<p class="Pp">Definition at line <b>316</b> of file <b>query.c</b>.</p>
-<pre>316                          {
+          <p class="Pp">
+            Note: All functions and macros compile out completely in release
+            builds (when NDEBUG is defined). The query tool has zero runtime
+            overhead in production builds.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>docs/tooling/query.md</b> for full documentation
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>docs/tooling/QUERY_TOOL_PLAN.md</b> for implementation details
+            </p>
+          </div>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_QUERY_ACTIVE()">
+            <a class="permalink" href="#_define_QUERY_ACTIVE()"
+              >#define QUERY_ACTIVE()</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b><b>Value:</b><b></b>
+          </p>
+          <pre>query_is_active()</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Check if query tool is active (debug builds only).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if active, false otherwise (always false in release builds)
+          </div>
+          <p class="Pp">
+            Definition at line <b>134</b> of file <b>query.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_QUERY_INIT(_port)">
+            <a class="permalink" href="#_define_QUERY_INIT(_port)"
+              >#define QUERY_INIT( port)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b><b>Value:</b><b></b>
+          </p>
+          <pre>query_init(port)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Initialize query tool (debug builds only).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>port</i> Preferred HTTP server port</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Port number on success, -1 on failure (or in release builds)
+          </div>
+          <p class="Pp">
+            Definition at line <b>123</b> of file <b>query.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_QUERY_PORT()">
+            <a class="permalink" href="#_define_QUERY_PORT()"
+              >#define QUERY_PORT()</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b><b>Value:</b><b></b>
+          </p>
+          <pre>query_get_port()</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Get query server port (debug builds only).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Port number if active, -1 otherwise (always -1 in release builds)
+          </div>
+          <p class="Pp">
+            Definition at line <b>140</b> of file <b>query.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_QUERY_SHUTDOWN()">
+            <a class="permalink" href="#_define_QUERY_SHUTDOWN()"
+              >#define QUERY_SHUTDOWN()</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b><b>Value:</b><b></b>
+          </p>
+          <pre>query_destroy()</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Shutdown query tool (debug builds only).</p>
+          <p class="Pp">
+            Definition at line <b>128</b> of file <b>query.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_query_destroy_(void_)">
+            <a class="permalink" href="#void_query_destroy_(void_)"
+              >void query_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Shutdown the query tool and terminate the controller process. This
+            function cleanly terminates the ascii-query-server process. The
+            target process continues running normally after shutdown.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call even if <b>query_init()</b> was not called or failed
+            <p class="Pp"></p>
+            <p class="Pp">
+              Only available in debug builds (NDEBUG not defined)
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>316</b> of file <b>query.c</b>.
+          </p>
+          <pre>
+316                          {
 317   if (!g_query_active &amp;&amp; g_controller_pid &lt;= 0) {
 318     return;
 319   }
@@ -260,68 +368,113 @@ QUERY_SHUTDOWN();</pre>
 369
 370   fprintf(stderr, &quot;[query] Query server stopped\n&quot;);
 371 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>query_destroy()</b>, and <b>US_PER_MS_INT</b>.</p>
-<p class="Pp">Referenced by <b>query_destroy()</b>, and <b>query_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_query_get_port_(void_)"><a class="permalink" href="#int_query_get_port_(void_)">int
-  query_get_port (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b></p>
-<p class="Pp">Get the port number of the active query server.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">The port number if active, -1 if not active</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Only available in debug builds (NDEBUG not defined)</div>
-<p class="Pp">Definition at line <b>405</b> of file <b>query.c</b>.</p>
-<pre>405                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>query_destroy()</b>, and <b>US_PER_MS_INT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>query_destroy()</b>, and <b>query_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_query_get_port_(void_)">
+            <a class="permalink" href="#int_query_get_port_(void_)"
+              >int query_get_port (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Get the port number of the active query server.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            The port number if active, -1 if not active
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Only available in debug builds (NDEBUG not defined)
+          </div>
+          <p class="Pp">
+            Definition at line <b>405</b> of file <b>query.c</b>.
+          </p>
+          <pre>
+405                          {
 406   return g_query_port;
 407 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>query_get_port()</b>.</p>
-<p class="Pp">Referenced by <b>query_get_port()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_query_init_(int_preferred_port)"><a class="permalink" href="#int_query_init_(int_preferred_port)">int
-  query_init (int preferred_port)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b></p>
-<p class="Pp">Initialize the query tool by spawning the controller process. This
-    function spawns the ascii-query-server process, which attaches to the
-    current process via LLDB and starts an HTTP server on the specified
-  port.</p>
-<p class="Pp"></p>
-<p class="Pp">The controller process is completely separate from the target
-    process:</p>
-<ul class="Bl-bullet">
-  <li>Target can be stopped at breakpoints while controller serves HTTP</li>
-  <li>Controller sends LLDB commands to read variables and control
-    execution</li>
-  <li>No instrumentation or code modification in the target is required</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>preferred_port</i> The port number for the HTTP server
-  (e.g., 9999)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">The actual port number on success, -1 on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Only available in debug builds (NDEBUG not defined)
-<p class="Pp"></p>
-<p class="Pp">The controller may take a moment to attach; this function waits
-    for the HTTP server to become ready before returning</p>
-</div>
-<p class="Pp">Platform notes:</p>
-<ul class="Bl-bullet">
-  <li>macOS: May require code signing with get-task-allow entitlement</li>
-  <li>Linux: May require ptrace permissions (check
-      /proc/sys/kernel/yama/ptrace_scope)</li>
-  <li>Windows: Uses CreateProcess instead of fork/exec</li>
-</ul>
-<p class="Pp">Definition at line <b>219</b> of file <b>query.c</b>.</p>
-<pre>219                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>query_get_port()</b>.</p>
+          <p class="Pp">Referenced by <b>query_get_port()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_query_init_(int_preferred_port)">
+            <a class="permalink" href="#int_query_init_(int_preferred_port)"
+              >int query_init (int preferred_port)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Initialize the query tool by spawning the controller process. This
+            function spawns the ascii-query-server process, which attaches to
+            the current process via LLDB and starts an HTTP server on the
+            specified port.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The controller process is completely separate from the target
+            process:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Target can be stopped at breakpoints while controller serves HTTP
+            </li>
+            <li>
+              Controller sends LLDB commands to read variables and control
+              execution
+            </li>
+            <li>
+              No instrumentation or code modification in the target is required
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>preferred_port</i> The port number for the HTTP server (e.g.,
+            9999)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            The actual port number on success, -1 on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Only available in debug builds (NDEBUG not defined)
+            <p class="Pp"></p>
+            <p class="Pp">
+              The controller may take a moment to attach; this function waits
+              for the HTTP server to become ready before returning
+            </p>
+          </div>
+          <p class="Pp">Platform notes:</p>
+          <ul class="Bl-bullet">
+            <li>
+              macOS: May require code signing with get-task-allow entitlement
+            </li>
+            <li>
+              Linux: May require ptrace permissions (check
+              /proc/sys/kernel/yama/ptrace_scope)
+            </li>
+            <li>Windows: Uses CreateProcess instead of fork/exec</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>219</b> of file <b>query.c</b>.
+          </p>
+          <pre>
+219                                    {
 220   // Already initialized?
 221   if (g_query_active) {
 222     return g_query_port;
@@ -417,30 +570,44 @@ QUERY_SHUTDOWN();</pre>
 312   fprintf(stderr, &quot;[query] Query server ready at http://localhost:%d\n&quot;, preferred_port);
 313   return preferred_port;
 314 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>errno</b>, <b>HEALTH_CHECK_TIMEOUT_NS</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>query_destroy()</b>,
-    <b>query_init()</b>, <b>safe_snprintf()</b>,
-    <b>TOOLING_QUERY_CMDLINE_BUFFER_SIZE</b>,
-    <b>TOOLING_QUERY_PID_BUFFER_SIZE</b>, and
-    <b>TOOLING_QUERY_PORT_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>query_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> query_is_active (void )</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b></b></p>
-<p class="Pp">Check if the query tool controller is currently active.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if the controller process is running and responsive
-<p class="Pp"></p>
-<p class="Pp">false if the controller is not running or not responding</p>
-</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Only available in debug builds (NDEBUG not defined)</div>
-<p class="Pp">Definition at line <b>373</b> of file <b>query.c</b>.</p>
-<pre>373                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>errno</b>, <b>HEALTH_CHECK_TIMEOUT_NS</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>query_destroy()</b>,
+            <b>query_init()</b>, <b>safe_snprintf()</b>,
+            <b>TOOLING_QUERY_CMDLINE_BUFFER_SIZE</b>,
+            <b>TOOLING_QUERY_PID_BUFFER_SIZE</b>, and
+            <b>TOOLING_QUERY_PORT_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>query_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> query_is_active (void )</h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/tooling/query/query.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Check if the query tool controller is currently active.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if the controller process is running and responsive
+            <p class="Pp"></p>
+            <p class="Pp">
+              false if the controller is not running or not responding
+            </p>
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Only available in debug builds (NDEBUG not defined)
+          </div>
+          <p class="Pp">
+            Definition at line <b>373</b> of file <b>query.c</b>.
+          </p>
+          <pre>
+373                            {
 374   if (!g_query_active) {
 375     return false;
 376   }
@@ -471,22 +638,24 @@ QUERY_SHUTDOWN();</pre>
 401
 402   return g_query_active;
 403 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>query_is_active()</b>.</p>
-<p class="Pp">Referenced by <b>query_is_active()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>query_is_active()</b>.</p>
+          <p class="Pp">Referenced by <b>query_is_active()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

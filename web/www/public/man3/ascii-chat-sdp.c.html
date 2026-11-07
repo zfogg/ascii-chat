@@ -1,150 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>sdp.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">sdp.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">sdp.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">sdp.c - SDP offer/answer generation and parsing.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE</b> 32
-  <br/>
-  #define <b>SDP_VIDEO_CODEC_CAPACITY</b> 4
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>sdp_codec_name</b> (<b>acip_codec_t</b> codec)
-  <br/>
-  Get human-readable codec name. const char * <b>sdp_renderer_name</b> (int
-    renderer_type)
-  <br/>
-  Get human-readable renderer name. <b>asciichat_error_t</b>
-    <b>sdp_generate_offer</b> (const <b>terminal_capability_t</b> *capabilities,
-    size_t capability_count, const <b>opus_config_t</b> *audio_config, const
-    <b>terminal_format_params_t</b> *format, <b>uint32_t</b> video_codec_caps,
-    <b>uint32_t</b> audio_codec_caps, <b>sdp_session_t</b> *offer_out)
-  <br/>
-  Generate SDP offer (client side). <b>asciichat_error_t</b>
-    <b>sdp_generate_answer</b> (const <b>sdp_session_t</b> *offer, const
-    <b>terminal_capability_t</b> *server_capabilities, size_t
-    server_capability_count, const <b>opus_config_t</b> *audio_config, const
-    <b>terminal_format_params_t</b> *server_format, <b>uint32_t</b>
-    server_video_codec_caps, <b>uint32_t</b> server_audio_codec_caps,
-    <b>sdp_session_t</b> *answer_out)
-  <br/>
-  Generate SDP answer (server side). <b>asciichat_error_t</b> <b>sdp_parse</b>
-    (const char *sdp_string, <b>sdp_session_t</b> *session)
-  <br/>
-  Parse SDP offer or answer. <b>asciichat_error_t</b>
-    <b>sdp_get_selected_video_codec</b> (const <b>sdp_session_t</b> *answer,
-    <b>acip_codec_t</b> *selected_codec, <b>terminal_format_params_t</b>
-    *selected_format)
-  <br/>
-  Extract selected video codec from SDP answer. <b>asciichat_error_t</b>
-    <b>sdp_detect_terminal_capabilities</b> (<b>terminal_capability_t</b>
-    *capabilities, size_t capability_count, size_t *detected_count)
-  <br/>
-  Detect client terminal capabilities at startup. void
-    <b>sdp_session_destroy</b> (<b>sdp_session_t</b> *session)
-  <br/>
-  Free SDP session resources.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">SDP offer/answer generation and parsing.</p>
-<p class="Pp">Implements SDP generation for audio (Opus) and video (terminal
-    capabilities). Terminal capabilities are negotiated as custom
-    &quot;codecs&quot; in the video media section.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>sdp.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE___128"><a class="permalink" href="#_define_NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE___128">#define
-  NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>sdp.c</b>.</p>
-<p class="Pp">Referenced by <b>sdp_generate_offer()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE___32"><a class="permalink" href="#_define_NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE___32">#define
-  NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>sdp.c</b>.</p>
-<p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE___256">#define
-  NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>sdp.c</b>.</p>
-<p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SDP_VIDEO_CODEC_CAPACITY___4"><a class="permalink" href="#_define_SDP_VIDEO_CODEC_CAPACITY___4">#define
-  SDP_VIDEO_CODEC_CAPACITY 4</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>sdp.c</b>.</p>
-<p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_sdp_codec_name_("><a class="permalink" href="#const_char_*_sdp_codec_name_(">const
-  char * sdp_codec_name (<b>acip_codec_t</b> codec)</a></h2>
-<p class="Pp">Get human-readable codec name.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>codec</i> Codec type</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Static string (e.g., &quot;ACIP-TC&quot;,
-  &quot;ACIP-256&quot;)</div>
-<p class="Pp">Definition at line <b>32</b> of file <b>sdp.c</b>.</p>
-<pre>32                                                {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sdp.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sdp.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sdp.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">sdp.c - SDP offer/answer generation and parsing.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>SDP_VIDEO_CODEC_CAPACITY</b> 4
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>sdp_codec_name</b> (<b>acip_codec_t</b> codec)
+            <br />
+            Get human-readable codec name. const char *
+            <b>sdp_renderer_name</b> (int renderer_type)
+            <br />
+            Get human-readable renderer name. <b>asciichat_error_t</b>
+            <b>sdp_generate_offer</b> (const
+            <b>terminal_capability_t</b> *capabilities, size_t capability_count,
+            const <b>opus_config_t</b> *audio_config, const
+            <b>terminal_format_params_t</b> *format,
+            <b>uint32_t</b> video_codec_caps, <b>uint32_t</b> audio_codec_caps,
+            <b>sdp_session_t</b> *offer_out)
+            <br />
+            Generate SDP offer (client side). <b>asciichat_error_t</b>
+            <b>sdp_generate_answer</b> (const <b>sdp_session_t</b> *offer, const
+            <b>terminal_capability_t</b> *server_capabilities, size_t
+            server_capability_count, const <b>opus_config_t</b> *audio_config,
+            const <b>terminal_format_params_t</b> *server_format,
+            <b>uint32_t</b> server_video_codec_caps,
+            <b>uint32_t</b> server_audio_codec_caps,
+            <b>sdp_session_t</b> *answer_out)
+            <br />
+            Generate SDP answer (server side). <b>asciichat_error_t</b>
+            <b>sdp_parse</b> (const char *sdp_string,
+            <b>sdp_session_t</b> *session)
+            <br />
+            Parse SDP offer or answer. <b>asciichat_error_t</b>
+            <b>sdp_get_selected_video_codec</b> (const
+            <b>sdp_session_t</b> *answer, <b>acip_codec_t</b> *selected_codec,
+            <b>terminal_format_params_t</b>
+            *selected_format)
+            <br />
+            Extract selected video codec from SDP answer.
+            <b>asciichat_error_t</b> <b>sdp_detect_terminal_capabilities</b> (<b
+              >terminal_capability_t</b
+            >
+            *capabilities, size_t capability_count, size_t *detected_count)
+            <br />
+            Detect client terminal capabilities at startup. void
+            <b>sdp_session_destroy</b> (<b>sdp_session_t</b> *session)
+            <br />
+            Free SDP session resources.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">SDP offer/answer generation and parsing.</p>
+        <p class="Pp">
+          Implements SDP generation for audio (Opus) and video (terminal
+          capabilities). Terminal capabilities are negotiated as custom
+          &quot;codecs&quot; in the video media section.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>sdp.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE___128"
+              >#define NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>12</b> of file <b>sdp.c</b>.</p>
+          <p class="Pp">Referenced by <b>sdp_generate_offer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE___32"
+              >#define NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>sdp.c</b>.</p>
+          <p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE___256"
+              >#define NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>13</b> of file <b>sdp.c</b>.</p>
+          <p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SDP_VIDEO_CODEC_CAPACITY___4">
+            <a class="permalink" href="#_define_SDP_VIDEO_CODEC_CAPACITY___4"
+              >#define SDP_VIDEO_CODEC_CAPACITY 4</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>17</b> of file <b>sdp.c</b>.</p>
+          <p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_sdp_codec_name_(">
+            <a class="permalink" href="#const_char_*_sdp_codec_name_("
+              >const char * sdp_codec_name (<b>acip_codec_t</b> codec)</a
+            >
+          </h2>
+          <p class="Pp">Get human-readable codec name.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>codec</i> Codec type</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Static string (e.g., &quot;ACIP-TC&quot;, &quot;ACIP-256&quot;)
+          </div>
+          <p class="Pp">Definition at line <b>32</b> of file <b>sdp.c</b>.</p>
+          <pre>
+32                                                {
 33   switch (codec) {
 34   case ACIP_CODEC_TRUECOLOR:
 35     return &quot;ACIP-TC&quot;;
@@ -158,43 +244,57 @@
 43     return &quot;UNKNOWN&quot;;
 44   }
 45 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
-    <b>ACIP_CODEC_MONO</b>, <b>ACIP_CODEC_TRUECOLOR</b>, and
-    <b>sdp_codec_name()</b>.</p>
-<p class="Pp">Referenced by <b>sdp_codec_name()</b>,
-    <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>, and
-    <b>sdp_get_selected_video_codec()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> sdp_detect_terminal_capabilities
-  (<b>terminal_capability_t</b> * capabilities, size_t capability_count, size_t
-  * detected_count)</h2>
-<p class="Pp">Detect client terminal capabilities at startup. Auto-detects from
-    environment and terminal:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>COLORTERM env var (truecolor/24bit)</dd>
-  <dt>2.</dt>
-  <dd>Terminal color query (terminfo/XTGETTCAP)</dd>
-  <dt>3.</dt>
-  <dd>UTF-8 support (LANG, test character)</dd>
-  <dt>4.</dt>
-  <dd>CSI REP support (escape sequence test)</dd>
-  <dt>5.</dt>
-  <dd>Terminal size (TIOCGWINSZ)</dd>
-</dl>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capabilities</i> Detected capabilities (output)
-<br/>
-<i>capability_count</i> Maximum capabilities to detect
-<br/>
-<i>detected_count</i> Actual number detected (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>697</b> of file <b>sdp.c</b>.</p>
-<pre>698                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
+            <b>ACIP_CODEC_MONO</b>, <b>ACIP_CODEC_TRUECOLOR</b>, and
+            <b>sdp_codec_name()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>sdp_codec_name()</b>, <b>sdp_generate_answer()</b>,
+            <b>sdp_generate_offer()</b>, and
+            <b>sdp_get_selected_video_codec()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> sdp_detect_terminal_capabilities (<b
+              >terminal_capability_t</b
+            >
+            * capabilities, size_t capability_count, size_t * detected_count)
+          </h2>
+          <p class="Pp">
+            Detect client terminal capabilities at startup. Auto-detects from
+            environment and terminal:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>COLORTERM env var (truecolor/24bit)</dd>
+            <dt>2.</dt>
+            <dd>Terminal color query (terminfo/XTGETTCAP)</dd>
+            <dt>3.</dt>
+            <dd>UTF-8 support (LANG, test character)</dd>
+            <dt>4.</dt>
+            <dd>CSI REP support (escape sequence test)</dd>
+            <dt>5.</dt>
+            <dd>Terminal size (TIOCGWINSZ)</dd>
+          </dl>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capabilities</i> Detected capabilities (output)
+            <br />
+            <i>capability_count</i> Maximum capabilities to detect
+            <br />
+            <i>detected_count</i> Actual number detected (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>697</b> of file <b>sdp.c</b>.</p>
+          <pre>
+698                                                                            {
 699   if (!capabilities || capability_count == 0 || !detected_count) {
 700     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capability detection parameters&quot;);
 701   }
@@ -292,61 +392,80 @@
 793
 794   return ASCIICHAT_OK;
 795 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
-    <b>ACIP_CODEC_MONO</b>, <b>ACIP_CODEC_TRUECOLOR</b>, <b>ASCIICHAT_OK</b>,
-    <b>terminal_format_params_t::charset</b>,
-    <b>terminal_capability_t::codec</b>, <b>terminal_size_t::cols</b>,
-    <b>terminal_format_params_t::compression</b>,
-    <b>terminal_format_params_t::csi_rep_support</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>terminal_capability_t::format</b>,
-    <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
-    <b>terminal_format_params_t::renderer</b>, <b>terminal_size_t::rows</b>,
-    <b>SAFE_GETENV</b>, <b>sdp_detect_terminal_capabilities()</b>,
-    <b>SET_ERRNO</b>, <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
-    <b>TERM_COLOR_NONE</b>, <b>TERM_COLOR_TRUECOLOR</b>,
-    <b>terminal_get_size()</b>, and <b>terminal_format_params_t::width</b>.</p>
-<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> sdp_generate_answer (const
-  <b>sdp_session_t</b> * offer, const <b>terminal_capability_t</b> *
-  server_capabilities, size_t server_capability_count, const
-  <b>opus_config_t</b> * audio_config, const <b>terminal_format_params_t</b> *
-  server_format, <b>uint32_t</b> server_video_codec_caps, <b>uint32_t</b>
-  server_audio_codec_caps, <b>sdp_session_t</b> * answer_out)</h2>
-<p class="Pp">Generate SDP answer (server side). Creates an SDP answer by
-    selecting best mutually-supported mode from offer. Server enforces its
-    rendering constraints and codec capabilities. Performs codec capability
-    negotiation (intersection of client and server capabilities).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>offer</i> Received SDP offer from client (includes
-  client's codec capabilities)
-<br/>
-<i>server_capabilities</i> Array of server-supported terminal capabilities
-<br/>
-<i>server_capability_count</i> Number of server capabilities
-<br/>
-<i>audio_config</i> Opus codec configuration
-<br/>
-<i>server_format</i> Server's rendering constraints
-<br/>
-<i>server_video_codec_caps</i> Bitmask of server's supported video codecs
-  (VIDEO_CODEC_CAP_*)
-<br/>
-<i>server_audio_codec_caps</i> Bitmask of server's supported audio codecs
-  (AUDIO_CODEC_CAP_*)
-<br/>
-<i>answer_out</i> Generated SDP answer (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller must free answer_out using
-  <b>sdp_session_destroy()</b></div>
-<p class="Pp">Definition at line <b>191</b> of file <b>sdp.c</b>.</p>
-<pre>194                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
+            <b>ACIP_CODEC_MONO</b>, <b>ACIP_CODEC_TRUECOLOR</b>,
+            <b>ASCIICHAT_OK</b>, <b>terminal_format_params_t::charset</b>,
+            <b>terminal_capability_t::codec</b>, <b>terminal_size_t::cols</b>,
+            <b>terminal_format_params_t::compression</b>,
+            <b>terminal_format_params_t::csi_rep_support</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>terminal_capability_t::format</b>,
+            <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
+            <b>terminal_format_params_t::renderer</b>,
+            <b>terminal_size_t::rows</b>, <b>SAFE_GETENV</b>,
+            <b>sdp_detect_terminal_capabilities()</b>, <b>SET_ERRNO</b>,
+            <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>, <b>TERM_COLOR_NONE</b>,
+            <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_get_size()</b>, and
+            <b>terminal_format_params_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>sdp_detect_terminal_capabilities()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> sdp_generate_answer (const
+            <b>sdp_session_t</b> * offer, const <b>terminal_capability_t</b> *
+            server_capabilities, size_t server_capability_count, const
+            <b>opus_config_t</b> * audio_config, const
+            <b>terminal_format_params_t</b> * server_format,
+            <b>uint32_t</b> server_video_codec_caps,
+            <b>uint32_t</b> server_audio_codec_caps, <b>sdp_session_t</b> *
+            answer_out)
+          </h2>
+          <p class="Pp">
+            Generate SDP answer (server side). Creates an SDP answer by
+            selecting best mutually-supported mode from offer. Server enforces
+            its rendering constraints and codec capabilities. Performs codec
+            capability negotiation (intersection of client and server
+            capabilities).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>offer</i> Received SDP offer from client (includes client's codec
+            capabilities)
+            <br />
+            <i>server_capabilities</i> Array of server-supported terminal
+            capabilities
+            <br />
+            <i>server_capability_count</i> Number of server capabilities
+            <br />
+            <i>audio_config</i> Opus codec configuration
+            <br />
+            <i>server_format</i> Server's rendering constraints
+            <br />
+            <i>server_video_codec_caps</i> Bitmask of server's supported video
+            codecs (VIDEO_CODEC_CAP_*)
+            <br />
+            <i>server_audio_codec_caps</i> Bitmask of server's supported audio
+            codecs (AUDIO_CODEC_CAP_*)
+            <br />
+            <i>answer_out</i> Generated SDP answer (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller must free answer_out using <b>sdp_session_destroy()</b>
+          </div>
+          <p class="Pp">Definition at line <b>191</b> of file <b>sdp.c</b>.</p>
+          <pre>
+194                                                                                                    {
 195   if (!offer || !server_capabilities || server_capability_count == 0 || !audio_config || !answer_out) {
 196     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid SDP answer parameters&quot;);
 197   }
@@ -510,63 +629,82 @@
 355
 356   return ASCIICHAT_OK;
 357 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>sdp_session_t::audio_config</b>,
-    <b>terminal_format_params_t::charset</b>,
-    <b>terminal_capability_t::codec</b>,
-    <b>sdp_session_t::codec_capabilities_audio</b>,
-    <b>sdp_session_t::codec_capabilities_video</b>,
-    <b>terminal_format_params_t::compression</b>,
-    <b>terminal_format_params_t::csi_rep_support</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>terminal_capability_t::format</b>,
-    <b>sdp_session_t::has_audio</b>, <b>sdp_session_t::has_video</b>,
-    <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
-    <b>terminal_format_params_t::renderer</b>, <b>SAFE_MALLOC</b>,
-    <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>, <b>sdp_codec_name()</b>,
-    <b>sdp_generate_answer()</b>, <b>sdp_session_t::sdp_length</b>,
-    <b>sdp_renderer_name()</b>, <b>sdp_session_t::sdp_string</b>,
-    <b>sdp_session_t::session_id</b>, <b>sdp_session_t::session_version</b>,
-    <b>SET_ERRNO</b>, <b>sdp_session_t::video_codec_count</b>,
-    <b>sdp_session_t::video_codecs</b>, <b>sdp_session_t::video_format</b>, and
-    <b>terminal_format_params_t::width</b>.</p>
-<p class="Pp">Referenced by <b>sdp_generate_answer()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> sdp_generate_offer (const
-  <b>terminal_capability_t</b> * capabilities, size_t capability_count, const
-  <b>opus_config_t</b> * audio_config, const <b>terminal_format_params_t</b> *
-  format, <b>uint32_t</b> video_codec_caps, <b>uint32_t</b> audio_codec_caps,
-  <b>sdp_session_t</b> * offer_out)</h2>
-<p class="Pp">Generate SDP offer (client side). Creates an SDP offer with:</p>
-<ul class="Bl-bullet">
-  <li>Opus audio codec with audio codec capabilities (AUDIO_CODEC_CAP_*)</li>
-  <li>Terminal capabilities in client preference order with video codec
-      capabilities (VIDEO_CODEC_CAP_*)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capabilities</i> Array of supported terminal
-  capabilities
-<br/>
-<i>capability_count</i> Number of capabilities
-<br/>
-<i>audio_config</i> Opus codec configuration
-<br/>
-<i>format</i> Format parameters for video section
-<br/>
-<i>video_codec_caps</i> Bitmask of supported video codecs (VIDEO_CODEC_CAP_*)
-<br/>
-<i>audio_codec_caps</i> Bitmask of supported audio codecs (AUDIO_CODEC_CAP_*)
-<br/>
-<i>offer_out</i> Generated SDP offer (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller must free offer_out using
-  <b>sdp_session_destroy()</b></div>
-<p class="Pp">Definition at line <b>64</b> of file <b>sdp.c</b>.</p>
-<pre>66                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>sdp_session_t::audio_config</b>,
+            <b>terminal_format_params_t::charset</b>,
+            <b>terminal_capability_t::codec</b>,
+            <b>sdp_session_t::codec_capabilities_audio</b>,
+            <b>sdp_session_t::codec_capabilities_video</b>,
+            <b>terminal_format_params_t::compression</b>,
+            <b>terminal_format_params_t::csi_rep_support</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>terminal_capability_t::format</b>,
+            <b>sdp_session_t::has_audio</b>, <b>sdp_session_t::has_video</b>,
+            <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
+            <b>terminal_format_params_t::renderer</b>, <b>SAFE_MALLOC</b>,
+            <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
+            <b>sdp_codec_name()</b>, <b>sdp_generate_answer()</b>,
+            <b>sdp_session_t::sdp_length</b>, <b>sdp_renderer_name()</b>,
+            <b>sdp_session_t::sdp_string</b>, <b>sdp_session_t::session_id</b>,
+            <b>sdp_session_t::session_version</b>, <b>SET_ERRNO</b>,
+            <b>sdp_session_t::video_codec_count</b>,
+            <b>sdp_session_t::video_codecs</b>,
+            <b>sdp_session_t::video_format</b>, and
+            <b>terminal_format_params_t::width</b>.
+          </p>
+          <p class="Pp">Referenced by <b>sdp_generate_answer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> sdp_generate_offer (const
+            <b>terminal_capability_t</b> * capabilities, size_t
+            capability_count, const <b>opus_config_t</b> * audio_config, const
+            <b>terminal_format_params_t</b> * format,
+            <b>uint32_t</b> video_codec_caps, <b>uint32_t</b> audio_codec_caps,
+            <b>sdp_session_t</b> * offer_out)
+          </h2>
+          <p class="Pp">
+            Generate SDP offer (client side). Creates an SDP offer with:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Opus audio codec with audio codec capabilities (AUDIO_CODEC_CAP_*)
+            </li>
+            <li>
+              Terminal capabilities in client preference order with video codec
+              capabilities (VIDEO_CODEC_CAP_*)
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capabilities</i> Array of supported terminal capabilities
+            <br />
+            <i>capability_count</i> Number of capabilities
+            <br />
+            <i>audio_config</i> Opus codec configuration
+            <br />
+            <i>format</i> Format parameters for video section
+            <br />
+            <i>video_codec_caps</i> Bitmask of supported video codecs
+            (VIDEO_CODEC_CAP_*)
+            <br />
+            <i>audio_codec_caps</i> Bitmask of supported audio codecs
+            (AUDIO_CODEC_CAP_*)
+            <br />
+            <i>offer_out</i> Generated SDP offer (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller must free offer_out using <b>sdp_session_destroy()</b>
+          </div>
+          <p class="Pp">Definition at line <b>64</b> of file <b>sdp.c</b>.</p>
+          <pre>
+66                                                                                                                      {
 67   if (!capabilities || capability_count == 0 || !audio_config || !offer_out) {
 68     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid SDP offer parameters&quot;);
 69   }
@@ -686,47 +824,58 @@
 183
 184   return ASCIICHAT_OK;
 185 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>sdp_session_t::audio_config</b>,
-    <b>terminal_format_params_t::charset</b>,
-    <b>sdp_session_t::codec_capabilities_audio</b>,
-    <b>sdp_session_t::codec_capabilities_video</b>,
-    <b>terminal_format_params_t::compression</b>,
-    <b>terminal_format_params_t::csi_rep_support</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>terminal_capability_t::format</b>,
-    <b>sdp_session_t::has_audio</b>, <b>sdp_session_t::has_video</b>,
-    <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
-    <b>NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE</b>,
-    <b>terminal_format_params_t::renderer</b>, <b>SAFE_MALLOC</b>,
-    <b>safe_snprintf()</b>, <b>sdp_codec_name()</b>,
-    <b>sdp_generate_offer()</b>, <b>sdp_session_t::sdp_length</b>,
-    <b>sdp_renderer_name()</b>, <b>sdp_session_t::sdp_string</b>,
-    <b>sdp_session_t::session_id</b>, <b>sdp_session_t::session_version</b>,
-    <b>SET_ERRNO</b>, <b>sdp_session_t::video_codec_count</b>,
-    <b>sdp_session_t::video_codecs</b>, <b>sdp_session_t::video_format</b>, and
-    <b>terminal_format_params_t::width</b>.</p>
-<p class="Pp">Referenced by <b>sdp_generate_offer()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> sdp_get_selected_video_codec (const
-  <b>sdp_session_t</b> * answer, <b>acip_codec_t</b> * selected_codec,
-  <b>terminal_format_params_t</b> * selected_format)</h2>
-<p class="Pp">Extract selected video codec from SDP answer. Determines which
-    terminal rendering capability the peer selected.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>answer</i> SDP answer from peer
-<br/>
-<i>selected_codec</i> Selected codec (output)
-<br/>
-<i>selected_format</i> Format parameters (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if valid selection found, error
-  otherwise</div>
-<p class="Pp">Definition at line <b>670</b> of file <b>sdp.c</b>.</p>
-<pre>671                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>sdp_session_t::audio_config</b>,
+            <b>terminal_format_params_t::charset</b>,
+            <b>sdp_session_t::codec_capabilities_audio</b>,
+            <b>sdp_session_t::codec_capabilities_video</b>,
+            <b>terminal_format_params_t::compression</b>,
+            <b>terminal_format_params_t::csi_rep_support</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>terminal_capability_t::format</b>,
+            <b>sdp_session_t::has_audio</b>, <b>sdp_session_t::has_video</b>,
+            <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
+            <b>NETWORK_WEBRTC_SDP_CODEC_LIST_BUFFER_SIZE</b>,
+            <b>terminal_format_params_t::renderer</b>, <b>SAFE_MALLOC</b>,
+            <b>safe_snprintf()</b>, <b>sdp_codec_name()</b>,
+            <b>sdp_generate_offer()</b>, <b>sdp_session_t::sdp_length</b>,
+            <b>sdp_renderer_name()</b>, <b>sdp_session_t::sdp_string</b>,
+            <b>sdp_session_t::session_id</b>,
+            <b>sdp_session_t::session_version</b>, <b>SET_ERRNO</b>,
+            <b>sdp_session_t::video_codec_count</b>,
+            <b>sdp_session_t::video_codecs</b>,
+            <b>sdp_session_t::video_format</b>, and
+            <b>terminal_format_params_t::width</b>.
+          </p>
+          <p class="Pp">Referenced by <b>sdp_generate_offer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> sdp_get_selected_video_codec (const
+            <b>sdp_session_t</b> * answer, <b>acip_codec_t</b> * selected_codec,
+            <b>terminal_format_params_t</b> * selected_format)
+          </h2>
+          <p class="Pp">
+            Extract selected video codec from SDP answer. Determines which
+            terminal rendering capability the peer selected.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>answer</i> SDP answer from peer
+            <br />
+            <i>selected_codec</i> Selected codec (output)
+            <br />
+            <i>selected_format</i> Format parameters (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if valid selection found, error otherwise
+          </div>
+          <p class="Pp">Definition at line <b>670</b> of file <b>sdp.c</b>.</p>
+          <pre>
+671                                                                                           {
 672   if (!answer || !selected_codec || !selected_format) {
 673     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for codec selection&quot;);
 674   }
@@ -747,32 +896,44 @@
 689
 690   return ASCIICHAT_OK;
 691 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>terminal_capability_t::codec</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NOT_FOUND</b>, <b>terminal_capability_t::format</b>,
-    <b>sdp_session_t::has_video</b>, <b>terminal_format_params_t::height</b>,
-    <b>log_debug</b>, <b>sdp_codec_name()</b>,
-    <b>sdp_get_selected_video_codec()</b>, <b>SET_ERRNO</b>,
-    <b>sdp_session_t::video_codec_count</b>, <b>sdp_session_t::video_codecs</b>,
-    and <b>terminal_format_params_t::width</b>.</p>
-<p class="Pp">Referenced by <b>sdp_get_selected_video_codec()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> sdp_parse (const char * sdp_string,
-  <b>sdp_session_t</b> * session)</h2>
-<p class="Pp">Parse SDP offer or answer. Parses an SDP string and extracts
-    audio/video configurations.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sdp_string</i> SDP string (null-terminated)
-<br/>
-<i>session</i> Parsed session (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>484</b> of file <b>sdp.c</b>.</p>
-<pre>484                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>terminal_capability_t::codec</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>terminal_capability_t::format</b>,
+            <b>sdp_session_t::has_video</b>,
+            <b>terminal_format_params_t::height</b>, <b>log_debug</b>,
+            <b>sdp_codec_name()</b>, <b>sdp_get_selected_video_codec()</b>,
+            <b>SET_ERRNO</b>, <b>sdp_session_t::video_codec_count</b>,
+            <b>sdp_session_t::video_codecs</b>, and
+            <b>terminal_format_params_t::width</b>.
+          </p>
+          <p class="Pp">Referenced by <b>sdp_get_selected_video_codec()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> sdp_parse (const char * sdp_string,
+            <b>sdp_session_t</b> * session)
+          </h2>
+          <p class="Pp">
+            Parse SDP offer or answer. Parses an SDP string and extracts
+            audio/video configurations.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>sdp_string</i> SDP string (null-terminated)
+            <br />
+            <i>session</i> Parsed session (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>484</b> of file <b>sdp.c</b>.</p>
+          <pre>
+484                                                                             {
 485   if (!sdp_string || !session) {
 486     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid SDP parse parameters&quot;);
 487   }
@@ -953,36 +1114,50 @@
 662
 663   return ASCIICHAT_OK;
 664 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
-    <b>ACIP_CODEC_MONO</b>, <b>ACIP_CODEC_TRUECOLOR</b>, <b>ASCIICHAT_OK</b>,
-    <b>sdp_session_t::audio_config</b>, <b>opus_config_t::bitrate</b>,
-    <b>opus_config_t::channels</b>, <b>terminal_capability_t::codec</b>,
-    <b>sdp_session_t::codec_capabilities_audio</b>,
-    <b>sdp_session_t::codec_capabilities_video</b>,
-    <b>opus_config_t::dtx_enabled</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>opus_config_t::fec_enabled</b>, <b>opus_config_t::frame_duration</b>,
-    <b>sdp_session_t::has_audio</b>, <b>sdp_session_t::has_video</b>,
-    <b>log_debug</b>, <b>NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE</b>,
-    <b>NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE</b>, <b>platform_strtok_r()</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>opus_config_t::sample_rate</b>,
-    <b>sdp_session_t::sdp_length</b>, <b>sdp_parse()</b>,
-    <b>sdp_session_t::sdp_string</b>, <b>SDP_VIDEO_CODEC_CAPACITY</b>,
-    <b>sdp_session_t::session_id</b>, <b>SET_ERRNO</b>,
-    <b>sdp_session_t::video_codec_count</b>, and
-    <b>sdp_session_t::video_codecs</b>.</p>
-<p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_sdp_renderer_name_(int_renderer_type)"><a class="permalink" href="#const_char_*_sdp_renderer_name_(int_renderer_type)">const
-  char * sdp_renderer_name (int renderer_type)</a></h2>
-<p class="Pp">Get human-readable renderer name.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Static string (e.g., &quot;block&quot;,
-  &quot;halfblock&quot;)</div>
-<p class="Pp">Definition at line <b>47</b> of file <b>sdp.c</b>.</p>
-<pre>47                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
+            <b>ACIP_CODEC_MONO</b>, <b>ACIP_CODEC_TRUECOLOR</b>,
+            <b>ASCIICHAT_OK</b>, <b>sdp_session_t::audio_config</b>,
+            <b>opus_config_t::bitrate</b>, <b>opus_config_t::channels</b>,
+            <b>terminal_capability_t::codec</b>,
+            <b>sdp_session_t::codec_capabilities_audio</b>,
+            <b>sdp_session_t::codec_capabilities_video</b>,
+            <b>opus_config_t::dtx_enabled</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>opus_config_t::fec_enabled</b>,
+            <b>opus_config_t::frame_duration</b>,
+            <b>sdp_session_t::has_audio</b>, <b>sdp_session_t::has_video</b>,
+            <b>log_debug</b>, <b>NETWORK_WEBRTC_SDP_CODEC_NAME_BUFFER_SIZE</b>,
+            <b>NETWORK_WEBRTC_SDP_O_COPY_BUFFER_SIZE</b>,
+            <b>platform_strtok_r()</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
+            <b>opus_config_t::sample_rate</b>, <b>sdp_session_t::sdp_length</b>,
+            <b>sdp_parse()</b>, <b>sdp_session_t::sdp_string</b>,
+            <b>SDP_VIDEO_CODEC_CAPACITY</b>, <b>sdp_session_t::session_id</b>,
+            <b>SET_ERRNO</b>, <b>sdp_session_t::video_codec_count</b>, and
+            <b>sdp_session_t::video_codecs</b>.
+          </p>
+          <p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_sdp_renderer_name_(int_renderer_type)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_sdp_renderer_name_(int_renderer_type)"
+              >const char * sdp_renderer_name (int renderer_type)</a
+            >
+          </h2>
+          <p class="Pp">Get human-readable renderer name.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Static string (e.g., &quot;block&quot;, &quot;halfblock&quot;)
+          </div>
+          <p class="Pp">Definition at line <b>47</b> of file <b>sdp.c</b>.</p>
+          <pre>
+47                                                  {
 48   switch (renderer_type) {
 49   case RENDERER_BLOCK:
 50     return &quot;block&quot;;
@@ -994,20 +1169,26 @@
 56     return &quot;unknown&quot;;
 57   }
 58 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>sdp_renderer_name()</b>.</p>
-<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
-    <b>sdp_generate_offer()</b>, and <b>sdp_renderer_name()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_sdp_session_destroy_("><a class="permalink" href="#void_sdp_session_destroy_(">void
-  sdp_session_destroy (<b>sdp_session_t</b> * session)</a></h2>
-<p class="Pp">Free SDP session resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session</i> Session to free</div>
-<p class="Pp">Definition at line <b>801</b> of file <b>sdp.c</b>.</p>
-<pre>801                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>sdp_renderer_name()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>sdp_generate_answer()</b>,
+            <b>sdp_generate_offer()</b>, and <b>sdp_renderer_name()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_sdp_session_destroy_(">
+            <a class="permalink" href="#void_sdp_session_destroy_("
+              >void sdp_session_destroy (<b>sdp_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">Free SDP session resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>session</i> Session to free</div>
+          <p class="Pp">Definition at line <b>801</b> of file <b>sdp.c</b>.</p>
+          <pre>
+801                                                  {
 802   if (!session) {
 803     return;
 804   }
@@ -1021,24 +1202,28 @@
 812   // Zero out the session structure
 813   memset(session, 0, sizeof(sdp_session_t));
 814 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>, <b>sdp_session_destroy()</b>,
-    <b>sdp_session_t::video_codec_count</b>, and
-    <b>sdp_session_t::video_codecs</b>.</p>
-<p class="Pp">Referenced by <b>sdp_session_destroy()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SAFE_FREE</b>, <b>sdp_session_destroy()</b>,
+            <b>sdp_session_t::video_codec_count</b>, and
+            <b>sdp_session_t::video_codecs</b>.
+          </p>
+          <p class="Pp">Referenced by <b>sdp_session_destroy()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

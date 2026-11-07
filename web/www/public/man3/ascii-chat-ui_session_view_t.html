@@ -1,132 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ui_session_view_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ui_session_view_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ui_session_view_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ui_session_view_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/tui/session.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">int <b>screen</b>
-  <br/>
-  <b>terminal_size_t</b> <b>minimum</b>
-  <br/>
-  <b>bool</b> <b>dirty</b>
-  <br/>
-  <b>bool</b> <b>clear</b>
-  <br/>
-  <b>uint64_t</b> <b>refresh_ns</b>
-  <br/>
-  <b>ui_session_draw_fn</b> <b>draw</b>
-  <br/>
-  void * <b>context</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>60</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_session_view_t::clear</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_ui_session_view_t::context"><a class="permalink" href="#void*_ui_session_view_t::context">void*
-  ui_session_view_t::context</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_session_view_t::dirty</h2>
-<p class="Pp">Definition at line <b>63</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_session_draw_fn</b> ui_session_view_t::draw</h2>
-<p class="Pp">Definition at line <b>66</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>terminal_size_t</b> ui_session_view_t::minimum</h2>
-<p class="Pp">Definition at line <b>62</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> ui_session_view_t::refresh_ns</h2>
-<p class="Pp">Definition at line <b>65</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_session_view_t::screen"><a class="permalink" href="#int_ui_session_view_t::screen">int
-  ui_session_view_t::screen</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file
-    <b>include/ascii-chat/tui/session.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>, and
-    <b>ui_session_tick()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ui_session_view_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ui_session_view_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ui_session_view_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ui_session_view_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/tui/session.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>screen</b>
+            <br />
+            <b>terminal_size_t</b> <b>minimum</b>
+            <br />
+            <b>bool</b> <b>dirty</b>
+            <br />
+            <b>bool</b> <b>clear</b>
+            <br />
+            <b>uint64_t</b> <b>refresh_ns</b>
+            <br />
+            <b>ui_session_draw_fn</b> <b>draw</b>
+            <br />
+            void * <b>context</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>60</b> of file
+          <b>include/ascii-chat/tui/session.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session_view_t::clear</h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_ui_session_view_t::context">
+            <a class="permalink" href="#void*_ui_session_view_t::context"
+              >void* ui_session_view_t::context</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session_view_t::dirty</h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_session_draw_fn</b> ui_session_view_t::draw</h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>terminal_size_t</b> ui_session_view_t::minimum</h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> ui_session_view_t::refresh_ns</h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_session_view_t::screen">
+            <a class="permalink" href="#int_ui_session_view_t::screen"
+              >int ui_session_view_t::screen</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

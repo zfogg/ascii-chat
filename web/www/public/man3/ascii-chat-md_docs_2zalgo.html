@@ -1,145 +1,201 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>md_docs_2zalgo(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">md_docs_2zalgo(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">md_docs_2zalgo(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">md_docs_2zalgo - Zalgo terminal effect</p>
-<p class="Pp">--zalgo decorates the displayed video with Unicode combining
-    marks. It is available in mirror, client, and discovery modes. Omit the
-    option to disable it.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>ascii-chat mirror --test-pattern --zalgo
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2zalgo(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2zalgo(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2zalgo(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">md_docs_2zalgo - Zalgo terminal effect</p>
+        <p class="Pp">
+          --zalgo decorates the displayed video with Unicode combining marks. It
+          is available in mirror, client, and discovery modes. Omit the option
+          to disable it.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+ascii-chat mirror --test-pattern --zalgo
 ascii-chat mirror --zalgo=1
 ascii-chat mirror --webcam-index 1 --zalgo=10</pre>
-<p class="Pp">Bare --zalgo uses intensity 7. Both --zalgo=7 and --zalgo 7 select
-    an explicit intensity. Values must be integers from 1 to 10. A following
-    session name is not consumed as the optional number. ASCII_CHAT_ZALGO
-    accepts 1-10.</p>
-<p class="Pp"></p>
-<p class="Pp">Intensity Coverage of eligible characters Marks per affected
-    character 1 3% 1 2 6% 1 3 10% 1 4 18% 1 5 28% 1-2 6 40% 1-3 7 55% 2-4 8 70%
-    3-5 9 85% 4-7 10 100% 6-10</p>
-<p class="Pp"></p>
-<p class="Pp">Positions and mark choices remain stable between frames.
-    Increasing intensity adds marks without reshuffling the pattern. Only
-    printable ASCII characters other than spaces are decorated. Existing
-    Unicode, spaces, colors, and control sequences are preserved. REP
-    compression is expanded before adding marks.</p>
-<p class="Pp"></p>
-<p class="Pp">Use a UTF-8 terminal and a font with combining-mark support. On
-    Windows, run chcp 65001 in the terminal before starting ascii-chat. Stacking
-    and clipping vary by terminal and font; high levels deliberately obscure the
-    image.</p>
-<p class="Pp"></p>
-<p class="Pp">--utf8=<b>true</b><b> overrides automatic detection.
-    </b>--utf8=<b>false</b><b> is incompatible with Zalgo, including piped
-    snapshots. If decoration would exceed the presenter's 16 MiB frame limit
-    (including cursor controls), the original frame is displayed and a
-    rate-limited warning is logged.</b></p>
-<p class="Pp"></p>
-<p class="Pp">The effect applies locally to terminal output and text snapshots,
-    including --strip-ansi output. It does not modify network frames, logs,
-    status screens, or --render-file video exports. Half-block and other Unicode
-    palettes retain their original glyphs, so use --render-mode foreground for
-    ASCII decoration.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Browser_rendering"><a class="permalink" href="#Browser_rendering">Browser
-  rendering</a></h1>
-<p class="Pp">The web app offers <b>Zalgo: Off / Level 1-10</b> in Settings for
-    Mirror, Client, and Discovery. The level is saved in the URL (?zalgo=7). The
-    website's display effects demo starts at 7 and offers all ten levels with
-    the demo video or webcam.</p>
-<p class="Pp"></p>
-<p class="Pp">Browser canvases reuse the native distribution and mark selection.
-    A separate combining font is composited after all cell backgrounds, so marks
-    can cross rows and work alongside Matrix without being erased. The precise
-    glyph stacking can differ from a terminal's font shaping. This is a local
-    display effect; network frames are unchanged.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Windows_Terminal_captures"><a class="permalink" href="#Windows_Terminal_captures">Windows
-  Terminal captures</a></h1>
-<p class="Pp">These are actual terminal screenshots, using a 90 by 26 foreground
-    grid and UTF-8 output. The webcam captures use device 1 (2K Webcam).</p>
-<p class="Pp"></p>
-<p class="Pp">Level Test pattern Webcam 1</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">2</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">3</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">4</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">5</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">6</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">7</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">8</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">9</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">10</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        <p class="Pp">
+          Bare --zalgo uses intensity 7. Both --zalgo=7 and --zalgo 7 select an
+          explicit intensity. Values must be integers from 1 to 10. A following
+          session name is not consumed as the optional number. ASCII_CHAT_ZALGO
+          accepts 1-10.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Intensity Coverage of eligible characters Marks per affected character
+          1 3% 1 2 6% 1 3 10% 1 4 18% 1 5 28% 1-2 6 40% 1-3 7 55% 2-4 8 70% 3-5
+          9 85% 4-7 10 100% 6-10
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Positions and mark choices remain stable between frames. Increasing
+          intensity adds marks without reshuffling the pattern. Only printable
+          ASCII characters other than spaces are decorated. Existing Unicode,
+          spaces, colors, and control sequences are preserved. REP compression
+          is expanded before adding marks.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Use a UTF-8 terminal and a font with combining-mark support. On
+          Windows, run chcp 65001 in the terminal before starting ascii-chat.
+          Stacking and clipping vary by terminal and font; high levels
+          deliberately obscure the image.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          --utf8=<b>true</b><b> overrides automatic detection. </b>--utf8=<b
+            >false</b
+          ><b>
+            is incompatible with Zalgo, including piped snapshots. If decoration
+            would exceed the presenter's 16 MiB frame limit (including cursor
+            controls), the original frame is displayed and a rate-limited
+            warning is logged.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The effect applies locally to terminal output and text snapshots,
+          including --strip-ansi output. It does not modify network frames,
+          logs, status screens, or --render-file video exports. Half-block and
+          other Unicode palettes retain their original glyphs, so use
+          --render-mode foreground for ASCII decoration.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Browser_rendering">
+          <a class="permalink" href="#Browser_rendering">Browser rendering</a>
+        </h1>
+        <p class="Pp">
+          The web app offers <b>Zalgo: Off / Level 1-10</b> in Settings for
+          Mirror, Client, and Discovery. The level is saved in the URL
+          (?zalgo=7). The website's display effects demo starts at 7 and offers
+          all ten levels with the demo video or webcam.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Browser canvases reuse the native distribution and mark selection. A
+          separate combining font is composited after all cell backgrounds, so
+          marks can cross rows and work alongside Matrix without being erased.
+          The precise glyph stacking can differ from a terminal's font shaping.
+          This is a local display effect; network frames are unchanged.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Windows_Terminal_captures">
+          <a class="permalink" href="#Windows_Terminal_captures"
+            >Windows Terminal captures</a
+          >
+        </h1>
+        <p class="Pp">
+          These are actual terminal screenshots, using a 90 by 26 foreground
+          grid and UTF-8 output. The webcam captures use device 1 (2K Webcam).
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Level Test pattern Webcam 1</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">2</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">3</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">4</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">5</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">6</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">7</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">8</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">9</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">10</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

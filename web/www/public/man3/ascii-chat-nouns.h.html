@@ -1,100 +1,169 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>nouns.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">nouns.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">nouns.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">nouns.h - Wordlist and utilities for generating friendly session
-    and client names.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>generate_client_id</b> (char *buffer, size_t buffer_size)
-  <br/>
-  Generate a unique client ID (noun only, no counter or port). int
-    <b>generate_client_name</b> (char *buffer, size_t buffer_size, void
-    *existing_clients_hash, int port, <b>bool</b> is_tcp)
-  <br/>
-  Generate a unique client name from the nouns wordlist.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const char * <b>nouns</b> []
-  <br/>
-  Array of English nouns for session and client naming. const size_t
-    <b>nouns_count</b>
-  <br/>
-  Count of nouns in the nouns array.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Wordlist and utilities for generating friendly session and client
-    names.</p>
-<p class="Pp">Provides a curated list of 5000 English nouns for:</p>
-<ul class="Bl-bullet">
-  <li>Session identifiers: &quot;adjective-noun-noun&quot; format in ACDS</li>
-  <li>Client display names: &quot;noun.counter (transport:port)&quot; format on
-      servers</li>
-</ul>
-<p class="Pp">Two distinct generation functions serve different use cases:</p>
-<ul class="Bl-bullet">
-  <li><b>generate_client_id()</b><b> - Simple noun-only ID for internal
-      identification</b></li>
-  <li><b>generate_client_name()</b><b> - Full formatted name for user-facing
-      displays</b></li>
-</ul>
-<p class="Pp">Definition in file <b>nouns.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_generate_client_id_(char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_generate_client_id_(char_*_buffer,_size_t_buffer_size)">int
-  generate_client_id (char * buffer, size_t buffer_size)</a></h2>
-<p class="Pp">Generate a unique client ID (noun only, no counter or port). This
-    is used for internal client identification in thread names, buffer creation,
-    etc. Returns just the noun part (e.g., &quot;clean&quot;,
-    &quot;mountain&quot;, &quot;tiger&quot;) without counters or transport
-  info.</p>
-<p class="Pp">Definition at line <b>780</b> of file <b>nouns.c</b>.</p>
-<pre>780                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>nouns.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">nouns.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">nouns.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          nouns.h - Wordlist and utilities for generating friendly session and
+          client names.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>generate_client_id</b> (char *buffer, size_t buffer_size)
+            <br />
+            Generate a unique client ID (noun only, no counter or port). int
+            <b>generate_client_name</b> (char *buffer, size_t buffer_size, void
+            *existing_clients_hash, int port, <b>bool</b> is_tcp)
+            <br />
+            Generate a unique client name from the nouns wordlist.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>nouns</b> []
+            <br />
+            Array of English nouns for session and client naming. const size_t
+            <b>nouns_count</b>
+            <br />
+            Count of nouns in the nouns array.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Wordlist and utilities for generating friendly session and client
+          names.
+        </p>
+        <p class="Pp">Provides a curated list of 5000 English nouns for:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Session identifiers: &quot;adjective-noun-noun&quot; format in ACDS
+          </li>
+          <li>
+            Client display names: &quot;noun.counter (transport:port)&quot;
+            format on servers
+          </li>
+        </ul>
+        <p class="Pp">
+          Two distinct generation functions serve different use cases:
+        </p>
+        <ul class="Bl-bullet">
+          <li>
+            <b>generate_client_id()</b
+            ><b> - Simple noun-only ID for internal identification</b>
+          </li>
+          <li>
+            <b>generate_client_name()</b
+            ><b> - Full formatted name for user-facing displays</b>
+          </li>
+        </ul>
+        <p class="Pp">Definition in file <b>nouns.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_generate_client_id_(char_*_buffer,_size_t_buffer_size)"
+          >
+            <a
+              class="permalink"
+              href="#int_generate_client_id_(char_*_buffer,_size_t_buffer_size)"
+              >int generate_client_id (char * buffer, size_t buffer_size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate a unique client ID (noun only, no counter or port). This is
+            used for internal client identification in thread names, buffer
+            creation, etc. Returns just the noun part (e.g., &quot;clean&quot;,
+            &quot;mountain&quot;, &quot;tiger&quot;) without counters or
+            transport info.
+          </p>
+          <p class="Pp">
+            Definition at line <b>780</b> of file <b>nouns.c</b>.
+          </p>
+          <pre>
+780                                                          {
 781   if (!buffer || buffer_size &lt; 1 || !nouns_count) {
 782     return -1;
 783   }
@@ -115,23 +184,41 @@
 798
 799   return 0;
 800 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_size()</b>, <b>generate_client_id()</b>,
-    <b>nouns</b>, and <b>nouns_count</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>, and
-    <b>generate_client_id()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_generate_client_name_(char_*_buffer,_size_t_buffer_size,_void_*_existing_clients_hash,_int_port,_"><a class="permalink" href="#int_generate_client_name_(char_*_buffer,_size_t_buffer_size,_void_*_existing_clients_hash,_int_port,_">int
-  generate_client_name (char * buffer, size_t buffer_size, void *
-  existing_clients_hash, int port, <b>bool</b> is_tcp)</a></h2>
-<p class="Pp">Generate a unique client name from the nouns wordlist. Caller MUST
-    hold write lock on g_client_manager_rwlock before calling. This function
-    iterates the existing clients hash to check for duplicate names. Returns the
-    full display name format (noun.counter (transport:port)).</p>
-<p class="Pp">Definition at line <b>809</b> of file <b>nouns.c</b>.</p>
-<pre>809                                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_size()</b>, <b>generate_client_id()</b>,
+            <b>nouns</b>, and <b>nouns_count</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>, and
+            <b>generate_client_id()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_generate_client_name_(char_*_buffer,_size_t_buffer_size,_void_*_existing_clients_hash,_int_port,_"
+          >
+            <a
+              class="permalink"
+              href="#int_generate_client_name_(char_*_buffer,_size_t_buffer_size,_void_*_existing_clients_hash,_int_port,_"
+              >int generate_client_name (char * buffer, size_t buffer_size, void
+              * existing_clients_hash, int port, <b>bool</b> is_tcp)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate a unique client name from the nouns wordlist. Caller MUST
+            hold write lock on g_client_manager_rwlock before calling. This
+            function iterates the existing clients hash to check for duplicate
+            names. Returns the full display name format (noun.counter
+            (transport:port)).
+          </p>
+          <p class="Pp">
+            Definition at line <b>809</b> of file <b>nouns.c</b>.
+          </p>
+          <pre>
+809                                                                                                                {
 810   if (!buffer || buffer_size &lt; 1 || !nouns_count) {
 811     return -1;
 812   }
@@ -176,50 +263,68 @@
 851   snprintf(buffer, buffer_size, &quot;client_%u (%s:%d)&quot;, randombytes_uniform(10000U), transport_name, port);
 852   return 0;
 853 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_size()</b>, <b>client_info::display_name</b>,
-    <b>generate_client_name()</b>, <b>nouns</b>, and <b>nouns_count</b>.</p>
-<p class="Pp">Referenced by <b>generate_client_name()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_nouns__"><a class="permalink" href="#const_char*_nouns__">const
-  char* nouns[] [extern]</a></h2>
-<p class="Pp">Array of English nouns for session and client naming. A curated
-    list of 5000 nouns selected for:</p>
-<ul class="Bl-bullet">
-  <li>Easy pronunciation and memorability</li>
-  <li>Neutral tone suitable for formal and casual contexts</li>
-  <li>Variety (objects, animals, places, concepts, etc.)</li>
-</ul>
-<p class="Pp">Used for both:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Session identifiers (2 nouns + 1 adjective =
-      &quot;adjective-noun-noun&quot;)</dd>
-  <dt>2.</dt>
-  <dd>Client display names (1 noun + counter + transport info)</dd>
-</dl>
-<p class="Pp">Example values: &quot;abandon&quot;, &quot;abbey&quot;,
-    &quot;ability&quot;, &quot;absent&quot;, &quot;absolute&quot;, ...,
-    &quot;zoom&quot;, &quot;zoo&quot;</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>nouns_count</b>
-<p class="Pp"></p>
-<p class="Pp"><b>generate_client_id()</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>generate_client_name()</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>include/ascii-chat/discovery/adjectives.h</b> for the adjective
-    wordlist</p>
-</div>
-<p class="Pp">Definition at line <b>55</b> of file <b>nouns.c</b>.</p>
-<pre>55                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_size()</b>, <b>client_info::display_name</b>,
+            <b>generate_client_name()</b>, <b>nouns</b>, and <b>nouns_count</b>.
+          </p>
+          <p class="Pp">Referenced by <b>generate_client_name()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_nouns__">
+            <a class="permalink" href="#const_char*_nouns__"
+              >const char* nouns[] [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Array of English nouns for session and client naming. A curated list
+            of 5000 nouns selected for:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Easy pronunciation and memorability</li>
+            <li>Neutral tone suitable for formal and casual contexts</li>
+            <li>Variety (objects, animals, places, concepts, etc.)</li>
+          </ul>
+          <p class="Pp">Used for both:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Session identifiers (2 nouns + 1 adjective =
+              &quot;adjective-noun-noun&quot;)
+            </dd>
+            <dt>2.</dt>
+            <dd>Client display names (1 noun + counter + transport info)</dd>
+          </dl>
+          <p class="Pp">
+            Example values: &quot;abandon&quot;, &quot;abbey&quot;,
+            &quot;ability&quot;, &quot;absent&quot;, &quot;absolute&quot;, ...,
+            &quot;zoom&quot;, &quot;zoo&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>nouns_count</b>
+            <p class="Pp"></p>
+            <p class="Pp"><b>generate_client_id()</b></p>
+            <p class="Pp"></p>
+            <p class="Pp"><b>generate_client_name()</b></p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>include/ascii-chat/discovery/adjectives.h</b> for the adjective
+              wordlist
+            </p>
+          </div>
+          <p class="Pp">Definition at line <b>55</b> of file <b>nouns.c</b>.</p>
+          <pre>
+55                     {
 56     &quot;abandon&quot;,      &quot;abbey&quot;,        &quot;abbot&quot;,        &quot;abdomen&quot;,      &quot;abel&quot;,         &quot;ability&quot;,      &quot;abort&quot;,
 57     &quot;above&quot;,        &quot;abs&quot;,          &quot;absence&quot;,      &quot;absolute&quot;,     &quot;abstract&quot;,     &quot;absurd&quot;,       &quot;abyss&quot;,
 58     &quot;academic&quot;,     &quot;academy&quot;,      &quot;accent&quot;,       &quot;acceptance&quot;,   &quot;access&quot;,       &quot;accessory&quot;,    &quot;accident&quot;,
@@ -935,36 +1040,49 @@
 768     &quot;york&quot;,         &quot;young&quot;,        &quot;youth&quot;,        &quot;yuan&quot;,         &quot;zap&quot;,          &quot;zealand&quot;,      &quot;zebra&quot;,
 769     &quot;zen&quot;,          &quot;zero&quot;,         &quot;zeus&quot;,         &quot;zip&quot;,          &quot;zipper&quot;,       &quot;zombie&quot;,       &quot;zone&quot;,
 770     &quot;zoo&quot;,          &quot;zoom&quot;};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_string_generate()</b>,
-    <b>generate_client_id()</b>, <b>generate_client_name()</b>, and
-    <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_nouns_count"><a class="permalink" href="#const_size_t_nouns_count">const
-  size_t nouns_count [extern]</a></h2>
-<p class="Pp">Count of nouns in the nouns array. Always equals 5000. Used for
-    bounds checking and random selection.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>nouns</b></div>
-<p class="Pp">Definition at line <b>772</b> of file <b>nouns.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_string_generate()</b>,
-    <b>generate_client_id()</b>, <b>generate_client_name()</b>, and
-    <b>main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>acds_string_generate()</b>,
+            <b>generate_client_id()</b>, <b>generate_client_name()</b>, and
+            <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_size_t_nouns_count">
+            <a class="permalink" href="#const_size_t_nouns_count"
+              >const size_t nouns_count [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Count of nouns in the nouns array. Always equals 5000. Used for
+            bounds checking and random selection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent"><b>nouns</b></div>
+          <p class="Pp">
+            Definition at line <b>772</b> of file <b>nouns.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_string_generate()</b>,
+            <b>generate_client_id()</b>, <b>generate_client_name()</b>, and
+            <b>main()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

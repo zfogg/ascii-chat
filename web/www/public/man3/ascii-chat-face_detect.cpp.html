@@ -1,62 +1,112 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>face_detect.cpp(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">face_detect.cpp(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">face_detect.cpp(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">face_detect.cpp</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>face_follow_detect</b> (unsigned char *results, unsigned
-    char *bgr, int width, int height, <b>face_follow_detection_t</b> *faces,
-    size_t capacity, size_t *count)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_"><a class="permalink" href="#void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_">void
-  face_follow_detect (unsigned char * results, unsigned char * bgr, int width,
-  int height, <b>face_follow_detection_t</b> * faces, size_t capacity, size_t *
-  count)</a></h2>
-<p class="Pp">The caller supplies a 0x9000-byte result buffer and packed BGR
-    input.</p>
-<p class="Pp">Definition at line <b>4</b> of file <b>face_detect.cpp</b>.</p>
-<pre>5                                                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>face_detect.cpp(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">face_detect.cpp(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">face_detect.cpp(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">face_detect.cpp</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>face_follow_detect</b> (unsigned char *results, unsigned
+            char *bgr, int width, int height,
+            <b>face_follow_detection_t</b> *faces, size_t capacity, size_t
+            *count)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_"
+          >
+            <a
+              class="permalink"
+              href="#void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_"
+              >void face_follow_detect (unsigned char * results, unsigned char *
+              bgr, int width, int height, <b>face_follow_detection_t</b> *
+              faces, size_t capacity, size_t * count)</a
+            >
+          </h2>
+          <p class="Pp">
+            The caller supplies a 0x9000-byte result buffer and packed BGR
+            input.
+          </p>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>face_detect.cpp</b>.
+          </p>
+          <pre>
+5                                                                                                    {
 6   *count = 0;
 7   int *detections = facedetect_cnn(results, bgr, width, height, width * 3);
 8   if (!detections)
@@ -71,23 +121,27 @@
 17     ++*count;
 18   }
 19 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_detect()</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_detect()</b>,
-    <b>face_follow_image_process()</b>, and <b>face_web_detect()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>face_follow_detect()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>face_follow_detect()</b>,
+            <b>face_follow_image_process()</b>, and <b>face_web_detect()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

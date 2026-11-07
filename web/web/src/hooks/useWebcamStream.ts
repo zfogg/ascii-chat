@@ -484,7 +484,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         window as Window & {
           MediaStreamTrackProcessor?: new (options: {
             track: MediaStreamTrack;
-          }) => { readable: ReadableStream<VideoFrame> };
+          }) => {
+            readable: ReadableStream<VideoFrame>;
+          };
         }
       ).MediaStreamTrackProcessor;
       if (TrackProcessor && videoTrack) {

@@ -1,212 +1,319 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>client_dispatch_entry_t</b>
-  <br/>
-  Hash table entry for client packet dispatch. struct
-    <b>server_client_removal_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SERVER_CLIENT_PRETTY_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>SERVER_OPUS_BATCH_OVERHEAD</b> 20
-  <br/>
-  #define <b>DEBUG_NETWORK</b> 1
-  <br/>
-  #define <b>DEBUG_THREADS</b> 1
-  <br/>
-  #define <b>DEBUG_MEMORY</b> 1
-  <br/>
-  #define <b>CLIENT_DISPATCH_HASH_SIZE</b> 32
-  <br/>
-  #define <b>CLIENT_DISPATCH_HANDLER_COUNT</b> 14
-  <br/>
-  #define <b>CLIENT_DISPATCH_HASH</b>(type)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef void(*)
-    <b>client_packet_handler_t</b>(<b>client_info_t</b> *client, const void
-    *data, size_t len)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>broadcast_server_state_to_all_clients</b> (void)
-  <br/>
-  Notify all clients of state changes. <b>client_info_t</b> *
-    <b>find_client_by_id</b> (const char *client_id)
-  <br/>
-  Fast O(1) client lookup by ID using hash table. <b>client_info_t</b> *
-    <b>add_transport_client</b> (<b>server_context_t</b> *server_ctx,
-    <b>acip_transport_t</b> *transport, const char *client_ip)
-  <br/>
-  int <b>remove_client</b> (<b>server_context_t</b> *server_ctx, const char
-    *client_id)
-  <br/>
-  <b>asciichat_error_t</b> <b>server_dispatch_packet</b> (<b>client_info_t</b>
-    *client, <b>packet_type_t</b> type, const void *data, size_t length)
-  <br/>
-  <b>asciichat_error_t</b> <b>server_send_state</b> (<b>acip_transport_t</b>
-    *transport)
-  <br/>
-  int <b>start_transport_client_threads</b> (<b>server_context_t</b>
-    *server_ctx, const char *client_id)
-  <br/>
-  void <b>cleanup_client_media_buffers</b> (<b>client_info_t</b> *client)
-  <br/>
-  void <b>cleanup_client_packet_queues</b> (<b>client_info_t</b> *client)
-  <br/>
-  void <b>handle_image_frame_h264_packet</b> (<b>client_info_t</b> *client,
-    const void *data, size_t len)
-  <br/>
-  void <b>process_decrypted_packet</b> (<b>client_info_t</b> *client,
-    <b>packet_type_t</b> type, void *data, size_t len)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>client_manager_t</b> <b>g_client_manager</b>
-  <br/>
-  Global client manager singleton - central coordination point. <b>rwlock_t</b>
-    <b>g_client_manager_rwlock</b> = {0}
-  <br/>
-  Reader-writer lock protecting the global client manager. <b>bool</b>
-    <b>g_client_manager_rwlock_initialized</b> = <b>false</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CLIENT_DISPATCH_HANDLER_COUNT___14"><a class="permalink" href="#_define_CLIENT_DISPATCH_HANDLER_COUNT___14">#define
-  CLIENT_DISPATCH_HANDLER_COUNT 14</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CLIENT_DISPATCH_HASH(_type)"><a class="permalink" href="#_define_CLIENT_DISPATCH_HASH(_type)">#define
-  CLIENT_DISPATCH_HASH( type)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((type) % CLIENT_DISPATCH_HASH_SIZE)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>98</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CLIENT_DISPATCH_HASH_SIZE___32"><a class="permalink" href="#_define_CLIENT_DISPATCH_HASH_SIZE___32">#define
-  CLIENT_DISPATCH_HASH_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>87</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_MEMORY___1"><a class="permalink" href="#_define_DEBUG_MEMORY___1">#define
-  DEBUG_MEMORY 1</a></h2>
-<p class="Pp">Definition at line <b>79</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_NETWORK___1"><a class="permalink" href="#_define_DEBUG_NETWORK___1">#define
-  DEBUG_NETWORK 1</a></h2>
-<p class="Pp">Definition at line <b>77</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_THREADS___1"><a class="permalink" href="#_define_DEBUG_THREADS___1">#define
-  DEBUG_THREADS 1</a></h2>
-<p class="Pp">Definition at line <b>78</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_CLIENT_PRETTY_BUFFER_SIZE___64"><a class="permalink" href="#_define_SERVER_CLIENT_PRETTY_BUFFER_SIZE___64">#define
-  SERVER_CLIENT_PRETTY_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_OPUS_BATCH_OVERHEAD___20"><a class="permalink" href="#_define_SERVER_OPUS_BATCH_OVERHEAD___20">#define
-  SERVER_OPUS_BATCH_OVERHEAD 20</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_client_packet_handler_t("><a class="permalink" href="#typedef_void(*)_client_packet_handler_t(">typedef
-  void(*) client_packet_handler_t(<b>client_info_t</b> *client, const void
-  *data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>85</b> of file
-  <b>src/server/client.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>client_info_t</b> * add_transport_client
-  (<b>server_context_t</b> * server_ctx, <b>acip_transport_t</b> * transport,
-  const char * client_ip)</h2>
-<p class="Pp">Definition at line <b>407</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>407                                                                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>client_dispatch_entry_t</b>
+            <br />
+            Hash table entry for client packet dispatch. struct
+            <b>server_client_removal_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SERVER_CLIENT_PRETTY_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>SERVER_OPUS_BATCH_OVERHEAD</b> 20
+            <br />
+            #define <b>DEBUG_NETWORK</b> 1
+            <br />
+            #define <b>DEBUG_THREADS</b> 1
+            <br />
+            #define <b>DEBUG_MEMORY</b> 1
+            <br />
+            #define <b>CLIENT_DISPATCH_HASH_SIZE</b> 32
+            <br />
+            #define <b>CLIENT_DISPATCH_HANDLER_COUNT</b> 14
+            <br />
+            #define <b>CLIENT_DISPATCH_HASH</b>(type)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef void(*) <b>client_packet_handler_t</b>(<b>client_info_t</b>
+            *client, const void *data, size_t len)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>broadcast_server_state_to_all_clients</b> (void)
+            <br />
+            Notify all clients of state changes. <b>client_info_t</b> *
+            <b>find_client_by_id</b> (const char *client_id)
+            <br />
+            Fast O(1) client lookup by ID using hash table.
+            <b>client_info_t</b> * <b>add_transport_client</b> (<b
+              >server_context_t</b
+            >
+            *server_ctx, <b>acip_transport_t</b> *transport, const char
+            *client_ip)
+            <br />
+            int <b>remove_client</b> (<b>server_context_t</b> *server_ctx, const
+            char *client_id)
+            <br />
+            <b>asciichat_error_t</b> <b>server_dispatch_packet</b> (<b
+              >client_info_t</b
+            >
+            *client, <b>packet_type_t</b> type, const void *data, size_t length)
+            <br />
+            <b>asciichat_error_t</b> <b>server_send_state</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            int <b>start_transport_client_threads</b> (<b>server_context_t</b>
+            *server_ctx, const char *client_id)
+            <br />
+            void <b>cleanup_client_media_buffers</b> (<b>client_info_t</b>
+            *client)
+            <br />
+            void <b>cleanup_client_packet_queues</b> (<b>client_info_t</b>
+            *client)
+            <br />
+            void <b>handle_image_frame_h264_packet</b> (<b>client_info_t</b>
+            *client, const void *data, size_t len)
+            <br />
+            void <b>process_decrypted_packet</b> (<b>client_info_t</b> *client,
+            <b>packet_type_t</b> type, void *data, size_t len)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>client_manager_t</b> <b>g_client_manager</b>
+            <br />
+            Global client manager singleton - central coordination point.
+            <b>rwlock_t</b> <b>g_client_manager_rwlock</b> = {0}
+            <br />
+            Reader-writer lock protecting the global client manager. <b>bool</b>
+            <b>g_client_manager_rwlock_initialized</b> = <b>false</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_DISPATCH_HANDLER_COUNT___14">
+            <a
+              class="permalink"
+              href="#_define_CLIENT_DISPATCH_HANDLER_COUNT___14"
+              >#define CLIENT_DISPATCH_HANDLER_COUNT 14</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_DISPATCH_HASH(_type)">
+            <a class="permalink" href="#_define_CLIENT_DISPATCH_HASH(_type)"
+              >#define CLIENT_DISPATCH_HASH( type)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((type) % CLIENT_DISPATCH_HASH_SIZE)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_DISPATCH_HASH_SIZE___32">
+            <a class="permalink" href="#_define_CLIENT_DISPATCH_HASH_SIZE___32"
+              >#define CLIENT_DISPATCH_HASH_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_MEMORY___1">
+            <a class="permalink" href="#_define_DEBUG_MEMORY___1"
+              >#define DEBUG_MEMORY 1</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>79</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_NETWORK___1">
+            <a class="permalink" href="#_define_DEBUG_NETWORK___1"
+              >#define DEBUG_NETWORK 1</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_THREADS___1">
+            <a class="permalink" href="#_define_DEBUG_THREADS___1"
+              >#define DEBUG_THREADS 1</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>78</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_CLIENT_PRETTY_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_SERVER_CLIENT_PRETTY_BUFFER_SIZE___64"
+              >#define SERVER_CLIENT_PRETTY_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_OPUS_BATCH_OVERHEAD___20">
+            <a class="permalink" href="#_define_SERVER_OPUS_BATCH_OVERHEAD___20"
+              >#define SERVER_OPUS_BATCH_OVERHEAD 20</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_void(*)_client_packet_handler_t(">
+            <a
+              class="permalink"
+              href="#typedef_void(*)_client_packet_handler_t("
+              >typedef void(*) client_packet_handler_t(<b>client_info_t</b>
+              *client, const void *data, size_t len)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>src/server/client.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_info_t</b> * add_transport_client (<b>server_context_t</b>
+            * server_ctx, <b>acip_transport_t</b> * transport, const char *
+            client_ip)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>407</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+407                                                                                                                       {
 408   if (!server_ctx || !transport || !client_ip) {
 409     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 410     return NULL;
@@ -303,51 +410,75 @@
 501   rwlock_wrunlock(&amp;g_client_manager_rwlock);
 502   return NULL;
 503 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_TRANSPORT_BORROWED</b>,
-    <b>client_info::active</b>, <b>add_transport_client()</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>,
-    <b>client_manager_t::client_count</b>, <b>client_info::client_id</b>,
-    <b>client_manager_t::clients</b>, <b>client_manager_t::clients_by_id</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_RESOURCE_EXHAUSTED</b>,
-    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
-    <b>generate_client_id()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>log_warn</b>, <b>MAX_CLIENT_ID_LEN</b>,
-    <b>MAX_CLIENTS</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
-    <b>client_info::session_client_id</b>,
-    <b>server_context_t::session_host</b>, <b>session_host_add_client()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_broadcast_server_state_to_all_clients_(void_)"><a class="permalink" href="#void_broadcast_server_state_to_all_clients_(void_)">void
-  broadcast_server_state_to_all_clients (void )</a></h2>
-<p class="Pp">Notify all clients of state changes.</p>
-<p class="Pp">Definition at line <b>772</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>772                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_BORROWED</b>,
+            <b>client_info::active</b>, <b>add_transport_client()</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>broadcast_server_state_to_all_clients()</b>,
+            <b>client_manager_t::client_count</b>,
+            <b>client_info::client_id</b>, <b>client_manager_t::clients</b>,
+            <b>client_manager_t::clients_by_id</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_RESOURCE_EXHAUSTED</b>, <b>g_client_manager</b>,
+            <b>g_client_manager_rwlock</b>, <b>generate_client_id()</b>,
+            <b>GET_OPTION</b>, <b>log_debug</b>, <b>log_error</b>,
+            <b>log_warn</b>, <b>MAX_CLIENT_ID_LEN</b>, <b>MAX_CLIENTS</b>,
+            <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
+            <b>client_info::session_client_id</b>,
+            <b>server_context_t::session_host</b>,
+            <b>session_host_add_client()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>add_transport_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_broadcast_server_state_to_all_clients_(void_)"
+          >
+            <a
+              class="permalink"
+              href="#void_broadcast_server_state_to_all_clients_(void_)"
+              >void broadcast_server_state_to_all_clients (void )</a
+            >
+          </h2>
+          <p class="Pp">Notify all clients of state changes.</p>
+          <p class="Pp">
+            Definition at line <b>772</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+772                                                  {
 773   if (!g_client_manager_rwlock_initialized)
 774     return;
 775   server_state_packet_t state = server_state_snapshot();
 776   network_server_foreach(session_server_like_get_network_server(), broadcast_state, &amp;state);
 777 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>broadcast_server_state_to_all_clients()</b>,
-    <b>g_client_manager_rwlock_initialized</b>, <b>network_server_foreach()</b>,
-    and <b>session_server_like_get_network_server()</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, and
-  <b>remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_cleanup_client_media_buffers_("><a class="permalink" href="#void_cleanup_client_media_buffers_(">void
-  cleanup_client_media_buffers (<b>client_info_t</b> * client)</a></h2>
-<p class="Pp">Definition at line <b>795</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>795                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>broadcast_server_state_to_all_clients()</b>,
+            <b>g_client_manager_rwlock_initialized</b>,
+            <b>network_server_foreach()</b>, and
+            <b>session_server_like_get_network_server()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>broadcast_server_state_to_all_clients()</b>, and
+            <b>remove_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_cleanup_client_media_buffers_(">
+            <a class="permalink" href="#void_cleanup_client_media_buffers_("
+              >void cleanup_client_media_buffers (<b>client_info_t</b> *
+              client)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>795</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+795                                                          {
 796   if (!client) {
 797     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client is NULL&quot;);
 798     return;
@@ -392,26 +523,36 @@
 837     client-&gt;video_sws_ctx = NULL;
 838   }
 839 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_ring_buffer_destroy()</b>,
-    <b>cleanup_client_media_buffers()</b>, <b>client_info::digital_rain</b>,
-    <b>digital_rain_destroy()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>client_info::incoming_audio_buffer</b>,
-    <b>client_info::incoming_video_buffer</b>, <b>opus_codec_destroy()</b>,
-    <b>client_info::opus_decoder</b>, <b>SET_ERRNO</b>,
-    <b>client_info::video_decode_frame</b>,
-    <b>client_info::video_decoder_ctx</b>, <b>video_frame_buffer_destroy()</b>,
-    <b>client_info::video_rgb_frame</b>, and
-  <b>client_info::video_sws_ctx</b>.</p>
-<p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_cleanup_client_packet_queues_("><a class="permalink" href="#void_cleanup_client_packet_queues_(">void
-  cleanup_client_packet_queues (<b>client_info_t</b> * client)</a></h2>
-<p class="Pp">Definition at line <b>841</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>841                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_ring_buffer_destroy()</b>,
+            <b>cleanup_client_media_buffers()</b>,
+            <b>client_info::digital_rain</b>, <b>digital_rain_destroy()</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>client_info::incoming_audio_buffer</b>,
+            <b>client_info::incoming_video_buffer</b>,
+            <b>opus_codec_destroy()</b>, <b>client_info::opus_decoder</b>,
+            <b>SET_ERRNO</b>, <b>client_info::video_decode_frame</b>,
+            <b>client_info::video_decoder_ctx</b>,
+            <b>video_frame_buffer_destroy()</b>,
+            <b>client_info::video_rgb_frame</b>, and
+            <b>client_info::video_sws_ctx</b>.
+          </p>
+          <p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_cleanup_client_packet_queues_(">
+            <a class="permalink" href="#void_cleanup_client_packet_queues_("
+              >void cleanup_client_packet_queues (<b>client_info_t</b> *
+              client)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>841</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+841                                                          {
 842   if (!client)
 843     return;
 844
@@ -419,47 +560,69 @@
 846
 847   // Video now uses double buffer, cleaned up in cleanup_client_media_buffers
 848 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>cleanup_client_packet_queues()</b>.</p>
-<p class="Pp">Referenced by <b>cleanup_client_packet_queues()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_info_t</b> * find_client_by_id (const char *
-  client_id)</h2>
-<p class="Pp">Fast O(1) client lookup by ID using hash table. This is the
-    primary method for locating clients throughout the server. It uses a hash
-    table for constant-time lookups regardless of client count, making it
-    suitable for high-performance operations like rendering and stats.</p>
-<p class="Pp"></p>
-<p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
-<ul class="Bl-bullet">
-  <li>Time Complexity: O(1) average case, O(n) worst case (hash collision)</li>
-  <li>Space Complexity: O(1)</li>
-  <li>Thread Safety: Hash table is internally thread-safe for lookups</li>
-</ul>
-<p class="Pp">USAGE PATTERNS:</p>
-<ul class="Bl-bullet">
-  <li>Called by render threads to find target clients for frame generation</li>
-  <li>Used by protocol handlers to locate clients for packet processing</li>
-  <li>Stats collection for per-client performance monitoring</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Unique identifier for the client (0 is
-  invalid)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to <b>client_info_t</b> if found, NULL if not
-  found or invalid ID</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Does not require external locking - hash table provides
-  thread safety
-<p class="Pp"></p>
-<p class="Pp">Returns direct pointer to client struct - caller should use
-    snapshot pattern</p>
-</div>
-<p class="Pp">Definition at line <b>267</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>267                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>cleanup_client_packet_queues()</b>.</p>
+          <p class="Pp">Referenced by <b>cleanup_client_packet_queues()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_info_t</b> * find_client_by_id (const char * client_id)
+          </h2>
+          <p class="Pp">
+            Fast O(1) client lookup by ID using hash table. This is the primary
+            method for locating clients throughout the server. It uses a hash
+            table for constant-time lookups regardless of client count, making
+            it suitable for high-performance operations like rendering and
+            stats.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Time Complexity: O(1) average case, O(n) worst case (hash
+              collision)
+            </li>
+            <li>Space Complexity: O(1)</li>
+            <li>
+              Thread Safety: Hash table is internally thread-safe for lookups
+            </li>
+          </ul>
+          <p class="Pp">USAGE PATTERNS:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Called by render threads to find target clients for frame
+              generation
+            </li>
+            <li>
+              Used by protocol handlers to locate clients for packet processing
+            </li>
+            <li>Stats collection for per-client performance monitoring</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_id</i> Unique identifier for the client (0 is invalid)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to <b>client_info_t</b> if found, NULL if not found or
+            invalid ID
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Does not require external locking - hash table provides thread
+            safety
+            <p class="Pp"></p>
+            <p class="Pp">
+              Returns direct pointer to client struct - caller should use
+              snapshot pattern
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>267</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+267                                                         {
 268   if (!client_id || client_id[0] == '\0') {
 269     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid client ID&quot;);
 270     return NULL;
@@ -479,52 +642,74 @@
 284
 285   return result;
 286 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_manager_t::clients_by_id</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>find_client_by_id()</b>,
-    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>, <b>log_warn</b>,
-    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>find_client_by_id()</b>, and
-    <b>start_transport_client_threads()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_handle_image_frame_h264_packet_("><a class="permalink" href="#void_handle_image_frame_h264_packet_(">void
-  handle_image_frame_h264_packet (<b>client_info_t</b> * client, const void *
-  data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>1250</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>1250                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_manager_t::clients_by_id</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>find_client_by_id()</b>,
+            <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
+            <b>log_warn</b>, <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>find_client_by_id()</b>, and
+            <b>start_transport_client_threads()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_handle_image_frame_h264_packet_(">
+            <a class="permalink" href="#void_handle_image_frame_h264_packet_("
+              >void handle_image_frame_h264_packet (<b>client_info_t</b> *
+              client, const void * data, size_t len)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1250</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+1250                                                                                          {
 1251   asciichat_error_t result = acip_handle_server_packet(client-&gt;transport, PACKET_TYPE_IMAGE_FRAME_H264, data, len,
 1252                                                        client, &amp;g_acip_server_callbacks);
 1253   if (result != ASCIICHAT_OK)
 1254     disconnect_client_for_bad_data(client, &quot;Invalid H.264 packet&quot;);
 1255 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_handle_server_packet()</b>,
-    <b>ASCIICHAT_OK</b>, <b>disconnect_client_for_bad_data()</b>,
-    <b>handle_image_frame_h264_packet()</b>,
-    <b>PACKET_TYPE_IMAGE_FRAME_H264</b>, and <b>client_info::transport</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_h264_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_process_decrypted_packet_("><a class="permalink" href="#void_process_decrypted_packet_(">void
-  process_decrypted_packet (<b>client_info_t</b> * client, <b>packet_type_t</b>
-  type, void * data, size_t len)</a></h2>
-<p class="Pp">Process a decrypted packet from a client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Client info structure
-<br/>
-<i>type</i> Packet type
-<br/>
-<i>data</i> Packet data
-<br/>
-<i>len</i> Packet length</div>
-<p class="Pp">Definition at line <b>1567</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>1567                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_server_packet()</b>, <b>ASCIICHAT_OK</b>,
+            <b>disconnect_client_for_bad_data()</b>,
+            <b>handle_image_frame_h264_packet()</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME_H264</b>, and
+            <b>client_info::transport</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_image_frame_h264_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_process_decrypted_packet_(">
+            <a class="permalink" href="#void_process_decrypted_packet_("
+              >void process_decrypted_packet (<b>client_info_t</b> * client,
+              <b>packet_type_t</b> type, void * data, size_t len)</a
+            >
+          </h2>
+          <p class="Pp">Process a decrypted packet from a client</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client</i> Client info structure
+            <br />
+            <i>type</i> Packet type
+            <br />
+            <i>data</i> Packet data
+            <br />
+            <i>len</i> Packet length
+          </div>
+          <p class="Pp">
+            Definition at line <b>1567</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+1567                                                                                                  {
 1568   if (type == 5000) { // CLIENT_CAPABILITIES
 1569     log_debug(&quot;CLIENT: client_id=%s, data=%p, len=%zu&quot;, client-&gt;client_id, data, len);
 1570   }
@@ -573,28 +758,36 @@
 1613     log_error(&quot;DISPATCH_HANDLER: type=%d, handler returned&quot;, type);
 1614   }
 1615 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_error()</b>, <b>client_info::active</b>,
-    <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
-    <b>ASSERT_NO_ERRNO_SINCE</b>, <b>atomic_store_bool()</b>,
-    <b>check_and_record_packet_rate_limit()</b>, <b>client_info::client_id</b>,
-    <b>client_info::client_ip</b>, <b>disconnect_client_for_bad_data()</b>,
-    <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>, <b>ERROR_INTERNAL</b>,
-    <b>ERROR_RATE_LIMITED</b>, <b>g_rate_limiter</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>process_decrypted_packet()</b>,
-    <b>client_info::send_mutex</b>, <b>SET_ERRNO</b>, and
-    <b>client_info::transport</b>.</p>
-<p class="Pp">Referenced by <b>process_decrypted_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_remove_client_("><a class="permalink" href="#int_remove_client_(">int
-  remove_client (<b>server_context_t</b> * server_ctx, const char *
-  client_id)</a></h2>
-<p class="Pp">Definition at line <b>699</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>699                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_error()</b>, <b>client_info::active</b>,
+            <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
+            <b>ASSERT_NO_ERRNO_SINCE</b>, <b>atomic_store_bool()</b>,
+            <b>check_and_record_packet_rate_limit()</b>,
+            <b>client_info::client_id</b>, <b>client_info::client_ip</b>,
+            <b>disconnect_client_for_bad_data()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INTERNAL</b>,
+            <b>ERROR_RATE_LIMITED</b>, <b>g_rate_limiter</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>process_decrypted_packet()</b>,
+            <b>client_info::send_mutex</b>, <b>SET_ERRNO</b>, and
+            <b>client_info::transport</b>.
+          </p>
+          <p class="Pp">Referenced by <b>process_decrypted_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_remove_client_(">
+            <a class="permalink" href="#int_remove_client_("
+              >int remove_client (<b>server_context_t</b> * server_ctx, const
+              char * client_id)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>699</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+699                                                                        {
 700   if (!server_ctx) {
 701     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Cannot remove client %s: NULL server_ctx&quot;, client_id);
 702     return -1;
@@ -617,55 +810,77 @@
 719   broadcast_server_state_to_all_clients();
 720   return 0;
 721 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>broadcast_server_state_to_all_clients()</b>,
-    <b>server_client_removal_t::client</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>remove_client()</b>, <b>SET_ERRNO</b>, and
-    <b>stop_client_render_threads()</b>.</p>
-<p class="Pp">Referenced by <b>remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> server_dispatch_packet
-  (<b>client_info_t</b> * client, <b>packet_type_t</b> type, const void * data,
-  size_t length)</h2>
-<p class="Pp">Definition at line <b>731</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>731                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>broadcast_server_state_to_all_clients()</b>,
+            <b>server_client_removal_t::client</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>remove_client()</b>, <b>SET_ERRNO</b>, and
+            <b>stop_client_render_threads()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>remove_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> server_dispatch_packet (<b
+              >client_info_t</b
+            >
+            * client, <b>packet_type_t</b> type, const void * data, size_t
+            length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>731</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+731                                                                                                                      {
 732   if (type == PACKET_TYPE_ACIP_SETTINGS_SYNC)
 733     return handle_runtime_settings(client, data, length);
 734   return acip_handle_server_packet(client-&gt;transport, type, data, length, client, &amp;g_acip_server_callbacks);
 735 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_handle_server_packet()</b>,
-    <b>handle_runtime_settings()</b>, <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
-    <b>server_dispatch_packet()</b>, and <b>client_info::transport</b>.</p>
-<p class="Pp">Referenced by <b>server_dispatch_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> server_send_state
-  (<b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Definition at line <b>768</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>768                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_server_packet()</b>,
+            <b>handle_runtime_settings()</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
+            <b>server_dispatch_packet()</b>, and <b>client_info::transport</b>.
+          </p>
+          <p class="Pp">Referenced by <b>server_dispatch_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> server_send_state (<b>acip_transport_t</b>
+            * transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>768</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+768                                                                  {
 769   server_state_packet_t state = server_state_snapshot();
 770   return acip_send_server_state(transport, &amp;state);
 771 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_server_state()</b>, and
-    <b>server_send_state()</b>.</p>
-<p class="Pp">Referenced by <b>server_send_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_start_transport_client_threads_("><a class="permalink" href="#int_start_transport_client_threads_(">int
-  start_transport_client_threads (<b>server_context_t</b> * server_ctx, const
-  char * client_id)</a></h2>
-<p class="Pp">Definition at line <b>779</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>779                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_server_state()</b>, and
+            <b>server_send_state()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>server_send_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_start_transport_client_threads_(">
+            <a class="permalink" href="#int_start_transport_client_threads_("
+              >int start_transport_client_threads (<b>server_context_t</b> *
+              server_ctx, const char * client_id)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>779</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>
+779                                                                                         {
 780   if (!server_ctx) {
 781     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Server context is NULL&quot;);
 782     return -1;
@@ -680,87 +895,130 @@
 791   log_debug(&quot;Starting application workers for client %s...&quot;, client_id);
 792   return start_client_threads(server_ctx, client);
 793 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
-    <b>find_client_by_id()</b>, <b>log_debug</b>, <b>SET_ERRNO</b>, and
-    <b>start_transport_client_threads()</b>.</p>
-<p class="Pp">Referenced by <b>start_transport_client_threads()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>client_manager_t</b> g_client_manager</h2>
-<p class="Pp">Global client manager singleton - central coordination point. This
-    is the primary data structure for managing all connected clients. It serves
-    as the bridge between main.c's connection accept loop and the per-client
-    threading architecture.</p>
-<p class="Pp"></p>
-<p class="Pp">STRUCTURE COMPONENTS:</p>
-<ul class="Bl-bullet">
-  <li>clients[]: Array backing storage for <b>client_info_t</b> structs</li>
-  <li>client_hashtable: O(1) lookup table for client_id -&gt;
-    client_info_t*</li>
-  <li>client_count: Current number of active clients</li>
-  <li>mutex: Legacy mutex (mostly replaced by rwlock)</li>
-  <li>next_client_id: Monotonic counter for unique client identification</li>
-</ul>
-<p class="Pp">THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent
-    access</p>
-<p class="Pp">Definition at line <b>189</b> of file
-  <b>src/server/client.c</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>,
-    <b>any_clients_sending_video()</b>, <b>find_client_by_id()</b>,
-    <b>send_server_state_to_client()</b>, <b>server_main()</b>, and
-    <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>rwlock_t</b> g_client_manager_rwlock = {0}</h2>
-<p class="Pp">Reader-writer lock protecting the global client manager. This lock
-    enables high-performance concurrent access patterns:</p>
-<ul class="Bl-bullet">
-  <li>Multiple threads can read client data simultaneously (stats,
-    rendering)</li>
-  <li>Only one thread can modify client data at a time (add/remove
-    operations)</li>
-  <li>Eliminates contention between read-heavy operations</li>
-</ul>
-<p class="Pp">USAGE PATTERN:</p>
-<ul class="Bl-bullet">
-  <li>Read operations: <b>rwlock_rdlock()</b> for client lookups, stats
-      gathering</li>
-  <li>Write operations: <b>rwlock_wrlock()</b> for
-      <b>add_transport_client()</b>, <b>remove_client()</b></li>
-  <li>Always acquire THIS lock before per-client mutexes (lock ordering)</li>
-</ul>
-<p class="Pp">Definition at line <b>204</b> of file
-  <b>src/server/client.c</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>,
-    <b>find_client_by_id()</b>, <b>server_main()</b>, and
-    <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> g_client_manager_rwlock_initialized =
-  <b>false</b></h2>
-<p class="Pp">Track whether g_client_manager_rwlock was successfully
-    initialized.</p>
-<p class="Pp">Definition at line <b>207</b> of file
-  <b>src/server/client.c</b>.</p>
-<p class="Pp">Referenced by <b>broadcast_server_state_to_all_clients()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>find_client_by_id()</b>, <b>log_debug</b>, <b>SET_ERRNO</b>, and
+            <b>start_transport_client_threads()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>start_transport_client_threads()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>client_manager_t</b> g_client_manager</h2>
+          <p class="Pp">
+            Global client manager singleton - central coordination point. This
+            is the primary data structure for managing all connected clients. It
+            serves as the bridge between main.c's connection accept loop and the
+            per-client threading architecture.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">STRUCTURE COMPONENTS:</p>
+          <ul class="Bl-bullet">
+            <li>
+              clients[]: Array backing storage for <b>client_info_t</b> structs
+            </li>
+            <li>
+              client_hashtable: O(1) lookup table for client_id -&gt;
+              client_info_t*
+            </li>
+            <li>client_count: Current number of active clients</li>
+            <li>mutex: Legacy mutex (mostly replaced by rwlock)</li>
+            <li>
+              next_client_id: Monotonic counter for unique client identification
+            </li>
+          </ul>
+          <p class="Pp">
+            THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent
+            access
+          </p>
+          <p class="Pp">
+            Definition at line <b>189</b> of file <b>src/server/client.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>any_clients_sending_video()</b>, <b>find_client_by_id()</b>,
+            <b>send_server_state_to_client()</b>, <b>server_main()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>rwlock_t</b> g_client_manager_rwlock = {0}</h2>
+          <p class="Pp">
+            Reader-writer lock protecting the global client manager. This lock
+            enables high-performance concurrent access patterns:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Multiple threads can read client data simultaneously (stats,
+              rendering)
+            </li>
+            <li>
+              Only one thread can modify client data at a time (add/remove
+              operations)
+            </li>
+            <li>Eliminates contention between read-heavy operations</li>
+          </ul>
+          <p class="Pp">USAGE PATTERN:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Read operations: <b>rwlock_rdlock()</b> for client lookups, stats
+              gathering
+            </li>
+            <li>
+              Write operations: <b>rwlock_wrlock()</b> for
+              <b>add_transport_client()</b>,
+              <b>remove_client()</b>
+            </li>
+            <li>
+              Always acquire THIS lock before per-client mutexes (lock ordering)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>204</b> of file <b>src/server/client.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>find_client_by_id()</b>, <b>server_main()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> g_client_manager_rwlock_initialized = <b>false</b>
+          </h2>
+          <p class="Pp">
+            Track whether g_client_manager_rwlock was successfully initialized.
+          </p>
+          <p class="Pp">
+            Definition at line <b>207</b> of file <b>src/server/client.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>broadcast_server_state_to_all_clients()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,65 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>pack.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">pack.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">pack.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">pack.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>simd_pack_SIMD_CELL_ISA</b> (const <b>uint8_t</b> *rgb,
-    <b>uint32_t</b> *out, size_t count)
-  <br/>
-  void <b>simd_halfblock_SIMD_CELL_ISA</b> (const <b>uint32_t</b> *top, const
-    <b>uint32_t</b> *bottom, <b>uint32_t</b> *glyph, <b>uint32_t</b> *fg,
-    <b>uint32_t</b> *bg, size_t count, unsigned mode, const <b>uint32_t</b>
-    keys[5])
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_simd_halfblock_SIMD_CELL_ISA_(const_"><a class="permalink" href="#void_simd_halfblock_SIMD_CELL_ISA_(const_">void
-  simd_halfblock_SIMD_CELL_ISA (const <b>uint32_t</b> * top, const
-  <b>uint32_t</b> * bottom, <b>uint32_t</b> * glyph, <b>uint32_t</b> * fg,
-  <b>uint32_t</b> * bg, size_t count, unsigned mode, const <b>uint32_t</b>
-  keys[5])</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file <b>pack.c</b>.</p>
-<pre>63                                                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pack.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pack.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pack.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">pack.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>simd_pack_SIMD_CELL_ISA</b> (const <b>uint8_t</b> *rgb,
+            <b>uint32_t</b> *out, size_t count)
+            <br />
+            void <b>simd_halfblock_SIMD_CELL_ISA</b> (const
+            <b>uint32_t</b> *top, const <b>uint32_t</b> *bottom,
+            <b>uint32_t</b> *glyph, <b>uint32_t</b> *fg, <b>uint32_t</b> *bg,
+            size_t count, unsigned mode, const <b>uint32_t</b>
+            keys[5])
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_SIMD_CELL_ISA_(const_">
+            <a
+              class="permalink"
+              href="#void_simd_halfblock_SIMD_CELL_ISA_(const_"
+              >void simd_halfblock_SIMD_CELL_ISA (const <b>uint32_t</b> * top,
+              const <b>uint32_t</b> * bottom, <b>uint32_t</b> * glyph,
+              <b>uint32_t</b> * fg, <b>uint32_t</b> * bg, size_t count, unsigned
+              mode, const <b>uint32_t</b> keys[5])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>62</b> of file <b>pack.c</b>.</p>
+          <pre>
+63                                                                               {
 64   size_t i = 0;
 65   for (; HAS_BLOCK; i += LANES) {
 66     BEGIN_BLOCK;
@@ -94,19 +137,25 @@
 95   if (i &lt; count)
 96     simd_halfblock_scalar(top + i, bottom + i, glyph + i, fg + i, bg + i, count - i, mode, keys);
 97 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ADD</b>, <b>AND</b>, <b>BEGIN_BLOCK</b>,
-    <b>BOTH</b>, <b>EQ</b>, <b>FN</b>, <b>HAS_BLOCK</b>, <b>LANES</b>,
-    <b>LOAD</b>, <b>LT</b>, <b>MUL</b>, <b>SELECT</b>, <b>SET</b>, <b>SHR</b>,
-    <b>simd_halfblock_scalar()</b>, and <b>STORE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_simd_pack_SIMD_CELL_ISA_(const_"><a class="permalink" href="#void_simd_pack_SIMD_CELL_ISA_(const_">void
-  simd_pack_SIMD_CELL_ISA (const <b>uint8_t</b> * rgb, <b>uint32_t</b> * out,
-  size_t count)</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>pack.c</b>.</p>
-<pre>3                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ADD</b>, <b>AND</b>, <b>BEGIN_BLOCK</b>, <b>BOTH</b>,
+            <b>EQ</b>, <b>FN</b>, <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>,
+            <b>LT</b>, <b>MUL</b>, <b>SELECT</b>, <b>SET</b>, <b>SHR</b>,
+            <b>simd_halfblock_scalar()</b>, and <b>STORE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_SIMD_CELL_ISA_(const_">
+            <a class="permalink" href="#void_simd_pack_SIMD_CELL_ISA_(const_"
+              >void simd_pack_SIMD_CELL_ISA (const <b>uint8_t</b> * rgb,
+              <b>uint32_t</b> * out, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>pack.c</b>.</p>
+          <pre>
+3                                                                      {
 4   size_t i = 0;
 5 #if defined(SIMD_CELL_NEON)
 6   // Retain the original NEON half-block renderer's interleaved RGB vector loads.
@@ -164,22 +213,26 @@
 58   if (i &lt; count)
 59     simd_pack_scalar(rgb + 3 * i, out + i, count - i);
 60 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>FN</b>, <b>LOAD</b>, <b>OR</b>, <b>SHL</b>,
-    <b>simd_pack_scalar()</b>, and <b>STORE</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>FN</b>, <b>LOAD</b>, <b>OR</b>, <b>SHL</b>,
+            <b>simd_pack_scalar()</b>, and <b>STORE</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

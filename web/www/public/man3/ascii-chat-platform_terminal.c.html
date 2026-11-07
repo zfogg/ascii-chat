@@ -1,163 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>terminal.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">terminal.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">terminal.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">terminal.c - Cross-platform unified color detection and terminal
-    capabilities.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>terminal_should_use_utf8</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>terminal_resize_poll</b>
-    (<b>terminal_resize_watcher_t</b> *watcher, int fd, <b>bool</b> *changed)
-  <br/>
-  <b>bool</b> <b>terminal_should_color_output</b> (int fd)
-  <br/>
-  Determine if color output should be used. <b>terminal_color_mode_t</b>
-    <b>terminal_get_effective_color_mode</b> (void)
-  <br/>
-  Get current color mode considering all overrides. <b>bool</b>
-    <b>terminal_is_stdin_tty</b> (void)
-  <br/>
-  Check if stdin is connected to a TTY. <b>bool</b>
-    <b>terminal_is_stdout_tty</b> (void)
-  <br/>
-  Check if stdout is connected to a TTY. <b>bool</b>
-    <b>terminal_is_stderr_tty</b> (void)
-  <br/>
-  Check if stderr is connected to a TTY. <b>bool</b>
-    <b>terminal_is_interactive</b> (void)
-  <br/>
-  Check if the session is fully interactive. unsigned short int
-    <b>terminal_get_effective_width</b> (void)
-  <br/>
-  Get effective terminal width with fallback priority. unsigned short int
-    <b>terminal_get_effective_height</b> (void)
-  <br/>
-  Get effective terminal height with fallback priority. <b>bool</b>
-    <b>terminal_is_piped_output</b> (void)
-  <br/>
-  Check if stdout is piped or redirected. <b>bool</b>
-    <b>terminal_should_force_stderr</b> (void)
-  <br/>
-  Determine if logs should be forced to stderr. <b>bool</b>
-    <b>terminal_can_prompt_user</b> (void)
-  <br/>
-  Determine if interactive user prompts are appropriate. int
-    <b>terminal_choose_log_fd</b> (<b>log_level_t</b> level)
-  <br/>
-  Choose output file descriptor for logging based on level and interactivity.
-    void <b>terminal_get_default_foreground_color</b> (int theme, <b>uint8_t</b>
-    *out_r, <b>uint8_t</b> *out_g, <b>uint8_t</b> *out_b)
-  <br/>
-  Get theme-aware default foreground color for the renderer. void
-    <b>terminal_get_default_background_color</b> (int theme, <b>uint8_t</b>
-    *out_r, <b>uint8_t</b> *out_g, <b>uint8_t</b> *out_b)
-  <br/>
-  Get theme-aware default background color for the renderer. <b>bool</b>
-    <b>terminal_should_use_control_sequences</b> (int fd)
-  <br/>
-  Check if terminal control sequences should be used for the given fd.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Cross-platform unified color detection and terminal
-  capabilities.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/terminal.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
-<p class="Pp">Determine if interactive user prompts are appropriate.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if prompts can be shown, false if
-  non-interactive/automated</div>
-<p class="Pp">Determines whether interactive user prompts (yes/no, passwords,
-    confirmations) should be displayed. Returns false in non-interactive or
-    automated contexts.</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether:</p>
-<ul class="Bl-bullet">
-  <li>Password prompts should be shown (or auto-cancel)</li>
-  <li>Yes/No confirmations should wait for input (or use defaults)</li>
-  <li>Known hosts prompts should be interactive (or auto-deny)</li>
-</ul>
-<p class="Pp">Logic:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>If not fully interactive (stdin or stdout not TTY) &#x2192; false</dd>
-  <dt>2.</dt>
-  <dd>If in snapshot mode (--snapshot) &#x2192; false</dd>
-  <dt>3.</dt>
-  <dd>If ASCII_CHAT_QUESTION_PROMPT_RESPONSE set &#x2192; false (automated
-      responses)</dd>
-  <dt>4.</dt>
-  <dd>Otherwise &#x2192; true (interactive prompts OK)</dd>
-</dl>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>ascii-chat client in terminal &#x2192; true (can prompt)</li>
-  <li>ascii-chat client --snapshot &#x2192; false (non-interactive mode)</li>
-  <li>echo data | ascii-chat client &#x2192; false (stdin piped)</li>
-  <li>ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ascii-chat client &#x2192; false
-      (automated)</li>
-  <li>ascii-chat client &gt; output.txt &#x2192; false (stdout redirected)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Combines checks for: TTY status, snapshot mode,
-  automation env vars
-<p class="Pp"></p>
-<p class="Pp">Used by password prompts, known_hosts verification, user
-    confirmations</p>
-<p class="Pp"></p>
-<p class="Pp">When false, password prompts should auto-cancel with error</p>
-<p class="Pp"></p>
-<p class="Pp">When false, yes/no prompts should use default value or deny</p>
-</div>
-<p class="Pp">Definition at line <b>236</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>236                                     {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>terminal.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">terminal.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">terminal.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          terminal.c - Cross-platform unified color detection and terminal
+          capabilities.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>terminal_should_use_utf8</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>terminal_resize_poll</b> (<b
+              >terminal_resize_watcher_t</b
+            >
+            *watcher, int fd, <b>bool</b> *changed)
+            <br />
+            <b>bool</b> <b>terminal_should_color_output</b> (int fd)
+            <br />
+            Determine if color output should be used.
+            <b>terminal_color_mode_t</b>
+            <b>terminal_get_effective_color_mode</b> (void)
+            <br />
+            Get current color mode considering all overrides. <b>bool</b>
+            <b>terminal_is_stdin_tty</b> (void)
+            <br />
+            Check if stdin is connected to a TTY. <b>bool</b>
+            <b>terminal_is_stdout_tty</b> (void)
+            <br />
+            Check if stdout is connected to a TTY. <b>bool</b>
+            <b>terminal_is_stderr_tty</b> (void)
+            <br />
+            Check if stderr is connected to a TTY. <b>bool</b>
+            <b>terminal_is_interactive</b> (void)
+            <br />
+            Check if the session is fully interactive. unsigned short int
+            <b>terminal_get_effective_width</b> (void)
+            <br />
+            Get effective terminal width with fallback priority. unsigned short
+            int
+            <b>terminal_get_effective_height</b> (void)
+            <br />
+            Get effective terminal height with fallback priority. <b>bool</b>
+            <b>terminal_is_piped_output</b> (void)
+            <br />
+            Check if stdout is piped or redirected. <b>bool</b>
+            <b>terminal_should_force_stderr</b> (void)
+            <br />
+            Determine if logs should be forced to stderr. <b>bool</b>
+            <b>terminal_can_prompt_user</b> (void)
+            <br />
+            Determine if interactive user prompts are appropriate. int
+            <b>terminal_choose_log_fd</b> (<b>log_level_t</b> level)
+            <br />
+            Choose output file descriptor for logging based on level and
+            interactivity. void
+            <b>terminal_get_default_foreground_color</b> (int theme,
+            <b>uint8_t</b> *out_r, <b>uint8_t</b> *out_g, <b>uint8_t</b> *out_b)
+            <br />
+            Get theme-aware default foreground color for the renderer. void
+            <b>terminal_get_default_background_color</b> (int theme,
+            <b>uint8_t</b> *out_r, <b>uint8_t</b> *out_g, <b>uint8_t</b> *out_b)
+            <br />
+            Get theme-aware default background color for the renderer.
+            <b>bool</b> <b>terminal_should_use_control_sequences</b> (int fd)
+            <br />
+            Check if terminal control sequences should be used for the given fd.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Cross-platform unified color detection and terminal capabilities.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>platform/terminal.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
+          <p class="Pp">
+            Determine if interactive user prompts are appropriate.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if prompts can be shown, false if non-interactive/automated
+          </div>
+          <p class="Pp">
+            Determines whether interactive user prompts (yes/no, passwords,
+            confirmations) should be displayed. Returns false in non-interactive
+            or automated contexts.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Use this to decide whether:</p>
+          <ul class="Bl-bullet">
+            <li>Password prompts should be shown (or auto-cancel)</li>
+            <li>
+              Yes/No confirmations should wait for input (or use defaults)
+            </li>
+            <li>Known hosts prompts should be interactive (or auto-deny)</li>
+          </ul>
+          <p class="Pp">Logic:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              If not fully interactive (stdin or stdout not TTY) &#x2192; false
+            </dd>
+            <dt>2.</dt>
+            <dd>If in snapshot mode (--snapshot) &#x2192; false</dd>
+            <dt>3.</dt>
+            <dd>
+              If ASCII_CHAT_QUESTION_PROMPT_RESPONSE set &#x2192; false
+              (automated responses)
+            </dd>
+            <dt>4.</dt>
+            <dd>Otherwise &#x2192; true (interactive prompts OK)</dd>
+          </dl>
+          <p class="Pp">Examples:</p>
+          <ul class="Bl-bullet">
+            <li>ascii-chat client in terminal &#x2192; true (can prompt)</li>
+            <li>
+              ascii-chat client --snapshot &#x2192; false (non-interactive mode)
+            </li>
+            <li>echo data | ascii-chat client &#x2192; false (stdin piped)</li>
+            <li>
+              ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ascii-chat client &#x2192;
+              false (automated)
+            </li>
+            <li>
+              ascii-chat client &gt; output.txt &#x2192; false (stdout
+              redirected)
+            </li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Combines checks for: TTY status, snapshot mode, automation env vars
+            <p class="Pp"></p>
+            <p class="Pp">
+              Used by password prompts, known_hosts verification, user
+              confirmations
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              When false, password prompts should auto-cancel with error
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              When false, yes/no prompts should use default value or deny
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>236</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+236                                     {
 237   // Must be fully interactive (stdin and stdout are TTYs)
 238   if (!terminal_is_interactive()) {
 239     return false;
@@ -178,44 +251,66 @@
 254   // All checks passed, interactive prompts are appropriate
 255   return true;
 256 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>SAFE_GETENV</b>,
-    <b>terminal_can_prompt_user()</b>, and <b>terminal_is_interactive()</b>.</p>
-<p class="Pp">Referenced by <b>prompt_unknown_host()</b>,
-    <b>terminal_can_prompt_user()</b>, <b>test_terminal_output_modes()</b>,
-    <b>ui_mdns_prompt_selection()</b>, <b>ui_notice_confirm_kind()</b>, and
-    <b>update_banner_show_prompt()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_terminal_choose_log_fd_("><a class="permalink" href="#int_terminal_choose_log_fd_(">int
-  terminal_choose_log_fd (<b>log_level_t</b> level)</a></h2>
-<p class="Pp">Choose output file descriptor for logging based on level and
-    interactivity.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log level (determines default routing: WARN+
-  to stderr, others to stdout)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">STDERR_FILENO or STDOUT_FILENO based on log level and
-  terminal state</div>
-<p class="Pp">Routes logs appropriately:</p>
-<ul class="Bl-bullet">
-  <li>When terminal is NOT interactive (piped): ALL logs to stderr</li>
-  <li>When force_stderr enabled: ALL logs to stderr</li>
-  <li>Otherwise: WARN/ERROR/FATAL to stderr, others to stdout</li>
-</ul>
-<p class="Pp">This consolidates log routing logic used throughout the
-  codebase.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Use: int fd = terminal_choose_log_fd(LOG_INFO);
-<p class="Pp"></p>
-<p class="Pp">Common usage: platform_write_all(terminal_choose_log_fd(level),
-    data, len);</p>
-</div>
-<p class="Pp">Definition at line <b>258</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>258                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, <b>SAFE_GETENV</b>,
+            <b>terminal_can_prompt_user()</b>, and
+            <b>terminal_is_interactive()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>prompt_unknown_host()</b>,
+            <b>terminal_can_prompt_user()</b>,
+            <b>test_terminal_output_modes()</b>,
+            <b>ui_mdns_prompt_selection()</b>, <b>ui_notice_confirm_kind()</b>,
+            and <b>update_banner_show_prompt()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_terminal_choose_log_fd_(">
+            <a class="permalink" href="#int_terminal_choose_log_fd_("
+              >int terminal_choose_log_fd (<b>log_level_t</b> level)</a
+            >
+          </h2>
+          <p class="Pp">
+            Choose output file descriptor for logging based on level and
+            interactivity.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>level</i> Log level (determines default routing: WARN+ to stderr,
+            others to stdout)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            STDERR_FILENO or STDOUT_FILENO based on log level and terminal state
+          </div>
+          <p class="Pp">Routes logs appropriately:</p>
+          <ul class="Bl-bullet">
+            <li>
+              When terminal is NOT interactive (piped): ALL logs to stderr
+            </li>
+            <li>When force_stderr enabled: ALL logs to stderr</li>
+            <li>Otherwise: WARN/ERROR/FATAL to stderr, others to stdout</li>
+          </ul>
+          <p class="Pp">
+            This consolidates log routing logic used throughout the codebase.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Use: int fd = terminal_choose_log_fd(LOG_INFO);
+            <p class="Pp"></p>
+            <p class="Pp">
+              Common usage: platform_write_all(terminal_choose_log_fd(level),
+              data, len);
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>258</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+258                                               {
 259   // When force_stderr is enabled (client mode), send ALL logs to stderr
 260   // When terminal is NOT interactive (piped/redirected), send ALL logs to stderr
 261   // to keep stdout clean for piped data (JSON, frames, etc.)
@@ -232,48 +327,77 @@
 272
 273   return STDOUT_FILENO;
 274 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_get_force_stderr()</b>, <b>LOG_WARN</b>,
-    <b>terminal_choose_log_fd()</b>, and <b>terminal_is_interactive()</b>.</p>
-<p class="Pp">Referenced by <b>log_console_impl()</b>, <b>log_msg()</b>,
-    <b>log_plain_msg()</b>, <b>terminal_choose_log_fd()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_get_default_background_color_(int_theme,_"><a class="permalink" href="#void_terminal_get_default_background_color_(int_theme,_">void
-  terminal_get_default_background_color (int theme, <b>uint8_t</b> * out_r,
-  <b>uint8_t</b> * out_g, <b>uint8_t</b> * out_b)</a></h2>
-<p class="Pp">Get theme-aware default background color for the renderer. Get
-    theme-aware default background color for pixel renderers.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>theme</i> Terminal theme (dark or light)
-<br/>
-<i>out_r</i> Pointer to store red component (0-255)
-<br/>
-<i>out_g</i> Pointer to store green component (0-255)
-<br/>
-<i>out_b</i> Pointer to store blue component (0-255)</div>
-<p class="Pp">Returns appropriate default background color based on terminal
-    theme. Light theme uses white background, dark theme uses black
-  background.</p>
-<p class="Pp"></p>
-<p class="Pp">Get theme-aware default background color for the renderer.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
-<br/>
-<i>out_r</i> Pointer to store red component (0-255)
-<br/>
-<i>out_g</i> Pointer to store green component (0-255)
-<br/>
-<i>out_b</i> Pointer to store blue component (0-255)</div>
-<p class="Pp">Used by both Linux and macOS renderers for consistent color
-    selection. Returns appropriate background color based on terminal theme.</p>
-<p class="Pp">Definition at line <b>312</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>312                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_get_force_stderr()</b>, <b>LOG_WARN</b>,
+            <b>terminal_choose_log_fd()</b>, and
+            <b>terminal_is_interactive()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_console_impl()</b>, <b>log_msg()</b>,
+            <b>log_plain_msg()</b>, <b>terminal_choose_log_fd()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_terminal_get_default_background_color_(int_theme,_"
+          >
+            <a
+              class="permalink"
+              href="#void_terminal_get_default_background_color_(int_theme,_"
+              >void terminal_get_default_background_color (int theme,
+              <b>uint8_t</b> * out_r, <b>uint8_t</b> * out_g, <b>uint8_t</b> *
+              out_b)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get theme-aware default background color for the renderer. Get
+            theme-aware default background color for pixel renderers.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>theme</i> Terminal theme (dark or light)
+            <br />
+            <i>out_r</i> Pointer to store red component (0-255)
+            <br />
+            <i>out_g</i> Pointer to store green component (0-255)
+            <br />
+            <i>out_b</i> Pointer to store blue component (0-255)
+          </div>
+          <p class="Pp">
+            Returns appropriate default background color based on terminal
+            theme. Light theme uses white background, dark theme uses black
+            background.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Get theme-aware default background color for the renderer.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
+            <br />
+            <i>out_r</i> Pointer to store red component (0-255)
+            <br />
+            <i>out_g</i> Pointer to store green component (0-255)
+            <br />
+            <i>out_b</i> Pointer to store blue component (0-255)
+          </div>
+          <p class="Pp">
+            Used by both Linux and macOS renderers for consistent color
+            selection. Returns appropriate background color based on terminal
+            theme.
+          </p>
+          <p class="Pp">
+            Definition at line <b>312</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+312                                                                                                       {
 313   if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
 314     *out_r = TERMINAL_COLOR_THEME_LIGHT_BG_R;
 315     *out_g = TERMINAL_COLOR_THEME_LIGHT_BG_G;
@@ -284,52 +408,80 @@
 320     *out_b = TERMINAL_COLOR_THEME_DARK_BG_B;
 321   }
 322 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>TERMINAL_COLOR_THEME_DARK_BG_B</b>,
-    <b>TERMINAL_COLOR_THEME_DARK_BG_G</b>,
-    <b>TERMINAL_COLOR_THEME_DARK_BG_R</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_BG_B</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_BG_G</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_BG_R</b>, and
-    <b>terminal_get_default_background_color()</b>.</p>
-<p class="Pp">Referenced by <b>platform_ttyname()</b>,
-    <b>term_renderer_feed()</b>, <b>terminal_get_default_background_color()</b>,
-    and <b>terminal_get_default_background_color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_get_default_foreground_color_(int_theme,_"><a class="permalink" href="#void_terminal_get_default_foreground_color_(int_theme,_">void
-  terminal_get_default_foreground_color (int theme, <b>uint8_t</b> * out_r,
-  <b>uint8_t</b> * out_g, <b>uint8_t</b> * out_b)</a></h2>
-<p class="Pp">Get theme-aware default foreground color for the renderer. Get
-    theme-aware default foreground color for pixel renderers.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>theme</i> Terminal theme (dark or light)
-<br/>
-<i>out_r</i> Pointer to store red component (0-255)
-<br/>
-<i>out_g</i> Pointer to store green component (0-255)
-<br/>
-<i>out_b</i> Pointer to store blue component (0-255)</div>
-<p class="Pp">Returns appropriate default text color based on terminal theme.
-    Both Linux and macOS renderers use this for consistent color selection.</p>
-<p class="Pp"></p>
-<p class="Pp">Get theme-aware default foreground color for the renderer.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
-<br/>
-<i>out_r</i> Pointer to store red component (0-255)
-<br/>
-<i>out_g</i> Pointer to store green component (0-255)
-<br/>
-<i>out_b</i> Pointer to store blue component (0-255)</div>
-<p class="Pp">Used by both Linux and macOS renderers for consistent color
-    selection. Returns appropriate text color based on terminal theme.</p>
-<p class="Pp">Definition at line <b>290</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>290                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>TERMINAL_COLOR_THEME_DARK_BG_B</b>,
+            <b>TERMINAL_COLOR_THEME_DARK_BG_G</b>,
+            <b>TERMINAL_COLOR_THEME_DARK_BG_R</b>,
+            <b>TERMINAL_COLOR_THEME_LIGHT_BG_B</b>,
+            <b>TERMINAL_COLOR_THEME_LIGHT_BG_G</b>,
+            <b>TERMINAL_COLOR_THEME_LIGHT_BG_R</b>, and
+            <b>terminal_get_default_background_color()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>platform_ttyname()</b>,
+            <b>term_renderer_feed()</b>,
+            <b>terminal_get_default_background_color()</b>, and
+            <b>terminal_get_default_background_color()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_terminal_get_default_foreground_color_(int_theme,_"
+          >
+            <a
+              class="permalink"
+              href="#void_terminal_get_default_foreground_color_(int_theme,_"
+              >void terminal_get_default_foreground_color (int theme,
+              <b>uint8_t</b> * out_r, <b>uint8_t</b> * out_g, <b>uint8_t</b> *
+              out_b)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get theme-aware default foreground color for the renderer. Get
+            theme-aware default foreground color for pixel renderers.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>theme</i> Terminal theme (dark or light)
+            <br />
+            <i>out_r</i> Pointer to store red component (0-255)
+            <br />
+            <i>out_g</i> Pointer to store green component (0-255)
+            <br />
+            <i>out_b</i> Pointer to store blue component (0-255)
+          </div>
+          <p class="Pp">
+            Returns appropriate default text color based on terminal theme. Both
+            Linux and macOS renderers use this for consistent color selection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Get theme-aware default foreground color for the renderer.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
+            <br />
+            <i>out_r</i> Pointer to store red component (0-255)
+            <br />
+            <i>out_g</i> Pointer to store green component (0-255)
+            <br />
+            <i>out_b</i> Pointer to store blue component (0-255)
+          </div>
+          <p class="Pp">
+            Used by both Linux and macOS renderers for consistent color
+            selection. Returns appropriate text color based on terminal theme.
+          </p>
+          <p class="Pp">
+            Definition at line <b>290</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+290                                                                                                       {
 291   if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
 292     *out_r = TERMINAL_COLOR_THEME_LIGHT_FG_R;
 293     *out_g = TERMINAL_COLOR_THEME_LIGHT_FG_G;
@@ -340,37 +492,50 @@
 298     *out_b = TERMINAL_COLOR_THEME_DARK_FG_B;
 299   }
 300 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>TERMINAL_COLOR_THEME_DARK_FG_B</b>,
-    <b>TERMINAL_COLOR_THEME_DARK_FG_G</b>,
-    <b>TERMINAL_COLOR_THEME_DARK_FG_R</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_FG_B</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_FG_G</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b>, and
-    <b>terminal_get_default_foreground_color()</b>.</p>
-<p class="Pp">Referenced by <b>platform_ttyname()</b>,
-    <b>term_renderer_feed()</b>, <b>terminal_get_default_foreground_color()</b>,
-    and <b>terminal_get_default_foreground_color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>terminal_color_mode_t</b> terminal_get_effective_color_mode
-  (void )</h2>
-<p class="Pp">Get current color mode considering all overrides. Determines
-    effective color mode by checking:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>--color flag (force enable)</dd>
-  <dt>2.</dt>
-  <dd>--color-mode option (none/16/256/truecolor)</dd>
-  <dt>3.</dt>
-  <dd>Terminal capability detection</dd>
-</dl>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Effective <b>terminal_color_mode_t</b> to use</div>
-<p class="Pp">Definition at line <b>128</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>128                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>TERMINAL_COLOR_THEME_DARK_FG_B</b>,
+            <b>TERMINAL_COLOR_THEME_DARK_FG_G</b>,
+            <b>TERMINAL_COLOR_THEME_DARK_FG_R</b>,
+            <b>TERMINAL_COLOR_THEME_LIGHT_FG_B</b>,
+            <b>TERMINAL_COLOR_THEME_LIGHT_FG_G</b>,
+            <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b>, and
+            <b>terminal_get_default_foreground_color()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>platform_ttyname()</b>,
+            <b>term_renderer_feed()</b>,
+            <b>terminal_get_default_foreground_color()</b>, and
+            <b>terminal_get_default_foreground_color()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_color_mode_t</b> terminal_get_effective_color_mode (void
+            )
+          </h2>
+          <p class="Pp">
+            Get current color mode considering all overrides. Determines
+            effective color mode by checking:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>--color flag (force enable)</dd>
+            <dt>2.</dt>
+            <dd>--color-mode option (none/16/256/truecolor)</dd>
+            <dt>3.</dt>
+            <dd>Terminal capability detection</dd>
+          </dl>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Effective <b>terminal_color_mode_t</b> to use
+          </div>
+          <p class="Pp">
+            Definition at line <b>128</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+128                                                               {
 129   // If colors are disabled entirely by terminal_should_color_output(), return NONE
 130   if (!terminal_should_color_output(STDOUT_FILENO)) {
 131     return TERM_COLOR_NONE;
@@ -387,60 +552,90 @@
 142   // This will be used by apply_color_mode_override() if needed
 143   return TERM_COLOR_AUTO; // Let the calling code handle auto-detection
 144 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>TERM_COLOR_AUTO</b>,
-    <b>TERM_COLOR_NONE</b>, <b>terminal_get_effective_color_mode()</b>, and
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_get_effective_color_mode()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
-  short int terminal_get_effective_height (void )</a></h2>
-<p class="Pp">Get effective terminal height with fallback priority. Returns
-    height in priority order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Option height if set to non-zero value</dd>
-  <dt>2.</dt>
-  <dd>Detected terminal height</dd>
-  <dt>3.</dt>
-  <dd>OPT_HEIGHT_DEFAULT fallback</dd>
-</dl>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Terminal height in characters with priority: option
-  &#x2192; detected &#x2192; default</div>
-<p class="Pp">Returns the effective terminal height to use, checking in priority
-    order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Option value</b>: If --height was set to a non-zero value, return
-    it</dd>
-  <dt>2.</dt>
-  <dd><b>Detected size</b>: Try to detect actual terminal height via
-      <b>terminal_get_size()</b><b></b></dd>
-  <dt>3.</dt>
-  <dd><b>Default</b>: Return <b>OPT_HEIGHT_DEFAULT</b><b> (70) as final
-      fallback</b></dd>
-</dl>
-<p class="Pp">This function simplifies the common pattern of &quot;use option if
-    set, else detect,else use default&quot; that appears throughout the codebase
-    for terminal dimension handling.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call from any thread (uses lock-free option
-  access)
-<p class="Pp"></p>
-<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
-    back gracefully</p>
-<p class="Pp"></p>
-<p class="Pp">Height option defaults to 0, so non-zero means it was explicitly
-    set</p>
-</div>
-<p class="Pp"><b>Usage Example:</b></p>
-<p class="Pp"></p>
-<pre>// Old pattern (scattered throughout code):
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, <b>terminal_get_effective_color_mode()</b>,
+            and <b>terminal_should_color_output()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_get_effective_color_mode()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_short_int_terminal_get_effective_height_(void_)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_short_int_terminal_get_effective_height_(void_)"
+              >unsigned short int terminal_get_effective_height (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Get effective terminal height with fallback priority. Returns height
+            in priority order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Option height if set to non-zero value</dd>
+            <dt>2.</dt>
+            <dd>Detected terminal height</dd>
+            <dt>3.</dt>
+            <dd>OPT_HEIGHT_DEFAULT fallback</dd>
+          </dl>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Terminal height in characters with priority: option &#x2192;
+            detected &#x2192; default
+          </div>
+          <p class="Pp">
+            Returns the effective terminal height to use, checking in priority
+            order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Option value</b>: If --height was set to a non-zero value,
+              return it
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Detected size</b>: Try to detect actual terminal height via
+              <b>terminal_get_size()</b><b></b>
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Default</b>: Return <b>OPT_HEIGHT_DEFAULT</b
+              ><b> (70) as final fallback</b>
+            </dd>
+          </dl>
+          <p class="Pp">
+            This function simplifies the common pattern of &quot;use option if
+            set, else detect,else use default&quot; that appears throughout the
+            codebase for terminal dimension handling.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call from any thread (uses lock-free option access)
+            <p class="Pp"></p>
+            <p class="Pp">
+              Detection may fail on non-TTY output (piped/redirected), falls
+              back gracefully
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Height option defaults to 0, so non-zero means it was explicitly
+              set
+            </p>
+          </div>
+          <p class="Pp"><b>Usage Example:</b></p>
+          <p class="Pp"></p>
+          <pre>// Old pattern (scattered throughout code):
 unsigned short int height = GET_OPTION(height);
 if (height == 0) {
 <br/>
@@ -459,9 +654,11 @@ if (height == 0) {
 // New pattern (unified):
 unsigned short int height = terminal_get_effective_height();
 </pre>
-<p class="Pp">Definition at line <b>200</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>200                                                        {
+          <p class="Pp">
+            Definition at line <b>200</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+200                                                        {
 201   int height = GET_OPTION(height);
 202
 203   // If height option is explicitly set to non-zero, use it
@@ -478,62 +675,93 @@ unsigned short int height = terminal_get_effective_height();
 214   // Fallback to default
 215   return OPT_HEIGHT_DEFAULT;
 216 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>GET_OPTION</b>,
-    <b>OPT_HEIGHT_DEFAULT</b>, <b>terminal_size_t::rows</b>,
-    <b>terminal_get_effective_height()</b>, and <b>terminal_get_size()</b>.</p>
-<p class="Pp">Referenced by <b>client_protocol_start()</b>,
-    <b>mirror_convert_frame()</b>, <b>platform_ttyname()</b>,
-    <b>session_display_create()</b>, and
-  <b>terminal_get_effective_height()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
-  short int terminal_get_effective_width (void )</a></h2>
-<p class="Pp">Get effective terminal width with fallback priority. Returns width
-    in priority order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Option width if set to non-zero value</dd>
-  <dt>2.</dt>
-  <dd>Detected terminal width</dd>
-  <dt>3.</dt>
-  <dd>OPT_WIDTH_DEFAULT fallback</dd>
-</dl>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Terminal width in characters with priority: option
-  &#x2192; detected &#x2192; default</div>
-<p class="Pp">Returns the effective terminal width to use, checking in priority
-    order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Option value</b>: If --width was set to a non-zero value, return
-    it</dd>
-  <dt>2.</dt>
-  <dd><b>Detected size</b>: Try to detect actual terminal width via
-      <b>terminal_get_size()</b><b></b></dd>
-  <dt>3.</dt>
-  <dd><b>Default</b>: Return <b>OPT_WIDTH_DEFAULT</b><b> (110) as final
-      fallback</b></dd>
-</dl>
-<p class="Pp">This function simplifies the common pattern of &quot;use option if
-    set, else detect,else use default&quot; that appears throughout the codebase
-    for terminal dimension handling.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call from any thread (uses lock-free option
-  access)
-<p class="Pp"></p>
-<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
-    back gracefully</p>
-<p class="Pp"></p>
-<p class="Pp">Width option defaults to 0, so non-zero means it was explicitly
-    set</p>
-</div>
-<p class="Pp"><b>Usage Example:</b></p>
-<p class="Pp"></p>
-<pre>// Old pattern (scattered throughout code):
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>GET_OPTION</b>,
+            <b>OPT_HEIGHT_DEFAULT</b>, <b>terminal_size_t::rows</b>,
+            <b>terminal_get_effective_height()</b>, and
+            <b>terminal_get_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_start()</b>,
+            <b>mirror_convert_frame()</b>, <b>platform_ttyname()</b>,
+            <b>session_display_create()</b>, and
+            <b>terminal_get_effective_height()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_short_int_terminal_get_effective_width_(void_)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_short_int_terminal_get_effective_width_(void_)"
+              >unsigned short int terminal_get_effective_width (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Get effective terminal width with fallback priority. Returns width
+            in priority order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Option width if set to non-zero value</dd>
+            <dt>2.</dt>
+            <dd>Detected terminal width</dd>
+            <dt>3.</dt>
+            <dd>OPT_WIDTH_DEFAULT fallback</dd>
+          </dl>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Terminal width in characters with priority: option &#x2192; detected
+            &#x2192; default
+          </div>
+          <p class="Pp">
+            Returns the effective terminal width to use, checking in priority
+            order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Option value</b>: If --width was set to a non-zero value,
+              return it
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Detected size</b>: Try to detect actual terminal width via
+              <b>terminal_get_size()</b><b></b>
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Default</b>: Return <b>OPT_WIDTH_DEFAULT</b
+              ><b> (110) as final fallback</b>
+            </dd>
+          </dl>
+          <p class="Pp">
+            This function simplifies the common pattern of &quot;use option if
+            set, else detect,else use default&quot; that appears throughout the
+            codebase for terminal dimension handling.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call from any thread (uses lock-free option access)
+            <p class="Pp"></p>
+            <p class="Pp">
+              Detection may fail on non-TTY output (piped/redirected), falls
+              back gracefully
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Width option defaults to 0, so non-zero means it was explicitly
+              set
+            </p>
+          </div>
+          <p class="Pp"><b>Usage Example:</b></p>
+          <p class="Pp"></p>
+          <pre>// Old pattern (scattered throughout code):
 unsigned short int width = GET_OPTION(width);
 if (width == 0) {
 <br/>
@@ -552,9 +780,11 @@ if (width == 0) {
 // New pattern (unified):
 unsigned short int width = terminal_get_effective_width();
 </pre>
-<p class="Pp">Definition at line <b>174</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>174                                                       {
+          <p class="Pp">
+            Definition at line <b>174</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+174                                                       {
 175   int width = GET_OPTION(width);
 176
 177   // If width option is explicitly set to non-zero, use it
@@ -571,231 +801,319 @@ unsigned short int width = terminal_get_effective_width();
 188   // Fallback to default
 189   return OPT_WIDTH_DEFAULT;
 190 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
-    <b>GET_OPTION</b>, <b>OPT_WIDTH_DEFAULT</b>,
-    <b>terminal_get_effective_width()</b>, and <b>terminal_get_size()</b>.</p>
-<p class="Pp">Referenced by <b>client_protocol_start()</b>,
-    <b>mirror_convert_frame()</b>, <b>platform_ttyname()</b>,
-    <b>session_display_create()</b>, and
-  <b>terminal_get_effective_width()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_is_interactive (void )</h2>
-<p class="Pp">Check if the session is fully interactive.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if BOTH stdin AND stdout are TTYs, false
-  otherwise</div>
-<p class="Pp">Determines whether the session is fully interactive (user at
-    terminal). Returns true only when BOTH stdin and stdout are connected to
-    TTYs.</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether:</p>
-<ul class="Bl-bullet">
-  <li>User prompts and interactive input should be shown</li>
-  <li>Splash screens and animations should be displayed</li>
-  <li>Frame padding should be enabled</li>
-  <li>Password prompts are appropriate</li>
-</ul>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>ascii-chat mirror in terminal &#x2192; true (interactive)</li>
-  <li>ascii-chat mirror | less &#x2192; false (stdout piped)</li>
-  <li>cat file | ascii-chat client &#x2192; false (stdin piped)</li>
-  <li>ascii-chat client &lt; input.txt &gt; output.txt &#x2192; false (both
-      piped)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Equivalent to: <b>terminal_is_stdin_tty()</b> &amp;&amp;
-  <b>terminal_is_stdout_tty()</b>
-<p class="Pp"></p>
-<p class="Pp">Used for enabling interactive features (prompts, padding,
-  splash)</p>
-<p class="Pp"></p>
-<p class="Pp">Snapshot mode is checked separately via
-    <b>GET_OPTION(snapshot_mode)</b></p>
-</div>
-<p class="Pp">Definition at line <b>162</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>162                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
+            <b>GET_OPTION</b>, <b>OPT_WIDTH_DEFAULT</b>,
+            <b>terminal_get_effective_width()</b>, and
+            <b>terminal_get_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_start()</b>,
+            <b>mirror_convert_frame()</b>, <b>platform_ttyname()</b>,
+            <b>session_display_create()</b>, and
+            <b>terminal_get_effective_width()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_is_interactive (void )</h2>
+          <p class="Pp">Check if the session is fully interactive.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if BOTH stdin AND stdout are TTYs, false otherwise
+          </div>
+          <p class="Pp">
+            Determines whether the session is fully interactive (user at
+            terminal). Returns true only when BOTH stdin and stdout are
+            connected to TTYs.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Use this to decide whether:</p>
+          <ul class="Bl-bullet">
+            <li>User prompts and interactive input should be shown</li>
+            <li>Splash screens and animations should be displayed</li>
+            <li>Frame padding should be enabled</li>
+            <li>Password prompts are appropriate</li>
+          </ul>
+          <p class="Pp">Examples:</p>
+          <ul class="Bl-bullet">
+            <li>ascii-chat mirror in terminal &#x2192; true (interactive)</li>
+            <li>ascii-chat mirror | less &#x2192; false (stdout piped)</li>
+            <li>cat file | ascii-chat client &#x2192; false (stdin piped)</li>
+            <li>
+              ascii-chat client &lt; input.txt &gt; output.txt &#x2192; false
+              (both piped)
+            </li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Equivalent to: <b>terminal_is_stdin_tty()</b> &amp;&amp;
+            <b>terminal_is_stdout_tty()</b>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Used for enabling interactive features (prompts, padding, splash)
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Snapshot mode is checked separately via
+              <b>GET_OPTION(snapshot_mode)</b>
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>162</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+162                                    {
 163   return terminal_is_stdin_tty() &amp;&amp; terminal_is_stdout_tty();
 164 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_is_interactive()</b>,
-    <b>terminal_is_stdin_tty()</b>, and <b>terminal_is_stdout_tty()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>mcp_http_run()</b>,
-    <b>session_display_write_ascii_frame()</b>,
-    <b>session_protocol_build_capabilities()</b>, <b>session_render_loop()</b>,
-    <b>session_server_like_run()</b>, <b>splash_intro_start()</b>,
-    <b>terminal_can_prompt_user()</b>, <b>terminal_choose_log_fd()</b>,
-    <b>terminal_is_interactive()</b>, <b>test_terminal_output_modes()</b>,
-    <b>ui_status_display()</b>, and <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_is_piped_output (void )</h2>
-<p class="Pp">Check if stdout is piped or redirected.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if stdout is piped/redirected, false if connected to
-  TTY</div>
-<p class="Pp">Determines whether standard output is being piped or redirected to
-    a file. This is the logical inverse of <b>terminal_is_stdout_tty()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether:</p>
-<ul class="Bl-bullet">
-  <li>Logs should be forced to stderr (to avoid corrupting piped output)</li>
-  <li>Frame padding should be disabled</li>
-  <li>Clean, parseable output should be preferred</li>
-</ul>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>ascii-chat mirror &gt; output.txt &#x2192; true (redirected)</li>
-  <li>ascii-chat client | grep pattern &#x2192; true (piped)</li>
-  <li>ascii-chat mirror in terminal &#x2192; false (TTY)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Equivalent to: !terminal_is_stdout_tty()
-<p class="Pp"></p>
-<p class="Pp">Common pattern: force stderr when piped to prevent data
-  corruption</p>
-</div>
-<p class="Pp">Definition at line <b>218</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>218                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_is_interactive()</b>,
+            <b>terminal_is_stdin_tty()</b>, and <b>terminal_is_stdout_tty()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, <b>mcp_http_run()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_protocol_build_capabilities()</b>,
+            <b>session_render_loop()</b>, <b>session_server_like_run()</b>,
+            <b>splash_intro_start()</b>, <b>terminal_can_prompt_user()</b>,
+            <b>terminal_choose_log_fd()</b>, <b>terminal_is_interactive()</b>,
+            <b>test_terminal_output_modes()</b>, <b>ui_status_display()</b>, and
+            <b>ui_status_display_interactive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_is_piped_output (void )</h2>
+          <p class="Pp">Check if stdout is piped or redirected.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if stdout is piped/redirected, false if connected to TTY
+          </div>
+          <p class="Pp">
+            Determines whether standard output is being piped or redirected to a
+            file. This is the logical inverse of
+            <b>terminal_is_stdout_tty()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Use this to decide whether:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Logs should be forced to stderr (to avoid corrupting piped output)
+            </li>
+            <li>Frame padding should be disabled</li>
+            <li>Clean, parseable output should be preferred</li>
+          </ul>
+          <p class="Pp">Examples:</p>
+          <ul class="Bl-bullet">
+            <li>
+              ascii-chat mirror &gt; output.txt &#x2192; true (redirected)
+            </li>
+            <li>ascii-chat client | grep pattern &#x2192; true (piped)</li>
+            <li>ascii-chat mirror in terminal &#x2192; false (TTY)</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Equivalent to: !terminal_is_stdout_tty()
+            <p class="Pp"></p>
+            <p class="Pp">
+              Common pattern: force stderr when piped to prevent data corruption
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>218</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+218                                     {
 219   return !terminal_is_stdout_tty();
 220 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_is_piped_output()</b>, and
-    <b>terminal_is_stdout_tty()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_init()</b>, <b>log_init()</b>,
-    <b>terminal_is_piped_output()</b>, <b>terminal_should_force_stderr()</b>,
-    and <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_is_stderr_tty (void )</h2>
-<p class="Pp">Check if stderr is connected to a TTY.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if stderr is a TTY, false otherwise</div>
-<p class="Pp">Determines whether standard error is connected to a terminal
-    device. Returns false when stderr is piped or redirected to a file.</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether diagnostic messages should include
-    colors.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Wrapper around platform_isatty(STDERR_FILENO) for clarity
-<p class="Pp"></p>
-<p class="Pp">stderr is often a TTY even when stdout is piped</p>
-</div>
-<p class="Pp">Definition at line <b>158</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>158                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_is_piped_output()</b>, and
+            <b>terminal_is_stdout_tty()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_init()</b>, <b>log_init()</b>,
+            <b>terminal_is_piped_output()</b>,
+            <b>terminal_should_force_stderr()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_is_stderr_tty (void )</h2>
+          <p class="Pp">Check if stderr is connected to a TTY.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if stderr is a TTY, false otherwise</div>
+          <p class="Pp">
+            Determines whether standard error is connected to a terminal device.
+            Returns false when stderr is piped or redirected to a file.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Use this to decide whether diagnostic messages should include
+            colors.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Wrapper around platform_isatty(STDERR_FILENO) for clarity
+            <p class="Pp"></p>
+            <p class="Pp">stderr is often a TTY even when stdout is piped</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+158                                   {
 159   return platform_isatty(STDERR_FILENO) != 0;
 160 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>, and
-    <b>terminal_is_stderr_tty()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_is_stderr_tty()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_is_stdin_tty (void )</h2>
-<p class="Pp">Check if stdin is connected to a TTY.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if stdin is a TTY (can read interactive input),
-  false otherwise</div>
-<p class="Pp">Determines whether standard input is connected to a terminal
-    device. Returns false when stdin is piped or redirected from a file.</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether interactive input (prompts, keyboard
-    events) is possible.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Wrapper around platform_isatty(STDIN_FILENO) for clarity
-<p class="Pp"></p>
-<p class="Pp">Returns false in non-interactive environments (CI, scripts,
-  pipes)</p>
-</div>
-<p class="Pp">Definition at line <b>150</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>150                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>platform_isatty()</b>, and
+            <b>terminal_is_stderr_tty()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_is_stderr_tty()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_is_stdin_tty (void )</h2>
+          <p class="Pp">Check if stdin is connected to a TTY.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if stdin is a TTY (can read interactive input), false otherwise
+          </div>
+          <p class="Pp">
+            Determines whether standard input is connected to a terminal device.
+            Returns false when stdin is piped or redirected from a file.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Use this to decide whether interactive input (prompts, keyboard
+            events) is possible.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Wrapper around platform_isatty(STDIN_FILENO) for clarity
+            <p class="Pp"></p>
+            <p class="Pp">
+              Returns false in non-interactive environments (CI, scripts, pipes)
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>150</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+150                                  {
 151   return platform_isatty(STDIN_FILENO) != 0;
 152 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>, and
-    <b>terminal_is_stdin_tty()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
-    <b>display_init()</b>, <b>display_set_context()</b>,
-    <b>session_display_create()</b>,
-    <b>session_protocol_build_capabilities()</b>, <b>session_render_loop()</b>,
-    <b>terminal_is_interactive()</b>, <b>terminal_is_stdin_tty()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_is_stdout_tty (void )</h2>
-<p class="Pp">Check if stdout is connected to a TTY.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if stdout is a TTY (not piped/redirected), false
-  otherwise</div>
-<p class="Pp">Determines whether standard output is connected to a terminal
-    device. Returns false when stdout is piped or redirected to a file.</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether:</p>
-<ul class="Bl-bullet">
-  <li>Terminal control sequences (colors, cursor movement) should be used</li>
-  <li>Output padding/formatting should be applied</li>
-  <li>Progress bars or animations should be shown</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Wrapper around platform_isatty(STDOUT_FILENO) for clarity
-<p class="Pp"></p>
-<p class="Pp">Returns false in piped contexts (e.g., ascii-chat client |
-  less)</p>
-</div>
-<p class="Pp">Definition at line <b>154</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>154                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>platform_isatty()</b>, and
+            <b>terminal_is_stdin_tty()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_init()</b>, <b>display_init()</b>,
+            <b>display_set_context()</b>, <b>session_display_create()</b>,
+            <b>session_protocol_build_capabilities()</b>,
+            <b>session_render_loop()</b>, <b>terminal_is_interactive()</b>,
+            <b>terminal_is_stdin_tty()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_is_stdout_tty (void )</h2>
+          <p class="Pp">Check if stdout is connected to a TTY.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if stdout is a TTY (not piped/redirected), false otherwise
+          </div>
+          <p class="Pp">
+            Determines whether standard output is connected to a terminal
+            device. Returns false when stdout is piped or redirected to a file.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Use this to decide whether:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Terminal control sequences (colors, cursor movement) should be
+              used
+            </li>
+            <li>Output padding/formatting should be applied</li>
+            <li>Progress bars or animations should be shown</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Wrapper around platform_isatty(STDOUT_FILENO) for clarity
+            <p class="Pp"></p>
+            <p class="Pp">
+              Returns false in piped contexts (e.g., ascii-chat client | less)
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>154</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+154                                   {
 155   return platform_isatty(STDOUT_FILENO) != 0;
 156 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>, and
-    <b>terminal_is_stdout_tty()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_progress_create()</b>, <b>session_display_create()</b>,
-    <b>session_protocol_build_capabilities()</b>, <b>session_render_loop()</b>,
-    <b>splash_intro_start()</b>, <b>terminal_is_interactive()</b>,
-    <b>terminal_is_piped_output()</b>, <b>terminal_is_stdout_tty()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_should_color_output (int fd)</h2>
-<p class="Pp">Determine if color output should be used. Priority order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>If --color flag is set &#x2192; ALWAYS use colors (force override)</dd>
-  <dt>2.</dt>
-  <dd>If CLAUDECODE env var is set &#x2192; NEVER use colors (LLM
-    automation)</dd>
-  <dt>3.</dt>
-  <dd>If output is not a TTY (piping) &#x2192; NO colors</dd>
-  <dt>4.</dt>
-  <dd>If --color-mode=none &#x2192; NO colors (user choice)</dd>
-  <dt>5.</dt>
-  <dd>Otherwise &#x2192; Use colors</dd>
-</dl>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor to check (STDOUT_FILENO or
-  STDERR_FILENO)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if colors should be used, false otherwise</div>
-<p class="Pp">Definition at line <b>52</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>52                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>platform_isatty()</b>, and
+            <b>terminal_is_stdout_tty()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_progress_create()</b>, <b>session_display_create()</b>,
+            <b>session_protocol_build_capabilities()</b>,
+            <b>session_render_loop()</b>, <b>splash_intro_start()</b>,
+            <b>terminal_is_interactive()</b>, <b>terminal_is_piped_output()</b>,
+            <b>terminal_is_stdout_tty()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_should_color_output (int fd)</h2>
+          <p class="Pp">
+            Determine if color output should be used. Priority order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              If --color flag is set &#x2192; ALWAYS use colors (force override)
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              If CLAUDECODE env var is set &#x2192; NEVER use colors (LLM
+              automation)
+            </dd>
+            <dt>3.</dt>
+            <dd>If output is not a TTY (piping) &#x2192; NO colors</dd>
+            <dt>4.</dt>
+            <dd>If --color-mode=none &#x2192; NO colors (user choice)</dd>
+            <dt>5.</dt>
+            <dd>Otherwise &#x2192; Use colors</dd>
+          </dl>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor to check (STDOUT_FILENO or STDERR_FILENO)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if colors should be used, false otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+52                                           {
 53   // Check color_mode setting - if explicitly set to NONE, disable colors
 54   int color_mode = GET_OPTION(color_mode);
 55   if (color_mode == COLOR_MODE_NONE) {
@@ -860,63 +1178,87 @@ unsigned short int width = terminal_get_effective_width();
 114   // Default: Use colors only if we have TTY and no environment overrides
 115   return platform_isatty(fd);
 116 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>COLOR_MODE_NONE</b>, <b>COLOR_SETTING_FALSE</b>,
-    <b>COLOR_SETTING_TRUE</b>, <b>g_argc</b>, <b>g_argv</b>, <b>GET_OPTION</b>,
-    <b>platform_isatty()</b>, <b>SAFE_GETENV</b>, and
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>action_show_version()</b>, <b>colored_string()</b>,
-    <b>colorize_log_message()</b>, <b>log_msg()</b>, <b>log_plain_msg()</b>,
-    <b>terminal_get_effective_color_mode()</b>,
-    <b>terminal_should_color_output()</b>, <b>test_terminal_output_modes()</b>,
-    <b>ui_buttons_render()</b>, <b>ui_error_popup_preserve()</b>,
-    <b>ui_error_popup_render()</b>, <b>ui_media_panel_render()</b>,
-    <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
-    <b>ui_password_prompt_present()</b>, <b>ui_prompt_present_kind()</b>, and
-    <b>ui_status_render_header()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_should_force_stderr (void )</h2>
-<p class="Pp">Determine if logs should be forced to stderr.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if logs should go to stderr only, false if stdout is
-  acceptable</div>
-<p class="Pp">Determines whether logging output should be forced to stderr
-    instead of stdout. Returns true when stdout is piped/redirected (to avoid
-    corrupting output data).</p>
-<p class="Pp"></p>
-<p class="Pp">Use this to decide whether to call log_set_force_stderr(true).</p>
-<p class="Pp"></p>
-<p class="Pp">Logic:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>If stdout is piped/redirected &#x2192; force stderr (true)</dd>
-  <dt>2.</dt>
-  <dd>If in TESTING environment &#x2192; allow stdout (false)</dd>
-  <dt>3.</dt>
-  <dd>Otherwise &#x2192; allow stdout (false)</dd>
-</dl>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>ascii-chat mirror &gt; frames.txt &#x2192; true (don't corrupt frame
-    data)</li>
-  <li>ascii-chat mirror in terminal &#x2192; false (stdout is fine)</li>
-  <li>TESTING=1 ascii-chat mirror &#x2192; false (tests may capture stdout)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This prevents logs from corrupting piped ASCII frame data
-<p class="Pp"></p>
-<p class="Pp">TESTING environment variable bypasses this for test
-  environments</p>
-<p class="Pp"></p>
-<p class="Pp">Typical usage: if (<b>terminal_should_force_stderr()</b>)
-    log_set_force_stderr(true);</p>
-</div>
-<p class="Pp">Definition at line <b>222</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>222                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>COLOR_MODE_NONE</b>, <b>COLOR_SETTING_FALSE</b>,
+            <b>COLOR_SETTING_TRUE</b>, <b>g_argc</b>, <b>g_argv</b>,
+            <b>GET_OPTION</b>, <b>platform_isatty()</b>, <b>SAFE_GETENV</b>, and
+            <b>terminal_should_color_output()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>action_show_capabilities_immediate()</b>,
+            <b>action_show_version()</b>, <b>colored_string()</b>,
+            <b>colorize_log_message()</b>, <b>log_msg()</b>,
+            <b>log_plain_msg()</b>, <b>terminal_get_effective_color_mode()</b>,
+            <b>terminal_should_color_output()</b>,
+            <b>test_terminal_output_modes()</b>, <b>ui_buttons_render()</b>,
+            <b>ui_error_popup_preserve()</b>, <b>ui_error_popup_render()</b>,
+            <b>ui_media_panel_render()</b>, <b>ui_notice_present()</b>,
+            <b>ui_notice_present_first_use()</b>,
+            <b>ui_password_prompt_present()</b>,
+            <b>ui_prompt_present_kind()</b>, and
+            <b>ui_status_render_header()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> terminal_should_force_stderr (void )</h2>
+          <p class="Pp">Determine if logs should be forced to stderr.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if logs should go to stderr only, false if stdout is acceptable
+          </div>
+          <p class="Pp">
+            Determines whether logging output should be forced to stderr instead
+            of stdout. Returns true when stdout is piped/redirected (to avoid
+            corrupting output data).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Use this to decide whether to call log_set_force_stderr(true).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Logic:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>If stdout is piped/redirected &#x2192; force stderr (true)</dd>
+            <dt>2.</dt>
+            <dd>If in TESTING environment &#x2192; allow stdout (false)</dd>
+            <dt>3.</dt>
+            <dd>Otherwise &#x2192; allow stdout (false)</dd>
+          </dl>
+          <p class="Pp">Examples:</p>
+          <ul class="Bl-bullet">
+            <li>
+              ascii-chat mirror &gt; frames.txt &#x2192; true (don't corrupt
+              frame data)
+            </li>
+            <li>
+              ascii-chat mirror in terminal &#x2192; false (stdout is fine)
+            </li>
+            <li>
+              TESTING=1 ascii-chat mirror &#x2192; false (tests may capture
+              stdout)
+            </li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This prevents logs from corrupting piped ASCII frame data
+            <p class="Pp"></p>
+            <p class="Pp">
+              TESTING environment variable bypasses this for test environments
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Typical usage: if (<b>terminal_should_force_stderr()</b>)
+              log_set_force_stderr(true);
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>222</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+222                                         {
 223   // If stdout is piped/redirected, force logs to stderr to avoid corruption
 224   if (terminal_is_piped_output()) {
 225     // Unless in TESTING environment where test framework may capture stdout
@@ -929,64 +1271,95 @@ unsigned short int width = terminal_get_effective_width();
 232   }
 233   return false; // stdout is TTY, no need to force stderr
 234 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_GETENV</b>, <b>terminal_is_piped_output()</b>,
-    and <b>terminal_should_force_stderr()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>session_display_create()</b>,
-    <b>terminal_should_force_stderr()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_should_use_control_sequences (int fd)</h2>
-<p class="Pp">Check if terminal control sequences should be used for the given
-    fd.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if terminal control sequences should be used, false
-  otherwise</div>
-<p class="Pp">This function determines whether to send terminal POSITIONING and
-    CONTROL sequences (cursor home, clear screen, hide cursor, etc.) which
-    should only be sent to TTY and never to pipes/redirected output.</p>
-<p class="Pp"></p>
-<p class="Pp">Note: This does NOT control ANSI COLOR CODES, which are controlled
-    by --color-mode option and may be sent to pipes if explicitly requested.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor to check (must be valid or
-  -1)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if terminal control sequences should be used, false
-  otherwise</div>
-<p class="Pp">Determines whether terminal control sequences (cursor home, clear
-    screen, etc.) should be sent to the given file descriptor. Checks:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>File descriptor is valid (&gt;= 0)</dd>
-  <dt>2.</dt>
-  <dd>Not in snapshot mode</dd>
-  <dt>3.</dt>
-  <dd>Not in TESTING environment</dd>
-  <dt>4.</dt>
-  <dd>File descriptor is connected to a TTY (not piped/redirected)</dd>
-</dl>
-<p class="Pp">This is useful for deciding whether to send ANSI escape sequences
-    to output. When piped or redirected, escape sequences should not be
-  sent.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Returns false if fd is invalid (-1) to be safe.
-<p class="Pp"></p>
-<p class="Pp">Returns false in snapshot mode to provide clean output.</p>
-<p class="Pp"></p>
-<p class="Pp">Checks TESTING environment variable for test/CI environments.</p>
-<p class="Pp"></p>
-<p class="Pp">Primary use case: determining if output is going to a TTY.</p>
-</div>
-<p class="Pp">Definition at line <b>336</b> of file
-  <b>platform/terminal.c</b>.</p>
-<pre>336                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SAFE_GETENV</b>, <b>terminal_is_piped_output()</b>,
+            and <b>terminal_should_force_stderr()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, <b>session_display_create()</b>,
+            <b>terminal_should_force_stderr()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> terminal_should_use_control_sequences (int fd)
+          </h2>
+          <p class="Pp">
+            Check if terminal control sequences should be used for the given fd.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>fd</i> File descriptor to check</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if terminal control sequences should be used, false otherwise
+          </div>
+          <p class="Pp">
+            This function determines whether to send terminal POSITIONING and
+            CONTROL sequences (cursor home, clear screen, hide cursor, etc.)
+            which should only be sent to TTY and never to pipes/redirected
+            output.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Note: This does NOT control ANSI COLOR CODES, which are controlled
+            by --color-mode option and may be sent to pipes if explicitly
+            requested.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor to check (must be valid or -1)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if terminal control sequences should be used, false otherwise
+          </div>
+          <p class="Pp">
+            Determines whether terminal control sequences (cursor home, clear
+            screen, etc.) should be sent to the given file descriptor. Checks:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>File descriptor is valid (&gt;= 0)</dd>
+            <dt>2.</dt>
+            <dd>Not in snapshot mode</dd>
+            <dt>3.</dt>
+            <dd>Not in TESTING environment</dd>
+            <dt>4.</dt>
+            <dd>
+              File descriptor is connected to a TTY (not piped/redirected)
+            </dd>
+          </dl>
+          <p class="Pp">
+            This is useful for deciding whether to send ANSI escape sequences to
+            output. When piped or redirected, escape sequences should not be
+            sent.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Returns false if fd is invalid (-1) to be safe.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Returns false in snapshot mode to provide clean output.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Checks TESTING environment variable for test/CI environments.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Primary use case: determining if output is going to a TTY.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>336</b> of file <b>platform/terminal.c</b>.
+          </p>
+          <pre>
+336                                                    {
 337   if (fd &lt; 0) {
 338     return false;
 339   }
@@ -999,25 +1372,33 @@ unsigned short int width = terminal_get_effective_width();
 346   }
 347   return platform_isatty(fd) != 0;
 348 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>platform_isatty()</b>,
-    <b>SAFE_GETENV</b>, and <b>terminal_should_use_control_sequences()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
-    <b>ascii_write_init()</b>, <b>terminal_should_use_control_sequences()</b>,
-    and <b>test_terminal_output_modes()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, <b>platform_isatty()</b>,
+            <b>SAFE_GETENV</b>, and
+            <b>terminal_should_use_control_sequences()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
+            <b>ascii_write_init()</b>,
+            <b>terminal_should_use_control_sequences()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

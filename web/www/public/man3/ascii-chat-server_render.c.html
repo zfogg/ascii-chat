@@ -1,432 +1,561 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>render.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">render.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">render.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">render.c - &#x1F3A8; Per-client rendering threads: 60fps video and
-    100fps audio processing with rate limiting</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>OPUS_FRAME_SAMPLES</b> 960
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void * <b>client_video_render_thread</b> (void *arg)
-  <br/>
-  Interruptible sleep function with platform-specific optimizations. void *
-    <b>client_audio_render_thread</b> (void *arg)
-  <br/>
-  Main audio rendering thread function for individual clients. int
-    <b>create_client_render_threads</b> (<b>server_context_t</b> *server_ctx,
-    <b>client_info_t</b> *client)
-  <br/>
-  Create and initialize per-client rendering threads. void
-    <b>stop_client_render_threads</b> (<b>client_info_t</b> *client)
-  <br/>
-  Stop and cleanup per-client rendering threads.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3A8; Per-client rendering threads: 60fps video and 100fps
-    audio processing with rate limiting</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="1"><a class="permalink" href="#1">1. Manage per-client video
-  rendering threads (60fps per client))Manage per-client audio rendering threads
-  (100fps per client, 480 samples @ 48kHz))Coordinate frame generation timing
-  and rate limitinglimitingEnsure thread-safe access to client state and media
-  buffersbuffersProvide graceful thread lifecycle managementmanagementHandle
-  platform-specific timing and synchronization THREADING ARCHITECTURE: </a></h1>
-<p class="Pp">PER-CLIENT THREAD MODEL: Each connected client spawns exactly 2
-    dedicated threads:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>VIDEO RENDER THREAD:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Generates personalized ASCII frames at 60fps</dd>
-  <dt> &#x2022;</dt>
-  <dd>Calls <b>stream.c</b> functions for video mixing and conversion</dd>
-  <dt> &#x2022;</dt>
-  <dd>Queues frames in client's video packet queue</dd>
-  <dt> &#x2022;</dt>
-  <dd>Adapts to client's terminal capabilities</dd>
-  <dt>2.</dt>
-  <dd>AUDIO RENDER THREAD:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Mixes audio streams excluding client's own audio</dd>
-  <dt> &#x2022;</dt>
-  <dd>Processes audio at 100fps (10ms intervals, 480 samples @ 48kHz)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Queues audio packets in client's audio packet queue</dd>
-  <dt> &#x2022;</dt>
-  <dd>Provides low-latency audio delivery</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh">PERFORMANCE CHARACTERISTICS: </h1>
-<p class="Pp">LINEAR SCALING:</p>
-<ul class="Bl-bullet">
-  <li>Each client gets dedicated CPU resources</li>
-  <li>No shared bottlenecks between clients</li>
-  <li>Performance scales linearly up to 9+ clients</li>
-  <li>Real-time guarantees maintained per client</li>
-</ul>
-<p class="Pp">TIMING PRECISION:</p>
-<ul class="Bl-bullet">
-  <li>Video: 16.67ms intervals (60fps)</li>
-  <li>Audio: 10ms intervals (100fps, 480 samples @ 48kHz)</li>
-  <li>Platform-specific high-resolution timers</li>
-  <li>Interruptible sleep for responsive shutdown</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="RATE_LIMITING_STRATEGY:"><a class="permalink" href="#RATE_LIMITING_STRATEGY:">RATE
-  LIMITING STRATEGY: </a></h1>
-<p class="Pp">VIDEO RATE LIMITING:</p>
-<ul class="Bl-bullet">
-  <li>Uses CLOCK_MONOTONIC for precise timing</li>
-  <li>Calculates elapsed time since last frame</li>
-  <li>Sleeps only if ahead of schedule</li>
-  <li>Prevents CPU spinning under light load</li>
-</ul>
-<p class="Pp">AUDIO RATE LIMITING:</p>
-<ul class="Bl-bullet">
-  <li>Fixed 10ms intervals to match 48kHz sample rate (480
-    samples/iteration)</li>
-  <li>Accumulates to 960 samples (20ms) for Opus encoding</li>
-  <li>Ensures smooth audio delivery</li>
-  <li>Balances latency vs CPU usage</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY_AND_SYNCHRONIZATION:"><a class="permalink" href="#THREAD_SAFETY_AND_SYNCHRONIZATION:">THREAD
-  SAFETY AND SYNCHRONIZATION: </a></h1>
-<p class="Pp">PER-CLIENT MUTEX PROTECTION: All client state access uses the
-    snapshot pattern:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Acquire client-&gt;client_state_mutex</dd>
-  <dt>2.</dt>
-  <dd>Copy needed state to local variables</dd>
-  <dt>3.</dt>
-  <dd>Release mutex immediately</dd>
-  <dt>4.</dt>
-  <dd>Process using local copies</dd>
-</dl>
-<p class="Pp">Synchronization Points:</p>
-<ul class="Bl-bullet">
-  <li>Thread running flags (protected by client mutex)</li>
-  <li>Client dimensions and capabilities (atomic snapshots)</li>
-  <li>Packet queue access (internally thread-safe)</li>
-  <li>Buffer access (uses buffer-specific locks)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="GRACEFUL_SHUTDOWN_HANDLING:"><a class="permalink" href="#GRACEFUL_SHUTDOWN_HANDLING:">GRACEFUL
-  SHUTDOWN HANDLING: </a></h1>
-<p class="Pp">SHUTDOWN SEQUENCE:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Set thread running flags to false</dd>
-  <dt>2.</dt>
-  <dd>Threads detect flag change and exit loops</dd>
-  <dt>3.</dt>
-  <dd>Join threads to ensure complete cleanup</dd>
-  <dt>4.</dt>
-  <dd>Destroy per-client mutexes</dd>
-  <dt>5.</dt>
-  <dd>Clear thread handles</dd>
-</dl>
-<p class="Pp">INTERRUPTIBLE OPERATIONS:</p>
-<ul class="Bl-bullet">
-  <li>Sleep operations can be interrupted by shutdown signal</li>
-  <li>Threads check shutdown flag frequently</li>
-  <li>No blocking operations that can't be interrupted</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PLATFORM_ABSTRACTION_INTEGRATION:"><a class="permalink" href="#PLATFORM_ABSTRACTION_INTEGRATION:">PLATFORM
-  ABSTRACTION INTEGRATION: </a></h1>
-<p class="Pp">CROSS-PLATFORM TIMING:</p>
-<ul class="Bl-bullet">
-  <li>Windows: Uses Sleep() with millisecond precision</li>
-  <li>POSIX: Uses condition variables for responsive interruption</li>
-  <li>High-resolution timing with clock_gettime()</li>
-</ul>
-<p class="Pp">THREAD MANAGEMENT:</p>
-<ul class="Bl-bullet">
-  <li>Uses platform abstraction layer for thread creation/joining</li>
-  <li>Handles platform-specific thread initialization</li>
-  <li>Safe thread cleanup across all platforms</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_HANDLING_PHILOSOPHY:"><a class="permalink" href="#ERROR_HANDLING_PHILOSOPHY:">ERROR
-  HANDLING PHILOSOPHY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Thread creation failures trigger complete cleanup</li>
-  <li>Invalid client states cause thread exit (not crash)</li>
-  <li>Memory allocation failures are logged and handled gracefully</li>
-  <li>Network errors don't affect thread stability</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
-  WITH OTHER MODULES: </a></h1>
-<ul class="Bl-bullet">
-  <li><b>stream.c</b>: Called by video threads for frame generation</li>
-  <li><b>mixer.c</b>: Called by audio threads for audio mixing</li>
-  <li>client.c: Manages thread creation/destruction lifecycle</li>
-  <li>packet_queue.c: Used for queuing generated media</li>
-  <li>main.c: Provides global shutdown signaling</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:"><a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:">WHY
-  THIS MODULAR DESIGN: </a></h1>
-<p class="Pp">The original server.c contained rendering logic mixed with
-    connection management, making it impossible to:</p>
-<ul class="Bl-bullet">
-  <li>Understand performance characteristics</li>
-  <li>Optimize rendering pipelines</li>
-  <li>Add new rendering features</li>
-  <li>Debug threading issues</li>
-</ul>
-<p class="Pp">This separation provides:</p>
-<ul class="Bl-bullet">
-  <li>Clear rendering pipeline architecture</li>
-  <li>Isolated performance optimization</li>
-  <li>Easier threading model comprehension</li>
-  <li>Better real-time guarantees</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MEMORY_AND_RESOURCE_MANAGEMENT:"><a class="permalink" href="#MEMORY_AND_RESOURCE_MANAGEMENT:">MEMORY
-  AND RESOURCE MANAGEMENT: </a></h1>
-<ul class="Bl-bullet">
-  <li>All allocations are bounded and predictable</li>
-  <li>Thread stacks are platform-managed</li>
-  <li>Frame generation uses buffer pools</li>
-  <li>No memory leaks on thread exit</li>
-  <li>Automatic resource cleanup on client disconnect</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">September 2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0 (Post-Modularization)</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>stream.c</b> For <b>Video to ASCII Conversion</b>
-  <b>frame</b> generation implementation
-<p class="Pp"></p>
-<p class="Pp"><b>mixer.c</b> For <b>Audio</b> mixing implementation</p>
-<p class="Pp"></p>
-<p class="Pp">client.c For thread <b>lifecycle</b> management</p>
-</div>
-<p class="Pp">Definition in file <b>server/render.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPUS_FRAME_SAMPLES___960"><a class="permalink" href="#_define_OPUS_FRAME_SAMPLES___960">#define
-  OPUS_FRAME_SAMPLES 960</a></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_*_client_audio_render_thread_(void_*_arg)"><a class="permalink" href="#void_*_client_audio_render_thread_(void_*_arg)">void
-  * client_audio_render_thread (void * arg)</a></h2>
-<p class="Pp">Main audio rendering thread function for individual clients. This
-    is the audio processing thread that generates personalized audio mixes for a
-    specific client at 100fps (10ms intervals, 480 samples @ 48kHz). Each client
-    receives audio from all other clients while excluding their own audio to
-    prevent echo and feedback.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh">THREAD EXECUTION FLOW: </h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>INITIALIZATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Validate client parameters and socket</dd>
-  <dt> &#x2022;</dt>
-  <dd>Allocate local mixing buffer</dd>
-  <dt> &#x2022;</dt>
-  <dd>Log thread startup for debugging</dd>
-  <dt>2.</dt>
-  <dd>MAIN PROCESSING LOOP:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check thread running state (with mutex protection)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Take atomic snapshot of client state</dd>
-  <dt> &#x2022;</dt>
-  <dd>Generate audio mix excluding this client's audio</dd>
-  <dt> &#x2022;</dt>
-  <dd>Queue mixed audio for delivery to client</dd>
-  <dt> &#x2022;</dt>
-  <dd>Sleep for precise timing (10ms intervals)</dd>
-  <dt>3.</dt>
-  <dd>CLEANUP AND EXIT:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Log thread termination</dd>
-  <dt> &#x2022;</dt>
-  <dd>Return NULL to indicate clean exit</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="AUDIO_MIXING_STRATEGY:"><a class="permalink" href="#AUDIO_MIXING_STRATEGY:">AUDIO
-  MIXING STRATEGY: </a></h1>
-<p class="Pp">ECHO PREVENTION:</p>
-<ul class="Bl-bullet">
-  <li>Excludes client's own audio from their mix</li>
-  <li>Prevents audio feedback loops</li>
-  <li>Uses <b>mixer_process_excluding_source()</b> function</li>
-  <li>Maintains audio quality for other participants</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">PERFORMANCE CHARACTERISTICS: </h1>
-<p class="Pp">TIMING PRECISION:</p>
-<ul class="Bl-bullet">
-  <li>Target: 100fps (10ms intervals, 480 samples @ 48kHz)</li>
-  <li>Accumulates to 960 samples (20ms) for Opus encoding</li>
-  <li>Fixed timing (no dynamic rate adjustment)</li>
-  <li>Low-latency audio delivery</li>
-</ul>
-<p class="Pp">BUFFER MANAGEMENT:</p>
-<ul class="Bl-bullet">
-  <li>Uses fixed-size local buffer (AUDIO_FRAMES_PER_BUFFER)</li>
-  <li>No dynamic allocation in processing loop</li>
-  <li>Predictable memory usage</li>
-  <li>Cache-friendly processing pattern</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">THREAD SAFETY MECHANISMS: </h1>
-<p class="Pp">STATE SYNCHRONIZATION:</p>
-<ul class="Bl-bullet">
-  <li>Uses client-&gt;client_state_mutex for state access</li>
-  <li>Implements snapshot pattern for client ID and queues</li>
-  <li>Prevents race conditions during client disconnect</li>
-  <li>Safe concurrent access with other threads</li>
-</ul>
-<p class="Pp">MIXER COORDINATION:</p>
-<ul class="Bl-bullet">
-  <li>Global audio mixer is internally thread-safe</li>
-  <li>Multiple audio threads can process concurrently</li>
-  <li>Lock-free audio buffer operations where possible</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="AUDIO_PIPELINE_INTEGRATION:"><a class="permalink" href="#AUDIO_PIPELINE_INTEGRATION:">AUDIO
-  PIPELINE INTEGRATION: </a></h1>
-<p class="Pp">AUDIO MIXING:</p>
-<ul class="Bl-bullet">
-  <li>Uses global g_audio_mixer for multi-client processing</li>
-  <li>Processes AUDIO_FRAMES_PER_BUFFER samples per iteration</li>
-  <li>Handles varying number of active audio sources</li>
-</ul>
-<p class="Pp">AUDIO DELIVERY:</p>
-<ul class="Bl-bullet">
-  <li>Queues audio directly in client's audio packet queue</li>
-  <li>Higher priority than video packets in send thread</li>
-  <li>Real-time delivery requirements</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">ERROR HANDLING STRATEGY: </h1>
-<ul class="Bl-bullet">
-  <li>Invalid client parameters: Log error and exit immediately</li>
-  <li>Missing audio mixer: Continue with polling (mixer may initialize
-    later)</li>
-  <li>Queue failures: Log debug info and continue (expected under load)</li>
-  <li>Client disconnect: Clean exit without error spam</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_OPTIMIZATIONS:"><a class="permalink" href="#PERFORMANCE_OPTIMIZATIONS:">PERFORMANCE
-  OPTIMIZATIONS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Local buffer allocation (no malloc in loop)</li>
-  <li>Minimal processing per iteration</li>
-  <li>Efficient mixer integration</li>
-  <li>Low-overhead packet queuing</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Pointer to <b>client_info_t</b> for the target
-  client</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">NULL on thread completion (always clean exit)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function runs in its own dedicated thread
-<p class="Pp"></p>
-<p class="Pp">Audio processing has higher priority than video</p>
-<p class="Pp"></p>
-<p class="Pp">Thread lifetime matches client connection lifetime</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Invalid client parameter causes immediate thread
-  termination
-<p class="Pp"></p>
-<p class="Pp">Thread must be joined properly to prevent resource leaks</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>mixer_process_excluding_source()</b> For <b>Audio</b>
-  mixing implementation
-<p class="Pp"></p>
-<p class="Pp"><b>AUDIO_FRAMES_PER_BUFFER</b> For buffer size constant</p>
-</div>
-<p class="Pp">Definition at line <b>765</b> of file <b>server/render.c</b>.</p>
-<pre>765                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>render.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">render.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">render.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          render.c - &#x1F3A8; Per-client rendering threads: 60fps video and
+          100fps audio processing with rate limiting
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>OPUS_FRAME_SAMPLES</b> 960
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void * <b>client_video_render_thread</b> (void *arg)
+            <br />
+            Interruptible sleep function with platform-specific optimizations.
+            void *
+            <b>client_audio_render_thread</b> (void *arg)
+            <br />
+            Main audio rendering thread function for individual clients. int
+            <b>create_client_render_threads</b> (<b>server_context_t</b>
+            *server_ctx, <b>client_info_t</b> *client)
+            <br />
+            Create and initialize per-client rendering threads. void
+            <b>stop_client_render_threads</b> (<b>client_info_t</b> *client)
+            <br />
+            Stop and cleanup per-client rendering threads.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F3A8; Per-client rendering threads: 60fps video and 100fps audio
+          processing with rate limiting
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="1">
+          <a class="permalink" href="#1"
+            >1. Manage per-client video rendering threads (60fps per
+            client))Manage per-client audio rendering threads (100fps per
+            client, 480 samples @ 48kHz))Coordinate frame generation timing and
+            rate limitinglimitingEnsure thread-safe access to client state and
+            media buffersbuffersProvide graceful thread lifecycle
+            managementmanagementHandle platform-specific timing and
+            synchronization THREADING ARCHITECTURE:
+          </a>
+        </h1>
+        <p class="Pp">
+          PER-CLIENT THREAD MODEL: Each connected client spawns exactly 2
+          dedicated threads:
+        </p>
+        <p class="Pp"></p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>VIDEO RENDER THREAD:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Generates personalized ASCII frames at 60fps</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Calls <b>stream.c</b> functions for video mixing and conversion
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Queues frames in client's video packet queue</dd>
+          <dt>&#x2022;</dt>
+          <dd>Adapts to client's terminal capabilities</dd>
+          <dt>2.</dt>
+          <dd>AUDIO RENDER THREAD:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Mixes audio streams excluding client's own audio</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Processes audio at 100fps (10ms intervals, 480 samples @ 48kHz)
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Queues audio packets in client's audio packet queue</dd>
+          <dt>&#x2022;</dt>
+          <dd>Provides low-latency audio delivery</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">PERFORMANCE CHARACTERISTICS:</h1>
+        <p class="Pp">LINEAR SCALING:</p>
+        <ul class="Bl-bullet">
+          <li>Each client gets dedicated CPU resources</li>
+          <li>No shared bottlenecks between clients</li>
+          <li>Performance scales linearly up to 9+ clients</li>
+          <li>Real-time guarantees maintained per client</li>
+        </ul>
+        <p class="Pp">TIMING PRECISION:</p>
+        <ul class="Bl-bullet">
+          <li>Video: 16.67ms intervals (60fps)</li>
+          <li>Audio: 10ms intervals (100fps, 480 samples @ 48kHz)</li>
+          <li>Platform-specific high-resolution timers</li>
+          <li>Interruptible sleep for responsive shutdown</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="RATE_LIMITING_STRATEGY:">
+          <a class="permalink" href="#RATE_LIMITING_STRATEGY:"
+            >RATE LIMITING STRATEGY:
+          </a>
+        </h1>
+        <p class="Pp">VIDEO RATE LIMITING:</p>
+        <ul class="Bl-bullet">
+          <li>Uses CLOCK_MONOTONIC for precise timing</li>
+          <li>Calculates elapsed time since last frame</li>
+          <li>Sleeps only if ahead of schedule</li>
+          <li>Prevents CPU spinning under light load</li>
+        </ul>
+        <p class="Pp">AUDIO RATE LIMITING:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Fixed 10ms intervals to match 48kHz sample rate (480
+            samples/iteration)
+          </li>
+          <li>Accumulates to 960 samples (20ms) for Opus encoding</li>
+          <li>Ensures smooth audio delivery</li>
+          <li>Balances latency vs CPU usage</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY_AND_SYNCHRONIZATION:">
+          <a class="permalink" href="#THREAD_SAFETY_AND_SYNCHRONIZATION:"
+            >THREAD SAFETY AND SYNCHRONIZATION:
+          </a>
+        </h1>
+        <p class="Pp">
+          PER-CLIENT MUTEX PROTECTION: All client state access uses the snapshot
+          pattern:
+        </p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>Acquire client-&gt;client_state_mutex</dd>
+          <dt>2.</dt>
+          <dd>Copy needed state to local variables</dd>
+          <dt>3.</dt>
+          <dd>Release mutex immediately</dd>
+          <dt>4.</dt>
+          <dd>Process using local copies</dd>
+        </dl>
+        <p class="Pp">Synchronization Points:</p>
+        <ul class="Bl-bullet">
+          <li>Thread running flags (protected by client mutex)</li>
+          <li>Client dimensions and capabilities (atomic snapshots)</li>
+          <li>Packet queue access (internally thread-safe)</li>
+          <li>Buffer access (uses buffer-specific locks)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="GRACEFUL_SHUTDOWN_HANDLING:">
+          <a class="permalink" href="#GRACEFUL_SHUTDOWN_HANDLING:"
+            >GRACEFUL SHUTDOWN HANDLING:
+          </a>
+        </h1>
+        <p class="Pp">SHUTDOWN SEQUENCE:</p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>Set thread running flags to false</dd>
+          <dt>2.</dt>
+          <dd>Threads detect flag change and exit loops</dd>
+          <dt>3.</dt>
+          <dd>Join threads to ensure complete cleanup</dd>
+          <dt>4.</dt>
+          <dd>Destroy per-client mutexes</dd>
+          <dt>5.</dt>
+          <dd>Clear thread handles</dd>
+        </dl>
+        <p class="Pp">INTERRUPTIBLE OPERATIONS:</p>
+        <ul class="Bl-bullet">
+          <li>Sleep operations can be interrupted by shutdown signal</li>
+          <li>Threads check shutdown flag frequently</li>
+          <li>No blocking operations that can't be interrupted</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PLATFORM_ABSTRACTION_INTEGRATION:">
+          <a class="permalink" href="#PLATFORM_ABSTRACTION_INTEGRATION:"
+            >PLATFORM ABSTRACTION INTEGRATION:
+          </a>
+        </h1>
+        <p class="Pp">CROSS-PLATFORM TIMING:</p>
+        <ul class="Bl-bullet">
+          <li>Windows: Uses Sleep() with millisecond precision</li>
+          <li>POSIX: Uses condition variables for responsive interruption</li>
+          <li>High-resolution timing with clock_gettime()</li>
+        </ul>
+        <p class="Pp">THREAD MANAGEMENT:</p>
+        <ul class="Bl-bullet">
+          <li>Uses platform abstraction layer for thread creation/joining</li>
+          <li>Handles platform-specific thread initialization</li>
+          <li>Safe thread cleanup across all platforms</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_HANDLING_PHILOSOPHY:">
+          <a class="permalink" href="#ERROR_HANDLING_PHILOSOPHY:"
+            >ERROR HANDLING PHILOSOPHY:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Thread creation failures trigger complete cleanup</li>
+          <li>Invalid client states cause thread exit (not crash)</li>
+          <li>Memory allocation failures are logged and handled gracefully</li>
+          <li>Network errors don't affect thread stability</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:">
+          <a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:"
+            >INTEGRATION WITH OTHER MODULES:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li><b>stream.c</b>: Called by video threads for frame generation</li>
+          <li><b>mixer.c</b>: Called by audio threads for audio mixing</li>
+          <li>client.c: Manages thread creation/destruction lifecycle</li>
+          <li>packet_queue.c: Used for queuing generated media</li>
+          <li>main.c: Provides global shutdown signaling</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:">
+          <a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:"
+            >WHY THIS MODULAR DESIGN:
+          </a>
+        </h1>
+        <p class="Pp">
+          The original server.c contained rendering logic mixed with connection
+          management, making it impossible to:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Understand performance characteristics</li>
+          <li>Optimize rendering pipelines</li>
+          <li>Add new rendering features</li>
+          <li>Debug threading issues</li>
+        </ul>
+        <p class="Pp">This separation provides:</p>
+        <ul class="Bl-bullet">
+          <li>Clear rendering pipeline architecture</li>
+          <li>Isolated performance optimization</li>
+          <li>Easier threading model comprehension</li>
+          <li>Better real-time guarantees</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MEMORY_AND_RESOURCE_MANAGEMENT:">
+          <a class="permalink" href="#MEMORY_AND_RESOURCE_MANAGEMENT:"
+            >MEMORY AND RESOURCE MANAGEMENT:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>All allocations are bounded and predictable</li>
+          <li>Thread stacks are platform-managed</li>
+          <li>Frame generation uses buffer pools</li>
+          <li>No memory leaks on thread exit</li>
+          <li>Automatic resource cleanup on client disconnect</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">September 2025</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">2.0 (Post-Modularization)</div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>stream.c</b> For <b>Video to ASCII Conversion</b>
+          <b>frame</b> generation implementation
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>mixer.c</b> For <b>Audio</b> mixing implementation
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">client.c For thread <b>lifecycle</b> management</p>
+        </div>
+        <p class="Pp">Definition in file <b>server/render.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPUS_FRAME_SAMPLES___960">
+            <a class="permalink" href="#_define_OPUS_FRAME_SAMPLES___960"
+              >#define OPUS_FRAME_SAMPLES 960</a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_client_audio_render_thread_(void_*_arg)">
+            <a
+              class="permalink"
+              href="#void_*_client_audio_render_thread_(void_*_arg)"
+              >void * client_audio_render_thread (void * arg)</a
+            >
+          </h2>
+          <p class="Pp">
+            Main audio rendering thread function for individual clients. This is
+            the audio processing thread that generates personalized audio mixes
+            for a specific client at 100fps (10ms intervals, 480 samples @
+            48kHz). Each client receives audio from all other clients while
+            excluding their own audio to prevent echo and feedback.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">THREAD EXECUTION FLOW:</h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>INITIALIZATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Validate client parameters and socket</dd>
+          <dt>&#x2022;</dt>
+          <dd>Allocate local mixing buffer</dd>
+          <dt>&#x2022;</dt>
+          <dd>Log thread startup for debugging</dd>
+          <dt>2.</dt>
+          <dd>MAIN PROCESSING LOOP:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Check thread running state (with mutex protection)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Take atomic snapshot of client state</dd>
+          <dt>&#x2022;</dt>
+          <dd>Generate audio mix excluding this client's audio</dd>
+          <dt>&#x2022;</dt>
+          <dd>Queue mixed audio for delivery to client</dd>
+          <dt>&#x2022;</dt>
+          <dd>Sleep for precise timing (10ms intervals)</dd>
+          <dt>3.</dt>
+          <dd>CLEANUP AND EXIT:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Log thread termination</dd>
+          <dt>&#x2022;</dt>
+          <dd>Return NULL to indicate clean exit</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="AUDIO_MIXING_STRATEGY:">
+          <a class="permalink" href="#AUDIO_MIXING_STRATEGY:"
+            >AUDIO MIXING STRATEGY:
+          </a>
+        </h1>
+        <p class="Pp">ECHO PREVENTION:</p>
+        <ul class="Bl-bullet">
+          <li>Excludes client's own audio from their mix</li>
+          <li>Prevents audio feedback loops</li>
+          <li>Uses <b>mixer_process_excluding_source()</b> function</li>
+          <li>Maintains audio quality for other participants</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">PERFORMANCE CHARACTERISTICS:</h1>
+        <p class="Pp">TIMING PRECISION:</p>
+        <ul class="Bl-bullet">
+          <li>Target: 100fps (10ms intervals, 480 samples @ 48kHz)</li>
+          <li>Accumulates to 960 samples (20ms) for Opus encoding</li>
+          <li>Fixed timing (no dynamic rate adjustment)</li>
+          <li>Low-latency audio delivery</li>
+        </ul>
+        <p class="Pp">BUFFER MANAGEMENT:</p>
+        <ul class="Bl-bullet">
+          <li>Uses fixed-size local buffer (AUDIO_FRAMES_PER_BUFFER)</li>
+          <li>No dynamic allocation in processing loop</li>
+          <li>Predictable memory usage</li>
+          <li>Cache-friendly processing pattern</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">THREAD SAFETY MECHANISMS:</h1>
+        <p class="Pp">STATE SYNCHRONIZATION:</p>
+        <ul class="Bl-bullet">
+          <li>Uses client-&gt;client_state_mutex for state access</li>
+          <li>Implements snapshot pattern for client ID and queues</li>
+          <li>Prevents race conditions during client disconnect</li>
+          <li>Safe concurrent access with other threads</li>
+        </ul>
+        <p class="Pp">MIXER COORDINATION:</p>
+        <ul class="Bl-bullet">
+          <li>Global audio mixer is internally thread-safe</li>
+          <li>Multiple audio threads can process concurrently</li>
+          <li>Lock-free audio buffer operations where possible</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="AUDIO_PIPELINE_INTEGRATION:">
+          <a class="permalink" href="#AUDIO_PIPELINE_INTEGRATION:"
+            >AUDIO PIPELINE INTEGRATION:
+          </a>
+        </h1>
+        <p class="Pp">AUDIO MIXING:</p>
+        <ul class="Bl-bullet">
+          <li>Uses global g_audio_mixer for multi-client processing</li>
+          <li>Processes AUDIO_FRAMES_PER_BUFFER samples per iteration</li>
+          <li>Handles varying number of active audio sources</li>
+        </ul>
+        <p class="Pp">AUDIO DELIVERY:</p>
+        <ul class="Bl-bullet">
+          <li>Queues audio directly in client's audio packet queue</li>
+          <li>Higher priority than video packets in send thread</li>
+          <li>Real-time delivery requirements</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">ERROR HANDLING STRATEGY:</h1>
+        <ul class="Bl-bullet">
+          <li>Invalid client parameters: Log error and exit immediately</li>
+          <li>
+            Missing audio mixer: Continue with polling (mixer may initialize
+            later)
+          </li>
+          <li>
+            Queue failures: Log debug info and continue (expected under load)
+          </li>
+          <li>Client disconnect: Clean exit without error spam</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_OPTIMIZATIONS:">
+          <a class="permalink" href="#PERFORMANCE_OPTIMIZATIONS:"
+            >PERFORMANCE OPTIMIZATIONS:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Local buffer allocation (no malloc in loop)</li>
+          <li>Minimal processing per iteration</li>
+          <li>Efficient mixer integration</li>
+          <li>Low-overhead packet queuing</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>arg</i> Pointer to <b>client_info_t</b> for the target client
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">
+          NULL on thread completion (always clean exit)
+        </div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          This function runs in its own dedicated thread
+          <p class="Pp"></p>
+          <p class="Pp">Audio processing has higher priority than video</p>
+          <p class="Pp"></p>
+          <p class="Pp">Thread lifetime matches client connection lifetime</p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Invalid client parameter causes immediate thread termination
+          <p class="Pp"></p>
+          <p class="Pp">
+            Thread must be joined properly to prevent resource leaks
+          </p>
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>mixer_process_excluding_source()</b> For <b>Audio</b>
+          mixing implementation
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>AUDIO_FRAMES_PER_BUFFER</b> For buffer size constant
+          </p>
+        </div>
+        <p class="Pp">
+          Definition at line <b>765</b> of file <b>server/render.c</b>.
+        </p>
+        <pre>
+765                                             {
 766   client_info_t *client = (client_info_t *)arg;
 767
 768   if (!client) {
@@ -786,234 +915,286 @@
 1122
 1123   return NULL;
 1124 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
-    <b>adaptive_sleep_init()</b>, <b>asciichat_errno_destroy()</b>,
-    <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
-    <b>AUDIO_RENDER_FPS</b>, <b>client_info::audio_render_thread_running</b>,
-    <b>audio_ring_buffer_read()</b>, <b>client_info::client_id</b>,
-    <b>client_info::client_state_mutex</b>, <b>client_info::display_name</b>,
-    <b>fps_frame_ns()</b>, <b>fps_init()</b>, <b>g_audio_mixer</b>,
-    <b>g_should_exit</b>, <b>GET_OPTION</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>log_debug</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
-    <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>,
-    <b>log_warn_every</b>, <b>MAX_CLIENT_ID_LEN</b>,
-    <b>mixer_process_excluding_source()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
-    <b>OPUS_APPLICATION_AUDIO</b>, <b>opus_codec_create_encoder()</b>,
-    <b>opus_codec_destroy()</b>, <b>opus_codec_encode()</b>,
-    <b>OPUS_FRAME_SAMPLES</b>, <b>packet_queue_enqueue()</b>,
-    <b>packet_queue_size()</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
-    <b>platform_sleep_ns()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_MEMCPY</b>, <b>SAFE_MEMSET</b>, <b>SAFE_STRNCPY</b>,
-    <b>client_info::shutting_down</b>, <b>client_info::socket</b>,
-    <b>START_TIMER</b>, <b>STOP_TIMER_AND_LOG_EVERY</b>, <b>time_get_ns()</b>,
-    and <b>US_PER_MS_INT</b>.</p>
-<p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
-<section class="Ss">
-<h2 class="Ss" id="void_*_client_video_render_thread_(void_*_arg)"><a class="permalink" href="#void_*_client_video_render_thread_(void_*_arg)">void
-  * client_video_render_thread (void * arg)</a></h2>
-<p class="Pp">Interruptible sleep function with platform-specific optimizations.
-    Provides a sleep mechanism that can be interrupted by the global shutdown
-    signal, enabling responsive thread termination. The implementation varies by
-    platform to optimize for responsiveness vs CPU usage.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PLATFORM-SPECIFIC_BEHAVIOR:"><a class="permalink" href="#PLATFORM-SPECIFIC_BEHAVIOR:">PLATFORM-SPECIFIC
-  BEHAVIOR: </a></h1>
-<p class="Pp">WINDOWS IMPLEMENTATION:</p>
-<ul class="Bl-bullet">
-  <li>Uses Sleep() API with millisecond precision</li>
-  <li>Simple approach due to Windows timer characteristics</li>
-  <li>Sleep(1) may sleep up to 15.6ms due to timer resolution</li>
-  <li>Checks shutdown flag before and after sleep</li>
-</ul>
-<p class="Pp">POSIX IMPLEMENTATION (Linux/macOS):</p>
-<ul class="Bl-bullet">
-  <li>Uses condition variables for precise timing</li>
-  <li>Can be interrupted immediately by shutdown signal</li>
-  <li>Higher responsiveness for thread termination</li>
-  <li>Uses static mutex/condition variable for coordination</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="USAGE_PATTERNS:"><a class="permalink" href="#USAGE_PATTERNS:">USAGE
-  PATTERNS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Rate limiting in render threads (maintain target FPS)</li>
-  <li>Backoff delays when queues are full</li>
-  <li>Polling intervals for state changes</li>
-  <li>Graceful busy-wait alternatives</li>
-</ul>
-<p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
-<ul class="Bl-bullet">
-  <li>Low CPU overhead (proper sleep, not busy wait)</li>
-  <li>Sub-second responsiveness to shutdown</li>
-  <li>Maintains timing precision for media processing</li>
-  <li>Scales well with many concurrent threads</li>
-</ul>
-<p class="Pp">ERROR HANDLING:</p>
-<ul class="Bl-bullet">
-  <li>Early return if shutdown flag is set</li>
-  <li>Platform-specific error handling for sleep APIs</li>
-  <li>Logging for debugging (throttled to avoid spam)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>usec</i> Sleep duration in microseconds</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Function may return early if shutdown is requested
-<p class="Pp"></p>
-<p class="Pp">Minimum sleep time is platform-dependent (typically 1ms)</p>
-<p class="Pp"></p>
-<p class="Pp">Static variables are used for call counting (debugging)</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Not suitable for precise timing (use for rate limiting
-  only)</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>VIDEO_RENDER_FPS</b> For <b>Video to ASCII
-  Conversion</b> thread timing requirements</div>
-<p class="Pp">Main video rendering thread function for individual clients</p>
-<p class="Pp"></p>
-<p class="Pp">This is the core video processing thread that generates
-    personalized ASCII art frames for a specific client at 60fps. Each connected
-    client gets their own dedicated video thread, providing linear performance
-    scaling and personalized rendering based on terminal capabilities.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh">THREAD EXECUTION FLOW: </h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>INITIALIZATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Validate client parameters and socket</dd>
-  <dt> &#x2022;</dt>
-  <dd>Initialize timing variables for rate limiting</dd>
-  <dt> &#x2022;</dt>
-  <dd>Log thread startup for debugging</dd>
-  <dt>2.</dt>
-  <dd>MAIN PROCESSING LOOP:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check thread running state (with mutex protection)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Rate limit to 60fps using high-resolution timing</dd>
-  <dt> &#x2022;</dt>
-  <dd>Take atomic snapshot of client state</dd>
-  <dt> &#x2022;</dt>
-  <dd>Generate personalized ASCII frame for this client</dd>
-  <dt> &#x2022;</dt>
-  <dd>Queue frame for delivery to client</dd>
-  <dt> &#x2022;</dt>
-  <dd>Update timing for next iteration</dd>
-  <dt>3.</dt>
-  <dd>CLEANUP AND EXIT:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Log thread termination</dd>
-  <dt> &#x2022;</dt>
-  <dd>Return NULL to indicate clean exit</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh">PERFORMANCE CHARACTERISTICS: </h1>
-<p class="Pp">TIMING PRECISION:</p>
-<ul class="Bl-bullet">
-  <li>Target: 60fps (16.67ms intervals)</li>
-  <li>Uses CLOCK_MONOTONIC for accurate timing</li>
-  <li>Only sleeps if ahead of schedule (no CPU waste)</li>
-  <li>Maintains consistent frame rate under varying load</li>
-</ul>
-<p class="Pp">CLIENT-SPECIFIC PROCESSING:</p>
-<ul class="Bl-bullet">
-  <li>Generates frames customized for client's terminal</li>
-  <li>Respects color depth, palette, and size preferences</li>
-  <li>Adapts to client capability changes dynamically</li>
-  <li>Handles client disconnection gracefully</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">THREAD SAFETY MECHANISMS: </h1>
-<p class="Pp">STATE SYNCHRONIZATION:</p>
-<ul class="Bl-bullet">
-  <li>Uses client-&gt;client_state_mutex for all state access</li>
-  <li>Implements snapshot pattern (copy state, release lock)</li>
-  <li>Prevents race conditions with other threads</li>
-  <li>Safe concurrent access to client data</li>
-</ul>
-<p class="Pp">SHUTDOWN COORDINATION:</p>
-<ul class="Bl-bullet">
-  <li>Monitors global g_should_exit flag</li>
-  <li>Checks per-client running flags with mutex protection</li>
-  <li>Responds to shutdown within one frame interval (16.67ms)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="VIDEO_PIPELINE_INTEGRATION:"><a class="permalink" href="#VIDEO_PIPELINE_INTEGRATION:">VIDEO
-  PIPELINE INTEGRATION: </a></h1>
-<p class="Pp">FRAME GENERATION:</p>
-<ul class="Bl-bullet">
-  <li>Calls <b>create_mixed_ascii_frame_for_client()</b> from
-    <b>stream.c</b></li>
-  <li>Provides client-specific dimensions and preferences</li>
-  <li>Handles frame generation failures gracefully</li>
-</ul>
-<p class="Pp">FRAME DELIVERY:</p>
-<ul class="Bl-bullet">
-  <li>Calls queue_ascii_frame_for_client() for packet queuing</li>
-  <li>Uses client's dedicated video packet queue</li>
-  <li>Send thread delivers frames asynchronously</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">ERROR HANDLING STRATEGY: </h1>
-<ul class="Bl-bullet">
-  <li>Invalid client parameters: Log error and exit immediately</li>
-  <li>Frame generation failures: Continue with debug logging</li>
-  <li>Queue overflow: Continue with debug logging (expected under load)</li>
-  <li>Client disconnect: Clean exit without error spam</li>
-  <li>Timing issues: Self-correcting (no accumulation)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="LOGGING_AND_MONITORING:"><a class="permalink" href="#LOGGING_AND_MONITORING:">LOGGING
-  AND MONITORING: </a></h1>
-<ul class="Bl-bullet">
-  <li>Success logging: Throttled (every ~4 seconds)</li>
-  <li>Failure logging: Throttled (every ~10 seconds)</li>
-  <li>Performance metrics: Frame count and size tracking</li>
-  <li>Debug information: Timing and queue status</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Pointer to <b>client_info_t</b> for the target
-  client</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">NULL on thread completion (always clean exit)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function runs in its own dedicated thread
-<p class="Pp"></p>
-<p class="Pp">Thread lifetime matches client connection lifetime</p>
-<p class="Pp"></p>
-<p class="Pp">Memory allocated for frames is automatically freed</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Invalid client parameter causes immediate thread
-  termination
-<p class="Pp"></p>
-<p class="Pp">Thread must be joined properly to prevent resource leaks</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>create_mixed_ascii_frame_for_client()</b> For
-  <b>frame</b> generation
-<p class="Pp"></p>
-<p class="Pp">queue_ascii_frame_for_client() For <b>frame</b> delivery</p>
-<p class="Pp"></p>
-<p class="Pp"><b>VIDEO_RENDER_FPS</b> For timing constant definition</p>
-</div>
-<p class="Pp">Definition at line <b>340</b> of file <b>server/render.c</b>.</p>
-<pre>340                                             {
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
+          <b>adaptive_sleep_init()</b>, <b>asciichat_errno_destroy()</b>,
+          <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
+          <b>AUDIO_RENDER_FPS</b>,
+          <b>client_info::audio_render_thread_running</b>,
+          <b>audio_ring_buffer_read()</b>, <b>client_info::client_id</b>,
+          <b>client_info::client_state_mutex</b>,
+          <b>client_info::display_name</b>, <b>fps_frame_ns()</b>,
+          <b>fps_init()</b>, <b>g_audio_mixer</b>, <b>g_should_exit</b>,
+          <b>GET_OPTION</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+          <b>log_debug_every</b>, <b>log_dev_every</b>, <b>log_error</b>,
+          <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>, <b>log_warn_every</b>,
+          <b>MAX_CLIENT_ID_LEN</b>, <b>mixer_process_excluding_source()</b>,
+          <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>,
+          <b>NS_PER_SEC_INT</b>, <b>OPUS_APPLICATION_AUDIO</b>,
+          <b>opus_codec_create_encoder()</b>, <b>opus_codec_destroy()</b>,
+          <b>opus_codec_encode()</b>, <b>OPUS_FRAME_SAMPLES</b>,
+          <b>packet_queue_enqueue()</b>, <b>packet_queue_size()</b>,
+          <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>, <b>platform_sleep_ns()</b>,
+          <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_MEMCPY</b>,
+          <b>SAFE_MEMSET</b>, <b>SAFE_STRNCPY</b>,
+          <b>client_info::shutting_down</b>, <b>client_info::socket</b>,
+          <b>START_TIMER</b>, <b>STOP_TIMER_AND_LOG_EVERY</b>,
+          <b>time_get_ns()</b>, and <b>US_PER_MS_INT</b>.
+        </p>
+        <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_client_video_render_thread_(void_*_arg)">
+            <a
+              class="permalink"
+              href="#void_*_client_video_render_thread_(void_*_arg)"
+              >void * client_video_render_thread (void * arg)</a
+            >
+          </h2>
+          <p class="Pp">
+            Interruptible sleep function with platform-specific optimizations.
+            Provides a sleep mechanism that can be interrupted by the global
+            shutdown signal, enabling responsive thread termination. The
+            implementation varies by platform to optimize for responsiveness vs
+            CPU usage.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PLATFORM-SPECIFIC_BEHAVIOR:">
+          <a class="permalink" href="#PLATFORM-SPECIFIC_BEHAVIOR:"
+            >PLATFORM-SPECIFIC BEHAVIOR:
+          </a>
+        </h1>
+        <p class="Pp">WINDOWS IMPLEMENTATION:</p>
+        <ul class="Bl-bullet">
+          <li>Uses Sleep() API with millisecond precision</li>
+          <li>Simple approach due to Windows timer characteristics</li>
+          <li>Sleep(1) may sleep up to 15.6ms due to timer resolution</li>
+          <li>Checks shutdown flag before and after sleep</li>
+        </ul>
+        <p class="Pp">POSIX IMPLEMENTATION (Linux/macOS):</p>
+        <ul class="Bl-bullet">
+          <li>Uses condition variables for precise timing</li>
+          <li>Can be interrupted immediately by shutdown signal</li>
+          <li>Higher responsiveness for thread termination</li>
+          <li>Uses static mutex/condition variable for coordination</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="USAGE_PATTERNS:">
+          <a class="permalink" href="#USAGE_PATTERNS:">USAGE PATTERNS: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Rate limiting in render threads (maintain target FPS)</li>
+          <li>Backoff delays when queues are full</li>
+          <li>Polling intervals for state changes</li>
+          <li>Graceful busy-wait alternatives</li>
+        </ul>
+        <p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
+        <ul class="Bl-bullet">
+          <li>Low CPU overhead (proper sleep, not busy wait)</li>
+          <li>Sub-second responsiveness to shutdown</li>
+          <li>Maintains timing precision for media processing</li>
+          <li>Scales well with many concurrent threads</li>
+        </ul>
+        <p class="Pp">ERROR HANDLING:</p>
+        <ul class="Bl-bullet">
+          <li>Early return if shutdown flag is set</li>
+          <li>Platform-specific error handling for sleep APIs</li>
+          <li>Logging for debugging (throttled to avoid spam)</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent"><i>usec</i> Sleep duration in microseconds</div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Function may return early if shutdown is requested
+          <p class="Pp"></p>
+          <p class="Pp">
+            Minimum sleep time is platform-dependent (typically 1ms)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Static variables are used for call counting (debugging)
+          </p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Not suitable for precise timing (use for rate limiting only)
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>VIDEO_RENDER_FPS</b> For <b>Video to ASCII Conversion</b> thread
+          timing requirements
+        </div>
+        <p class="Pp">
+          Main video rendering thread function for individual clients
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          This is the core video processing thread that generates personalized
+          ASCII art frames for a specific client at 60fps. Each connected client
+          gets their own dedicated video thread, providing linear performance
+          scaling and personalized rendering based on terminal capabilities.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">THREAD EXECUTION FLOW:</h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>INITIALIZATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Validate client parameters and socket</dd>
+          <dt>&#x2022;</dt>
+          <dd>Initialize timing variables for rate limiting</dd>
+          <dt>&#x2022;</dt>
+          <dd>Log thread startup for debugging</dd>
+          <dt>2.</dt>
+          <dd>MAIN PROCESSING LOOP:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Check thread running state (with mutex protection)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Rate limit to 60fps using high-resolution timing</dd>
+          <dt>&#x2022;</dt>
+          <dd>Take atomic snapshot of client state</dd>
+          <dt>&#x2022;</dt>
+          <dd>Generate personalized ASCII frame for this client</dd>
+          <dt>&#x2022;</dt>
+          <dd>Queue frame for delivery to client</dd>
+          <dt>&#x2022;</dt>
+          <dd>Update timing for next iteration</dd>
+          <dt>3.</dt>
+          <dd>CLEANUP AND EXIT:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Log thread termination</dd>
+          <dt>&#x2022;</dt>
+          <dd>Return NULL to indicate clean exit</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">PERFORMANCE CHARACTERISTICS:</h1>
+        <p class="Pp">TIMING PRECISION:</p>
+        <ul class="Bl-bullet">
+          <li>Target: 60fps (16.67ms intervals)</li>
+          <li>Uses CLOCK_MONOTONIC for accurate timing</li>
+          <li>Only sleeps if ahead of schedule (no CPU waste)</li>
+          <li>Maintains consistent frame rate under varying load</li>
+        </ul>
+        <p class="Pp">CLIENT-SPECIFIC PROCESSING:</p>
+        <ul class="Bl-bullet">
+          <li>Generates frames customized for client's terminal</li>
+          <li>Respects color depth, palette, and size preferences</li>
+          <li>Adapts to client capability changes dynamically</li>
+          <li>Handles client disconnection gracefully</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">THREAD SAFETY MECHANISMS:</h1>
+        <p class="Pp">STATE SYNCHRONIZATION:</p>
+        <ul class="Bl-bullet">
+          <li>Uses client-&gt;client_state_mutex for all state access</li>
+          <li>Implements snapshot pattern (copy state, release lock)</li>
+          <li>Prevents race conditions with other threads</li>
+          <li>Safe concurrent access to client data</li>
+        </ul>
+        <p class="Pp">SHUTDOWN COORDINATION:</p>
+        <ul class="Bl-bullet">
+          <li>Monitors global g_should_exit flag</li>
+          <li>Checks per-client running flags with mutex protection</li>
+          <li>Responds to shutdown within one frame interval (16.67ms)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="VIDEO_PIPELINE_INTEGRATION:">
+          <a class="permalink" href="#VIDEO_PIPELINE_INTEGRATION:"
+            >VIDEO PIPELINE INTEGRATION:
+          </a>
+        </h1>
+        <p class="Pp">FRAME GENERATION:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Calls <b>create_mixed_ascii_frame_for_client()</b> from
+            <b>stream.c</b>
+          </li>
+          <li>Provides client-specific dimensions and preferences</li>
+          <li>Handles frame generation failures gracefully</li>
+        </ul>
+        <p class="Pp">FRAME DELIVERY:</p>
+        <ul class="Bl-bullet">
+          <li>Calls queue_ascii_frame_for_client() for packet queuing</li>
+          <li>Uses client's dedicated video packet queue</li>
+          <li>Send thread delivers frames asynchronously</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">ERROR HANDLING STRATEGY:</h1>
+        <ul class="Bl-bullet">
+          <li>Invalid client parameters: Log error and exit immediately</li>
+          <li>Frame generation failures: Continue with debug logging</li>
+          <li>
+            Queue overflow: Continue with debug logging (expected under load)
+          </li>
+          <li>Client disconnect: Clean exit without error spam</li>
+          <li>Timing issues: Self-correcting (no accumulation)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="LOGGING_AND_MONITORING:">
+          <a class="permalink" href="#LOGGING_AND_MONITORING:"
+            >LOGGING AND MONITORING:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Success logging: Throttled (every ~4 seconds)</li>
+          <li>Failure logging: Throttled (every ~10 seconds)</li>
+          <li>Performance metrics: Frame count and size tracking</li>
+          <li>Debug information: Timing and queue status</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>arg</i> Pointer to <b>client_info_t</b> for the target client
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">
+          NULL on thread completion (always clean exit)
+        </div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          This function runs in its own dedicated thread
+          <p class="Pp"></p>
+          <p class="Pp">Thread lifetime matches client connection lifetime</p>
+          <p class="Pp"></p>
+          <p class="Pp">Memory allocated for frames is automatically freed</p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Invalid client parameter causes immediate thread termination
+          <p class="Pp"></p>
+          <p class="Pp">
+            Thread must be joined properly to prevent resource leaks
+          </p>
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>create_mixed_ascii_frame_for_client()</b> For
+          <b>frame</b> generation
+          <p class="Pp"></p>
+          <p class="Pp">
+            queue_ascii_frame_for_client() For <b>frame</b> delivery
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>VIDEO_RENDER_FPS</b> For timing constant definition
+          </p>
+        </div>
+        <p class="Pp">
+          Definition at line <b>340</b> of file <b>server/render.c</b>.
+        </p>
+        <pre>
+340                                             {
 341   client_info_t *client = (client_info_t *)arg;
 342   if (!client) {
 343     log_error(&quot;NULL client pointer in video render thread&quot;);
@@ -1326,132 +1507,169 @@
 650
 651   return NULL;
 652 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
-    <b>adaptive_sleep_init()</b>,
-    <b>video_frame_buffer_t::allocated_buffer_size</b>,
-    <b>any_clients_sending_video()</b>, <b>APP_CALLBACK_VOID</b>,
-    <b>asciichat_errno_destroy()</b>, <b>atomic_load_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>video_frame_t::capture_timestamp_ns</b>,
-    <b>client_info::client_id</b>, <b>create_mixed_ascii_frame_for_client()</b>,
-    <b>video_frame_t::data</b>, <b>terminal_capabilities_t::desired_fps</b>,
-    <b>fps_frame_ns()</b>, <b>fps_init()</b>, <b>g_should_exit</b>,
-    <b>client_info::has_terminal_caps</b>, <b>client_info::height</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>client_info::last_rendered_grid_sources</b>,
-    <b>log_debug</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>MAX_CLIENT_ID_LEN</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
-    <b>client_info::outgoing_video_buffer</b>, <b>platform_sleep_ms()</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_STRNCPY</b>, <b>client_info::shutting_down</b>,
-    <b>video_frame_t::size</b>, <b>client_info::socket</b>, <b>START_TIMER</b>,
-    <b>STOP_TIMER_AND_LOG</b>, <b>client_info::terminal_caps</b>,
-    <b>time_get_ns()</b>, <b>time_pretty()</b>,
-    <b>video_frame_begin_write()</b>, <b>video_frame_commit()</b>,
-    <b>VIDEO_RENDER_FPS</b>, <b>client_info::video_render_thread_running</b>,
-    and <b>client_info::width</b>.</p>
-<p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
-<section class="Ss">
-<h2 class="Ss" id="int_create_client_render_threads_("><a class="permalink" href="#int_create_client_render_threads_(">int
-  create_client_render_threads (<b>server_context_t</b> * server_ctx,
-  <b>client_info_t</b> * client)</a></h2>
-<p class="Pp">Create and initialize per-client rendering threads. Sets up the
-    complete per-client threading infrastructure including both video and audio
-    rendering threads plus all necessary synchronization primitives. This
-    function is called once per client during connection establishment.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INITIALIZATION_SEQUENCE:"><a class="permalink" href="#INITIALIZATION_SEQUENCE:">INITIALIZATION
-  SEQUENCE: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>MUTEX INITIALIZATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>client_state_mutex: Protects client state variables</dd>
-  <dt>2.</dt>
-  <dd>THREAD CREATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Create video rendering thread (60fps)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Create audio rendering thread (172fps)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Set running flags with proper synchronization</dd>
-  <dt>3.</dt>
-  <dd>ERROR HANDLING:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Complete cleanup if any step fails</dd>
-  <dt> &#x2022;</dt>
-  <dd>Prevent partially initialized client state</dd>
-  <dt> &#x2022;</dt>
-  <dd>Ensure no resource leaks on failure</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SYNCHRONIZATION_SETUP:"><a class="permalink" href="#THREAD_SYNCHRONIZATION_SETUP:">THREAD
-  SYNCHRONIZATION SETUP: </a></h1>
-<p class="Pp">PER-CLIENT MUTEXES: Each client gets dedicated mutexes for
-    fine-grained locking:</p>
-<ul class="Bl-bullet">
-  <li>Prevents contention between clients</li>
-  <li>Allows concurrent processing of multiple clients</li>
-  <li>Enables lock-free operations within client context</li>
-</ul>
-<p class="Pp">THREAD RUNNING FLAGS:</p>
-<ul class="Bl-bullet">
-  <li>Protected by client_state_mutex</li>
-  <li>Allow graceful thread termination</li>
-  <li>Checked frequently by render threads</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_RECOVERY:"><a class="permalink" href="#ERROR_RECOVERY:">ERROR
-  RECOVERY: </a></h1>
-<p class="Pp">PARTIAL FAILURE HANDLING: If thread creation fails partway
-    through:</p>
-<ul class="Bl-bullet">
-  <li>Stop and join any already-created threads</li>
-  <li>Destroy any initialized mutexes</li>
-  <li>Return error code to caller</li>
-  <li>Leave client in clean state for retry or cleanup</li>
-</ul>
-<p class="Pp">RESOURCE LEAK PREVENTION:</p>
-<ul class="Bl-bullet">
-  <li>All allocations have corresponding cleanup</li>
-  <li>Thread handles are properly managed</li>
-  <li>Mutex destruction is deterministic</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_POINTS:"><a class="permalink" href="#INTEGRATION_POINTS:">INTEGRATION
-  POINTS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Called by <b>add_client()</b> in client.c</li>
-  <li>Threads integrate with <b>stream.c</b> and <b>mixer.c</b></li>
-  <li>Cleanup handled by <b>stop_client_render_threads()</b></li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Target client for thread creation</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Function performs complete initialization or complete
-  cleanup
-<p class="Pp"></p>
-<p class="Pp">Mutexes must be destroyed by
-  <b>stop_client_render_threads()</b></p>
-<p class="Pp"></p>
-<p class="Pp">Thread handles must be joined before client destruction</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Partial initialization is not supported - complete
-  success or failure</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>stop_client_render_threads()</b> For cleanup
-  implementation</div>
-<p class="Pp">Definition at line <b>1201</b> of file <b>server/render.c</b>.</p>
-<pre>1201                                                                                       {
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
+          <b>adaptive_sleep_init()</b>,
+          <b>video_frame_buffer_t::allocated_buffer_size</b>,
+          <b>any_clients_sending_video()</b>, <b>APP_CALLBACK_VOID</b>,
+          <b>asciichat_errno_destroy()</b>, <b>atomic_load_bool()</b>,
+          <b>atomic_store_bool()</b>,
+          <b>video_frame_t::capture_timestamp_ns</b>,
+          <b>client_info::client_id</b>,
+          <b>create_mixed_ascii_frame_for_client()</b>,
+          <b>video_frame_t::data</b>,
+          <b>terminal_capabilities_t::desired_fps</b>, <b>fps_frame_ns()</b>,
+          <b>fps_init()</b>, <b>g_should_exit</b>,
+          <b>client_info::has_terminal_caps</b>, <b>client_info::height</b>,
+          <b>INVALID_SOCKET_VALUE</b>,
+          <b>client_info::last_rendered_grid_sources</b>, <b>log_debug</b>,
+          <b>log_debug_every</b>, <b>log_dev_every</b>, <b>log_error</b>,
+          <b>log_info</b>, <b>log_warn</b>, <b>MAX_CLIENT_ID_LEN</b>,
+          <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+          <b>client_info::outgoing_video_buffer</b>, <b>platform_sleep_ms()</b>,
+          <b>SAFE_FREE</b>, <b>SAFE_STRNCPY</b>,
+          <b>client_info::shutting_down</b>, <b>video_frame_t::size</b>,
+          <b>client_info::socket</b>, <b>START_TIMER</b>,
+          <b>STOP_TIMER_AND_LOG</b>, <b>client_info::terminal_caps</b>,
+          <b>time_get_ns()</b>, <b>time_pretty()</b>,
+          <b>video_frame_begin_write()</b>, <b>video_frame_commit()</b>,
+          <b>VIDEO_RENDER_FPS</b>,
+          <b>client_info::video_render_thread_running</b>, and
+          <b>client_info::width</b>.
+        </p>
+        <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
+        <section class="Ss">
+          <h2 class="Ss" id="int_create_client_render_threads_(">
+            <a class="permalink" href="#int_create_client_render_threads_("
+              >int create_client_render_threads (<b>server_context_t</b> *
+              server_ctx, <b>client_info_t</b> * client)</a
+            >
+          </h2>
+          <p class="Pp">
+            Create and initialize per-client rendering threads. Sets up the
+            complete per-client threading infrastructure including both video
+            and audio rendering threads plus all necessary synchronization
+            primitives. This function is called once per client during
+            connection establishment.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INITIALIZATION_SEQUENCE:">
+          <a class="permalink" href="#INITIALIZATION_SEQUENCE:"
+            >INITIALIZATION SEQUENCE:
+          </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>MUTEX INITIALIZATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>client_state_mutex: Protects client state variables</dd>
+          <dt>2.</dt>
+          <dd>THREAD CREATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Create video rendering thread (60fps)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Create audio rendering thread (172fps)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Set running flags with proper synchronization</dd>
+          <dt>3.</dt>
+          <dd>ERROR HANDLING:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Complete cleanup if any step fails</dd>
+          <dt>&#x2022;</dt>
+          <dd>Prevent partially initialized client state</dd>
+          <dt>&#x2022;</dt>
+          <dd>Ensure no resource leaks on failure</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SYNCHRONIZATION_SETUP:">
+          <a class="permalink" href="#THREAD_SYNCHRONIZATION_SETUP:"
+            >THREAD SYNCHRONIZATION SETUP:
+          </a>
+        </h1>
+        <p class="Pp">
+          PER-CLIENT MUTEXES: Each client gets dedicated mutexes for
+          fine-grained locking:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Prevents contention between clients</li>
+          <li>Allows concurrent processing of multiple clients</li>
+          <li>Enables lock-free operations within client context</li>
+        </ul>
+        <p class="Pp">THREAD RUNNING FLAGS:</p>
+        <ul class="Bl-bullet">
+          <li>Protected by client_state_mutex</li>
+          <li>Allow graceful thread termination</li>
+          <li>Checked frequently by render threads</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_RECOVERY:">
+          <a class="permalink" href="#ERROR_RECOVERY:">ERROR RECOVERY: </a>
+        </h1>
+        <p class="Pp">
+          PARTIAL FAILURE HANDLING: If thread creation fails partway through:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Stop and join any already-created threads</li>
+          <li>Destroy any initialized mutexes</li>
+          <li>Return error code to caller</li>
+          <li>Leave client in clean state for retry or cleanup</li>
+        </ul>
+        <p class="Pp">RESOURCE LEAK PREVENTION:</p>
+        <ul class="Bl-bullet">
+          <li>All allocations have corresponding cleanup</li>
+          <li>Thread handles are properly managed</li>
+          <li>Mutex destruction is deterministic</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_POINTS:">
+          <a class="permalink" href="#INTEGRATION_POINTS:"
+            >INTEGRATION POINTS:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Called by <b>add_client()</b> in client.c</li>
+          <li>Threads integrate with <b>stream.c</b> and <b>mixer.c</b></li>
+          <li>Cleanup handled by <b>stop_client_render_threads()</b></li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>client</i> Target client for thread creation
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">0 on success, -1 on failure</div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Function performs complete initialization or complete cleanup
+          <p class="Pp"></p>
+          <p class="Pp">
+            Mutexes must be destroyed by <b>stop_client_render_threads()</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Thread handles must be joined before client destruction
+          </p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Partial initialization is not supported - complete success or failure
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>stop_client_render_threads()</b> For cleanup implementation
+        </div>
+        <p class="Pp">
+          Definition at line <b>1201</b> of file <b>server/render.c</b>.
+        </p>
+        <pre>
+1201                                                                                       {
 1202   log_info(&quot;&#x2605;&#x2605;&#x2605; create_client_render_threads() CALLED for client_id=%s&quot;, client ? client-&gt;client_id : &quot;NULL&quot;);
 1203
 1204   if (!server_ctx || !client) {
@@ -1522,132 +1740,165 @@
 1269
 1270   return 0;
 1271 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
-    <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread</b>,
-    <b>client_info::audio_render_thread_running</b>,
-    <b>client_audio_render_thread()</b>, <b>client_info::client_id</b>,
-    <b>client_video_render_thread()</b>, <b>client_info::is_tcp_client</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>safe_snprintf()</b>,
-    <b>client_info::socket</b>, <b>server_context_t::tcp_server</b>,
-    <b>tcp_server_spawn_thread()</b>, <b>client_info::video_render_thread</b>,
-    and <b>client_info::video_render_thread_running</b>.</p>
-<section class="Ss">
-<h2 class="Ss" id="void_stop_client_render_threads_("><a class="permalink" href="#void_stop_client_render_threads_(">void
-  stop_client_render_threads (<b>client_info_t</b> * client)</a></h2>
-<p class="Pp">Stop and cleanup per-client rendering threads. Performs graceful
-    shutdown of both video and audio rendering threads for a specific client,
-    including proper thread joining and resource cleanup. This function ensures
-    deterministic cleanup without resource leaks.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SHUTDOWN_SEQUENCE:"><a class="permalink" href="#SHUTDOWN_SEQUENCE:">SHUTDOWN
-  SEQUENCE: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>SIGNAL SHUTDOWN:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Set thread running flags to false</dd>
-  <dt> &#x2022;</dt>
-  <dd>Threads detect flag change and exit processing loops</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use mutex protection for atomic flag updates</dd>
-  <dt>2.</dt>
-  <dd>THREAD JOINING:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Wait for video render thread to complete</dd>
-  <dt> &#x2022;</dt>
-  <dd>Wait for audio render thread to complete</dd>
-  <dt> &#x2022;</dt>
-  <dd>Handle join failures appropriately</dd>
-  <dt>3.</dt>
-  <dd>RESOURCE CLEANUP:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Destroy per-client mutexes</dd>
-  <dt> &#x2022;</dt>
-  <dd>Clear thread handles</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reset client thread state</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="GRACEFUL_TERMINATION:"><a class="permalink" href="#GRACEFUL_TERMINATION:">GRACEFUL
-  TERMINATION: </a></h1>
-<p class="Pp">THREAD COORDINATION:</p>
-<ul class="Bl-bullet">
-  <li>Threads monitor running flags in their main loops</li>
-  <li>Flags are checked frequently (every iteration)</li>
-  <li>Threads exit cleanly within one processing cycle</li>
-  <li>No forced thread termination (unsafe)</li>
-</ul>
-<p class="Pp">DETERMINISTIC CLEANUP:</p>
-<ul class="Bl-bullet">
-  <li><b>asciichat_thread_join()</b> waits for complete thread exit</li>
-  <li>All thread resources are properly released</li>
-  <li>No zombie threads or resource leaks</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_HANDLING:"><a class="permalink" href="#ERROR_HANDLING:">ERROR
-  HANDLING: </a></h1>
-<p class="Pp">THREAD JOIN FAILURES:</p>
-<ul class="Bl-bullet">
-  <li>Logged as errors but don't prevent cleanup</li>
-  <li>Continue with resource cleanup regardless</li>
-  <li>Platform-specific error reporting</li>
-</ul>
-<p class="Pp">NULL CLIENT HANDLING:</p>
-<ul class="Bl-bullet">
-  <li>Safe to call with NULL client pointer</li>
-  <li>Error logged and function returns safely</li>
-  <li>No undefined behavior or crashes</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="RESOURCE_MANAGEMENT:"><a class="permalink" href="#RESOURCE_MANAGEMENT:">RESOURCE
-  MANAGEMENT: </a></h1>
-<p class="Pp">MUTEX CLEANUP:</p>
-<ul class="Bl-bullet">
-  <li>Destroys all per-client mutexes</li>
-  <li>Prevents resource leaks on client disconnect</li>
-  <li>Platform-independent destruction</li>
-</ul>
-<p class="Pp">THREAD HANDLE MANAGEMENT:</p>
-<ul class="Bl-bullet">
-  <li>Clears thread handles after joining</li>
-  <li>Prevents accidental reuse of stale handles</li>
-  <li>Memory zeroing for safety</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_REQUIREMENTS:"><a class="permalink" href="#INTEGRATION_REQUIREMENTS:">INTEGRATION
-  REQUIREMENTS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Called by <b>remove_client()</b> in client.c</li>
-  <li>Must be called before freeing client structure</li>
-  <li>Coordinates with other cleanup functions</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Target client for thread cleanup</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Function is safe to call multiple times (idempotent)
-<p class="Pp"></p>
-<p class="Pp">All resources are cleaned up regardless of errors</p>
-<p class="Pp"></p>
-<p class="Pp">Thread joining may take up to one processing cycle</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Must be called before client structure deallocation</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>create_client_render_threads()</b> For thread creation
-<p class="Pp"></p>
-<p class="Pp"><b>asciichat_thread_join()</b> For platform-specific joining</p>
-</div>
-<p class="Pp">Definition at line <b>1354</b> of file <b>server/render.c</b>.</p>
-<pre>1354                                                        {
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+          <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread</b>,
+          <b>client_info::audio_render_thread_running</b>,
+          <b>client_audio_render_thread()</b>, <b>client_info::client_id</b>,
+          <b>client_video_render_thread()</b>,
+          <b>client_info::is_tcp_client</b>, <b>log_debug</b>, <b>log_error</b>,
+          <b>log_info</b>, <b>safe_snprintf()</b>, <b>client_info::socket</b>,
+          <b>server_context_t::tcp_server</b>, <b>tcp_server_spawn_thread()</b>,
+          <b>client_info::video_render_thread</b>, and
+          <b>client_info::video_render_thread_running</b>.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stop_client_render_threads_(">
+            <a class="permalink" href="#void_stop_client_render_threads_("
+              >void stop_client_render_threads (<b>client_info_t</b> *
+              client)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stop and cleanup per-client rendering threads. Performs graceful
+            shutdown of both video and audio rendering threads for a specific
+            client, including proper thread joining and resource cleanup. This
+            function ensures deterministic cleanup without resource leaks.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SHUTDOWN_SEQUENCE:">
+          <a class="permalink" href="#SHUTDOWN_SEQUENCE:"
+            >SHUTDOWN SEQUENCE:
+          </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>SIGNAL SHUTDOWN:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Set thread running flags to false</dd>
+          <dt>&#x2022;</dt>
+          <dd>Threads detect flag change and exit processing loops</dd>
+          <dt>&#x2022;</dt>
+          <dd>Use mutex protection for atomic flag updates</dd>
+          <dt>2.</dt>
+          <dd>THREAD JOINING:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Wait for video render thread to complete</dd>
+          <dt>&#x2022;</dt>
+          <dd>Wait for audio render thread to complete</dd>
+          <dt>&#x2022;</dt>
+          <dd>Handle join failures appropriately</dd>
+          <dt>3.</dt>
+          <dd>RESOURCE CLEANUP:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Destroy per-client mutexes</dd>
+          <dt>&#x2022;</dt>
+          <dd>Clear thread handles</dd>
+          <dt>&#x2022;</dt>
+          <dd>Reset client thread state</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="GRACEFUL_TERMINATION:">
+          <a class="permalink" href="#GRACEFUL_TERMINATION:"
+            >GRACEFUL TERMINATION:
+          </a>
+        </h1>
+        <p class="Pp">THREAD COORDINATION:</p>
+        <ul class="Bl-bullet">
+          <li>Threads monitor running flags in their main loops</li>
+          <li>Flags are checked frequently (every iteration)</li>
+          <li>Threads exit cleanly within one processing cycle</li>
+          <li>No forced thread termination (unsafe)</li>
+        </ul>
+        <p class="Pp">DETERMINISTIC CLEANUP:</p>
+        <ul class="Bl-bullet">
+          <li><b>asciichat_thread_join()</b> waits for complete thread exit</li>
+          <li>All thread resources are properly released</li>
+          <li>No zombie threads or resource leaks</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_HANDLING:">
+          <a class="permalink" href="#ERROR_HANDLING:">ERROR HANDLING: </a>
+        </h1>
+        <p class="Pp">THREAD JOIN FAILURES:</p>
+        <ul class="Bl-bullet">
+          <li>Logged as errors but don't prevent cleanup</li>
+          <li>Continue with resource cleanup regardless</li>
+          <li>Platform-specific error reporting</li>
+        </ul>
+        <p class="Pp">NULL CLIENT HANDLING:</p>
+        <ul class="Bl-bullet">
+          <li>Safe to call with NULL client pointer</li>
+          <li>Error logged and function returns safely</li>
+          <li>No undefined behavior or crashes</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="RESOURCE_MANAGEMENT:">
+          <a class="permalink" href="#RESOURCE_MANAGEMENT:"
+            >RESOURCE MANAGEMENT:
+          </a>
+        </h1>
+        <p class="Pp">MUTEX CLEANUP:</p>
+        <ul class="Bl-bullet">
+          <li>Destroys all per-client mutexes</li>
+          <li>Prevents resource leaks on client disconnect</li>
+          <li>Platform-independent destruction</li>
+        </ul>
+        <p class="Pp">THREAD HANDLE MANAGEMENT:</p>
+        <ul class="Bl-bullet">
+          <li>Clears thread handles after joining</li>
+          <li>Prevents accidental reuse of stale handles</li>
+          <li>Memory zeroing for safety</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_REQUIREMENTS:">
+          <a class="permalink" href="#INTEGRATION_REQUIREMENTS:"
+            >INTEGRATION REQUIREMENTS:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Called by <b>remove_client()</b> in client.c</li>
+          <li>Must be called before freeing client structure</li>
+          <li>Coordinates with other cleanup functions</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>client</i> Target client for thread cleanup
+        </div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Function is safe to call multiple times (idempotent)
+          <p class="Pp"></p>
+          <p class="Pp">All resources are cleaned up regardless of errors</p>
+          <p class="Pp"></p>
+          <p class="Pp">Thread joining may take up to one processing cycle</p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Must be called before client structure deallocation
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>create_client_render_threads()</b> For thread creation
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>asciichat_thread_join()</b> For platform-specific joining
+          </p>
+        </div>
+        <p class="Pp">
+          Definition at line <b>1354</b> of file <b>server/render.c</b>.
+        </p>
+        <pre>
+1354                                                        {
 1355   if (!client) {
 1356     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client is NULL&quot;);
 1357     return;
@@ -1735,29 +1986,33 @@
 1439   log_debug(&quot;Successfully destroyed render threads for client %u&quot;, client-&gt;client_id);
 1440 #endif
 1441 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_init()</b>,
-    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>client_info::audio_render_thread</b>,
-    <b>client_info::audio_render_thread_running</b>,
-    <b>client_info::client_id</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>g_should_exit</b>, <b>log_debug</b>, <b>log_error</b>, <b>log_warn</b>,
-    <b>SAFE_STRERROR</b>, <b>SET_ERRNO</b>,
-    <b>client_info::video_render_thread</b>, and
-    <b>client_info::video_render_thread_running</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.25</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>asciichat_thread_init()</b>,
+          <b>asciichat_thread_is_initialized()</b>,
+          <b>asciichat_thread_join</b>, <b>atomic_load_bool()</b>,
+          <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread</b>,
+          <b>client_info::audio_render_thread_running</b>,
+          <b>client_info::client_id</b>, <b>ERROR_INVALID_PARAM</b>,
+          <b>g_should_exit</b>, <b>log_debug</b>, <b>log_error</b>,
+          <b>log_warn</b>, <b>SAFE_STRERROR</b>, <b>SET_ERRNO</b>,
+          <b>client_info::video_render_thread</b>, and
+          <b>client_info::video_render_thread_running</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

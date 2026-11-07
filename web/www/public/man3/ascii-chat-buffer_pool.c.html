@@ -1,124 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>buffer_pool.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">buffer_pool.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">buffer_pool.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">buffer_pool.c - &#x1F4BE; Lock-free memory pool with atomic
-    operations</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>buffer_pool_t</b> * <b>buffer_pool_create</b> (size_t
-    max_bytes, <b>uint64_t</b> shrink_delay_ns)
-  <br/>
-  Create a new buffer pool. void <b>buffer_pool_destroy</b>
-    (<b>buffer_pool_t</b> *pool)
-  <br/>
-  Destroy a buffer pool and free all memory. void * <b>buffer_pool_alloc</b>
-    (<b>buffer_pool_t</b> *pool, size_t size)
-  <br/>
-  Allocate a buffer from the pool (lock-free fast path). void
-    <b>buffer_pool_free</b> (<b>buffer_pool_t</b> *pool, const void *data,
-    size_t size)
-  <br/>
-  Free a buffer back to the pool (lock-free). void <b>buffer_pool_shrink</b>
-    (<b>buffer_pool_t</b> *pool)
-  <br/>
-  Force shrink the pool (free old unused buffers). void
-    <b>buffer_pool_get_stats</b> (<b>buffer_pool_t</b> *pool, size_t
-    *current_bytes, size_t *used_bytes, size_t *free_bytes)
-  <br/>
-  Get pool statistics (atomic reads). void <b>buffer_pool_log_stats</b>
-    (<b>buffer_pool_t</b> *pool, const char *name)
-  <br/>
-  Log pool statistics. void <b>buffer_pool_init_global</b> (void)
-  <br/>
-  void <b>buffer_pool_cleanup_global</b> (void)
-  <br/>
-  <b>buffer_pool_t</b> * <b>buffer_pool_get_global</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4BE; Lock-free memory pool with atomic operations</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>buffer_pool.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>lifecycle_t</b> lifecycle</h2>
-<p class="Pp">Definition at line <b>409</b> of file <b>buffer_pool.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> mutex</h2>
-<p class="Pp">Definition at line <b>408</b> of file <b>buffer_pool.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>buffer_pool_t</b>* pool</h2>
-<p class="Pp">Definition at line <b>407</b> of file <b>buffer_pool.c</b>.</p>
-<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>,
-    <b>buffer_pool_create()</b>, <b>buffer_pool_destroy()</b>,
-    <b>buffer_pool_free()</b>, <b>buffer_pool_get_stats()</b>,
-    <b>buffer_pool_log_stats()</b>, <b>buffer_pool_shrink()</b>,
-    <b>node_pool_create()</b>, <b>node_pool_destroy()</b>,
-    <b>node_pool_get()</b>, <b>node_pool_put()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_destroy()</b>,
-    <b>thread_pool_get_count()</b>, <b>thread_pool_has_threads()</b>,
-    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_queue_work()</b>,
-    <b>thread_pool_spawn()</b>, <b>thread_pool_spawn()</b>,
-    <b>thread_pool_stop_all()</b>, <b>thread_pool_stop_all()</b>,
-    <b>video_frame_buffer_create()</b>, and
-  <b>video_frame_buffer_destroy()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.25</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>buffer_pool.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">buffer_pool.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">buffer_pool.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          buffer_pool.c - &#x1F4BE; Lock-free memory pool with atomic operations
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>buffer_pool_t</b> * <b>buffer_pool_create</b> (size_t max_bytes,
+            <b>uint64_t</b> shrink_delay_ns)
+            <br />
+            Create a new buffer pool. void <b>buffer_pool_destroy</b> (<b
+              >buffer_pool_t</b
+            >
+            *pool)
+            <br />
+            Destroy a buffer pool and free all memory. void *
+            <b>buffer_pool_alloc</b> (<b>buffer_pool_t</b>
+            *pool, size_t size)
+            <br />
+            Allocate a buffer from the pool (lock-free fast path). void
+            <b>buffer_pool_free</b> (<b>buffer_pool_t</b> *pool, const void
+            *data, size_t size)
+            <br />
+            Free a buffer back to the pool (lock-free). void
+            <b>buffer_pool_shrink</b> (<b>buffer_pool_t</b>
+            *pool)
+            <br />
+            Force shrink the pool (free old unused buffers). void
+            <b>buffer_pool_get_stats</b> (<b>buffer_pool_t</b> *pool, size_t
+            *current_bytes, size_t *used_bytes, size_t *free_bytes)
+            <br />
+            Get pool statistics (atomic reads). void
+            <b>buffer_pool_log_stats</b> (<b>buffer_pool_t</b>
+            *pool, const char *name)
+            <br />
+            Log pool statistics. void <b>buffer_pool_init_global</b> (void)
+            <br />
+            void <b>buffer_pool_cleanup_global</b> (void)
+            <br />
+            <b>buffer_pool_t</b> * <b>buffer_pool_get_global</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x1F4BE; Lock-free memory pool with atomic operations</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>buffer_pool.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>lifecycle_t</b> lifecycle</h2>
+          <p class="Pp">
+            Definition at line <b>409</b> of file <b>buffer_pool.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> mutex</h2>
+          <p class="Pp">
+            Definition at line <b>408</b> of file <b>buffer_pool.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>buffer_pool_t</b>* pool</h2>
+          <p class="Pp">
+            Definition at line <b>407</b> of file <b>buffer_pool.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_pool_alloc()</b>,
+            <b>buffer_pool_create()</b>, <b>buffer_pool_destroy()</b>,
+            <b>buffer_pool_free()</b>, <b>buffer_pool_get_stats()</b>,
+            <b>buffer_pool_log_stats()</b>, <b>buffer_pool_shrink()</b>,
+            <b>node_pool_create()</b>, <b>node_pool_destroy()</b>,
+            <b>node_pool_get()</b>, <b>node_pool_put()</b>,
+            <b>thread_pool_create()</b>,
+            <b>thread_pool_create_with_workers()</b>,
+            <b>thread_pool_destroy()</b>, <b>thread_pool_get_count()</b>,
+            <b>thread_pool_has_threads()</b>,
+            <b>thread_pool_interrupt_all()</b>, <b>thread_pool_queue_work()</b>,
+            <b>thread_pool_spawn()</b>, <b>thread_pool_spawn()</b>,
+            <b>thread_pool_stop_all()</b>, <b>thread_pool_stop_all()</b>,
+            <b>video_frame_buffer_create()</b>, and
+            <b>video_frame_buffer_destroy()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

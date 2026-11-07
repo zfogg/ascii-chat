@@ -1,61 +1,105 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>quantize.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">quantize.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">quantize.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">quantize.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>simd_quantize_SIMD_CELL_ISA</b> (const <b>uint32_t</b>
-    *rgb, <b>uint32_t</b> *out, size_t count, unsigned colors)
-  <br/>
-  size_t <b>simd_run_SIMD_CELL_ISA</b> (const <b>uint32_t</b> *glyph, const
-    <b>uint32_t</b> *fg, const <b>uint32_t</b> *bg, size_t count)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_simd_quantize_SIMD_CELL_ISA_(const_"><a class="permalink" href="#void_simd_quantize_SIMD_CELL_ISA_(const_">void
-  simd_quantize_SIMD_CELL_ISA (const <b>uint32_t</b> * rgb, <b>uint32_t</b> *
-  out, size_t count, unsigned colors)</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>quantize.c</b>.</p>
-<pre>4                                                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>quantize.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">quantize.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">quantize.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">quantize.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>simd_quantize_SIMD_CELL_ISA</b> (const <b>uint32_t</b> *rgb,
+            <b>uint32_t</b> *out, size_t count, unsigned colors)
+            <br />
+            size_t <b>simd_run_SIMD_CELL_ISA</b> (const <b>uint32_t</b> *glyph,
+            const <b>uint32_t</b> *fg, const <b>uint32_t</b> *bg, size_t count)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_quantize_SIMD_CELL_ISA_(const_">
+            <a
+              class="permalink"
+              href="#void_simd_quantize_SIMD_CELL_ISA_(const_"
+              >void simd_quantize_SIMD_CELL_ISA (const <b>uint32_t</b> * rgb,
+              <b>uint32_t</b> * out, size_t count, unsigned colors)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>quantize.c</b>.
+          </p>
+          <pre>
+4                                                                                            {
 5   static const int palette[16][3] = {{0, 0, 0},       {128, 0, 0},   {0, 128, 0},   {128, 128, 0},
 6                                      {0, 0, 128},     {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
 7                                      {128, 128, 128}, {255, 0, 0},   {0, 255, 0},   {255, 255, 0},
@@ -105,20 +149,29 @@
 51   if (i &lt; count)
 52     simd_quantize_scalar(rgb + i, out + i, count - i, colors);
 53 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ADD</b>, <b>AND</b>, <b>BEGIN_BLOCK</b>, <b>DIV</b>,
-    <b>EQ</b>, <b>FN</b>, <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>,
-    <b>LT</b>, <b>MUL</b>, <b>SELECT</b>, <b>SET</b>, <b>SHR</b>,
-    <b>simd_quantize_scalar()</b>, <b>SQUARE</b>, <b>STORE</b>, and
-  <b>SUB</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_simd_run_SIMD_CELL_ISA_(const_"><a class="permalink" href="#size_t_simd_run_SIMD_CELL_ISA_(const_">size_t
-  simd_run_SIMD_CELL_ISA (const <b>uint32_t</b> * glyph, const <b>uint32_t</b> *
-  fg, const <b>uint32_t</b> * bg, size_t count)</a></h2>
-<p class="Pp">Definition at line <b>55</b> of file <b>quantize.c</b>.</p>
-<pre>55                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ADD</b>, <b>AND</b>, <b>BEGIN_BLOCK</b>, <b>DIV</b>,
+            <b>EQ</b>, <b>FN</b>, <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>,
+            <b>LT</b>, <b>MUL</b>, <b>SELECT</b>, <b>SET</b>, <b>SHR</b>,
+            <b>simd_quantize_scalar()</b>, <b>SQUARE</b>, <b>STORE</b>, and
+            <b>SUB</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_simd_run_SIMD_CELL_ISA_(const_">
+            <a class="permalink" href="#size_t_simd_run_SIMD_CELL_ISA_(const_"
+              >size_t simd_run_SIMD_CELL_ISA (const <b>uint32_t</b> * glyph,
+              const <b>uint32_t</b> * fg, const <b>uint32_t</b> * bg, size_t
+              count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>quantize.c</b>.
+          </p>
+          <pre>
+55                                                                                                   {
 56   if (!count)
 57     return 0;
 58   size_t i = 0;
@@ -164,23 +217,27 @@
 98   }
 99   return i &lt; count ? i : count;
 100 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>BEGIN_BLOCK</b>, <b>BOTH</b>, <b>EQ</b>, <b>FN</b>,
-    <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>, <b>SET</b>, and
-  <b>STORE</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>BEGIN_BLOCK</b>, <b>BOTH</b>, <b>EQ</b>, <b>FN</b>,
+            <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>, <b>SET</b>, and
+            <b>STORE</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

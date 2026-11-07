@@ -1,69 +1,116 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>layout.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">layout.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">layout.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">layout.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ui_layout_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>ui_layout_measure</b>
-    (<b>terminal_size_t</b> size, int header_rows, int detail_rows, int
-    footer_rows, <b>ui_layout_t</b> *out)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> ui_layout_measure
-  (<b>terminal_size_t</b> size, int header_rows, int detail_rows, int
-  footer_rows, <b>ui_layout_t</b> * out)</h2>
-<p class="Pp">Fixed chrome with a bounded, possibly empty body viewport.</p>
-<p class="Pp">Definition at line <b>3</b> of file <b>ui/layout.c</b>.</p>
-<pre>3                                                                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>layout.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">layout.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">layout.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">layout.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_layout_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>ui_layout_measure</b> (<b
+              >terminal_size_t</b
+            >
+            size, int header_rows, int detail_rows, int footer_rows,
+            <b>ui_layout_t</b> *out)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ui_layout_measure (<b>terminal_size_t</b>
+            size, int header_rows, int detail_rows, int footer_rows,
+            <b>ui_layout_t</b> * out)
+          </h2>
+          <p class="Pp">
+            Fixed chrome with a bounded, possibly empty body viewport.
+          </p>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>ui/layout.c</b>.
+          </p>
+          <pre>
+3                                                                                                                 {
 4   if (!out || size.cols &lt; 1 || size.rows &lt; 1 || header &lt; 0 || detail &lt; 0 || footer &lt; 0 || header &gt; INT_MAX - detail ||
 5       header + detail &gt; INT_MAX - footer)
 6     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid TUI geometry or fixed row counts&quot;);
@@ -78,26 +125,32 @@
 15     out-&gt;footer_row = 1;
 16   return ASCIICHAT_OK;
 17 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
-    <b>ui_layout_t::detail_row</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ui_layout_t::footer_row</b>, <b>terminal_size_t::rows</b>,
-    <b>SET_ERRNO</b>, and <b>ui_layout_measure()</b>.</p>
-<p class="Pp">Referenced by <b>tui_stats_render()</b>,
-    <b>ui_layout_measure()</b>, and <b>ui_sync_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
+            <b>ui_layout_t::detail_row</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ui_layout_t::footer_row</b>, <b>terminal_size_t::rows</b>,
+            <b>SET_ERRNO</b>, and <b>ui_layout_measure()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>tui_stats_render()</b>, <b>ui_layout_measure()</b>,
+            and <b>ui_sync_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

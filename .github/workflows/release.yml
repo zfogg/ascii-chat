@@ -998,7 +998,14 @@ jobs:
   notify:
     name: Send release notification
     if: always() && needs.create-release.result != 'skipped'
-    needs: [create-release, package-linux, package-macos, package-windows, publish-release]
+    needs:
+      [
+        create-release,
+        package-linux,
+        package-macos,
+        package-windows,
+        publish-release,
+      ]
     uses: ./.github/workflows/notify.yml
     secrets: inherit
     with:

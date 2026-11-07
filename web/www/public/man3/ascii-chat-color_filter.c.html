@@ -1,94 +1,160 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>color_filter.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">color_filter.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">color_filter.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">color_filter.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b> 32
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const <b>color_filter_def_t</b> * <b>color_filter_get_metadata</b>
-    (<b>color_filter_t</b> filter)
-  <br/>
-  Get color filter metadata by enum value. <b>color_filter_t</b>
-    <b>color_filter_from_cli_name</b> (const char *cli_name)
-  <br/>
-  Convert color filter CLI name to enum value. void
-    <b>color_filter_calculate_rainbow</b> (float time, <b>uint8_t</b> *r,
-    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
-  <br/>
-  Calculate rainbow color from time (3.5s cycle). int <b>apply_color_filter</b>
-    (<b>uint8_t</b> *pixels, <b>uint32_t</b> width, <b>uint32_t</b> height,
-    <b>uint32_t</b> stride, <b>color_filter_t</b> filter, float time)
-  <br/>
-  Apply color filter to entire image in-place. char *
-    <b>rainbow_replace_ansi_colors</b> (const char *ansi_string, float
-    time_seconds)
-  <br/>
-  Replace all RGB ANSI codes with rainbow color. char *
-    <b>rainbow_render_ansi_at</b> (const char *ansi_string, float time_seconds)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE___32"><a class="permalink" href="#_define_VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE___32">#define
-  VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>color_filter.c</b>.</p>
-<p class="Pp">Referenced by <b>rainbow_render_ansi_at()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_rainbow_render_ansi_at_(const_char_*_ansi_string,_float_time_seconds)"><a class="permalink" href="#char_*_rainbow_render_ansi_at_(const_char_*_ansi_string,_float_time_seconds)">char
-  * rainbow_render_ansi_at (const char * ansi_string, float
-  time_seconds)</a></h2>
-<p class="Pp">Definition at line <b>365</b> of file <b>color_filter.c</b>.</p>
-<pre>365                                                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>color_filter.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">color_filter.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">color_filter.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">color_filter.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>color_filter_def_t</b> *
+            <b>color_filter_get_metadata</b> (<b>color_filter_t</b>
+            filter)
+            <br />
+            Get color filter metadata by enum value. <b>color_filter_t</b>
+            <b>color_filter_from_cli_name</b> (const char *cli_name)
+            <br />
+            Convert color filter CLI name to enum value. void
+            <b>color_filter_calculate_rainbow</b> (float time,
+            <b>uint8_t</b> *r, <b>uint8_t</b> *g, <b>uint8_t</b> *b)
+            <br />
+            Calculate rainbow color from time (3.5s cycle). int
+            <b>apply_color_filter</b> (<b>uint8_t</b> *pixels,
+            <b>uint32_t</b> width, <b>uint32_t</b> height,
+            <b>uint32_t</b> stride, <b>color_filter_t</b> filter, float time)
+            <br />
+            Apply color filter to entire image in-place. char *
+            <b>rainbow_replace_ansi_colors</b> (const char *ansi_string, float
+            time_seconds)
+            <br />
+            Replace all RGB ANSI codes with rainbow color. char *
+            <b>rainbow_render_ansi_at</b> (const char *ansi_string, float
+            time_seconds)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE___32"
+              >#define VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>color_filter.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>rainbow_render_ansi_at()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_rainbow_render_ansi_at_(const_char_*_ansi_string,_float_time_seconds)"
+          >
+            <a
+              class="permalink"
+              href="#char_*_rainbow_render_ansi_at_(const_char_*_ansi_string,_float_time_seconds)"
+              >char * rainbow_render_ansi_at (const char * ansi_string, float
+              time_seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>365</b> of file <b>color_filter.c</b>.
+          </p>
+          <pre>
+365                                                                           {
 366   if (!ansi_string) {
 367     return NULL;
 368   }
@@ -165,25 +231,31 @@
 439
 440   return new_result;
 441 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_calculate_rainbow()</b>,
-    <b>rainbow_render_ansi_at()</b>, <b>SAFE_MALLOC</b>, and
-    <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>animation_apply()</b>, and
-    <b>rainbow_render_ansi_at()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_filter_calculate_rainbow()</b>,
+            <b>rainbow_render_ansi_at()</b>, <b>SAFE_MALLOC</b>, and
+            <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>rainbow_render_ansi_at()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

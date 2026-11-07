@@ -14,7 +14,7 @@ panels:
       w: 12
       h: 2
     position: 0
-  - title: 'Completed screen visits: time selected'
+  - title: "Completed screen visits: time selected"
     display_type: table
     query: "WITH usage AS (\n  SELECT\n    service_name,\n    json_extract_string(attributes, '$.\"ascii_chat.ui.screen\"') AS screen,\n    json_extract_string(attributes, '$.\"ascii_chat.ui.event\"') AS event,\n    try_cast(\n      json_extract_string(attributes, '$.\"ascii_chat.ui.duration_ns\"') AS BIGINT\n    ) / 1e9 AS seconds\n  FROM spans\n  WHERE\n    session_id = $session_id\n    AND name = 'ascii-chat.ui.usage'\n)\nSELECT\n  service_name,\n  screen,\n  count(*) AS completed_visits,\n  round(sum(seconds), 3) AS total_seconds,\n  round(avg(seconds), 3) AS mean_seconds\nFROM usage\nWHERE\n  event = 'leave'\nGROUP BY\n  service_name,\n  screen\nORDER BY\n  total_seconds DESC\n"
     settings: {}

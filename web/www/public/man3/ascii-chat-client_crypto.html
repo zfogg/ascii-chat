@@ -1,90 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client_crypto(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client_crypto(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client_crypto(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client_crypto - Cryptographic Operations</p>
-<p class="Pp">
-  <br/>
-   - &#x1F510; Client-side cryptographic handshake and key management</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>crypto_client_should_rekey</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_initiate_rekey</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_process_rekey_request</b>
-    (<b>client_connection_t</b> *connection, const <b>uint8_t</b> *packet,
-    size_t packet_len)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_send_rekey_response</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_process_rekey_response</b>
-    (<b>client_connection_t</b> *connection, const <b>uint8_t</b> *packet,
-    size_t packet_len)
-  <br/>
-  <b>asciichat_error_t</b> <b>crypto_client_send_rekey_complete</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F510; Client-side cryptographic handshake and key
-  management</p>
-<p class="Pp">Cryptographic Operations</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
-<p class="Pp">The client crypto subsystem coordinates the cryptographic
-    handshake with the server, loads client and server keys, verifies host
-    identity, and manages the encryption context for secure communication.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Implementation</b>: <b>src/client/crypto.c</b>,
-    <b>src/client/crypto.h</b></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Handshake_Process"><a class="permalink" href="#Handshake_Process">Handshake
-  Process</a></h1>
-<pre>int client_crypto_handshake(socket_t socket)
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_crypto(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_crypto(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_crypto(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client_crypto - Cryptographic Operations</p>
+        <p class="Pp">
+          <br />
+          - &#x1F510; Client-side cryptographic handshake and key management
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>crypto_client_should_rekey</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b> <b>crypto_client_initiate_rekey</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_process_rekey_request</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_send_rekey_response</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_process_rekey_response</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>crypto_client_send_rekey_complete</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F510; Client-side cryptographic handshake and key management
+        </p>
+        <p class="Pp">Cryptographic Operations</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The client crypto subsystem coordinates the cryptographic handshake
+          with the server, loads client and server keys, verifies host identity,
+          and manages the encryption context for secure communication.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Implementation</b>: <b>src/client/crypto.c</b>,
+          <b>src/client/crypto.h</b>
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Handshake_Process">
+          <a class="permalink" href="#Handshake_Process">Handshake Process</a>
+        </h1>
+        <pre>int client_crypto_handshake(socket_t socket)
 {
 <br/>
   crypto_handshake_context_t handshake_ctx;
@@ -139,76 +194,95 @@
 <br/>
   }
 }</pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Key_Management"><a class="permalink" href="#Key_Management">Key
-  Management</a></h1>
-<p class="Pp"><b>Client Keys</b> (--client-key):</p>
-<ul class="Bl-bullet">
-  <li>Ed25519 SSH private keys for client authentication</li>
-  <li>Loaded from filesystem or SSH agent</li>
-  <li>Password support via $ASCII_CHAT_KEY_PASSWORD</li>
-</ul>
-<p class="Pp"><b>Server Keys</b> (--server-key):</p>
-<ul class="Bl-bullet">
-  <li>Ed25519 SSH public keys for server verification</li>
-  <li>Can be loaded from:</li>
-</ul>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Filesystem path (~/.ssh/server_id_ed25519.pub)</dd>
-  <dt> &#x2022;</dt>
-  <dd>GitHub URL (github:username)</dd>
-  <dt> &#x2022;</dt>
-  <dd>GitLab URL (gitlab:username)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Verified against known_hosts file</dd>
-</dl>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent"><b>Native Decryption</b>: Encrypted SSH keys are
-  decrypted natively using bcrypt_pbkdf (from libsodium-bcrypt-pbkdf) + BearSSL
-  AES-256-CTR. No external tools required. Alternatively, use $SSH_AUTH_SOCK
-  (ssh-agent) for password-free authentication.</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Known_Hosts_Verification"><a class="permalink" href="#Known_Hosts_Verification">Known
-  Hosts Verification</a></h1>
-<p class="Pp"><b>TOFU (Trust On First Use)</b>:</p>
-<ul class="Bl-bullet">
-  <li>First connection: Record server public key by IP</li>
-  <li>Subsequent connections: Verify key matches recorded value</li>
-  <li>Key mismatch: Connection rejected (possible MITM attack)</li>
-</ul>
-<p class="Pp"><b>Known hosts file</b>: ~/.ascii-chat/known_hosts</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>src/client/crypto.c</b>
-<p class="Pp"></p>
-<p class="Pp"><b>src/client/crypto.h</b></p>
-<p class="Pp"></p>
-<p class="Pp">lib/crypto/handshake.h</p>
-<p class="Pp"></p>
-<p class="Pp">lib/crypto/keys/keys.h</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Client Overview</b></p>
-</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_client_initiate_rekey
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">#include &lt;<b>src/client/crypto.c</b>&gt;<b>Initiate session
-    rekeying (client-initiated)</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>122</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>122                                                                                 {
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Key_Management">
+          <a class="permalink" href="#Key_Management">Key Management</a>
+        </h1>
+        <p class="Pp"><b>Client Keys</b> (--client-key):</p>
+        <ul class="Bl-bullet">
+          <li>Ed25519 SSH private keys for client authentication</li>
+          <li>Loaded from filesystem or SSH agent</li>
+          <li>Password support via $ASCII_CHAT_KEY_PASSWORD</li>
+        </ul>
+        <p class="Pp"><b>Server Keys</b> (--server-key):</p>
+        <ul class="Bl-bullet">
+          <li>Ed25519 SSH public keys for server verification</li>
+          <li>Can be loaded from:</li>
+        </ul>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>Filesystem path (~/.ssh/server_id_ed25519.pub)</dd>
+          <dt>&#x2022;</dt>
+          <dd>GitHub URL (github:username)</dd>
+          <dt>&#x2022;</dt>
+          <dd>GitLab URL (gitlab:username)</dd>
+        </dl>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>Verified against known_hosts file</dd>
+        </dl>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          <b>Native Decryption</b>: Encrypted SSH keys are decrypted natively
+          using bcrypt_pbkdf (from libsodium-bcrypt-pbkdf) + BearSSL
+          AES-256-CTR. No external tools required. Alternatively, use
+          $SSH_AUTH_SOCK (ssh-agent) for password-free authentication.
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Known_Hosts_Verification">
+          <a class="permalink" href="#Known_Hosts_Verification"
+            >Known Hosts Verification</a
+          >
+        </h1>
+        <p class="Pp"><b>TOFU (Trust On First Use)</b>:</p>
+        <ul class="Bl-bullet">
+          <li>First connection: Record server public key by IP</li>
+          <li>Subsequent connections: Verify key matches recorded value</li>
+          <li>Key mismatch: Connection rejected (possible MITM attack)</li>
+        </ul>
+        <p class="Pp"><b>Known hosts file</b>: ~/.ascii-chat/known_hosts</p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>src/client/crypto.c</b>
+          <p class="Pp"></p>
+          <p class="Pp"><b>src/client/crypto.h</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">lib/crypto/handshake.h</p>
+          <p class="Pp"></p>
+          <p class="Pp">lib/crypto/keys/keys.h</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Client Overview</b></p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_client_initiate_rekey (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/crypto.c</b>&gt;<b
+              >Initiate session rekeying (client-initiated)</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>122</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+122                                                                                 {
 123   if (!crypto_client_is_ready(connection)) {
 124     log_error(&quot;Cannot initiate rekey: crypto not initialized or not ready&quot;);
 125     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection is not ready for rekeying&quot;);
@@ -228,31 +302,44 @@
 139
 140   return ASCIICHAT_OK;
 141 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>crypto_client_initiate_rekey()</b>, <b>client_connection::crypto_ctx</b>,
-    <b>crypto_handshake_rekey_request()</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>log_error</b>, <b>server_connection_get_transport()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>crypto_client_initiate_rekey()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_client_process_rekey_request
-  (<b>client_connection_t</b> * connection, const <b>uint8_t</b> * packet,
-  size_t packet_len)</h2>
-<p class="Pp">#include &lt;<b>src/client/crypto.c</b>&gt;<b>Process received
-    REKEY_REQUEST packet from server</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>packet</i> Packet data
-<br/>
-<i>packet_len</i> Packet length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>152</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>153                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>crypto_client_initiate_rekey()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>crypto_handshake_rekey_request()</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_error</b>, <b>server_connection_get_transport()</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_client_initiate_rekey()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_client_process_rekey_request (<b
+              >client_connection_t</b
+            >
+            * connection, const <b>uint8_t</b> * packet, size_t packet_len)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/crypto.c</b>&gt;<b
+              >Process received REKEY_REQUEST packet from server</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>packet</i> Packet data
+            <br />
+            <i>packet_len</i> Packet length
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>152</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+153                                                                          {
 154   if (!crypto_client_is_ready(connection)) {
 155     log_error(&quot;Cannot process rekey request: crypto not initialized or not ready&quot;);
 156     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection is not ready for rekeying&quot;);
@@ -266,31 +353,45 @@
 164
 165   return ASCIICHAT_OK;
 166 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>crypto_client_process_rekey_request()</b>,
-    <b>client_connection::crypto_ctx</b>,
-    <b>crypto_handshake_process_rekey_request()</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>log_error</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>crypto_client_process_rekey_request()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_client_process_rekey_response
-  (<b>client_connection_t</b> * connection, const <b>uint8_t</b> * packet,
-  size_t packet_len)</h2>
-<p class="Pp">#include &lt;<b>src/client/crypto.c</b>&gt;<b>Process received
-    REKEY_RESPONSE packet from server</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>packet</i> Packet data
-<br/>
-<i>packet_len</i> Packet length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>205</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>206                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>crypto_client_process_rekey_request()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>crypto_handshake_process_rekey_request()</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>log_error</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_client_process_rekey_request()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_client_process_rekey_response (<b
+              >client_connection_t</b
+            >
+            * connection, const <b>uint8_t</b> * packet, size_t packet_len)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/crypto.c</b>&gt;<b
+              >Process received REKEY_RESPONSE packet from server</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>packet</i> Packet data
+            <br />
+            <i>packet_len</i> Packet length
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>205</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+206                                                                           {
 207   if (!crypto_client_is_ready(connection)) {
 208     log_error(&quot;Cannot process rekey response: crypto not initialized or not ready&quot;);
 209     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection is not ready for rekeying&quot;);
@@ -304,26 +405,39 @@
 217
 218   return ASCIICHAT_OK;
 219 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>crypto_client_process_rekey_response()</b>,
-    <b>client_connection::crypto_ctx</b>,
-    <b>crypto_handshake_process_rekey_response()</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>log_error</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>crypto_client_process_rekey_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_client_send_rekey_complete
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">#include &lt;<b>src/client/crypto.c</b>&gt;<b>Send REKEY_COMPLETE
-    packet to server and commit to new key</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>228</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>228                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>crypto_client_process_rekey_response()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>crypto_handshake_process_rekey_response()</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>log_error</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_client_process_rekey_response()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_client_send_rekey_complete (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/crypto.c</b>&gt;<b
+              >Send REKEY_COMPLETE packet to server and commit to new key</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>228</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+228                                                                                      {
 229   if (!crypto_client_is_ready(connection)) {
 230     log_error(&quot;Cannot send rekey complete: crypto not initialized or not ready&quot;);
 231     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection is not ready for rekeying&quot;);
@@ -343,27 +457,40 @@
 245
 246   return ASCIICHAT_OK;
 247 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>crypto_client_send_rekey_complete()</b>,
-    <b>client_connection::crypto_ctx</b>,
-    <b>crypto_handshake_rekey_complete()</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>log_error</b>, <b>server_connection_get_transport()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>crypto_client_send_rekey_complete()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_client_send_rekey_response
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">#include &lt;<b>src/client/crypto.c</b>&gt;<b>Send REKEY_RESPONSE
-    packet to server</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>175</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>175                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>crypto_client_send_rekey_complete()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>crypto_handshake_rekey_complete()</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>log_error</b>,
+            <b>server_connection_get_transport()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_client_send_rekey_complete()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> crypto_client_send_rekey_response (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/crypto.c</b>&gt;<b
+              >Send REKEY_RESPONSE packet to server</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>175</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+175                                                                                      {
 176   if (!crypto_client_is_ready(connection)) {
 177     log_error(&quot;Cannot send rekey response: crypto not initialized or not ready&quot;);
 178     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection is not ready for rekeying&quot;);
@@ -383,52 +510,69 @@
 192
 193   return ASCIICHAT_OK;
 194 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>crypto_client_send_rekey_response()</b>,
-    <b>client_connection::crypto_ctx</b>,
-    <b>crypto_handshake_rekey_response()</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>log_error</b>, <b>server_connection_get_transport()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>crypto_client_send_rekey_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> crypto_client_should_rekey
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">#include &lt;<b>src/client/crypto.c</b>&gt;<b>Check if session
-    rekeying should be triggered</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if rekey should be initiated, false otherwise</div>
-<p class="Pp">Definition at line <b>108</b> of file
-  <b>src/client/crypto.c</b>.</p>
-<pre>108                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>crypto_client_send_rekey_response()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>crypto_handshake_rekey_response()</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>log_error</b>,
+            <b>server_connection_get_transport()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_client_send_rekey_response()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> crypto_client_should_rekey (<b>client_connection_t</b> *
+            connection)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>src/client/crypto.c</b>&gt;<b
+              >Check if session rekeying should be triggered</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if rekey should be initiated, false otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>108</b> of file <b>src/client/crypto.c</b>.
+          </p>
+          <pre>
+108                                                                  {
 109   if (!crypto_client_is_ready(connection) || !connection-&gt;crypto_ctx-&gt;crypto_ctx.encrypt_data) {
 110     return false;
 111   }
 112   return crypto_handshake_should_rekey(connection-&gt;crypto_ctx);
 113 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_should_rekey()</b>,
-    <b>client_connection::crypto_ctx</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>crypto_handshake_should_rekey()</b>, and
-    <b>crypto_context_t::encrypt_data</b>.</p>
-<p class="Pp">Referenced by <b>crypto_client_should_rekey()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>crypto_client_should_rekey()</b>,
+            <b>client_connection::crypto_ctx</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>crypto_handshake_should_rekey()</b>, and
+            <b>crypto_context_t::encrypt_data</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_client_should_rekey()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

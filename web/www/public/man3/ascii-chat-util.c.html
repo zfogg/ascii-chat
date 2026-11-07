@@ -1,164 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>util.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">util.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">util.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">util.c - Utility stubs for WASM/Emscripten (backtrace,
-  localtime).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>platform_backtrace</b> (void **buffer, int size)
-  <br/>
-  Get a backtrace of the current call stack. char **
-    <b>platform_backtrace_symbols</b> (void *const *buffer, int size)
-  <br/>
-  Convert backtrace addresses to symbol names. void
-    <b>platform_backtrace_symbols_destroy</b> (char **symbols)
-  <br/>
-  Free symbol array from <b>platform_backtrace_symbols()</b>. void
-    <b>platform_print_backtrace_symbols</b> (const char *label, char **symbols,
-    int count, int skip_frames, int max_frames, <b>backtrace_frame_filter_t</b>
-    filter)
-  <br/>
-  void <b>platform_print_backtrace</b> (int skip_frames)
-  <br/>
-  <b>asciichat_error_t</b> <b>platform_localtime</b> (const time_t *timer,
-    struct tm *result)
-  <br/>
-  Platform-safe localtime wrapper. int <b>platform_isatty</b> (int fd)
-  <br/>
-  Check if a file descriptor is a terminal. void
-    <b>platform_clear_error_state</b> (void)
-  <br/>
-  <b>bool</b> <b>platform_get_temp_dir</b> (char *temp_dir, size_t path_size)
-  <br/>
-  Get the system temporary directory path. <b>bool</b>
-    <b>platform_prompt_yes_no</b> (const char *question, <b>bool</b>
-    default_yes)
-  <br/>
-  Prompt the user for a yes/no answer. <b>bool</b>
-    <b>platform_prompt_yes_no_timeout</b> (const char *question, <b>bool</b>
-    default_yes, unsigned timeout_seconds)
-  <br/>
-  int <b>platform_get_last_error</b> (void)
-  <br/>
-  Get the last system error code. const char * <b>platform_get_home_dir</b>
-    (void)
-  <br/>
-  Get the user's home directory. void <b>platform_normalize_path_separators</b>
-    (char *path)
-  <br/>
-  Normalize path separators for the current platform. char *
-    <b>platform_get_config_dir</b> (void)
-  <br/>
-  Get the application configuration directory. <b>bool</b>
-    <b>platform_get_cwd</b> (char *cwd, size_t path_size)
-  <br/>
-  Get the current working directory of the process. int
-    <b>platform_path_strcasecmp</b> (const char *a, const char *b, size_t n)
-  <br/>
-  Platform-aware path string comparison. int <b>platform_is_regular_file</b>
-    (const char *path)
-  <br/>
-  Check if a path is a regular file.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Utility stubs for WASM/Emscripten (backtrace, localtime).</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>util.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_isatty_(int_fd)"><a class="permalink" href="#int_platform_isatty_(int_fd)">int
-  platform_isatty (int fd)</a></h2>
-<p class="Pp">Check if a file descriptor is a terminal.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Non-zero if fd is a terminal, 0 otherwise</div>
-<p class="Pp">Definition at line <b>63</b> of file <b>util.c</b>.</p>
-<pre>63                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>util.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">util.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">util.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          util.c - Utility stubs for WASM/Emscripten (backtrace, localtime).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>platform_backtrace</b> (void **buffer, int size)
+            <br />
+            Get a backtrace of the current call stack. char **
+            <b>platform_backtrace_symbols</b> (void *const *buffer, int size)
+            <br />
+            Convert backtrace addresses to symbol names. void
+            <b>platform_backtrace_symbols_destroy</b> (char **symbols)
+            <br />
+            Free symbol array from <b>platform_backtrace_symbols()</b>. void
+            <b>platform_print_backtrace_symbols</b> (const char *label, char
+            **symbols, int count, int skip_frames, int max_frames,
+            <b>backtrace_frame_filter_t</b>
+            filter)
+            <br />
+            void <b>platform_print_backtrace</b> (int skip_frames)
+            <br />
+            <b>asciichat_error_t</b> <b>platform_localtime</b> (const time_t
+            *timer, struct tm *result)
+            <br />
+            Platform-safe localtime wrapper. int <b>platform_isatty</b> (int fd)
+            <br />
+            Check if a file descriptor is a terminal. void
+            <b>platform_clear_error_state</b> (void)
+            <br />
+            <b>bool</b> <b>platform_get_temp_dir</b> (char *temp_dir, size_t
+            path_size)
+            <br />
+            Get the system temporary directory path. <b>bool</b>
+            <b>platform_prompt_yes_no</b> (const char *question, <b>bool</b>
+            default_yes)
+            <br />
+            Prompt the user for a yes/no answer. <b>bool</b>
+            <b>platform_prompt_yes_no_timeout</b> (const char *question,
+            <b>bool</b>
+            default_yes, unsigned timeout_seconds)
+            <br />
+            int <b>platform_get_last_error</b> (void)
+            <br />
+            Get the last system error code. const char *
+            <b>platform_get_home_dir</b>
+            (void)
+            <br />
+            Get the user's home directory. void
+            <b>platform_normalize_path_separators</b>
+            (char *path)
+            <br />
+            Normalize path separators for the current platform. char *
+            <b>platform_get_config_dir</b> (void)
+            <br />
+            Get the application configuration directory. <b>bool</b>
+            <b>platform_get_cwd</b> (char *cwd, size_t path_size)
+            <br />
+            Get the current working directory of the process. int
+            <b>platform_path_strcasecmp</b> (const char *a, const char *b,
+            size_t n)
+            <br />
+            Platform-aware path string comparison. int
+            <b>platform_is_regular_file</b>
+            (const char *path)
+            <br />
+            Check if a path is a regular file.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Utility stubs for WASM/Emscripten (backtrace, localtime).
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>util.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_platform_isatty_(int_fd)">
+            <a class="permalink" href="#int_platform_isatty_(int_fd)"
+              >int platform_isatty (int fd)</a
+            >
+          </h2>
+          <p class="Pp">Check if a file descriptor is a terminal.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>fd</i> File descriptor to check</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Non-zero if fd is a terminal, 0 otherwise</div>
+          <p class="Pp">Definition at line <b>63</b> of file <b>util.c</b>.</p>
+          <pre>
+63                             {
 64   (void)fd;
 65   return 1; // Always true for the browser terminal
 66 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>.</p>
-<p class="Pp">Referenced by <b>key_identity_format_terminal()</b>,
-    <b>log_console_impl()</b>, <b>main()</b>, <b>platform_isatty()</b>,
-    <b>platform_set_console_ctrl_handler()</b>, <b>prompt_unknown_host()</b>,
-    <b>session_display_create()</b>, <b>splash_intro_start()</b>,
-    <b>stats_runtime_start()</b>, <b>terminal_is_stderr_tty()</b>,
-    <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
-    <b>terminal_should_color_output()</b>,
-    <b>terminal_should_use_control_sequences()</b>,
-    <b>ui_controller_restore_terminal()</b>, <b>ui_controller_size()</b>,
-    <b>ui_controller_title_start()</b>, <b>ui_controller_toggle_logs()</b>,
-    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
-    <b>ui_notice_present_first_use()</b>, <b>ui_status_display()</b>,
-    <b>ui_status_display_interactive()</b>, <b>ui_sync_start()</b>, and
-    <b>yt_dlp_extract_with_options()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_print_backtrace_(int_skip_frames)"><a class="permalink" href="#void_platform_print_backtrace_(int_skip_frames)">void
-  platform_print_backtrace (int skip_frames)</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>util.c</b>.</p>
-<pre>44                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_isatty()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>key_identity_format_terminal()</b>,
+            <b>log_console_impl()</b>, <b>main()</b>, <b>platform_isatty()</b>,
+            <b>platform_set_console_ctrl_handler()</b>,
+            <b>prompt_unknown_host()</b>, <b>session_display_create()</b>,
+            <b>splash_intro_start()</b>, <b>stats_runtime_start()</b>,
+            <b>terminal_is_stderr_tty()</b>, <b>terminal_is_stdin_tty()</b>,
+            <b>terminal_is_stdout_tty()</b>,
+            <b>terminal_should_color_output()</b>,
+            <b>terminal_should_use_control_sequences()</b>,
+            <b>ui_controller_restore_terminal()</b>,
+            <b>ui_controller_size()</b>, <b>ui_controller_title_start()</b>,
+            <b>ui_controller_toggle_logs()</b>,
+            <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+            <b>ui_notice_present_first_use()</b>, <b>ui_status_display()</b>,
+            <b>ui_status_display_interactive()</b>, <b>ui_sync_start()</b>, and
+            <b>yt_dlp_extract_with_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_platform_print_backtrace_(int_skip_frames)">
+            <a
+              class="permalink"
+              href="#void_platform_print_backtrace_(int_skip_frames)"
+              >void platform_print_backtrace (int skip_frames)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>44</b> of file <b>util.c</b>.</p>
+          <pre>
+44                                                {
 45   (void)skip_frames;
 46   // No-op - backtrace not supported in WASM
 47 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_print_backtrace()</b>.</p>
-<p class="Pp">Referenced by <b>platform_print_backtrace()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_"><a class="permalink" href="#void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_">void
-  platform_print_backtrace_symbols (const char * label, char ** symbols, int
-  count, int skip_frames, int max_frames, <b>backtrace_frame_filter_t</b>
-  filter)</a></h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>util.c</b>.</p>
-<pre>34                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_print_backtrace()</b>.</p>
+          <p class="Pp">Referenced by <b>platform_print_backtrace()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_"
+          >
+            <a
+              class="permalink"
+              href="#void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_"
+              >void platform_print_backtrace_symbols (const char * label, char
+              ** symbols, int count, int skip_frames, int max_frames,
+              <b>backtrace_frame_filter_t</b> filter)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>33</b> of file <b>util.c</b>.</p>
+          <pre>
+34                                                                        {
 35   (void)label;
 36   (void)symbols;
 37   (void)count;
@@ -167,22 +239,28 @@
 40   (void)filter;
 41   // No-op - backtrace not supported in WASM
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_print_backtrace_symbols()</b>.</p>
-<p class="Pp">Referenced by <b>platform_print_backtrace_symbols()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>platform_print_backtrace_symbols()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>platform_print_backtrace_symbols()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

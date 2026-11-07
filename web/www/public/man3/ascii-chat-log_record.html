@@ -1,155 +1,237 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>log_record(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">log_record(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">log_record(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">log_record - Parsed instrumentation log record.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>pid</b>
-  <br/>
-  Process ID. <b>uint64_t</b> <b>tid</b>
-  <br/>
-  Thread ID. <b>uint64_t</b> <b>seq</b>
-  <br/>
-  Sequence number. char * <b>timestamp</b>
-  <br/>
-  Timestamp string. char * <b>elapsed</b>
-  <br/>
-  Elapsed time since start. char * <b>file</b>
-  <br/>
-  Source file path. <b>uint32_t</b> <b>line</b>
-  <br/>
-  Source line number. char * <b>function</b>
-  <br/>
-  Function name. <b>uint32_t</b> <b>macro_flag</b>
-  <br/>
-  Macro expansion flag. char * <b>snippet</b>
-  <br/>
-  Code snippet. char * <b>raw_line</b>
-  <br/>
-  Original raw log line.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Parsed instrumentation log record.</p>
-<p class="Pp">Represents a single line from an instrumentation log file with all
-    fields extracted and parsed.</p>
-<p class="Pp">Definition at line <b>67</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char*_log_record::elapsed"><a class="permalink" href="#char*_log_record::elapsed">char*
-  log_record::elapsed</a></h2>
-<p class="Pp">Elapsed time since start.</p>
-<p class="Pp">Definition at line <b>72</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_log_record::file"><a class="permalink" href="#char*_log_record::file">char*
-  log_record::file</a></h2>
-<p class="Pp">Source file path.</p>
-<p class="Pp">Definition at line <b>73</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_log_record::function"><a class="permalink" href="#char*_log_record::function">char*
-  log_record::function</a></h2>
-<p class="Pp">Function name.</p>
-<p class="Pp">Definition at line <b>75</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> log_record::line</h2>
-<p class="Pp">Source line number.</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> log_record::macro_flag</h2>
-<p class="Pp">Macro expansion flag.</p>
-<p class="Pp">Definition at line <b>76</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> log_record::pid</h2>
-<p class="Pp">Process ID.</p>
-<p class="Pp">Definition at line <b>68</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_log_record::raw_line"><a class="permalink" href="#char*_log_record::raw_line">char*
-  log_record::raw_line</a></h2>
-<p class="Pp">Original raw log line.</p>
-<p class="Pp">Definition at line <b>78</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> log_record::seq</h2>
-<p class="Pp">Sequence number.</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_log_record::snippet"><a class="permalink" href="#char*_log_record::snippet">char*
-  log_record::snippet</a></h2>
-<p class="Pp">Code snippet.</p>
-<p class="Pp">Definition at line <b>77</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> log_record::tid</h2>
-<p class="Pp">Thread ID.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>report.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_log_record::timestamp"><a class="permalink" href="#char*_log_record::timestamp">char*
-  log_record::timestamp</a></h2>
-<p class="Pp">Timestamp string.</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>report.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>log_record(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">log_record(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">log_record(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">log_record - Parsed instrumentation log record.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>pid</b>
+            <br />
+            Process ID. <b>uint64_t</b> <b>tid</b>
+            <br />
+            Thread ID. <b>uint64_t</b> <b>seq</b>
+            <br />
+            Sequence number. char * <b>timestamp</b>
+            <br />
+            Timestamp string. char * <b>elapsed</b>
+            <br />
+            Elapsed time since start. char * <b>file</b>
+            <br />
+            Source file path. <b>uint32_t</b> <b>line</b>
+            <br />
+            Source line number. char * <b>function</b>
+            <br />
+            Function name. <b>uint32_t</b> <b>macro_flag</b>
+            <br />
+            Macro expansion flag. char * <b>snippet</b>
+            <br />
+            Code snippet. char * <b>raw_line</b>
+            <br />
+            Original raw log line.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Parsed instrumentation log record.</p>
+        <p class="Pp">
+          Represents a single line from an instrumentation log file with all
+          fields extracted and parsed.
+        </p>
+        <p class="Pp">Definition at line <b>67</b> of file <b>report.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_log_record::elapsed">
+            <a class="permalink" href="#char*_log_record::elapsed"
+              >char* log_record::elapsed</a
+            >
+          </h2>
+          <p class="Pp">Elapsed time since start.</p>
+          <p class="Pp">
+            Definition at line <b>72</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_log_record::file">
+            <a class="permalink" href="#char*_log_record::file"
+              >char* log_record::file</a
+            >
+          </h2>
+          <p class="Pp">Source file path.</p>
+          <p class="Pp">
+            Definition at line <b>73</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_log_record::function">
+            <a class="permalink" href="#char*_log_record::function"
+              >char* log_record::function</a
+            >
+          </h2>
+          <p class="Pp">Function name.</p>
+          <p class="Pp">
+            Definition at line <b>75</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> log_record::line</h2>
+          <p class="Pp">Source line number.</p>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> log_record::macro_flag</h2>
+          <p class="Pp">Macro expansion flag.</p>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> log_record::pid</h2>
+          <p class="Pp">Process ID.</p>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_log_record::raw_line">
+            <a class="permalink" href="#char*_log_record::raw_line"
+              >char* log_record::raw_line</a
+            >
+          </h2>
+          <p class="Pp">Original raw log line.</p>
+          <p class="Pp">
+            Definition at line <b>78</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> log_record::seq</h2>
+          <p class="Pp">Sequence number.</p>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_log_record::snippet">
+            <a class="permalink" href="#char*_log_record::snippet"
+              >char* log_record::snippet</a
+            >
+          </h2>
+          <p class="Pp">Code snippet.</p>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> log_record::tid</h2>
+          <p class="Pp">Thread ID.</p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>report.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_log_record::timestamp">
+            <a class="permalink" href="#char*_log_record::timestamp"
+              >char* log_record::timestamp</a
+            >
+          </h2>
+          <p class="Pp">Timestamp string.</p>
+          <p class="Pp">
+            Definition at line <b>71</b> of file <b>report.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

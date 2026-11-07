@@ -1,80 +1,125 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>processor.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">processor.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">processor.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">processor.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>audio_processor</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>audio_processor_config_t</b>
-    <b>audio_processor_default_config</b> (int sample_rate)
-  <br/>
-  void <b>audio_processor_reset</b> (<b>audio_processor_t</b> *p)
-  <br/>
-  <b>asciichat_error_t</b> <b>audio_processor_create</b> (const
-    <b>audio_processor_config_t</b> *c, <b>audio_processor_t</b> **out)
-  <br/>
-  void <b>audio_processor_set_flags</b> (<b>audio_processor_t</b> *p,
-    <b>audio_processor_flags_t</b> flags)
-  <br/>
-  <b>asciichat_error_t</b> <b>audio_processor_process</b>
-    (<b>audio_processor_t</b> *p, const float *input, float *output, size_t
-    count)
-  <br/>
-  void <b>audio_processor_destroy</b> (<b>audio_processor_t</b> *p)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_processor_create (const
-  <b>audio_processor_config_t</b> * c, <b>audio_processor_t</b> ** out)</h2>
-<p class="Pp">Definition at line <b>66</b> of file <b>processor.c</b>.</p>
-<pre>66                                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>processor.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">processor.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">processor.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">processor.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>audio_processor</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>audio_processor_config_t</b>
+            <b>audio_processor_default_config</b> (int sample_rate)
+            <br />
+            void <b>audio_processor_reset</b> (<b>audio_processor_t</b> *p)
+            <br />
+            <b>asciichat_error_t</b> <b>audio_processor_create</b> (const
+            <b>audio_processor_config_t</b> *c, <b>audio_processor_t</b> **out)
+            <br />
+            void <b>audio_processor_set_flags</b> (<b>audio_processor_t</b> *p,
+            <b>audio_processor_flags_t</b> flags)
+            <br />
+            <b>asciichat_error_t</b> <b>audio_processor_process</b> (<b
+              >audio_processor_t</b
+            >
+            *p, const float *input, float *output, size_t count)
+            <br />
+            void <b>audio_processor_destroy</b> (<b>audio_processor_t</b> *p)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_processor_create (const
+            <b>audio_processor_config_t</b> * c, <b>audio_processor_t</b> **
+            out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>processor.c</b>.
+          </p>
+          <pre>
+66                                                                                                      {
 67   if (!out)
 68     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing audio processor output&quot;);
 69   *out = NULL;
@@ -122,43 +167,56 @@
 111   *out = p;
 112   return ASCIICHAT_OK;
 113 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_config_t::agc_level</b>,
-    <b>audio_processor_config_t::agc_max_gain</b>, <b>ASCIICHAT_OK</b>,
-    <b>audio_processor_create()</b>, <b>audio_processor_reset()</b>,
-    <b>spectral_config_t::auto_gain</b>,
-    <b>audio_processor_config_t::channels</b>,
-    <b>audio_processor_config_t::comp_makeup_db</b>,
-    <b>audio_processor_config_t::comp_ratio</b>,
-    <b>audio_processor_config_t::comp_threshold_db</b>,
-    <b>spectral_config_t::compressor</b>, <b>audio_processor::config</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>audio_processor::gain_attack</b>,
-    <b>audio_processor::gain_release</b>,
-    <b>audio_processor_config_t::gate_hysteresis</b>,
-    <b>audio_processor_config_t::gate_threshold</b>,
-    <b>audio_processor_config_t::highpass_hz</b>, <b>log_warn_once</b>,
-    <b>audio_processor_config_t::lowpass_hz</b>,
-    <b>audio_processor::max_gain</b>, <b>spectral_config_t::noise_gate</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>audio_processor_config_t::sample_rate</b>,
-    <b>spectral_config_t::sample_rate</b>, <b>SET_ERRNO</b>,
-    <b>audio_processor_config_t::spectral</b>, <b>spectral_create()</b>,
-    <b>spectral_destroy()</b>,
-    <b>audio_processor_config_t::spectral_enabled</b>,
-    <b>audio_processor::spectral_left</b>, and
-    <b>audio_processor::spectral_right</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>client_audio_pipeline_create()</b>, <b>wasm_audio_processor_create()</b>,
-    and <b>wasm_audio_processor_create_stereo()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>audio_processor_config_t</b> audio_processor_default_config
-  (int sample_rate)</h2>
-<p class="Pp">Microphone defaults shared by native and browser hosts; no global
-    options.</p>
-<p class="Pp">Definition at line <b>24</b> of file <b>processor.c</b>.</p>
-<pre>24                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_config_t::agc_level</b>,
+            <b>audio_processor_config_t::agc_max_gain</b>, <b>ASCIICHAT_OK</b>,
+            <b>audio_processor_create()</b>, <b>audio_processor_reset()</b>,
+            <b>spectral_config_t::auto_gain</b>,
+            <b>audio_processor_config_t::channels</b>,
+            <b>audio_processor_config_t::comp_makeup_db</b>,
+            <b>audio_processor_config_t::comp_ratio</b>,
+            <b>audio_processor_config_t::comp_threshold_db</b>,
+            <b>spectral_config_t::compressor</b>,
+            <b>audio_processor::config</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>audio_processor::gain_attack</b>,
+            <b>audio_processor::gain_release</b>,
+            <b>audio_processor_config_t::gate_hysteresis</b>,
+            <b>audio_processor_config_t::gate_threshold</b>,
+            <b>audio_processor_config_t::highpass_hz</b>, <b>log_warn_once</b>,
+            <b>audio_processor_config_t::lowpass_hz</b>,
+            <b>audio_processor::max_gain</b>,
+            <b>spectral_config_t::noise_gate</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>audio_processor_config_t::sample_rate</b>,
+            <b>spectral_config_t::sample_rate</b>, <b>SET_ERRNO</b>,
+            <b>audio_processor_config_t::spectral</b>, <b>spectral_create()</b>,
+            <b>spectral_destroy()</b>,
+            <b>audio_processor_config_t::spectral_enabled</b>,
+            <b>audio_processor::spectral_left</b>, and
+            <b>audio_processor::spectral_right</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>wasm_audio_processor_create()</b>, and
+            <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_processor_config_t</b> audio_processor_default_config (int
+            sample_rate)
+          </h2>
+          <p class="Pp">
+            Microphone defaults shared by native and browser hosts; no global
+            options.
+          </p>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>processor.c</b>.
+          </p>
+          <pre>
+24                                                                          {
 25   return (audio_processor_config_t){
 26       .sample_rate = sample_rate,
 27       .flags = {.agc = true, .compressor = true, .highpass = true},
@@ -179,21 +237,31 @@
 42       .gate_release_ns = 30 * NS_PER_MS_INT,
 43   };
 44 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_default_config()</b>,
-    <b>NS_PER_MS_INT</b>, <b>NS_PER_US_INT</b>, and
-    <b>spectral_default_config()</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_default_config()</b>,
-    <b>client_audio_pipeline_default_config()</b>,
-    <b>wasm_audio_processor_create()</b>, and
-    <b>wasm_audio_processor_create_stereo()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_processor_destroy_("><a class="permalink" href="#void_audio_processor_destroy_(">void
-  audio_processor_destroy (<b>audio_processor_t</b> * p)</a></h2>
-<p class="Pp">Definition at line <b>224</b> of file <b>processor.c</b>.</p>
-<pre>224                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_default_config()</b>,
+            <b>NS_PER_MS_INT</b>, <b>NS_PER_US_INT</b>, and
+            <b>spectral_default_config()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_default_config()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>wasm_audio_processor_create()</b>, and
+            <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_processor_destroy_(">
+            <a class="permalink" href="#void_audio_processor_destroy_("
+              >void audio_processor_destroy (<b>audio_processor_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>224</b> of file <b>processor.c</b>.
+          </p>
+          <pre>
+224                                                    {
 225   if (!p)
 226     return;
 227   spectral_destroy(p-&gt;spectral_left);
@@ -201,23 +269,35 @@
 229   p-&gt;spectral_left = NULL;
 230   SAFE_FREE(p);
 231 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_destroy()</b>, <b>SAFE_FREE</b>,
-    <b>spectral_destroy()</b>, <b>audio_processor::spectral_left</b>, and
-    <b>audio_processor::spectral_right</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_destroy()</b>,
-    <b>client_audio_pipeline_destroy()</b>, and
-    <b>wasm_audio_processor_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_processor_process
-  (<b>audio_processor_t</b> * processor, const float * input, float * output,
-  size_t count)</h2>
-<p class="Pp">Arbitrary block sizes, in-place buffers, and no allocations or
-    locks. AEC precedes this operation.</p>
-<p class="Pp">Definition at line <b>120</b> of file <b>processor.c</b>.</p>
-<pre>120                                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_destroy()</b>, <b>SAFE_FREE</b>,
+            <b>spectral_destroy()</b>, <b>audio_processor::spectral_left</b>,
+            and <b>audio_processor::spectral_right</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_destroy()</b>,
+            <b>client_audio_pipeline_destroy()</b>, and
+            <b>wasm_audio_processor_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_processor_process (<b
+              >audio_processor_t</b
+            >
+            * processor, const float * input, float * output, size_t count)
+          </h2>
+          <p class="Pp">
+            Arbitrary block sizes, in-place buffers, and no allocations or
+            locks. AEC precedes this operation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>120</b> of file <b>processor.c</b>.
+          </p>
+          <pre>
+120                                                                                                                  {
 121   if (!p || (!input &amp;&amp; count) || (!output &amp;&amp; count))
 122     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid audio processor buffers&quot;);
 123   if (!count)
@@ -320,42 +400,57 @@
 220   }
 221   return ASCIICHAT_OK;
 222 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_flags_t::agc</b>,
-    <b>audio_processor_config_t::agc_level</b>, <b>ASCIICHAT_OK</b>,
-    <b>audio_processor_process()</b>, <b>spectral_config_t::auto_gain</b>,
-    <b>audio_processor_config_t::channels</b>,
-    <b>audio_processor::compressor</b>,
-    <b>audio_processor_flags_t::compressor</b>,
-    <b>spectral_config_t::compressor</b>, <b>compressor_process_sample()</b>,
-    <b>audio_processor::config</b>, <b>audio_processor::energy</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>audio_processor_config_t::flags</b>,
-    <b>audio_processor::gain</b>, <b>audio_processor::gain_attack</b>,
-    <b>audio_processor::gain_release</b>, <b>audio_processor::gate</b>,
-    <b>audio_processor::highpass</b>, <b>audio_processor_flags_t::highpass</b>,
-    <b>highpass_filter_process_sample()</b>,
-    <b>audio_processor::highpass_right</b>,
-    <b>audio_processor::level_samples</b>, <b>audio_processor::lowpass</b>,
-    <b>audio_processor_flags_t::lowpass</b>,
-    <b>lowpass_filter_process_sample()</b>,
-    <b>audio_processor::lowpass_right</b>, <b>audio_processor::max_gain</b>,
-    <b>audio_processor_flags_t::noise_gate</b>,
-    <b>noise_gate_process_sample()</b>,
-    <b>audio_processor_config_t::sample_rate</b>, <b>SET_ERRNO</b>,
-    <b>soft_clip()</b>, <b>audio_processor_config_t::spectral</b>,
-    <b>audio_processor::spectral_left</b>, <b>spectral_process()</b>,
-    <b>audio_processor::spectral_right</b>, and
-    <b>audio_processor::target_gain</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>,
-    <b>client_audio_pipeline_process_duplex()</b>, and
-    <b>wasm_audio_processor_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_processor_reset_("><a class="permalink" href="#void_audio_processor_reset_(">void
-  audio_processor_reset (<b>audio_processor_t</b> * p)</a></h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>processor.c</b>.</p>
-<pre>46                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_flags_t::agc</b>,
+            <b>audio_processor_config_t::agc_level</b>, <b>ASCIICHAT_OK</b>,
+            <b>audio_processor_process()</b>,
+            <b>spectral_config_t::auto_gain</b>,
+            <b>audio_processor_config_t::channels</b>,
+            <b>audio_processor::compressor</b>,
+            <b>audio_processor_flags_t::compressor</b>,
+            <b>spectral_config_t::compressor</b>,
+            <b>compressor_process_sample()</b>, <b>audio_processor::config</b>,
+            <b>audio_processor::energy</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>audio_processor_config_t::flags</b>,
+            <b>audio_processor::gain</b>, <b>audio_processor::gain_attack</b>,
+            <b>audio_processor::gain_release</b>, <b>audio_processor::gate</b>,
+            <b>audio_processor::highpass</b>,
+            <b>audio_processor_flags_t::highpass</b>,
+            <b>highpass_filter_process_sample()</b>,
+            <b>audio_processor::highpass_right</b>,
+            <b>audio_processor::level_samples</b>,
+            <b>audio_processor::lowpass</b>,
+            <b>audio_processor_flags_t::lowpass</b>,
+            <b>lowpass_filter_process_sample()</b>,
+            <b>audio_processor::lowpass_right</b>,
+            <b>audio_processor::max_gain</b>,
+            <b>audio_processor_flags_t::noise_gate</b>,
+            <b>noise_gate_process_sample()</b>,
+            <b>audio_processor_config_t::sample_rate</b>, <b>SET_ERRNO</b>,
+            <b>soft_clip()</b>, <b>audio_processor_config_t::spectral</b>,
+            <b>audio_processor::spectral_left</b>, <b>spectral_process()</b>,
+            <b>audio_processor::spectral_right</b>, and
+            <b>audio_processor::target_gain</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>,
+            <b>client_audio_pipeline_process_duplex()</b>, and
+            <b>wasm_audio_processor_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_processor_reset_(">
+            <a class="permalink" href="#void_audio_processor_reset_("
+              >void audio_processor_reset (<b>audio_processor_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>processor.c</b>.
+          </p>
+          <pre>
+46                                                  {
 47   if (!p)
 48     return;
 49   spectral_reset(p-&gt;spectral_left);
@@ -374,65 +469,82 @@
 62   p-&gt;level_samples = 0;
 63   p-&gt;gain = p-&gt;target_gain = 1;
 64 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_reset()</b>,
-    <b>audio_processor_config_t::comp_attack_ns</b>,
-    <b>audio_processor_config_t::comp_makeup_db</b>,
-    <b>audio_processor_config_t::comp_ratio</b>,
-    <b>audio_processor_config_t::comp_release_ns</b>,
-    <b>audio_processor_config_t::comp_threshold_db</b>,
-    <b>audio_processor::compressor</b>, <b>compressor_init()</b>,
-    <b>compressor_set_params()</b>, <b>audio_processor::config</b>,
-    <b>audio_processor::energy</b>, <b>audio_processor::gain</b>,
-    <b>audio_processor::gate</b>,
-    <b>audio_processor_config_t::gate_attack_ns</b>,
-    <b>audio_processor_config_t::gate_hysteresis</b>,
-    <b>audio_processor_config_t::gate_release_ns</b>,
-    <b>audio_processor_config_t::gate_threshold</b>,
-    <b>audio_processor::highpass</b>, <b>highpass_filter_init()</b>,
-    <b>audio_processor_config_t::highpass_hz</b>,
-    <b>audio_processor::highpass_right</b>,
-    <b>audio_processor::level_samples</b>, <b>audio_processor::lowpass</b>,
-    <b>lowpass_filter_init()</b>, <b>audio_processor_config_t::lowpass_hz</b>,
-    <b>audio_processor::lowpass_right</b>, <b>noise_gate_init()</b>,
-    <b>noise_gate_set_params()</b>,
-    <b>audio_processor_config_t::sample_rate</b>,
-    <b>audio_processor::spectral_left</b>, <b>spectral_reset()</b>,
-    <b>audio_processor::spectral_right</b>, and
-    <b>audio_processor::target_gain</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>audio_processor_reset()</b>, and
-  <b>client_audio_pipeline_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_processor_set_flags_("><a class="permalink" href="#void_audio_processor_set_flags_(">void
-  audio_processor_set_flags (<b>audio_processor_t</b> * p,
-  <b>audio_processor_flags_t</b> flags)</a></h2>
-<p class="Pp">Definition at line <b>115</b> of file <b>processor.c</b>.</p>
-<pre>115                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_reset()</b>,
+            <b>audio_processor_config_t::comp_attack_ns</b>,
+            <b>audio_processor_config_t::comp_makeup_db</b>,
+            <b>audio_processor_config_t::comp_ratio</b>,
+            <b>audio_processor_config_t::comp_release_ns</b>,
+            <b>audio_processor_config_t::comp_threshold_db</b>,
+            <b>audio_processor::compressor</b>, <b>compressor_init()</b>,
+            <b>compressor_set_params()</b>, <b>audio_processor::config</b>,
+            <b>audio_processor::energy</b>, <b>audio_processor::gain</b>,
+            <b>audio_processor::gate</b>,
+            <b>audio_processor_config_t::gate_attack_ns</b>,
+            <b>audio_processor_config_t::gate_hysteresis</b>,
+            <b>audio_processor_config_t::gate_release_ns</b>,
+            <b>audio_processor_config_t::gate_threshold</b>,
+            <b>audio_processor::highpass</b>, <b>highpass_filter_init()</b>,
+            <b>audio_processor_config_t::highpass_hz</b>,
+            <b>audio_processor::highpass_right</b>,
+            <b>audio_processor::level_samples</b>,
+            <b>audio_processor::lowpass</b>, <b>lowpass_filter_init()</b>,
+            <b>audio_processor_config_t::lowpass_hz</b>,
+            <b>audio_processor::lowpass_right</b>, <b>noise_gate_init()</b>,
+            <b>noise_gate_set_params()</b>,
+            <b>audio_processor_config_t::sample_rate</b>,
+            <b>audio_processor::spectral_left</b>, <b>spectral_reset()</b>,
+            <b>audio_processor::spectral_right</b>, and
+            <b>audio_processor::target_gain</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_reset()</b>, and
+            <b>client_audio_pipeline_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_processor_set_flags_(">
+            <a class="permalink" href="#void_audio_processor_set_flags_("
+              >void audio_processor_set_flags (<b>audio_processor_t</b> * p,
+              <b>audio_processor_flags_t</b> flags)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>115</b> of file <b>processor.c</b>.
+          </p>
+          <pre>
+115                                                                                     {
 116   if (p)
 117     p-&gt;config.flags = flags;
 118 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_set_flags()</b>,
-    <b>audio_processor::config</b>, and
-  <b>audio_processor_config_t::flags</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_set_flags()</b>, and
-    <b>client_audio_pipeline_set_flags()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_set_flags()</b>,
+            <b>audio_processor::config</b>, and
+            <b>audio_processor_config_t::flags</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_set_flags()</b>, and
+            <b>client_audio_pipeline_set_flags()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,74 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_wasm_implementation(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_wasm_implementation(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_wasm_implementation(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_wasm_implementation - Web Mirror WASM Implementation
-  Plan</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Web_Mirror_WASM_Implementation_Plan"><a class="permalink" href="#Web_Mirror_WASM_Implementation_Plan">Web
-  Mirror WASM Implementation Plan</a></h1>
-<div class="Bd-indent"><b>For Claude:</b> REQUIRED SUB-SKILL: Use
-  superpowers:executing-plans to implement this plan task-by-task.</div>
-<p class="Pp"><b>Goal:</b> Build full ascii-chat library as WASM with
-    interactive settings panel for web mirror mode</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Architecture:</b> WASM-specific platform layer
-    (lib/platform/wasm/) implementing the platform abstraction API, compiled
-    with Emscripten, exposed to TypeScript via exported functions, with React
-    settings UI</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Tech Stack:</b> Emscripten, C11, TypeScript, React, xterm.js,
-    Tailwind CSS</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Task_1:_Platform_Layer_-_Terminal_Bridge"><a class="permalink" href="#Task_1:_Platform_Layer_-_Terminal_Bridge">Task
-  1: Platform Layer - Terminal Bridge</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Create: <b>lib/platform/wasm/terminal.c</b><b></b></li>
-  <li>Reference: <b>include/ascii-chat/platform/abstraction.h</b><b></b></li>
-  <li>Reference: <b>include/ascii-chat/platform/terminal.h</b><b></b></li>
-</ul>
-<p class="Pp"><b>Step 1: Create platform directory</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>mkdir -p lib/platform/wasm</pre>
-<p class="Pp"><b>Step 2: Create terminal.c with EM_JS bridge</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create <b>lib/platform/wasm/terminal.c</b><b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_wasm_implementation(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_wasm_implementation(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_wasm_implementation(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_wasm_implementation - Web Mirror WASM Implementation Plan
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Web_Mirror_WASM_Implementation_Plan">
+          <a class="permalink" href="#Web_Mirror_WASM_Implementation_Plan"
+            >Web Mirror WASM Implementation Plan</a
+          >
+        </h1>
+        <div class="Bd-indent">
+          <b>For Claude:</b> REQUIRED SUB-SKILL: Use superpowers:executing-plans
+          to implement this plan task-by-task.
+        </div>
+        <p class="Pp">
+          <b>Goal:</b> Build full ascii-chat library as WASM with interactive
+          settings panel for web mirror mode
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Architecture:</b> WASM-specific platform layer (lib/platform/wasm/)
+          implementing the platform abstraction API, compiled with Emscripten,
+          exposed to TypeScript via exported functions, with React settings UI
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Tech Stack:</b> Emscripten, C11, TypeScript, React, xterm.js,
+          Tailwind CSS
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_1:_Platform_Layer_-_Terminal_Bridge">
+            <a
+              class="permalink"
+              href="#Task_1:_Platform_Layer_-_Terminal_Bridge"
+              >Task 1: Platform Layer - Terminal Bridge</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Create: <b>lib/platform/wasm/terminal.c</b><b></b></li>
+            <li>
+              Reference: <b>include/ascii-chat/platform/abstraction.h</b><b></b>
+            </li>
+            <li>
+              Reference: <b>include/ascii-chat/platform/terminal.h</b><b></b>
+            </li>
+          </ul>
+          <p class="Pp"><b>Step 1: Create platform directory</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>mkdir -p lib/platform/wasm</pre>
+          <p class="Pp"><b>Step 2: Create terminal.c with EM_JS bridge</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Create <b>lib/platform/wasm/terminal.c</b><b>:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;emscripten.h&gt;
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;ascii-chat/platform/terminal.h&gt;
@@ -163,15 +211,18 @@ int platform_set_cursor_position(int row, int col) {
 <br/>
     return -1; // Not supported in WASM
 }</pre>
-<p class="Pp"><b>Step 3: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ls -la <b>lib/platform/wasm/terminal.c</b><b> Expected: File
-    exists, ~1.5KB</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/platform/wasm/terminal.c
+          <p class="Pp"><b>Step 3: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ls -la <b>lib/platform/wasm/terminal.c</b
+            ><b> Expected: File exists, ~1.5KB</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/platform/wasm/terminal.c
 git commit -m &quot;feat(wasm): Add terminal platform abstraction with EM_JS bridge
 Implement platform_get_terminal_size, platform_detect_color_support,
 and platform_write_terminal using EM_JS to bridge to xterm.js instance.
@@ -179,22 +230,25 @@ and platform_write_terminal using EM_JS to bridge to xterm.js instance.
 - Stub implementations for unsupported functions
 - Provides terminal capabilities for WASM mirror mode
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_2:_Platform_Layer_-_Threading"><a class="permalink" href="#Task_2:_Platform_Layer_-_Threading">Task
-  2: Platform Layer - Threading</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: <b>lib/platform/wasm/thread.c</b><b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Create thread.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create <b>lib/platform/wasm/thread.c</b><b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_2:_Platform_Layer_-_Threading">
+            <a class="permalink" href="#Task_2:_Platform_Layer_-_Threading"
+              >Task 2: Platform Layer - Threading</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: <b>lib/platform/wasm/thread.c</b><b></b></dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create thread.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Create <b>lib/platform/wasm/thread.c</b><b>:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;pthread.h&gt;
 // Emscripten provides pthread.h
@@ -253,35 +307,45 @@ int thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
 <br/>
     return pthread_equal(t1, t2);
 }</pre>
-<p class="Pp"><b>Step 2: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ls -la <b>lib/platform/wasm/thread.c</b><b> Expected: File
-    exists, ~1.2KB</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/platform/wasm/thread.c
+          <p class="Pp"><b>Step 2: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ls -la <b>lib/platform/wasm/thread.c</b
+            ><b> Expected: File exists, ~1.2KB</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/platform/wasm/thread.c
 git commit -m &quot;feat(wasm): Add threading platform abstraction
 Implement mutex and thread functions using Emscripten pthreads.
 In single-threaded mode (USE_PTHREADS=0), mutexes are no-ops.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_3:_Platform_Layer_-_Environment_and_Time"><a class="permalink" href="#Task_3:_Platform_Layer_-_Environment_and_Time">Task
-  3: Platform Layer - Environment and Time</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Create: lib/platform/wasm/environment.c</li>
-  <li>Create: <b>lib/platform/wasm/time.c</b><b></b></li>
-</ul>
-<p class="Pp"><b>Step 1: Create </b><b>environment.c</b><b></b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Create lib/platform/wasm/environment.c:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_3:_Platform_Layer_-_Environment_and_Time">
+            <a
+              class="permalink"
+              href="#Task_3:_Platform_Layer_-_Environment_and_Time"
+              >Task 3: Platform Layer - Environment and Time</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Create: lib/platform/wasm/environment.c</li>
+            <li>Create: <b>lib/platform/wasm/time.c</b><b></b></li>
+          </ul>
+          <p class="Pp">
+            <b>Step 1: Create </b><b>environment.c</b><b></b><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Create lib/platform/wasm/environment.c:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;string.h&gt;
@@ -311,12 +375,12 @@ int platform_unsetenv(const char *name) {
 <br/>
     return -1; // Not supported in WASM
 }</pre>
-<p class="Pp"><b>Step 2: Create time.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create <b>lib/platform/wasm/time.c</b><b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+          <p class="Pp"><b>Step 2: Create time.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Create <b>lib/platform/wasm/time.c</b><b>:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;time.h&gt;
 #include &lt;sys/time.h&gt;
@@ -357,35 +421,41 @@ void platform_sleep_us(uint64_t us) {
 <br/>
     nanosleep(&amp;ts, NULL);
 }</pre>
-<p class="Pp"><b>Step 3: Verify files created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ls -la lib/platform/wasm/{environment,time}.c Expected: Both
-    files exist</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/platform/wasm/environment.c lib/platform/wasm/time.c
+          <p class="Pp"><b>Step 3: Verify files created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ls -la lib/platform/wasm/{environment,time}.c Expected: Both
+            files exist
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/platform/wasm/environment.c lib/platform/wasm/time.c
 git commit -m &quot;feat(wasm): Add environment and time platform abstractions
 - environment.c: getenv, strerror (setenv/unsetenv not supported)
 - time.c: platform_get_time_ms/us, platform_sleep_ms/us
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_4:_Platform_Layer_-_Initialization"><a class="permalink" href="#Task_4:_Platform_Layer_-_Initialization">Task
-  4: Platform Layer - Initialization</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: <b>lib/platform/wasm/init.c</b><b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Create init.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create <b>lib/platform/wasm/init.c</b><b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_4:_Platform_Layer_-_Initialization">
+            <a class="permalink" href="#Task_4:_Platform_Layer_-_Initialization"
+              >Task 4: Platform Layer - Initialization</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: <b>lib/platform/wasm/init.c</b><b></b></dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create init.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Create <b>lib/platform/wasm/init.c</b><b>:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;ascii-chat/platform/init.h&gt;
 #include &lt;ascii-chat/asciichat_errno.h&gt;
 asciichat_error_t platform_init(void) {
@@ -398,39 +468,46 @@ void platform_cleanup(void) {
 <br/>
     // No cleanup needed
 }</pre>
-<p class="Pp"><b>Step 2: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ls -la <b>lib/platform/wasm/init.c</b><b> Expected: File
-    exists, ~350 bytes</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/platform/wasm/init.c
+          <p class="Pp"><b>Step 2: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ls -la <b>lib/platform/wasm/init.c</b
+            ><b> Expected: File exists, ~350 bytes</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/platform/wasm/init.c
 git commit -m &quot;feat(wasm): Add platform initialization stubs
 No special initialization or cleanup needed for WASM platform.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_5:_WASM_Entry_Point"><a class="permalink" href="#Task_5:_WASM_Entry_Point">Task
-  5: WASM Entry Point</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create wasm directory</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>mkdir -p web/web.ascii-chat.com/wasm</pre>
-<p class="Pp"><b>Step 2: Create mirror_wasm.c (initialization functions
-    only)</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_5:_WASM_Entry_Point">
+            <a class="permalink" href="#Task_5:_WASM_Entry_Point"
+              >Task 5: WASM Entry Point</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create wasm directory</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>mkdir -p web/web.ascii-chat.com/wasm</pre>
+          <p class="Pp">
+            <b>Step 2: Create mirror_wasm.c (initialization functions only)</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Create web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;emscripten.h&gt;
 #include &lt;ascii-chat/options/options.h&gt;
 #include &lt;ascii-chat/platform/init.h&gt;
@@ -522,35 +599,43 @@ int mirror_get_height(void) {
     return GET_OPTION(height);
 }
 // Settings API continues in next task...</pre>
-<p class="Pp"><b>Step 3: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ls -la web/web.ascii-chat.com/wasm/mirror_wasm.c Expected:
-    File exists, ~1.5KB</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/wasm/mirror_wasm.c
+          <p class="Pp"><b>Step 3: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ls -la web/web.ascii-chat.com/wasm/mirror_wasm.c Expected: File
+            exists, ~1.5KB
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/wasm/mirror_wasm.c
 git commit -m &quot;feat(wasm): Add WASM entry point with init and dimension API
 Implement mirror_init, mirror_cleanup, and dimension getters/setters.
 Uses options_set_int for thread-safe updates via RCU.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_6:_WASM_Entry_Point_-_Render_Settings"><a class="permalink" href="#Task_6:_WASM_Entry_Point_-_Render_Settings">Task
-  6: WASM Entry Point - Render Settings</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
-</dl>
-<p class="Pp"><b>Step 1: Add render mode and color settings</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// ============================================================================
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_6:_WASM_Entry_Point_-_Render_Settings">
+            <a
+              class="permalink"
+              href="#Task_6:_WASM_Entry_Point_-_Render_Settings"
+              >Task 6: WASM Entry Point - Render Settings</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Add render mode and color settings</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Append to web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// ============================================================================
 // Settings API - Render Mode
 // ============================================================================
 EMSCRIPTEN_KEEPALIVE
@@ -619,46 +704,55 @@ int mirror_get_color_filter(void) {
 <br/>
     return GET_OPTION(color_filter);
 }</pre>
-<p class="Pp"><b>Step 2: Verify additions</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l web/web.ascii-chat.com/wasm/mirror_wasm.c Expected:
-    ~100-120 lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/wasm/mirror_wasm.c
+          <p class="Pp"><b>Step 2: Verify additions</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/wasm/mirror_wasm.c Expected:
+            ~100-120 lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/wasm/mirror_wasm.c
 git commit -m &quot;feat(wasm): Add render mode, color mode, and color filter API
 Implement getters/setters for:
 - Render mode (foreground, background, half-block)
 - Color mode (auto, none, 16, 256, truecolor)
 - Color filter (none, green, cyan, magenta, etc.)
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_7:_WASM_Entry_Point_-_Frame_Conversion"><a class="permalink" href="#Task_7:_WASM_Entry_Point_-_Frame_Conversion">Task
-  7: WASM Entry Point - Frame Conversion</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
-</dl>
-<p class="Pp"><b>Step 1: Add required includes at top of file</b></p>
-<p class="Pp"></p>
-<p class="Pp">Add after existing includes in mirror_wasm.c:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#include &lt;ascii-chat/video/ascii.h&gt;
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_7:_WASM_Entry_Point_-_Frame_Conversion">
+            <a
+              class="permalink"
+              href="#Task_7:_WASM_Entry_Point_-_Frame_Conversion"
+              >Task 7: WASM Entry Point - Frame Conversion</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Add required includes at top of file</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Add after existing includes in mirror_wasm.c:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+#include &lt;ascii-chat/video/ascii.h&gt;
 #include &lt;ascii-chat/video/color_filter.h&gt;
 #include &lt;ascii-chat/video/framebuffer.h&gt;
 #include &lt;ascii-chat/common.h&gt;</pre>
-<p class="Pp"><b>Step 2: Add frame conversion function</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// ============================================================================
+          <p class="Pp"><b>Step 2: Add frame conversion function</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Append to web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// ============================================================================
 // Frame Conversion API
 // ============================================================================
 EMSCRIPTEN_KEEPALIVE
@@ -778,16 +872,20 @@ void mirror_free_string(char *ptr) {
 <br/>
     SAFE_FREE(ptr);
 }</pre>
-<p class="Pp"><b>Step 3: Verify file complete</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: grep -c &quot;<b>EMSCRIPTEN_KEEPALIVE</b>&quot;
-    web/web.ascii-chat.com/wasm/mirror_wasm.c<b> Expected: 12 (12 exported
-    functions)</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/wasm/mirror_wasm.c
+          <p class="Pp"><b>Step 3: Verify file complete</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: grep -c &quot;<b>EMSCRIPTEN_KEEPALIVE</b>&quot;
+            web/web.ascii-chat.com/wasm/mirror_wasm.c<b>
+              Expected: 12 (12 exported functions)</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/wasm/mirror_wasm.c
 git commit -m &quot;feat(wasm): Add frame conversion API
 Implement mirror_convert_frame using full library:
 - Applies color filters via apply_color_filter()
@@ -796,22 +894,25 @@ Implement mirror_convert_frame using full library:
 - Uses current settings from options system
 Also add mirror_free_string for memory cleanup.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_8:_CMake_Build_Configuration"><a class="permalink" href="#Task_8:_CMake_Build_Configuration">Task
-  8: CMake Build Configuration</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: web/web.ascii-chat.com/wasm/CMakeLists.txt</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create CMakeLists.txt</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create web/web.ascii-chat.com/wasm/CMakeLists.txt:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># WebAssembly Mirror Mode Build
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_8:_CMake_Build_Configuration">
+            <a class="permalink" href="#Task_8:_CMake_Build_Configuration"
+              >Task 8: CMake Build Configuration</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: web/web.ascii-chat.com/wasm/CMakeLists.txt</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create CMakeLists.txt</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Create web/web.ascii-chat.com/wasm/CMakeLists.txt:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre># WebAssembly Mirror Mode Build
 # Full ascii-chat library compiled to WASM
 cmake_minimum_required(VERSION 3.18)
 project(ascii-chat-mirror-wasm C)
@@ -1062,15 +1163,18 @@ add_custom_command(TARGET mirror POST_BUILD
 <br/>
     COMMENT &quot;Copying WASM files to src/wasm/dist/&quot;
 )</pre>
-<p class="Pp"><b>Step 2: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l web/web.ascii-chat.com/wasm/CMakeLists.txt Expected:
-    ~170 lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/wasm/CMakeLists.txt
+          <p class="Pp"><b>Step 2: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/wasm/CMakeLists.txt Expected: ~170
+            lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/wasm/CMakeLists.txt
 git commit -m &quot;feat(wasm): Add CMake build configuration for WASM target
 Configure Emscripten build with:
 - Conditional compilation flags (NO_NETWORK, NO_CRYPTO, etc.)
@@ -1079,22 +1183,25 @@ Configure Emscripten build with:
 - Optimization flags (-O3, closure compiler)
 - Post-build copy to src/wasm/dist/
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_9:_Build_Script"><a class="permalink" href="#Task_9:_Build_Script">Task
-  9: Build Script</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: web/web.ascii-chat.com/wasm/build.sh</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create build.sh</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create web/web.ascii-chat.com/wasm/build.sh:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#!/bin/bash
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_9:_Build_Script">
+            <a class="permalink" href="#Task_9:_Build_Script"
+              >Task 9: Build Script</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: web/web.ascii-chat.com/wasm/build.sh</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create build.sh</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Create web/web.ascii-chat.com/wasm/build.sh:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>#!/bin/bash
 # Build script for ascii-chat Mirror WASM
 set -e
 echo &quot;Building ascii-chat Mirror WASM with full library...&quot;
@@ -1113,45 +1220,56 @@ emmake make -j$(nproc)
 echo &quot;&#x2705; WASM build complete!&quot;
 echo &quot;   Output: src/wasm/dist/mirror.{js,wasm}&quot;
 ls -lh ../src/wasm/dist/</pre>
-<p class="Pp"><b>Step 2: Make executable</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: chmod +x web/web.ascii-chat.com/wasm/build.sh</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Test build (will fail - missing source files
-    expected)</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: cd web/web.ascii-chat.com/wasm &amp;&amp; ./build.sh
-    Expected: CMake configures, build fails due to missing source files (this is
-    OK)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/wasm/build.sh
+          <p class="Pp"><b>Step 2: Make executable</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Run: chmod +x web/web.ascii-chat.com/wasm/build.sh</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b
+              >Step 3: Test build (will fail - missing source files expected)</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: cd web/web.ascii-chat.com/wasm &amp;&amp; ./build.sh Expected:
+            CMake configures, build fails due to missing source files (this is
+            OK)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/wasm/build.sh
 git commit -m &quot;feat(wasm): Add build script for Emscripten compilation
 Run with: cd web/web.ascii-chat.com/wasm &amp;&amp; ./build.sh
 Outputs mirror.js and mirror.wasm to src/wasm/dist/
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_10:_TypeScript_Type_Definitions"><a class="permalink" href="#Task_10:_TypeScript_Type_Definitions">Task
-  10: TypeScript Type Definitions</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: web/web.ascii-chat.com/src/wasm/mirror-types.ts</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create wasm directory</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>mkdir -p web/web.ascii-chat.com/src/wasm</pre>
-<p class="Pp"><b>Step 2: Create mirror-types.ts</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create web/web.ascii-chat.com/src/wasm/mirror-types.ts:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Type definitions for Mirror WASM module
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_10:_TypeScript_Type_Definitions">
+            <a class="permalink" href="#Task_10:_TypeScript_Type_Definitions"
+              >Task 10: TypeScript Type Definitions</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: web/web.ascii-chat.com/src/wasm/mirror-types.ts</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create wasm directory</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>mkdir -p web/web.ascii-chat.com/src/wasm</pre>
+          <p class="Pp"><b>Step 2: Create mirror-types.ts</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Create web/web.ascii-chat.com/src/wasm/mirror-types.ts:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Type definitions for Mirror WASM module
 import { Terminal } from &quot;xterm&quot;;
 export enum RenderMode {
 <br/>
@@ -1261,35 +1379,45 @@ export interface MirrorWasmModule extends EmscriptenModule {
 <br/>
   xterm: Terminal | null;
 }</pre>
-<p class="Pp"><b>Step 3: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror-types.ts
-    Expected: ~75 lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/wasm/mirror-types.ts
+          <p class="Pp"><b>Step 3: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/src/wasm/mirror-types.ts Expected:
+            ~75 lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/wasm/mirror-types.ts
 git commit -m &quot;feat(wasm): Add TypeScript type definitions
 Define enums for RenderMode, ColorMode, ColorFilter and interface
 for MirrorWasmModule with all exported functions.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_11:_TypeScript_WASM_Wrapper_Class_(Part_1)"><a class="permalink" href="#Task_11:_TypeScript_WASM_Wrapper_Class_(Part_1)">Task
-  11: TypeScript WASM Wrapper Class (Part 1)</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create mirror.ts with class definition</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create web/web.ascii-chat.com/src/wasm/mirror.ts:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// WASM wrapper for ascii-chat mirror mode
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_11:_TypeScript_WASM_Wrapper_Class_(Part_1)">
+            <a
+              class="permalink"
+              href="#Task_11:_TypeScript_WASM_Wrapper_Class_(Part_1)"
+              >Task 11: TypeScript WASM Wrapper Class (Part 1)</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
+          </dl>
+          <p class="Pp">
+            <b>Step 1: Create mirror.ts with class definition</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Create web/web.ascii-chat.com/src/wasm/mirror.ts:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// WASM wrapper for ascii-chat mirror mode
 import { Terminal } from &quot;xterm&quot;;
 import MirrorWasmModuleFactory from &quot;./dist/mirror.js&quot;;
 import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from &quot;./mirror-types&quot;;
@@ -1349,35 +1477,43 @@ export class MirrorWasm {
 <br/>
   // Dimension settings - continued in next step...
 }</pre>
-<p class="Pp"><b>Step 2: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected: ~40
-    lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/wasm/mirror.ts
+          <p class="Pp"><b>Step 2: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected: ~40
+            lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/wasm/mirror.ts
 git commit -m &quot;feat(wasm): Add WASM wrapper class skeleton
 Implement MirrorWasm class with init, cleanup, and checkInitialized.
 Exposes xterm instance to WASM via Module.xterm.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_12:_TypeScript_WASM_Wrapper_Class_(Part_2)"><a class="permalink" href="#Task_12:_TypeScript_WASM_Wrapper_Class_(Part_2)">Task
-  12: TypeScript WASM Wrapper Class (Part 2)</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
-</dl>
-<p class="Pp"><b>Step 1: Add dimension methods</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to MirrorWasm class in mirror.ts:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Dimension settings
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_12:_TypeScript_WASM_Wrapper_Class_(Part_2)">
+            <a
+              class="permalink"
+              href="#Task_12:_TypeScript_WASM_Wrapper_Class_(Part_2)"
+              >Task 12: TypeScript WASM Wrapper Class (Part 2)</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Add dimension methods</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Append to MirrorWasm class in mirror.ts:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Dimension settings
 async setWidth(width: number): Promise&lt;void&gt; {
 <br/>
     this.checkInitialized();
@@ -1414,12 +1550,12 @@ getHeight(): number {
 <br/>
     return this.module!._mirror_get_height();
 }</pre>
-<p class="Pp"><b>Step 2: Add render mode methods</b></p>
-<p class="Pp"></p>
-<p class="Pp">Continue appending:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Render settings
+          <p class="Pp"><b>Step 2: Add render mode methods</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Continue appending:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Render settings
 async setRenderMode(mode: RenderMode): Promise&lt;void&gt; {
 <br/>
     this.checkInitialized();
@@ -1474,15 +1610,18 @@ getColorFilter(): ColorFilter {
 <br/>
     return this.module!._mirror_get_color_filter();
 }</pre>
-<p class="Pp"><b>Step 3: Verify additions</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected:
-    ~100 lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/wasm/mirror.ts
+          <p class="Pp"><b>Step 3: Verify additions</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected: ~100
+            lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/wasm/mirror.ts
 git commit -m &quot;feat(wasm): Add dimension and render settings methods
 Implement:
 - setWidth/setHeight/getWidth/getHeight
@@ -1490,22 +1629,27 @@ Implement:
 - setColorMode/getColorMode
 - setColorFilter/getColorFilter
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_13:_TypeScript_WASM_Wrapper_Class_(Part_3)"><a class="permalink" href="#Task_13:_TypeScript_WASM_Wrapper_Class_(Part_3)">Task
-  13: TypeScript WASM Wrapper Class (Part 3)</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
-</dl>
-<p class="Pp"><b>Step 1: Add frame conversion method</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to MirrorWasm class:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Frame conversion
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_13:_TypeScript_WASM_Wrapper_Class_(Part_3)">
+            <a
+              class="permalink"
+              href="#Task_13:_TypeScript_WASM_Wrapper_Class_(Part_3)"
+              >Task 13: TypeScript WASM Wrapper Class (Part 3)</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Add frame conversion method</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Append to MirrorWasm class:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Frame conversion
 convertFrame(rgbaData: Uint8Array, srcWidth: number, srcHeight: number): string {
 <br/>
     this.checkInitialized();
@@ -1562,12 +1706,12 @@ convertFrame(rgbaData: Uint8Array, srcWidth: number, srcHeight: number): string 
 <br/>
     }
 }</pre>
-<p class="Pp"><b>Step 2: Add singleton and export functions</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append after the class definition:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Singleton instance
+          <p class="Pp"><b>Step 2: Add singleton and export functions</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Append after the class definition:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Singleton instance
 let wasmInstance: MirrorWasm | null = null;
 export async function initMirrorWasm(xterm: Terminal, width: number, height: number): Promise&lt;MirrorWasm&gt; {
 <br/>
@@ -1587,15 +1731,18 @@ export function isWasmReady(): boolean {
 }
 // Re-export types
 export { RenderMode, ColorMode, ColorFilter };</pre>
-<p class="Pp"><b>Step 3: Verify file complete</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected:
-    ~160 lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/wasm/mirror.ts
+          <p class="Pp"><b>Step 3: Verify file complete</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected: ~160
+            lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/wasm/mirror.ts
 git commit -m &quot;feat(wasm): Add frame conversion and singleton exports
 Implement convertFrame with proper memory management:
 - Allocate WASM memory for RGBA data
@@ -1603,27 +1750,35 @@ Implement convertFrame with proper memory management:
 - Free allocated memory in finally block
 Add singleton pattern with initMirrorWasm and isWasmReady.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_14:_Settings_Panel_Component"><a class="permalink" href="#Task_14:_Settings_Panel_Component">Task
-  14: Settings Panel Component</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: web/web.ascii-chat.com/src/components/MirrorSettings.tsx</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create components directory</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>mkdir -p web/web.ascii-chat.com/src/components</pre>
-<p class="Pp"><b>Step 2: Create MirrorSettings.tsx (structure only)</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create
-  web/web.ascii-chat.com/src/components/MirrorSettings.tsx:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>import { useState, useEffect } from &quot;react&quot;;
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_14:_Settings_Panel_Component">
+            <a class="permalink" href="#Task_14:_Settings_Panel_Component"
+              >Task 14: Settings Panel Component</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Create: web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create components directory</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>mkdir -p web/web.ascii-chat.com/src/components</pre>
+          <p class="Pp">
+            <b>Step 2: Create MirrorSettings.tsx (structure only)</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Create web/web.ascii-chat.com/src/components/MirrorSettings.tsx:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>import { useState, useEffect } from &quot;react&quot;;
 import { MirrorWasm, RenderMode, ColorMode, ColorFilter } from &quot;../wasm/mirror&quot;;
 interface MirrorSettingsProps {
 <br/>
@@ -1673,36 +1828,45 @@ export function MirrorSettings({ wasm, isRunning, onDimensionsChange }: MirrorSe
 <br/>
   return null; // UI rendering in next step
 }</pre>
-<p class="Pp"><b>Step 3: Verify file created</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l
-    web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: ~35
-  lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+          <p class="Pp"><b>Step 3: Verify file created</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+            Expected: ~35 lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
 git commit -m &quot;feat(ui): Add MirrorSettings component skeleton
 Define props, state, and useEffect for loading settings from WASM.
 UI rendering to be added in next step.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_15:_Settings_Panel_Event_Handlers"><a class="permalink" href="#Task_15:_Settings_Panel_Event_Handlers">Task
-  15: Settings Panel Event Handlers</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: web/web.ascii-chat.com/src/components/MirrorSettings.tsx</dd>
-</dl>
-<p class="Pp"><b>Step 1: Add event handlers</b></p>
-<p class="Pp"></p>
-<p class="Pp">Add before the return statement in MirrorSettings.tsx:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Event handlers
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_15:_Settings_Panel_Event_Handlers">
+            <a class="permalink" href="#Task_15:_Settings_Panel_Event_Handlers"
+              >Task 15: Settings Panel Event Handlers</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Modify: web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Add event handlers</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Add before the return statement in MirrorSettings.tsx:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Event handlers
 const handleWidthChange = async (newWidth: number) =&gt; {
 <br/>
   if (!wasm) return;
@@ -1747,38 +1911,46 @@ const handleColorFilterChange = async (filter: ColorFilter) =&gt; {
 <br/>
   await wasm.setColorFilter(filter);
 };</pre>
-<p class="Pp"><b>Step 2: Verify additions</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: grep -c
-    &quot;handleWidthChange\|handleHeightChange\|handleRenderModeChange&quot;
-    web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: 5 (5
-    handler functions)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+          <p class="Pp"><b>Step 2: Verify additions</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: grep -c
+            &quot;handleWidthChange\|handleHeightChange\|handleRenderModeChange&quot;
+            web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: 5
+            (5 handler functions)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
 git commit -m &quot;feat(ui): Add settings panel event handlers
 Implement handlers for width, height, render mode, color mode,
 and color filter changes. Each handler updates local state and
 calls WASM setter.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_16:_Settings_Panel_UI_Rendering"><a class="permalink" href="#Task_16:_Settings_Panel_UI_Rendering">Task
-  16: Settings Panel UI Rendering</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: web/web.ascii-chat.com/src/components/MirrorSettings.tsx</dd>
-</dl>
-<p class="Pp"><b>Step 1: Replace return statement with UI</b></p>
-<p class="Pp"></p>
-<p class="Pp">Replace return null; with:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Collapsed state
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_16:_Settings_Panel_UI_Rendering">
+            <a class="permalink" href="#Task_16:_Settings_Panel_UI_Rendering"
+              >Task 16: Settings Panel UI Rendering</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Modify: web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Replace return statement with UI</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Replace return null; with:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Collapsed state
 if (!isOpen) {
 <br/>
     return (
@@ -1956,16 +2128,18 @@ return (
 <br/>
     &lt;/div&gt;
 );</pre>
-<p class="Pp"><b>Step 2: Verify file complete</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: wc -l
-    web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: ~150
-    lines</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+          <p class="Pp"><b>Step 2: Verify file complete</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: wc -l web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+            Expected: ~150 lines
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
 git commit -m &quot;feat(ui): Add settings panel UI rendering
 Implement floating overlay panel with:
 - Collapsible button when closed
@@ -1975,33 +2149,40 @@ Implement floating overlay panel with:
 - Color mode dropdown
 Styled with Tailwind CSS, semi-transparent background.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_17:_Documentation"><a class="permalink" href="#Task_17:_Documentation">Task
-  17: Documentation</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify:
-      <b>docs/plans/2026-02-06-web-mirror-full-library-wasm.md</b><b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Update design document status</b></p>
-<p class="Pp"></p>
-<p class="Pp">Change line 3 in design doc from:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>**Status:** Design Phase</pre>
-<p class="Pp">To:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>**Status:** &#x2705; Implementation Complete</pre>
-<p class="Pp"><b>Step 2: Add implementation notes section</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to end of design document:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>---
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_17:_Documentation">
+            <a class="permalink" href="#Task_17:_Documentation"
+              >Task 17: Documentation</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Modify:
+              <b>docs/plans/2026-02-06-web-mirror-full-library-wasm.md</b
+              ><b></b>
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Update design document status</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Change line 3 in design doc from:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>**Status:** Design Phase</pre>
+          <p class="Pp">To:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>**Status:** &#x2705; Implementation Complete</pre>
+          <p class="Pp"><b>Step 2: Add implementation notes section</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Append to end of design document:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+---
 ## Implementation Notes
 **Completed:** 2026-02-06
 ### Deviations from Plan
@@ -2015,95 +2196,118 @@ cd web/web.ascii-chat.com/wasm
 # - src/wasm/dist/mirror.js (~200-300KB)
 # - src/wasm/dist/mirror.wasm (~150-250KB)
 ```</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Testing_Checklist"><a class="permalink" href="#Testing_Checklist">Testing
-  Checklist</a></h2>
-<dl class="Bl-tag">
-  <dt>[ ]</dt>
-  <dd>WASM module builds without errors</dd>
-  <dt>[ ]</dt>
-  <dd>Module loads in browser</dd>
-  <dt>[ ]</dt>
-  <dd>All exported functions accessible</dd>
-  <dt>[ ]</dt>
-  <dd>Dimension settings update correctly</dd>
-  <dt>[ ]</dt>
-  <dd>Render mode changes work</dd>
-  <dt>[ ]</dt>
-  <dd>Color filter applies correctly</dd>
-  <dt>[ ]</dt>
-  <dd>Color mode switches work</dd>
-  <dt>[ ]</dt>
-  <dd>Frame conversion produces ASCII output</dd>
-  <dt>[ ]</dt>
-  <dd>No memory leaks over time</dd>
-  <dt>[ ]</dt>
-  <dd>Settings persist across renders</dd>
-</dl>
-<p class="Pp"></p>
-<pre>**Step 3: Commit**
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Testing_Checklist">
+            <a class="permalink" href="#Testing_Checklist">Testing Checklist</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd>WASM module builds without errors</dd>
+            <dt>[ ]</dt>
+            <dd>Module loads in browser</dd>
+            <dt>[ ]</dt>
+            <dd>All exported functions accessible</dd>
+            <dt>[ ]</dt>
+            <dd>Dimension settings update correctly</dd>
+            <dt>[ ]</dt>
+            <dd>Render mode changes work</dd>
+            <dt>[ ]</dt>
+            <dd>Color filter applies correctly</dd>
+            <dt>[ ]</dt>
+            <dd>Color mode switches work</dd>
+            <dt>[ ]</dt>
+            <dd>Frame conversion produces ASCII output</dd>
+            <dt>[ ]</dt>
+            <dd>No memory leaks over time</dd>
+            <dt>[ ]</dt>
+            <dd>Settings persist across renders</dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+**Step 3: Commit**
 ```bash
 git add docs/plans/2026-02-06-web-mirror-full-library-wasm.md
 git commit -m &quot;docs: Mark WASM implementation complete
 Update design document status and add implementation notes.
 Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Success_Criteria"><a class="permalink" href="#Success_Criteria">Success
-  Criteria</a></h2>
-<p class="Pp">&#x2705; <b>Phase 1 Complete When:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>All platform layer files created (5 files in lib/platform/wasm/)</li>
-  <li>WASM entry point complete (mirror_wasm.c with 12 exported functions)</li>
-  <li>CMake build configuration ready</li>
-  <li>Build script executable</li>
-</ul>
-<p class="Pp">&#x2705; <b>Phase 2 Complete When:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>TypeScript types defined (mirror-types.ts)</li>
-  <li>WASM wrapper class complete (mirror.ts)</li>
-  <li>Settings panel component finished (MirrorSettings.tsx)</li>
-</ul>
-<p class="Pp">&#x2705; <b>Phase 3 Complete When:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>WASM builds successfully (./build.sh produces .wasm and .js)</li>
-  <li>All 17 commits pushed to git</li>
-  <li>Design document marked complete</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Next_Steps_After_This_Plan"><a class="permalink" href="#Next_Steps_After_This_Plan">Next
-  Steps After This Plan</a></h2>
-<p class="Pp">After completing this implementation plan, you'll need to:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Integrate with Mirror.tsx</b> - Update existing Mirror page to use new
-      WASM module</dd>
-  <dt>2.</dt>
-  <dd><b>Test in browser</b> - Verify WASM loads and functions work</dd>
-  <dt>3.</dt>
-  <dd><b>Fix build errors</b> - Address any compilation issues</dd>
-  <dt>4.</dt>
-  <dd><b>Performance testing</b> - Measure FPS and memory usage</dd>
-  <dt>5.</dt>
-  <dd><b>Cross-browser testing</b> - Test on Chrome, Firefox, Safari</dd>
-</dl>
-<p class="Pp">**Use @superpowers:executing-plans or
-    @superpowers:subagent-driven-development to implement this plan
-    task-by-task.**</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Success_Criteria">
+            <a class="permalink" href="#Success_Criteria">Success Criteria</a>
+          </h2>
+          <p class="Pp">&#x2705; <b>Phase 1 Complete When:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              All platform layer files created (5 files in lib/platform/wasm/)
+            </li>
+            <li>
+              WASM entry point complete (mirror_wasm.c with 12 exported
+              functions)
+            </li>
+            <li>CMake build configuration ready</li>
+            <li>Build script executable</li>
+          </ul>
+          <p class="Pp">&#x2705; <b>Phase 2 Complete When:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>TypeScript types defined (mirror-types.ts)</li>
+            <li>WASM wrapper class complete (mirror.ts)</li>
+            <li>Settings panel component finished (MirrorSettings.tsx)</li>
+          </ul>
+          <p class="Pp">&#x2705; <b>Phase 3 Complete When:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              WASM builds successfully (./build.sh produces .wasm and .js)
+            </li>
+            <li>All 17 commits pushed to git</li>
+            <li>Design document marked complete</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Next_Steps_After_This_Plan">
+            <a class="permalink" href="#Next_Steps_After_This_Plan"
+              >Next Steps After This Plan</a
+            >
+          </h2>
+          <p class="Pp">
+            After completing this implementation plan, you'll need to:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Integrate with Mirror.tsx</b> - Update existing Mirror page to
+              use new WASM module
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Test in browser</b> - Verify WASM loads and functions work
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Fix build errors</b> - Address any compilation issues</dd>
+            <dt>4.</dt>
+            <dd><b>Performance testing</b> - Measure FPS and memory usage</dd>
+            <dt>5.</dt>
+            <dd>
+              <b>Cross-browser testing</b> - Test on Chrome, Firefox, Safari
+            </dd>
+          </dl>
+          <p class="Pp">
+            **Use @superpowers:executing-plans or
+            @superpowers:subagent-driven-development to implement this plan
+            task-by-task.**
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

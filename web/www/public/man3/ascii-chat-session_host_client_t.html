@@ -1,295 +1,431 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_host_client_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_host_client_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_host_client_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_host_client_t - Internal client record structure.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>participant_type_t</b> <b>participant_type</b>
-  <br/>
-  <b>uint32_t</b> <b>client_id</b>
-  <br/>
-  <b>network_connection_t</b> * <b>connection</b>
-  <br/>
-  char <b>ip_address</b> [<b>IP_ADDRESS_BUFFER_SIZE</b>]
-  <br/>
-  int <b>port</b>
-  <br/>
-  <b>bool</b> <b>active</b>
-  <br/>
-  <b>bool</b> <b>video_active</b>
-  <br/>
-  <b>bool</b> <b>audio_active</b>
-  <br/>
-  <b>uint64_t</b> <b>connected_at</b>
-  <br/>
-  <b>uint16_t</b> <b>render_width</b>
-  <br/>
-  <b>uint16_t</b> <b>render_height</b>
-  <br/>
-  <b>acip_render_settings_t</b> <b>rendering</b>
-  <br/>
-  <b>digital_rain_t</b> * <b>rain</b>
-  <br/>
-  <b>uint64_t</b> <b>next_video_deadline</b>
-  <br/>
-  double <b>rain_time</b>
-  <br/>
-  struct <b>acip_transport</b> * <b>transport</b>
-  <br/>
-  Transport borrowed from the connection owner or browser bridge.
-    <b>acip_transport_ownership_t</b> <b>transport_ownership</b>
-  <br/>
-  <b>image_t</b> * <b>incoming_video</b>
-  <br/>
-  Incoming video frame buffer (for host render thread). <b>ringbuffer_t</b> *
-    <b>incoming_audio</b>
-  <br/>
-  Incoming audio ringbuffer (written by receive loop, read by render thread).
-    <b>opus_codec_t</b> * <b>opus_decoder</b>
-  <br/>
-  <b>opus_codec_t</b> * <b>opus_encoder</b>
-  <br/>
-  float <b>audio_frame</b> [(<b>OPUS_FRAME_SAMPLES</b> *<b>AUDIO_CHANNELS</b>)]
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Internal client record structure.</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>host.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_host_client_t::active</h2>
-<p class="Pp">Definition at line <b>80</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_broadcast_frame()</b>,
-    <b>session_host_client_has_transport()</b>,
-    <b>session_host_find_client()</b>, <b>session_host_get_client_ids()</b>,
-    <b>session_host_get_client_transport()</b>,
-    <b>session_host_inject_audio()</b>, <b>session_host_inject_frame()</b>,
-    <b>session_host_receive_packet()</b>, <b>session_host_remove_client()</b>,
-    <b>session_host_render_audio()</b>, <b>session_host_send_frame()</b>,
-    <b>session_host_set_client_transport()</b>, and
-    <b>session_host_set_render_target()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_host_client_t::audio_active</h2>
-<p class="Pp">Definition at line <b>82</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_find_client()</b>, <b>session_host_inject_audio()</b>,
-    <b>session_host_receive_packet()</b>, and
-    <b>session_host_render_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_session_host_client_t::audio_frame_("><a class="permalink" href="#float_session_host_client_t::audio_frame_(">float
-  session_host_client_t::audio_frame[(<b>OPUS_FRAME_SAMPLES</b>
-  *<b>AUDIO_CHANNELS</b>)]</a></h2>
-<p class="Pp">Definition at line <b>102</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_render_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> session_host_client_t::client_id</h2>
-<p class="Pp">Definition at line <b>76</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_broadcast_frame()</b>,
-    <b>session_host_client_has_transport()</b>,
-    <b>session_host_find_client()</b>, <b>session_host_get_client_ids()</b>,
-    <b>session_host_get_client_transport()</b>,
-    <b>session_host_inject_audio()</b>, <b>session_host_inject_frame()</b>,
-    <b>session_host_receive_packet()</b>, <b>session_host_remove_client()</b>,
-    <b>session_host_render_audio()</b>, <b>session_host_send_frame()</b>,
-    <b>session_host_set_client_transport()</b>, and
-    <b>session_host_set_render_target()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_host_client_t::connected_at</h2>
-<p class="Pp">Definition at line <b>83</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, and
-    <b>session_host_find_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>network_connection_t</b>*
-  session_host_client_t::connection</h2>
-<p class="Pp">Definition at line <b>77</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>, and
-    <b>session_host_remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ringbuffer_t</b>* session_host_client_t::incoming_audio</h2>
-<p class="Pp">Incoming audio ringbuffer (written by receive loop, read by render
-    thread).</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
-    <b>session_host_inject_audio()</b>, <b>session_host_receive_packet()</b>,
-    <b>session_host_remove_client()</b>, and
-  <b>session_host_render_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b>* session_host_client_t::incoming_video</h2>
-<p class="Pp">Incoming video frame buffer (for host render thread).</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
-    <b>session_host_inject_frame()</b>, <b>session_host_receive_packet()</b>,
-    and <b>session_host_remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_session_host_client_t::ip_address_"><a class="permalink" href="#char_session_host_client_t::ip_address_">char
-  session_host_client_t::ip_address[<b>IP_ADDRESS_BUFFER_SIZE</b>]</a></h2>
-<p class="Pp">Definition at line <b>78</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, and
-    <b>session_host_find_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_host_client_t::next_video_deadline</h2>
-<p class="Pp">Definition at line <b>88</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>opus_codec_t</b>* session_host_client_t::opus_decoder</h2>
-<p class="Pp">Definition at line <b>100</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>opus_codec_t</b>* session_host_client_t::opus_encoder</h2>
-<p class="Pp">Definition at line <b>101</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_render_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>participant_type_t</b>
-  session_host_client_t::participant_type</h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_inject_audio()</b>, and
-  <b>session_host_inject_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_session_host_client_t::port"><a class="permalink" href="#int_session_host_client_t::port">int
-  session_host_client_t::port</a></h2>
-<p class="Pp">Definition at line <b>79</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, and
-    <b>session_host_find_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>digital_rain_t</b>* session_host_client_t::rain</h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>host.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_session_host_client_t::rain_time"><a class="permalink" href="#double_session_host_client_t::rain_time">double
-  session_host_client_t::rain_time</a></h2>
-<p class="Pp">Definition at line <b>89</b> of file <b>host.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint16_t</b> session_host_client_t::render_height</h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint16_t</b> session_host_client_t::render_width</h2>
-<p class="Pp">Definition at line <b>84</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_render_settings_t</b>
-  session_host_client_t::rendering</h2>
-<p class="Pp">Definition at line <b>86</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
-  <b>acip_transport</b>* session_host_client_t::transport</a></h2>
-<p class="Pp">Transport borrowed from the connection owner or browser
-  bridge.</p>
-<p class="Pp">Definition at line <b>92</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_broadcast_frame()</b>,
-    <b>session_host_client_has_transport()</b>,
-    <b>session_host_get_client_transport()</b>,
-    <b>session_host_receive_packet()</b>, <b>session_host_render_audio()</b>,
-    <b>session_host_send_frame()</b>, and
-    <b>session_host_set_client_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_ownership_t</b>
-  session_host_client_t::transport_ownership</h2>
-<p class="Pp">Definition at line <b>93</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, and
-    <b>session_host_set_client_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_host_client_t::video_active</h2>
-<p class="Pp">Definition at line <b>81</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_find_client()</b>, <b>session_host_inject_frame()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_host_client_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_host_client_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_host_client_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          session_host_client_t - Internal client record structure.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>participant_type_t</b> <b>participant_type</b>
+            <br />
+            <b>uint32_t</b> <b>client_id</b>
+            <br />
+            <b>network_connection_t</b> * <b>connection</b>
+            <br />
+            char <b>ip_address</b> [<b>IP_ADDRESS_BUFFER_SIZE</b>]
+            <br />
+            int <b>port</b>
+            <br />
+            <b>bool</b> <b>active</b>
+            <br />
+            <b>bool</b> <b>video_active</b>
+            <br />
+            <b>bool</b> <b>audio_active</b>
+            <br />
+            <b>uint64_t</b> <b>connected_at</b>
+            <br />
+            <b>uint16_t</b> <b>render_width</b>
+            <br />
+            <b>uint16_t</b> <b>render_height</b>
+            <br />
+            <b>acip_render_settings_t</b> <b>rendering</b>
+            <br />
+            <b>digital_rain_t</b> * <b>rain</b>
+            <br />
+            <b>uint64_t</b> <b>next_video_deadline</b>
+            <br />
+            double <b>rain_time</b>
+            <br />
+            struct <b>acip_transport</b> * <b>transport</b>
+            <br />
+            Transport borrowed from the connection owner or browser bridge.
+            <b>acip_transport_ownership_t</b> <b>transport_ownership</b>
+            <br />
+            <b>image_t</b> * <b>incoming_video</b>
+            <br />
+            Incoming video frame buffer (for host render thread).
+            <b>ringbuffer_t</b> *
+            <b>incoming_audio</b>
+            <br />
+            Incoming audio ringbuffer (written by receive loop, read by render
+            thread).
+            <b>opus_codec_t</b> * <b>opus_decoder</b>
+            <br />
+            <b>opus_codec_t</b> * <b>opus_encoder</b>
+            <br />
+            float <b>audio_frame</b> [(<b>OPUS_FRAME_SAMPLES</b>
+            *<b>AUDIO_CHANNELS</b>)]
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Internal client record structure.</p>
+        <p class="Pp">Definition at line <b>74</b> of file <b>host.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_host_client_t::active</h2>
+          <p class="Pp">Definition at line <b>80</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_broadcast_frame()</b>,
+            <b>session_host_client_has_transport()</b>,
+            <b>session_host_find_client()</b>,
+            <b>session_host_get_client_ids()</b>,
+            <b>session_host_get_client_transport()</b>,
+            <b>session_host_inject_audio()</b>,
+            <b>session_host_inject_frame()</b>,
+            <b>session_host_receive_packet()</b>,
+            <b>session_host_remove_client()</b>,
+            <b>session_host_render_audio()</b>,
+            <b>session_host_send_frame()</b>,
+            <b>session_host_set_client_transport()</b>, and
+            <b>session_host_set_render_target()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_host_client_t::audio_active</h2>
+          <p class="Pp">Definition at line <b>82</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_find_client()</b>,
+            <b>session_host_inject_audio()</b>,
+            <b>session_host_receive_packet()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_session_host_client_t::audio_frame_(">
+            <a
+              class="permalink"
+              href="#float_session_host_client_t::audio_frame_("
+              >float session_host_client_t::audio_frame[(<b
+                >OPUS_FRAME_SAMPLES</b
+              >
+              *<b>AUDIO_CHANNELS</b>)]</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>102</b> of file <b>host.c</b>.</p>
+          <p class="Pp">Referenced by <b>session_host_render_audio()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> session_host_client_t::client_id</h2>
+          <p class="Pp">Definition at line <b>76</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_broadcast_frame()</b>,
+            <b>session_host_client_has_transport()</b>,
+            <b>session_host_find_client()</b>,
+            <b>session_host_get_client_ids()</b>,
+            <b>session_host_get_client_transport()</b>,
+            <b>session_host_inject_audio()</b>,
+            <b>session_host_inject_frame()</b>,
+            <b>session_host_receive_packet()</b>,
+            <b>session_host_remove_client()</b>,
+            <b>session_host_render_audio()</b>,
+            <b>session_host_send_frame()</b>,
+            <b>session_host_set_client_transport()</b>, and
+            <b>session_host_set_render_target()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_host_client_t::connected_at
+          </h2>
+          <p class="Pp">Definition at line <b>83</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>, and
+            <b>session_host_find_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_t</b>* session_host_client_t::connection
+          </h2>
+          <p class="Pp">Definition at line <b>77</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>, and
+            <b>session_host_remove_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ringbuffer_t</b>* session_host_client_t::incoming_audio
+          </h2>
+          <p class="Pp">
+            Incoming audio ringbuffer (written by receive loop, read by render
+            thread).
+          </p>
+          <p class="Pp">Definition at line <b>99</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_destroy()</b>, <b>session_host_inject_audio()</b>,
+            <b>session_host_receive_packet()</b>,
+            <b>session_host_remove_client()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>image_t</b>* session_host_client_t::incoming_video
+          </h2>
+          <p class="Pp">
+            Incoming video frame buffer (for host render thread).
+          </p>
+          <p class="Pp">Definition at line <b>96</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_destroy()</b>, <b>session_host_inject_frame()</b>,
+            <b>session_host_receive_packet()</b>, and
+            <b>session_host_remove_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_session_host_client_t::ip_address_">
+            <a class="permalink" href="#char_session_host_client_t::ip_address_"
+              >char
+              session_host_client_t::ip_address[<b>IP_ADDRESS_BUFFER_SIZE</b>]</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>78</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>, and
+            <b>session_host_find_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_host_client_t::next_video_deadline
+          </h2>
+          <p class="Pp">Definition at line <b>88</b> of file <b>host.c</b>.</p>
+          <p class="Pp">Referenced by <b>session_host_add_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>opus_codec_t</b>* session_host_client_t::opus_decoder
+          </h2>
+          <p class="Pp">Definition at line <b>100</b> of file <b>host.c</b>.</p>
+          <p class="Pp">Referenced by <b>session_host_receive_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>opus_codec_t</b>* session_host_client_t::opus_encoder
+          </h2>
+          <p class="Pp">Definition at line <b>101</b> of file <b>host.c</b>.</p>
+          <p class="Pp">Referenced by <b>session_host_render_audio()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>participant_type_t</b> session_host_client_t::participant_type
+          </h2>
+          <p class="Pp">Definition at line <b>75</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_inject_audio()</b>, and
+            <b>session_host_inject_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_session_host_client_t::port">
+            <a class="permalink" href="#int_session_host_client_t::port"
+              >int session_host_client_t::port</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>79</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>, and
+            <b>session_host_find_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>digital_rain_t</b>* session_host_client_t::rain</h2>
+          <p class="Pp">Definition at line <b>87</b> of file <b>host.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_session_host_client_t::rain_time">
+            <a class="permalink" href="#double_session_host_client_t::rain_time"
+              >double session_host_client_t::rain_time</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>89</b> of file <b>host.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint16_t</b> session_host_client_t::render_height
+          </h2>
+          <p class="Pp">Definition at line <b>85</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint16_t</b> session_host_client_t::render_width
+          </h2>
+          <p class="Pp">Definition at line <b>84</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_render_settings_t</b> session_host_client_t::rendering
+          </h2>
+          <p class="Pp">Definition at line <b>86</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>acip_transport</b>* session_host_client_t::transport</a
+            >
+          </h2>
+          <p class="Pp">
+            Transport borrowed from the connection owner or browser bridge.
+          </p>
+          <p class="Pp">Definition at line <b>92</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_broadcast_frame()</b>,
+            <b>session_host_client_has_transport()</b>,
+            <b>session_host_get_client_transport()</b>,
+            <b>session_host_receive_packet()</b>,
+            <b>session_host_render_audio()</b>,
+            <b>session_host_send_frame()</b>, and
+            <b>session_host_set_client_transport()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_ownership_t</b>
+            session_host_client_t::transport_ownership
+          </h2>
+          <p class="Pp">Definition at line <b>93</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>, and
+            <b>session_host_set_client_transport()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_host_client_t::video_active</h2>
+          <p class="Pp">Definition at line <b>81</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_find_client()</b>,
+            <b>session_host_inject_frame()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

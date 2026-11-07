@@ -1,188 +1,291 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>discovery_video_receiver_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">discovery_video_receiver_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">discovery_video_receiver_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">discovery_video_receiver_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>session_connection_t</b> <b>connection</b>
-  <br/>
-  <b>session_protocol_t</b> <b>protocol</b>
-  <br/>
-  <b>network_connection_t</b> * <b>network</b>
-  <br/>
-  <b>asciichat_thread_t</b> <b>receiver_thread</b>
-  <br/>
-  <b>asciichat_thread_t</b> <b>audio_thread</b>
-  <br/>
-  <b>bool</b> <b>receiver_started</b>
-  <br/>
-  <b>bool</b> <b>audio_started</b>
-  <br/>
-  <b>acip_transport_t</b> * <b>transport</b>
-  <br/>
-  <b>session_display_ctx_t</b> * <b>display</b>
-  <br/>
-  <b>atomic_t</b> <b>running</b>
-  <br/>
-  <b>asciichat_error_t</b> <b>result</b>
-  <br/>
-  <b>audio_context_t</b> * <b>audio</b>
-  <br/>
-  <b>client_audio_pipeline_t</b> * <b>audio_pipeline</b>
-  <br/>
-  <b>uint64_t</b> <b>observed_audio_blocks</b>
-  <br/>
-  <b>uint64_t</b> <b>observed_audio_samples</b>
-  <br/>
-  <b>uint64_t</b> <b>observed_audio_ns</b>
-  <br/>
-  <b>uint64_t</b> <b>observed_audio_gap_ns</b>
-  <br/>
-  <b>uint64_t</b> <b>observed_video_frames</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>83</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>audio_context_t</b>* discovery_video_receiver_t::audio</h2>
-<p class="Pp">Definition at line <b>95</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_audio_pipeline_t</b>*
-  discovery_video_receiver_t::audio_pipeline</h2>
-<p class="Pp">Definition at line <b>96</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> discovery_video_receiver_t::audio_started</h2>
-<p class="Pp">Definition at line <b>90</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b>
-  discovery_video_receiver_t::audio_thread</h2>
-<p class="Pp">Definition at line <b>88</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_connection_t</b>
-  discovery_video_receiver_t::connection</h2>
-<p class="Pp">Definition at line <b>84</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_display_ctx_t</b>*
-  discovery_video_receiver_t::display</h2>
-<p class="Pp">Definition at line <b>92</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>network_connection_t</b>*
-  discovery_video_receiver_t::network</h2>
-<p class="Pp">Definition at line <b>86</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  discovery_video_receiver_t::observed_audio_blocks</h2>
-<p class="Pp">Definition at line <b>97</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  discovery_video_receiver_t::observed_audio_gap_ns</h2>
-<p class="Pp">Definition at line <b>97</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  discovery_video_receiver_t::observed_audio_ns</h2>
-<p class="Pp">Definition at line <b>97</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  discovery_video_receiver_t::observed_audio_samples</h2>
-<p class="Pp">Definition at line <b>97</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  discovery_video_receiver_t::observed_video_frames</h2>
-<p class="Pp">Definition at line <b>98</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_protocol_t</b>
-  discovery_video_receiver_t::protocol</h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> discovery_video_receiver_t::receiver_started</h2>
-<p class="Pp">Definition at line <b>89</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b>
-  discovery_video_receiver_t::receiver_thread</h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discovery_video_receiver_t::result</h2>
-<p class="Pp">Definition at line <b>94</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> discovery_video_receiver_t::running</h2>
-<p class="Pp">Definition at line <b>93</b> of file <b>discovery/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b>*
-  discovery_video_receiver_t::transport</h2>
-<p class="Pp">Definition at line <b>91</b> of file <b>discovery/main.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>discovery_video_receiver_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">discovery_video_receiver_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">discovery_video_receiver_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">discovery_video_receiver_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_connection_t</b> <b>connection</b>
+            <br />
+            <b>session_protocol_t</b> <b>protocol</b>
+            <br />
+            <b>network_connection_t</b> * <b>network</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>receiver_thread</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>audio_thread</b>
+            <br />
+            <b>bool</b> <b>receiver_started</b>
+            <br />
+            <b>bool</b> <b>audio_started</b>
+            <br />
+            <b>acip_transport_t</b> * <b>transport</b>
+            <br />
+            <b>session_display_ctx_t</b> * <b>display</b>
+            <br />
+            <b>atomic_t</b> <b>running</b>
+            <br />
+            <b>asciichat_error_t</b> <b>result</b>
+            <br />
+            <b>audio_context_t</b> * <b>audio</b>
+            <br />
+            <b>client_audio_pipeline_t</b> * <b>audio_pipeline</b>
+            <br />
+            <b>uint64_t</b> <b>observed_audio_blocks</b>
+            <br />
+            <b>uint64_t</b> <b>observed_audio_samples</b>
+            <br />
+            <b>uint64_t</b> <b>observed_audio_ns</b>
+            <br />
+            <b>uint64_t</b> <b>observed_audio_gap_ns</b>
+            <br />
+            <b>uint64_t</b> <b>observed_video_frames</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>83</b> of file <b>discovery/main.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_context_t</b>* discovery_video_receiver_t::audio
+          </h2>
+          <p class="Pp">
+            Definition at line <b>95</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_t</b>*
+            discovery_video_receiver_t::audio_pipeline
+          </h2>
+          <p class="Pp">
+            Definition at line <b>96</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> discovery_video_receiver_t::audio_started
+          </h2>
+          <p class="Pp">
+            Definition at line <b>90</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> discovery_video_receiver_t::audio_thread
+          </h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_connection_t</b> discovery_video_receiver_t::connection
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_display_ctx_t</b>* discovery_video_receiver_t::display
+          </h2>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_t</b>* discovery_video_receiver_t::network
+          </h2>
+          <p class="Pp">
+            Definition at line <b>86</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> discovery_video_receiver_t::observed_audio_blocks
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> discovery_video_receiver_t::observed_audio_gap_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> discovery_video_receiver_t::observed_audio_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> discovery_video_receiver_t::observed_audio_samples
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> discovery_video_receiver_t::observed_video_frames
+          </h2>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_protocol_t</b> discovery_video_receiver_t::protocol
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> discovery_video_receiver_t::receiver_started
+          </h2>
+          <p class="Pp">
+            Definition at line <b>89</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b>
+            discovery_video_receiver_t::receiver_thread
+          </h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discovery_video_receiver_t::result
+          </h2>
+          <p class="Pp">
+            Definition at line <b>94</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> discovery_video_receiver_t::running
+          </h2>
+          <p class="Pp">
+            Definition at line <b>93</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b>* discovery_video_receiver_t::transport
+          </h2>
+          <p class="Pp">
+            Definition at line <b>91</b> of file <b>discovery/main.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

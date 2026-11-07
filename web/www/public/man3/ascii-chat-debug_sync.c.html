@@ -1,272 +1,453 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>sync.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">sync.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">sync.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">sync.c - &#x1F512; Synchronization primitive debugging with
-    dynamic state inspection</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>sync_buffer_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>DEBUG_SYNC_LOCK_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_UNLOCK_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_HELD_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DEBUG_SYNC_ELAPSED_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DEBUG_SYNC_RDLOCK_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_WRLOCK_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DEBUG_SYNC_READ_HELD_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DEBUG_SYNC_STATUS_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>DEBUG_SYNC_WAIT_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_SIGNAL_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_BROADCAST_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>DEBUG_SYNC_WAITING_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DEBUG_SYNC_TIMING_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>SYNC_BUFFER_SIZE</b> 65536
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>debug_sync_print_state</b> (void)
-  <br/>
-  Print all synchronization primitive states at once. void
-    <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
-    <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
-  <br/>
-  Get synchronization statistics. int <b>debug_sync_mutex_lock</b>
-    (<b>mutex_t</b> *mutex, const char *file_name, int line_number, const char
-    *function_name)
-  <br/>
-  int <b>debug_sync_mutex_trylock</b> (<b>mutex_t</b> *mutex, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_mutex_unlock</b> (<b>mutex_t</b> *mutex, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *lock, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_rwlock_rdunlock</b> (<b>rwlock_t</b> *lock, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_rwlock_wrlock</b> (<b>rwlock_t</b> *lock, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *lock, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex,
-    const char *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_cond_timedwait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *mutex, <b>uint64_t</b> timeout_ns, const char *file_name, int line_number,
-    const char *function_name)
-  <br/>
-  int <b>debug_sync_cond_signal</b> (<b>cond_t</b> *cond, const char *file_name,
-    int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_cond_broadcast</b> (<b>cond_t</b> *cond, const char
-    *file_name, int line_number, const char *function_name)
-  <br/>
-  <b>bool</b> <b>debug_sync_is_initialized</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>debug_sync_init</b> (void)
-  <br/>
-  void <b>debug_sync_print</b> (void)
-  <br/>
-  void <b>debug_sync_print_state_delayed</b> (<b>uint64_t</b> delay)
-  <br/>
-  void <b>debug_sync_print_backtrace_delayed</b> (<b>uint64_t</b> delay)
-  <br/>
-  void <b>debug_sync_trigger_print</b> (void)
-  <br/>
-  <b>bool</b> <b>debug_sync_is_cleanup_in_progress</b> (void)
-  <br/>
-  void <b>debug_sync_poll</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>debug_sync_start_thread</b> (void)
-  <br/>
-  void <b>debug_sync_cleanup_thread</b> (void)
-  <br/>
-  void <b>debug_sync_destroy</b> (void)
-  <br/>
-  void <b>debug_sync_final_cleanup</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F512; Synchronization primitive debugging with dynamic state
-    inspection</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Clean architecture: queries named.c registry for current state. No
-    internal collection overhead - inspects lock structs directly.</p>
-<p class="Pp">Definition in file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_BROADCAST_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_BROADCAST_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_BROADCAST_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_ELAPSED_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_ELAPSED_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_ELAPSED_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_HELD_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_SYNC_HELD_BUFFER_SIZE___256">#define
-  DEBUG_SYNC_HELD_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_LOCK_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_LOCK_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_LOCK_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_RDLOCK_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_RDLOCK_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_RDLOCK_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_READ_HELD_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_SYNC_READ_HELD_BUFFER_SIZE___256">#define
-  DEBUG_SYNC_READ_HELD_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_SIGNAL_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_SIGNAL_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_SIGNAL_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_STATUS_BUFFER_SIZE___128"><a class="permalink" href="#_define_DEBUG_SYNC_STATUS_BUFFER_SIZE___128">#define
-  DEBUG_SYNC_STATUS_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE___256">#define
-  DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_TIMING_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_SYNC_TIMING_BUFFER_SIZE___256">#define
-  DEBUG_SYNC_TIMING_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE___512"><a class="permalink" href="#_define_DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE___512">#define
-  DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_UNLOCK_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_UNLOCK_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_UNLOCK_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_WAIT_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_WAIT_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_WAIT_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_WAITING_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_SYNC_WAITING_BUFFER_SIZE___256">#define
-  DEBUG_SYNC_WAITING_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE___256">#define
-  DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_DEBUG_SYNC_WRLOCK_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_SYNC_WRLOCK_BUFFER_SIZE___64">#define
-  DEBUG_SYNC_WRLOCK_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>debug/sync.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SYNC_BUFFER_SIZE___65536"><a class="permalink" href="#_define_SYNC_BUFFER_SIZE___65536">#define
-  SYNC_BUFFER_SIZE 65536</a></h2>
-<p class="Pp">Referenced by <b>debug_sync_print_state()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_cleanup_thread_(void_)"><a class="permalink" href="#void_debug_sync_cleanup_thread_(void_)">void
-  debug_sync_cleanup_thread (void )</a></h2>
-<p class="Pp">Definition at line <b>777</b> of file <b>debug/sync.c</b>.</p>
-<pre>777                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sync.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sync.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sync.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          sync.c - &#x1F512; Synchronization primitive debugging with dynamic
+          state inspection
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>sync_buffer_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DEBUG_SYNC_LOCK_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_UNLOCK_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_HELD_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DEBUG_SYNC_ELAPSED_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DEBUG_SYNC_RDLOCK_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_WRLOCK_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DEBUG_SYNC_READ_HELD_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DEBUG_SYNC_STATUS_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>DEBUG_SYNC_WAIT_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_SIGNAL_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_BROADCAST_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>DEBUG_SYNC_WAITING_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DEBUG_SYNC_TIMING_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>SYNC_BUFFER_SIZE</b> 65536
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>debug_sync_print_state</b> (void)
+            <br />
+            Print all synchronization primitive states at once. void
+            <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
+            <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
+            <br />
+            Get synchronization statistics. int <b>debug_sync_mutex_lock</b> (<b
+              >mutex_t</b
+            >
+            *mutex, const char *file_name, int line_number, const char
+            *function_name)
+            <br />
+            int <b>debug_sync_mutex_trylock</b> (<b>mutex_t</b> *mutex, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_mutex_unlock</b> (<b>mutex_t</b> *mutex, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *lock, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_rwlock_rdunlock</b> (<b>rwlock_t</b> *lock, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_rwlock_wrlock</b> (<b>rwlock_t</b> *lock, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *lock, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond,
+            <b>mutex_t</b> *mutex, const char *file_name, int line_number, const
+            char *function_name)
+            <br />
+            int <b>debug_sync_cond_timedwait</b> (<b>cond_t</b> *cond,
+            <b>mutex_t</b> *mutex, <b>uint64_t</b> timeout_ns, const char
+            *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_cond_signal</b> (<b>cond_t</b> *cond, const char
+            *file_name, int line_number, const char *function_name)
+            <br />
+            int <b>debug_sync_cond_broadcast</b> (<b>cond_t</b> *cond, const
+            char *file_name, int line_number, const char *function_name)
+            <br />
+            <b>bool</b> <b>debug_sync_is_initialized</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>debug_sync_init</b> (void)
+            <br />
+            void <b>debug_sync_print</b> (void)
+            <br />
+            void <b>debug_sync_print_state_delayed</b> (<b>uint64_t</b> delay)
+            <br />
+            void <b>debug_sync_print_backtrace_delayed</b> (<b>uint64_t</b>
+            delay)
+            <br />
+            void <b>debug_sync_trigger_print</b> (void)
+            <br />
+            <b>bool</b> <b>debug_sync_is_cleanup_in_progress</b> (void)
+            <br />
+            void <b>debug_sync_poll</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>debug_sync_start_thread</b> (void)
+            <br />
+            void <b>debug_sync_cleanup_thread</b> (void)
+            <br />
+            void <b>debug_sync_destroy</b> (void)
+            <br />
+            void <b>debug_sync_final_cleanup</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F512; Synchronization primitive debugging with dynamic state
+          inspection
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">
+          Clean architecture: queries named.c registry for current state. No
+          internal collection overhead - inspects lock structs directly.
+        </p>
+        <p class="Pp">Definition in file <b>debug/sync.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_BROADCAST_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_BROADCAST_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_BROADCAST_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_ELAPSED_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_ELAPSED_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_ELAPSED_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_HELD_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_HELD_BUFFER_SIZE___256"
+              >#define DEBUG_SYNC_HELD_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_LOCK_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_LOCK_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_LOCK_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_RDLOCK_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_RDLOCK_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_RDLOCK_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_READ_HELD_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_READ_HELD_BUFFER_SIZE___256"
+              >#define DEBUG_SYNC_READ_HELD_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_SIGNAL_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_SIGNAL_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_SIGNAL_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_STATUS_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_STATUS_BUFFER_SIZE___128"
+              >#define DEBUG_SYNC_STATUS_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE___256"
+              >#define DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_TIMING_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_TIMING_BUFFER_SIZE___256"
+              >#define DEBUG_SYNC_TIMING_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE___512"
+              >#define DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_UNLOCK_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_UNLOCK_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_UNLOCK_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_WAIT_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_WAIT_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_WAIT_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_WAITING_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_WAITING_BUFFER_SIZE___256"
+              >#define DEBUG_SYNC_WAITING_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE___256"
+              >#define DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DEBUG_SYNC_WRLOCK_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_DEBUG_SYNC_WRLOCK_BUFFER_SIZE___64"
+              >#define DEBUG_SYNC_WRLOCK_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>debug/sync.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SYNC_BUFFER_SIZE___65536">
+            <a class="permalink" href="#_define_SYNC_BUFFER_SIZE___65536"
+              >#define SYNC_BUFFER_SIZE 65536</a
+            >
+          </h2>
+          <p class="Pp">Referenced by <b>debug_sync_print_state()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_cleanup_thread_(void_)">
+            <a class="permalink" href="#void_debug_sync_cleanup_thread_(void_)"
+              >void debug_sync_cleanup_thread (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>777</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+777                                      {
 778   if (!g_started)
 779     return;
 780   atomic_store_bool_impl(&amp;g_cleaning, true);
@@ -281,54 +462,81 @@
 789 #endif
 790   g_started = false;
 791 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool_impl()</b>, <b>cond_signal()</b>,
-    <b>debug_sync_cleanup_thread()</b>, <b>ERROR_THREAD</b>, <b>FATAL</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>thread_join</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>, and
-    <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_cond_broadcast_("><a class="permalink" href="#int_debug_sync_cond_broadcast_(">int
-  debug_sync_cond_broadcast (<b>cond_t</b> * cond, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>625</b> of file <b>debug/sync.c</b>.</p>
-<pre>625                                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, <b>cond_signal()</b>,
+            <b>debug_sync_cleanup_thread()</b>, <b>ERROR_THREAD</b>,
+            <b>FATAL</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+            <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_debug_sync_cond_broadcast_(">
+            <a class="permalink" href="#int_debug_sync_cond_broadcast_("
+              >int debug_sync_cond_broadcast (<b>cond_t</b> * cond, const char *
+              file_name, int line_number, const char * function_name)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>625</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+625                                                                                                                {
 626   (void)file_name;
 627   (void)line_number;
 628   (void)function_name;
 629   return cond_broadcast(cond);
 630 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>cond_broadcast()</b>, and
-    <b>debug_sync_cond_broadcast()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_cond_broadcast()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_cond_signal_("><a class="permalink" href="#int_debug_sync_cond_signal_(">int
-  debug_sync_cond_signal (<b>cond_t</b> * cond, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>618</b> of file <b>debug/sync.c</b>.</p>
-<pre>618                                                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>cond_broadcast()</b>, and
+            <b>debug_sync_cond_broadcast()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>debug_sync_cond_broadcast()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_debug_sync_cond_signal_(">
+            <a class="permalink" href="#int_debug_sync_cond_signal_("
+              >int debug_sync_cond_signal (<b>cond_t</b> * cond, const char *
+              file_name, int line_number, const char * function_name)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>618</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+618                                                                                                             {
 619   (void)file_name;
 620   (void)line_number;
 621   (void)function_name;
 622   return cond_signal(cond);
 623 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>cond_signal()</b>, and
-    <b>debug_sync_cond_signal()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_cond_signal()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_destroy_(void_)"><a class="permalink" href="#void_debug_sync_destroy_(void_)">void
-  debug_sync_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>792</b> of file <b>debug/sync.c</b>.</p>
-<pre>792                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>cond_signal()</b>, and
+            <b>debug_sync_cond_signal()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>debug_sync_cond_signal()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_destroy_(void_)">
+            <a class="permalink" href="#void_debug_sync_destroy_(void_)"
+              >void debug_sync_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>792</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+792                               {
 793   debug_sync_cleanup_thread();
 794   if (g_initialized) {
 795     cond_destroy(&amp;g_condition);
@@ -338,35 +546,53 @@
 799     g_state_deadline = g_backtrace_deadline = 0;
 800   }
 801 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool_impl()</b>, <b>cond_destroy()</b>,
-    <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>, and
-    <b>mutex_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>debug_sync_destroy()</b>, and <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_final_cleanup_(void_)"><a class="permalink" href="#void_debug_sync_final_cleanup_(void_)">void
-  debug_sync_final_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>802</b> of file <b>debug/sync.c</b>.</p>
-<pre>802                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, <b>cond_destroy()</b>,
+            <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>, and
+            <b>mutex_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>debug_sync_destroy()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_final_cleanup_(void_)">
+            <a class="permalink" href="#void_debug_sync_final_cleanup_(void_)"
+              >void debug_sync_final_cleanup (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>802</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+802                                     {
 803 #ifndef NDEBUG
 804   mutex_stack_cleanup_current_thread();
 805 #endif
 806 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_sync_final_cleanup()</b>, and
-    <b>mutex_stack_cleanup_current_thread()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>debug_sync_final_cleanup()</b>, and
-  <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> debug_sync_init (void )</h2>
-<p class="Pp">Definition at line <b>659</b> of file <b>debug/sync.c</b>.</p>
-<pre>659                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>debug_sync_final_cleanup()</b>, and
+            <b>mutex_stack_cleanup_current_thread()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>debug_sync_final_cleanup()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> debug_sync_init (void )</h2>
+          <p class="Pp">
+            Definition at line <b>659</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+659                                         {
 660   if (g_initialized)
 661     return ASCIICHAT_OK;
 662   if (mutex_init(&amp;g_mutex, &quot;debug_sync&quot;) != 0)
@@ -379,34 +605,53 @@
 669   atomic_store_bool_impl(&amp;g_cleaning, false);
 670   return ASCIICHAT_OK;
 671 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool_impl()</b>,
-    <b>cond_init()</b>, <b>debug_sync_init()</b>, <b>ERROR_THREAD</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_init()</b>,
-    <b>debug_sync_print_cond_state()</b>, and
-  <b>debug_sync_start_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> debug_sync_is_cleanup_in_progress (void )</h2>
-<p class="Pp">Definition at line <b>698</b> of file <b>debug/sync.c</b>.</p>
-<pre>698                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool_impl()</b>,
+            <b>cond_init()</b>, <b>debug_sync_init()</b>, <b>ERROR_THREAD</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_init()</b>,
+            <b>debug_sync_print_cond_state()</b>, and
+            <b>debug_sync_start_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> debug_sync_is_cleanup_in_progress (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>698</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+698                                              {
 699   return atomic_load_bool_impl(&amp;g_cleaning);
 700 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool_impl()</b>, and
-    <b>debug_sync_is_cleanup_in_progress()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>,
-    <b>debug_sync_is_cleanup_in_progress()</b>, and
-    <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_poll_(void_)"><a class="permalink" href="#void_debug_sync_poll_(void_)">void
-  debug_sync_poll (void )</a></h2>
-<p class="Pp">Definition at line <b>701</b> of file <b>debug/sync.c</b>.</p>
-<pre>701                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool_impl()</b>, and
+            <b>debug_sync_is_cleanup_in_progress()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_check_cond_deadlocks()</b>,
+            <b>debug_sync_is_cleanup_in_progress()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_poll_(void_)">
+            <a class="permalink" href="#void_debug_sync_poll_(void_)"
+              >void debug_sync_poll (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>701</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+701                            {
 702   if (!g_initialized)
 703     return;
 704   uint64_t now = time_get_ns();
@@ -432,68 +677,108 @@
 724     backtrace_t_free(&amp;trace);
 725   }
 726 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_exchange_bool_impl()</b>,
-    <b>backtrace_capture()</b>, <b>backtrace_print()</b>,
-    <b>backtrace_symbolize()</b>, <b>backtrace_t_free()</b>,
-    <b>debug_sync_poll()</b>, <b>LOG_INFO</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>backtrace_t::symbols</b>, and
-  <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_poll()</b>, and
-    <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_(void_)"><a class="permalink" href="#void_debug_sync_print_(void_)">void
-  debug_sync_print (void )</a></h2>
-<p class="Pp">Definition at line <b>680</b> of file <b>debug/sync.c</b>.</p>
-<pre>680                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_exchange_bool_impl()</b>,
+            <b>backtrace_capture()</b>, <b>backtrace_print()</b>,
+            <b>backtrace_symbolize()</b>, <b>backtrace_t_free()</b>,
+            <b>debug_sync_poll()</b>, <b>LOG_INFO</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>backtrace_t::symbols</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_poll()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_(void_)">
+            <a class="permalink" href="#void_debug_sync_print_(void_)"
+              >void debug_sync_print (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>680</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+680                             {
 681   debug_sync_print_sync();
 682 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_sync_print()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print()</b>, and
-    <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_backtrace_delayed_("><a class="permalink" href="#void_debug_sync_print_backtrace_delayed_(">void
-  debug_sync_print_backtrace_delayed (<b>uint64_t</b> delay)</a></h2>
-<p class="Pp">Definition at line <b>688</b> of file <b>debug/sync.c</b>.</p>
-<pre>688                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>debug_sync_print()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_backtrace_delayed_(">
+            <a
+              class="permalink"
+              href="#void_debug_sync_print_backtrace_delayed_("
+              >void debug_sync_print_backtrace_delayed (<b>uint64_t</b>
+              delay)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>688</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+688                                                         {
 689   if (!g_initialized)
 690     return;
 691   debug_report_schedule(&amp;g_mutex, &amp;g_condition, &amp;g_backtrace_deadline, delay);
 692 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_report_schedule()</b>, and
-    <b>debug_sync_print_backtrace_delayed()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_backtrace_delayed()</b>,
-    <b>debug_sync_print_cond_state()</b>, and
-  <b>debug_sync_start_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_state_delayed_("><a class="permalink" href="#void_debug_sync_print_state_delayed_(">void
-  debug_sync_print_state_delayed (<b>uint64_t</b> delay)</a></h2>
-<p class="Pp">Definition at line <b>683</b> of file <b>debug/sync.c</b>.</p>
-<pre>683                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>debug_report_schedule()</b>, and
+            <b>debug_sync_print_backtrace_delayed()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print_backtrace_delayed()</b>,
+            <b>debug_sync_print_cond_state()</b>, and
+            <b>debug_sync_start_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_state_delayed_(">
+            <a class="permalink" href="#void_debug_sync_print_state_delayed_("
+              >void debug_sync_print_state_delayed (<b>uint64_t</b> delay)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>683</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+683                                                     {
 684   if (!g_initialized)
 685     return;
 686   debug_report_schedule(&amp;g_mutex, &amp;g_condition, &amp;g_state_deadline, delay);
 687 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_report_schedule()</b>, and
-    <b>debug_sync_print_state_delayed()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_cond_state()</b>,
-    <b>debug_sync_print_state_delayed()</b>, and
-    <b>debug_sync_start_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> debug_sync_start_thread (void )</h2>
-<p class="Pp">Definition at line <b>755</b> of file <b>debug/sync.c</b>.</p>
-<pre>755                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>debug_report_schedule()</b>, and
+            <b>debug_sync_print_state_delayed()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print_cond_state()</b>,
+            <b>debug_sync_print_state_delayed()</b>, and
+            <b>debug_sync_start_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> debug_sync_start_thread (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>755</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+755                                                 {
 756   if (g_started)
 757     return ASCIICHAT_OK;
 758   asciichat_error_t result = debug_sync_init();
@@ -515,45 +800,64 @@
 774   g_started = true;
 775   return ASCIICHAT_OK;
 776 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_store_bool_impl()</b>, <b>options_state::debug_backtrace_time</b>,
-    <b>debug_sync_init()</b>, <b>debug_sync_print_backtrace_delayed()</b>,
-    <b>debug_sync_print_state_delayed()</b>, <b>debug_sync_start_thread()</b>,
-    <b>options_state::debug_sync_state_time</b>, <b>ERROR_THREAD</b>,
-    <b>IS_OPTION_EXPLICIT</b>, <b>NS_PER_SEC_INT</b>, <b>options_get()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_cond_state()</b>,
-    <b>debug_sync_start_thread()</b>, and <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_trigger_print_(void_)"><a class="permalink" href="#void_debug_sync_trigger_print_(void_)">void
-  debug_sync_trigger_print (void )</a></h2>
-<p class="Pp">Definition at line <b>693</b> of file <b>debug/sync.c</b>.</p>
-<pre>693                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool_impl()</b>,
+            <b>options_state::debug_backtrace_time</b>,
+            <b>debug_sync_init()</b>,
+            <b>debug_sync_print_backtrace_delayed()</b>,
+            <b>debug_sync_print_state_delayed()</b>,
+            <b>debug_sync_start_thread()</b>,
+            <b>options_state::debug_sync_state_time</b>, <b>ERROR_THREAD</b>,
+            <b>IS_OPTION_EXPLICIT</b>, <b>NS_PER_SEC_INT</b>,
+            <b>options_get()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print_cond_state()</b>,
+            <b>debug_sync_start_thread()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_trigger_print_(void_)">
+            <a class="permalink" href="#void_debug_sync_trigger_print_(void_)"
+              >void debug_sync_trigger_print (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>693</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+693                                     {
 694   // Do not signal a condition variable or invoke diagnostic hooks in a signal
 695   // handler. The worker checks this flag at most 100ms after its next wakeup.
 696   atomic_store_bool_impl(&amp;g_signal, true);
 697 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool_impl()</b>, and
-    <b>debug_sync_trigger_print()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_cond_state()</b>, and
-    <b>debug_sync_trigger_print()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool_impl()</b>, and
+            <b>debug_sync_trigger_print()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print_cond_state()</b>, and
+            <b>debug_sync_trigger_print()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

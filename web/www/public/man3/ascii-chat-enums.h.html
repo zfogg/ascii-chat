@@ -1,616 +1,1043 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>enums.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">enums.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">enums.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">enums.h - Option enum value definitions - single source of
-  truth.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>enum_to_string_entry_t</b>
-  <br/>
-  Enum value mapping with description for shell completions. struct
-    <b>enum_descriptor_t</b>
-  <br/>
-  Enum value mapping for an option.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>OPT_VALUE_AUTO</b> 'auto'
-  <br/>
-  #define <b>OPT_VALUE_TRUE</b> 'true'
-  <br/>
-  #define <b>OPT_VALUE_FALSE</b> 'false'
-  <br/>
-  #define <b>OPT_COMPLETION_SHELL_BASH</b> 'bash'
-  <br/>
-  #define <b>OPT_COMPLETION_SHELL_FISH</b> 'fish'
-  <br/>
-  #define <b>OPT_COMPLETION_SHELL_ZSH</b> 'zsh'
-  <br/>
-  #define <b>OPT_COMPLETION_SHELL_POWERSHELL</b> 'powershell'
-  <br/>
-  #define <b>OPT_RENDER_THEME_DARK</b> 'dark'
-  <br/>
-  #define <b>OPT_RENDER_THEME_LIGHT</b> 'light'
-  <br/>
-  #define <b>OPT_RENDER_THEME_AUTO</b> <b>OPT_VALUE_AUTO</b>
-  <br/>
-  #define <b>OPT_LOG_LEVEL_DEV</b> 'dev'
-  <br/>
-  #define <b>OPT_LOG_LEVEL_DEBUG</b> 'debug'
-  <br/>
-  #define <b>OPT_LOG_LEVEL_INFO</b> 'info'
-  <br/>
-  #define <b>OPT_LOG_LEVEL_WARN</b> 'warn'
-  <br/>
-  #define <b>OPT_LOG_LEVEL_ERROR</b> 'error'
-  <br/>
-  #define <b>OPT_LOG_LEVEL_FATAL</b> 'fatal'
-  <br/>
-  #define <b>OPT_COLOR_MODE_AUTO</b> 'auto'
-  <br/>
-  #define <b>OPT_COLOR_MODE_NONE</b> 'none'
-  <br/>
-  #define <b>OPT_COLOR_MODE_MONO</b> 'mono'
-  <br/>
-  #define <b>OPT_COLOR_MODE_16</b> '16'
-  <br/>
-  #define <b>OPT_COLOR_MODE_256</b> '256'
-  <br/>
-  #define <b>OPT_COLOR_MODE_TRUECOLOR</b> 'truecolor'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_NONE</b> 'none'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_BLACK</b> 'black'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_WHITE</b> 'white'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_GREEN</b> 'green'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_MAGENTA</b> 'magenta'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_FUCHSIA</b> 'fuchsia'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_ORANGE</b> 'orange'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_TEAL</b> 'teal'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_CYAN</b> 'cyan'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_PINK</b> 'pink'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_RED</b> 'red'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_YELLOW</b> 'yellow'
-  <br/>
-  #define <b>OPT_COLOR_FILTER_RAINBOW</b> 'rainbow'
-  <br/>
-  #define <b>OPT_PALETTE_STANDARD</b> 'standard'
-  <br/>
-  #define <b>OPT_PALETTE_BLOCKS</b> 'blocks'
-  <br/>
-  #define <b>OPT_PALETTE_DIGITAL</b> 'digital'
-  <br/>
-  #define <b>OPT_PALETTE_MINIMAL</b> 'minimal'
-  <br/>
-  #define <b>OPT_PALETTE_COOL</b> 'cool'
-  <br/>
-  #define <b>OPT_PALETTE_CUSTOM</b> 'custom'
-  <br/>
-  #define <b>OPT_RENDER_MODE_FOREGROUND</b> 'foreground'
-  <br/>
-  #define <b>OPT_RENDER_MODE_FG</b> 'fg'
-  <br/>
-  #define <b>OPT_RENDER_MODE_BACKGROUND</b> 'background'
-  <br/>
-  #define <b>OPT_RENDER_MODE_BG</b> 'bg'
-  <br/>
-  #define <b>OPT_RENDER_MODE_HALF_BLOCK</b> 'half-block'
-  <br/>
-  #define <b>OPT_RECONNECT_OFF</b> 'off'
-  <br/>
-  #define <b>OPT_RECONNECT_AUTO</b> 'auto'
-  <br/>
-  #define <b>OPT_AUDIO_SOURCE_ALL</b> 'all'
-  <br/>
-  #define <b>OPT_AUDIO_SOURCE_CALL</b> 'call'
-  <br/>
-  #define <b>OPT_AUDIO_SOURCE_MIC</b> 'mic'
-  <br/>
-  #define <b>OPT_AUDIO_SOURCE_MEDIA</b> 'media'
-  <br/>
-  #define <b>OPT_AUDIO_SOURCE_AUTO</b> 'auto'
-  <br/>
-  #define <b>OPT_AUDIO_CAPTURE_SOURCE_AUTO</b> 'auto'
-  <br/>
-  #define <b>OPT_AUDIO_CAPTURE_SOURCE_MIC</b> 'mic'
-  <br/>
-  #define <b>OPT_AUDIO_CAPTURE_SOURCE_MEDIA</b> 'media'
-  <br/>
-  #define <b>OPT_AUDIO_CAPTURE_SOURCE_BOTH</b> 'both'
-  <br/>
-  #define <b>OPT_AUDIO_CAPTURE_SOURCE_REMOTE</b> 'remote'
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const <b>enum_to_string_entry_t</b> *
-    <b>options_get_enum_entries</b> (const char *option_name, size_t
-    *entry_count)
-  <br/>
-  Get enum entries with descriptions for an option. const char **
-    <b>options_get_enum_values</b> (const char *option_name, size_t
-    *value_count)
-  <br/>
-  Get enum values for an option. <b>bool</b> <b>options_is_enum_option</b>
-    (const char *option_name)
-  <br/>
-  Check if an option has enum values.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Option enum value definitions - single source of truth.</p>
-<p class="Pp">Defines all enum values for options in one place so they can be
-    used by:</p>
-<ul class="Bl-bullet">
-  <li>Option parsers</li>
-  <li>Help text generation</li>
-  <li>Shell completions (bash/fish/zsh/powershell)</li>
-  <li>Configuration file validation</li>
-</ul>
-<p class="Pp">This ensures consistency across all parts of the application.</p>
-<p class="Pp">Definition in file <b>enums.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_AUTO___'auto'"><a class="permalink" href="#_define_OPT_AUDIO_CAPTURE_SOURCE_AUTO___'auto'">#define
-  OPT_AUDIO_CAPTURE_SOURCE_AUTO 'auto'</a></h2>
-<p class="Pp">Definition at line <b>144</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_BOTH___'both'"><a class="permalink" href="#_define_OPT_AUDIO_CAPTURE_SOURCE_BOTH___'both'">#define
-  OPT_AUDIO_CAPTURE_SOURCE_BOTH 'both'</a></h2>
-<p class="Pp">Definition at line <b>147</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_MEDIA___'media'"><a class="permalink" href="#_define_OPT_AUDIO_CAPTURE_SOURCE_MEDIA___'media'">#define
-  OPT_AUDIO_CAPTURE_SOURCE_MEDIA 'media'</a></h2>
-<p class="Pp">Definition at line <b>146</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_MIC___'mic'"><a class="permalink" href="#_define_OPT_AUDIO_CAPTURE_SOURCE_MIC___'mic'">#define
-  OPT_AUDIO_CAPTURE_SOURCE_MIC 'mic'</a></h2>
-<p class="Pp">Definition at line <b>145</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_REMOTE___'remote'"><a class="permalink" href="#_define_OPT_AUDIO_CAPTURE_SOURCE_REMOTE___'remote'">#define
-  OPT_AUDIO_CAPTURE_SOURCE_REMOTE 'remote'</a></h2>
-<p class="Pp">Definition at line <b>148</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_ALL___'all'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_ALL___'all'">#define
-  OPT_AUDIO_SOURCE_ALL 'all'</a></h2>
-<p class="Pp">Definition at line <b>137</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_AUTO___'auto'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_AUTO___'auto'">#define
-  OPT_AUDIO_SOURCE_AUTO 'auto'</a></h2>
-<p class="Pp">Definition at line <b>141</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_CALL___'call'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_CALL___'call'">#define
-  OPT_AUDIO_SOURCE_CALL 'call'</a></h2>
-<p class="Pp">Definition at line <b>138</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_MEDIA___'media'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_MEDIA___'media'">#define
-  OPT_AUDIO_SOURCE_MEDIA 'media'</a></h2>
-<p class="Pp">Definition at line <b>140</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_MIC___'mic'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_MIC___'mic'">#define
-  OPT_AUDIO_SOURCE_MIC 'mic'</a></h2>
-<p class="Pp">Definition at line <b>139</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_BLACK___'black'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_BLACK___'black'">#define
-  OPT_COLOR_FILTER_BLACK 'black'</a></h2>
-<p class="Pp">Definition at line <b>104</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_CYAN___'cyan'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_CYAN___'cyan'">#define
-  OPT_COLOR_FILTER_CYAN 'cyan'</a></h2>
-<p class="Pp">Definition at line <b>111</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_FUCHSIA___'fuchsia'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_FUCHSIA___'fuchsia'">#define
-  OPT_COLOR_FILTER_FUCHSIA 'fuchsia'</a></h2>
-<p class="Pp">Definition at line <b>108</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_GREEN___'green'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_GREEN___'green'">#define
-  OPT_COLOR_FILTER_GREEN 'green'</a></h2>
-<p class="Pp">Definition at line <b>106</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_MAGENTA___'magenta'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_MAGENTA___'magenta'">#define
-  OPT_COLOR_FILTER_MAGENTA 'magenta'</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_NONE___'none'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_NONE___'none'">#define
-  OPT_COLOR_FILTER_NONE 'none'</a></h2>
-<p class="Pp">Definition at line <b>103</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_filter()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_ORANGE___'orange'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_ORANGE___'orange'">#define
-  OPT_COLOR_FILTER_ORANGE 'orange'</a></h2>
-<p class="Pp">Definition at line <b>109</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_PINK___'pink'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_PINK___'pink'">#define
-  OPT_COLOR_FILTER_PINK 'pink'</a></h2>
-<p class="Pp">Definition at line <b>112</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_RAINBOW___'rainbow'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_RAINBOW___'rainbow'">#define
-  OPT_COLOR_FILTER_RAINBOW 'rainbow'</a></h2>
-<p class="Pp">Definition at line <b>115</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_RED___'red'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_RED___'red'">#define
-  OPT_COLOR_FILTER_RED 'red'</a></h2>
-<p class="Pp">Definition at line <b>113</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_TEAL___'teal'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_TEAL___'teal'">#define
-  OPT_COLOR_FILTER_TEAL 'teal'</a></h2>
-<p class="Pp">Definition at line <b>110</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_WHITE___'white'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_WHITE___'white'">#define
-  OPT_COLOR_FILTER_WHITE 'white'</a></h2>
-<p class="Pp">Definition at line <b>105</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_FILTER_YELLOW___'yellow'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_YELLOW___'yellow'">#define
-  OPT_COLOR_FILTER_YELLOW 'yellow'</a></h2>
-<p class="Pp">Definition at line <b>114</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_MODE_16___'16'"><a class="permalink" href="#_define_OPT_COLOR_MODE_16___'16'">#define
-  OPT_COLOR_MODE_16 '16'</a></h2>
-<p class="Pp">Definition at line <b>98</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>color_mode_to_string()</b>,
-    <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
-    <b>validate_opt_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_MODE_256___'256'"><a class="permalink" href="#_define_OPT_COLOR_MODE_256___'256'">#define
-  OPT_COLOR_MODE_256 '256'</a></h2>
-<p class="Pp">Definition at line <b>99</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>color_mode_to_string()</b>,
-    <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
-    <b>validate_opt_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_MODE_AUTO___'auto'"><a class="permalink" href="#_define_OPT_COLOR_MODE_AUTO___'auto'">#define
-  OPT_COLOR_MODE_AUTO 'auto'</a></h2>
-<p class="Pp">Definition at line <b>95</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>color_mode_to_string()</b>, and
-    <b>parse_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_MODE_MONO___'mono'"><a class="permalink" href="#_define_OPT_COLOR_MODE_MONO___'mono'">#define
-  OPT_COLOR_MODE_MONO 'mono'</a></h2>
-<p class="Pp">Definition at line <b>97</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_mode()</b>,
-    <b>parse_color_mode_option()</b>, and <b>validate_opt_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_MODE_NONE___'none'"><a class="permalink" href="#_define_OPT_COLOR_MODE_NONE___'none'">#define
-  OPT_COLOR_MODE_NONE 'none'</a></h2>
-<p class="Pp">Definition at line <b>96</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>color_mode_to_string()</b>,
-    <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
-    <b>validate_opt_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COLOR_MODE_TRUECOLOR___'truecolor'"><a class="permalink" href="#_define_OPT_COLOR_MODE_TRUECOLOR___'truecolor'">#define
-  OPT_COLOR_MODE_TRUECOLOR 'truecolor'</a></h2>
-<p class="Pp">Definition at line <b>100</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>color_mode_to_string()</b>,
-    <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
-    <b>validate_opt_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_BASH___'bash'"><a class="permalink" href="#_define_OPT_COMPLETION_SHELL_BASH___'bash'">#define
-  OPT_COMPLETION_SHELL_BASH 'bash'</a></h2>
-<p class="Pp">Definition at line <b>78</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>completions_get_shell_name()</b>, and
-    <b>completions_parse_shell_name()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_FISH___'fish'"><a class="permalink" href="#_define_OPT_COMPLETION_SHELL_FISH___'fish'">#define
-  OPT_COMPLETION_SHELL_FISH 'fish'</a></h2>
-<p class="Pp">Definition at line <b>79</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>completions_get_shell_name()</b>, and
-    <b>completions_parse_shell_name()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_POWERSHELL___'powershell'"><a class="permalink" href="#_define_OPT_COMPLETION_SHELL_POWERSHELL___'powershell'">#define
-  OPT_COMPLETION_SHELL_POWERSHELL 'powershell'</a></h2>
-<p class="Pp">Definition at line <b>81</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>completions_get_shell_name()</b>, and
-    <b>completions_parse_shell_name()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_ZSH___'zsh'"><a class="permalink" href="#_define_OPT_COMPLETION_SHELL_ZSH___'zsh'">#define
-  OPT_COMPLETION_SHELL_ZSH 'zsh'</a></h2>
-<p class="Pp">Definition at line <b>80</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>completions_get_shell_name()</b>, and
-    <b>completions_parse_shell_name()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_LOG_LEVEL_DEBUG___'debug'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_DEBUG___'debug'">#define
-  OPT_LOG_LEVEL_DEBUG 'debug'</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>, and
-    <b>validate_opt_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_LOG_LEVEL_DEV___'dev'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_DEV___'dev'">#define
-  OPT_LOG_LEVEL_DEV 'dev'</a></h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>, and
-    <b>validate_opt_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_LOG_LEVEL_ERROR___'error'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_ERROR___'error'">#define
-  OPT_LOG_LEVEL_ERROR 'error'</a></h2>
-<p class="Pp">Definition at line <b>91</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>, and
-    <b>validate_opt_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_LOG_LEVEL_FATAL___'fatal'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_FATAL___'fatal'">#define
-  OPT_LOG_LEVEL_FATAL 'fatal'</a></h2>
-<p class="Pp">Definition at line <b>92</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>, and
-    <b>validate_opt_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_LOG_LEVEL_INFO___'info'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_INFO___'info'">#define
-  OPT_LOG_LEVEL_INFO 'info'</a></h2>
-<p class="Pp">Definition at line <b>89</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>, and
-    <b>validate_opt_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_LOG_LEVEL_WARN___'warn'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_WARN___'warn'">#define
-  OPT_LOG_LEVEL_WARN 'warn'</a></h2>
-<p class="Pp">Definition at line <b>90</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>, and
-    <b>validate_opt_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_PALETTE_BLOCKS___'blocks'"><a class="permalink" href="#_define_OPT_PALETTE_BLOCKS___'blocks'">#define
-  OPT_PALETTE_BLOCKS 'blocks'</a></h2>
-<p class="Pp">Definition at line <b>119</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>,
-    <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
-    <b>validate_opt_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_PALETTE_COOL___'cool'"><a class="permalink" href="#_define_OPT_PALETTE_COOL___'cool'">#define
-  OPT_PALETTE_COOL 'cool'</a></h2>
-<p class="Pp">Definition at line <b>122</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>,
-    <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
-    <b>validate_opt_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_PALETTE_CUSTOM___'custom'"><a class="permalink" href="#_define_OPT_PALETTE_CUSTOM___'custom'">#define
-  OPT_PALETTE_CUSTOM 'custom'</a></h2>
-<p class="Pp">Definition at line <b>123</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>,
-    <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
-    <b>validate_opt_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_PALETTE_DIGITAL___'digital'"><a class="permalink" href="#_define_OPT_PALETTE_DIGITAL___'digital'">#define
-  OPT_PALETTE_DIGITAL 'digital'</a></h2>
-<p class="Pp">Definition at line <b>120</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>,
-    <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
-    <b>validate_opt_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_PALETTE_MINIMAL___'minimal'"><a class="permalink" href="#_define_OPT_PALETTE_MINIMAL___'minimal'">#define
-  OPT_PALETTE_MINIMAL 'minimal'</a></h2>
-<p class="Pp">Definition at line <b>121</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>,
-    <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
-    <b>validate_opt_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_PALETTE_STANDARD___'standard'"><a class="permalink" href="#_define_OPT_PALETTE_STANDARD___'standard'">#define
-  OPT_PALETTE_STANDARD 'standard'</a></h2>
-<p class="Pp">Definition at line <b>118</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>,
-    <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
-    <b>validate_opt_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RECONNECT_AUTO___'auto'"><a class="permalink" href="#_define_OPT_RECONNECT_AUTO___'auto'">#define
-  OPT_RECONNECT_AUTO 'auto'</a></h2>
-<p class="Pp">Definition at line <b>134</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RECONNECT_OFF___'off'"><a class="permalink" href="#_define_OPT_RECONNECT_OFF___'off'">#define
-  OPT_RECONNECT_OFF 'off'</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_MODE_BACKGROUND___'background'"><a class="permalink" href="#_define_OPT_RENDER_MODE_BACKGROUND___'background'">#define
-  OPT_RENDER_MODE_BACKGROUND 'background'</a></h2>
-<p class="Pp">Definition at line <b>128</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_mode()</b>,
-    <b>parse_render_mode_option()</b>, <b>render_mode_to_string()</b>, and
-    <b>validate_opt_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_MODE_BG___'bg'"><a class="permalink" href="#_define_OPT_RENDER_MODE_BG___'bg'">#define
-  OPT_RENDER_MODE_BG 'bg'</a></h2>
-<p class="Pp">Definition at line <b>129</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_mode()</b>,
-    <b>parse_render_mode_option()</b>, and
-  <b>validate_opt_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_MODE_FG___'fg'"><a class="permalink" href="#_define_OPT_RENDER_MODE_FG___'fg'">#define
-  OPT_RENDER_MODE_FG 'fg'</a></h2>
-<p class="Pp">Definition at line <b>127</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_mode()</b>,
-    <b>parse_render_mode_option()</b>, and
-  <b>validate_opt_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_MODE_FOREGROUND___'foreground'"><a class="permalink" href="#_define_OPT_RENDER_MODE_FOREGROUND___'foreground'">#define
-  OPT_RENDER_MODE_FOREGROUND 'foreground'</a></h2>
-<p class="Pp">Definition at line <b>126</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_mode()</b>,
-    <b>parse_render_mode_option()</b>, <b>render_mode_to_string()</b>, and
-    <b>validate_opt_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_MODE_HALF_BLOCK___'half"><a class="permalink" href="#_define_OPT_RENDER_MODE_HALF_BLOCK___'half">#define
-  OPT_RENDER_MODE_HALF_BLOCK 'half-block'</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_mode()</b>,
-    <b>parse_render_mode_option()</b>, <b>render_mode_to_string()</b>, and
-    <b>validate_opt_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_THEME_AUTO___"><a class="permalink" href="#_define_OPT_RENDER_THEME_AUTO___">#define
-  OPT_RENDER_THEME_AUTO <b>OPT_VALUE_AUTO</b></a></h2>
-<p class="Pp">Definition at line <b>84</b> of file <b>enums.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_THEME_DARK___'dark'"><a class="permalink" href="#_define_OPT_RENDER_THEME_DARK___'dark'">#define
-  OPT_RENDER_THEME_DARK 'dark'</a></h2>
-<p class="Pp">Definition at line <b>82</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_theme()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_RENDER_THEME_LIGHT___'light'"><a class="permalink" href="#_define_OPT_RENDER_THEME_LIGHT___'light'">#define
-  OPT_RENDER_THEME_LIGHT 'light'</a></h2>
-<p class="Pp">Definition at line <b>83</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_theme()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_VALUE_AUTO___'auto'"><a class="permalink" href="#_define_OPT_VALUE_AUTO___'auto'">#define
-  OPT_VALUE_AUTO 'auto'</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_mode_option()</b>,
-    <b>parse_render_theme()</b>, <b>validate_opt_color_mode()</b>, and
-    <b>validate_opt_reconnect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_VALUE_FALSE___'false'"><a class="permalink" href="#_define_OPT_VALUE_FALSE___'false'">#define
-  OPT_VALUE_FALSE 'false'</a></h2>
-<p class="Pp">Definition at line <b>77</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>config_load_system_and_user()</b>,
-    <b>get_option_help_placeholder_str()</b>, and
-    <b>options_format_default_value()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPT_VALUE_TRUE___'true'"><a class="permalink" href="#_define_OPT_VALUE_TRUE___'true'">#define
-  OPT_VALUE_TRUE 'true'</a></h2>
-<p class="Pp">Definition at line <b>76</b> of file <b>enums.h</b>.</p>
-<p class="Pp">Referenced by <b>config_load_system_and_user()</b>,
-    <b>get_option_help_placeholder_str()</b>,
-    <b>options_format_default_value()</b>, and
-  <b>parse_color_mode_option()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>enum_to_string_entry_t</b> * options_get_enum_entries (const char *
-  option_name, size_t * entry_count)</a></h2>
-<p class="Pp">Get enum entries with descriptions for an option. Returns entries
-    containing both string values and descriptions for shell completion.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
-  &quot;log-level&quot;)
-<br/>
-<i>entry_count</i> OUTPUT: Number of entries returned</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated array (caller uses SAFE_FREE), or NULL. Strings
-  are borrowed.</div>
-<p class="Pp">Definition at line <b>9</b> of file <b>enums.c</b>.</p>
-<pre>9                                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>enums.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">enums.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">enums.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          enums.h - Option enum value definitions - single source of truth.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>enum_to_string_entry_t</b>
+            <br />
+            Enum value mapping with description for shell completions. struct
+            <b>enum_descriptor_t</b>
+            <br />
+            Enum value mapping for an option.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>OPT_VALUE_AUTO</b> 'auto'
+            <br />
+            #define <b>OPT_VALUE_TRUE</b> 'true'
+            <br />
+            #define <b>OPT_VALUE_FALSE</b> 'false'
+            <br />
+            #define <b>OPT_COMPLETION_SHELL_BASH</b> 'bash'
+            <br />
+            #define <b>OPT_COMPLETION_SHELL_FISH</b> 'fish'
+            <br />
+            #define <b>OPT_COMPLETION_SHELL_ZSH</b> 'zsh'
+            <br />
+            #define <b>OPT_COMPLETION_SHELL_POWERSHELL</b> 'powershell'
+            <br />
+            #define <b>OPT_RENDER_THEME_DARK</b> 'dark'
+            <br />
+            #define <b>OPT_RENDER_THEME_LIGHT</b> 'light'
+            <br />
+            #define <b>OPT_RENDER_THEME_AUTO</b> <b>OPT_VALUE_AUTO</b>
+            <br />
+            #define <b>OPT_LOG_LEVEL_DEV</b> 'dev'
+            <br />
+            #define <b>OPT_LOG_LEVEL_DEBUG</b> 'debug'
+            <br />
+            #define <b>OPT_LOG_LEVEL_INFO</b> 'info'
+            <br />
+            #define <b>OPT_LOG_LEVEL_WARN</b> 'warn'
+            <br />
+            #define <b>OPT_LOG_LEVEL_ERROR</b> 'error'
+            <br />
+            #define <b>OPT_LOG_LEVEL_FATAL</b> 'fatal'
+            <br />
+            #define <b>OPT_COLOR_MODE_AUTO</b> 'auto'
+            <br />
+            #define <b>OPT_COLOR_MODE_NONE</b> 'none'
+            <br />
+            #define <b>OPT_COLOR_MODE_MONO</b> 'mono'
+            <br />
+            #define <b>OPT_COLOR_MODE_16</b> '16'
+            <br />
+            #define <b>OPT_COLOR_MODE_256</b> '256'
+            <br />
+            #define <b>OPT_COLOR_MODE_TRUECOLOR</b> 'truecolor'
+            <br />
+            #define <b>OPT_COLOR_FILTER_NONE</b> 'none'
+            <br />
+            #define <b>OPT_COLOR_FILTER_BLACK</b> 'black'
+            <br />
+            #define <b>OPT_COLOR_FILTER_WHITE</b> 'white'
+            <br />
+            #define <b>OPT_COLOR_FILTER_GREEN</b> 'green'
+            <br />
+            #define <b>OPT_COLOR_FILTER_MAGENTA</b> 'magenta'
+            <br />
+            #define <b>OPT_COLOR_FILTER_FUCHSIA</b> 'fuchsia'
+            <br />
+            #define <b>OPT_COLOR_FILTER_ORANGE</b> 'orange'
+            <br />
+            #define <b>OPT_COLOR_FILTER_TEAL</b> 'teal'
+            <br />
+            #define <b>OPT_COLOR_FILTER_CYAN</b> 'cyan'
+            <br />
+            #define <b>OPT_COLOR_FILTER_PINK</b> 'pink'
+            <br />
+            #define <b>OPT_COLOR_FILTER_RED</b> 'red'
+            <br />
+            #define <b>OPT_COLOR_FILTER_YELLOW</b> 'yellow'
+            <br />
+            #define <b>OPT_COLOR_FILTER_RAINBOW</b> 'rainbow'
+            <br />
+            #define <b>OPT_PALETTE_STANDARD</b> 'standard'
+            <br />
+            #define <b>OPT_PALETTE_BLOCKS</b> 'blocks'
+            <br />
+            #define <b>OPT_PALETTE_DIGITAL</b> 'digital'
+            <br />
+            #define <b>OPT_PALETTE_MINIMAL</b> 'minimal'
+            <br />
+            #define <b>OPT_PALETTE_COOL</b> 'cool'
+            <br />
+            #define <b>OPT_PALETTE_CUSTOM</b> 'custom'
+            <br />
+            #define <b>OPT_RENDER_MODE_FOREGROUND</b> 'foreground'
+            <br />
+            #define <b>OPT_RENDER_MODE_FG</b> 'fg'
+            <br />
+            #define <b>OPT_RENDER_MODE_BACKGROUND</b> 'background'
+            <br />
+            #define <b>OPT_RENDER_MODE_BG</b> 'bg'
+            <br />
+            #define <b>OPT_RENDER_MODE_HALF_BLOCK</b> 'half-block'
+            <br />
+            #define <b>OPT_RECONNECT_OFF</b> 'off'
+            <br />
+            #define <b>OPT_RECONNECT_AUTO</b> 'auto'
+            <br />
+            #define <b>OPT_AUDIO_SOURCE_ALL</b> 'all'
+            <br />
+            #define <b>OPT_AUDIO_SOURCE_CALL</b> 'call'
+            <br />
+            #define <b>OPT_AUDIO_SOURCE_MIC</b> 'mic'
+            <br />
+            #define <b>OPT_AUDIO_SOURCE_MEDIA</b> 'media'
+            <br />
+            #define <b>OPT_AUDIO_SOURCE_AUTO</b> 'auto'
+            <br />
+            #define <b>OPT_AUDIO_CAPTURE_SOURCE_AUTO</b> 'auto'
+            <br />
+            #define <b>OPT_AUDIO_CAPTURE_SOURCE_MIC</b> 'mic'
+            <br />
+            #define <b>OPT_AUDIO_CAPTURE_SOURCE_MEDIA</b> 'media'
+            <br />
+            #define <b>OPT_AUDIO_CAPTURE_SOURCE_BOTH</b> 'both'
+            <br />
+            #define <b>OPT_AUDIO_CAPTURE_SOURCE_REMOTE</b> 'remote'
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>enum_to_string_entry_t</b> *
+            <b>options_get_enum_entries</b> (const char *option_name, size_t
+            *entry_count)
+            <br />
+            Get enum entries with descriptions for an option. const char **
+            <b>options_get_enum_values</b> (const char *option_name, size_t
+            *value_count)
+            <br />
+            Get enum values for an option. <b>bool</b>
+            <b>options_is_enum_option</b>
+            (const char *option_name)
+            <br />
+            Check if an option has enum values.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Option enum value definitions - single source of truth.
+        </p>
+        <p class="Pp">
+          Defines all enum values for options in one place so they can be used
+          by:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Option parsers</li>
+          <li>Help text generation</li>
+          <li>Shell completions (bash/fish/zsh/powershell)</li>
+          <li>Configuration file validation</li>
+        </ul>
+        <p class="Pp">
+          This ensures consistency across all parts of the application.
+        </p>
+        <p class="Pp">Definition in file <b>enums.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_AUTO___'auto'">
+            <a
+              class="permalink"
+              href="#_define_OPT_AUDIO_CAPTURE_SOURCE_AUTO___'auto'"
+              >#define OPT_AUDIO_CAPTURE_SOURCE_AUTO 'auto'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>144</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_BOTH___'both'">
+            <a
+              class="permalink"
+              href="#_define_OPT_AUDIO_CAPTURE_SOURCE_BOTH___'both'"
+              >#define OPT_AUDIO_CAPTURE_SOURCE_BOTH 'both'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>147</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_MEDIA___'media'">
+            <a
+              class="permalink"
+              href="#_define_OPT_AUDIO_CAPTURE_SOURCE_MEDIA___'media'"
+              >#define OPT_AUDIO_CAPTURE_SOURCE_MEDIA 'media'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>146</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_CAPTURE_SOURCE_MIC___'mic'">
+            <a
+              class="permalink"
+              href="#_define_OPT_AUDIO_CAPTURE_SOURCE_MIC___'mic'"
+              >#define OPT_AUDIO_CAPTURE_SOURCE_MIC 'mic'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>145</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPT_AUDIO_CAPTURE_SOURCE_REMOTE___'remote'"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPT_AUDIO_CAPTURE_SOURCE_REMOTE___'remote'"
+              >#define OPT_AUDIO_CAPTURE_SOURCE_REMOTE 'remote'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>148</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_ALL___'all'">
+            <a class="permalink" href="#_define_OPT_AUDIO_SOURCE_ALL___'all'"
+              >#define OPT_AUDIO_SOURCE_ALL 'all'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>137</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_AUTO___'auto'">
+            <a class="permalink" href="#_define_OPT_AUDIO_SOURCE_AUTO___'auto'"
+              >#define OPT_AUDIO_SOURCE_AUTO 'auto'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>141</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_CALL___'call'">
+            <a class="permalink" href="#_define_OPT_AUDIO_SOURCE_CALL___'call'"
+              >#define OPT_AUDIO_SOURCE_CALL 'call'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>138</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_MEDIA___'media'">
+            <a
+              class="permalink"
+              href="#_define_OPT_AUDIO_SOURCE_MEDIA___'media'"
+              >#define OPT_AUDIO_SOURCE_MEDIA 'media'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>140</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_MIC___'mic'">
+            <a class="permalink" href="#_define_OPT_AUDIO_SOURCE_MIC___'mic'"
+              >#define OPT_AUDIO_SOURCE_MIC 'mic'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>139</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_BLACK___'black'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_BLACK___'black'"
+              >#define OPT_COLOR_FILTER_BLACK 'black'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>104</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_CYAN___'cyan'">
+            <a class="permalink" href="#_define_OPT_COLOR_FILTER_CYAN___'cyan'"
+              >#define OPT_COLOR_FILTER_CYAN 'cyan'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>111</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_FUCHSIA___'fuchsia'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_FUCHSIA___'fuchsia'"
+              >#define OPT_COLOR_FILTER_FUCHSIA 'fuchsia'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>108</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_GREEN___'green'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_GREEN___'green'"
+              >#define OPT_COLOR_FILTER_GREEN 'green'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>106</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_MAGENTA___'magenta'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_MAGENTA___'magenta'"
+              >#define OPT_COLOR_FILTER_MAGENTA 'magenta'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>107</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_NONE___'none'">
+            <a class="permalink" href="#_define_OPT_COLOR_FILTER_NONE___'none'"
+              >#define OPT_COLOR_FILTER_NONE 'none'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>103</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_color_filter()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_ORANGE___'orange'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_ORANGE___'orange'"
+              >#define OPT_COLOR_FILTER_ORANGE 'orange'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>109</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_PINK___'pink'">
+            <a class="permalink" href="#_define_OPT_COLOR_FILTER_PINK___'pink'"
+              >#define OPT_COLOR_FILTER_PINK 'pink'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>112</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_RAINBOW___'rainbow'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_RAINBOW___'rainbow'"
+              >#define OPT_COLOR_FILTER_RAINBOW 'rainbow'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>115</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_RED___'red'">
+            <a class="permalink" href="#_define_OPT_COLOR_FILTER_RED___'red'"
+              >#define OPT_COLOR_FILTER_RED 'red'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_TEAL___'teal'">
+            <a class="permalink" href="#_define_OPT_COLOR_FILTER_TEAL___'teal'"
+              >#define OPT_COLOR_FILTER_TEAL 'teal'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>110</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_WHITE___'white'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_WHITE___'white'"
+              >#define OPT_COLOR_FILTER_WHITE 'white'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>105</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_FILTER_YELLOW___'yellow'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_FILTER_YELLOW___'yellow'"
+              >#define OPT_COLOR_FILTER_YELLOW 'yellow'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>114</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_MODE_16___'16'">
+            <a class="permalink" href="#_define_OPT_COLOR_MODE_16___'16'"
+              >#define OPT_COLOR_MODE_16 '16'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>98</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>color_mode_to_string()</b>,
+            <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
+            <b>validate_opt_color_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_MODE_256___'256'">
+            <a class="permalink" href="#_define_OPT_COLOR_MODE_256___'256'"
+              >#define OPT_COLOR_MODE_256 '256'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>99</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>color_mode_to_string()</b>,
+            <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
+            <b>validate_opt_color_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_MODE_AUTO___'auto'">
+            <a class="permalink" href="#_define_OPT_COLOR_MODE_AUTO___'auto'"
+              >#define OPT_COLOR_MODE_AUTO 'auto'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>95</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>color_mode_to_string()</b>, and
+            <b>parse_color_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_MODE_MONO___'mono'">
+            <a class="permalink" href="#_define_OPT_COLOR_MODE_MONO___'mono'"
+              >#define OPT_COLOR_MODE_MONO 'mono'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>97</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_color_mode()</b>,
+            <b>parse_color_mode_option()</b>, and
+            <b>validate_opt_color_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_MODE_NONE___'none'">
+            <a class="permalink" href="#_define_OPT_COLOR_MODE_NONE___'none'"
+              >#define OPT_COLOR_MODE_NONE 'none'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>96</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>color_mode_to_string()</b>,
+            <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
+            <b>validate_opt_color_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COLOR_MODE_TRUECOLOR___'truecolor'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COLOR_MODE_TRUECOLOR___'truecolor'"
+              >#define OPT_COLOR_MODE_TRUECOLOR 'truecolor'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>100</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>color_mode_to_string()</b>,
+            <b>parse_color_mode()</b>, <b>parse_color_mode_option()</b>, and
+            <b>validate_opt_color_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_BASH___'bash'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COMPLETION_SHELL_BASH___'bash'"
+              >#define OPT_COMPLETION_SHELL_BASH 'bash'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>78</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>completions_get_shell_name()</b>, and
+            <b>completions_parse_shell_name()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_FISH___'fish'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COMPLETION_SHELL_FISH___'fish'"
+              >#define OPT_COMPLETION_SHELL_FISH 'fish'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>79</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>completions_get_shell_name()</b>, and
+            <b>completions_parse_shell_name()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPT_COMPLETION_SHELL_POWERSHELL___'powershell'"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPT_COMPLETION_SHELL_POWERSHELL___'powershell'"
+              >#define OPT_COMPLETION_SHELL_POWERSHELL 'powershell'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>81</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>completions_get_shell_name()</b>, and
+            <b>completions_parse_shell_name()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_COMPLETION_SHELL_ZSH___'zsh'">
+            <a
+              class="permalink"
+              href="#_define_OPT_COMPLETION_SHELL_ZSH___'zsh'"
+              >#define OPT_COMPLETION_SHELL_ZSH 'zsh'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>80</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>completions_get_shell_name()</b>, and
+            <b>completions_parse_shell_name()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_LOG_LEVEL_DEBUG___'debug'">
+            <a class="permalink" href="#_define_OPT_LOG_LEVEL_DEBUG___'debug'"
+              >#define OPT_LOG_LEVEL_DEBUG 'debug'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>88</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_log_level()</b>, and
+            <b>validate_opt_log_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_LOG_LEVEL_DEV___'dev'">
+            <a class="permalink" href="#_define_OPT_LOG_LEVEL_DEV___'dev'"
+              >#define OPT_LOG_LEVEL_DEV 'dev'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>87</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_log_level()</b>, and
+            <b>validate_opt_log_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_LOG_LEVEL_ERROR___'error'">
+            <a class="permalink" href="#_define_OPT_LOG_LEVEL_ERROR___'error'"
+              >#define OPT_LOG_LEVEL_ERROR 'error'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>91</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_log_level()</b>, and
+            <b>validate_opt_log_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_LOG_LEVEL_FATAL___'fatal'">
+            <a class="permalink" href="#_define_OPT_LOG_LEVEL_FATAL___'fatal'"
+              >#define OPT_LOG_LEVEL_FATAL 'fatal'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>92</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_log_level()</b>, and
+            <b>validate_opt_log_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_LOG_LEVEL_INFO___'info'">
+            <a class="permalink" href="#_define_OPT_LOG_LEVEL_INFO___'info'"
+              >#define OPT_LOG_LEVEL_INFO 'info'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>89</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_log_level()</b>, and
+            <b>validate_opt_log_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_LOG_LEVEL_WARN___'warn'">
+            <a class="permalink" href="#_define_OPT_LOG_LEVEL_WARN___'warn'"
+              >#define OPT_LOG_LEVEL_WARN 'warn'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>90</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_log_level()</b>, and
+            <b>validate_opt_log_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_PALETTE_BLOCKS___'blocks'">
+            <a class="permalink" href="#_define_OPT_PALETTE_BLOCKS___'blocks'"
+              >#define OPT_PALETTE_BLOCKS 'blocks'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>119</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>palette_type_to_string()</b>,
+            <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
+            <b>validate_opt_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_PALETTE_COOL___'cool'">
+            <a class="permalink" href="#_define_OPT_PALETTE_COOL___'cool'"
+              >#define OPT_PALETTE_COOL 'cool'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>122</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>palette_type_to_string()</b>,
+            <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
+            <b>validate_opt_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_PALETTE_CUSTOM___'custom'">
+            <a class="permalink" href="#_define_OPT_PALETTE_CUSTOM___'custom'"
+              >#define OPT_PALETTE_CUSTOM 'custom'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>123</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>palette_type_to_string()</b>,
+            <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
+            <b>validate_opt_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_PALETTE_DIGITAL___'digital'">
+            <a class="permalink" href="#_define_OPT_PALETTE_DIGITAL___'digital'"
+              >#define OPT_PALETTE_DIGITAL 'digital'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>120</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>palette_type_to_string()</b>,
+            <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
+            <b>validate_opt_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_PALETTE_MINIMAL___'minimal'">
+            <a class="permalink" href="#_define_OPT_PALETTE_MINIMAL___'minimal'"
+              >#define OPT_PALETTE_MINIMAL 'minimal'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>121</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>palette_type_to_string()</b>,
+            <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
+            <b>validate_opt_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_PALETTE_STANDARD___'standard'">
+            <a
+              class="permalink"
+              href="#_define_OPT_PALETTE_STANDARD___'standard'"
+              >#define OPT_PALETTE_STANDARD 'standard'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>118</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>palette_type_to_string()</b>,
+            <b>parse_palette_option()</b>, <b>parse_palette_type()</b>, and
+            <b>validate_opt_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RECONNECT_AUTO___'auto'">
+            <a class="permalink" href="#_define_OPT_RECONNECT_AUTO___'auto'"
+              >#define OPT_RECONNECT_AUTO 'auto'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>134</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RECONNECT_OFF___'off'">
+            <a class="permalink" href="#_define_OPT_RECONNECT_OFF___'off'"
+              >#define OPT_RECONNECT_OFF 'off'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>133</b> of file <b>enums.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_MODE_BACKGROUND___'background'">
+            <a
+              class="permalink"
+              href="#_define_OPT_RENDER_MODE_BACKGROUND___'background'"
+              >#define OPT_RENDER_MODE_BACKGROUND 'background'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>128</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>parse_render_mode()</b>,
+            <b>parse_render_mode_option()</b>, <b>render_mode_to_string()</b>,
+            and <b>validate_opt_render_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_MODE_BG___'bg'">
+            <a class="permalink" href="#_define_OPT_RENDER_MODE_BG___'bg'"
+              >#define OPT_RENDER_MODE_BG 'bg'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>parse_render_mode()</b>,
+            <b>parse_render_mode_option()</b>, and
+            <b>validate_opt_render_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_MODE_FG___'fg'">
+            <a class="permalink" href="#_define_OPT_RENDER_MODE_FG___'fg'"
+              >#define OPT_RENDER_MODE_FG 'fg'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>127</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>parse_render_mode()</b>,
+            <b>parse_render_mode_option()</b>, and
+            <b>validate_opt_render_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_MODE_FOREGROUND___'foreground'">
+            <a
+              class="permalink"
+              href="#_define_OPT_RENDER_MODE_FOREGROUND___'foreground'"
+              >#define OPT_RENDER_MODE_FOREGROUND 'foreground'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>126</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>parse_render_mode()</b>,
+            <b>parse_render_mode_option()</b>, <b>render_mode_to_string()</b>,
+            and <b>validate_opt_render_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_MODE_HALF_BLOCK___'half">
+            <a
+              class="permalink"
+              href="#_define_OPT_RENDER_MODE_HALF_BLOCK___'half"
+              >#define OPT_RENDER_MODE_HALF_BLOCK 'half-block'</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>enums.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>parse_render_mode()</b>,
+            <b>parse_render_mode_option()</b>, <b>render_mode_to_string()</b>,
+            and <b>validate_opt_render_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_THEME_AUTO___">
+            <a class="permalink" href="#_define_OPT_RENDER_THEME_AUTO___"
+              >#define OPT_RENDER_THEME_AUTO <b>OPT_VALUE_AUTO</b></a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>84</b> of file <b>enums.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_THEME_DARK___'dark'">
+            <a class="permalink" href="#_define_OPT_RENDER_THEME_DARK___'dark'"
+              >#define OPT_RENDER_THEME_DARK 'dark'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>82</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">Referenced by <b>parse_render_theme()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_RENDER_THEME_LIGHT___'light'">
+            <a
+              class="permalink"
+              href="#_define_OPT_RENDER_THEME_LIGHT___'light'"
+              >#define OPT_RENDER_THEME_LIGHT 'light'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>83</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">Referenced by <b>parse_render_theme()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_VALUE_AUTO___'auto'">
+            <a class="permalink" href="#_define_OPT_VALUE_AUTO___'auto'"
+              >#define OPT_VALUE_AUTO 'auto'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>75</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>parse_color_mode_option()</b>,
+            <b>parse_render_theme()</b>, <b>validate_opt_color_mode()</b>, and
+            <b>validate_opt_reconnect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_VALUE_FALSE___'false'">
+            <a class="permalink" href="#_define_OPT_VALUE_FALSE___'false'"
+              >#define OPT_VALUE_FALSE 'false'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>77</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>config_load_system_and_user()</b>,
+            <b>get_option_help_placeholder_str()</b>, and
+            <b>options_format_default_value()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPT_VALUE_TRUE___'true'">
+            <a class="permalink" href="#_define_OPT_VALUE_TRUE___'true'"
+              >#define OPT_VALUE_TRUE 'true'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>76</b> of file <b>enums.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>config_load_system_and_user()</b>,
+            <b>get_option_help_placeholder_str()</b>,
+            <b>options_format_default_value()</b>, and
+            <b>parse_color_mode_option()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>enum_to_string_entry_t</b> * options_get_enum_entries
+              (const char * option_name, size_t * entry_count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get enum entries with descriptions for an option. Returns entries
+            containing both string values and descriptions for shell completion.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>option_name</i> Option long name (e.g., &quot;log-level&quot;)
+            <br />
+            <i>entry_count</i> OUTPUT: Number of entries returned
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated array (caller uses SAFE_FREE), or NULL. Strings are
+            borrowed.
+          </div>
+          <p class="Pp">Definition at line <b>9</b> of file <b>enums.c</b>.</p>
+          <pre>
+9                                                                                                      {
 10   if (!entry_count)
 11     return NULL;
 12   *entry_count = 0;
@@ -630,32 +1057,47 @@
 26   entries[*entry_count].enum_value = -1;
 27   return entries;
 28 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>enum_to_string_entry_t::desc</b>,
-    <b>option_metadata_t::enum_descriptions</b>,
-    <b>option_metadata_t::enum_integer_values</b>,
-    <b>enum_to_string_entry_t::enum_value</b>,
-    <b>option_metadata_t::enum_values</b>, <b>options_get_enum_entries()</b>,
-    <b>options_registry_get_metadata()</b>, <b>SAFE_CALLOC</b>, and
-    <b>enum_to_string_entry_t::string</b>.</p>
-<p class="Pp">Referenced by <b>options_get_enum_entries()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
-  char ** options_get_enum_values (const char * option_name, size_t *
-  value_count)</a></h2>
-<p class="Pp">Get enum values for an option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
-  &quot;log-level&quot;)
-<br/>
-<i>value_count</i> OUTPUT: Number of values returned</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated NULL-terminated array (caller uses SAFE_FREE),
-  or NULL. Strings are borrowed.</div>
-<p class="Pp">Definition at line <b>30</b> of file <b>enums.c</b>.</p>
-<pre>30                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>enum_to_string_entry_t::desc</b>,
+            <b>option_metadata_t::enum_descriptions</b>,
+            <b>option_metadata_t::enum_integer_values</b>,
+            <b>enum_to_string_entry_t::enum_value</b>,
+            <b>option_metadata_t::enum_values</b>,
+            <b>options_get_enum_entries()</b>,
+            <b>options_registry_get_metadata()</b>, <b>SAFE_CALLOC</b>, and
+            <b>enum_to_string_entry_t::string</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_get_enum_entries()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"
+              >const char ** options_get_enum_values (const char * option_name,
+              size_t * value_count)</a
+            >
+          </h2>
+          <p class="Pp">Get enum values for an option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>option_name</i> Option long name (e.g., &quot;log-level&quot;)
+            <br />
+            <i>value_count</i> OUTPUT: Number of values returned
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated NULL-terminated array (caller uses SAFE_FREE), or NULL.
+            Strings are borrowed.
+          </div>
+          <p class="Pp">Definition at line <b>30</b> of file <b>enums.c</b>.</p>
+          <pre>
+30                                                                                    {
 31   if (!value_count)
 32     return NULL;
 33   *value_count = 0;
@@ -668,44 +1110,54 @@
 40   memcpy(copy, values, (*value_count + 1) * sizeof(*copy));
 41   return copy;
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_get_enum_values()</b>,
-    <b>options_registry_get_enum_values()</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>options_get_enum_values()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> options_is_enum_option (const char *
-  option_name)</h2>
-<p class="Pp">Check if an option has enum values.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option long name</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if option has enum values, false otherwise</div>
-<p class="Pp">Definition at line <b>44</b> of file <b>enums.c</b>.</p>
-<pre>44                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_get_enum_values()</b>,
+            <b>options_registry_get_enum_values()</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_get_enum_values()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> options_is_enum_option (const char * option_name)
+          </h2>
+          <p class="Pp">Check if an option has enum values.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>option_name</i> Option long name</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if option has enum values, false otherwise
+          </div>
+          <p class="Pp">Definition at line <b>44</b> of file <b>enums.c</b>.</p>
+          <pre>
+44                                                      {
 45   if (!option_name)
 46     return false;
 47   size_t count = 0;
 48   return options_registry_get_enum_values(option_name, NULL, &amp;count) != NULL;
 49 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_is_enum_option()</b>, and
-    <b>options_registry_get_enum_values()</b>.</p>
-<p class="Pp">Referenced by <b>options_is_enum_option()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_is_enum_option()</b>, and
+            <b>options_registry_get_enum_values()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_is_enum_option()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,167 +1,261 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>adjectives.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">adjectives.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">adjectives.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">adjectives.c - Adjective wordlist for ACDS session naming.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const char * <b>adjectives</b> []
-  <br/>
-  Array of English adjectives for ACDS session naming. const size_t
-    <b>adjectives_count</b> = sizeof(<b>adjectives</b>) /
-    sizeof(<b>adjectives</b>[0])
-  <br/>
-  Count of adjectives in the adjectives array.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Adjective wordlist for ACDS session naming.</p>
-<p class="Pp">Defines a curated list of 2500 English adjectives used as the
-    first component of memorable ACDS session identifiers (e.g.,
-    &quot;blue-mountain-tiger&quot;).</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Session_String_Format"><a class="permalink" href="#Session_String_Format">Session
-  String Format</a></h2>
-<p class="Pp">ASCII Chat uses a 3-part session identifier for easy memorization
-    and communication:</p>
-<p class="Pp"></p>
-<pre>adjective-noun-noun
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>adjectives.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">adjectives.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">adjectives.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          adjectives.c - Adjective wordlist for ACDS session naming.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>adjectives</b> []
+            <br />
+            Array of English adjectives for ACDS session naming. const size_t
+            <b>adjectives_count</b> = sizeof(<b>adjectives</b>) /
+            sizeof(<b>adjectives</b>[0])
+            <br />
+            Count of adjectives in the adjectives array.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Adjective wordlist for ACDS session naming.</p>
+        <p class="Pp">
+          Defines a curated list of 2500 English adjectives used as the first
+          component of memorable ACDS session identifiers (e.g.,
+          &quot;blue-mountain-tiger&quot;).
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Session_String_Format">
+            <a class="permalink" href="#Session_String_Format"
+              >Session String Format</a
+            >
+          </h2>
+          <p class="Pp">
+            ASCII Chat uses a 3-part session identifier for easy memorization
+            and communication:
+          </p>
+          <p class="Pp"></p>
+          <pre>
+adjective-noun-noun
 Example: &quot;blue-mountain-tiger&quot;
 </pre>
-<p class="Pp">This format provides approximately 2500 * 5000 * 5000 = 62.5
-    billion possible combinations, far exceeding the practical needs of a
-    session discovery service.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage_in_ACDS"><a class="permalink" href="#Usage_in_ACDS">Usage
-  in ACDS</a></h2>
-<p class="Pp">The ACDS (ASCII Chat Discovery Service) uses session strings
-  for:</p>
-<ul class="Bl-bullet">
-  <li>User-friendly session discovery without IP addresses</li>
-  <li>Memorable identifiers that can be shared verbally or written down</li>
-  <li>Privacy protection (no direct server IP exposure)</li>
-</ul>
-<p class="Pp">Generation flow:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Server registers with ACDS, receives a unique session string</dd>
-  <dt>2.</dt>
-  <dd>Clients connect to ACDS and search for a session by its string</dd>
-  <dt>3.</dt>
-  <dd>ACDS returns the server's address for that session</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Notes"><a class="permalink" href="#Implementation_Notes">Implementation
-  Notes</a></h2>
-<ul class="Bl-bullet">
-  <li>Adjectives are selected for easy pronunciation and memorability</li>
-  <li>Random selection uses libsodium's randombytes_uniform() for cryptographic
-      randomness</li>
-  <li>Total: 2500 adjectives (provides diversity while keeping generation
-    fast)</li>
-  <li>This file is auto-generated by generate_wordlists.py; modify the
-      generation script if changes to the wordlist are needed</li>
-</ul>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>src/strings/main.c</b> - Tool to generate <b>Session
-  Management Module</b> strings and export wordlists
-<p class="Pp"></p>
-<p class="Pp"><b>lib/discovery/nouns.c</b> - Noun wordlist (5000 words)</p>
-<p class="Pp"></p>
-<p class="Pp">ACDS (ASCII Chat Discovery Service) documentation</p>
-</div>
-<p class="Pp">Definition in file <b>adjectives.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_adjectives__"><a class="permalink" href="#const_char*_adjectives__">const
-  char* adjectives[]</a></h2>
-<p class="Pp">Array of English adjectives for ACDS session naming. A curated
-    list of 2500 adjectives used to generate the first part of memorable session
-    identifiers. Combined with two nouns to create unique, pronounceable
-    strings.</p>
-<p class="Pp"></p>
-<p class="Pp">Example values: &quot;blue&quot;, &quot;bright&quot;,
-    &quot;calm&quot;, &quot;dark&quot;, &quot;eager&quot;, &quot;fresh&quot;,
-    &quot;gentle&quot;, ...</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>adjectives_count</b>
-<p class="Pp"></p>
-<p class="Pp">lib/discovery/nouns.h for the noun wordlist</p>
-</div>
-<p class="Pp">Definition at line <b>51</b> of file <b>adjectives.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_string_generate()</b>, and
-  <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_adjectives_count_=_sizeof("><a class="permalink" href="#const_size_t_adjectives_count_=_sizeof(">const
-  size_t adjectives_count = sizeof(<b>adjectives</b>) /
-  sizeof(<b>adjectives</b>[0])</a></h2>
-<p class="Pp">Count of adjectives in the adjectives array. Always equals 2500.
-    Used for bounds checking and random selection.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>adjectives</b></div>
-<p class="Pp">Definition at line <b>411</b> of file <b>adjectives.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_string_generate()</b>, and
-  <b>main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <p class="Pp">
+            This format provides approximately 2500 * 5000 * 5000 = 62.5 billion
+            possible combinations, far exceeding the practical needs of a
+            session discovery service.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_in_ACDS">
+            <a class="permalink" href="#Usage_in_ACDS">Usage in ACDS</a>
+          </h2>
+          <p class="Pp">
+            The ACDS (ASCII Chat Discovery Service) uses session strings for:
+          </p>
+          <ul class="Bl-bullet">
+            <li>User-friendly session discovery without IP addresses</li>
+            <li>
+              Memorable identifiers that can be shared verbally or written down
+            </li>
+            <li>Privacy protection (no direct server IP exposure)</li>
+          </ul>
+          <p class="Pp">Generation flow:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Server registers with ACDS, receives a unique session string
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              Clients connect to ACDS and search for a session by its string
+            </dd>
+            <dt>3.</dt>
+            <dd>ACDS returns the server's address for that session</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Notes">
+            <a class="permalink" href="#Implementation_Notes"
+              >Implementation Notes</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Adjectives are selected for easy pronunciation and memorability
+            </li>
+            <li>
+              Random selection uses libsodium's randombytes_uniform() for
+              cryptographic randomness
+            </li>
+            <li>
+              Total: 2500 adjectives (provides diversity while keeping
+              generation fast)
+            </li>
+            <li>
+              This file is auto-generated by generate_wordlists.py; modify the
+              generation script if changes to the wordlist are needed
+            </li>
+          </ul>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>src/strings/main.c</b> - Tool to generate
+            <b>Session Management Module</b> strings and export wordlists
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>lib/discovery/nouns.c</b> - Noun wordlist (5000 words)
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">ACDS (ASCII Chat Discovery Service) documentation</p>
+          </div>
+          <p class="Pp">Definition in file <b>adjectives.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_adjectives__">
+            <a class="permalink" href="#const_char*_adjectives__"
+              >const char* adjectives[]</a
+            >
+          </h2>
+          <p class="Pp">
+            Array of English adjectives for ACDS session naming. A curated list
+            of 2500 adjectives used to generate the first part of memorable
+            session identifiers. Combined with two nouns to create unique,
+            pronounceable strings.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Example values: &quot;blue&quot;, &quot;bright&quot;,
+            &quot;calm&quot;, &quot;dark&quot;, &quot;eager&quot;,
+            &quot;fresh&quot;, &quot;gentle&quot;, ...
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>adjectives_count</b>
+            <p class="Pp"></p>
+            <p class="Pp">lib/discovery/nouns.h for the noun wordlist</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>51</b> of file <b>adjectives.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_string_generate()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_size_t_adjectives_count_=_sizeof(">
+            <a class="permalink" href="#const_size_t_adjectives_count_=_sizeof("
+              >const size_t adjectives_count = sizeof(<b>adjectives</b>) /
+              sizeof(<b>adjectives</b>[0])</a
+            >
+          </h2>
+          <p class="Pp">
+            Count of adjectives in the adjectives array. Always equals 2500.
+            Used for bounds checking and random selection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent"><b>adjectives</b></div>
+          <p class="Pp">
+            Definition at line <b>411</b> of file <b>adjectives.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_string_generate()</b>, and <b>main()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,136 +1,207 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>sgr.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">sgr.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">sgr.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">sgr.h - ANSI SGR (Select Graphic Rendition) color sequence
-    generation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>prewarm_sgr256_fg_cache</b> (void)
-  <br/>
-  Prewarm 256-color foreground cache for benchmarks. void
-    <b>prewarm_sgr256_cache</b> (void)
-  <br/>
-  Prewarm 256-color foreground/background cache for benchmarks. char *
-    <b>get_sgr256_fg_string</b> (<b>uint8_t</b> fg, <b>uint8_t</b> *len_out)
-  <br/>
-  Get 256-color foreground ANSI sequence string. char *
-    <b>get_sgr256_bg_string</b> (<b>uint8_t</b> bg, <b>uint8_t</b> *len_out)
-  <br/>
-  Get 256-color background ANSI sequence string. char *
-    <b>get_sgr256_fg_bg_string</b> (<b>uint8_t</b> fg, <b>uint8_t</b> bg,
-    <b>uint8_t</b> *len_out)
-  <br/>
-  Get 256-color foreground/background ANSI sequence string. char *
-    <b>append_sgr_reset</b> (char *dst)
-  <br/>
-  char * <b>append_sgr_truecolor_fg</b> (char *dst, <b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> b)
-  <br/>
-  char * <b>append_sgr_truecolor_bg</b> (char *dst, <b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> b)
-  <br/>
-  char * <b>append_sgr_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fr,
-    <b>uint8_t</b> fg, <b>uint8_t</b> fb, <b>uint8_t</b> br, <b>uint8_t</b> bg,
-    <b>uint8_t</b> bb)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ANSI SGR (Select Graphic Rendition) color sequence generation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>sgr.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_reset_(char_*_dst)"><a class="permalink" href="#char_*_append_sgr_reset_(char_*_dst)">char
-  * append_sgr_reset (char * dst)</a></h2>
-<p class="Pp">Definition at line <b>121</b> of file <b>sgr.c</b>.</p>
-<pre>121                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sgr.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sgr.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sgr.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          sgr.h - ANSI SGR (Select Graphic Rendition) color sequence generation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>prewarm_sgr256_fg_cache</b> (void)
+            <br />
+            Prewarm 256-color foreground cache for benchmarks. void
+            <b>prewarm_sgr256_cache</b> (void)
+            <br />
+            Prewarm 256-color foreground/background cache for benchmarks. char *
+            <b>get_sgr256_fg_string</b> (<b>uint8_t</b> fg,
+            <b>uint8_t</b> *len_out)
+            <br />
+            Get 256-color foreground ANSI sequence string. char *
+            <b>get_sgr256_bg_string</b> (<b>uint8_t</b> bg,
+            <b>uint8_t</b> *len_out)
+            <br />
+            Get 256-color background ANSI sequence string. char *
+            <b>get_sgr256_fg_bg_string</b> (<b>uint8_t</b> fg,
+            <b>uint8_t</b> bg, <b>uint8_t</b> *len_out)
+            <br />
+            Get 256-color foreground/background ANSI sequence string. char *
+            <b>append_sgr_reset</b> (char *dst)
+            <br />
+            char * <b>append_sgr_truecolor_fg</b> (char *dst, <b>uint8_t</b> r,
+            <b>uint8_t</b> g, <b>uint8_t</b> b)
+            <br />
+            char * <b>append_sgr_truecolor_bg</b> (char *dst, <b>uint8_t</b> r,
+            <b>uint8_t</b> g, <b>uint8_t</b> b)
+            <br />
+            char * <b>append_sgr_truecolor_fg_bg</b> (char *dst,
+            <b>uint8_t</b> fr, <b>uint8_t</b> fg, <b>uint8_t</b> fb,
+            <b>uint8_t</b> br, <b>uint8_t</b> bg, <b>uint8_t</b> bb)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          ANSI SGR (Select Graphic Rendition) color sequence generation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>sgr.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_sgr_reset_(char_*_dst)">
+            <a class="permalink" href="#char_*_append_sgr_reset_(char_*_dst)"
+              >char * append_sgr_reset (char * dst)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>121</b> of file <b>sgr.c</b>.</p>
+          <pre>
+121                                   {
 122   memcpy(dst, &quot;\033[0m&quot;, 4);
 123   return dst + 4;
 124 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>append_sgr_reset()</b>.</p>
-<p class="Pp">Referenced by <b>append_sgr_reset()</b>, and
-  <b>emit_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_truecolor_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_bg_(char_*_dst,_">char
-  * append_sgr_truecolor_bg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-  <b>uint8_t</b> b)</a></h2>
-<p class="Pp">Definition at line <b>145</b> of file <b>sgr.c</b>.</p>
-<pre>145                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>append_sgr_reset()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_sgr_reset()</b>, and <b>emit_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_sgr_truecolor_bg_(char_*_dst,_">
+            <a
+              class="permalink"
+              href="#char_*_append_sgr_truecolor_bg_(char_*_dst,_"
+              >char * append_sgr_truecolor_bg (char * dst, <b>uint8_t</b> r,
+              <b>uint8_t</b> g, <b>uint8_t</b> b)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>145</b> of file <b>sgr.c</b>.</p>
+          <pre>
+145                                                                           {
 146   return append_rgb_sgr(dst, true, r, g, b);
 147 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>append_sgr_truecolor_bg()</b>.</p>
-<p class="Pp">Referenced by <b>append_sgr_truecolor_bg()</b>, and
-    <b>append_truecolor_bg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_(char_*_dst,_">char
-  * append_sgr_truecolor_fg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-  <b>uint8_t</b> b)</a></h2>
-<p class="Pp">Definition at line <b>141</b> of file <b>sgr.c</b>.</p>
-<pre>141                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>append_sgr_truecolor_bg()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_sgr_truecolor_bg()</b>, and
+            <b>append_truecolor_bg()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_sgr_truecolor_fg_(char_*_dst,_">
+            <a
+              class="permalink"
+              href="#char_*_append_sgr_truecolor_fg_(char_*_dst,_"
+              >char * append_sgr_truecolor_fg (char * dst, <b>uint8_t</b> r,
+              <b>uint8_t</b> g, <b>uint8_t</b> b)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>141</b> of file <b>sgr.c</b>.</p>
+          <pre>
+141                                                                           {
 142   return append_rgb_sgr(dst, false, r, g, b);
 143 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>append_sgr_truecolor_fg()</b>.</p>
-<p class="Pp">Referenced by <b>append_sgr_truecolor_fg()</b>, and
-    <b>append_truecolor_fg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_">char
-  * append_sgr_truecolor_fg_bg (char * dst, <b>uint8_t</b> fr, <b>uint8_t</b>
-  fg, <b>uint8_t</b> fb, <b>uint8_t</b> br, <b>uint8_t</b> bg, <b>uint8_t</b>
-  bb)</a></h2>
-<p class="Pp">Definition at line <b>149</b> of file <b>sgr.c</b>.</p>
-<pre>149                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>append_sgr_truecolor_fg()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_sgr_truecolor_fg()</b>, and
+            <b>append_truecolor_fg()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_">
+            <a
+              class="permalink"
+              href="#char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_"
+              >char * append_sgr_truecolor_fg_bg (char * dst, <b>uint8_t</b> fr,
+              <b>uint8_t</b> fg, <b>uint8_t</b> fb, <b>uint8_t</b> br,
+              <b>uint8_t</b> bg, <b>uint8_t</b> bb)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>149</b> of file <b>sgr.c</b>.</p>
+          <pre>
+149                                                                                                                     {
 150   memcpy(dst, &quot;\033[38;2;&quot;, 7);
 151   dst = append_rgb_components(dst + 7, fr, fg, fb);
 152   memcpy(dst, &quot;;48;2;&quot;, 6);
@@ -138,23 +209,27 @@
 154   *dst++ = 'm';
 155   return dst;
 156 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>append_sgr_truecolor_fg_bg()</b>.</p>
-<p class="Pp">Referenced by <b>append_sgr_truecolor_fg_bg()</b>, and
-    <b>append_truecolor_fg_bg()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>append_sgr_truecolor_fg_bg()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_sgr_truecolor_fg_bg()</b>, and
+            <b>append_truecolor_fg_bg()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

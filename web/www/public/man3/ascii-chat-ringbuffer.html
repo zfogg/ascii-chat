@@ -1,334 +1,458 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ringbuffer(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ringbuffer(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ringbuffer(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ringbuffer - Ring Buffer</p>
-<p class="Pp">
-  <br/>
-   - &#x1F501; Lock-free circular buffers for audio/video</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>ringbuffer.c</b>
-  <br/>
-  &#x1F3AF; Lock-free circular buffer for audio streaming with atomic operations
-    file <b>ringbuffer.h</b>
-  <br/>
-  Lock-Free Ring Buffer and Frame Buffer Management.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ringbuffer_t</b>
-  <br/>
-  Lock-free ring buffer structure. struct <b>audio_ring_buffer</b>
-  <br/>
-  Audio ring buffer for real-time audio streaming. struct <b>frame_t</b>
-  <br/>
-  Frame structure that stores both data and actual size. struct
-    <b>multi_source_frame_t</b>
-  <br/>
-  Multi-source frame structure for multi-user support. struct
-    <b>framebuffer_t</b>
-  <br/>
-  Frame buffer structure for managing video frames.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>audio_ring_buffer</b> <b>audio_ring_buffer_t</b>
-  <br/>
-  Audio ring buffer for real-time audio streaming.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t
-    element_size, size_t capacity)
-  <br/>
-  Create a new ring buffer. void <b>ringbuffer_destroy</b> (<b>ringbuffer_t</b>
-    *rb)
-  <br/>
-  Destroy a ring buffer and free its memory. <b>bool</b> <b>ringbuffer_write</b>
-    (<b>ringbuffer_t</b> *rb, const void *data)
-  <br/>
-  Try to write an element to the ring buffer (non-blocking). <b>bool</b>
-    <b>ringbuffer_read</b> (<b>ringbuffer_t</b> *rb, void *data)
-  <br/>
-  Try to read an element from the ring buffer (non-blocking). <b>bool</b>
-    <b>ringbuffer_peek</b> (<b>ringbuffer_t</b> *rb, void *data)
-  <br/>
-  Peek at the next element without removing it. size_t <b>ringbuffer_size</b>
-    (const <b>ringbuffer_t</b> *rb)
-  <br/>
-  Get current number of elements in the buffer. <b>bool</b>
-    <b>ringbuffer_is_empty</b> (const <b>ringbuffer_t</b> *rb)
-  <br/>
-  Check if buffer is empty. <b>bool</b> <b>ringbuffer_is_full</b> (const
-    <b>ringbuffer_t</b> *rb)
-  <br/>
-  Check if buffer is full. void <b>ringbuffer_clear</b> (<b>ringbuffer_t</b>
-    *rb)
-  <br/>
-  Clear all elements from the buffer. <b>framebuffer_t</b> *
-    <b>framebuffer_create</b> (size_t capacity)
-  <br/>
-  Create a frame buffer for ASCII frames. <b>framebuffer_t</b> *
-    <b>framebuffer_create_multi</b> (size_t capacity)
-  <br/>
-  Create a multi-source frame buffer for multi-user support. void
-    <b>framebuffer_destroy</b> (<b>framebuffer_t</b> *fb)
-  <br/>
-  Destroy a frame buffer. <b>bool</b> <b>framebuffer_write_frame</b>
-    (<b>framebuffer_t</b> *fb, const char *frame_data, size_t frame_size)
-  <br/>
-  Write a frame to the buffer. <b>bool</b> <b>framebuffer_read_frame</b>
-    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *frame)
-  <br/>
-  Read a frame from the buffer. void <b>framebuffer_clear</b>
-    (<b>framebuffer_t</b> *fb)
-  <br/>
-  Clear all frames from the buffer, freeing their data. <b>bool</b>
-    <b>framebuffer_write_multi_frame</b> (<b>framebuffer_t</b> *fb, const char
-    *frame_data, size_t frame_size, <b>uint32_t</b> source_client_id,
-    <b>uint32_t</b> frame_sequence, <b>uint32_t</b> timestamp)
-  <br/>
-  Write a multi-source frame to the buffer (for multi-user support). <b>bool</b>
-    <b>framebuffer_read_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *frame)
-  <br/>
-  Read a multi-source frame from the buffer. <b>bool</b>
-    <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *frame)
-  <br/>
-  Peek at the latest multi-source frame without removing it.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Audio_Ring_Buffer_Constants"><a class="permalink" href="#Audio_Ring_Buffer_Constants">Audio
-  Ring Buffer Constants</a></h2>
-<br/>
-<p class="Pp">#define <b>AUDIO_RING_BUFFER_SIZE</b> 192000
-  <br/>
-  Audio ring buffer size in samples (192000 samples = 4 seconds @ 48kHz).
-    #define <b>AUDIO_JITTER_BUFFER_THRESHOLD</b> 4800
-  <br/>
-  Jitter buffer threshold - samples needed before starting playback. #define
-    <b>AUDIO_JITTER_LOW_WATER_MARK</b> 2400
-  <br/>
-  Low water mark - warn when available drops below this. #define
-    <b>AUDIO_JITTER_HIGH_WATER_MARK</b> (<b>AUDIO_JITTER_BUFFER_THRESHOLD</b> *
-    2)
-  <br/>
-  High water mark - drop OLD samples when buffer exceeds this. #define
-    <b>AUDIO_JITTER_TARGET_LEVEL</b> (<b>AUDIO_JITTER_BUFFER_THRESHOLD</b> +
-    480)
-  <br/>
-  Target buffer level after dropping old samples. #define
-    <b>AUDIO_CROSSFADE_SAMPLES</b> 256
-  <br/>
-  Crossfade duration in samples for smooth underrun recovery.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Frame_Magic_Numbers"><a class="permalink" href="#Frame_Magic_Numbers">Frame
-  Magic Numbers</a></h2>
-<br/>
-<p class="Pp">#define <b>FRAME_MAGIC</b> <b>MAGIC_FRAME_VALID</b>
-  <br/>
-  Magic number indicating a valid frame (0xDEADBEEF) - Alias for backward
-    compatibility. #define <b>FRAME_FREED</b> <b>MAGIC_FRAME_FREED</b>
-  <br/>
-  Magic number indicating a freed frame (0xFEEDFACE) - Alias for backward
-    compatibility.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F501; Lock-free circular buffers for audio/video</p>
-<p class="Pp">This header provides lock-free ring buffer implementations for
-    high-performance producer-consumer scenarios in ascii-chat. The system
-    includes both generic lock-free ring buffers and specialized audio and frame
-    buffers for media streaming.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CORE_FEATURES:"><a class="permalink" href="#CORE_FEATURES:">CORE
-  FEATURES: </a></h1>
-<ul class="Bl-bullet">
-  <li>Lock-free ring buffers using atomic operations</li>
-  <li>Thread-safe producer-consumer data transfer</li>
-  <li>Power-of-2 capacity optimization for fast modulo</li>
-  <li>Specialized audio ring buffers with jitter buffering</li>
-  <li>Frame buffer management for video frames</li>
-  <li>Multi-source frame support for multi-client scenarios</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="RING_BUFFER_ARCHITECTURE:"><a class="permalink" href="#RING_BUFFER_ARCHITECTURE:">RING
-  BUFFER ARCHITECTURE: </a></h1>
-<p class="Pp">The lock-free ring buffer uses atomic operations for:</p>
-<ul class="Bl-bullet">
-  <li>Lock-free writes (producer never blocks consumer)</li>
-  <li>Lock-free reads (consumer never blocks producer)</li>
-  <li>Atomic size tracking for fast emptiness checks</li>
-  <li>Power-of-2 capacity enables bit masking instead of modulo</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="AUDIO_RING_BUFFER:"><a class="permalink" href="#AUDIO_RING_BUFFER:">AUDIO
-  RING BUFFER: </a></h1>
-<p class="Pp">Specialized audio ring buffer with:</p>
-<ul class="Bl-bullet">
-  <li>Fixed-size circular buffer for audio samples</li>
-  <li>Jitter buffer threshold for network latency compensation</li>
-  <li>Mutex-protected operations for audio thread safety</li>
-  <li>Optimized for real-time audio streaming</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="FRAME_BUFFER:"><a class="permalink" href="#FRAME_BUFFER:">FRAME
-  BUFFER: </a></h1>
-<p class="Pp">Frame buffer system for ASCII video frames:</p>
-<ul class="Bl-bullet">
-  <li>Generic frame buffers for single-source scenarios</li>
-  <li>Multi-source frame buffers for multi-client support</li>
-  <li>Magic number validation for corruption detection</li>
-  <li>Automatic frame data management</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_BENEFITS:"><a class="permalink" href="#PERFORMANCE_BENEFITS:">PERFORMANCE
-  BENEFITS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Lock-free operations minimize latency</li>
-  <li>Power-of-2 capacity enables fast bit masking</li>
-  <li>Zero-allocation pattern after initialization</li>
-  <li>Efficient producer-consumer data transfer</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
-  SAFETY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Generic ring buffers: Lock-free using atomic operations</li>
-  <li>Audio ring buffers: Mutex-protected for thread safety</li>
-  <li>Frame buffers: Mutex-protected for concurrent access</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Ring buffers are ideal for producer-consumer scenarios
-  where one thread produces data and another consumes it.
-<p class="Pp"></p>
-<p class="Pp">The lock-free ring buffer requires power-of-2 capacity for optimal
-    performance (uses bit masking instead of modulo).</p>
-<p class="Pp"></p>
-<p class="Pp">Audio ring buffers use jitter buffering to compensate for network
-    latency and packet timing variations.</p>
-</div>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">August 2025</div>
-<p class="Pp">Ring Buffer</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
-<p class="Pp">Welcome! Let's talk about the ring buffer&#x2014;one of the
-    coolest data structures in ascii-chat. If you've ever wondered how to pass
-    data between threads really fast without all the overhead of mutexes and
-    locks, you're in the right place.</p>
-<p class="Pp"></p>
-<p class="Pp">Picture this: you have one thread capturing video frames (the
-    producer) and another thread encoding them (the consumer). How do you hand
-    frames from one to the other? You could use a mutex-protected queue, but
-    that means locking and unlocking for every single frame. Not ideal when
-    you're doing this 30 times per second!</p>
-<p class="Pp"></p>
-<p class="Pp">That's where the ring buffer shines. It's a circular buffer that
-    uses atomic operations instead of locks, making it blazingly fast for the
-    single-producer, single-consumer pattern. Think of it like a race track
-    where the producer and consumer chase each other around&#x2014;one writing,
-    one reading, never quite catching up to each other.</p>
-<p class="Pp"></p>
-<p class="Pp">You can find the implementation in <b>lib/ringbuffer.c</b><b> and
-    </b>lib/ringbuffer.h<b>.</b></p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="What_makes_ring_buffers_special?"><a class="permalink" href="#What_makes_ring_buffers_special?">What
-  makes ring buffers special? </a></h2>
-<p class="Pp">Ring buffers are designed from the ground up for speed. They use
-    C11 atomics instead of mutexes, which means way less overhead when passing
-    data between threads. The design is intentionally simple&#x2014;no complex
-    algorithms here, just a circular buffer done right.</p>
-<p class="Pp"></p>
-<p class="Pp">The implementation takes advantage of a clever trick: power-of-2
-    capacities allow us to use bitwise masking instead of slow modulo
-    operations. This might sound like a small detail, but it makes index
-    calculations 15-30 times faster!</p>
-<p class="Pp"></p>
-<p class="Pp">We also have specialized versions for different use cases. Frame
-    buffers handle ASCII art frames with metadata like magic numbers for
-    corruption detection. Audio ring buffers include jitter buffering to smooth
-    out network hiccups. Each one is tailored to its specific job.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
-<p class="Pp">Let's dive into how ring buffers actually work under the hood. The
-    design is elegant in its simplicity&#x2014;just a few atomic variables and a
-    chunk of memory, but combined in a way that achieves lock-free thread
-    safety.</p>
-<section class="Ss">
-<h2 class="Ss" id="Ring_Buffer_Structure"><a class="permalink" href="#Ring_Buffer_Structure">Ring
-  Buffer Structure</a></h2>
-<p class="Pp">The core structure is pretty straightforward:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ringbuffer(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ringbuffer(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ringbuffer(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ringbuffer - Ring Buffer</p>
+        <p class="Pp">
+          <br />
+          - &#x1F501; Lock-free circular buffers for audio/video
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>ringbuffer.c</b>
+            <br />
+            &#x1F3AF; Lock-free circular buffer for audio streaming with atomic
+            operations file
+            <b>ringbuffer.h</b>
+            <br />
+            Lock-Free Ring Buffer and Frame Buffer Management.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ringbuffer_t</b>
+            <br />
+            Lock-free ring buffer structure. struct <b>audio_ring_buffer</b>
+            <br />
+            Audio ring buffer for real-time audio streaming. struct
+            <b>frame_t</b>
+            <br />
+            Frame structure that stores both data and actual size. struct
+            <b>multi_source_frame_t</b>
+            <br />
+            Multi-source frame structure for multi-user support. struct
+            <b>framebuffer_t</b>
+            <br />
+            Frame buffer structure for managing video frames.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>audio_ring_buffer</b> <b>audio_ring_buffer_t</b>
+            <br />
+            Audio ring buffer for real-time audio streaming.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t element_size,
+            size_t capacity)
+            <br />
+            Create a new ring buffer. void <b>ringbuffer_destroy</b> (<b
+              >ringbuffer_t</b
+            >
+            *rb)
+            <br />
+            Destroy a ring buffer and free its memory. <b>bool</b>
+            <b>ringbuffer_write</b> (<b>ringbuffer_t</b>
+            *rb, const void *data)
+            <br />
+            Try to write an element to the ring buffer (non-blocking).
+            <b>bool</b> <b>ringbuffer_read</b> (<b>ringbuffer_t</b> *rb, void
+            *data)
+            <br />
+            Try to read an element from the ring buffer (non-blocking).
+            <b>bool</b> <b>ringbuffer_peek</b> (<b>ringbuffer_t</b> *rb, void
+            *data)
+            <br />
+            Peek at the next element without removing it. size_t
+            <b>ringbuffer_size</b> (const <b>ringbuffer_t</b> *rb)
+            <br />
+            Get current number of elements in the buffer. <b>bool</b>
+            <b>ringbuffer_is_empty</b> (const <b>ringbuffer_t</b> *rb)
+            <br />
+            Check if buffer is empty. <b>bool</b>
+            <b>ringbuffer_is_full</b> (const <b>ringbuffer_t</b> *rb)
+            <br />
+            Check if buffer is full. void <b>ringbuffer_clear</b> (<b
+              >ringbuffer_t</b
+            >
+            *rb)
+            <br />
+            Clear all elements from the buffer. <b>framebuffer_t</b> *
+            <b>framebuffer_create</b> (size_t capacity)
+            <br />
+            Create a frame buffer for ASCII frames. <b>framebuffer_t</b> *
+            <b>framebuffer_create_multi</b> (size_t capacity)
+            <br />
+            Create a multi-source frame buffer for multi-user support. void
+            <b>framebuffer_destroy</b> (<b>framebuffer_t</b> *fb)
+            <br />
+            Destroy a frame buffer. <b>bool</b>
+            <b>framebuffer_write_frame</b> (<b>framebuffer_t</b>
+            *fb, const char *frame_data, size_t frame_size)
+            <br />
+            Write a frame to the buffer. <b>bool</b>
+            <b>framebuffer_read_frame</b> (<b>framebuffer_t</b> *fb,
+            <b>frame_t</b> *frame)
+            <br />
+            Read a frame from the buffer. void <b>framebuffer_clear</b> (<b
+              >framebuffer_t</b
+            >
+            *fb)
+            <br />
+            Clear all frames from the buffer, freeing their data. <b>bool</b>
+            <b>framebuffer_write_multi_frame</b> (<b>framebuffer_t</b> *fb,
+            const char *frame_data, size_t frame_size,
+            <b>uint32_t</b> source_client_id, <b>uint32_t</b> frame_sequence,
+            <b>uint32_t</b> timestamp)
+            <br />
+            Write a multi-source frame to the buffer (for multi-user support).
+            <b>bool</b> <b>framebuffer_read_multi_frame</b> (<b
+              >framebuffer_t</b
+            >
+            *fb, <b>multi_source_frame_t</b> *frame)
+            <br />
+            Read a multi-source frame from the buffer. <b>bool</b>
+            <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b>
+            *fb, <b>multi_source_frame_t</b> *frame)
+            <br />
+            Peek at the latest multi-source frame without removing it.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Audio_Ring_Buffer_Constants">
+            <a class="permalink" href="#Audio_Ring_Buffer_Constants"
+              >Audio Ring Buffer Constants</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>AUDIO_RING_BUFFER_SIZE</b> 192000
+            <br />
+            Audio ring buffer size in samples (192000 samples = 4 seconds @
+            48kHz). #define
+            <b>AUDIO_JITTER_BUFFER_THRESHOLD</b> 4800
+            <br />
+            Jitter buffer threshold - samples needed before starting playback.
+            #define
+            <b>AUDIO_JITTER_LOW_WATER_MARK</b> 2400
+            <br />
+            Low water mark - warn when available drops below this. #define
+            <b>AUDIO_JITTER_HIGH_WATER_MARK</b> (<b
+              >AUDIO_JITTER_BUFFER_THRESHOLD</b
+            >
+            * 2)
+            <br />
+            High water mark - drop OLD samples when buffer exceeds this. #define
+            <b>AUDIO_JITTER_TARGET_LEVEL</b> (<b
+              >AUDIO_JITTER_BUFFER_THRESHOLD</b
+            >
+            + 480)
+            <br />
+            Target buffer level after dropping old samples. #define
+            <b>AUDIO_CROSSFADE_SAMPLES</b> 256
+            <br />
+            Crossfade duration in samples for smooth underrun recovery.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Frame_Magic_Numbers">
+            <a class="permalink" href="#Frame_Magic_Numbers"
+              >Frame Magic Numbers</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>FRAME_MAGIC</b> <b>MAGIC_FRAME_VALID</b>
+            <br />
+            Magic number indicating a valid frame (0xDEADBEEF) - Alias for
+            backward compatibility. #define <b>FRAME_FREED</b>
+            <b>MAGIC_FRAME_FREED</b>
+            <br />
+            Magic number indicating a freed frame (0xFEEDFACE) - Alias for
+            backward compatibility.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x1F501; Lock-free circular buffers for audio/video</p>
+        <p class="Pp">
+          This header provides lock-free ring buffer implementations for
+          high-performance producer-consumer scenarios in ascii-chat. The system
+          includes both generic lock-free ring buffers and specialized audio and
+          frame buffers for media streaming.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="CORE_FEATURES:">
+          <a class="permalink" href="#CORE_FEATURES:">CORE FEATURES: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Lock-free ring buffers using atomic operations</li>
+          <li>Thread-safe producer-consumer data transfer</li>
+          <li>Power-of-2 capacity optimization for fast modulo</li>
+          <li>Specialized audio ring buffers with jitter buffering</li>
+          <li>Frame buffer management for video frames</li>
+          <li>Multi-source frame support for multi-client scenarios</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="RING_BUFFER_ARCHITECTURE:">
+          <a class="permalink" href="#RING_BUFFER_ARCHITECTURE:"
+            >RING BUFFER ARCHITECTURE:
+          </a>
+        </h1>
+        <p class="Pp">The lock-free ring buffer uses atomic operations for:</p>
+        <ul class="Bl-bullet">
+          <li>Lock-free writes (producer never blocks consumer)</li>
+          <li>Lock-free reads (consumer never blocks producer)</li>
+          <li>Atomic size tracking for fast emptiness checks</li>
+          <li>Power-of-2 capacity enables bit masking instead of modulo</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="AUDIO_RING_BUFFER:">
+          <a class="permalink" href="#AUDIO_RING_BUFFER:"
+            >AUDIO RING BUFFER:
+          </a>
+        </h1>
+        <p class="Pp">Specialized audio ring buffer with:</p>
+        <ul class="Bl-bullet">
+          <li>Fixed-size circular buffer for audio samples</li>
+          <li>Jitter buffer threshold for network latency compensation</li>
+          <li>Mutex-protected operations for audio thread safety</li>
+          <li>Optimized for real-time audio streaming</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="FRAME_BUFFER:">
+          <a class="permalink" href="#FRAME_BUFFER:">FRAME BUFFER: </a>
+        </h1>
+        <p class="Pp">Frame buffer system for ASCII video frames:</p>
+        <ul class="Bl-bullet">
+          <li>Generic frame buffers for single-source scenarios</li>
+          <li>Multi-source frame buffers for multi-client support</li>
+          <li>Magic number validation for corruption detection</li>
+          <li>Automatic frame data management</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_BENEFITS:">
+          <a class="permalink" href="#PERFORMANCE_BENEFITS:"
+            >PERFORMANCE BENEFITS:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Lock-free operations minimize latency</li>
+          <li>Power-of-2 capacity enables fast bit masking</li>
+          <li>Zero-allocation pattern after initialization</li>
+          <li>Efficient producer-consumer data transfer</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY:">
+          <a class="permalink" href="#THREAD_SAFETY:">THREAD SAFETY: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Generic ring buffers: Lock-free using atomic operations</li>
+          <li>Audio ring buffers: Mutex-protected for thread safety</li>
+          <li>Frame buffers: Mutex-protected for concurrent access</li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Ring buffers are ideal for producer-consumer scenarios where one
+          thread produces data and another consumes it.
+          <p class="Pp"></p>
+          <p class="Pp">
+            The lock-free ring buffer requires power-of-2 capacity for optimal
+            performance (uses bit masking instead of modulo).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Audio ring buffers use jitter buffering to compensate for network
+            latency and packet timing variations.
+          </p>
+        </div>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">August 2025</div>
+        <p class="Pp">Ring Buffer</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          Welcome! Let's talk about the ring buffer&#x2014;one of the coolest
+          data structures in ascii-chat. If you've ever wondered how to pass
+          data between threads really fast without all the overhead of mutexes
+          and locks, you're in the right place.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Picture this: you have one thread capturing video frames (the
+          producer) and another thread encoding them (the consumer). How do you
+          hand frames from one to the other? You could use a mutex-protected
+          queue, but that means locking and unlocking for every single frame.
+          Not ideal when you're doing this 30 times per second!
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          That's where the ring buffer shines. It's a circular buffer that uses
+          atomic operations instead of locks, making it blazingly fast for the
+          single-producer, single-consumer pattern. Think of it like a race
+          track where the producer and consumer chase each other
+          around&#x2014;one writing, one reading, never quite catching up to
+          each other.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          You can find the implementation in <b>lib/ringbuffer.c</b
+          ><b> and </b>lib/ringbuffer.h<b>.</b>
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="What_makes_ring_buffers_special?">
+            <a class="permalink" href="#What_makes_ring_buffers_special?"
+              >What makes ring buffers special?
+            </a>
+          </h2>
+          <p class="Pp">
+            Ring buffers are designed from the ground up for speed. They use C11
+            atomics instead of mutexes, which means way less overhead when
+            passing data between threads. The design is intentionally
+            simple&#x2014;no complex algorithms here, just a circular buffer
+            done right.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The implementation takes advantage of a clever trick: power-of-2
+            capacities allow us to use bitwise masking instead of slow modulo
+            operations. This might sound like a small detail, but it makes index
+            calculations 15-30 times faster!
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            We also have specialized versions for different use cases. Frame
+            buffers handle ASCII art frames with metadata like magic numbers for
+            corruption detection. Audio ring buffers include jitter buffering to
+            smooth out network hiccups. Each one is tailored to its specific
+            job.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Architecture">
+          <a class="permalink" href="#Architecture">Architecture</a>
+        </h1>
+        <p class="Pp">
+          Let's dive into how ring buffers actually work under the hood. The
+          design is elegant in its simplicity&#x2014;just a few atomic variables
+          and a chunk of memory, but combined in a way that achieves lock-free
+          thread safety.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Ring_Buffer_Structure">
+            <a class="permalink" href="#Ring_Buffer_Structure"
+              >Ring Buffer Structure</a
+            >
+          </h2>
+          <p class="Pp">The core structure is pretty straightforward:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     char *buffer;          // Actual memory
 <br/>
@@ -346,33 +470,45 @@
 <br/>
     size_t capacity_mask;  // Fast modulo mask
 } ringbuffer_t;</pre>
-<p class="Pp">The key insight here is that head and tail are atomic variables.
-    The producer writes at head and advances it, while the consumer reads from
-    tail and advances it. Since each position is only accessed by one thread, we
-    don't need locks&#x2014;just atomic operations to make sure reads and writes
-    are visible across threads.</p>
-<p class="Pp"></p>
-<p class="Pp">The capacity_mask is the secret sauce for performance. When
-    capacity is a power of 2, we can use head &amp; capacity_mask instead of
-    head % capacity. Bitwise AND is a single CPU instruction, while modulo takes
-    15-30 cycles. That adds up fast when you're doing it thousands of times per
-    second!</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Lock-Free_Algorithm"><a class="permalink" href="#Lock-Free_Algorithm">Lock-Free
-  Algorithm</a></h2>
-<p class="Pp">The ring buffer uses atomic operations for thread-safe access
-    without locks. Here's how the producer and consumer interact:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Write operation</b> (producer):</p>
-<p class="Pp"></p>
-<p class="Pp">When the producer wants to write data, it first checks if there's
-    room in the buffer. If the buffer is full, we return false&#x2014;simple as
-    that. Otherwise, we calculate the write index using our fast bitwise mask
-    trick, copy the data into place, and atomically advance the head.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
+          <p class="Pp">
+            The key insight here is that head and tail are atomic variables. The
+            producer writes at head and advances it, while the consumer reads
+            from tail and advances it. Since each position is only accessed by
+            one thread, we don't need locks&#x2014;just atomic operations to
+            make sure reads and writes are visible across threads.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The capacity_mask is the secret sauce for performance. When capacity
+            is a power of 2, we can use head &amp; capacity_mask instead of head
+            % capacity. Bitwise AND is a single CPU instruction, while modulo
+            takes 15-30 cycles. That adds up fast when you're doing it thousands
+            of times per second!
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Lock-Free_Algorithm">
+            <a class="permalink" href="#Lock-Free_Algorithm"
+              >Lock-Free Algorithm</a
+            >
+          </h2>
+          <p class="Pp">
+            The ring buffer uses atomic operations for thread-safe access
+            without locks. Here's how the producer and consumer interact:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Write operation</b> (producer):</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            When the producer wants to write data, it first checks if there's
+            room in the buffer. If the buffer is full, we return
+            false&#x2014;simple as that. Otherwise, we calculate the write index
+            using our fast bitwise mask trick, copy the data into place, and
+            atomically advance the head.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
 <br/>
     size_t current_size = atomic_load(&amp;rb-&gt;size);
 <br/>
@@ -398,14 +534,16 @@
 <br/>
     return true;
 }</pre>
-<p class="Pp"><b>Read operation</b> (consumer):</p>
-<p class="Pp"></p>
-<p class="Pp">The consumer side is the mirror image. We check if there's data
-    available, calculate the read index the same way, copy data out, and
-    atomically advance the tail.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool ringbuffer_read(ringbuffer_t *rb, void *data) {
+          <p class="Pp"><b>Read operation</b> (consumer):</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The consumer side is the mirror image. We check if there's data
+            available, calculate the read index the same way, copy data out, and
+            atomically advance the tail.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>bool ringbuffer_read(ringbuffer_t *rb, void *data) {
 <br/>
     size_t current_size = atomic_load(&amp;rb-&gt;size);
 <br/>
@@ -431,29 +569,39 @@
 <br/>
     return true;
 }</pre>
-<p class="Pp">The beauty of this design is that the producer and consumer can
-    run completely independently. They never block each other&#x2014;the worst
-    case is one returns false if the buffer is full or empty, but that's a check
-    we'd need anyway.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Buffer_Types"><a class="permalink" href="#Buffer_Types">Buffer
-  Types</a></h1>
-<p class="Pp">We have several flavors of ring buffer, each optimized for a
-    specific use case. The generic ring buffer handles arbitrary element types,
-    while frame and audio buffers are specialized for their domains.</p>
-<section class="Ss">
-<h2 class="Ss" id="Generic_Ring_Buffer"><a class="permalink" href="#Generic_Ring_Buffer">Generic
-  Ring Buffer</a></h2>
-<p class="Pp">The generic ring buffer is your go-to choice when you need to pass
-    arbitrary data types between threads. It's simple, fast, and gets the job
-    done.</p>
-<p class="Pp"></p>
-<p class="Pp">Here's a quick example of using it:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Create ring buffer for 256 integers
+          <p class="Pp">
+            The beauty of this design is that the producer and consumer can run
+            completely independently. They never block each other&#x2014;the
+            worst case is one returns false if the buffer is full or empty, but
+            that's a check we'd need anyway.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Buffer_Types">
+          <a class="permalink" href="#Buffer_Types">Buffer Types</a>
+        </h1>
+        <p class="Pp">
+          We have several flavors of ring buffer, each optimized for a specific
+          use case. The generic ring buffer handles arbitrary element types,
+          while frame and audio buffers are specialized for their domains.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Generic_Ring_Buffer">
+            <a class="permalink" href="#Generic_Ring_Buffer"
+              >Generic Ring Buffer</a
+            >
+          </h2>
+          <p class="Pp">
+            The generic ring buffer is your go-to choice when you need to pass
+            arbitrary data types between threads. It's simple, fast, and gets
+            the job done.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Here's a quick example of using it:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Create ring buffer for 256 integers
 ringbuffer_t *rb = ringbuffer_create(sizeof(int), 256);
 // Producer thread
 int value = 42;
@@ -469,24 +617,29 @@ if (ringbuffer_read(rb, &amp;received)) {
 }
 // Cleanup
 ringbuffer_destroy(rb);</pre>
-<p class="Pp">Notice how the capacity gets rounded up to the next power of 2
-    automatically (256 is already a power of 2, so it stays as-is). If you ask
-    for 100 elements, you'll get 128 instead&#x2014;a small price to pay for the
-    performance benefits.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Frame_Buffer"><a class="permalink" href="#Frame_Buffer">Frame
-  Buffer</a></h2>
-<p class="Pp">Frame buffers are specialized for ASCII art frames. They handle
-    variable-sized frames and include metadata like magic numbers for corruption
-    detection. This is crucial when frames are being passed between
-    threads&#x2014;we need to make sure we're not reading garbage if something
-    goes wrong.</p>
-<p class="Pp"></p>
-<p class="Pp">The frame structure looks like this:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+          <p class="Pp">
+            Notice how the capacity gets rounded up to the next power of 2
+            automatically (256 is already a power of 2, so it stays as-is). If
+            you ask for 100 elements, you'll get 128 instead&#x2014;a small
+            price to pay for the performance benefits.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Frame_Buffer">
+            <a class="permalink" href="#Frame_Buffer">Frame Buffer</a>
+          </h2>
+          <p class="Pp">
+            Frame buffers are specialized for ASCII art frames. They handle
+            variable-sized frames and include metadata like magic numbers for
+            corruption detection. This is crucial when frames are being passed
+            between threads&#x2014;we need to make sure we're not reading
+            garbage if something goes wrong.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The frame structure looks like this:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t magic;  // FRAME_MAGIC (0xDEADBEEF) for corruption detection
 <br/>
@@ -500,18 +653,24 @@ typedef struct {
 <br/>
     mutex_t mutex;   // Protects frame data allocation/free
 } framebuffer_t;</pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Reading transfers ownership to the consumer, which must
-  buffer_release(frame.data).</div>
-<p class="Pp">The magic number serves as a sanity check. When you read a frame,
-    you can verify that frame.magic == <b>FRAME_MAGIC</b><b> to make sure you
-    got a valid frame and not corrupted memory. It's a simple check, but it can
-    catch a lot of subtle bugs!</b></p>
-<p class="Pp"></p>
-<p class="Pp">Here's how you'd use it in practice:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Create frame buffer (capacity = 60 frames)
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Reading transfers ownership to the consumer, which must
+            buffer_release(frame.data).
+          </div>
+          <p class="Pp">
+            The magic number serves as a sanity check. When you read a frame,
+            you can verify that frame.magic == <b>FRAME_MAGIC</b
+            ><b>
+              to make sure you got a valid frame and not corrupted memory. It's
+              a simple check, but it can catch a lot of subtle bugs!</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Here's how you'd use it in practice:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Create frame buffer (capacity = 60 frames)
 framebuffer_t *fb = framebuffer_create(60);
 // Producer: Write ASCII frame
 char *ascii_frame = generate_ascii_art(...);
@@ -533,23 +692,32 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 }
 // Cleanup (automatically frees all frame data via buffer domain)
 framebuffer_destroy(fb);</pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Clearing or destroying a framebuffer releases only frames
-  still queued.</div>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Multi-Source_Frame_Buffer"><a class="permalink" href="#Multi-Source_Frame_Buffer">Multi-Source
-  Frame Buffer</a></h2>
-<p class="Pp">When you have multiple clients sending frames, you need to track
-    which client sent what. That's where the multi-source frame buffer comes in.
-    It's essentially the same as a regular frame buffer, but each frame includes
-    metadata about its source.</p>
-<p class="Pp"></p>
-<p class="Pp">The multi-source frame structure tracks the client ID, frame
-    sequence number, and timestamp:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct {
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Clearing or destroying a framebuffer releases only frames still
+            queued.
+          </div>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Multi-Source_Frame_Buffer">
+            <a class="permalink" href="#Multi-Source_Frame_Buffer"
+              >Multi-Source Frame Buffer</a
+            >
+          </h2>
+          <p class="Pp">
+            When you have multiple clients sending frames, you need to track
+            which client sent what. That's where the multi-source frame buffer
+            comes in. It's essentially the same as a regular frame buffer, but
+            each frame includes metadata about its source.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The multi-source frame structure tracks the client ID, frame
+            sequence number, and timestamp:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     uint32_t magic;
 <br/>
@@ -563,10 +731,10 @@ framebuffer_destroy(fb);</pre>
 <br/>
     char *data;
 } multi_source_frame_t;</pre>
-<p class="Pp">Using it is straightforward:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Create multi-source frame buffer
+          <p class="Pp">Using it is straightforward:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Create multi-source frame buffer
 framebuffer_t *fb = framebuffer_create_multi(60);
 // Producer: Write frame from client 3
 framebuffer_write_multi_frame(fb, frame_data, frame_size,
@@ -588,20 +756,25 @@ if (framebuffer_read_multi_frame(fb, &amp;frame)) {
 <br/>
     SAFE_FREE(frame.data);
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Audio_Ring_Buffer"><a class="permalink" href="#Audio_Ring_Buffer">Audio
-  Ring Buffer</a></h2>
-<p class="Pp">Audio ring buffers are a bit different from the others. They're
-    designed for real-time audio playback, which means they need to handle
-    network jitter gracefully. The buffer accumulates samples before starting
-    playback, creating a &quot;jitter buffer&quot; that smooths out
-    irregularities in network timing.</p>
-<p class="Pp"></p>
-<p class="Pp">The audio buffer uses a fixed size tuned for audio needs:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#define AUDIO_RING_BUFFER_SIZE (256 * 32)  // 8192 samples = ~186ms @ 44.1kHz
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Audio_Ring_Buffer">
+            <a class="permalink" href="#Audio_Ring_Buffer">Audio Ring Buffer</a>
+          </h2>
+          <p class="Pp">
+            Audio ring buffers are a bit different from the others. They're
+            designed for real-time audio playback, which means they need to
+            handle network jitter gracefully. The buffer accumulates samples
+            before starting playback, creating a &quot;jitter buffer&quot; that
+            smooths out irregularities in network timing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The audio buffer uses a fixed size tuned for audio needs:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>#define AUDIO_RING_BUFFER_SIZE (256 * 32)  // 8192 samples = ~186ms @ 44.1kHz
 #define AUDIO_JITTER_BUFFER_THRESHOLD (256 * 8)  // Wait 46ms before playback
 typedef struct audio_ring_buffer {
 <br/>
@@ -615,25 +788,33 @@ typedef struct audio_ring_buffer {
 <br/>
     mutex_t mutex;
 } audio_ring_buffer_t;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Why_the_jitter_buffer?"><a class="permalink" href="#Why_the_jitter_buffer?">Why
-  the jitter buffer? </a></h2>
-<p class="Pp">Network audio packets don't arrive at perfectly regular intervals.
-    Sometimes packets come early, sometimes they're delayed. Without buffering,
-    you'd get audio crackling whenever a packet was late. The jitter buffer
-    waits until it has enough samples to smooth out these timing variations
-    before starting playback.</p>
-<p class="Pp"></p>
-<p class="Pp">The threshold is set to about 46 milliseconds of audio. This is
-    usually enough to handle typical network jitter without introducing
-    noticeable latency. Once the buffer has reached this threshold, playback
-    begins and the buffer continues to absorb timing variations.</p>
-<p class="Pp"></p>
-<p class="Pp">Here's how it works in practice:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>audio_ring_buffer_t *arb = audio_ringbuffer_create();
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Why_the_jitter_buffer?">
+            <a class="permalink" href="#Why_the_jitter_buffer?"
+              >Why the jitter buffer?
+            </a>
+          </h2>
+          <p class="Pp">
+            Network audio packets don't arrive at perfectly regular intervals.
+            Sometimes packets come early, sometimes they're delayed. Without
+            buffering, you'd get audio crackling whenever a packet was late. The
+            jitter buffer waits until it has enough samples to smooth out these
+            timing variations before starting playback.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The threshold is set to about 46 milliseconds of audio. This is
+            usually enough to handle typical network jitter without introducing
+            noticeable latency. Once the buffer has reached this threshold,
+            playback begins and the buffer continues to absorb timing
+            variations.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Here's how it works in practice:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>audio_ring_buffer_t *arb = audio_ringbuffer_create();
 // Network receive thread: Write samples
 void receive_audio(audio_ring_buffer_t *arb, float *samples, int count) {
 <br/>
@@ -690,24 +871,36 @@ void audio_callback(audio_ring_buffer_t *arb, float *output, int count) {
 <br/>
     mutex_unlock(&amp;arb-&gt;mutex);
 }</pre>
-<p class="Pp">Note that the audio buffer uses a mutex. Unlike the generic ring
-    buffer, this one can benefit from mutual exclusion since audio callbacks
-    have strict timing requirements and we need to coordinate the jitter buffer
-    logic.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="API_Reference"><a class="permalink" href="#API_Reference">API
-  Reference</a></h1>
-<p class="Pp">Now let's look at the actual API you'll be working with. The
-    functions are straightforward and follow a consistent pattern.</p>
-<section class="Ss">
-<h2 class="Ss" id="Creation/Destruction"><a class="permalink" href="#Creation/Destruction">Creation/Destruction</a></h2>
-<p class="Pp">Creating a ring buffer is simple&#x2014;just specify the element
-    size and desired capacity:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Create generic ring buffer (capacity rounded up to power of 2)
+          <p class="Pp">
+            Note that the audio buffer uses a mutex. Unlike the generic ring
+            buffer, this one can benefit from mutual exclusion since audio
+            callbacks have strict timing requirements and we need to coordinate
+            the jitter buffer logic.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="API_Reference">
+          <a class="permalink" href="#API_Reference">API Reference</a>
+        </h1>
+        <p class="Pp">
+          Now let's look at the actual API you'll be working with. The functions
+          are straightforward and follow a consistent pattern.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Creation/Destruction">
+            <a class="permalink" href="#Creation/Destruction"
+              >Creation/Destruction</a
+            >
+          </h2>
+          <p class="Pp">
+            Creating a ring buffer is simple&#x2014;just specify the element
+            size and desired capacity:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Create generic ring buffer (capacity rounded up to power of 2)
 ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity);
 // Create frame buffer
 framebuffer_t *framebuffer_create(size_t capacity);
@@ -716,17 +909,23 @@ framebuffer_t *framebuffer_create_multi(size_t capacity);
 // Destroy buffers (frees all memory)
 void ringbuffer_destroy(ringbuffer_t *rb);
 void framebuffer_destroy(framebuffer_t *fb);</pre>
-<p class="Pp">Remember that the capacity gets rounded up to the next power of 2
-    for performance reasons. If you request 100 elements, you'll get 128. This
-    usually isn't a problem, but it's good to be aware of.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Operations"><a class="permalink" href="#Operations">Operations</a></h2>
-<p class="Pp">The core operations are write, read, and peek. The query functions
-    let you check the buffer state without modifying it.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Generic ring buffer
+          <p class="Pp">
+            Remember that the capacity gets rounded up to the next power of 2
+            for performance reasons. If you request 100 elements, you'll get
+            128. This usually isn't a problem, but it's good to be aware of.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Operations">
+            <a class="permalink" href="#Operations">Operations</a>
+          </h2>
+          <p class="Pp">
+            The core operations are write, read, and peek. The query functions
+            let you check the buffer state without modifying it.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Generic ring buffer
 bool ringbuffer_write(ringbuffer_t *rb, const void *data);
 bool ringbuffer_read(ringbuffer_t *rb, void *data);
 bool ringbuffer_peek(ringbuffer_t *rb, void *data);  // Read without removing
@@ -744,138 +943,199 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *data, size_t s
                                    uint32_t client_id, uint32_t seq, uint32_t ts);
 bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
 bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);</pre>
-<p class="Pp">All the write and read functions return <b>false</b><b> if the
-    operation couldn't complete (buffer full or empty). This lets you decide
-    what to do&#x2014;maybe drop the data, maybe wait and retry, maybe signal an
-    error. It's up to you!</b></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Performance"><a class="permalink" href="#Performance">Performance</a></h1>
-<p class="Pp">Let's talk numbers. The ring buffer isn't just fast&#x2014;it's
-    dramatically faster than traditional mutex-protected queues. Here's what the
-    benchmarks show.</p>
-<section class="Ss">
-<h2 class="Ss" id="Benchmarks"><a class="permalink" href="#Benchmarks">Benchmarks</a></h2>
-<p class="Pp">We compared the lock-free ring buffer against a mutex-protected
-    queue in a contention-free scenario (producer and consumer on the same CPU
-    core):</p>
-<p class="Pp"></p>
-<p class="Pp">Operation Ring Buffer Mutex Queue Speedup Write 18 ns 95 ns
-    <b>5.3x faster</b> Read 20 ns 102 ns <b>5.1x faster</b> Write+Read pair 38
-    ns 197 ns <b>5.2x faster</b></p>
-<p class="Pp"></p>
-<p class="Pp">These numbers are from an AMD Ryzen 9 5950X in a contention-free
-    scenario. The ring buffer operations are so fast they're barely more
-    expensive than a simple memory copy!</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Contention_Behavior"><a class="permalink" href="#Contention_Behavior">Contention
-  Behavior</a></h2>
-<p class="Pp">What happens when things get more intense? We also tested with
-    high contention, where the producer and consumer are running on different
-    CPU cores. This stresses the cache coherency protocol, but the ring buffer
-    still comes out way ahead:</p>
-<p class="Pp"></p>
-<p class="Pp">Under high contention:</p>
-<ul class="Bl-bullet">
-  <li>Ring buffer: ~45 ns per operation (2.4x slowdown from cache
-    coherency)</li>
-  <li>Mutex queue: ~280 ns per operation (2.8x slowdown from lock
-    contention)</li>
-  <li><b>Ring buffer still 6.2x faster under contention</b></li>
-</ul>
-<p class="Pp">Even when the CPU cores are fighting over cache lines, the ring
-    buffer's lock-free design means it doesn't have to wait for mutexes to be
-    released. The atomic operations are still much faster than lock
-  acquisition.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Capacity_Management"><a class="permalink" href="#Capacity_Management">Capacity
-  Management</a></h1>
-<p class="Pp">Getting the capacity right is important for performance. Too small
-    and you'll drop data. Too large and you're wasting memory. The ring buffer
-    helps by optimizing capacity calculations automatically.</p>
-<section class="Ss">
-<h2 class="Ss" id="Power-of-2_Optimization"><a class="permalink" href="#Power-of-2_Optimization">Power-of-2
-  Optimization</a></h2>
-<p class="Pp">The ring buffer always rounds capacity up to the next power of 2.
-    This lets us use bitwise AND instead of modulo for index calculations, which
-    is dramatically faster.</p>
-<p class="Pp"></p>
-<p class="Pp">Here's how it works:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Request 100 elements &#x2192; gets rounded to 128 (next power of 2)
+          <p class="Pp">
+            All the write and read functions return <b>false</b
+            ><b>
+              if the operation couldn't complete (buffer full or empty). This
+              lets you decide what to do&#x2014;maybe drop the data, maybe wait
+              and retry, maybe signal an error. It's up to you!</b
+            >
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Performance">
+          <a class="permalink" href="#Performance">Performance</a>
+        </h1>
+        <p class="Pp">
+          Let's talk numbers. The ring buffer isn't just fast&#x2014;it's
+          dramatically faster than traditional mutex-protected queues. Here's
+          what the benchmarks show.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Benchmarks">
+            <a class="permalink" href="#Benchmarks">Benchmarks</a>
+          </h2>
+          <p class="Pp">
+            We compared the lock-free ring buffer against a mutex-protected
+            queue in a contention-free scenario (producer and consumer on the
+            same CPU core):
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Operation Ring Buffer Mutex Queue Speedup Write 18 ns 95 ns
+            <b>5.3x faster</b> Read 20 ns 102 ns <b>5.1x faster</b> Write+Read
+            pair 38 ns 197 ns <b>5.2x faster</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            These numbers are from an AMD Ryzen 9 5950X in a contention-free
+            scenario. The ring buffer operations are so fast they're barely more
+            expensive than a simple memory copy!
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Contention_Behavior">
+            <a class="permalink" href="#Contention_Behavior"
+              >Contention Behavior</a
+            >
+          </h2>
+          <p class="Pp">
+            What happens when things get more intense? We also tested with high
+            contention, where the producer and consumer are running on different
+            CPU cores. This stresses the cache coherency protocol, but the ring
+            buffer still comes out way ahead:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Under high contention:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Ring buffer: ~45 ns per operation (2.4x slowdown from cache
+              coherency)
+            </li>
+            <li>
+              Mutex queue: ~280 ns per operation (2.8x slowdown from lock
+              contention)
+            </li>
+            <li><b>Ring buffer still 6.2x faster under contention</b></li>
+          </ul>
+          <p class="Pp">
+            Even when the CPU cores are fighting over cache lines, the ring
+            buffer's lock-free design means it doesn't have to wait for mutexes
+            to be released. The atomic operations are still much faster than
+            lock acquisition.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Capacity_Management">
+          <a class="permalink" href="#Capacity_Management"
+            >Capacity Management</a
+          >
+        </h1>
+        <p class="Pp">
+          Getting the capacity right is important for performance. Too small and
+          you'll drop data. Too large and you're wasting memory. The ring buffer
+          helps by optimizing capacity calculations automatically.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Power-of-2_Optimization">
+            <a class="permalink" href="#Power-of-2_Optimization"
+              >Power-of-2 Optimization</a
+            >
+          </h2>
+          <p class="Pp">
+            The ring buffer always rounds capacity up to the next power of 2.
+            This lets us use bitwise AND instead of modulo for index
+            calculations, which is dramatically faster.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Here's how it works:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Request 100 elements &#x2192; gets rounded to 128 (next power of 2)
 ringbuffer_t *rb = ringbuffer_create(sizeof(int), 100);
 assert(rb-&gt;capacity == 128);
 // Fast modulo using bitwise AND
 size_t index = head &amp; rb-&gt;capacity_mask;  // Instead of head % capacity
 // Where capacity_mask = capacity - 1 (e.g., 128 - 1 = 127 = 0b01111111)</pre>
-<p class="Pp">The performance impact is significant:</p>
-<ul class="Bl-bullet">
-  <li>Bitwise AND: 1 CPU cycle</li>
-  <li>Integer modulo: 15-30 CPU cycles</li>
-  <li><b>Speedup: 15-30x for index calculation</b></li>
-</ul>
-<p class="Pp">Since we're calculating the index on every read and write, this
-    optimization really adds up. It's one of those small details that makes a
-    big difference when you're doing thousands of operations per second.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Sizing_Guidelines"><a class="permalink" href="#Sizing_Guidelines">Sizing
-  Guidelines</a></h2>
-<p class="Pp">Choosing the right buffer size depends on what you're buffering.
-    Let's look at some common scenarios:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Video frames</b> (30 FPS):</p>
-<p class="Pp"></p>
-<p class="Pp">For video, you want enough frames to survive brief CPU spikes and
-    scheduling delays. We recommend at least 2 seconds worth (60 frames) as a
-    minimum. That gives you enough cushion that a momentary slowdown won't cause
-    frame drops. For more robust operation, 4 seconds (120 frames) is better.
-    Going beyond 10 seconds (300 frames) doesn't usually help much&#x2014;by
-    then you're just increasing latency.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Audio samples</b> (48 kHz):</p>
-<p class="Pp"></p>
-<p class="Pp">Audio buffering is a balancing act. You need enough buffer to
-    absorb network jitter, but not so much that latency becomes noticeable. Our
-    audio ring buffer uses:</p>
-<ul class="Bl-bullet">
-  <li>Jitter buffer threshold: 46ms (2208 samples) - waits this long before
-      starting playback</li>
-  <li>Total buffer: 186ms (8928 samples) - prevents underruns during
-    playback</li>
-</ul>
-<p class="Pp">These numbers are tuned for typical network conditions. If you're
-    on a very jittery network, you might want to increase the jitter buffer
-    threshold. If latency is more important than smoothness, you can decrease
-    it.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
-  Safety</a></h1>
-<p class="Pp">This is important: ring buffers are <b>only</b> safe for the
-    Single Producer, Single Consumer (SPSC) pattern. That means exactly one
-    thread writing and exactly one thread reading. If you need multiple
-    producers or consumers, you'll want to use <b>packet_queue</b><b> instead,
-    which is mutex-protected.</b></p>
-<section class="Ss">
-<h2 class="Ss" id="SPSC_Guarantee"><a class="permalink" href="#SPSC_Guarantee">SPSC
-  Guarantee</a></h2>
-<p class="Pp">The lock-free design relies on the fact that each position in the
-    buffer is only accessed by one thread. The producer writes at head, the
-    consumer reads from tail, and they never touch each other's positions. This
-    is what makes the atomic operations sufficient&#x2014;we don't need locks
-    because there's no contention.</p>
-<p class="Pp"></p>
-<p class="Pp">Here's the correct pattern:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// &#x2705; CORRECT: One producer, one consumer
+          <p class="Pp">The performance impact is significant:</p>
+          <ul class="Bl-bullet">
+            <li>Bitwise AND: 1 CPU cycle</li>
+            <li>Integer modulo: 15-30 CPU cycles</li>
+            <li><b>Speedup: 15-30x for index calculation</b></li>
+          </ul>
+          <p class="Pp">
+            Since we're calculating the index on every read and write, this
+            optimization really adds up. It's one of those small details that
+            makes a big difference when you're doing thousands of operations per
+            second.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Sizing_Guidelines">
+            <a class="permalink" href="#Sizing_Guidelines">Sizing Guidelines</a>
+          </h2>
+          <p class="Pp">
+            Choosing the right buffer size depends on what you're buffering.
+            Let's look at some common scenarios:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Video frames</b> (30 FPS):</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            For video, you want enough frames to survive brief CPU spikes and
+            scheduling delays. We recommend at least 2 seconds worth (60 frames)
+            as a minimum. That gives you enough cushion that a momentary
+            slowdown won't cause frame drops. For more robust operation, 4
+            seconds (120 frames) is better. Going beyond 10 seconds (300 frames)
+            doesn't usually help much&#x2014;by then you're just increasing
+            latency.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Audio samples</b> (48 kHz):</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Audio buffering is a balancing act. You need enough buffer to absorb
+            network jitter, but not so much that latency becomes noticeable. Our
+            audio ring buffer uses:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Jitter buffer threshold: 46ms (2208 samples) - waits this long
+              before starting playback
+            </li>
+            <li>
+              Total buffer: 186ms (8928 samples) - prevents underruns during
+              playback
+            </li>
+          </ul>
+          <p class="Pp">
+            These numbers are tuned for typical network conditions. If you're on
+            a very jittery network, you might want to increase the jitter buffer
+            threshold. If latency is more important than smoothness, you can
+            decrease it.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Thread_Safety">
+          <a class="permalink" href="#Thread_Safety">Thread Safety</a>
+        </h1>
+        <p class="Pp">
+          This is important: ring buffers are <b>only</b> safe for the Single
+          Producer, Single Consumer (SPSC) pattern. That means exactly one
+          thread writing and exactly one thread reading. If you need multiple
+          producers or consumers, you'll want to use <b>packet_queue</b
+          ><b> instead, which is mutex-protected.</b>
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="SPSC_Guarantee">
+            <a class="permalink" href="#SPSC_Guarantee">SPSC Guarantee</a>
+          </h2>
+          <p class="Pp">
+            The lock-free design relies on the fact that each position in the
+            buffer is only accessed by one thread. The producer writes at head,
+            the consumer reads from tail, and they never touch each other's
+            positions. This is what makes the atomic operations
+            sufficient&#x2014;we don't need locks because there's no contention.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Here's the correct pattern:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// &#x2705; CORRECT: One producer, one consumer
 void* producer_thread(void *arg) {
 <br/>
     ringbuffer_t *rb = (ringbuffer_t*)arg;
@@ -904,10 +1164,10 @@ void* consumer_thread(void *arg) {
 <br/>
     }
 }</pre>
-<p class="Pp">And here's what <b>not</b> to do:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// &#x274C; WRONG: Multiple producers (not thread-safe!)
+          <p class="Pp">And here's what <b>not</b> to do:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// &#x274C; WRONG: Multiple producers (not thread-safe!)
 void* producer_thread_1(void *arg) {
 <br/>
     ringbuffer_write(rb, &amp;data);  // Race condition!
@@ -916,39 +1176,58 @@ void* producer_thread_2(void *arg) {
 <br/>
     ringbuffer_write(rb, &amp;data);  // Race condition!
 }</pre>
-<p class="Pp">If you try to have multiple producers writing at the same time,
-    you'll get race conditions on the head pointer. Same problem with multiple
-    consumers. The lock-free design only works when there's exactly one of
-  each.</p>
-<p class="Pp"></p>
-<p class="Pp">For multiple producers or consumers, use <b>packet_queue</b><b>
-    instead&#x2014;it uses mutexes and can handle multiple writers and readers
-    safely, though it won't be as fast.</b></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
-  Practices</a></h1>
-<p class="Pp">Here are some tips we've learned from using ring buffers in
-    ascii-chat:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Use power-of-2 capacities when possible</b></p>
-<p class="Pp"></p>
-<p class="Pp">While the ring buffer will round up for you, if you know your
-    requirements in advance, it's cleaner to request a power of 2 directly. That
-    way there's no surprise about the actual capacity you get.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>ringbuffer_create(sizeof(int), 128);  // Good (power of 2)
+          <p class="Pp">
+            If you try to have multiple producers writing at the same time,
+            you'll get race conditions on the head pointer. Same problem with
+            multiple consumers. The lock-free design only works when there's
+            exactly one of each.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            For multiple producers or consumers, use <b>packet_queue</b
+            ><b>
+              instead&#x2014;it uses mutexes and can handle multiple writers and
+              readers safely, though it won't be as fast.</b
+            >
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Best_Practices">
+          <a class="permalink" href="#Best_Practices">Best Practices</a>
+        </h1>
+        <p class="Pp">
+          Here are some tips we've learned from using ring buffers in
+          ascii-chat:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Use power-of-2 capacities when possible</b></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          While the ring buffer will round up for you, if you know your
+          requirements in advance, it's cleaner to request a power of 2
+          directly. That way there's no surprise about the actual capacity you
+          get.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+ringbuffer_create(sizeof(int), 128);  // Good (power of 2)
 ringbuffer_create(sizeof(int), 100);  // Still works, but rounded to 128</pre>
-<p class="Pp"><b>Handle full/empty cases gracefully</b></p>
-<p class="Pp"></p>
-<p class="Pp">When <b>ringbuffer_write()</b><b> returns false, the buffer is
-    full. When </b><b>ringbuffer_read()</b><b> returns false, it's empty. You
-    need to decide what to do in each case:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>if (!ringbuffer_write(rb, &amp;data)) {
+        <p class="Pp"><b>Handle full/empty cases gracefully</b></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          When <b>ringbuffer_write()</b
+          ><b> returns false, the buffer is full. When </b
+          ><b>ringbuffer_read()</b
+          ><b>
+            returns false, it's empty. You need to decide what to do in each
+            case:</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>if (!ringbuffer_write(rb, &amp;data)) {
 <br/>
     // Buffer full - decide policy:
 <br/>
@@ -958,227 +1237,377 @@ ringbuffer_create(sizeof(int), 100);  // Still works, but rounded to 128</pre>
 <br/>
     // - Overwrite oldest (circular log - keep latest N items)
 }</pre>
-<p class="Pp">For real-time video, dropping frames is usually fine&#x2014;better
-    to show the latest frame than to delay everything. For critical data, you
-    might want to block until there's room. It depends on your use case.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Reading transfers frame ownership</b></p>
-<p class="Pp"></p>
-<p class="Pp">After a successful read or peek, release the returned owning
-    payload after use.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>frame_t frame;
+        <p class="Pp">
+          For real-time video, dropping frames is usually fine&#x2014;better to
+          show the latest frame than to delay everything. For critical data, you
+          might want to block until there's room. It depends on your use case.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Reading transfers frame ownership</b></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          After a successful read or peek, release the returned owning payload
+          after use.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>frame_t frame;
 if (framebuffer_read_frame(fb, &amp;frame)) {
 <br/>
     process_frame(frame.data, frame.size);
 <br/>
     buffer_release(frame.data);
 }</pre>
-<p class="Pp">Clearing the queue does not release payloads already handed to
-    consumers. Owning buffers use <b>buffer_release()</b>, never
-    <b>SAFE_FREE()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Validate magic numbers</b></p>
-<p class="Pp"></p>
-<p class="Pp">Frame buffers include magic numbers for a reason&#x2014;they help
-    catch corruption. Always check that you got a valid frame:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>if (frame.magic != FRAME_MAGIC) {
+        <p class="Pp">
+          Clearing the queue does not release payloads already handed to
+          consumers. Owning buffers use <b>buffer_release()</b>, never
+          <b>SAFE_FREE()</b>.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Validate magic numbers</b></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Frame buffers include magic numbers for a reason&#x2014;they help
+          catch corruption. Always check that you got a valid frame:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>if (frame.magic != FRAME_MAGIC) {
 <br/>
     log_error(&quot;Corrupted frame detected (magic=0x%08X)&quot;, frame.magic);
 <br/>
     return;
 }</pre>
-<p class="Pp">This is a cheap sanity check that can save you from chasing weird
-    bugs later. If you read garbage memory (maybe from a use-after-free or
-    buffer overflow), the magic number won't match and you'll know immediately
-    that something's wrong.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Size jitter buffers appropriately</b></p>
-<p class="Pp"></p>
-<p class="Pp">For audio buffers, the jitter buffer size is a trade-off. Too
-    small and you'll get audio crackling from underruns. Too large and you'll
-    have noticeable latency. The sweet spot is usually about 2-3 times your
-    typical network jitter.</p>
-<p class="Pp"></p>
-<p class="Pp">Our default is 46 milliseconds, which works well for most network
-    conditions. If you're on a very stable network (like a local connection),
-    you could go smaller. If network jitter is severe, you might need to
-    increase it, though you'll pay for it with latency.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>ringbuffer.h</b>
-<p class="Pp"></p>
-<p class="Pp"><b>ringbuffer.c</b></p>
-</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_CROSSFADE_SAMPLES___256"><a class="permalink" href="#_define_AUDIO_CROSSFADE_SAMPLES___256">#define
-  AUDIO_CROSSFADE_SAMPLES 256</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Crossfade duration in samples for smooth underrun recovery. When
-    recovering from an underrun, we fade in the audio over this many samples to
-    prevent clicks and pops. 256 samples @ 48kHz = ~5.3ms</p>
-<p class="Pp">Definition at line <b>187</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_JITTER_BUFFER_THRESHOLD___4800"><a class="permalink" href="#_define_AUDIO_JITTER_BUFFER_THRESHOLD___4800">#define
-  AUDIO_JITTER_BUFFER_THRESHOLD 4800</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Jitter buffer threshold - samples needed before starting playback.
-    This threshold determines how much audio must be buffered before playback
-    starts. Too small = underruns and audio gaps when network packets arrive
-    late Too large = excessive latency + AEC3 gets silence during fill
-  period</p>
-<p class="Pp"></p>
-<p class="Pp">INCREASED from 960 (20ms) to 4800 (100ms) to eliminate stuttering
-    caused by:</p>
-<ul class="Bl-bullet">
-  <li>Network jitter (packets arriving in bursts)</li>
-  <li>Packet processing overhead</li>
-  <li>Thread scheduling delays</li>
-</ul>
-<p class="Pp">4800 samples @ 48kHz = 100ms = 5 Opus frames</p>
-<p class="Pp">Definition at line <b>144</b> of file <b>ringbuffer.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_JITTER_HIGH_WATER_MARK___("><a class="permalink" href="#_define_AUDIO_JITTER_HIGH_WATER_MARK___(">#define
-  AUDIO_JITTER_HIGH_WATER_MARK (<b>AUDIO_JITTER_BUFFER_THRESHOLD</b> *
-  2)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">High water mark - drop OLD samples when buffer exceeds this. When
-    the playback buffer grows beyond this level, we have accumulated too much
-    latency. We drop OLD samples to keep latency bounded. This prevents the
-    &quot;latency grows over time&quot; problem where network bursts fill the
-    buffer faster than playback can drain it.</p>
-<p class="Pp"></p>
-<p class="Pp">Set to 2x jitter threshold = 40ms for LAN. This gives enough
-    headroom for network jitter while preventing unbounded latency accumulation.
-    1920 samples @ 48kHz = 40ms = 2 Opus frames</p>
-<p class="Pp">Definition at line <b>170</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_JITTER_LOW_WATER_MARK___2400"><a class="permalink" href="#_define_AUDIO_JITTER_LOW_WATER_MARK___2400">#define
-  AUDIO_JITTER_LOW_WATER_MARK 2400</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Low water mark - warn when available drops below this. When
-    playback buffer drops below this threshold, we log a warning but keep
-    playing to avoid choppy audio. The jitter buffer should absorb network
-    jitter without constantly pausing/resuming.</p>
-<p class="Pp"></p>
-<p class="Pp">INCREASED from 480 (10ms) to 2400 (50ms) to provide adequate
-    headroom and prevent thousands of micro-underruns that cause audio
-    stuttering.</p>
-<p class="Pp"></p>
-<p class="Pp">2400 samples @ 48kHz = 50ms = 2.5 Opus frames</p>
-<p class="Pp">Definition at line <b>157</b> of file <b>ringbuffer.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_JITTER_TARGET_LEVEL___("><a class="permalink" href="#_define_AUDIO_JITTER_TARGET_LEVEL___(">#define
-  AUDIO_JITTER_TARGET_LEVEL (<b>AUDIO_JITTER_BUFFER_THRESHOLD</b> +
-  480)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Target buffer level after dropping old samples. When we drop old
-    samples due to exceeding HIGH_WATER_MARK, we bring the buffer back down to
-    this level. Set slightly above jitter threshold to avoid immediately
-    triggering underrun detection.</p>
-<p class="Pp"></p>
-<p class="Pp">1440 samples @ 48kHz = 30ms = 1.5 Opus frames</p>
-<p class="Pp">Definition at line <b>180</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUDIO_RING_BUFFER_SIZE___192000"><a class="permalink" href="#_define_AUDIO_RING_BUFFER_SIZE___192000">#define
-  AUDIO_RING_BUFFER_SIZE 192000</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Audio ring buffer size in samples (192000 samples = 4 seconds @
-    48kHz). Sized to handle:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Single-client period where audio accumulates before a second client
-    joins</dd>
-  <dt>2.</dt>
-  <dd>Mixer processing overhead (can take 3-15ms, exceeding 10ms target)</dd>
-  <dt>3.</dt>
-  <dd>System scheduling delays under load</dd>
-</dl>
-<p class="Pp">4 seconds provides headroom for mixer slowdowns and prevents
-    overflow during processing spikes. The mixer reads adaptively to catch
-  up.</p>
-<p class="Pp">Definition at line <b>129</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_available_read()</b>,
-    <b>audio_ring_buffer_available_write()</b>, <b>audio_ring_buffer_peek()</b>,
-    <b>audio_ring_buffer_read()</b>, <b>audio_ring_buffer_write()</b>, and
-    <b>session_display_write_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FRAME_FREED___"><a class="permalink" href="#_define_FRAME_FREED___">#define
-  FRAME_FREED <b>MAGIC_FRAME_FREED</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Magic number indicating a freed frame (0xFEEDFACE) - Alias for
-    backward compatibility.</p>
-<p class="Pp">Definition at line <b>431</b> of file <b>ringbuffer.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FRAME_MAGIC___"><a class="permalink" href="#_define_FRAME_MAGIC___">#define
-  FRAME_MAGIC <b>MAGIC_FRAME_VALID</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Magic number indicating a valid frame (0xDEADBEEF) - Alias for
-    backward compatibility.</p>
-<p class="Pp">Definition at line <b>429</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
-    <b>framebuffer_peek_latest_multi_frame()</b>,
-    <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>, and
-    <b>framebuffer_write_frame()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>audio_ring_buffer</b> <b>audio_ring_buffer_t</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Audio ring buffer for real-time audio streaming. Specialized ring
-    buffer for audio samples with jitter buffering to compensate for network
-    latency and packet timing variations. Uses mutex-protected operations for
-    thread-safe audio access.</p>
-<p class="Pp"></p>
-<p class="Pp">Features:</p>
-<ul class="Bl-bullet">
-  <li>Jitter buffering: waits for threshold fill before starting playback</li>
-  <li>Low water mark: resets jitter state when buffer runs low</li>
-  <li>Crossfade: smoothly fades audio in/out during underrun recovery</li>
-  <li>Underrun tracking: counts underruns for diagnostics</li>
-</ul>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_framebuffer_clear_("><a class="permalink" href="#void_framebuffer_clear_(">void
-  framebuffer_clear (<b>framebuffer_t</b> * fb)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Clear all frames from the buffer, freeing their data.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)</div>
-<p class="Pp">Removes all frames from the buffer and frees their associated
-    data. This operation is thread-safe but should be used with caution if other
-    threads may be reading frames.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Protected by mutex for concurrent
-  access.</div>
-<p class="Pp">Definition at line <b>332</b> of file <b>ringbuffer.c</b>.</p>
-<pre>332                                           {
+        <p class="Pp">
+          This is a cheap sanity check that can save you from chasing weird bugs
+          later. If you read garbage memory (maybe from a use-after-free or
+          buffer overflow), the magic number won't match and you'll know
+          immediately that something's wrong.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Size jitter buffers appropriately</b></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          For audio buffers, the jitter buffer size is a trade-off. Too small
+          and you'll get audio crackling from underruns. Too large and you'll
+          have noticeable latency. The sweet spot is usually about 2-3 times
+          your typical network jitter.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Our default is 46 milliseconds, which works well for most network
+          conditions. If you're on a very stable network (like a local
+          connection), you could go smaller. If network jitter is severe, you
+          might need to increase it, though you'll pay for it with latency.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>ringbuffer.h</b>
+          <p class="Pp"></p>
+          <p class="Pp"><b>ringbuffer.c</b></p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_CROSSFADE_SAMPLES___256">
+            <a class="permalink" href="#_define_AUDIO_CROSSFADE_SAMPLES___256"
+              >#define AUDIO_CROSSFADE_SAMPLES 256</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Crossfade duration in samples for smooth underrun recovery. When
+            recovering from an underrun, we fade in the audio over this many
+            samples to prevent clicks and pops. 256 samples @ 48kHz = ~5.3ms
+          </p>
+          <p class="Pp">
+            Definition at line <b>187</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_JITTER_BUFFER_THRESHOLD___4800">
+            <a
+              class="permalink"
+              href="#_define_AUDIO_JITTER_BUFFER_THRESHOLD___4800"
+              >#define AUDIO_JITTER_BUFFER_THRESHOLD 4800</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Jitter buffer threshold - samples needed before starting playback.
+            This threshold determines how much audio must be buffered before
+            playback starts. Too small = underruns and audio gaps when network
+            packets arrive late Too large = excessive latency + AEC3 gets
+            silence during fill period
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            INCREASED from 960 (20ms) to 4800 (100ms) to eliminate stuttering
+            caused by:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Network jitter (packets arriving in bursts)</li>
+            <li>Packet processing overhead</li>
+            <li>Thread scheduling delays</li>
+          </ul>
+          <p class="Pp">4800 samples @ 48kHz = 100ms = 5 Opus frames</p>
+          <p class="Pp">
+            Definition at line <b>144</b> of file <b>ringbuffer.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_JITTER_HIGH_WATER_MARK___(">
+            <a
+              class="permalink"
+              href="#_define_AUDIO_JITTER_HIGH_WATER_MARK___("
+              >#define AUDIO_JITTER_HIGH_WATER_MARK (<b
+                >AUDIO_JITTER_BUFFER_THRESHOLD</b
+              >
+              * 2)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            High water mark - drop OLD samples when buffer exceeds this. When
+            the playback buffer grows beyond this level, we have accumulated too
+            much latency. We drop OLD samples to keep latency bounded. This
+            prevents the &quot;latency grows over time&quot; problem where
+            network bursts fill the buffer faster than playback can drain it.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Set to 2x jitter threshold = 40ms for LAN. This gives enough
+            headroom for network jitter while preventing unbounded latency
+            accumulation. 1920 samples @ 48kHz = 40ms = 2 Opus frames
+          </p>
+          <p class="Pp">
+            Definition at line <b>170</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_ring_buffer_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_JITTER_LOW_WATER_MARK___2400">
+            <a
+              class="permalink"
+              href="#_define_AUDIO_JITTER_LOW_WATER_MARK___2400"
+              >#define AUDIO_JITTER_LOW_WATER_MARK 2400</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Low water mark - warn when available drops below this. When playback
+            buffer drops below this threshold, we log a warning but keep playing
+            to avoid choppy audio. The jitter buffer should absorb network
+            jitter without constantly pausing/resuming.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            INCREASED from 480 (10ms) to 2400 (50ms) to provide adequate
+            headroom and prevent thousands of micro-underruns that cause audio
+            stuttering.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">2400 samples @ 48kHz = 50ms = 2.5 Opus frames</p>
+          <p class="Pp">
+            Definition at line <b>157</b> of file <b>ringbuffer.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_JITTER_TARGET_LEVEL___(">
+            <a class="permalink" href="#_define_AUDIO_JITTER_TARGET_LEVEL___("
+              >#define AUDIO_JITTER_TARGET_LEVEL (<b
+                >AUDIO_JITTER_BUFFER_THRESHOLD</b
+              >
+              + 480)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Target buffer level after dropping old samples. When we drop old
+            samples due to exceeding HIGH_WATER_MARK, we bring the buffer back
+            down to this level. Set slightly above jitter threshold to avoid
+            immediately triggering underrun detection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">1440 samples @ 48kHz = 30ms = 1.5 Opus frames</p>
+          <p class="Pp">
+            Definition at line <b>180</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_ring_buffer_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_RING_BUFFER_SIZE___192000">
+            <a class="permalink" href="#_define_AUDIO_RING_BUFFER_SIZE___192000"
+              >#define AUDIO_RING_BUFFER_SIZE 192000</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Audio ring buffer size in samples (192000 samples = 4 seconds @
+            48kHz). Sized to handle:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Single-client period where audio accumulates before a second
+              client joins
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              Mixer processing overhead (can take 3-15ms, exceeding 10ms target)
+            </dd>
+            <dt>3.</dt>
+            <dd>System scheduling delays under load</dd>
+          </dl>
+          <p class="Pp">
+            4 seconds provides headroom for mixer slowdowns and prevents
+            overflow during processing spikes. The mixer reads adaptively to
+            catch up.
+          </p>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_available_read()</b>,
+            <b>audio_ring_buffer_available_write()</b>,
+            <b>audio_ring_buffer_peek()</b>, <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_write()</b>, and
+            <b>session_display_write_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FRAME_FREED___">
+            <a class="permalink" href="#_define_FRAME_FREED___"
+              >#define FRAME_FREED <b>MAGIC_FRAME_FREED</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Magic number indicating a freed frame (0xFEEDFACE) - Alias for
+            backward compatibility.
+          </p>
+          <p class="Pp">
+            Definition at line <b>431</b> of file <b>ringbuffer.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FRAME_MAGIC___">
+            <a class="permalink" href="#_define_FRAME_MAGIC___"
+              >#define FRAME_MAGIC <b>MAGIC_FRAME_VALID</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Magic number indicating a valid frame (0xDEADBEEF) - Alias for
+            backward compatibility.
+          </p>
+          <p class="Pp">
+            Definition at line <b>429</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_clear()</b>,
+            <b>framebuffer_peek_latest_multi_frame()</b>,
+            <b>framebuffer_read_frame()</b>,
+            <b>framebuffer_read_multi_frame()</b>, and
+            <b>framebuffer_write_frame()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>audio_ring_buffer</b>
+              <b>audio_ring_buffer_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Audio ring buffer for real-time audio streaming. Specialized ring
+            buffer for audio samples with jitter buffering to compensate for
+            network latency and packet timing variations. Uses mutex-protected
+            operations for thread-safe audio access.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Features:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Jitter buffering: waits for threshold fill before starting
+              playback
+            </li>
+            <li>Low water mark: resets jitter state when buffer runs low</li>
+            <li>
+              Crossfade: smoothly fades audio in/out during underrun recovery
+            </li>
+            <li>Underrun tracking: counts underruns for diagnostics</li>
+          </ul>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_framebuffer_clear_(">
+            <a class="permalink" href="#void_framebuffer_clear_("
+              >void framebuffer_clear (<b>framebuffer_t</b> * fb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Clear all frames from the buffer, freeing their data.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)</div>
+          <p class="Pp">
+            Removes all frames from the buffer and frees their associated data.
+            This operation is thread-safe but should be used with caution if
+            other threads may be reading frames.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Protected by mutex for concurrent access.
+          </div>
+          <p class="Pp">
+            Definition at line <b>332</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+332                                           {
 333   if (!fb || !fb-&gt;rb)
 334     return;
 335
@@ -1231,32 +1660,49 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 382
 383   mutex_unlock(&amp;fb-&gt;mutex);
 384 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_t::buffer</b>, <b>buffer_release</b>,
-    <b>buffer_size()</b>, <b>ringbuffer_t::capacity</b>, <b>frame_t::data</b>,
-    <b>ringbuffer_t::element_size</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>FRAME_MAGIC</b>, <b>framebuffer_clear()</b>,
-    <b>IS_FRAME_VALID</b>, <b>IS_MAGIC_VALID</b>, <b>frame_t::magic</b>,
-    <b>MARK_FRAME_FREED</b>, <b>framebuffer_t::mutex</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>, <b>ringbuffer_clear()</b>,
-    <b>ringbuffer_read()</b>, <b>SAFE_MEMSET</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
-    <b>framebuffer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>framebuffer_t</b> * framebuffer_create (size_t capacity)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Create a frame buffer for ASCII frames.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capacity</i> Number of frames to buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Frame buffer or NULL on failure</div>
-<p class="Pp">Creates a new frame buffer for single-source frame scenarios. The
-    capacity is automatically rounded up to the next power of 2 for optimal
-    performance.</p>
-<p class="Pp">Definition at line <b>156</b> of file <b>ringbuffer.c</b>.</p>
-<pre>156                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ringbuffer_t::buffer</b>, <b>buffer_release</b>,
+            <b>buffer_size()</b>, <b>ringbuffer_t::capacity</b>,
+            <b>frame_t::data</b>, <b>ringbuffer_t::element_size</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>FRAME_MAGIC</b>, <b>framebuffer_clear()</b>,
+            <b>IS_FRAME_VALID</b>, <b>IS_MAGIC_VALID</b>, <b>frame_t::magic</b>,
+            <b>MARK_FRAME_FREED</b>, <b>framebuffer_t::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
+            <b>ringbuffer_clear()</b>, <b>ringbuffer_read()</b>,
+            <b>SAFE_MEMSET</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_clear()</b>, and
+            <b>framebuffer_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>framebuffer_t</b> * framebuffer_create (size_t capacity)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Create a frame buffer for ASCII frames.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capacity</i> Number of frames to buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Frame buffer or NULL on failure</div>
+          <p class="Pp">
+            Creates a new frame buffer for single-source frame scenarios. The
+            capacity is automatically rounded up to the next power of 2 for
+            optimal performance.
+          </p>
+          <p class="Pp">
+            Definition at line <b>156</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+156                                                    {
 157   if (capacity == 0) {
 158     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid frame buffer parameters&quot;);
 159     return NULL;
@@ -1283,29 +1729,44 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 180
 181   return fb;
 182 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_THREAD</b>, <b>framebuffer_create()</b>,
-    <b>framebuffer_t::mutex</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
-    <b>framebuffer_t::rb</b>, <b>ringbuffer_create()</b>, <b>SAFE_CALLOC</b>,
-    <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>framebuffer_t</b> * framebuffer_create_multi (size_t
-  capacity)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Create a multi-source frame buffer for multi-user support.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capacity</i> Number of frames to buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Frame buffer or NULL on failure</div>
-<p class="Pp">Creates a new frame buffer for multi-client frame scenarios.
-    Supports tracking frame sources, sequence numbers, and timestamps for proper
-    multi-user frame display.</p>
-<p class="Pp">Definition at line <b>184</b> of file <b>ringbuffer.c</b>.</p>
-<pre>184                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_THREAD</b>, <b>framebuffer_create()</b>,
+            <b>framebuffer_t::mutex</b>, <b>mutex_destroy()</b>,
+            <b>mutex_init()</b>, <b>framebuffer_t::rb</b>,
+            <b>ringbuffer_create()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>framebuffer_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>framebuffer_t</b> * framebuffer_create_multi (size_t capacity)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Create a multi-source frame buffer for multi-user support.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capacity</i> Number of frames to buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Frame buffer or NULL on failure</div>
+          <p class="Pp">
+            Creates a new frame buffer for multi-client frame scenarios.
+            Supports tracking frame sources, sequence numbers, and timestamps
+            for proper multi-user frame display.
+          </p>
+          <p class="Pp">
+            Definition at line <b>184</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+184                                                          {
 185   if (capacity == 0) {
 186     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capacity: %zu&quot;, capacity);
 187     return NULL;
@@ -1332,28 +1793,41 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 208
 209   return fb;
 210 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
-    <b>framebuffer_create_multi()</b>, <b>framebuffer_t::mutex</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>framebuffer_t::rb</b>,
-    <b>ringbuffer_create()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_create_multi()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_framebuffer_destroy_("><a class="permalink" href="#void_framebuffer_destroy_(">void
-  framebuffer_destroy (<b>framebuffer_t</b> * fb)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Destroy a frame buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer to destroy (must not be
-  NULL)</div>
-<p class="Pp">Frees all memory associated with the frame buffer, including any
-    frames still in the buffer. The buffer must not be in use by any threads
-    when this function is called.</p>
-<p class="Pp">Definition at line <b>212</b> of file <b>ringbuffer.c</b>.</p>
-<pre>212                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
+            <b>framebuffer_create_multi()</b>, <b>framebuffer_t::mutex</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+            <b>framebuffer_t::rb</b>, <b>ringbuffer_create()</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>framebuffer_create_multi()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_framebuffer_destroy_(">
+            <a class="permalink" href="#void_framebuffer_destroy_("
+              >void framebuffer_destroy (<b>framebuffer_t</b> * fb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Destroy a frame buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fb</i> Frame buffer to destroy (must not be NULL)
+          </div>
+          <p class="Pp">
+            Frees all memory associated with the frame buffer, including any
+            frames still in the buffer. The buffer must not be in use by any
+            threads when this function is called.
+          </p>
+          <p class="Pp">
+            Definition at line <b>212</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+212                                             {
 213   if (!fb)
 214     return;
 215
@@ -1371,38 +1845,60 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 227   fb-&gt;rb = (ringbuffer_t *)0xDEADBEEF;
 228   SAFE_FREE(fb);
 229 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_STATE</b>, <b>framebuffer_clear()</b>,
-    <b>framebuffer_destroy()</b>, <b>framebuffer_t::mutex</b>,
-    <b>mutex_destroy()</b>, <b>framebuffer_t::rb</b>,
-    <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_peek_latest_multi_frame
-  (<b>framebuffer_t</b> * fb, <b>multi_source_frame_t</b> * frame)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Peek at the latest multi-source frame without removing it.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)
-<br/>
-<i>frame</i> Pointer to <b>multi_source_frame_t</b> struct to be filled (must
-  not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is empty</div>
-<p class="Pp">Examines the latest multi-source frame without removing it from
-    the buffer. Useful for previewing frames or checking frame metadata before
-    reading.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Protected by mutex for concurrent access.
-<p class="Pp"></p>
-<p class="Pp">Returns an independent owning copy. The caller must
-    buffer_release(frame-&gt;data).</p>
-</div>
-<p class="Pp">Definition at line <b>470</b> of file <b>ringbuffer.c</b>.</p>
-<pre>470                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_STATE</b>, <b>framebuffer_clear()</b>,
+            <b>framebuffer_destroy()</b>, <b>framebuffer_t::mutex</b>,
+            <b>mutex_destroy()</b>, <b>framebuffer_t::rb</b>,
+            <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>framebuffer_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> framebuffer_peek_latest_multi_frame (<b
+              >framebuffer_t</b
+            >
+            * fb, <b>multi_source_frame_t</b> * frame)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Peek at the latest multi-source frame without removing it.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fb</i> Frame buffer (must not be NULL)
+            <br />
+            <i>frame</i> Pointer to <b>multi_source_frame_t</b> struct to be
+            filled (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is empty
+          </div>
+          <p class="Pp">
+            Examines the latest multi-source frame without removing it from the
+            buffer. Useful for previewing frames or checking frame metadata
+            before reading.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Protected by mutex for concurrent access.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Returns an independent owning copy. The caller must
+              buffer_release(frame-&gt;data).
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>470</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+470                                                                                          {
 471   if (!fb || !fb-&gt;rb || !frame) {
 472     return false;
 473   }
@@ -1450,41 +1946,60 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 515   mutex_unlock(&amp;fb-&gt;mutex);
 516   return result;
 517 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_alloc()</b>,
-    <b>multi_source_frame_t::data</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_MEMORY</b>, <b>FRAME_MAGIC</b>,
-    <b>framebuffer_peek_latest_multi_frame()</b>, <b>IS_MAGIC_VALID</b>,
-    <b>multi_source_frame_t::magic</b>, <b>framebuffer_t::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
-    <b>ringbuffer_peek()</b>, <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>,
-    <b>multi_source_frame_t::size</b>, and
-    <b>multi_source_frame_t::source_client_id</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_peek_latest_multi_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_read_frame (<b>framebuffer_t</b> * fb,
-  <b>frame_t</b> * frame)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Read a frame from the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)
-<br/>
-<i>frame</i> Pointer to <b>frame_t</b> struct to be filled (must not be
-  NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is empty</div>
-<p class="Pp">Reads a single-source frame and transfers its payload ownership to
-    the caller.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Protected by mutex for concurrent access.
-<p class="Pp"></p>
-<p class="Pp">The caller must buffer_release(frame-&gt;data) after use.</p>
-</div>
-<p class="Pp">Definition at line <b>285</b> of file <b>ringbuffer.c</b>.</p>
-<pre>285                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_alloc()</b>, <b>multi_source_frame_t::data</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>FRAME_MAGIC</b>,
+            <b>framebuffer_peek_latest_multi_frame()</b>, <b>IS_MAGIC_VALID</b>,
+            <b>multi_source_frame_t::magic</b>, <b>framebuffer_t::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
+            <b>ringbuffer_peek()</b>, <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>,
+            <b>multi_source_frame_t::size</b>, and
+            <b>multi_source_frame_t::source_client_id</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_peek_latest_multi_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> framebuffer_read_frame (<b>framebuffer_t</b> * fb,
+            <b>frame_t</b> * frame)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Read a frame from the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fb</i> Frame buffer (must not be NULL)
+            <br />
+            <i>frame</i> Pointer to <b>frame_t</b> struct to be filled (must not
+            be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is empty
+          </div>
+          <p class="Pp">
+            Reads a single-source frame and transfers its payload ownership to
+            the caller.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Protected by mutex for concurrent access.
+            <p class="Pp"></p>
+            <p class="Pp">
+              The caller must buffer_release(frame-&gt;data) after use.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>285</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+285                                                                {
 286   if (!fb || !frame) {
 287     return false;
 288   }
@@ -1530,38 +2045,57 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 328   mutex_unlock(&amp;fb-&gt;mutex);
 329   return result;
 330 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_release</b>, <b>frame_t::data</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>FRAME_MAGIC</b>,
-    <b>framebuffer_read_frame()</b>, <b>IS_FRAME_FREED</b>,
-    <b>IS_MAGIC_VALID</b>, <b>frame_t::magic</b>, <b>framebuffer_t::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
-    <b>ringbuffer_read()</b>, <b>SET_ERRNO</b>, and <b>frame_t::size</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_read_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_read_multi_frame (<b>framebuffer_t</b> *
-  fb, <b>multi_source_frame_t</b> * frame)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Read a multi-source frame from the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)
-<br/>
-<i>frame</i> Pointer to <b>multi_source_frame_t</b> struct to be filled (must
-  not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is empty</div>
-<p class="Pp">Reads a multi-source frame and transfers its payload ownership to
-    the caller.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Protected by mutex for concurrent access.
-<p class="Pp"></p>
-<p class="Pp">The caller must buffer_release(frame-&gt;data) after use.</p>
-</div>
-<p class="Pp">Definition at line <b>435</b> of file <b>ringbuffer.c</b>.</p>
-<pre>435                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_release</b>, <b>frame_t::data</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>FRAME_MAGIC</b>,
+            <b>framebuffer_read_frame()</b>, <b>IS_FRAME_FREED</b>,
+            <b>IS_MAGIC_VALID</b>, <b>frame_t::magic</b>,
+            <b>framebuffer_t::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>framebuffer_t::rb</b>, <b>ringbuffer_read()</b>,
+            <b>SET_ERRNO</b>, and <b>frame_t::size</b>.
+          </p>
+          <p class="Pp">Referenced by <b>framebuffer_read_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> framebuffer_read_multi_frame (<b>framebuffer_t</b> * fb,
+            <b>multi_source_frame_t</b> * frame)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Read a multi-source frame from the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fb</i> Frame buffer (must not be NULL)
+            <br />
+            <i>frame</i> Pointer to <b>multi_source_frame_t</b> struct to be
+            filled (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is empty
+          </div>
+          <p class="Pp">
+            Reads a multi-source frame and transfers its payload ownership to
+            the caller.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Protected by mutex for concurrent access.
+            <p class="Pp"></p>
+            <p class="Pp">
+              The caller must buffer_release(frame-&gt;data) after use.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>435</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+435                                                                                   {
 436   if (!fb || !fb-&gt;rb || !frame) {
 437     return false;
 438   }
@@ -1595,40 +2129,56 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 466   mutex_unlock(&amp;fb-&gt;mutex);
 467   return result;
 468 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>multi_source_frame_t::data</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>FRAME_MAGIC</b>,
-    <b>framebuffer_read_multi_frame()</b>, <b>IS_MAGIC_VALID</b>,
-    <b>multi_source_frame_t::magic</b>, <b>framebuffer_t::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
-    <b>ringbuffer_read()</b>, <b>SET_ERRNO</b>,
-    <b>multi_source_frame_t::size</b>, and
-    <b>multi_source_frame_t::source_client_id</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_read_multi_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_write_frame (<b>framebuffer_t</b> * fb,
-  const char * frame_data, size_t frame_size)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Write a frame to the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)
-<br/>
-<i>frame_data</i> Frame data (must not be NULL)
-<br/>
-<i>frame_size</i> Actual size of frame data in bytes</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is full</div>
-<p class="Pp">Writes a single-source frame to the buffer. The frame data is
-    copied into the buffer, so the caller retains ownership of the original
-    data.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Protected by mutex for concurrent
-  access.</div>
-<p class="Pp">Definition at line <b>231</b> of file <b>ringbuffer.c</b>.</p>
-<pre>231                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>multi_source_frame_t::data</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>FRAME_MAGIC</b>,
+            <b>framebuffer_read_multi_frame()</b>, <b>IS_MAGIC_VALID</b>,
+            <b>multi_source_frame_t::magic</b>, <b>framebuffer_t::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
+            <b>ringbuffer_read()</b>, <b>SET_ERRNO</b>,
+            <b>multi_source_frame_t::size</b>, and
+            <b>multi_source_frame_t::source_client_id</b>.
+          </p>
+          <p class="Pp">Referenced by <b>framebuffer_read_multi_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> framebuffer_write_frame (<b>framebuffer_t</b> * fb,
+            const char * frame_data, size_t frame_size)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Write a frame to the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fb</i> Frame buffer (must not be NULL)
+            <br />
+            <i>frame_data</i> Frame data (must not be NULL)
+            <br />
+            <i>frame_size</i> Actual size of frame data in bytes
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is full
+          </div>
+          <p class="Pp">
+            Writes a single-source frame to the buffer. The frame data is copied
+            into the buffer, so the caller retains ownership of the original
+            data.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Protected by mutex for concurrent access.
+          </div>
+          <p class="Pp">
+            Definition at line <b>231</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+231                                                                                            {
 232   if (!fb || !frame_data || frame_size == 0)
 233     return false;
 234
@@ -1681,53 +2231,74 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 281   mutex_unlock(&amp;fb-&gt;mutex);
 282   return result;
 283 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_alloc()</b>, <b>buffer_release</b>,
-    <b>ringbuffer_t::capacity</b>, <b>frame_t::data</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>FRAME_MAGIC</b>, <b>framebuffer_write_frame()</b>, <b>IS_FRAME_VALID</b>,
-    <b>IS_MAGIC_VALID</b>, <b>frame_t::magic</b>, <b>MAGIC_FRAME_VALID</b>,
-    <b>MARK_FRAME_FREED</b>, <b>framebuffer_t::mutex</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>, <b>ringbuffer_read()</b>,
-    <b>ringbuffer_size()</b>, <b>ringbuffer_write()</b>, <b>SAFE_MEMCPY</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_write_multi_frame (<b>framebuffer_t</b> *
-  fb, const char * frame_data, size_t frame_size, <b>uint32_t</b>
-  source_client_id, <b>uint32_t</b> frame_sequence, <b>uint32_t</b>
-  timestamp)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Write a multi-source frame to the buffer (for multi-user
-  support).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fb</i> Frame buffer (must not be NULL)
-<br/>
-<i>frame_data</i> Frame data (must not be NULL)
-<br/>
-<i>frame_size</i> Actual size of frame data in bytes
-<br/>
-<i>source_client_id</i> Client ID that sent this frame
-<br/>
-<i>frame_sequence</i> Frame sequence number for ordering
-<br/>
-<i>timestamp</i> Timestamp when frame was captured</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is full</div>
-<p class="Pp">Writes a multi-source frame to the buffer with associated
-    metadata. The frame data is copied into the buffer, so the caller retains
-    ownership of the original data.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Protected by mutex for concurrent access.
-<p class="Pp"></p>
-<p class="Pp">The frame buffer must have been created with
-    <b>framebuffer_create_multi()</b> for multi-source support.</p>
-</div>
-<p class="Pp">Definition at line <b>388</b> of file <b>ringbuffer.c</b>.</p>
-<pre>389                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_alloc()</b>, <b>buffer_release</b>,
+            <b>ringbuffer_t::capacity</b>, <b>frame_t::data</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>FRAME_MAGIC</b>,
+            <b>framebuffer_write_frame()</b>, <b>IS_FRAME_VALID</b>,
+            <b>IS_MAGIC_VALID</b>, <b>frame_t::magic</b>,
+            <b>MAGIC_FRAME_VALID</b>, <b>MARK_FRAME_FREED</b>,
+            <b>framebuffer_t::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>framebuffer_t::rb</b>, <b>ringbuffer_read()</b>,
+            <b>ringbuffer_size()</b>, <b>ringbuffer_write()</b>,
+            <b>SAFE_MEMCPY</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>framebuffer_write_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> framebuffer_write_multi_frame (<b>framebuffer_t</b> *
+            fb, const char * frame_data, size_t frame_size,
+            <b>uint32_t</b> source_client_id, <b>uint32_t</b> frame_sequence,
+            <b>uint32_t</b> timestamp)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Write a multi-source frame to the buffer (for multi-user support).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fb</i> Frame buffer (must not be NULL)
+            <br />
+            <i>frame_data</i> Frame data (must not be NULL)
+            <br />
+            <i>frame_size</i> Actual size of frame data in bytes
+            <br />
+            <i>source_client_id</i> Client ID that sent this frame
+            <br />
+            <i>frame_sequence</i> Frame sequence number for ordering
+            <br />
+            <i>timestamp</i> Timestamp when frame was captured
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is full
+          </div>
+          <p class="Pp">
+            Writes a multi-source frame to the buffer with associated metadata.
+            The frame data is copied into the buffer, so the caller retains
+            ownership of the original data.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Protected by mutex for concurrent access.
+            <p class="Pp"></p>
+            <p class="Pp">
+              The frame buffer must have been created with
+              <b>framebuffer_create_multi()</b> for multi-source support.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>388</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+389                                                                                                            {
 390   if (!fb || !fb-&gt;rb || !frame_data || frame_size == 0) {
 391     return false;
 392   }
@@ -1772,63 +2343,95 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 431   mutex_unlock(&amp;fb-&gt;mutex);
 432   return success;
 433 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_alloc()</b>, <b>buffer_release</b>,
-    <b>ERROR_MEMORY</b>, <b>framebuffer_write_multi_frame()</b>,
-    <b>log_debug</b>, <b>MAGIC_FRAME_VALID</b>, <b>framebuffer_t::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>framebuffer_t::rb</b>,
-    <b>RINGBUFFER_CLIENT_ID_BUFFER_SIZE</b>, <b>ringbuffer_write()</b>,
-    <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>, and
-    <b>multi_source_frame_t::source_client_id</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_multi_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ringbuffer_clear_("><a class="permalink" href="#void_ringbuffer_clear_(">void
-  ringbuffer_clear (<b>ringbuffer_t</b> * rb)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Clear all elements from the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
-<p class="Pp">Removes all elements from the buffer and resets it to empty state.
-    This operation is not atomic with respect to concurrent read/write
-    operations - use with caution in multi-threaded scenarios.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Uses atomic operations, but concurrent
-  operations may still occur during clearing.</div>
-<p class="Pp">Definition at line <b>143</b> of file <b>ringbuffer.c</b>.</p>
-<pre>143                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_alloc()</b>, <b>buffer_release</b>,
+            <b>ERROR_MEMORY</b>, <b>framebuffer_write_multi_frame()</b>,
+            <b>log_debug</b>, <b>MAGIC_FRAME_VALID</b>,
+            <b>framebuffer_t::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>framebuffer_t::rb</b>, <b>RINGBUFFER_CLIENT_ID_BUFFER_SIZE</b>,
+            <b>ringbuffer_write()</b>, <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>, and
+            <b>multi_source_frame_t::source_client_id</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_write_multi_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ringbuffer_clear_(">
+            <a class="permalink" href="#void_ringbuffer_clear_("
+              >void ringbuffer_clear (<b>ringbuffer_t</b> * rb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Clear all elements from the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
+          <p class="Pp">
+            Removes all elements from the buffer and resets it to empty state.
+            This operation is not atomic with respect to concurrent read/write
+            operations - use with caution in multi-threaded scenarios.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Uses atomic operations, but concurrent operations may
+            still occur during clearing.
+          </div>
+          <p class="Pp">
+            Definition at line <b>143</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+143                                         {
 144   if (rb) {
 145     atomic_store_u64(&amp;rb-&gt;head, 0);
 146     atomic_store_u64(&amp;rb-&gt;tail, 0);
 147     atomic_store_u64(&amp;rb-&gt;size, 0);
 148   }
 149 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>, <b>ringbuffer_t::head</b>,
-    <b>ringbuffer_clear()</b>, <b>ringbuffer_t::size</b>, and
-    <b>ringbuffer_t::tail</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
-    <b>ringbuffer_clear()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ringbuffer_t</b> * ringbuffer_create (size_t element_size,
-  size_t capacity)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Create a new ring buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>element_size</i> Size of each element in bytes
-<br/>
-<i>capacity</i> Number of elements (will be rounded up to power of 2)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to ring buffer or NULL on failure</div>
-<p class="Pp">Creates a new lock-free ring buffer with the specified element
-    size and capacity. The capacity is automatically rounded up to the next
-    power of 2 to enable fast bit masking optimizations.</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>ringbuffer.c</b>.</p>
-<pre>33                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_u64()</b>, <b>ringbuffer_t::head</b>,
+            <b>ringbuffer_clear()</b>, <b>ringbuffer_t::size</b>, and
+            <b>ringbuffer_t::tail</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_clear()</b>, and
+            <b>ringbuffer_clear()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ringbuffer_t</b> * ringbuffer_create (size_t element_size, size_t
+            capacity)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Create a new ring buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>element_size</i> Size of each element in bytes
+            <br />
+            <i>capacity</i> Number of elements (will be rounded up to power of
+            2)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to ring buffer or NULL on failure</div>
+          <p class="Pp">
+            Creates a new lock-free ring buffer with the specified element size
+            and capacity. The capacity is automatically rounded up to the next
+            power of 2 to enable fast bit masking optimizations.
+          </p>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+33                                                                       {
 34   if (element_size == 0 || capacity == 0) {
 35     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ring buffer parameters: element_size=%zu, capacity=%zu&quot;, element_size,
 36               capacity);
@@ -1854,31 +2457,47 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 56
 57   return rb;
 58 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_t::buffer</b>,
-    <b>ringbuffer_t::capacity</b>, <b>ringbuffer_t::capacity_mask</b>,
-    <b>ringbuffer_t::element_size</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ringbuffer_t::head</b>, <b>ringbuffer_t::is_power_of_two</b>,
-    <b>NAMED_REGISTER_ATOMIC</b>, <b>ringbuffer_create()</b>,
-    <b>SAFE_CALLOC</b>, <b>SET_ERRNO</b>, <b>ringbuffer_t::size</b>, and
-    <b>ringbuffer_t::tail</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_create()</b>,
-    <b>framebuffer_create_multi()</b>, <b>ringbuffer_create()</b>,
-    <b>session_host_add_client()</b>, and
-    <b>session_host_add_memory_participant()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ringbuffer_destroy_("><a class="permalink" href="#void_ringbuffer_destroy_(">void
-  ringbuffer_destroy (<b>ringbuffer_t</b> * rb)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Destroy a ring buffer and free its memory.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer to destroy (must not be NULL)</div>
-<p class="Pp">Frees all memory associated with the ring buffer. The buffer must
-    not be in use by any threads when this function is called.</p>
-<p class="Pp">Definition at line <b>60</b> of file <b>ringbuffer.c</b>.</p>
-<pre>60                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ringbuffer_t::buffer</b>,
+            <b>ringbuffer_t::capacity</b>, <b>ringbuffer_t::capacity_mask</b>,
+            <b>ringbuffer_t::element_size</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ringbuffer_t::head</b>, <b>ringbuffer_t::is_power_of_two</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, <b>ringbuffer_create()</b>,
+            <b>SAFE_CALLOC</b>, <b>SET_ERRNO</b>, <b>ringbuffer_t::size</b>, and
+            <b>ringbuffer_t::tail</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_create()</b>,
+            <b>framebuffer_create_multi()</b>, <b>ringbuffer_create()</b>,
+            <b>session_host_add_client()</b>, and
+            <b>session_host_add_memory_participant()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ringbuffer_destroy_(">
+            <a class="permalink" href="#void_ringbuffer_destroy_("
+              >void ringbuffer_destroy (<b>ringbuffer_t</b> * rb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Destroy a ring buffer and free its memory.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>rb</i> Ring buffer to destroy (must not be NULL)
+          </div>
+          <p class="Pp">
+            Frees all memory associated with the ring buffer. The buffer must
+            not be in use by any threads when this function is called.
+          </p>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+60                                           {
 61   if (rb) {
 62     NAMED_UNREGISTER(&amp;rb-&gt;head);
 63     NAMED_UNREGISTER(&amp;rb-&gt;tail);
@@ -1887,88 +2506,132 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 66     SAFE_FREE(rb);
 67   }
 68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_t::buffer</b>, <b>ringbuffer_t::head</b>,
-    <b>NAMED_UNREGISTER</b>, <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>,
-    <b>ringbuffer_t::size</b>, and <b>ringbuffer_t::tail</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>,
-    <b>framebuffer_destroy()</b>, <b>ringbuffer_destroy()</b>,
-    <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
-    and <b>session_host_remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_is_empty (const <b>ringbuffer_t</b> *
-  rb)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Check if buffer is empty.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if buffer is empty, false otherwise</div>
-<p class="Pp">Performs a fast check to determine if the buffer contains any
-    elements. More efficient than checking if size() == 0.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Uses atomic operations for lock-free
-  check.</div>
-<p class="Pp">Definition at line <b>135</b> of file <b>ringbuffer.c</b>.</p>
-<pre>135                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ringbuffer_t::buffer</b>, <b>ringbuffer_t::head</b>,
+            <b>NAMED_UNREGISTER</b>, <b>ringbuffer_destroy()</b>,
+            <b>SAFE_FREE</b>, <b>ringbuffer_t::size</b>, and
+            <b>ringbuffer_t::tail</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_client_transport_create()</b>,
+            <b>framebuffer_destroy()</b>, <b>ringbuffer_destroy()</b>,
+            <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_destroy()</b>, and
+            <b>session_host_remove_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ringbuffer_is_empty (const <b>ringbuffer_t</b> * rb)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Check if buffer is empty.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if buffer is empty, false otherwise</div>
+          <p class="Pp">
+            Performs a fast check to determine if the buffer contains any
+            elements. More efficient than checking if size() == 0.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Uses atomic operations for lock-free check.
+          </div>
+          <p class="Pp">
+            Definition at line <b>135</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+135                                                  {
 136   return ringbuffer_size(rb) == 0;
 137 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_is_empty()</b>, and
-    <b>ringbuffer_size()</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_transport_flush()</b>, and
-    <b>ringbuffer_is_empty()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_is_full (const <b>ringbuffer_t</b> *
-  rb)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Check if buffer is full.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if buffer is full, false otherwise</div>
-<p class="Pp">Performs a fast check to determine if the buffer has reached
-    capacity. More efficient than checking if size() == capacity.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Uses atomic operations for lock-free
-  check.</div>
-<p class="Pp">Definition at line <b>139</b> of file <b>ringbuffer.c</b>.</p>
-<pre>139                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ringbuffer_is_empty()</b>, and
+            <b>ringbuffer_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_transport_flush()</b>, and
+            <b>ringbuffer_is_empty()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ringbuffer_is_full (const <b>ringbuffer_t</b> * rb)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Check if buffer is full.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if buffer is full, false otherwise</div>
+          <p class="Pp">
+            Performs a fast check to determine if the buffer has reached
+            capacity. More efficient than checking if size() == capacity.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Uses atomic operations for lock-free check.
+          </div>
+          <p class="Pp">
+            Definition at line <b>139</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+139                                                 {
 140   return rb ? ringbuffer_size(rb) &gt;= rb-&gt;capacity : true;
 141 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_t::capacity</b>,
-    <b>ringbuffer_is_full()</b>, and <b>ringbuffer_size()</b>.</p>
-<p class="Pp">Referenced by <b>ringbuffer_is_full()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_peek (<b>ringbuffer_t</b> * rb, void *
-  data)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Peek at the next element without removing it.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)
-<br/>
-<i>data</i> Buffer to peek into (must not be NULL, must be element_size
-  bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is empty</div>
-<p class="Pp">Examines the next element without removing it from the buffer.
-    This is useful for previewing data before committing to reading it.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">SPSC only: Single Producer, Single Consumer. NOT
-  thread-safe for multiple concurrent peek operations.</div>
-<p class="Pp">Definition at line <b>114</b> of file <b>ringbuffer.c</b>.</p>
-<pre>114                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ringbuffer_t::capacity</b>,
+            <b>ringbuffer_is_full()</b>, and <b>ringbuffer_size()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ringbuffer_is_full()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ringbuffer_peek (<b>ringbuffer_t</b> * rb, void * data)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Peek at the next element without removing it.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>rb</i> Ring buffer (must not be NULL)
+            <br />
+            <i>data</i> Buffer to peek into (must not be NULL, must be
+            element_size bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is empty
+          </div>
+          <p class="Pp">
+            Examines the next element without removing it from the buffer. This
+            is useful for previewing data before committing to reading it.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            SPSC only: Single Producer, Single Consumer. NOT thread-safe for
+            multiple concurrent peek operations.
+          </div>
+          <p class="Pp">
+            Definition at line <b>114</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+114                                                    {
 115   if (!rb || !data)
 116     return false;
 117
@@ -1984,37 +2647,56 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 127
 128   return true;
 129 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, <b>ringbuffer_t::buffer</b>,
-    <b>ringbuffer_t::element_size</b>, <b>ringbuffer_peek()</b>,
-    <b>SAFE_MEMCPY</b>, <b>ringbuffer_t::size</b>, and
-    <b>ringbuffer_t::tail</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_peek_latest_multi_frame()</b>, and
-    <b>ringbuffer_peek()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_read (<b>ringbuffer_t</b> * rb, void *
-  data)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Try to read an element from the ring buffer (non-blocking).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)
-<br/>
-<i>data</i> Buffer to read into (must not be NULL, must be element_size
-  bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is empty</div>
-<p class="Pp">Attempts to read an element from the ring buffer. This is a
-    non-blocking operation that uses lock-free atomic operations. Returns false
-    immediately if the buffer is empty.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">SPSC only: Single Producer, Single Consumer. NOT
-  thread-safe for multiple consumers - use external synchronization if
-  needed.</div>
-<p class="Pp">Definition at line <b>92</b> of file <b>ringbuffer.c</b>.</p>
-<pre>92                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, <b>ringbuffer_t::buffer</b>,
+            <b>ringbuffer_t::element_size</b>, <b>ringbuffer_peek()</b>,
+            <b>SAFE_MEMCPY</b>, <b>ringbuffer_t::size</b>, and
+            <b>ringbuffer_t::tail</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_peek_latest_multi_frame()</b>, and
+            <b>ringbuffer_peek()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ringbuffer_read (<b>ringbuffer_t</b> * rb, void * data)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Try to read an element from the ring buffer (non-blocking).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>rb</i> Ring buffer (must not be NULL)
+            <br />
+            <i>data</i> Buffer to read into (must not be NULL, must be
+            element_size bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is empty
+          </div>
+          <p class="Pp">
+            Attempts to read an element from the ring buffer. This is a
+            non-blocking operation that uses lock-free atomic operations.
+            Returns false immediately if the buffer is empty.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            SPSC only: Single Producer, Single Consumer. NOT thread-safe for
+            multiple consumers - use external synchronization if needed.
+          </div>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+92                                                    {
 93   if (!rb || !data)
 94     return false;
 95
@@ -2035,68 +2717,108 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 110
 111   return true;
 112 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_sub_u64()</b>,
-    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
-    <b>ringbuffer_t::buffer</b>, <b>ringbuffer_t::capacity_mask</b>,
-    <b>ringbuffer_t::element_size</b>, <b>ringbuffer_read()</b>,
-    <b>SAFE_MEMCPY</b>, <b>ringbuffer_t::size</b>, and
-    <b>ringbuffer_t::tail</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
-    <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>,
-    <b>framebuffer_write_frame()</b>, <b>ringbuffer_read()</b>,
-    <b>session_host_render_audio()</b>, and
-    <b>websocket_transport_write_pending()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ringbuffer_size_(const_"><a class="permalink" href="#size_t_ringbuffer_size_(const_">size_t
-  ringbuffer_size (const <b>ringbuffer_t</b> * rb)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Get current number of elements in the buffer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of elements currently in the buffer</div>
-<p class="Pp">Returns the current size of the buffer. This is a snapshot value
-    that may change immediately after return due to concurrent operations.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: Uses atomic operations for lock-free size
-  check.</div>
-<p class="Pp">Definition at line <b>131</b> of file <b>ringbuffer.c</b>.</p>
-<pre>131                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_fetch_sub_u64()</b>, <b>atomic_load_u64()</b>,
+            <b>atomic_store_u64()</b>, <b>ringbuffer_t::buffer</b>,
+            <b>ringbuffer_t::capacity_mask</b>,
+            <b>ringbuffer_t::element_size</b>, <b>ringbuffer_read()</b>,
+            <b>SAFE_MEMCPY</b>, <b>ringbuffer_t::size</b>, and
+            <b>ringbuffer_t::tail</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_clear()</b>,
+            <b>framebuffer_read_frame()</b>,
+            <b>framebuffer_read_multi_frame()</b>,
+            <b>framebuffer_write_frame()</b>, <b>ringbuffer_read()</b>,
+            <b>session_host_render_audio()</b>, and
+            <b>websocket_transport_write_pending()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ringbuffer_size_(const_">
+            <a class="permalink" href="#size_t_ringbuffer_size_(const_"
+              >size_t ringbuffer_size (const <b>ringbuffer_t</b> * rb)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Get current number of elements in the buffer.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of elements currently in the buffer
+          </div>
+          <p class="Pp">
+            Returns the current size of the buffer. This is a snapshot value
+            that may change immediately after return due to concurrent
+            operations.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: Uses atomic operations for lock-free size check.
+          </div>
+          <p class="Pp">
+            Definition at line <b>131</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+131                                                {
 132   return rb ? atomic_load_u64(&amp;rb-&gt;size) : 0;
 133 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, <b>ringbuffer_size()</b>, and
-    <b>ringbuffer_t::size</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_frame()</b>,
-    <b>ringbuffer_is_empty()</b>, <b>ringbuffer_is_full()</b>, and
-    <b>ringbuffer_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_write (<b>ringbuffer_t</b> * rb, const
-  void * data)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b></p>
-<p class="Pp">Try to write an element to the ring buffer (non-blocking).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>rb</i> Ring buffer (must not be NULL)
-<br/>
-<i>data</i> Data to write (must not be NULL, must be element_size bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if successful, false if buffer is full</div>
-<p class="Pp">Attempts to write an element to the ring buffer. This is a
-    non-blocking operation that uses lock-free atomic operations. Returns false
-    immediately if the buffer is full.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">SPSC only: Single Producer, Single Consumer. NOT
-  thread-safe for multiple producers - use external synchronization if
-  needed.</div>
-<p class="Pp">Definition at line <b>70</b> of file <b>ringbuffer.c</b>.</p>
-<pre>70                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, <b>ringbuffer_size()</b>, and
+            <b>ringbuffer_t::size</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_write_frame()</b>,
+            <b>ringbuffer_is_empty()</b>, <b>ringbuffer_is_full()</b>, and
+            <b>ringbuffer_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ringbuffer_write (<b>ringbuffer_t</b> * rb, const void *
+            data)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/ringbuffer.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Try to write an element to the ring buffer (non-blocking).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>rb</i> Ring buffer (must not be NULL)
+            <br />
+            <i>data</i> Data to write (must not be NULL, must be element_size
+            bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if successful, false if buffer is full
+          </div>
+          <p class="Pp">
+            Attempts to write an element to the ring buffer. This is a
+            non-blocking operation that uses lock-free atomic operations.
+            Returns false immediately if the buffer is full.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            SPSC only: Single Producer, Single Consumer. NOT thread-safe for
+            multiple producers - use external synchronization if needed.
+          </div>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <pre>
+70                                                           {
 71   if (!rb || !data)
 72     return false;
 73
@@ -2117,30 +2839,36 @@ if (framebuffer_read_frame(fb, &amp;frame)) {
 88
 89   return true;
 90 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
-    <b>ringbuffer_t::buffer</b>, <b>ringbuffer_t::capacity</b>,
-    <b>ringbuffer_t::capacity_mask</b>, <b>ringbuffer_t::element_size</b>,
-    <b>ringbuffer_t::head</b>, <b>ringbuffer_write()</b>, <b>SAFE_MEMCPY</b>,
-    and <b>ringbuffer_t::size</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_frame()</b>,
-    <b>framebuffer_write_multi_frame()</b>, <b>ringbuffer_write()</b>,
-    <b>session_host_inject_audio()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_fetch_add_u64()</b>, <b>atomic_load_u64()</b>,
+            <b>atomic_store_u64()</b>, <b>ringbuffer_t::buffer</b>,
+            <b>ringbuffer_t::capacity</b>, <b>ringbuffer_t::capacity_mask</b>,
+            <b>ringbuffer_t::element_size</b>, <b>ringbuffer_t::head</b>,
+            <b>ringbuffer_write()</b>, <b>SAFE_MEMCPY</b>, and
+            <b>ringbuffer_t::size</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_write_frame()</b>,
+            <b>framebuffer_write_multi_frame()</b>, <b>ringbuffer_write()</b>,
+            <b>session_host_inject_audio()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

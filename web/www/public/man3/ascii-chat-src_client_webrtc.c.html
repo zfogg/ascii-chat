@@ -1,137 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>webrtc.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">webrtc.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">webrtc.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">webrtc.c - Client-side WebRTC signaling callback
-  implementations.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>[struct].g_session_context</b>
-  <br/>
-  Local session context.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>webrtc_signaling_callbacks_t</b>
-    <b>webrtc_get_signaling_callbacks</b> (void)
-  <br/>
-  Get signaling callbacks for WebRTC peer manager. void
-    <b>webrtc_set_acds_transport</b> (<b>acip_transport_t</b> *transport)
-  <br/>
-  Set the ACDS transport for signaling callbacks. void
-    <b>webrtc_set_session_context</b> (const <b>uint8_t</b>
-    session_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    participant_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Set session and participant IDs for signaling. void
-    <b>webrtc_set_transport</b> (<b>acip_transport_t</b> *transport)
-  <br/>
-  Set the WebRTC data channel transport. <b>acip_transport_t</b> *
-    <b>webrtc_get_transport</b> (void)
-  <br/>
-  Get the current WebRTC data channel transport. void
-    <b>webrtc_cleanup_transport</b> (void)
-  <br/>
-  Cleanup and release the WebRTC data channel transport.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Client-side WebRTC signaling callback implementations.</p>
-<p class="Pp">Implements the send_sdp and send_ice callbacks that the peer
-    manager uses to transmit local SDP/ICE to remote peers via ACDS.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PACKET_CONSTRUCTION:"><a class="permalink" href="#PACKET_CONSTRUCTION:">PACKET
-  CONSTRUCTION: </a></h1>
-<p class="Pp">Both callbacks construct ACIP packets following the wire
-  format:</p>
-<ul class="Bl-bullet">
-  <li>Fixed header (acip_webrtc_sdp_t or acip_webrtc_ice_t)</li>
-  <li>Variable payload (SDP string or ICE candidate+mid)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
-  SAFETY: </a></h1>
-<p class="Pp">Callbacks use mutex protection for accessing shared state (ACDS
-    transport, session context). Safe to call from peer manager threads.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>src/client/webrtc.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_cleanup_transport_(void_)"><a class="permalink" href="#void_webrtc_cleanup_transport_(void_)">void
-  webrtc_cleanup_transport (void )</a></h2>
-<p class="Pp">Cleanup and release the WebRTC data channel transport. Closes and
-    releases the WebRTC transport. Called when disconnecting or falling back to
-    a different transport type.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is a convenience function that sets transport to
-  NULL
-<p class="Pp"></p>
-<p class="Pp">Actual transport cleanup (closing sockets, freeing peer manager)
-    should be done by the caller before calling this</p>
-</div>
-<p class="Pp">Clears the WebRTC transport. Called on disconnect or fallback.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe - uses internal mutex protection
-<p class="Pp"></p>
-<p class="Pp">Actual transport cleanup (closing connections, freeing resources)
-    should be done by caller before calling this</p>
-</div>
-<p class="Pp">Definition at line <b>364</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<pre>364                                     {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>webrtc.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">webrtc.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">webrtc.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          webrtc.c - Client-side WebRTC signaling callback implementations.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>[struct].g_session_context</b>
+            <br />
+            Local session context.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>webrtc_signaling_callbacks_t</b>
+            <b>webrtc_get_signaling_callbacks</b> (void)
+            <br />
+            Get signaling callbacks for WebRTC peer manager. void
+            <b>webrtc_set_acds_transport</b> (<b>acip_transport_t</b>
+            *transport)
+            <br />
+            Set the ACDS transport for signaling callbacks. void
+            <b>webrtc_set_session_context</b> (const
+            <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const
+            <b>uint8_t</b>
+            participant_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Set session and participant IDs for signaling. void
+            <b>webrtc_set_transport</b> (<b>acip_transport_t</b> *transport)
+            <br />
+            Set the WebRTC data channel transport. <b>acip_transport_t</b> *
+            <b>webrtc_get_transport</b> (void)
+            <br />
+            Get the current WebRTC data channel transport. void
+            <b>webrtc_cleanup_transport</b> (void)
+            <br />
+            Cleanup and release the WebRTC data channel transport.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Client-side WebRTC signaling callback implementations.</p>
+        <p class="Pp">
+          Implements the send_sdp and send_ice callbacks that the peer manager
+          uses to transmit local SDP/ICE to remote peers via ACDS.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PACKET_CONSTRUCTION:">
+          <a class="permalink" href="#PACKET_CONSTRUCTION:"
+            >PACKET CONSTRUCTION:
+          </a>
+        </h1>
+        <p class="Pp">
+          Both callbacks construct ACIP packets following the wire format:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Fixed header (acip_webrtc_sdp_t or acip_webrtc_ice_t)</li>
+          <li>Variable payload (SDP string or ICE candidate+mid)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY:">
+          <a class="permalink" href="#THREAD_SAFETY:">THREAD SAFETY: </a>
+        </h1>
+        <p class="Pp">
+          Callbacks use mutex protection for accessing shared state (ACDS
+          transport, session context). Safe to call from peer manager threads.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>src/client/webrtc.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_cleanup_transport_(void_)">
+            <a class="permalink" href="#void_webrtc_cleanup_transport_(void_)"
+              >void webrtc_cleanup_transport (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Cleanup and release the WebRTC data channel transport. Closes and
+            releases the WebRTC transport. Called when disconnecting or falling
+            back to a different transport type.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is a convenience function that sets transport to NULL
+            <p class="Pp"></p>
+            <p class="Pp">
+              Actual transport cleanup (closing sockets, freeing peer manager)
+              should be done by the caller before calling this
+            </p>
+          </div>
+          <p class="Pp">
+            Clears the WebRTC transport. Called on disconnect or fallback.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe - uses internal mutex protection
+            <p class="Pp"></p>
+            <p class="Pp">
+              Actual transport cleanup (closing connections, freeing resources)
+              should be done by caller before calling this
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>364</b> of file <b>src/client/webrtc.c</b>.
+          </p>
+          <pre>
+364                                     {
 365   ensure_mutex_initialized();
 366   mutex_lock(&amp;g_signaling_mutex);
 367
@@ -142,32 +209,44 @@
 372
 373   mutex_unlock(&amp;g_signaling_mutex);
 374 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, and <b>webrtc_cleanup_transport()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_cleanup_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>webrtc_signaling_callbacks_t</b>
-  webrtc_get_signaling_callbacks (void )</h2>
-<p class="Pp">Get signaling callbacks for WebRTC peer manager. Returns a
-    structure containing callback functions that send SDP/ICE via the ACDS TCP
-    connection. The callbacks are stateless - they use the global ACDS transport
-    to send signaling messages.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Signaling callbacks structure (valid until program
-  exit)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The returned structure points to static callbacks, safe
-  to use for the lifetime of the peer manager.
-<p class="Pp"></p>
-<p class="Pp">Callbacks will fail if ACDS connection is not active.</p>
-</div>
-<p class="Pp">Definition at line <b>263</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<pre>263                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            and <b>webrtc_cleanup_transport()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_cleanup_transport()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>webrtc_signaling_callbacks_t</b> webrtc_get_signaling_callbacks
+            (void )
+          </h2>
+          <p class="Pp">
+            Get signaling callbacks for WebRTC peer manager. Returns a structure
+            containing callback functions that send SDP/ICE via the ACDS TCP
+            connection. The callbacks are stateless - they use the global ACDS
+            transport to send signaling messages.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Signaling callbacks structure (valid until program exit)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The returned structure points to static callbacks, safe to use for
+            the lifetime of the peer manager.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Callbacks will fail if ACDS connection is not active.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>263</b> of file <b>src/client/webrtc.c</b>.
+          </p>
+          <pre>
+263                                                                   {
 264   ensure_mutex_initialized();
 265
 266   webrtc_signaling_callbacks_t callbacks = {
@@ -175,38 +254,56 @@
 268
 269   return callbacks;
 270 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_get_signaling_callbacks()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_get_signaling_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * webrtc_get_transport (void )</h2>
-<p class="Pp">Get the current WebRTC data channel transport. Retrieves the
-    active WebRTC transport for peer-to-peer communication.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current WebRTC transport pointer (NULL if not set)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller must not free the returned pointer
-<p class="Pp"></p>
-<p class="Pp">Pointer is valid only until webrtc_set_transport(NULL) is
-  called</p>
-</div>
-<p class="Pp">Retrieves the active WebRTC transport for peer-to-peer
-    communication.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current WebRTC transport pointer (NULL if not set)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe - uses internal mutex protection
-<p class="Pp"></p>
-<p class="Pp">Pointer is valid only until webrtc_set_transport(NULL) is
-  called</p>
-</div>
-<p class="Pp">Definition at line <b>343</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<pre>343                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>webrtc_get_signaling_callbacks()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>webrtc_get_signaling_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * webrtc_get_transport (void )
+          </h2>
+          <p class="Pp">
+            Get the current WebRTC data channel transport. Retrieves the active
+            WebRTC transport for peer-to-peer communication.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Current WebRTC transport pointer (NULL if not set)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller must not free the returned pointer
+            <p class="Pp"></p>
+            <p class="Pp">
+              Pointer is valid only until webrtc_set_transport(NULL) is called
+            </p>
+          </div>
+          <p class="Pp">
+            Retrieves the active WebRTC transport for peer-to-peer
+            communication.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Current WebRTC transport pointer (NULL if not set)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe - uses internal mutex protection
+            <p class="Pp"></p>
+            <p class="Pp">
+              Pointer is valid only until webrtc_set_transport(NULL) is called
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>343</b> of file <b>src/client/webrtc.c</b>.
+          </p>
+          <pre>
+343                                              {
 344   ensure_mutex_initialized();
 345   mutex_lock(&amp;g_signaling_mutex);
 346
@@ -216,30 +313,44 @@
 350
 351   return transport;
 352 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
-    <b>webrtc_get_transport()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_get_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_set_acds_transport_("><a class="permalink" href="#void_webrtc_set_acds_transport_(">void
-  webrtc_set_acds_transport (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Set the ACDS transport for signaling callbacks. Configures the
-    transport that will be used to send SDP/ICE messages. Must be called before
-    peer manager generates any local descriptions.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> ACDS TCP transport (NULL to clear)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is called automatically when connecting to ACDS.
-<p class="Pp"></p>
-<p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if transport is
-  NULL.</p>
-</div>
-<p class="Pp">Definition at line <b>272</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<pre>272                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+            <b>webrtc_get_transport()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_get_transport()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_set_acds_transport_(">
+            <a class="permalink" href="#void_webrtc_set_acds_transport_("
+              >void webrtc_set_acds_transport (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Set the ACDS transport for signaling callbacks. Configures the
+            transport that will be used to send SDP/ICE messages. Must be called
+            before peer manager generates any local descriptions.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> ACDS TCP transport (NULL to clear)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is called automatically when connecting to ACDS.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Callbacks will fail with ERROR_INVALID_STATE if transport is NULL.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>272</b> of file <b>src/client/webrtc.c</b>.
+          </p>
+          <pre>
+272                                                             {
 273   ensure_mutex_initialized();
 274   mutex_lock(&amp;g_signaling_mutex);
 275
@@ -253,33 +364,47 @@
 283
 284   mutex_unlock(&amp;g_signaling_mutex);
 285 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, and <b>webrtc_set_acds_transport()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_set_acds_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_set_session_context_(const_"><a class="permalink" href="#void_webrtc_set_session_context_(const_">void
-  webrtc_set_session_context (const <b>uint8_t</b> session_id[SESSION_ID_SIZE],
-  const <b>uint8_t</b> participant_id[SESSION_ID_SIZE])</a></h2>
-<p class="Pp">Set session and participant IDs for signaling. Configures the
-    session context used when sending SDP/ICE messages. Must be called after
-    successful ACDS session join.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session_id</i> Session UUID (16 bytes, copied)
-<br/>
-<i>participant_id</i> Local participant UUID (16 bytes, copied)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is called automatically when joining ACDS session.
-<p class="Pp"></p>
-<p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if IDs are not
-  set.</p>
-</div>
-<p class="Pp">Definition at line <b>287</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<pre>288                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            and <b>webrtc_set_acds_transport()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_set_acds_transport()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_set_session_context_(const_">
+            <a class="permalink" href="#void_webrtc_set_session_context_(const_"
+              >void webrtc_set_session_context (const
+              <b>uint8_t</b> session_id[SESSION_ID_SIZE], const
+              <b>uint8_t</b> participant_id[SESSION_ID_SIZE])</a
+            >
+          </h2>
+          <p class="Pp">
+            Set session and participant IDs for signaling. Configures the
+            session context used when sending SDP/ICE messages. Must be called
+            after successful ACDS session join.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session_id</i> Session UUID (16 bytes, copied)
+            <br />
+            <i>participant_id</i> Local participant UUID (16 bytes, copied)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is called automatically when joining ACDS session.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Callbacks will fail with ERROR_INVALID_STATE if IDs are not set.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>287</b> of file <b>src/client/webrtc.c</b>.
+          </p>
+          <pre>
+288                                                                                {
 289   if (!session_id || !participant_id) {
 290     log_error(&quot;Invalid session context parameters&quot;);
 291     return;
@@ -297,40 +422,60 @@
 303
 304   mutex_unlock(&amp;g_signaling_mutex);
 305 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_error</b>, <b>log_info</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>webrtc_set_session_context()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_set_session_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_set_transport_("><a class="permalink" href="#void_webrtc_set_transport_(">void
-  webrtc_set_transport (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Set the WebRTC data channel transport. Stores the active WebRTC
-    transport that will be used for peer-to-peer communication. This is
-    different from the ACDS signaling transport - it's the actual data
-  channel.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> WebRTC transport (NULL to clear)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Called when WebRTC connection is established or when
-  falling back to TCP
-<p class="Pp"></p>
-<p class="Pp">If NULL is passed, the transport is cleared (e.g., on
-  disconnect)</p>
-</div>
-<p class="Pp">Stores the active WebRTC transport for peer-to-peer communication.
-    Separate from ACDS signaling transport.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> WebRTC transport (NULL to clear)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe - uses internal mutex protection</div>
-<p class="Pp">Definition at line <b>318</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<pre>318                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_error</b>, <b>log_info</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>SESSION_ID_SIZE</b>, and
+            <b>webrtc_set_session_context()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_set_session_context()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webrtc_set_transport_(">
+            <a class="permalink" href="#void_webrtc_set_transport_("
+              >void webrtc_set_transport (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Set the WebRTC data channel transport. Stores the active WebRTC
+            transport that will be used for peer-to-peer communication. This is
+            different from the ACDS signaling transport - it's the actual data
+            channel.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> WebRTC transport (NULL to clear)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Called when WebRTC connection is established or when falling back to
+            TCP
+            <p class="Pp"></p>
+            <p class="Pp">
+              If NULL is passed, the transport is cleared (e.g., on disconnect)
+            </p>
+          </div>
+          <p class="Pp">
+            Stores the active WebRTC transport for peer-to-peer communication.
+            Separate from ACDS signaling transport.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> WebRTC transport (NULL to clear)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe - uses internal mutex protection
+          </div>
+          <p class="Pp">
+            Definition at line <b>318</b> of file <b>src/client/webrtc.c</b>.
+          </p>
+          <pre>
+318                                                        {
 319   ensure_mutex_initialized();
 320   mutex_lock(&amp;g_signaling_mutex);
 321
@@ -344,23 +489,27 @@
 329
 330   mutex_unlock(&amp;g_signaling_mutex);
 331 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, and <b>webrtc_set_transport()</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_set_transport()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            and <b>webrtc_set_transport()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_set_transport()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

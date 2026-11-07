@@ -1,145 +1,239 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>recording.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">recording.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">recording.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">recording.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>audio_recording</b> <b>audio_recording_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>audio_recording_source_t</b> { <b>AUDIO_RECORDING_MIC</b>,
-    <b>AUDIO_RECORDING_MEDIA</b>, <b>AUDIO_RECORDING_REMOTE</b>,
-    <b>AUDIO_RECORDING_SOURCE_COUNT</b> }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>audio_recording_create</b>
-    (<b>audio_recording_t</b> **out)
-  <br/>
-  <b>asciichat_error_t</b> <b>audio_recording_create_channels</b>
-    (<b>audio_recording_t</b> **out, unsigned channels)
-  <br/>
-  void <b>audio_recording_destroy</b> (<b>audio_recording_t</b> *recording)
-  <br/>
-  void <b>audio_recording_start</b> (<b>audio_recording_t</b> *recording,
-    <b>uint64_t</b> epoch_ns)
-  <br/>
-  void <b>audio_recording_submit</b> (<b>audio_recording_source_t</b> source,
-    const float *samples, size_t count, <b>uint64_t</b> start_ns)
-  <br/>
-  void <b>audio_recording_read</b> (<b>audio_recording_t</b> *recording, float
-    *samples, size_t count)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>audio_recording</b> <b>audio_recording_t</b></a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>recording.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>audio_recording_source_t</b></a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="AUDIO_RECORDING_MIC"><a class="permalink" href="#AUDIO_RECORDING_MIC"><b><i>AUDIO_RECORDING_MIC
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="AUDIO_RECORDING_MEDIA"><a class="permalink" href="#AUDIO_RECORDING_MEDIA"><b><i>AUDIO_RECORDING_MEDIA
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="AUDIO_RECORDING_REMOTE"><a class="permalink" href="#AUDIO_RECORDING_REMOTE"><b><i>AUDIO_RECORDING_REMOTE
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="AUDIO_RECORDING_SOURCE_COUNT"><a class="permalink" href="#AUDIO_RECORDING_SOURCE_COUNT"><b><i>AUDIO_RECORDING_SOURCE_COUNT
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>9</b> of file <b>recording.h</b>.</p>
-<pre>9              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>recording.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">recording.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">recording.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">recording.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>audio_recording</b> <b>audio_recording_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>audio_recording_source_t</b> { <b>AUDIO_RECORDING_MIC</b>,
+            <b>AUDIO_RECORDING_MEDIA</b>, <b>AUDIO_RECORDING_REMOTE</b>,
+            <b>AUDIO_RECORDING_SOURCE_COUNT</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>audio_recording_create</b> (<b
+              >audio_recording_t</b
+            >
+            **out)
+            <br />
+            <b>asciichat_error_t</b> <b>audio_recording_create_channels</b> (<b
+              >audio_recording_t</b
+            >
+            **out, unsigned channels)
+            <br />
+            void <b>audio_recording_destroy</b> (<b>audio_recording_t</b>
+            *recording)
+            <br />
+            void <b>audio_recording_start</b> (<b>audio_recording_t</b>
+            *recording, <b>uint64_t</b> epoch_ns)
+            <br />
+            void <b>audio_recording_submit</b> (<b>audio_recording_source_t</b>
+            source, const float *samples, size_t count,
+            <b>uint64_t</b> start_ns)
+            <br />
+            void <b>audio_recording_read</b> (<b>audio_recording_t</b>
+            *recording, float *samples, size_t count)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>audio_recording</b> <b>audio_recording_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>recording.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_"
+              >enum <b>audio_recording_source_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="AUDIO_RECORDING_MIC">
+              <a class="permalink" href="#AUDIO_RECORDING_MIC"
+                ><b><i>AUDIO_RECORDING_MIC </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="AUDIO_RECORDING_MEDIA">
+              <a class="permalink" href="#AUDIO_RECORDING_MEDIA"
+                ><b><i>AUDIO_RECORDING_MEDIA </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="AUDIO_RECORDING_REMOTE">
+              <a class="permalink" href="#AUDIO_RECORDING_REMOTE"
+                ><b><i>AUDIO_RECORDING_REMOTE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="AUDIO_RECORDING_SOURCE_COUNT">
+              <a class="permalink" href="#AUDIO_RECORDING_SOURCE_COUNT"
+                ><b><i>AUDIO_RECORDING_SOURCE_COUNT </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>recording.h</b>.
+          </p>
+          <pre>
+9              {
 10   AUDIO_RECORDING_MIC,
 11   AUDIO_RECORDING_MEDIA,
 12   AUDIO_RECORDING_REMOTE,
 13   AUDIO_RECORDING_SOURCE_COUNT
 14 } audio_recording_source_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_recording_create
-  (<b>audio_recording_t</b> ** out)</h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>recording.c</b>.</p>
-<pre>25                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_recording_create (<b
+              >audio_recording_t</b
+            >
+            ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>recording.c</b>.
+          </p>
+          <pre>
+25                                                                   {
 26   return audio_recording_create_channels(out, 1);
 27 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_recording_create()</b>, and
-    <b>audio_recording_create_channels()</b>.</p>
-<p class="Pp">Referenced by <b>audio_recording_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_recording_create_channels
-  (<b>audio_recording_t</b> ** out, unsigned channels)</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>recording.c</b>.</p>
-<pre>29                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_recording_create()</b>, and
+            <b>audio_recording_create_channels()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_recording_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_recording_create_channels (<b
+              >audio_recording_t</b
+            >
+            ** out, unsigned channels)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>recording.c</b>.
+          </p>
+          <pre>
+29                                                                                               {
 30   if (channels != 1 &amp;&amp; channels != 2)
 31     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid recording channel count&quot;);
 32   if (!out)
@@ -158,22 +252,33 @@
 45   static_mutex_unlock(&amp;recording_mutex);
 46   return ASCIICHAT_OK;
 47 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>audio_recording_create_channels()</b>, <b>audio_recording::channels</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>audio_recording::mix</b>, <b>RECORDING_CAPACITY</b>, <b>SAFE_CALLOC</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>audio_recording_create()</b>,
-    <b>audio_recording_create_channels()</b>, and
-  <b>render_file_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_recording_destroy_("><a class="permalink" href="#void_audio_recording_destroy_(">void
-  audio_recording_destroy (<b>audio_recording_t</b> * recording)</a></h2>
-<p class="Pp">Definition at line <b>49</b> of file <b>recording.c</b>.</p>
-<pre>49                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>audio_recording_create_channels()</b>,
+            <b>audio_recording::channels</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>audio_recording::mix</b>,
+            <b>RECORDING_CAPACITY</b>, <b>SAFE_CALLOC</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_recording_create()</b>,
+            <b>audio_recording_create_channels()</b>, and
+            <b>render_file_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_recording_destroy_(">
+            <a class="permalink" href="#void_audio_recording_destroy_("
+              >void audio_recording_destroy (<b>audio_recording_t</b> *
+              recording)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>49</b> of file <b>recording.c</b>.
+          </p>
+          <pre>
+49                                                            {
 50   if (!recording)
 51     return;
 52   static_mutex_lock_named(&amp;recording_mutex, &quot;audio_recording&quot;);
@@ -185,19 +290,29 @@
 58   SAFE_FREE(recording);
 59   static_mutex_unlock(&amp;recording_mutex);
 60 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_recording_destroy()</b>,
-    <b>audio_recording::mix</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>audio_recording_destroy()</b>, and
-    <b>render_file_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_recording_read_("><a class="permalink" href="#void_audio_recording_read_(">void
-  audio_recording_read (<b>audio_recording_t</b> * recording, float * samples,
-  size_t count)</a></h2>
-<p class="Pp">Definition at line <b>122</b> of file <b>recording.c</b>.</p>
-<pre>122                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_recording_destroy()</b>,
+            <b>audio_recording::mix</b>, and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_recording_destroy()</b>, and
+            <b>render_file_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_recording_read_(">
+            <a class="permalink" href="#void_audio_recording_read_("
+              >void audio_recording_read (<b>audio_recording_t</b> * recording,
+              float * samples, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>122</b> of file <b>recording.c</b>.
+          </p>
+          <pre>
+122                                                                                       {
 123   if (!recording || !samples)
 124     return;
 125   static_mutex_lock_named(&amp;recording_mutex, &quot;audio_recording&quot;);
@@ -209,20 +324,31 @@
 131   }
 132   static_mutex_unlock(&amp;recording_mutex);
 133 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_recording_read()</b>,
-    <b>audio_recording::channels</b>, <b>audio_recording::mix</b>,
-    <b>audio_recording::read_position</b>, and <b>RECORDING_CAPACITY</b>.</p>
-<p class="Pp">Referenced by <b>audio_recording_read()</b>, and
-    <b>render_file_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_recording_start_("><a class="permalink" href="#void_audio_recording_start_(">void
-  audio_recording_start (<b>audio_recording_t</b> * recording, <b>uint64_t</b>
-  epoch_ns)</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file <b>recording.c</b>.</p>
-<pre>62                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_recording_read()</b>,
+            <b>audio_recording::channels</b>, <b>audio_recording::mix</b>,
+            <b>audio_recording::read_position</b>, and
+            <b>RECORDING_CAPACITY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_recording_read()</b>, and
+            <b>render_file_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_recording_start_(">
+            <a class="permalink" href="#void_audio_recording_start_("
+              >void audio_recording_start (<b>audio_recording_t</b> * recording,
+              <b>uint64_t</b> epoch_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>recording.c</b>.
+          </p>
+          <pre>
+62                                                                             {
 63   if (!recording)
 64     return;
 65   static_mutex_lock_named(&amp;recording_mutex, &quot;audio_recording&quot;);
@@ -233,18 +359,28 @@
 70   }
 71   static_mutex_unlock(&amp;recording_mutex);
 72 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_recording_start()</b>,
-    <b>audio_recording::epoch_ns</b>, and <b>audio_recording::started</b>.</p>
-<p class="Pp">Referenced by <b>audio_recording_start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_recording_submit_("><a class="permalink" href="#void_audio_recording_submit_(">void
-  audio_recording_submit (<b>audio_recording_source_t</b> source, const float *
-  samples, size_t count, <b>uint64_t</b> start_ns)</a></h2>
-<p class="Pp">Definition at line <b>74</b> of file <b>recording.c</b>.</p>
-<pre>74                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_recording_start()</b>,
+            <b>audio_recording::epoch_ns</b>, and
+            <b>audio_recording::started</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_recording_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_recording_submit_(">
+            <a class="permalink" href="#void_audio_recording_submit_("
+              >void audio_recording_submit (<b>audio_recording_source_t</b>
+              source, const float * samples, size_t count,
+              <b>uint64_t</b> start_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>recording.c</b>.
+          </p>
+          <pre>
+74                                                                                                                     {
 75   // This is only a hint: the locked pointer/state check protects destruction.
 76   if (!atomic_load_explicit(&amp;recording_accepts_samples, memory_order_acquire) || !samples || !count || source &lt; 0 ||
 77       source &gt;= AUDIO_RECORDING_SOURCE_COUNT)
@@ -291,29 +427,36 @@
 118   }
 119   static_mutex_unlock(&amp;recording_mutex);
 120 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>AUDIO_RECORDING_SOURCE_COUNT</b>,
-    <b>audio_recording_submit()</b>, <b>audio_recording::channels</b>,
-    <b>audio_recording::epoch_ns</b>, <b>audio_recording::mix</b>,
-    <b>audio_recording::read_position</b>, <b>RECORDING_CAPACITY</b>,
-    <b>RECORDING_RATE</b>, <b>audio_recording::source_position</b>,
-    <b>audio_recording::source_started</b>, and
-  <b>audio_recording::started</b>.</p>
-<p class="Pp">Referenced by <b>audio_recording_submit()</b>,
-    <b>audio_write_samples()</b>, and <b>session_host_render_audio()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_RECORDING_SOURCE_COUNT</b>,
+            <b>audio_recording_submit()</b>, <b>audio_recording::channels</b>,
+            <b>audio_recording::epoch_ns</b>, <b>audio_recording::mix</b>,
+            <b>audio_recording::read_position</b>, <b>RECORDING_CAPACITY</b>,
+            <b>RECORDING_RATE</b>, <b>audio_recording::source_position</b>,
+            <b>audio_recording::source_started</b>, and
+            <b>audio_recording::started</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_recording_submit()</b>,
+            <b>audio_write_samples()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

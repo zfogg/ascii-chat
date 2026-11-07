@@ -1,127 +1,214 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>face_follow.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">face_follow.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">face_follow.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">face_follow.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>face_follow_rect_t</b>
-  <br/>
-  struct <b>face_follow_detection_t</b>
-  <br/>
-  struct <b>face_follow_state_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>FACE_FOLLOW_DETECT_WIDTH</b> 320
-  <br/>
-  #define <b>FACE_FOLLOW_DETECT_HEIGHT</b> 240
-  <br/>
-  #define <b>FACE_FOLLOW_RESULT_BUFFER_SIZE</b> 0x9000
-  <br/>
-  #define <b>FACE_FOLLOW_MAX_DETECTIONS</b> 32
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>face_follow_init</b> (<b>face_follow_state_t</b> *state)
-  <br/>
-  void <b>face_follow_observe</b> (<b>face_follow_state_t</b> *state, const
-    <b>face_follow_detection_t</b> *faces, size_t count, double now)
-  <br/>
-  void <b>face_follow_tick</b> (<b>face_follow_state_t</b> *state, double now,
-    <b>bool</b> enabled)
-  <br/>
-  void <b>face_follow_detect</b> (unsigned char *results, unsigned char *bgr,
-    int width, int height, <b>face_follow_detection_t</b> *faces, size_t
-    capacity, size_t *count)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_FACE_FOLLOW_DETECT_HEIGHT___240"><a class="permalink" href="#_define_FACE_FOLLOW_DETECT_HEIGHT___240">#define
-  FACE_FOLLOW_DETECT_HEIGHT 240</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>face_follow.h</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>, and
-    <b>face_web_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FACE_FOLLOW_DETECT_WIDTH___320"><a class="permalink" href="#_define_FACE_FOLLOW_DETECT_WIDTH___320">#define
-  FACE_FOLLOW_DETECT_WIDTH 320</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>face_follow.h</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>, and
-    <b>face_web_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FACE_FOLLOW_MAX_DETECTIONS___32"><a class="permalink" href="#_define_FACE_FOLLOW_MAX_DETECTIONS___32">#define
-  FACE_FOLLOW_MAX_DETECTIONS 32</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>face_follow.h</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>, and
-    <b>face_web_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FACE_FOLLOW_RESULT_BUFFER_SIZE___0x9000"><a class="permalink" href="#_define_FACE_FOLLOW_RESULT_BUFFER_SIZE___0x9000">#define
-  FACE_FOLLOW_RESULT_BUFFER_SIZE 0x9000</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>face_follow.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_"><a class="permalink" href="#void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_">void
-  face_follow_detect (unsigned char * results, unsigned char * bgr, int width,
-  int height, <b>face_follow_detection_t</b> * faces, size_t capacity, size_t *
-  count)</a></h2>
-<p class="Pp">The caller supplies a 0x9000-byte result buffer and packed BGR
-    input.</p>
-<p class="Pp">Definition at line <b>4</b> of file <b>face_detect.cpp</b>.</p>
-<pre>5                                                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>face_follow.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">face_follow.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">face_follow.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">face_follow.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>face_follow_rect_t</b>
+            <br />
+            struct <b>face_follow_detection_t</b>
+            <br />
+            struct <b>face_follow_state_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>FACE_FOLLOW_DETECT_WIDTH</b> 320
+            <br />
+            #define <b>FACE_FOLLOW_DETECT_HEIGHT</b> 240
+            <br />
+            #define <b>FACE_FOLLOW_RESULT_BUFFER_SIZE</b> 0x9000
+            <br />
+            #define <b>FACE_FOLLOW_MAX_DETECTIONS</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>face_follow_init</b> (<b>face_follow_state_t</b> *state)
+            <br />
+            void <b>face_follow_observe</b> (<b>face_follow_state_t</b> *state,
+            const <b>face_follow_detection_t</b> *faces, size_t count, double
+            now)
+            <br />
+            void <b>face_follow_tick</b> (<b>face_follow_state_t</b> *state,
+            double now, <b>bool</b> enabled)
+            <br />
+            void <b>face_follow_detect</b> (unsigned char *results, unsigned
+            char *bgr, int width, int height,
+            <b>face_follow_detection_t</b> *faces, size_t capacity, size_t
+            *count)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FACE_FOLLOW_DETECT_HEIGHT___240">
+            <a class="permalink" href="#_define_FACE_FOLLOW_DETECT_HEIGHT___240"
+              >#define FACE_FOLLOW_DETECT_HEIGHT 240</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>face_follow.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>, and
+            <b>face_web_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FACE_FOLLOW_DETECT_WIDTH___320">
+            <a class="permalink" href="#_define_FACE_FOLLOW_DETECT_WIDTH___320"
+              >#define FACE_FOLLOW_DETECT_WIDTH 320</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>face_follow.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>, and
+            <b>face_web_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FACE_FOLLOW_MAX_DETECTIONS___32">
+            <a class="permalink" href="#_define_FACE_FOLLOW_MAX_DETECTIONS___32"
+              >#define FACE_FOLLOW_MAX_DETECTIONS 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>face_follow.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>, and
+            <b>face_web_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FACE_FOLLOW_RESULT_BUFFER_SIZE___0x9000">
+            <a
+              class="permalink"
+              href="#_define_FACE_FOLLOW_RESULT_BUFFER_SIZE___0x9000"
+              >#define FACE_FOLLOW_RESULT_BUFFER_SIZE 0x9000</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>face_follow.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_"
+          >
+            <a
+              class="permalink"
+              href="#void_face_follow_detect_(unsigned_char_*_results,_unsigned_char_*_bgr,_int_width,_int_height,_"
+              >void face_follow_detect (unsigned char * results, unsigned char *
+              bgr, int width, int height, <b>face_follow_detection_t</b> *
+              faces, size_t capacity, size_t * count)</a
+            >
+          </h2>
+          <p class="Pp">
+            The caller supplies a 0x9000-byte result buffer and packed BGR
+            input.
+          </p>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>face_detect.cpp</b>.
+          </p>
+          <pre>
+5                                                                                                    {
 6   *count = 0;
 7   int *detections = facedetect_cnn(results, bgr, width, height, width * 3);
 8   if (!detections)
@@ -136,35 +223,52 @@
 17     ++*count;
 18   }
 19 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_detect()</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_detect()</b>,
-    <b>face_follow_image_process()</b>, and <b>face_web_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_init_("><a class="permalink" href="#void_face_follow_init_(">void
-  face_follow_init (<b>face_follow_state_t</b> * state)</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file
-    <b>lib/video/face_follow.c</b>.</p>
-<pre>13                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>face_follow_detect()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>face_follow_detect()</b>,
+            <b>face_follow_image_process()</b>, and <b>face_web_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_init_(">
+            <a class="permalink" href="#void_face_follow_init_("
+              >void face_follow_init (<b>face_follow_state_t</b> * state)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>lib/video/face_follow.c</b>.
+          </p>
+          <pre>
+13                                                   {
 14   memset(state, 0, sizeof(*state));
 15   state-&gt;crop = state-&gt;target = full_frame();
 16 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_state_t::crop</b>,
-    <b>face_follow_init()</b>, and <b>face_follow_state_t::target</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
-    <b>face_follow_init()</b>, and <b>face_web_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_observe_("><a class="permalink" href="#void_face_follow_observe_(">void
-  face_follow_observe (<b>face_follow_state_t</b> * state, const
-  <b>face_follow_detection_t</b> * faces, size_t count, double now)</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file
-    <b>lib/video/face_follow.c</b>.</p>
-<pre>25                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_state_t::crop</b>,
+            <b>face_follow_init()</b>, and <b>face_follow_state_t::target</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>,
+            <b>face_follow_init()</b>, and <b>face_web_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_observe_(">
+            <a class="permalink" href="#void_face_follow_observe_("
+              >void face_follow_observe (<b>face_follow_state_t</b> * state,
+              const <b>face_follow_detection_t</b> * faces, size_t count, double
+              now)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>lib/video/face_follow.c</b>.
+          </p>
+          <pre>
+25                                                                                                                      {
 26   int selected = -1;
 27   float best = -1;
 28   bool retain = state-&gt;tracking &amp;&amp; now - state-&gt;last_seen &lt; 1.5;
@@ -253,33 +357,46 @@
 111     state-&gt;target.y = clampf(state-&gt;anchor_y - state-&gt;target.h * 0.5f, 0, 1 - state-&gt;target.h);
 112   }
 113 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_state_t::anchor_x</b>,
-    <b>face_follow_state_t::anchor_y</b>, <b>face_follow_detection_t::box</b>,
-    <b>face_follow_detection_t::confidence</b>,
-    <b>face_follow_state_t::detected</b>, <b>face_follow_state_t::face</b>,
-    <b>face_follow_observe()</b>, <b>face_follow_rect_t::h</b>,
-    <b>face_follow_state_t::last_seen</b>, <b>face_follow_state_t::misses</b>,
-    <b>face_follow_state_t::pan_direction_x</b>,
-    <b>face_follow_state_t::pan_direction_y</b>,
-    <b>face_follow_state_t::pan_outside_since</b>,
-    <b>face_follow_state_t::pan_pending</b>, <b>face_follow_state_t::target</b>,
-    <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
-    <b>face_follow_rect_t::x</b>, <b>face_follow_rect_t::y</b>,
-    <b>face_follow_state_t::zoom_direction</b>,
-    <b>face_follow_state_t::zoom_outside_since</b>, and
-    <b>face_follow_state_t::zoom_pending</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
-    <b>face_follow_observe()</b>, and <b>face_web_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_tick_("><a class="permalink" href="#void_face_follow_tick_(">void
-  face_follow_tick (<b>face_follow_state_t</b> * state, double now, <b>bool</b>
-  enabled)</a></h2>
-<p class="Pp">Definition at line <b>115</b> of file
-    <b>lib/video/face_follow.c</b>.</p>
-<pre>115                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_state_t::anchor_x</b>,
+            <b>face_follow_state_t::anchor_y</b>,
+            <b>face_follow_detection_t::box</b>,
+            <b>face_follow_detection_t::confidence</b>,
+            <b>face_follow_state_t::detected</b>,
+            <b>face_follow_state_t::face</b>, <b>face_follow_observe()</b>,
+            <b>face_follow_rect_t::h</b>, <b>face_follow_state_t::last_seen</b>,
+            <b>face_follow_state_t::misses</b>,
+            <b>face_follow_state_t::pan_direction_x</b>,
+            <b>face_follow_state_t::pan_direction_y</b>,
+            <b>face_follow_state_t::pan_outside_since</b>,
+            <b>face_follow_state_t::pan_pending</b>,
+            <b>face_follow_state_t::target</b>,
+            <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
+            <b>face_follow_rect_t::x</b>, <b>face_follow_rect_t::y</b>,
+            <b>face_follow_state_t::zoom_direction</b>,
+            <b>face_follow_state_t::zoom_outside_since</b>, and
+            <b>face_follow_state_t::zoom_pending</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>,
+            <b>face_follow_observe()</b>, and <b>face_web_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_tick_(">
+            <a class="permalink" href="#void_face_follow_tick_("
+              >void face_follow_tick (<b>face_follow_state_t</b> * state, double
+              now, <b>bool</b> enabled)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>115</b> of file
+            <b>lib/video/face_follow.c</b>.
+          </p>
+          <pre>
+115                                                                             {
 116   if (!state-&gt;initialized) {
 117     if (enabled &amp;&amp; state-&gt;tracking &amp;&amp; now - state-&gt;last_seen &lt;= 0.7)
 118       state-&gt;crop = state-&gt;target;
@@ -308,29 +425,36 @@
 141   state-&gt;crop =
 142       (face_follow_rect_t){clampf(cx - size * 0.5f, 0, 1 - size), clampf(cy - size * 0.5f, 0, 1 - size), size, size};
 143 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_state_t::crop</b>,
-    <b>face_follow_tick()</b>, <b>face_follow_rect_t::h</b>,
-    <b>face_follow_state_t::initialized</b>,
-    <b>face_follow_state_t::last_seen</b>,
-    <b>face_follow_state_t::last_tick</b>, <b>face_follow_state_t::target</b>,
-    <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
-    <b>face_follow_rect_t::x</b>, and <b>face_follow_rect_t::y</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
-    <b>face_follow_tick()</b>, and <b>face_web_tick()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_state_t::crop</b>,
+            <b>face_follow_tick()</b>, <b>face_follow_rect_t::h</b>,
+            <b>face_follow_state_t::initialized</b>,
+            <b>face_follow_state_t::last_seen</b>,
+            <b>face_follow_state_t::last_tick</b>,
+            <b>face_follow_state_t::target</b>,
+            <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
+            <b>face_follow_rect_t::x</b>, and <b>face_follow_rect_t::y</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>,
+            <b>face_follow_tick()</b>, and <b>face_web_tick()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

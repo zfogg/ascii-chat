@@ -1,139 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>config.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">config.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">config.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">config.c - &#x1F4CB; TOML configuration file parser with schema
-    validation and CLI override support</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">union <b>option_parsed_value_t</b>
-  <br/>
-  Union holding all possible parsed option values. struct
-    <b>option_type_handler_t</b>
-  <br/>
-  Type handler - encapsulates all 4 operations for one option type. struct
-    <b>config_builder_t</b>
-  <br/>
-  Helper structure for building config content in a buffer.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>OPTIONS_CONFIG_QUESTION_BUFFER_SIZE</b> 4096
-  <br/>
-  #define <b>CONFIG_WRITTEN_FLAG_CAPACITY</b> 64
-  <br/>
-  #define <b>CONFIG_CATEGORY_CAPACITY</b> 16
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Internal Macros</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>CONFIG_WARN</b>(fmt, ...)
-  <br/>
-  Print configuration warning using the logging system. #define
-    <b>CONFIG_DEBUG</b>(fmt, ...)
-  <br/>
-  Print configuration debug message.
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>config_load_and_apply</b>
-    (<b>asciichat_mode_t</b> detected_mode, const char *config_path, <b>bool</b>
-    strict, <b>options_t</b> *opts)
-  <br/>
-  Main function to load configuration from file and apply to global options.
-    <b>asciichat_error_t</b> <b>config_create_default</b> (const char
-    *config_path)
-  <br/>
-  Create default configuration file with all default values.
-    <b>asciichat_error_t</b> <b>config_load_system_and_user</b>
-    (<b>asciichat_mode_t</b> detected_mode, <b>bool</b> strict, <b>options_t</b>
-    *opts)
-  <br/>
-  Load system config first, then user config (user config overrides system).
-  <br/>
-</p>
-<p class="Pp"><b>TOML Value Extraction Helpers</b>
-  <br/>
-  Helper functions to safely extract typed values from TOML datum
-  structures.</p>
-<p class="Pp">
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Schema-Based Configuration Parser</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4CB; TOML configuration file parser with schema validation
-    and CLI override support</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>config.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONFIG_CATEGORY_CAPACITY___16"><a class="permalink" href="#_define_CONFIG_CATEGORY_CAPACITY___16">#define
-  CONFIG_CATEGORY_CAPACITY 16</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>config.c</b>.</p>
-<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONFIG_DEBUG(_fmt,__"><a class="permalink" href="#_define_CONFIG_DEBUG(_fmt,__">#define
-  CONFIG_DEBUG( fmt, ...)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>config.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">config.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">config.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          config.c - &#x1F4CB; TOML configuration file parser with schema
+          validation and CLI override support
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            union <b>option_parsed_value_t</b>
+            <br />
+            Union holding all possible parsed option values. struct
+            <b>option_type_handler_t</b>
+            <br />
+            Type handler - encapsulates all 4 operations for one option type.
+            struct
+            <b>config_builder_t</b>
+            <br />
+            Helper structure for building config content in a buffer.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>OPTIONS_CONFIG_QUESTION_BUFFER_SIZE</b> 4096
+            <br />
+            #define <b>CONFIG_WRITTEN_FLAG_CAPACITY</b> 64
+            <br />
+            #define <b>CONFIG_CATEGORY_CAPACITY</b> 16
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Internal Macros</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>CONFIG_WARN</b>(fmt, ...)
+            <br />
+            Print configuration warning using the logging system. #define
+            <b>CONFIG_DEBUG</b>(fmt, ...)
+            <br />
+            Print configuration debug message.
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>config_load_and_apply</b> (<b
+              >asciichat_mode_t</b
+            >
+            detected_mode, const char *config_path, <b>bool</b> strict,
+            <b>options_t</b> *opts)
+            <br />
+            Main function to load configuration from file and apply to global
+            options.
+            <b>asciichat_error_t</b> <b>config_create_default</b> (const char
+            *config_path)
+            <br />
+            Create default configuration file with all default values.
+            <b>asciichat_error_t</b> <b>config_load_system_and_user</b> (<b
+              >asciichat_mode_t</b
+            >
+            detected_mode, <b>bool</b> strict, <b>options_t</b>
+            *opts)
+            <br />
+            Load system config first, then user config (user config overrides
+            system).
+            <br />
+          </p>
+          <p class="Pp">
+            <b>TOML Value Extraction Helpers</b>
+            <br />
+            Helper functions to safely extract typed values from TOML datum
+            structures.
+          </p>
+          <p class="Pp">
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Schema-Based Configuration Parser</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4CB; TOML configuration file parser with schema validation and
+          CLI override support
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>config.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CONFIG_CATEGORY_CAPACITY___16">
+            <a class="permalink" href="#_define_CONFIG_CATEGORY_CAPACITY___16"
+              >#define CONFIG_CATEGORY_CAPACITY 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>config.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CONFIG_DEBUG(_fmt,__">
+            <a class="permalink" href="#_define_CONFIG_DEBUG(_fmt,__"
+              >#define CONFIG_DEBUG( fmt, ...)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
                                       \
 <br/>
@@ -141,53 +206,83 @@
 <br/>
   log_debug(fmt, ##__VA_ARGS__);                                                                                     \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Print configuration debug message. Debug messages use the logging
-    system if it's initialized, otherwise they are silently dropped.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>config.c</b>.</p>
-<p class="Pp">Referenced by <b>config_load_and_apply()</b>, and
-    <b>config_load_system_and_user()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONFIG_WARN(_fmt,__"><a class="permalink" href="#_define_CONFIG_WARN(_fmt,__">#define
-  CONFIG_WARN( fmt, ...)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Print configuration debug message. Debug messages use the logging
+            system if it's initialized, otherwise they are silently dropped.
+          </p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>config.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>config_load_and_apply()</b>, and
+            <b>config_load_system_and_user()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CONFIG_WARN(_fmt,__">
+            <a class="permalink" href="#_define_CONFIG_WARN(_fmt,__"
+              >#define CONFIG_WARN( fmt, ...)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   log_warn(&quot;Config file: &quot; fmt, ##__VA_ARGS__);                                                                      \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Print configuration warning using the logging system. Uses
-    log_warn so that config warnings respect the --quiet flag and are routed
-    through the logging system for proper filtering.</p>
-<p class="Pp">Definition at line <b>58</b> of file <b>config.c</b>.</p>
-<p class="Pp">Referenced by <b>config_load_and_apply()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONFIG_WRITTEN_FLAG_CAPACITY___64"><a class="permalink" href="#_define_CONFIG_WRITTEN_FLAG_CAPACITY___64">#define
-  CONFIG_WRITTEN_FLAG_CAPACITY 64</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>config.c</b>.</p>
-<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_CONFIG_QUESTION_BUFFER_SIZE___4096"><a class="permalink" href="#_define_OPTIONS_CONFIG_QUESTION_BUFFER_SIZE___4096">#define
-  OPTIONS_CONFIG_QUESTION_BUFFER_SIZE 4096</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>config.c</b>.</p>
-<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Print configuration warning using the logging system. Uses log_warn
+            so that config warnings respect the --quiet flag and are routed
+            through the logging system for proper filtering.
+          </p>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>config.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>config_load_and_apply()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CONFIG_WRITTEN_FLAG_CAPACITY___64">
+            <a
+              class="permalink"
+              href="#_define_CONFIG_WRITTEN_FLAG_CAPACITY___64"
+              >#define CONFIG_WRITTEN_FLAG_CAPACITY 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>config.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_CONFIG_QUESTION_BUFFER_SIZE___4096"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_CONFIG_QUESTION_BUFFER_SIZE___4096"
+              >#define OPTIONS_CONFIG_QUESTION_BUFFER_SIZE 4096</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>8</b> of file <b>config.c</b>.</p>
+          <p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

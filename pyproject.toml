@@ -35,7 +35,10 @@ ignore = ["E402", "E701", "E702"]
 
 [tool.ty.environment]
 python-platform = "all"
-extra-paths = ["deps/ascii-chat-deps/gotel/c/testing/python", "deps/ascii-chat-deps/gotel/python/src"]
+extra-paths = [
+  "deps/ascii-chat-deps/gotel/c/testing/python",
+  "deps/ascii-chat-deps/gotel/python/src",
+]
 
 [tool.ty.rules]
 # Optional platform and audio imports resolve only on hosts with those extras.

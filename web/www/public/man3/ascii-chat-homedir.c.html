@@ -1,91 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>homedir.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">homedir.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">homedir.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">homedir.c - Temporary GPG homedir management implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>gpg_homedir</b>
-  <br/>
-  Internal structure for temporary GPG homedir.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>gpg_homedir_t</b> * <b>gpg_homedir_create</b> (void)
-  <br/>
-  Create a temporary GPG homedir for isolated key operations. const char *
-    <b>gpg_homedir_path</b> (const <b>gpg_homedir_t</b> *homedir)
-  <br/>
-  Get the homedir path for use in GPG commands. void <b>gpg_homedir_destroy</b>
-    (<b>gpg_homedir_t</b> *homedir)
-  <br/>
-  Destroy a temporary GPG homedir and clean up all files.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Temporary GPG homedir management implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>homedir.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>gpg_homedir_t</b> * gpg_homedir_create (void )</h2>
-<p class="Pp">Create a temporary GPG homedir for isolated key operations.
-    Creates a new temporary directory configured for GPG use. The directory is
-    isolated from the user's main GPG keyring.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to homedir handle on success, NULL on failure
-  Caller must destroy with <b>gpg_homedir_destroy()</b></div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The directory is created in the system temp location
-  (TMPDIR, /tmp, etc.)</div>
-<p class="Pp">Definition at line <b>22</b> of file <b>homedir.c</b>.</p>
-<pre>22                                         {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>homedir.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">homedir.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">homedir.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          homedir.c - Temporary GPG homedir management implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>gpg_homedir</b>
+            <br />
+            Internal structure for temporary GPG homedir.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>gpg_homedir_t</b> * <b>gpg_homedir_create</b> (void)
+            <br />
+            Create a temporary GPG homedir for isolated key operations. const
+            char *
+            <b>gpg_homedir_path</b> (const <b>gpg_homedir_t</b> *homedir)
+            <br />
+            Get the homedir path for use in GPG commands. void
+            <b>gpg_homedir_destroy</b> (<b>gpg_homedir_t</b>
+            *homedir)
+            <br />
+            Destroy a temporary GPG homedir and clean up all files.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Temporary GPG homedir management implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>homedir.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>gpg_homedir_t</b> * gpg_homedir_create (void )</h2>
+          <p class="Pp">
+            Create a temporary GPG homedir for isolated key operations. Creates
+            a new temporary directory configured for GPG use. The directory is
+            isolated from the user's main GPG keyring.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to homedir handle on success, NULL on failure Caller must
+            destroy with
+            <b>gpg_homedir_destroy()</b>
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The directory is created in the system temp location (TMPDIR, /tmp,
+            etc.)
+          </div>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>homedir.c</b>.
+          </p>
+          <pre>
+22                                         {
 23   gpg_homedir_t *homedir = SAFE_MALLOC(sizeof(gpg_homedir_t), gpg_homedir_t *);
 24   if (!homedir) {
 25     log_error(&quot;Failed to allocate memory for GPG homedir handle&quot;);
@@ -110,26 +165,37 @@
 44   log_debug(&quot;Created temporary GPG homedir: %s&quot;, homedir-&gt;path);
 45   return homedir;
 46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>gpg_homedir_create()</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>log_warn</b>, <b>platform_chmod()</b>,
-    <b>platform_mkdtemp()</b>, <b>platform_rmdir_recursive()</b>,
-    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>gpg_homedir_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_gpg_homedir_destroy_("><a class="permalink" href="#void_gpg_homedir_destroy_(">void
-  gpg_homedir_destroy (<b>gpg_homedir_t</b> * homedir)</a></h2>
-<p class="Pp">Destroy a temporary GPG homedir and clean up all files.
-    Recursively deletes the temporary directory and all its contents. Safe to
-    call on NULL pointer (no-op).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>homedir</i> Handle from <b>gpg_homedir_create()</b>
-  (can be NULL)</div>
-<p class="Pp">Definition at line <b>55</b> of file <b>homedir.c</b>.</p>
-<pre>55                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>gpg_homedir_create()</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_warn</b>, <b>platform_chmod()</b>,
+            <b>platform_mkdtemp()</b>, <b>platform_rmdir_recursive()</b>,
+            <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">Referenced by <b>gpg_homedir_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_gpg_homedir_destroy_(">
+            <a class="permalink" href="#void_gpg_homedir_destroy_("
+              >void gpg_homedir_destroy (<b>gpg_homedir_t</b> * homedir)</a
+            >
+          </h2>
+          <p class="Pp">
+            Destroy a temporary GPG homedir and clean up all files. Recursively
+            deletes the temporary directory and all its contents. Safe to call
+            on NULL pointer (no-op).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>homedir</i> Handle from <b>gpg_homedir_create()</b> (can be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>homedir.c</b>.
+          </p>
+          <pre>
+55                                                  {
 56   if (!homedir) {
 57     return;
 58   }
@@ -143,50 +209,65 @@
 66
 67   SAFE_FREE(homedir);
 68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>gpg_homedir_destroy()</b>, <b>log_debug</b>,
-    <b>log_warn</b>, <b>platform_rmdir_recursive()</b>, and
-  <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>gpg_homedir_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_gpg_homedir_path_(const_"><a class="permalink" href="#const_char_*_gpg_homedir_path_(const_">const
-  char * gpg_homedir_path (const <b>gpg_homedir_t</b> * homedir)</a></h2>
-<p class="Pp">Get the homedir path for use in GPG commands. Returns the
-    filesystem path of the temporary homedir. This path should be used with
-    gpg's --homedir flag.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>homedir</i> Handle from
-  <b>gpg_homedir_create()</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to path string (valid until
-  <b>gpg_homedir_destroy()</b> is called) Returns NULL if homedir is
-  invalid</div>
-<p class="Pp">Definition at line <b>48</b> of file <b>homedir.c</b>.</p>
-<pre>48                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>gpg_homedir_destroy()</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>platform_rmdir_recursive()</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>gpg_homedir_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_gpg_homedir_path_(const_">
+            <a class="permalink" href="#const_char_*_gpg_homedir_path_(const_"
+              >const char * gpg_homedir_path (const <b>gpg_homedir_t</b> *
+              homedir)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get the homedir path for use in GPG commands. Returns the filesystem
+            path of the temporary homedir. This path should be used with gpg's
+            --homedir flag.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>homedir</i> Handle from <b>gpg_homedir_create()</b>
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to path string (valid until <b>gpg_homedir_destroy()</b> is
+            called) Returns NULL if homedir is invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>homedir.c</b>.
+          </p>
+          <pre>
+48                                                            {
 49   if (!homedir) {
 50     return NULL;
 51   }
 52   return homedir-&gt;path;
 53 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>gpg_homedir_path()</b>.</p>
-<p class="Pp">Referenced by <b>gpg_homedir_path()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>gpg_homedir_path()</b>.</p>
+          <p class="Pp">Referenced by <b>gpg_homedir_path()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

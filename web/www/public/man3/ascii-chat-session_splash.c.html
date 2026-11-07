@@ -1,101 +1,190 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_splash.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_splash.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_splash.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_splash.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>
-    128
-  <br/>
-  #define <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b> 512
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>ui_session_splash_render</b> (<b>frame_buffer_t</b> *buf,
-    <b>terminal_size_t</b> term_size, void *user_data)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE___512">#define
-  TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>session_splash.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE___512">#define
-  TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>session_splash.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE___1024">#define
-  TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>session_splash.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE___128">#define
-  TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>session_splash.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_splash_render_("><a class="permalink" href="#void_ui_session_splash_render_(">void
-  ui_session_splash_render (<b>frame_buffer_t</b> * buf, <b>terminal_size_t</b>
-  term_size, void * user_data)</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>session_splash.c</b>.</p>
-<pre>19                                                                                                {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_splash.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_splash.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_splash.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_splash.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>
+            128
+            <br />
+            #define <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_session_splash_render</b> (<b>frame_buffer_t</b> *buf,
+            <b>terminal_size_t</b> term_size, void *user_data)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE___512"
+              >#define TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>session_splash.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE___512"
+              >#define TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>session_splash.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE___1024"
+              >#define TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>session_splash.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE___128"
+              >#define TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE
+              128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>session_splash.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_splash_render_(">
+            <a class="permalink" href="#void_ui_session_splash_render_("
+              >void ui_session_splash_render (<b>frame_buffer_t</b> * buf,
+              <b>terminal_size_t</b> term_size, void * user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>session_splash.c</b>.
+          </p>
+          <pre>
+19                                                                                                {
 20   const ui_splash_view_t *ctx = (const ui_splash_view_t *)user_data;
 21   if (!ctx) {
 22     return;
@@ -207,38 +296,45 @@
 128   // Bottom border
 129   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx-&gt;use_colors);
 130 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_splash_view_t::animation</b>,
-    <b>ASCII_CHAT_VERSION_STRING</b>, <b>colored_string()</b>,
-    <b>terminal_size_t::cols</b>, <b>ui_splash_view_t::connection_target</b>,
-    <b>ui_splash_view_t::discovery</b>, <b>display_width()</b>,
-    <b>ui_discovery_view_t::enabled</b>, <b>frame_buffer_printf()</b>,
-    <b>frame_buffer_render_divider()</b>, <b>invitation_render()</b>,
-    <b>invitation_render_logo()</b>, <b>ui_discovery_view_t::joining</b>,
-    <b>LOG_COLOR_WARN</b>, <b>animation_sample_t::seconds</b>,
-    <b>ui_discovery_view_t::session_string</b>,
-    <b>terminal_should_use_utf8()</b>,
-    <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>,
-    <b>ui_session_splash_render()</b>, <b>update_banner_is_checking()</b>,
-    <b>ui_splash_view_t::update_notification</b>, and
-    <b>ui_splash_view_t::use_colors</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_splash_view_t::animation</b>,
+            <b>ASCII_CHAT_VERSION_STRING</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>,
+            <b>ui_splash_view_t::connection_target</b>,
+            <b>ui_splash_view_t::discovery</b>, <b>display_width()</b>,
+            <b>ui_discovery_view_t::enabled</b>, <b>frame_buffer_printf()</b>,
+            <b>frame_buffer_render_divider()</b>, <b>invitation_render()</b>,
+            <b>invitation_render_logo()</b>,
+            <b>ui_discovery_view_t::joining</b>, <b>LOG_COLOR_WARN</b>,
+            <b>animation_sample_t::seconds</b>,
+            <b>ui_discovery_view_t::session_string</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>,
+            <b>ui_session_splash_render()</b>,
+            <b>update_banner_is_checking()</b>,
+            <b>ui_splash_view_t::update_notification</b>, and
+            <b>ui_splash_view_t::use_colors</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

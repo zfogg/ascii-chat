@@ -1,145 +1,241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>transport.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">transport.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">transport.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">transport.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>webrtc_recv_msg_t</b>
-  <br/>
-  Receive queue element (variable-length message). struct
-    <b>webrtc_transport_data_t</b>
-  <br/>
-  WebRTC transport implementation data.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>WEBRTC_RECV_QUEUE_SIZE</b> 512
-  <br/>
-  Maximum receive queue size (messages buffered before recv()). #define
-    <b>WEBRTC_RECV_QUEUE_HIGH_WATER</b> 12
-  <br/>
-  #define <b>WEBRTC_SEND_VIDEO_HIGH_WATER</b> (256 * 1024)
-  <br/>
-  #define <b>WEBRTC_DISCONNECTED_GRACE_NS</b> (30 * <b>NS_PER_SEC_INT</b>)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>acip_security_t</b> * <b>acip_webrtc_transport_security</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_webrtc_transport_create</b>
-    (<b>webrtc_peer_connection_t</b> *peer_conn, <b>webrtc_data_channel_t</b>
-    *data_channel, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_webrtc_transport_create_secure</b>
-    (<b>webrtc_peer_connection_t</b> *peer_conn, <b>webrtc_data_channel_t</b>
-    *data_channel, <b>acip_security_t</b> *security,
-    void(*on_ready)(<b>acip_transport_t</b> *, void *), void *user_data)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_DISCONNECTED_GRACE_NS___(30_*_"><a class="permalink" href="#_define_WEBRTC_DISCONNECTED_GRACE_NS___(30_*_">#define
-  WEBRTC_DISCONNECTED_GRACE_NS (30 * <b>NS_PER_SEC_INT</b>)</a></h2>
-<p class="Pp">Definition at line <b>66</b> of file
-  <b>webrtc/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_RECV_QUEUE_HIGH_WATER___12"><a class="permalink" href="#_define_WEBRTC_RECV_QUEUE_HIGH_WATER___12">#define
-  WEBRTC_RECV_QUEUE_HIGH_WATER 12</a></h2>
-<p class="Pp">Definition at line <b>57</b> of file
-  <b>webrtc/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_RECV_QUEUE_SIZE___512"><a class="permalink" href="#_define_WEBRTC_RECV_QUEUE_SIZE___512">#define
-  WEBRTC_RECV_QUEUE_SIZE 512</a></h2>
-<p class="Pp">Maximum receive queue size (messages buffered before recv()).
-    Power of 2 for ringbuffer optimization. Completed ACIP packets are queued
-    here. On overflow, retain control packets and recent media so the connection
-    can recover.</p>
-<p class="Pp">Definition at line <b>54</b> of file
-  <b>webrtc/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_SEND_VIDEO_HIGH_WATER___(256_*_1024)"><a class="permalink" href="#_define_WEBRTC_SEND_VIDEO_HIGH_WATER___(256_*_1024)">#define
-  WEBRTC_SEND_VIDEO_HIGH_WATER (256 * 1024)</a></h2>
-<p class="Pp">Definition at line <b>62</b> of file
-  <b>webrtc/transport.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_webrtc_transport_create
-  (<b>webrtc_peer_connection_t</b> * peer_conn, <b>webrtc_data_channel_t</b> *
-  data_channel, <b>crypto_context_t</b> * crypto_ctx)</h2>
-<p class="Pp">Definition at line <b>910</b> of file
-  <b>webrtc/transport.c</b>.</p>
-<pre>911                                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>transport.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">transport.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">transport.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">transport.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>webrtc_recv_msg_t</b>
+            <br />
+            Receive queue element (variable-length message). struct
+            <b>webrtc_transport_data_t</b>
+            <br />
+            WebRTC transport implementation data.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>WEBRTC_RECV_QUEUE_SIZE</b> 512
+            <br />
+            Maximum receive queue size (messages buffered before recv()).
+            #define
+            <b>WEBRTC_RECV_QUEUE_HIGH_WATER</b> 12
+            <br />
+            #define <b>WEBRTC_SEND_VIDEO_HIGH_WATER</b> (256 * 1024)
+            <br />
+            #define <b>WEBRTC_DISCONNECTED_GRACE_NS</b> (30 *
+            <b>NS_PER_SEC_INT</b>)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>acip_security_t</b> * <b>acip_webrtc_transport_security</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_webrtc_transport_create</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *peer_conn, <b>webrtc_data_channel_t</b> *data_channel,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            <b>acip_transport_t</b> *
+            <b>acip_webrtc_transport_create_secure</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *peer_conn, <b>webrtc_data_channel_t</b> *data_channel,
+            <b>acip_security_t</b> *security, void(*on_ready)(<b
+              >acip_transport_t</b
+            >
+            *, void *), void *user_data)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_DISCONNECTED_GRACE_NS___(30_*_">
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_DISCONNECTED_GRACE_NS___(30_*_"
+              >#define WEBRTC_DISCONNECTED_GRACE_NS (30 *
+              <b>NS_PER_SEC_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>webrtc/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_RECV_QUEUE_HIGH_WATER___12">
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_RECV_QUEUE_HIGH_WATER___12"
+              >#define WEBRTC_RECV_QUEUE_HIGH_WATER 12</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>webrtc/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_RECV_QUEUE_SIZE___512">
+            <a class="permalink" href="#_define_WEBRTC_RECV_QUEUE_SIZE___512"
+              >#define WEBRTC_RECV_QUEUE_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum receive queue size (messages buffered before recv()). Power
+            of 2 for ringbuffer optimization. Completed ACIP packets are queued
+            here. On overflow, retain control packets and recent media so the
+            connection can recover.
+          </p>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>webrtc/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_WEBRTC_SEND_VIDEO_HIGH_WATER___(256_*_1024)"
+          >
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_SEND_VIDEO_HIGH_WATER___(256_*_1024)"
+              >#define WEBRTC_SEND_VIDEO_HIGH_WATER (256 * 1024)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>webrtc/transport.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_webrtc_transport_create (<b
+              >webrtc_peer_connection_t</b
+            >
+            * peer_conn, <b>webrtc_data_channel_t</b> * data_channel,
+            <b>crypto_context_t</b> * crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>910</b> of file <b>webrtc/transport.c</b>.
+          </p>
+          <pre>
+911                                                                              {
 912   return webrtc_transport_create(peer_conn, data_channel, crypto_ctx, NULL, NULL, NULL);
 913 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_transport_create()</b>.</p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_webrtc_transport_create_secure
-  (struct <b>webrtc_peer_connection</b> * peer, struct
-  <b>webrtc_data_channel</b> * channel, <b>acip_security_t</b> * security,
-  void(* on_ready )(<b>acip_transport_t</b> *, void *), void * user_data)</h2>
-<p class="Pp">Transfer security ownership on success. Ready fires only after
-    negotiation.</p>
-<p class="Pp">Definition at line <b>915</b> of file
-  <b>webrtc/transport.c</b>.</p>
-<pre>917                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>acip_webrtc_transport_create()</b>.</p>
+          <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_webrtc_transport_create_secure
+            (struct <b>webrtc_peer_connection</b> * peer, struct
+            <b>webrtc_data_channel</b> * channel, <b>acip_security_t</b> *
+            security, void(* on_ready )(<b>acip_transport_t</b> *, void *), void
+            * user_data)
+          </h2>
+          <p class="Pp">
+            Transfer security ownership on success. Ready fires only after
+            negotiation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>915</b> of file <b>webrtc/transport.c</b>.
+          </p>
+          <pre>
+917                                                                                                                      {
 918   if (!security) {
 919     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing WebRTC security state&quot;);
 920     return NULL;
@@ -147,42 +243,61 @@
 922   return webrtc_transport_create(peer_conn, data_channel, &amp;security-&gt;handshake.crypto_ctx, security, on_ready,
 923                                  user_data);
 924 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_transport_create_secure()</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acip_security::handshake</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create_secure()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_security_t</b> * acip_webrtc_transport_security
-  (<b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Borrow security already owned by an authenticated peer
-  transport.</p>
-<p class="Pp">Definition at line <b>771</b> of file
-  <b>webrtc/transport.c</b>.</p>
-<pre>771                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_webrtc_transport_create_secure()</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>acip_security::handshake</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_webrtc_transport_create_secure()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_security_t</b> * acip_webrtc_transport_security (<b
+              >acip_transport_t</b
+            >
+            * transport)
+          </h2>
+          <p class="Pp">
+            Borrow security already owned by an authenticated peer transport.
+          </p>
+          <p class="Pp">
+            Definition at line <b>771</b> of file <b>webrtc/transport.c</b>.
+          </p>
+          <pre>
+771                                                                              {
 772   if (!transport || transport-&gt;methods != &amp;webrtc_methods || !transport-&gt;impl_data)
 773     return NULL;
 774   return ((webrtc_transport_data_t *)transport-&gt;impl_data)-&gt;security;
 775 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_transport_security()</b>,
-    <b>acip_transport::impl_data</b>, and <b>acip_transport::methods</b>.</p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_security()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_webrtc_transport_security()</b>,
+            <b>acip_transport::impl_data</b>, and
+            <b>acip_transport::methods</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_webrtc_transport_security()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

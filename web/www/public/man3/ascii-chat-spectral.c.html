@@ -1,106 +1,168 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>spectral.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">spectral.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">spectral.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">spectral.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>spectral_processor</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SPECTRAL_MAX_SIZE</b> 2048
-  <br/>
-  #define <b>SPECTRAL_MAX_BINS</b> (<b>SPECTRAL_MAX_SIZE</b> / 2 + 1)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>spectral_config_t</b> <b>spectral_default_config</b> (int
-    sample_rate)
-  <br/>
-  void <b>spectral_reset</b> (<b>spectral_processor_t</b> *p)
-  <br/>
-  <b>asciichat_error_t</b> <b>spectral_create</b> (const
-    <b>spectral_config_t</b> *c, <b>spectral_processor_t</b> **out)
-  <br/>
-  void <b>spectral_destroy</b> (<b>spectral_processor_t</b> *p)
-  <br/>
-  <b>asciichat_error_t</b> <b>spectral_process</b> (<b>spectral_processor_t</b>
-    *p, const float *input, float *output, size_t count)
-  <br/>
-  const float * <b>spectral_spectrum</b> (const <b>spectral_processor_t</b> *p,
-    size_t *bins)
-  <br/>
-  float <b>spectral_pitch_hz</b> (const <b>spectral_processor_t</b> *p)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_SPECTRAL_MAX_BINS___("><a class="permalink" href="#_define_SPECTRAL_MAX_BINS___(">#define
-  SPECTRAL_MAX_BINS (<b>SPECTRAL_MAX_SIZE</b> / 2 + 1)</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>spectral.c</b>.</p>
-<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SPECTRAL_MAX_SIZE___2048"><a class="permalink" href="#_define_SPECTRAL_MAX_SIZE___2048">#define
-  SPECTRAL_MAX_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>spectral.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> spectral_create (const
-  <b>spectral_config_t</b> * c, <b>spectral_processor_t</b> ** out)</h2>
-<p class="Pp">Definition at line <b>62</b> of file <b>spectral.c</b>.</p>
-<pre>62                                                                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>spectral.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">spectral.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">spectral.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">spectral.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>spectral_processor</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SPECTRAL_MAX_SIZE</b> 2048
+            <br />
+            #define <b>SPECTRAL_MAX_BINS</b> (<b>SPECTRAL_MAX_SIZE</b> / 2 + 1)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>spectral_config_t</b> <b>spectral_default_config</b> (int
+            sample_rate)
+            <br />
+            void <b>spectral_reset</b> (<b>spectral_processor_t</b> *p)
+            <br />
+            <b>asciichat_error_t</b> <b>spectral_create</b> (const
+            <b>spectral_config_t</b> *c, <b>spectral_processor_t</b> **out)
+            <br />
+            void <b>spectral_destroy</b> (<b>spectral_processor_t</b> *p)
+            <br />
+            <b>asciichat_error_t</b> <b>spectral_process</b> (<b
+              >spectral_processor_t</b
+            >
+            *p, const float *input, float *output, size_t count)
+            <br />
+            const float * <b>spectral_spectrum</b> (const
+            <b>spectral_processor_t</b> *p, size_t *bins)
+            <br />
+            float <b>spectral_pitch_hz</b> (const
+            <b>spectral_processor_t</b> *p)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SPECTRAL_MAX_BINS___(">
+            <a class="permalink" href="#_define_SPECTRAL_MAX_BINS___("
+              >#define SPECTRAL_MAX_BINS (<b>SPECTRAL_MAX_SIZE</b> / 2 + 1)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>spectral.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SPECTRAL_MAX_SIZE___2048">
+            <a class="permalink" href="#_define_SPECTRAL_MAX_SIZE___2048"
+              >#define SPECTRAL_MAX_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>spectral.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> spectral_create (const
+            <b>spectral_config_t</b> * c, <b>spectral_processor_t</b> ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+62                                                                                           {
 63   if (!out)
 64     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing spectral output pointer&quot;);
 65   *out = NULL;
@@ -134,26 +196,38 @@
 93   *out = p;
 94   return ASCIICHAT_OK;
 95 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>spectral_processor::config</b>,
-    <b>spectral_config_t::crossovers</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>spectral_config_t::fft_size</b>,
-    <b>spectral_processor::forward</b>, <b>spectral_processor::frequency</b>,
-    <b>spectral_processor::inverse</b>, <b>spectral_config_t::ratios</b>,
-    <b>spectral_config_t::reduction_db</b>, <b>spectral_processor::restored</b>,
-    <b>SAFE_CALLOC</b>, <b>spectral_config_t::sample_rate</b>, <b>SET_ERRNO</b>,
-    <b>spectral_create()</b>, <b>spectral_destroy()</b>,
-    <b>spectral_reset()</b>, <b>spectral_config_t::thresholds_db</b>,
-    <b>spectral_processor::time</b>, and <b>spectral_processor::window</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>mixer_create_channels()</b>, and <b>spectral_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>spectral_config_t</b> spectral_default_config (int
-  sample_rate)</h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>spectral.c</b>.</p>
-<pre>30                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>spectral_processor::config</b>,
+            <b>spectral_config_t::crossovers</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>spectral_config_t::fft_size</b>,
+            <b>spectral_processor::forward</b>,
+            <b>spectral_processor::frequency</b>,
+            <b>spectral_processor::inverse</b>,
+            <b>spectral_config_t::ratios</b>,
+            <b>spectral_config_t::reduction_db</b>,
+            <b>spectral_processor::restored</b>, <b>SAFE_CALLOC</b>,
+            <b>spectral_config_t::sample_rate</b>, <b>SET_ERRNO</b>,
+            <b>spectral_create()</b>, <b>spectral_destroy()</b>,
+            <b>spectral_reset()</b>, <b>spectral_config_t::thresholds_db</b>,
+            <b>spectral_processor::time</b>, and
+            <b>spectral_processor::window</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>mixer_create_channels()</b>, and <b>spectral_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>spectral_config_t</b> spectral_default_config (int sample_rate)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+30                                                            {
 31   return (spectral_config_t){.sample_rate = sample_rate,
 32                              .fft_size = 1024,
 33                              .noise_gate = true,
@@ -162,17 +236,26 @@
 36                              .thresholds_db = {-18, -18, -18, -18},
 37                              .ratios = {2, 3, 3, 2}};
 38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>spectral_default_config()</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_default_config()</b>,
-    <b>mixer_create_channels()</b>, and <b>spectral_default_config()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_spectral_destroy_("><a class="permalink" href="#void_spectral_destroy_(">void
-  spectral_destroy (<b>spectral_processor_t</b> * p)</a></h2>
-<p class="Pp">Definition at line <b>97</b> of file <b>spectral.c</b>.</p>
-<pre>97                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>spectral_default_config()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_default_config()</b>,
+            <b>mixer_create_channels()</b>, and
+            <b>spectral_default_config()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_spectral_destroy_(">
+            <a class="permalink" href="#void_spectral_destroy_("
+              >void spectral_destroy (<b>spectral_processor_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+97                                                {
 98   if (!p)
 99     return;
 100   static_mutex_lock_named(&amp;planner_lock, &quot;fftw_planner&quot;);
@@ -183,38 +266,61 @@
 105   static_mutex_unlock(&amp;planner_lock);
 106   SAFE_FREE(p);
 107 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>spectral_processor::forward</b>,
-    <b>spectral_processor::inverse</b>, <b>SAFE_FREE</b>, and
-    <b>spectral_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>audio_processor_destroy()</b>, <b>mixer_destroy()</b>,
-    <b>spectral_create()</b>, and <b>spectral_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_spectral_pitch_hz_(const_"><a class="permalink" href="#float_spectral_pitch_hz_(const_">float
-  spectral_pitch_hz (const <b>spectral_processor_t</b> * processor)</a></h2>
-<p class="Pp">Latest input spectrum, normalized to sinusoidal peak amplitude;
-    owner thread only.</p>
-<p class="Pp">Definition at line <b>294</b> of file <b>spectral.c</b>.</p>
-<pre>294                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>spectral_processor::forward</b>,
+            <b>spectral_processor::inverse</b>, <b>SAFE_FREE</b>, and
+            <b>spectral_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_destroy()</b>, <b>mixer_destroy()</b>,
+            <b>spectral_create()</b>, and <b>spectral_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_spectral_pitch_hz_(const_">
+            <a class="permalink" href="#float_spectral_pitch_hz_(const_"
+              >float spectral_pitch_hz (const <b>spectral_processor_t</b> *
+              processor)</a
+            >
+          </h2>
+          <p class="Pp">
+            Latest input spectrum, normalized to sinusoidal peak amplitude;
+            owner thread only.
+          </p>
+          <p class="Pp">
+            Definition at line <b>294</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+294                                                        {
 295   return p ? p-&gt;pitch_hz : 0;
 296 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>spectral_processor::pitch_hz</b>, and
-    <b>spectral_pitch_hz()</b>.</p>
-<p class="Pp">Referenced by <b>spectral_pitch_hz()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> spectral_process
-  (<b>spectral_processor_t</b> * processor, const float * input, float * output,
-  size_t count)</h2>
-<p class="Pp">Arbitrary block sizes and in-place operation; no allocation or
-    locks.</p>
-<p class="Pp">Definition at line <b>272</b> of file <b>spectral.c</b>.</p>
-<pre>272                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>spectral_processor::pitch_hz</b>, and
+            <b>spectral_pitch_hz()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>spectral_pitch_hz()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> spectral_process (<b
+              >spectral_processor_t</b
+            >
+            * processor, const float * input, float * output, size_t count)
+          </h2>
+          <p class="Pp">
+            Arbitrary block sizes and in-place operation; no allocation or
+            locks.
+          </p>
+          <p class="Pp">
+            Definition at line <b>272</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+272                                                                                                              {
 273   if (!p || (!input &amp;&amp; count) || (!output &amp;&amp; count))
 274     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid spectral buffer&quot;);
 275   int n = p-&gt;config.fft_size, hop = n / 4;
@@ -229,21 +335,33 @@
 284   }
 285   return ASCIICHAT_OK;
 286 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>spectral_processor::config</b>,
-    <b>spectral_processor::cursor</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>spectral_config_t::fft_size</b>, <b>spectral_processor::input</b>,
-    <b>spectral_processor::pending</b>, <b>spectral_processor::ready</b>,
-    <b>SET_ERRNO</b>, and <b>spectral_process()</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>spectral_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_spectral_reset_("><a class="permalink" href="#void_spectral_reset_(">void
-  spectral_reset (<b>spectral_processor_t</b> * p)</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>spectral.c</b>.</p>
-<pre>40                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>spectral_processor::config</b>,
+            <b>spectral_processor::cursor</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>spectral_config_t::fft_size</b>,
+            <b>spectral_processor::input</b>,
+            <b>spectral_processor::pending</b>,
+            <b>spectral_processor::ready</b>, <b>SET_ERRNO</b>, and
+            <b>spectral_process()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>spectral_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_spectral_reset_(">
+            <a class="permalink" href="#void_spectral_reset_("
+              >void spectral_reset (<b>spectral_processor_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+40                                              {
 41   if (!p)
 42     return;
 43   memset(p-&gt;input, 0, sizeof(p-&gt;input));
@@ -264,51 +382,72 @@
 58   p-&gt;auto_gain = 1;
 59   p-&gt;frames = 0;
 60 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>spectral_processor::auto_gain</b>,
-    <b>spectral_processor::band_average</b>,
-    <b>spectral_processor::band_gain</b>, <b>spectral_processor::cursor</b>,
-    <b>spectral_processor::eq_gain</b>, <b>spectral_processor::frames</b>,
-    <b>spectral_processor::gains</b>, <b>spectral_processor::input</b>,
-    <b>spectral_processor::magnitude</b>, <b>spectral_processor::noise</b>,
-    <b>spectral_processor::overlap</b>, <b>spectral_processor::pending</b>,
-    <b>spectral_processor::pitch_hz</b>,
-    <b>spectral_processor::previous_phase</b>, <b>spectral_processor::ready</b>,
-    <b>spectral_processor::smoothed</b>, <b>SPECTRAL_MAX_BINS</b>,
-    <b>spectral_reset()</b>, and <b>spectral_processor::synthesis_phase</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_reset()</b>,
-    <b>mixer_remove_source()</b>, <b>spectral_create()</b>, and
-    <b>spectral_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_float_*_spectral_spectrum_(const_"><a class="permalink" href="#const_float_*_spectral_spectrum_(const_">const
-  float * spectral_spectrum (const <b>spectral_processor_t</b> * p, size_t *
-  bins)</a></h2>
-<p class="Pp">Definition at line <b>288</b> of file <b>spectral.c</b>.</p>
-<pre>288                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>spectral_processor::auto_gain</b>,
+            <b>spectral_processor::band_average</b>,
+            <b>spectral_processor::band_gain</b>,
+            <b>spectral_processor::cursor</b>,
+            <b>spectral_processor::eq_gain</b>,
+            <b>spectral_processor::frames</b>, <b>spectral_processor::gains</b>,
+            <b>spectral_processor::input</b>,
+            <b>spectral_processor::magnitude</b>,
+            <b>spectral_processor::noise</b>,
+            <b>spectral_processor::overlap</b>,
+            <b>spectral_processor::pending</b>,
+            <b>spectral_processor::pitch_hz</b>,
+            <b>spectral_processor::previous_phase</b>,
+            <b>spectral_processor::ready</b>,
+            <b>spectral_processor::smoothed</b>, <b>SPECTRAL_MAX_BINS</b>,
+            <b>spectral_reset()</b>, and
+            <b>spectral_processor::synthesis_phase</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_reset()</b>,
+            <b>mixer_remove_source()</b>, <b>spectral_create()</b>, and
+            <b>spectral_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_float_*_spectral_spectrum_(const_">
+            <a class="permalink" href="#const_float_*_spectral_spectrum_(const_"
+              >const float * spectral_spectrum (const
+              <b>spectral_processor_t</b> * p, size_t * bins)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>288</b> of file <b>spectral.c</b>.
+          </p>
+          <pre>
+288                                                                             {
 289   if (bins)
 290     *bins = p ? (size_t)p-&gt;config.fft_size / 2 + 1 : 0;
 291   return p ? p-&gt;magnitude : NULL;
 292 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>spectral_processor::config</b>,
-    <b>spectral_config_t::fft_size</b>, <b>spectral_processor::magnitude</b>,
-    and <b>spectral_spectrum()</b>.</p>
-<p class="Pp">Referenced by <b>spectral_spectrum()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>spectral_processor::config</b>,
+            <b>spectral_config_t::fft_size</b>,
+            <b>spectral_processor::magnitude</b>, and
+            <b>spectral_spectrum()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>spectral_spectrum()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

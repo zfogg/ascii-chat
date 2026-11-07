@@ -1,59 +1,104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_input.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_input.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_input.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_input.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>ui_session_action_t</b> <b>ui_session_key</b>
-    (<b>keyboard_key_t</b> key, double *saved_volume)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>ui_session_action_t</b> ui_session_key (<b>keyboard_key_t</b>
-  key, double * saved_volume)</h2>
-<p class="Pp">Mutates shared options for settings keys; returns an action for
-    the host.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>session_input.c</b>.</p>
-<pre>105                                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_input.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_input.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_input.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_input.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ui_session_action_t</b> <b>ui_session_key</b> (<b
+              >keyboard_key_t</b
+            >
+            key, double *saved_volume)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_session_action_t</b> ui_session_key (<b>keyboard_key_t</b>
+            key, double * saved_volume)
+          </h2>
+          <p class="Pp">
+            Mutates shared options for settings keys; returns an action for the
+            host.
+          </p>
+          <p class="Pp">
+            Definition at line <b>105</b> of file <b>session_input.c</b>.
+          </p>
+          <pre>
+105                                                                              {
 106   switch ((int)key) {
 107   case KEY_QUESTION:
 108     return UI_ACTION_HELP;
@@ -223,35 +268,42 @@
 272     return UI_ACTION_NONE;
 273   }
 274 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>bool</b>,
-    <b>COLOR_FILTER_COUNT</b>, <b>GET_OPTION</b>, <b>KEY_1</b>, <b>KEY_2</b>,
-    <b>KEY_3</b>, <b>KEY_BACKTICK</b>, <b>KEY_C</b>, <b>KEY_DOWN</b>,
-    <b>KEY_ESCAPE</b>, <b>KEY_F</b>, <b>KEY_LEFT</b>, <b>KEY_M</b>,
-    <b>KEY_MINUS</b>, <b>KEY_QUESTION</b>, <b>KEY_R</b>, <b>KEY_RIGHT</b>,
-    <b>KEY_SPACE</b>, <b>KEY_UP</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>options_adjust()</b>, <b>options_cycle()</b>, <b>options_set_int()</b>,
-    <b>options_toggle()</b>, <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_DEBUG</b>,
-    <b>UI_ACTION_HELP</b>, <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_NONE</b>,
-    <b>UI_ACTION_PAUSE</b>, <b>UI_ACTION_SEEK_BACK</b>,
-    <b>UI_ACTION_SEEK_FORWARD</b>, <b>UI_ACTION_SETTINGS</b>,
-    <b>UI_ACTION_TOGGLE_MEDIA</b>, <b>UI_ACTION_VOLUME</b>, and
-    <b>ui_session_key()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_input()</b>, and
-    <b>ui_session_key()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>bool</b>,
+            <b>COLOR_FILTER_COUNT</b>, <b>GET_OPTION</b>, <b>KEY_1</b>,
+            <b>KEY_2</b>, <b>KEY_3</b>, <b>KEY_BACKTICK</b>, <b>KEY_C</b>,
+            <b>KEY_DOWN</b>, <b>KEY_ESCAPE</b>, <b>KEY_F</b>, <b>KEY_LEFT</b>,
+            <b>KEY_M</b>, <b>KEY_MINUS</b>, <b>KEY_QUESTION</b>, <b>KEY_R</b>,
+            <b>KEY_RIGHT</b>, <b>KEY_SPACE</b>, <b>KEY_UP</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>options_adjust()</b>, <b>options_cycle()</b>,
+            <b>options_set_int()</b>, <b>options_toggle()</b>,
+            <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_DEBUG</b>,
+            <b>UI_ACTION_HELP</b>, <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_NONE</b>,
+            <b>UI_ACTION_PAUSE</b>, <b>UI_ACTION_SEEK_BACK</b>,
+            <b>UI_ACTION_SEEK_FORWARD</b>, <b>UI_ACTION_SETTINGS</b>,
+            <b>UI_ACTION_TOGGLE_MEDIA</b>, <b>UI_ACTION_VOLUME</b>, and
+            <b>ui_session_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_input()</b>, and
+            <b>ui_session_key()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

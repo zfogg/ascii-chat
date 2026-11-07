@@ -1,64 +1,107 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>protocol.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">protocol.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">protocol.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">protocol.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">yyjson_mut_doc * <b>mcp_error</b> (yyjson_val *id, int code, const
-    char *message)
-  <br/>
-  void <b>mcp_jobs_reap</b> (<b>mcp_server_t</b> *s, <b>bool</b> all)
-  <br/>
-  yyjson_mut_doc * <b>mcp_dispatch</b> (<b>mcp_server_t</b> *s, yyjson_doc
-    *message, void *connection, const char *session_id, <b>bool</b> *pending)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="yyjson_mut_doc_*_mcp_dispatch_("><a class="permalink" href="#yyjson_mut_doc_*_mcp_dispatch_(">yyjson_mut_doc
-  * mcp_dispatch (<b>mcp_server_t</b> * s, yyjson_doc * message, void *
-  connection, const char * session_id, <b>bool</b> * pending)</a></h2>
-<p class="Pp">Definition at line <b>176</b> of file
-    <b>mcp-server/protocol.c</b>.</p>
-<pre>177                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>protocol.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">protocol.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">protocol.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">protocol.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            yyjson_mut_doc * <b>mcp_error</b> (yyjson_val *id, int code, const
+            char *message)
+            <br />
+            void <b>mcp_jobs_reap</b> (<b>mcp_server_t</b> *s, <b>bool</b> all)
+            <br />
+            yyjson_mut_doc * <b>mcp_dispatch</b> (<b>mcp_server_t</b> *s,
+            yyjson_doc *message, void *connection, const char *session_id,
+            <b>bool</b> *pending)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="yyjson_mut_doc_*_mcp_dispatch_(">
+            <a class="permalink" href="#yyjson_mut_doc_*_mcp_dispatch_("
+              >yyjson_mut_doc * mcp_dispatch (<b>mcp_server_t</b> * s,
+              yyjson_doc * message, void * connection, const char * session_id,
+              <b>bool</b> * pending)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>176</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+177                                             {
 178   ASCII_OTEL_SCOPE(MCP_REQUEST);
 179   ASCII_OTEL_ATTR_STRING(&quot;rpc.system&quot;, &quot;jsonrpc&quot;);
 180   ASCII_OTEL_ATTR_STRING(&quot;mcp.transport&quot;, s-&gt;policy.hosted ? &quot;http&quot; : &quot;stdio&quot;);
@@ -192,35 +235,51 @@
 308   *pending = true;
 309   return NULL;
 310 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>mcp_job::cancelled</b>, <b>mcp_job::connection</b>,
-    <b>asciichat_error_context_t::context_message</b>,
-    <b>mcp_render_result_t::error</b>, <b>HAS_ERRNO</b>,
-    <b>mcp_policy_t::hosted</b>, <b>mcp_server::initialized</b>,
-    <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
-    <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
-    <b>mcp_request_destroy()</b>, <b>mcp_request_parse()</b>,
-    <b>mcp_tools_schema()</b>, <b>MCP_WEBCAM</b>, <b>mcp_job::message</b>,
-    <b>mcp_server::policy</b>, <b>mcp_job::request</b>,
-    <b>mcp_policy_t::restricted</b>, <b>safe_snprintf()</b>,
-    <b>SAFE_STRNCPY</b>, <b>mcp_job::server</b>, <b>mcp_job::session_id</b>,
-    <b>mcp_job::started</b>, <b>stats_counter_add()</b>,
-    <b>STATS_COUNTER_MCP_REJECTED</b>, <b>STATS_COUNTER_MCP_REQUESTS</b>,
-    <b>stats_runtime_scope()</b>, <b>mcp_job::telemetry_parent</b>,
-    <b>mcp_job::thread</b>, and <b>mcp_job::tool</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-  <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"><a class="permalink" href="#yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)">yyjson_mut_doc
-  * mcp_error (yyjson_val * id, int code, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file
-  <b>mcp-server/protocol.c</b>.</p>
-<pre>18                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>mcp_job::connection</b>,
+            <b>asciichat_error_context_t::context_message</b>,
+            <b>mcp_render_result_t::error</b>, <b>HAS_ERRNO</b>,
+            <b>mcp_policy_t::hosted</b>, <b>mcp_server::initialized</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
+            <b>mcp_request_destroy()</b>, <b>mcp_request_parse()</b>,
+            <b>mcp_tools_schema()</b>, <b>MCP_WEBCAM</b>,
+            <b>mcp_job::message</b>, <b>mcp_server::policy</b>,
+            <b>mcp_job::request</b>, <b>mcp_policy_t::restricted</b>,
+            <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>, <b>mcp_job::server</b>,
+            <b>mcp_job::session_id</b>, <b>mcp_job::started</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_MCP_REJECTED</b>,
+            <b>STATS_COUNTER_MCP_REQUESTS</b>, <b>stats_runtime_scope()</b>,
+            <b>mcp_job::telemetry_parent</b>, <b>mcp_job::thread</b>, and
+            <b>mcp_job::tool</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"
+          >
+            <a
+              class="permalink"
+              href="#yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"
+              >yyjson_mut_doc * mcp_error (yyjson_val * id, int code, const char
+              * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+18                                                                          {
 19   ASCII_OTEL_SCOPE(MCP_PROTOCOL_ERROR);
 20   ASCII_OTEL_ATTR_INT(&quot;rpc.jsonrpc.error_code&quot;, code);
 21   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
@@ -232,20 +291,30 @@
 27   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), &quot;error&quot;, e);
 28   return d;
 29 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_ATTR_INT</b>, <b>ascii_otel_error()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>mcp_error()</b>, <b>stats_counter_add()</b>,
-    <b>STATS_COUNTER_MCP_REJECTED</b>, and <b>stats_runtime_scope()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_error()</b>, and
-    <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_jobs_reap_("><a class="permalink" href="#void_mcp_jobs_reap_(">void
-  mcp_jobs_reap (<b>mcp_server_t</b> * s, <b>bool</b> all)</a></h2>
-<p class="Pp">Definition at line <b>158</b> of file
-    <b>mcp-server/protocol.c</b>.</p>
-<pre>158                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>, <b>ascii_otel_error()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>mcp_error()</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_MCP_REJECTED</b>, and
+            <b>stats_runtime_scope()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_error()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_jobs_reap_(">
+            <a class="permalink" href="#void_mcp_jobs_reap_("
+              >void mcp_jobs_reap (<b>mcp_server_t</b> * s, <b>bool</b> all)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+158                                               {
 159   for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i) {
 160     mcp_job_t *j = &amp;s-&gt;jobs[i];
 161     if (!j-&gt;started || (!all &amp;&amp; (!atomic_load_bool(&amp;j-&gt;done) || (s-&gt;policy.hosted &amp;&amp; j-&gt;connection))))
@@ -257,29 +326,36 @@
 167     memset(j, 0, sizeof(*j));
 168   }
 169 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>mcp_job::connection</b>,
-    <b>mcp_job::done</b>, <b>mcp_policy_t::hosted</b>, <b>mcp_server::jobs</b>,
-    <b>mcp_policy_t::max_jobs</b>, <b>mcp_jobs_reap()</b>,
-    <b>mcp_job::message</b>, <b>mcp_server::policy</b>,
-    <b>mcp_job::response</b>, <b>mcp_job::started</b>, <b>mcp_job::thread</b>,
-    and <b>thread_join</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
-    <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
-    <b>mcp_stdio_run()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>mcp_job::connection</b>,
+            <b>mcp_job::done</b>, <b>mcp_policy_t::hosted</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_job::message</b>,
+            <b>mcp_server::policy</b>, <b>mcp_job::response</b>,
+            <b>mcp_job::started</b>, <b>mcp_job::thread</b>, and
+            <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

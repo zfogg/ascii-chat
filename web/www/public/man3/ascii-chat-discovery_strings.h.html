@@ -1,135 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>strings.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">strings.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">strings.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">strings.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SESSION_STRING_MAX_LEN</b> 38
-  <br/>
-  Maximum length of a session string (without null terminator). #define
-    <b>SESSION_STRING_BUFFER_SIZE</b> (<b>SESSION_STRING_MAX_LEN</b> + 1)
-  <br/>
-  Buffer size needed for session string storage (with null terminator) Used for
-    static character array declarations. #define <b>ACDS_MAX_UNIQUE_SESSIONS</b>
-    (2500LL * 5000LL * 5000LL)
-  <br/>
-  Maximum number of unique session strings that can be generated.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acds_string_generate</b> (char
-    *output, size_t output_size)
-  <br/>
-  Generate random session string. <b>asciichat_error_t</b>
-    <b>acds_string_init</b> (void)
-  <br/>
-  Initialize session string system with cached word validation. <b>bool</b>
-    <b>is_session_string</b> (const char *str)
-  <br/>
-  Check if a string is a valid session string. void <b>acds_strings_destroy</b>
-    (void)
-  <br/>
-  Cleanup function for session string cache Called by
-    <b>asciichat_shared_destroy()</b> during library cleanup. Safe to call
-    multiple times (idempotent).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)"><a class="permalink" href="#_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)">#define
-  ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)</a></h2>
-<p class="Pp">Maximum number of unique session strings that can be generated.
-    Calculated from wordlist entropy: 2500 adjectives &#x00D7; 5000 nouns
-    &#x00D7; 5000 nouns = 62,500,000,000 combinations</p>
-<p class="Pp">Definition at line <b>46</b> of file
-  <b>discovery/strings.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_STRING_BUFFER_SIZE___("><a class="permalink" href="#_define_SESSION_STRING_BUFFER_SIZE___(">#define
-  SESSION_STRING_BUFFER_SIZE (<b>SESSION_STRING_MAX_LEN</b> + 1)</a></h2>
-<p class="Pp">Buffer size needed for session string storage (with null
-    terminator) Used for static character array declarations.</p>
-<p class="Pp">Definition at line <b>38</b> of file
-  <b>discovery/strings.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_STRING_MAX_LEN___38"><a class="permalink" href="#_define_SESSION_STRING_MAX_LEN___38">#define
-  SESSION_STRING_MAX_LEN 38</a></h2>
-<p class="Pp">Maximum length of a session string (without null terminator).
-    Calculated from longest words:</p>
-<ul class="Bl-bullet">
-  <li>Longest adjective: 12 chars (e.g., &quot;affectionate&quot;)</li>
-  <li>Longest noun: 12 chars (e.g., &quot;acquaintance&quot;)</li>
-  <li>Format: adjective-noun-noun = 12 + 1 + 12 + 1 + 12 = 38 chars</li>
-</ul>
-<p class="Pp">Definition at line <b>32</b> of file
-  <b>discovery/strings.h</b>.</p>
-<p class="Pp">Referenced by <b>is_session_string()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_string_generate (char * output,
-  size_t output_size)</h2>
-<p class="Pp">Generate random session string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>output</i> Output buffer for session string
-<br/>
-<i>output_size</i> Size of output buffer (should be at least
-  SESSION_STRING_BUFFER_SIZE bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Generates strings in format: adjective-noun-noun Example:
-    &quot;affectionate-acquaintance-acquaintance&quot; (38 characters max)</p>
-<p class="Pp"></p>
-<p class="Pp">Use acds_string_get_max_length() to get the maximum possible
-    length. Entropy: 2500 adjectives * 5000 nouns * 5000 nouns = 62.5 billion
-    combinations</p>
-<p class="Pp">Definition at line <b>231</b> of file
-  <b>discovery/strings.c</b>.</p>
-<pre>231                                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>strings.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">strings.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">strings.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">strings.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SESSION_STRING_MAX_LEN</b> 38
+            <br />
+            Maximum length of a session string (without null terminator).
+            #define
+            <b>SESSION_STRING_BUFFER_SIZE</b> (<b>SESSION_STRING_MAX_LEN</b> +
+            1)
+            <br />
+            Buffer size needed for session string storage (with null terminator)
+            Used for static character array declarations. #define
+            <b>ACDS_MAX_UNIQUE_SESSIONS</b>
+            (2500LL * 5000LL * 5000LL)
+            <br />
+            Maximum number of unique session strings that can be generated.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acds_string_generate</b> (char *output,
+            size_t output_size)
+            <br />
+            Generate random session string. <b>asciichat_error_t</b>
+            <b>acds_string_init</b> (void)
+            <br />
+            Initialize session string system with cached word validation.
+            <b>bool</b> <b>is_session_string</b> (const char *str)
+            <br />
+            Check if a string is a valid session string. void
+            <b>acds_strings_destroy</b>
+            (void)
+            <br />
+            Cleanup function for session string cache Called by
+            <b>asciichat_shared_destroy()</b> during library cleanup. Safe to
+            call multiple times (idempotent).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)"
+              >#define ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum number of unique session strings that can be generated.
+            Calculated from wordlist entropy: 2500 adjectives &#x00D7; 5000
+            nouns &#x00D7; 5000 nouns = 62,500,000,000 combinations
+          </p>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>discovery/strings.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_STRING_BUFFER_SIZE___(">
+            <a class="permalink" href="#_define_SESSION_STRING_BUFFER_SIZE___("
+              >#define SESSION_STRING_BUFFER_SIZE (<b>SESSION_STRING_MAX_LEN</b>
+              + 1)</a
+            >
+          </h2>
+          <p class="Pp">
+            Buffer size needed for session string storage (with null terminator)
+            Used for static character array declarations.
+          </p>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>discovery/strings.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_STRING_MAX_LEN___38">
+            <a class="permalink" href="#_define_SESSION_STRING_MAX_LEN___38"
+              >#define SESSION_STRING_MAX_LEN 38</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum length of a session string (without null terminator).
+            Calculated from longest words:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Longest adjective: 12 chars (e.g., &quot;affectionate&quot;)
+            </li>
+            <li>Longest noun: 12 chars (e.g., &quot;acquaintance&quot;)</li>
+            <li>
+              Format: adjective-noun-noun = 12 + 1 + 12 + 1 + 12 = 38 chars
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>discovery/strings.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>is_session_string()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_string_generate (char * output, size_t
+            output_size)
+          </h2>
+          <p class="Pp">Generate random session string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>output</i> Output buffer for session string
+            <br />
+            <i>output_size</i> Size of output buffer (should be at least
+            SESSION_STRING_BUFFER_SIZE bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Generates strings in format: adjective-noun-noun Example:
+            &quot;affectionate-acquaintance-acquaintance&quot; (38 characters
+            max)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Use acds_string_get_max_length() to get the maximum possible length.
+            Entropy: 2500 adjectives * 5000 nouns * 5000 nouns = 62.5 billion
+            combinations
+          </p>
+          <p class="Pp">
+            Definition at line <b>231</b> of file <b>discovery/strings.c</b>.
+          </p>
+          <pre>
+231                                                                          {
 232   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
 233     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
 234                      (size_t)SESSION_STRING_BUFFER_SIZE);
@@ -157,47 +244,72 @@
 256   log_dev(&quot;Generated session string: %s&quot;, output);
 257   return ASCIICHAT_OK;
 258 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_string_generate()</b>, <b>adjectives</b>,
-    <b>adjectives_count</b>, <b>ASCIICHAT_OK</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_dev</b>, <b>nouns</b>,
-    <b>nouns_count</b>, <b>safe_snprintf()</b>,
-    <b>SESSION_STRING_BUFFER_SIZE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_string_generate()</b>, and
-    <b>options_preset_unified()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_string_init (void )</h2>
-<p class="Pp">Initialize session string system with cached word validation.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Initializes the random number generator and caches
-    adjectives/nouns in a hashtable for fast validation. Must be called before
-    <b>acds_string_generate()</b> and before any <b>is_session_string()</b>
-    validation calls.</p>
-<p class="Pp"></p>
-<p class="Pp">Uses libsodium's randombytes for cryptographically secure
-    randomness. Cleans up cached data on program exit via atexit() handler.</p>
-<p class="Pp">Definition at line <b>227</b> of file
-  <b>discovery/strings.c</b>.</p>
-<pre>227                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_string_generate()</b>, <b>adjectives</b>,
+            <b>adjectives_count</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_BUFFER_OVERFLOW</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_dev</b>, <b>nouns</b>, <b>nouns_count</b>,
+            <b>safe_snprintf()</b>, <b>SESSION_STRING_BUFFER_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_string_generate()</b>, and
+            <b>options_preset_unified()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> acds_string_init (void )</h2>
+          <p class="Pp">
+            Initialize session string system with cached word validation.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Initializes the random number generator and caches adjectives/nouns
+            in a hashtable for fast validation. Must be called before
+            <b>acds_string_generate()</b> and before any
+            <b>is_session_string()</b> validation calls.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Uses libsodium's randombytes for cryptographically secure
+            randomness. Cleans up cached data on program exit via atexit()
+            handler.
+          </p>
+          <p class="Pp">
+            Definition at line <b>227</b> of file <b>discovery/strings.c</b>.
+          </p>
+          <pre>
+227                                          {
 228   return ASCIICHAT_OK;
 229 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_string_init()</b>, and <b>ASCIICHAT_OK</b>.</p>
-<p class="Pp">Referenced by <b>acds_string_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_strings_destroy_(void_)"><a class="permalink" href="#void_acds_strings_destroy_(void_)">void
-  acds_strings_destroy (void )</a></h2>
-<p class="Pp">Cleanup function for session string cache Called by
-    <b>asciichat_shared_destroy()</b> during library cleanup. Safe to call
-    multiple times (idempotent).</p>
-<p class="Pp">Definition at line <b>58</b> of file
-  <b>discovery/strings.c</b>.</p>
-<pre>58                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_string_init()</b>, and <b>ASCIICHAT_OK</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_string_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_strings_destroy_(void_)">
+            <a class="permalink" href="#void_acds_strings_destroy_(void_)"
+              >void acds_strings_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Cleanup function for session string cache Called by
+            <b>asciichat_shared_destroy()</b> during library cleanup. Safe to
+            call multiple times (idempotent).
+          </p>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>discovery/strings.c</b>.
+          </p>
+          <pre>
+58                                 {
 59   // Shutdown if initialized
 60   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
 61     return; // Not initialized
@@ -223,38 +335,50 @@
 81
 82   log_dev(&quot;Session string word cache cleaned up&quot;);
 83 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_strings_destroy()</b>,
-    <b>lifecycle_shutdown()</b>, <b>log_dev</b>, <b>SAFE_FREE</b>, and
-    <b>word_cache_entry_t::word</b>.</p>
-<p class="Pp">Referenced by <b>acds_strings_destroy()</b>, and
-    <b>asciichat_shared_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> is_session_string (const char * str)</h2>
-<p class="Pp">Check if a string is a valid session string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to validate</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if valid session string (adjective-noun-noun
-  format), false otherwise</div>
-<p class="Pp">A valid session string must:</p>
-<ul class="Bl-bullet">
-  <li>Be in format: adjective-noun-noun</li>
-  <li>Contain exactly 3 words separated by exactly 2 hyphens</li>
-  <li>Have each word be a real adjective or noun from cached wordlists</li>
-  <li>Contain only lowercase ASCII letters and hyphens</li>
-  <li>Be 5-47 characters long</li>
-  <li>Not start or end with hyphen</li>
-  <li>Not contain consecutive hyphens</li>
-</ul>
-<p class="Pp">This function validates against the cached wordlists populated by
-    <b>acds_string_init()</b>. Non-session inputs return false without setting
-    an error. Internal failures set errno.</p>
-<p class="Pp">Definition at line <b>260</b> of file
-  <b>discovery/strings.c</b>.</p>
-<pre>260                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_strings_destroy()</b>,
+            <b>lifecycle_shutdown()</b>, <b>log_dev</b>, <b>SAFE_FREE</b>, and
+            <b>word_cache_entry_t::word</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_strings_destroy()</b>, and
+            <b>asciichat_shared_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> is_session_string (const char * str)</h2>
+          <p class="Pp">Check if a string is a valid session string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>str</i> String to validate</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if valid session string (adjective-noun-noun format), false
+            otherwise
+          </div>
+          <p class="Pp">A valid session string must:</p>
+          <ul class="Bl-bullet">
+            <li>Be in format: adjective-noun-noun</li>
+            <li>Contain exactly 3 words separated by exactly 2 hyphens</li>
+            <li>
+              Have each word be a real adjective or noun from cached wordlists
+            </li>
+            <li>Contain only lowercase ASCII letters and hyphens</li>
+            <li>Be 5-47 characters long</li>
+            <li>Not start or end with hyphen</li>
+            <li>Not contain consecutive hyphens</li>
+          </ul>
+          <p class="Pp">
+            This function validates against the cached wordlists populated by
+            <b>acds_string_init()</b>. Non-session inputs return false without
+            setting an error. Internal failures set errno.
+          </p>
+          <p class="Pp">
+            Definition at line <b>260</b> of file <b>discovery/strings.c</b>.
+          </p>
+          <pre>
+260                                         {
 261   if (!str || str[0] == '\0') {
 262     return false;
 263   }
@@ -356,28 +480,34 @@
 359   log_dev(&quot;Valid session string: %s&quot;, str);
 360   return true;
 361 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>DISCOVERY_STRINGS_ADJ_BUFFER_SIZE</b>,
-    <b>DISCOVERY_STRINGS_NOUN1_BUFFER_SIZE</b>,
-    <b>DISCOVERY_STRINGS_NOUN2_BUFFER_SIZE</b>, <b>ERROR_INTERNAL</b>,
-    <b>ERROR_MEMORY</b>, <b>is_session_string()</b>, <b>log_dev</b>,
-    <b>log_error</b>, <b>SESSION_STRING_MAX_LEN</b>, <b>SET_ERRNO</b>, and
-    <b>utf8_is_ascii_only()</b>.</p>
-<p class="Pp">Referenced by <b>discover_session_parallel()</b>,
-    <b>is_session_string()</b>, and <b>parse_client_address()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>DISCOVERY_STRINGS_ADJ_BUFFER_SIZE</b>,
+            <b>DISCOVERY_STRINGS_NOUN1_BUFFER_SIZE</b>,
+            <b>DISCOVERY_STRINGS_NOUN2_BUFFER_SIZE</b>, <b>ERROR_INTERNAL</b>,
+            <b>ERROR_MEMORY</b>, <b>is_session_string()</b>, <b>log_dev</b>,
+            <b>log_error</b>, <b>SESSION_STRING_MAX_LEN</b>, <b>SET_ERRNO</b>,
+            and <b>utf8_is_ascii_only()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discover_session_parallel()</b>,
+            <b>is_session_string()</b>, and <b>parse_client_address()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

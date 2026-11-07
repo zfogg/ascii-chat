@@ -1,137 +1,227 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>acip_outbound_stats_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">acip_outbound_stats_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">acip_outbound_stats_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">acip_outbound_stats_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include
-  &lt;include/ascii-chat/network/acip/backpressure.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">size_t <b>application_bytes</b>
-  <br/>
-  size_t <b>backend_bytes</b>
-  <br/>
-  size_t <b>backend_reserved_bytes</b>
-  <br/>
-  size_t <b>peak_bytes</b>
-  <br/>
-  <b>uint64_t</b> <b>accepted</b>
-  <br/>
-  <b>uint64_t</b> <b>submitted</b>
-  <br/>
-  <b>uint64_t</b> <b>dropped</b>
-  <br/>
-  <b>uint64_t</b> <b>congestion</b>
-  <br/>
-  <b>uint64_t</b> <b>recovery_frames</b>
-  <br/>
-  <b>uint64_t</b> <b>oldest_frame_age_ns</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>25</b> of file <b>backpressure.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::accepted</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>backpressure.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound_stats_t::application_bytes"><a class="permalink" href="#size_t_acip_outbound_stats_t::application_bytes">size_t
-  acip_outbound_stats_t::application_bytes</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound_stats_t::backend_bytes"><a class="permalink" href="#size_t_acip_outbound_stats_t::backend_bytes">size_t
-  acip_outbound_stats_t::backend_bytes</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound_stats_t::backend_reserved_bytes"><a class="permalink" href="#size_t_acip_outbound_stats_t::backend_reserved_bytes">size_t
-  acip_outbound_stats_t::backend_reserved_bytes</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::congestion</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>backpressure.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::dropped</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>backpressure.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::oldest_frame_age_ns</h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound_stats_t::peak_bytes"><a class="permalink" href="#size_t_acip_outbound_stats_t::peak_bytes">size_t
-  acip_outbound_stats_t::peak_bytes</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>backpressure.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::recovery_frames</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>backpressure.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::submitted</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>acip_outbound_stats_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">acip_outbound_stats_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">acip_outbound_stats_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">acip_outbound_stats_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/network/acip/backpressure.h&gt;
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>application_bytes</b>
+            <br />
+            size_t <b>backend_bytes</b>
+            <br />
+            size_t <b>backend_reserved_bytes</b>
+            <br />
+            size_t <b>peak_bytes</b>
+            <br />
+            <b>uint64_t</b> <b>accepted</b>
+            <br />
+            <b>uint64_t</b> <b>submitted</b>
+            <br />
+            <b>uint64_t</b> <b>dropped</b>
+            <br />
+            <b>uint64_t</b> <b>congestion</b>
+            <br />
+            <b>uint64_t</b> <b>recovery_frames</b>
+            <br />
+            <b>uint64_t</b> <b>oldest_frame_age_ns</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>25</b> of file <b>backpressure.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::accepted</h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound_stats_t::application_bytes">
+            <a
+              class="permalink"
+              href="#size_t_acip_outbound_stats_t::application_bytes"
+              >size_t acip_outbound_stats_t::application_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound_stats_t::backend_bytes">
+            <a
+              class="permalink"
+              href="#size_t_acip_outbound_stats_t::backend_bytes"
+              >size_t acip_outbound_stats_t::backend_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_acip_outbound_stats_t::backend_reserved_bytes"
+          >
+            <a
+              class="permalink"
+              href="#size_t_acip_outbound_stats_t::backend_reserved_bytes"
+              >size_t acip_outbound_stats_t::backend_reserved_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::congestion</h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::dropped</h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> acip_outbound_stats_t::oldest_frame_age_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound_stats_t::peak_bytes">
+            <a
+              class="permalink"
+              href="#size_t_acip_outbound_stats_t::peak_bytes"
+              >size_t acip_outbound_stats_t::peak_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> acip_outbound_stats_t::recovery_frames
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> acip_outbound_stats_t::submitted</h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

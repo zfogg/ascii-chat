@@ -1,202 +1,290 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>sha1.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">sha1.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">sha1.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">sha1.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SHA1HANDSOFF</b>
-  <br/>
-  #define <b>BYTE_ORDER</b> 1234
-  <br/>
-  #define <b>LITTLE_ENDIAN</b> 1234
-  <br/>
-  #define <b>BIG_ENDIAN</b> 4321
-  <br/>
-  #define <b>rol</b>(value, bits)
-  <br/>
-  #define <b>blk0</b>(i)
-  <br/>
-  #define <b>blk</b>(i)
-  <br/>
-  #define <b>R0</b>(v, w, x, y, z, i)
-  <br/>
-  #define <b>R1</b>(v, w, x, y, z, i)
-  <br/>
-  #define <b>R2</b>(v, w, x, y, z, i)
-  <br/>
-  #define <b>R3</b>(v, w, x, y, z, i)
-  <br/>
-  #define <b>R4</b>(v, w, x, y, z, i)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>SHA1Transform</b> (<b>uint32_t</b> state[5], const
-    unsigned char buffer[64])
-  <br/>
-  void <b>SHA1Init</b> (<b>SHA1_CTX</b> *context)
-  <br/>
-  void <b>SHA1Update</b> (<b>SHA1_CTX</b> *context, const void *dataptr,
-    unsigned int len)
-  <br/>
-  void <b>SHA1Final</b> (unsigned char digest[20], <b>SHA1_CTX</b> *context)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_BIG_ENDIAN___4321"><a class="permalink" href="#_define_BIG_ENDIAN___4321">#define
-  BIG_ENDIAN 4321</a></h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>sha1.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_blk(_i)"><a class="permalink" href="#_define_blk(_i)">#define
-  blk( i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>(block-&gt;l[i &amp; 15] =                                                                                                  \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sha1.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sha1.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sha1.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">sha1.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SHA1HANDSOFF</b>
+            <br />
+            #define <b>BYTE_ORDER</b> 1234
+            <br />
+            #define <b>LITTLE_ENDIAN</b> 1234
+            <br />
+            #define <b>BIG_ENDIAN</b> 4321
+            <br />
+            #define <b>rol</b>(value, bits)
+            <br />
+            #define <b>blk0</b>(i)
+            <br />
+            #define <b>blk</b>(i)
+            <br />
+            #define <b>R0</b>(v, w, x, y, z, i)
+            <br />
+            #define <b>R1</b>(v, w, x, y, z, i)
+            <br />
+            #define <b>R2</b>(v, w, x, y, z, i)
+            <br />
+            #define <b>R3</b>(v, w, x, y, z, i)
+            <br />
+            #define <b>R4</b>(v, w, x, y, z, i)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>SHA1Transform</b> (<b>uint32_t</b> state[5], const unsigned
+            char buffer[64])
+            <br />
+            void <b>SHA1Init</b> (<b>SHA1_CTX</b> *context)
+            <br />
+            void <b>SHA1Update</b> (<b>SHA1_CTX</b> *context, const void
+            *dataptr, unsigned int len)
+            <br />
+            void <b>SHA1Final</b> (unsigned char digest[20],
+            <b>SHA1_CTX</b> *context)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BIG_ENDIAN___4321">
+            <a class="permalink" href="#_define_BIG_ENDIAN___4321"
+              >#define BIG_ENDIAN 4321</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>36</b> of file <b>sha1.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_blk(_i)">
+            <a class="permalink" href="#_define_blk(_i)">#define blk( i)</a>
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>(block-&gt;l[i &amp; 15] =                                                                                                  \
 <br/>
      rol(block-&gt;l[(i + 13) &amp; 15] ^ block-&gt;l[(i + 8) &amp; 15] ^ block-&gt;l[(i + 2) &amp; 15] ^ block-&gt;l[i &amp; 15], 1))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>49</b> of file <b>sha1.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_blk0(_i)"><a class="permalink" href="#_define_blk0(_i)">#define
-  blk0( i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>(block-&gt;l[i] = (rol(block-&gt;l[i], 24) &amp; 0xFF00FF00) | (rol(block-&gt;l[i], 8) &amp; 0x00FF00FF))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>45</b> of file <b>sha1.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_BYTE_ORDER___1234"><a class="permalink" href="#_define_BYTE_ORDER___1234">#define
-  BYTE_ORDER 1234</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>sha1.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LITTLE_ENDIAN___1234"><a class="permalink" href="#_define_LITTLE_ENDIAN___1234">#define
-  LITTLE_ENDIAN 1234</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>sha1.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_R0(_v,__w,__x,__y,__z,__i)"><a class="permalink" href="#_define_R0(_v,__w,__x,__y,__z,__i)">#define
-  R0( v, w, x, y, z, i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>z = (uint32_t)((uint64_t)z + ((w &amp; (x ^ y)) ^ y) + blk0(i) + 0x5A827999 + rol(v, 5));                                \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>49</b> of file <b>sha1.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_blk0(_i)">
+            <a class="permalink" href="#_define_blk0(_i)">#define blk0( i)</a>
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+(block-&gt;l[i] = (rol(block-&gt;l[i], 24) &amp; 0xFF00FF00) | (rol(block-&gt;l[i], 8) &amp; 0x00FF00FF))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>45</b> of file <b>sha1.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BYTE_ORDER___1234">
+            <a class="permalink" href="#_define_BYTE_ORDER___1234"
+              >#define BYTE_ORDER 1234</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>34</b> of file <b>sha1.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LITTLE_ENDIAN___1234">
+            <a class="permalink" href="#_define_LITTLE_ENDIAN___1234"
+              >#define LITTLE_ENDIAN 1234</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>35</b> of file <b>sha1.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_R0(_v,__w,__x,__y,__z,__i)">
+            <a class="permalink" href="#_define_R0(_v,__w,__x,__y,__z,__i)"
+              >#define R0( v, w, x, y, z, i)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+z = (uint32_t)((uint64_t)z + ((w &amp; (x ^ y)) ^ y) + blk0(i) + 0x5A827999 + rol(v, 5));                                \
 w = rol(w, 30);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>54</b> of file <b>sha1.c</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_R1(_v,__w,__x,__y,__z,__i)"><a class="permalink" href="#_define_R1(_v,__w,__x,__y,__z,__i)">#define
-  R1( v, w, x, y, z, i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>z = (uint32_t)((uint64_t)z + ((w &amp; (x ^ y)) ^ y) + blk(i) + 0x5A827999 + rol(v, 5));                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>54</b> of file <b>sha1.c</b>.</p>
+          <p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_R1(_v,__w,__x,__y,__z,__i)">
+            <a class="permalink" href="#_define_R1(_v,__w,__x,__y,__z,__i)"
+              >#define R1( v, w, x, y, z, i)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+z = (uint32_t)((uint64_t)z + ((w &amp; (x ^ y)) ^ y) + blk(i) + 0x5A827999 + rol(v, 5));                                 \
 w = rol(w, 30);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>57</b> of file <b>sha1.c</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_R2(_v,__w,__x,__y,__z,__i)"><a class="permalink" href="#_define_R2(_v,__w,__x,__y,__z,__i)">#define
-  R2( v, w, x, y, z, i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>z = (uint32_t)((uint64_t)z + (w ^ x ^ y) + blk(i) + 0x6ED9EBA1 + rol(v, 5));                                         \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>57</b> of file <b>sha1.c</b>.</p>
+          <p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_R2(_v,__w,__x,__y,__z,__i)">
+            <a class="permalink" href="#_define_R2(_v,__w,__x,__y,__z,__i)"
+              >#define R2( v, w, x, y, z, i)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+z = (uint32_t)((uint64_t)z + (w ^ x ^ y) + blk(i) + 0x6ED9EBA1 + rol(v, 5));                                         \
 w = rol(w, 30);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>60</b> of file <b>sha1.c</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_R3(_v,__w,__x,__y,__z,__i)"><a class="permalink" href="#_define_R3(_v,__w,__x,__y,__z,__i)">#define
-  R3( v, w, x, y, z, i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>z = (uint32_t)((uint64_t)z + (((w | x) &amp; y) | (w &amp; x)) + blk(i) + 0x8F1BBCDC + rol(v, 5));                           \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>60</b> of file <b>sha1.c</b>.</p>
+          <p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_R3(_v,__w,__x,__y,__z,__i)">
+            <a class="permalink" href="#_define_R3(_v,__w,__x,__y,__z,__i)"
+              >#define R3( v, w, x, y, z, i)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+z = (uint32_t)((uint64_t)z + (((w | x) &amp; y) | (w &amp; x)) + blk(i) + 0x8F1BBCDC + rol(v, 5));                           \
 w = rol(w, 30);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>63</b> of file <b>sha1.c</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_R4(_v,__w,__x,__y,__z,__i)"><a class="permalink" href="#_define_R4(_v,__w,__x,__y,__z,__i)">#define
-  R4( v, w, x, y, z, i)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>z = (uint32_t)((uint64_t)z + (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5));                                         \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>63</b> of file <b>sha1.c</b>.</p>
+          <p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_R4(_v,__w,__x,__y,__z,__i)">
+            <a class="permalink" href="#_define_R4(_v,__w,__x,__y,__z,__i)"
+              >#define R4( v, w, x, y, z, i)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+z = (uint32_t)((uint64_t)z + (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5));                                         \
 w = rol(w, 30);</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>66</b> of file <b>sha1.c</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_rol(_value,__bits)"><a class="permalink" href="#_define_rol(_value,__bits)">#define
-  rol( value, bits)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>__builtin_rotateleft32((uint32_t)(value), (bits))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>40</b> of file <b>sha1.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SHA1HANDSOFF"><a class="permalink" href="#_define_SHA1HANDSOFF">#define
-  SHA1HANDSOFF</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>sha1.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_SHA1Final_(unsigned_char_digest_20_,_"><a class="permalink" href="#void_SHA1Final_(unsigned_char_digest_20_,_">void
-  SHA1Final (unsigned char digest[20], <b>SHA1_CTX</b> * context)</a></h2>
-<p class="Pp">Definition at line <b>221</b> of file <b>sha1.c</b>.</p>
-<pre>221                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>66</b> of file <b>sha1.c</b>.</p>
+          <p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_rol(_value,__bits)">
+            <a class="permalink" href="#_define_rol(_value,__bits)"
+              >#define rol( value, bits)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>__builtin_rotateleft32((uint32_t)(value), (bits))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>40</b> of file <b>sha1.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SHA1HANDSOFF">
+            <a class="permalink" href="#_define_SHA1HANDSOFF"
+              >#define SHA1HANDSOFF</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>20</b> of file <b>sha1.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_SHA1Final_(unsigned_char_digest_20_,_">
+            <a
+              class="permalink"
+              href="#void_SHA1Final_(unsigned_char_digest_20_,_"
+              >void SHA1Final (unsigned char digest[20], <b>SHA1_CTX</b> *
+              context)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>221</b> of file <b>sha1.c</b>.</p>
+          <pre>
+221                                                                             {
 222   unsigned int i;
 223   unsigned char finalcount[8];
 224
@@ -215,17 +303,23 @@ w = rol(w, 30);</pre>
 237   memset(&amp;finalcount, 0, sizeof(finalcount));
 238   memset(context, 0, sizeof(*context));
 239 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SHA1_CTX::count</b>, <b>SHA1_DIGEST_LENGTH</b>,
-    <b>SHA1Final()</b>, <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Final()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_SHA1Init_("><a class="permalink" href="#void_SHA1Init_(">void
-  SHA1Init (<b>SHA1_CTX</b> * context)</a></h2>
-<p class="Pp">Definition at line <b>188</b> of file <b>sha1.c</b>.</p>
-<pre>188                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SHA1_CTX::count</b>, <b>SHA1_DIGEST_LENGTH</b>,
+            <b>SHA1Final()</b>, <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.
+          </p>
+          <p class="Pp">Referenced by <b>SHA1Final()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_SHA1Init_(">
+            <a class="permalink" href="#void_SHA1Init_("
+              >void SHA1Init (<b>SHA1_CTX</b> * context)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>188</b> of file <b>sha1.c</b>.</p>
+          <pre>
+188                                  {
 189   /* SHA1 initialization constants */
 190   context-&gt;count = 0;
 191   context-&gt;state[0] = 0x67452301;
@@ -234,18 +328,24 @@ w = rol(w, 30);</pre>
 194   context-&gt;state[3] = 0x10325476;
 195   context-&gt;state[4] = 0xC3D2E1F0;
 196 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SHA1_CTX::count</b>, <b>SHA1Init()</b>, and
-    <b>SHA1_CTX::state</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_SHA1Transform_("><a class="permalink" href="#void_SHA1Transform_(">void
-  SHA1Transform (<b>uint32_t</b> state[5], const unsigned char
-  buffer[64])</a></h2>
-<p class="Pp">Definition at line <b>72</b> of file <b>sha1.c</b>.</p>
-<pre>72                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SHA1_CTX::count</b>, <b>SHA1Init()</b>, and
+            <b>SHA1_CTX::state</b>.
+          </p>
+          <p class="Pp">Referenced by <b>SHA1Init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_SHA1Transform_(">
+            <a class="permalink" href="#void_SHA1Transform_("
+              >void SHA1Transform (<b>uint32_t</b> state[5], const unsigned char
+              buffer[64])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>72</b> of file <b>sha1.c</b>.</p>
+          <pre>
+72                                                                                      {
 73   uint32_t a, b, c, d, e;
 74   typedef union {
 75     unsigned char c[SHA1_BLOCK_LENGTH];
@@ -358,18 +458,26 @@ w = rol(w, 30);</pre>
 182   /* Wipe variables */
 183   a = b = c = d = e = 0;
 184 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>R0</b>, <b>R1</b>, <b>R2</b>, <b>R3</b>, <b>R4</b>,
-    <b>SHA1_BLOCK_LENGTH</b>, and <b>SHA1Transform()</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Transform()</b>, and <b>SHA1Update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_SHA1Update_("><a class="permalink" href="#void_SHA1Update_(">void
-  SHA1Update (<b>SHA1_CTX</b> * context, const void * dataptr, unsigned int
-  len)</a></h2>
-<p class="Pp">Definition at line <b>200</b> of file <b>sha1.c</b>.</p>
-<pre>200                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>R0</b>, <b>R1</b>, <b>R2</b>, <b>R3</b>, <b>R4</b>,
+            <b>SHA1_BLOCK_LENGTH</b>, and <b>SHA1Transform()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>SHA1Transform()</b>, and <b>SHA1Update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_SHA1Update_(">
+            <a class="permalink" href="#void_SHA1Update_("
+              >void SHA1Update (<b>SHA1_CTX</b> * context, const void * dataptr,
+              unsigned int len)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>200</b> of file <b>sha1.c</b>.</p>
+          <pre>
+200                                                                           {
 201   const uint8_t *data = dataptr;
 202   unsigned int i;
 203   unsigned int j;
@@ -387,23 +495,30 @@ w = rol(w, 30);</pre>
 215     i = 0;
 216   memcpy(&amp;context-&gt;buffer[j], &amp;data[i], len - i);
 217 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SHA1_CTX::buffer</b>, <b>SHA1_CTX::count</b>,
-    <b>SHA1Transform()</b>, <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Final()</b>, and <b>SHA1Update()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SHA1_CTX::buffer</b>, <b>SHA1_CTX::count</b>,
+            <b>SHA1Transform()</b>, <b>SHA1Update()</b>, and
+            <b>SHA1_CTX::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>SHA1Final()</b>, and <b>SHA1Update()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

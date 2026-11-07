@@ -1,72 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_query_guide(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_query_guide(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_query_guide(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_query_guide - Query Tool User Guide</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Query_Tool_User_Guide"><a class="permalink" href="#Query_Tool_User_Guide">Query
-  Tool User Guide</a></h1>
-<p class="Pp">The query tool enables runtime variable inspection in debug builds
-    of ascii-chat. It uses an external LLDB process to read variable values via
-    HTTP queries, allowing you to inspect program state without modifying code
-    or using a full debugger.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Quick_Start"><a class="permalink" href="#Quick_Start">Quick
-  Start</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="1"><a class="permalink" href="#1">1. Build with Query
-  Support</a></h2>
-<pre>cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_query_guide(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_query_guide(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_query_guide(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">custom_query_guide - Query Tool User Guide</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Query_Tool_User_Guide">
+          <a class="permalink" href="#Query_Tool_User_Guide"
+            >Query Tool User Guide</a
+          >
+        </h1>
+        <p class="Pp">
+          The query tool enables runtime variable inspection in debug builds of
+          ascii-chat. It uses an external LLDB process to read variable values
+          via HTTP queries, allowing you to inspect program state without
+          modifying code or using a full debugger.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Quick_Start">
+            <a class="permalink" href="#Quick_Start">Quick Start</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="1">
+            <a class="permalink" href="#1">1. Build with Query Support</a>
+          </h2>
+          <pre>
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
 cmake --build build</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="2"><a class="permalink" href="#2">2. Launch Mode A:
-  Standalone Controller</a></h2>
-<pre># Terminal 1: Start your application
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="2">
+            <a class="permalink" href="#2"
+              >2. Launch Mode A: Standalone Controller</a
+            >
+          </h2>
+          <pre>
+# Terminal 1: Start your application
 ./build/bin/ascii-chat server --port 8080
 # Terminal 2: Attach the query controller
 ./build/bin/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
 # Terminal 3: Query variables
 curl 'localhost:9999/query?file=src/server/main.c&amp;line=100&amp;name=options'</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="3"><a class="permalink" href="#3">3. Launch Mode B:
-  Auto-Spawn (Recommended)</a></h2>
-<p class="Pp">Add to your application code:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#include &quot;tooling/query/query.h&quot;
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="3">
+            <a class="permalink" href="#3"
+              >3. Launch Mode B: Auto-Spawn (Recommended)</a
+            >
+          </h2>
+          <p class="Pp">Add to your application code:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>#include &quot;tooling/query/query.h&quot;
 int main(void) {
 <br/>
     // Auto-spawn controller attached to this process
@@ -85,14 +128,17 @@ int main(void) {
 <br/>
     return 0;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Key_Concepts"><a class="permalink" href="#Key_Concepts">Key
-  Concepts</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
-<pre>&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;         &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Key_Concepts">
+            <a class="permalink" href="#Key_Concepts">Key Concepts</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+          <pre>&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;         &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
 &#x2502;  Your Application       &#x2502;         &#x2502;  ascii-query-server     &#x2502;
 &#x2502;  (target)               &#x2502;&#x25C4;&#x2500;&#x2500;LLDB&#x2500;&#x25BA;&#x2502;  (controller)           &#x2502;
 &#x2502;                         &#x2502;         &#x2502;                         &#x2502;
@@ -111,36 +157,50 @@ int main(void) {
                                     &#x2502;  curl / browser / vim   &#x2502;
 <br/>
                                     &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;</pre>
-<p class="Pp"><b>Key insight</b>: When your application is stopped at a
-    breakpoint, the controller process is still running and serving HTTP
-    requests. This allows you to query variables and control execution.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Query_Modes"><a class="permalink" href="#Query_Modes">Query
-  Modes</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Immediate Mode</b>: Briefly pauses target, reads variable, resumes.
-      Fast and non-interactive.</dd>
-  <dt>2.</dt>
-  <dd><b>Breakpoint Mode</b> (&amp;break): Sets breakpoint, waits for hit, keeps
-      target stopped for interactive inspection.</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Common_Workflows"><a class="permalink" href="#Common_Workflows">Common
-  Workflows</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Inspecting_a_Variable_at_a_Specific_Line"><a class="permalink" href="#Inspecting_a_Variable_at_a_Specific_Line">Inspecting
-  a Variable at a Specific Line</a></h2>
-<pre># Query 'client_count' when execution reaches server.c:100
+          <p class="Pp">
+            <b>Key insight</b>: When your application is stopped at a
+            breakpoint, the controller process is still running and serving HTTP
+            requests. This allows you to query variables and control execution.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Query_Modes">
+            <a class="permalink" href="#Query_Modes">Query Modes</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Immediate Mode</b>: Briefly pauses target, reads variable,
+              resumes. Fast and non-interactive.
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Breakpoint Mode</b> (&amp;break): Sets breakpoint, waits for
+              hit, keeps target stopped for interactive inspection.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Common_Workflows">
+            <a class="permalink" href="#Common_Workflows">Common Workflows</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Inspecting_a_Variable_at_a_Specific_Line">
+            <a
+              class="permalink"
+              href="#Inspecting_a_Variable_at_a_Specific_Line"
+              >Inspecting a Variable at a Specific Line</a
+            >
+          </h2>
+          <pre>
+# Query 'client_count' when execution reaches server.c:100
 curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count'</pre>
-<p class="Pp">Response:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp">Response:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;ok&quot;,
 <br/>
@@ -154,11 +214,15 @@ curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count'
 <br/>
   }
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Interactive_Debugging_Session"><a class="permalink" href="#Interactive_Debugging_Session">Interactive
-  Debugging Session</a></h2>
-<pre># Step 1: Set breakpoint and stop
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Interactive_Debugging_Session">
+            <a class="permalink" href="#Interactive_Debugging_Session"
+              >Interactive Debugging Session</a
+            >
+          </h2>
+          <pre>
+# Step 1: Set breakpoint and stop
 curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count&amp;break'
 # Response: {&quot;stopped&quot;: true, &quot;result&quot;: {&quot;value&quot;: &quot;5&quot;}}
 # Step 2: Query more variables (no file:line needed while stopped)
@@ -168,16 +232,20 @@ curl 'localhost:9999/query?name=options&amp;expand'
 curl 'localhost:9999/frames'
 # Step 4: Resume execution
 curl -X POST 'localhost:9999/continue'</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Expanding_Struct_Members"><a class="permalink" href="#Expanding_Struct_Members">Expanding
-  Struct Members</a></h2>
-<pre># Expand struct to see all members
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Expanding_Struct_Members">
+            <a class="permalink" href="#Expanding_Struct_Members"
+              >Expanding Struct Members</a
+            >
+          </h2>
+          <pre>
+# Expand struct to see all members
 curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client&amp;expand'</pre>
-<p class="Pp">Response:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp">Response:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;result&quot;: {
 <br/>
@@ -197,31 +265,44 @@ curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client&amp;ex
 <br/>
   }
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Querying_Array_Elements"><a class="permalink" href="#Querying_Array_Elements">Querying
-  Array Elements</a></h2>
-<pre>curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=clients[0]'
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Querying_Array_Elements">
+            <a class="permalink" href="#Querying_Array_Elements"
+              >Querying Array Elements</a
+            >
+          </h2>
+          <pre>
+curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=clients[0]'
 curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=buffer[0..10]'</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Querying_Parent_Stack_Frames"><a class="permalink" href="#Querying_Parent_Stack_Frames">Querying
-  Parent Stack Frames</a></h2>
-<pre># Query variable from caller's frame
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Querying_Parent_Stack_Frames">
+            <a class="permalink" href="#Querying_Parent_Stack_Frames"
+              >Querying Parent Stack Frames</a
+            >
+          </h2>
+          <pre>
+# Query variable from caller's frame
 curl 'localhost:9999/query?name=argc&amp;frame=1'
 # Query by function name
 curl 'localhost:9999/query?name=main_opts&amp;frame=main'</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Editor_Integration"><a class="permalink" href="#Editor_Integration">Editor
-  Integration</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Vim/Neovim"><a class="permalink" href="#Vim/Neovim">Vim/Neovim</a></h2>
-<p class="Pp">Add to your vimrc:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>&quot; Query variable under cursor
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Editor_Integration">
+            <a class="permalink" href="#Editor_Integration"
+              >Editor Integration</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Vim/Neovim">
+            <a class="permalink" href="#Vim/Neovim">Vim/Neovim</a>
+          </h2>
+          <p class="Pp">Add to your vimrc:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>&quot; Query variable under cursor
 function! QueryVariable()
 <br/>
     let var = expand('&lt;cword&gt;')
@@ -235,15 +316,17 @@ function! QueryVariable()
     echo system(cmd)
 endfunction
 nnoremap &lt;leader&gt;q :call QueryVariable()&lt;CR&gt;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="VS_Code"><a class="permalink" href="#VS_Code">VS
-  Code</a></h2>
-<p class="Pp">Use the REST Client extension to send queries, or create a
-  task:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="VS_Code">
+            <a class="permalink" href="#VS_Code">VS Code</a>
+          </h2>
+          <p class="Pp">
+            Use the REST Client extension to send queries, or create a task:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;label&quot;: &quot;Query Variable&quot;,
 <br/>
@@ -251,98 +334,136 @@ nnoremap &lt;leader&gt;q :call QueryVariable()&lt;CR&gt;</pre>
 <br/>
   &quot;command&quot;: &quot;curl 'localhost:9999/query?file=${file}&amp;line=${lineNumber}&amp;name=${selectedText}'&quot;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Platform_Notes"><a class="permalink" href="#Platform_Notes">Platform
-  Notes</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="macOS"><a class="permalink" href="#macOS">macOS</a></h2>
-<p class="Pp">The query controller requires code signing with the get-task-allow
-    entitlement:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Check if binary is signed
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform_Notes">
+            <a class="permalink" href="#Platform_Notes">Platform Notes</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="macOS">
+            <a class="permalink" href="#macOS">macOS</a>
+          </h2>
+          <p class="Pp">
+            The query controller requires code signing with the get-task-allow
+            entitlement:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Check if binary is signed
 codesign -dvvv ./build/bin/ascii-query-server
 # Sign with entitlements (done automatically by CMake)
 codesign -s &quot;Your Identity&quot; --entitlements query.entitlements ./build/bin/ascii-query-server</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Linux"><a class="permalink" href="#Linux">Linux</a></h2>
-<p class="Pp">Check ptrace permissions:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cat /proc/sys/kernel/yama/ptrace_scope
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Linux">
+            <a class="permalink" href="#Linux">Linux</a>
+          </h2>
+          <p class="Pp">Check ptrace permissions:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cat /proc/sys/kernel/yama/ptrace_scope
 # 0 = permissive (debugging works)
 # 1 = restricted (may need sudo)
 # Temporarily allow (requires root)
 echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope</pre>
-<p class="Pp">For Docker:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>docker run --cap-add=SYS_PTRACE ...</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Windows"><a class="permalink" href="#Windows">Windows</a></h2>
-<p class="Pp">Uses CreateProcess for spawning. Ensure the controller binary is
-    in PATH or provide full path.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Debug_Tips"><a class="permalink" href="#Debug_Tips">Debug
-  Tips</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enable_Verbose_Logging"><a class="permalink" href="#Enable_Verbose_Logging">Enable
-  Verbose Logging</a></h2>
-<pre># Set log level to debug
+          <p class="Pp">For Docker:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>docker run --cap-add=SYS_PTRACE ...</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Windows">
+            <a class="permalink" href="#Windows">Windows</a>
+          </h2>
+          <p class="Pp">
+            Uses CreateProcess for spawning. Ensure the controller binary is in
+            PATH or provide full path.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Debug_Tips">
+            <a class="permalink" href="#Debug_Tips">Debug Tips</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enable_Verbose_Logging">
+            <a class="permalink" href="#Enable_Verbose_Logging"
+              >Enable Verbose Logging</a
+            >
+          </h2>
+          <pre>
+# Set log level to debug
 export LOG_LEVEL=0
 ./build/bin/ascii-query-server --attach &lt;pid&gt; --port 9999</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Check_Controller_Status"><a class="permalink" href="#Check_Controller_Status">Check
-  Controller Status</a></h2>
-<pre># Health check
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Check_Controller_Status">
+            <a class="permalink" href="#Check_Controller_Status"
+              >Check Controller Status</a
+            >
+          </h2>
+          <pre>
+# Health check
 curl localhost:9999/
 # Process info
 curl localhost:9999/process
 # List threads
 curl localhost:9999/threads</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Common_Issues"><a class="permalink" href="#Common_Issues">Common
-  Issues</a></h2>
-<p class="Pp">See <b>query-troubleshooting.md</b> for solutions to common
-    problems.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Limitations"><a class="permalink" href="#Limitations">Limitations</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Debug builds only</b>: Query tool compiles out completely in release
-      builds</li>
-  <li><b>One controller per target</b>: Cannot attach multiple controllers to
-      same process</li>
-  <li><b>LLDB required</b>: Requires LLDB development libraries to build</li>
-  <li><b>Local only</b>: HTTP server binds to localhost for security</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="See_Also"><a class="permalink" href="#See_Also">See
-  Also</a></h2>
-<ul class="Bl-bullet">
-  <li><b>query-api.md</b> - Full HTTP API reference</li>
-  <li><b>query-troubleshooting.md</b> - Common issues and solutions</li>
-  <li><b>QUERY_TOOL_PLAN.md</b> - Implementation details</li>
-</ul>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Common_Issues">
+            <a class="permalink" href="#Common_Issues">Common Issues</a>
+          </h2>
+          <p class="Pp">
+            See <b>query-troubleshooting.md</b> for solutions to common
+            problems.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Limitations">
+            <a class="permalink" href="#Limitations">Limitations</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Debug builds only</b>: Query tool compiles out completely in
+              release builds
+            </li>
+            <li>
+              <b>One controller per target</b>: Cannot attach multiple
+              controllers to same process
+            </li>
+            <li>
+              <b>LLDB required</b>: Requires LLDB development libraries to build
+            </li>
+            <li>
+              <b>Local only</b>: HTTP server binds to localhost for security
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="See_Also">
+            <a class="permalink" href="#See_Also">See Also</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>query-api.md</b> - Full HTTP API reference</li>
+            <li>
+              <b>query-troubleshooting.md</b> - Common issues and solutions
+            </li>
+            <li><b>QUERY_TOOL_PLAN.md</b> - Implementation details</li>
+          </ul>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

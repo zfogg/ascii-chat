@@ -1,189 +1,295 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>splash.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">splash.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">splash.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">splash.c - Intro and status screen display implementation with
-    animated rainbow effects.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>[struct].g_splash_state</b>
-  <br/>
-  Animation state for intro splash.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE</b> 1024
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>ui_discovery_view_t</b> <b>discovery_splash_t</b>
-  <br/>
-  typedef <b>ui_splash_view_t</b> <b>splash_header_ctx_t</b>
-  <br/>
-  Context data for splash header rendering.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>splash_set_discovery_session</b> (const char *session,
-    <b>bool</b> joining)
-  <br/>
-  void <b>splash_clear_discovery_session</b> (void)
-  <br/>
-  void <b>splash_log_init</b> (void)
-  <br/>
-  Initialize log buffer for splash animation. void <b>splash_log_destroy</b>
-    (void)
-  <br/>
-  Destroy splash log buffer. void <b>splash_log_clear</b> (void)
-  <br/>
-  Clear splash log buffer. <b>bool</b> <b>splash_should_display</b> (<b>bool</b>
-    is_intro)
-  <br/>
-  Render splash header with rainbow animation (callback for terminal_screen).
-    int <b>splash_intro_start</b> (<b>session_display_ctx_t</b> *ctx)
-  <br/>
-  Start animated intro screen with rainbow ASCII art (non-blocking). int
-    <b>splash_intro_done</b> (void)
-  <br/>
-  Signal that intro splash should end (first frame ready to render). void
-    <b>splash_restore_stderr</b> (void)
-  <br/>
-  Restore stderr after splash animation completes. void
-    <b>splash_clear_display_context</b> (void)
-  <br/>
-  Clear the cached display context to prevent use-after-free. <b>bool</b>
-    <b>splash_is_running</b> (void)
-  <br/>
-  Check if splash screen animation is currently running. void
-    <b>splash_wait_for_animation</b> (void)
-  <br/>
-  Wait for splash animation thread to fully exit. void
-    <b>splash_set_update_notification</b> (const char *notification)
-  <br/>
-  Set update notification to display on splash/status screens.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Intro and status screen display implementation with animated
-    rainbow effects.</p>
-<p class="Pp">Implements splash screen functionality including:</p>
-<ul class="Bl-bullet">
-  <li>TTY detection with stdin/stdout checks</li>
-  <li>Animated rainbow color generation and cycling</li>
-  <li>UTF-8 box drawing character support with ASCII fallback</li>
-  <li>Non-blocking animation that runs while app initializes</li>
-  <li>Clean integration with main frame rendering</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Definition in file <b>splash.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE___1024">#define
-  TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>splash.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef <b>ui_discovery_view_t</b> <b>discovery_splash_t</b></h2>
-<p class="Pp">Definition at line <b>68</b> of file <b>splash.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef <b>ui_splash_view_t</b> <b>splash_header_ctx_t</b></h2>
-<p class="Pp">Context data for splash header rendering.</p>
-<p class="Pp">Definition at line <b>158</b> of file <b>splash.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_splash_clear_discovery_session_(void_)"><a class="permalink" href="#void_splash_clear_discovery_session_(void_)">void
-  splash_clear_discovery_session (void )</a></h2>
-<p class="Pp">Reset discovery presentation after the animation has been
-  joined.</p>
-<p class="Pp">Definition at line <b>102</b> of file <b>splash.c</b>.</p>
-<pre>102                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>splash.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">splash.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">splash.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          splash.c - Intro and status screen display implementation with
+          animated rainbow effects.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>[struct].g_splash_state</b>
+            <br />
+            Animation state for intro splash.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE</b> 1024
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>ui_discovery_view_t</b> <b>discovery_splash_t</b>
+            <br />
+            typedef <b>ui_splash_view_t</b> <b>splash_header_ctx_t</b>
+            <br />
+            Context data for splash header rendering.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>splash_set_discovery_session</b> (const char *session,
+            <b>bool</b> joining)
+            <br />
+            void <b>splash_clear_discovery_session</b> (void)
+            <br />
+            void <b>splash_log_init</b> (void)
+            <br />
+            Initialize log buffer for splash animation. void
+            <b>splash_log_destroy</b>
+            (void)
+            <br />
+            Destroy splash log buffer. void <b>splash_log_clear</b> (void)
+            <br />
+            Clear splash log buffer. <b>bool</b>
+            <b>splash_should_display</b> (<b>bool</b>
+            is_intro)
+            <br />
+            Render splash header with rainbow animation (callback for
+            terminal_screen). int
+            <b>splash_intro_start</b> (<b>session_display_ctx_t</b> *ctx)
+            <br />
+            Start animated intro screen with rainbow ASCII art (non-blocking).
+            int
+            <b>splash_intro_done</b> (void)
+            <br />
+            Signal that intro splash should end (first frame ready to render).
+            void
+            <b>splash_restore_stderr</b> (void)
+            <br />
+            Restore stderr after splash animation completes. void
+            <b>splash_clear_display_context</b> (void)
+            <br />
+            Clear the cached display context to prevent use-after-free.
+            <b>bool</b> <b>splash_is_running</b> (void)
+            <br />
+            Check if splash screen animation is currently running. void
+            <b>splash_wait_for_animation</b> (void)
+            <br />
+            Wait for splash animation thread to fully exit. void
+            <b>splash_set_update_notification</b> (const char *notification)
+            <br />
+            Set update notification to display on splash/status screens.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Intro and status screen display implementation with animated rainbow
+          effects.
+        </p>
+        <p class="Pp">Implements splash screen functionality including:</p>
+        <ul class="Bl-bullet">
+          <li>TTY detection with stdin/stdout checks</li>
+          <li>Animated rainbow color generation and cycling</li>
+          <li>UTF-8 box drawing character support with ASCII fallback</li>
+          <li>Non-blocking animation that runs while app initializes</li>
+          <li>Clean integration with main frame rendering</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">Definition in file <b>splash.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE___1024"
+              >#define TUI_SPLASH_UPDATE_NOTIFICATION_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>splash.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef <b>ui_discovery_view_t</b> <b>discovery_splash_t</b>
+          </h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>splash.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef <b>ui_splash_view_t</b> <b>splash_header_ctx_t</b>
+          </h2>
+          <p class="Pp">Context data for splash header rendering.</p>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>splash.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_splash_clear_discovery_session_(void_)">
+            <a
+              class="permalink"
+              href="#void_splash_clear_discovery_session_(void_)"
+              >void splash_clear_discovery_session (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Reset discovery presentation after the animation has been joined.
+          </p>
+          <p class="Pp">
+            Definition at line <b>102</b> of file <b>splash.c</b>.
+          </p>
+          <pre>
+102                                           {
 103   discovery_splash_init();
 104   mutex_lock(&amp;g_discovery_splash_mutex);
 105   memset(&amp;g_discovery_splash, 0, sizeof(g_discovery_splash));
 106   ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
 107   mutex_unlock(&amp;g_discovery_splash_mutex);
 108 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>splash_clear_discovery_session()</b>,
-    <b>ui_controller_title_activity()</b>, and
-  <b>UI_TITLE_ACTIVITY_IDLE</b>.</p>
-<p class="Pp">Referenced by <b>discovery_main()</b>,
-    <b>splash_clear_discovery_session()</b>, and
-    <b>splash_notify_first_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_splash_set_discovery_session_(const_char_*_session_string,_"><a class="permalink" href="#void_splash_set_discovery_session_(const_char_*_session_string,_">void
-  splash_set_discovery_session (const char * session_string, <b>bool</b>
-  joining)</a></h2>
-<p class="Pp">Store discovery presentation before or during splash startup. The
-    string is copied.</p>
-<p class="Pp">Definition at line <b>92</b> of file <b>splash.c</b>.</p>
-<pre>92                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>splash_clear_discovery_session()</b>,
+            <b>ui_controller_title_activity()</b>, and
+            <b>UI_TITLE_ACTIVITY_IDLE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_main()</b>,
+            <b>splash_clear_discovery_session()</b>, and
+            <b>splash_notify_first_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_splash_set_discovery_session_(const_char_*_session_string,_"
+          >
+            <a
+              class="permalink"
+              href="#void_splash_set_discovery_session_(const_char_*_session_string,_"
+              >void splash_set_discovery_session (const char * session_string,
+              <b>bool</b> joining)</a
+            >
+          </h2>
+          <p class="Pp">
+            Store discovery presentation before or during splash startup. The
+            string is copied.
+          </p>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>splash.c</b>.
+          </p>
+          <pre>
+92                                                                      {
 93   discovery_splash_init();
 94   mutex_lock(&amp;g_discovery_splash_mutex);
 95   g_discovery_splash.enabled = true;
@@ -192,26 +298,32 @@
 98   SAFE_STRNCPY(g_discovery_splash.session_string, session ? session : &quot;&quot;, sizeof(g_discovery_splash.session_string));
 99   mutex_unlock(&amp;g_discovery_splash_mutex);
 100 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>SAFE_STRNCPY</b>, <b>splash_set_discovery_session()</b>, and
-    <b>ui_controller_title_discovery()</b>.</p>
-<p class="Pp">Referenced by <b>discovery_main()</b>,
-    <b>splash_notify_first_frame()</b>, and
-    <b>splash_set_discovery_session()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>SAFE_STRNCPY</b>, <b>splash_set_discovery_session()</b>, and
+            <b>ui_controller_title_discovery()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_main()</b>,
+            <b>splash_notify_first_frame()</b>, and
+            <b>splash_set_discovery_session()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

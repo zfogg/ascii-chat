@@ -1,249 +1,376 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>stun(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">stun(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">stun(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">stun - Stun</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>STUN_URL_BUFFER_SIZE</b> 64
-  <br/>
-  STUN server configuration.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">struct <b>__attribute__</b> ((packed))
-  <br/>
-  int <b>stun_servers_parse</b> (const char *csv_servers, const char
-    *default_csv, <b>stun_server_t</b> *out_servers, int max_count)
-  <br/>
-  Parse comma-separated STUN server URLs into stun_server_t array.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>stun_server_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="STUN_Protocol_Constants"><a class="permalink" href="#STUN_Protocol_Constants">STUN
-  Protocol Constants</a></h2>
-<br/>
-<p class="Pp">#define <b>STUN_DEFAULT_PORT</b> 3478
-  <br/>
-  Standard STUN port (RFC 5389). #define <b>STUN_TLS_DEFAULT_PORT</b> 5349
-  <br/>
-  STUN over TLS port (RFC 5389).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">This module defines STUN server configuration structures for
-    WebRTC connectivity. STUN servers help clients discover their public IP
-    addresses and port mappings when behind NAT.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>RFC 5389</b>: Session Traversal Utilities for NAT (STUN) <b>RFC
-    8489</b>: Session Traversal Utilities for NAT (STUN) - updated</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="STUN_SERVER_ROLE:"><a class="permalink" href="#STUN_SERVER_ROLE:">STUN
-  SERVER ROLE: </a></h1>
-<ul class="Bl-bullet">
-  <li>Helps clients discover their public-facing IP address and port</li>
-  <li>Essential for WebRTC peer-to-peer connection establishment</li>
-  <li>No relay (unlike TURN) - only provides connectivity information</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="USAGE_IN_ACDS:"><a class="permalink" href="#USAGE_IN_ACDS:">USAGE
-  IN ACDS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Discovery server provides STUN server list in SESSION_CREATED
-    response</li>
-  <li>Clients use STUN servers for ICE candidate gathering</li>
-  <li>Multiple STUN servers can be provided for redundancy</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">All structures are packed with <b>attribute</b>((packed))
-  for wire format</div>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">1.0</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_STUN_DEFAULT_PORT___3478"><a class="permalink" href="#_define_STUN_DEFAULT_PORT___3478">#define
-  STUN_DEFAULT_PORT 3478</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b></b></p>
-<p class="Pp">Standard STUN port (RFC 5389).</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>stun.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_STUN_TLS_DEFAULT_PORT___5349"><a class="permalink" href="#_define_STUN_TLS_DEFAULT_PORT___5349">#define
-  STUN_TLS_DEFAULT_PORT 5349</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b></b></p>
-<p class="Pp">STUN over TLS port (RFC 5389).</p>
-<p class="Pp">Definition at line <b>90</b> of file <b>stun.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_STUN_URL_BUFFER_SIZE___64"><a class="permalink" href="#_define_STUN_URL_BUFFER_SIZE___64">#define
-  STUN_URL_BUFFER_SIZE 64</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b></b></p>
-<p class="Pp">STUN server configuration. Used in ACDS SESSION_CREATED response
-    to provide WebRTC connectivity information.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Protocol Format</b>:</p>
-<ul class="Bl-bullet">
-  <li>host_len: 1 byte (length of host string)</li>
-  <li>host: 64 bytes (null-terminated STUN URL)</li>
-</ul>
-<p class="Pp"><b>URL Format Examples</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>Stun</b>:discovery.ascii.chat:3478<b> (standard port)</b></li>
-  <li><b>Stun</b>:stun.l.google.com:19302<b> (Google public STUN)</b></li>
-  <li><b>Stun</b>:stun.example.com:5349<b> (custom port)</b></li>
-</ul>
-<p class="Pp"><b>Wire Format</b> (65 bytes total):</p>
-<p class="Pp"></p>
-<pre>+----------+----------------------------------------+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>stun(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">stun(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">stun(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">stun - Stun</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>STUN_URL_BUFFER_SIZE</b> 64
+            <br />
+            STUN server configuration.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>__attribute__</b> ((packed))
+            <br />
+            int <b>stun_servers_parse</b> (const char *csv_servers, const char
+            *default_csv, <b>stun_server_t</b> *out_servers, int max_count)
+            <br />
+            Parse comma-separated STUN server URLs into stun_server_t array.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>stun_server_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="STUN_Protocol_Constants">
+            <a class="permalink" href="#STUN_Protocol_Constants"
+              >STUN Protocol Constants</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>STUN_DEFAULT_PORT</b> 3478
+            <br />
+            Standard STUN port (RFC 5389). #define
+            <b>STUN_TLS_DEFAULT_PORT</b> 5349
+            <br />
+            STUN over TLS port (RFC 5389).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          This module defines STUN server configuration structures for WebRTC
+          connectivity. STUN servers help clients discover their public IP
+          addresses and port mappings when behind NAT.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>RFC 5389</b>: Session Traversal Utilities for NAT (STUN)
+          <b>RFC 8489</b>: Session Traversal Utilities for NAT (STUN) - updated
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="STUN_SERVER_ROLE:">
+          <a class="permalink" href="#STUN_SERVER_ROLE:">STUN SERVER ROLE: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            Helps clients discover their public-facing IP address and port
+          </li>
+          <li>Essential for WebRTC peer-to-peer connection establishment</li>
+          <li>
+            No relay (unlike TURN) - only provides connectivity information
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="USAGE_IN_ACDS:">
+          <a class="permalink" href="#USAGE_IN_ACDS:">USAGE IN ACDS: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            Discovery server provides STUN server list in SESSION_CREATED
+            response
+          </li>
+          <li>Clients use STUN servers for ICE candidate gathering</li>
+          <li>Multiple STUN servers can be provided for redundancy</li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          All structures are packed with <b>attribute</b>((packed)) for wire
+          format
+        </div>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">1.0</div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_DEFAULT_PORT___3478">
+            <a class="permalink" href="#_define_STUN_DEFAULT_PORT___3478"
+              >#define STUN_DEFAULT_PORT 3478</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Standard STUN port (RFC 5389).</p>
+          <p class="Pp">Definition at line <b>87</b> of file <b>stun.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_TLS_DEFAULT_PORT___5349">
+            <a class="permalink" href="#_define_STUN_TLS_DEFAULT_PORT___5349"
+              >#define STUN_TLS_DEFAULT_PORT 5349</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">STUN over TLS port (RFC 5389).</p>
+          <p class="Pp">Definition at line <b>90</b> of file <b>stun.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_STUN_URL_BUFFER_SIZE___64">
+            <a class="permalink" href="#_define_STUN_URL_BUFFER_SIZE___64"
+              >#define STUN_URL_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            STUN server configuration. Used in ACDS SESSION_CREATED response to
+            provide WebRTC connectivity information.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Protocol Format</b>:</p>
+          <ul class="Bl-bullet">
+            <li>host_len: 1 byte (length of host string)</li>
+            <li>host: 64 bytes (null-terminated STUN URL)</li>
+          </ul>
+          <p class="Pp"><b>URL Format Examples</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Stun</b>:discovery.ascii.chat:3478<b> (standard port)</b>
+            </li>
+            <li>
+              <b>Stun</b>:stun.l.google.com:19302<b> (Google public STUN)</b>
+            </li>
+            <li><b>Stun</b>:stun.example.com:5349<b> (custom port)</b></li>
+          </ul>
+          <p class="Pp"><b>Wire Format</b> (65 bytes total):</p>
+          <p class="Pp"></p>
+          <pre>
++----------+----------------------------------------+
 | host_len |              host[64]                  |
 +----------+----------------------------------------+
 | 1 byte   |              64 bytes                  |
 +----------+----------------------------------------+
 </pre>
-<p class="Pp">
-  <br/>
-   STUN wire URL capacity in bytes, including NUL (63 URL bytes).</p>
-<p class="Pp">Definition at line <b>73</b> of file <b>stun.h</b>.</p>
-<p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="struct___attribute___((packed)_)"><a class="permalink" href="#struct___attribute___((packed)_)">struct
-  __attribute__ ((packed) )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b>&lt; Length of
-    host string (actual URL length)</b></p>
-<p class="Pp"></p>
-<p class="Pp">&lt; STUN server URL (e.g.,
-    &quot;stun:discovery.ascii.chat:3478&quot;)</p>
-<p class="Pp">Definition at line <b>1</b> of file <b>stun.h</b>.</p>
-<pre>75                                        {
+          <p class="Pp">
+            <br />
+            STUN wire URL capacity in bytes, including NUL (63 URL bytes).
+          </p>
+          <p class="Pp">Definition at line <b>73</b> of file <b>stun.h</b>.</p>
+          <p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="struct___attribute___((packed)_)">
+            <a class="permalink" href="#struct___attribute___((packed)_)"
+              >struct __attribute__ ((packed) )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b
+              >&lt; Length of host string (actual URL length)</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            &lt; STUN server URL (e.g.,
+            &quot;stun:discovery.ascii.chat:3478&quot;)
+          </p>
+          <p class="Pp">Definition at line <b>1</b> of file <b>stun.h</b>.</p>
+          <pre>
+75                                        {
 76   uint8_t host_len;
 77   char host[STUN_URL_BUFFER_SIZE];
 78 } stun_server_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_stun_servers_parse_(const_char_*_csv_servers,_const_char_*_default_csv,_"><a class="permalink" href="#int_stun_servers_parse_(const_char_*_csv_servers,_const_char_*_default_csv,_">int
-  stun_servers_parse (const char * csv_servers, const char * default_csv,
-  <b>stun_server_t</b> * out_servers, int max_count)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b></b></p>
-<p class="Pp">Parse comma-separated STUN server URLs into stun_server_t array.
-    Parses a comma-separated string of STUN server URLs (e.g.,
-    &quot;stun:server1:3478,stun:server2:3478&quot;) into an array of
-    stun_server_t structs. If the input string is empty or NULL, uses the
-    default endpoints from the options system.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Example Input Formats</b>:</p>
-<ul class="Bl-bullet">
-  <li>Empty: &quot;&quot; (will use defaults from OPT_STUN_SERVERS_DEFAULT)</li>
-  <li>Single: &quot;stun:stun.example.com:3478&quot;</li>
-  <li>Multiple:
-      &quot;stun:server1:3478,stun:server2:19302,stun:server3:5349&quot;</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>csv_servers</i> Comma-separated STUN server URLs (can
-  be empty)
-<br/>
-<i>default_csv</i> Default servers to use if csv_servers is empty
-<br/>
-<i>out_servers</i> Output array of stun_server_t structs (must be pre-allocated)
-<br/>
-<i>max_count</i> Maximum number of servers to parse</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of servers parsed (0-max_count), or -1 on
-  error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Each server URL is limited to STUN_URL_BUFFER_SIZE - 1
-  bytes, excluding NUL
-<p class="Pp"></p>
-<p class="Pp">Function gracefully stops at max_count or if a server exceeds max
-    length</p>
-</div>
-<p class="Pp">Parses a comma-separated string of STUN server URLs into
-    stun_server_t structs. If the input string is empty or NULL, uses the
-    provided default string.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>csv_servers</i> Comma-separated STUN server URLs (can
-  be empty)
-<br/>
-<i>default_csv</i> Default servers to use if csv_servers is empty
-<br/>
-<i>out_servers</i> Output array of stun_server_t structs (must be pre-allocated)
-<br/>
-<i>max_count</i> Maximum number of servers to parse</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of servers parsed (0-max_count), or -1 on
-  error</div>
-<p class="Pp">Definition at line <b>46</b> of file <b>stun.c</b>.</p>
-<pre>46                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_stun_servers_parse_(const_char_*_csv_servers,_const_char_*_default_csv,_"
+          >
+            <a
+              class="permalink"
+              href="#int_stun_servers_parse_(const_char_*_csv_servers,_const_char_*_default_csv,_"
+              >int stun_servers_parse (const char * csv_servers, const char *
+              default_csv, <b>stun_server_t</b> * out_servers, int max_count)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Parse comma-separated STUN server URLs into stun_server_t array.
+            Parses a comma-separated string of STUN server URLs (e.g.,
+            &quot;stun:server1:3478,stun:server2:3478&quot;) into an array of
+            stun_server_t structs. If the input string is empty or NULL, uses
+            the default endpoints from the options system.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Example Input Formats</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Empty: &quot;&quot; (will use defaults from
+              OPT_STUN_SERVERS_DEFAULT)
+            </li>
+            <li>Single: &quot;stun:stun.example.com:3478&quot;</li>
+            <li>
+              Multiple:
+              &quot;stun:server1:3478,stun:server2:19302,stun:server3:5349&quot;
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>csv_servers</i> Comma-separated STUN server URLs (can be empty)
+            <br />
+            <i>default_csv</i> Default servers to use if csv_servers is empty
+            <br />
+            <i>out_servers</i> Output array of stun_server_t structs (must be
+            pre-allocated)
+            <br />
+            <i>max_count</i> Maximum number of servers to parse
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of servers parsed (0-max_count), or -1 on error
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Each server URL is limited to STUN_URL_BUFFER_SIZE - 1 bytes,
+            excluding NUL
+            <p class="Pp"></p>
+            <p class="Pp">
+              Function gracefully stops at max_count or if a server exceeds max
+              length
+            </p>
+          </div>
+          <p class="Pp">
+            Parses a comma-separated string of STUN server URLs into
+            stun_server_t structs. If the input string is empty or NULL, uses
+            the provided default string.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>csv_servers</i> Comma-separated STUN server URLs (can be empty)
+            <br />
+            <i>default_csv</i> Default servers to use if csv_servers is empty
+            <br />
+            <i>out_servers</i> Output array of stun_server_t structs (must be
+            pre-allocated)
+            <br />
+            <i>max_count</i> Maximum number of servers to parse
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of servers parsed (0-max_count), or -1 on error
+          </div>
+          <p class="Pp">Definition at line <b>46</b> of file <b>stun.c</b>.</p>
+          <pre>
+46                                                                                                                     {
 47   if (!out_servers || max_count &lt;= 0) {
 48     log_warn(&quot;Invalid output array or max_count&quot;);
 49     return -1;
@@ -365,35 +492,47 @@
 165   pcre2_code_free(regex);
 166   return count;
 167 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_group_ptr()</b>,
-    <b>asciichat_pcre2_match()</b>, <b>log_warn</b>, <b>stun_server_t</b>,
-    <b>stun_servers_parse()</b>, and <b>STUN_URL_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="stun_server_t"><a class="permalink" href="#stun_server_t">stun_server_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>78</b> of file <b>stun.h</b>.</p>
-<p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_pcre2_extract_group_ptr()</b>,
+            <b>asciichat_pcre2_match()</b>, <b>log_warn</b>,
+            <b>stun_server_t</b>, <b>stun_servers_parse()</b>, and
+            <b>STUN_URL_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="stun_server_t">
+            <a class="permalink" href="#stun_server_t">stun_server_t</a>
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/network/webrtc/stun.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Definition at line <b>78</b> of file <b>stun.h</b>.</p>
+          <p class="Pp">Referenced by <b>stun_servers_parse()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

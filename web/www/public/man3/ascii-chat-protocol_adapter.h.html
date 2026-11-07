@@ -1,77 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>protocol_adapter.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">protocol_adapter.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">protocol_adapter.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">protocol_adapter.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>client_protocol_start</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>bool</b> <b>client_protocol_connection_lost</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> client_protocol_connection_lost
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">Definition at line <b>474</b> of file
-  <b>protocol_adapter.c</b>.</p>
-<pre>474                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>protocol_adapter.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">protocol_adapter.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">protocol_adapter.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">protocol_adapter.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>client_protocol_start</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>bool</b> <b>client_protocol_connection_lost</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_protocol_connection_lost (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>474</b> of file <b>protocol_adapter.c</b>.
+          </p>
+          <pre>
+474                                                                       {
 475   return atomic_load_bool(&amp;connection-&gt;data_thread_exited) || server_connection_is_lost(connection);
 476 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>client_protocol_connection_lost()</b>,
-    <b>client_connection::data_thread_exited</b>, and
-    <b>server_connection_is_lost()</b>.</p>
-<p class="Pp">Referenced by <b>client_protocol_connection_lost()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> client_protocol_start
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">Definition at line <b>358</b> of file
-  <b>protocol_adapter.c</b>.</p>
-<pre>358                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>,
+            <b>client_protocol_connection_lost()</b>,
+            <b>client_connection::data_thread_exited</b>, and
+            <b>server_connection_is_lost()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_connection_lost()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_protocol_start (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>358</b> of file <b>protocol_adapter.c</b>.
+          </p>
+          <pre>
+358                                                                          {
 359   log_warn(&quot;[FRAME_RECV_INIT] &#x1F7E2; PROTOCOL_START: Starting client protocol initialization&quot;);
 360
 361   // The server can send Opus audio as soon as streaming starts. Initialize the
@@ -186,44 +242,55 @@
 470     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
 471   return ASCIICHAT_OK;
 472 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_client_callbacks_t::app_ctx</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>audio_connection_init()</b>, <b>client_connection::audio_context</b>,
-    <b>audio_sender_init()</b>, <b>audio_start_duplex()</b>,
-    <b>audio_start_thread()</b>, <b>client_connection::capture_context</b>,
-    <b>audio_context_t::capture_media_source</b>, <b>capture_start_thread()</b>,
-    <b>client_connection_checkpoint()</b>, <b>client_protocol_start()</b>,
-    <b>client_connection::client_worker_pool</b>,
-    <b>client_connection::data_thread_exited</b>,
-    <b>client_connection::decoded_ascii_workspace</b>,
-    <b>display_reset_for_new_connection()</b>, <b>ERROR_THREAD</b>,
-    <b>GET_OPTION</b>, <b>audio_context_t::initialized</b>,
-    <b>keepalive_start_thread()</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
-    <b>log_error</b>, <b>log_warn</b>, <b>client_connection::protocol</b>,
-    <b>server_connection_get_transport()</b>,
-    <b>session_capture_get_media_source()</b>,
-    <b>session_capture_set_audio_context()</b>, <b>session_protocol_init()</b>,
-    <b>SET_ERRNO</b>, <b>STREAM_TYPE_AUDIO</b>, <b>STREAM_TYPE_VIDEO</b>,
-    <b>terminal_get_effective_height()</b>,
-    <b>terminal_get_effective_width()</b>, <b>thread_pool_spawn()</b>,
-    <b>threaded_send_stream_start_packet()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_start()</b>, and
-    <b>client_protocol_start()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_client_callbacks_t::app_ctx</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>audio_connection_init()</b>,
+            <b>client_connection::audio_context</b>, <b>audio_sender_init()</b>,
+            <b>audio_start_duplex()</b>, <b>audio_start_thread()</b>,
+            <b>client_connection::capture_context</b>,
+            <b>audio_context_t::capture_media_source</b>,
+            <b>capture_start_thread()</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>client_protocol_start()</b>,
+            <b>client_connection::client_worker_pool</b>,
+            <b>client_connection::data_thread_exited</b>,
+            <b>client_connection::decoded_ascii_workspace</b>,
+            <b>display_reset_for_new_connection()</b>, <b>ERROR_THREAD</b>,
+            <b>GET_OPTION</b>, <b>audio_context_t::initialized</b>,
+            <b>keepalive_start_thread()</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_warn</b>,
+            <b>client_connection::protocol</b>,
+            <b>server_connection_get_transport()</b>,
+            <b>session_capture_get_media_source()</b>,
+            <b>session_capture_set_audio_context()</b>,
+            <b>session_protocol_init()</b>, <b>SET_ERRNO</b>,
+            <b>STREAM_TYPE_AUDIO</b>, <b>STREAM_TYPE_VIDEO</b>,
+            <b>terminal_get_effective_height()</b>,
+            <b>terminal_get_effective_width()</b>, <b>thread_pool_spawn()</b>,
+            <b>threaded_send_stream_start_packet()</b>, and
+            <b>threaded_send_terminal_size_with_auto_detect()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

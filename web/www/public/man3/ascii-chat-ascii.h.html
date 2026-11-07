@@ -1,198 +1,284 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ascii.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ascii.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ascii.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ascii.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ascii_frame_source_t</b>
-  <br/>
-  Frame source structure for grid layout.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ASCII_LUMINANCE_LEVELS</b> 256
-  <br/>
-  Number of luminance levels supported (256). #define <b>ASCII_SLEEP_NS</b>
-    50000L
-  <br/>
-  Sleep duration in nanoseconds between frames (50000 ns = 50 &#x03BC;s).
-    #define <b>ANSI_FG_PREFIX</b> '&#x00A0;33[38;2;'
-  <br/>
-  ANSI foreground color prefix (truecolor mode). #define <b>ANSI_BG_PREFIX</b>
-    '&#x00A0;33[48;2;'
-  <br/>
-  ANSI background color prefix (truecolor mode). #define
-    <b>ANSI_COLOR_SUFFIX</b> 'm'
-  <br/>
-  ANSI color suffix. #define <b>print</b>(s)
-  <br/>
-  Print string to stdout. #define <b>console_clear</b>(fd)
-  <br/>
-  Clear console and move cursor to home position. #define
-    <b>cursor_reset</b>(fd)
-  <br/>
-  Reset cursor to home position. #define <b>ascii_clear_screen</b>(fd)
-  <br/>
-  Clear terminal screen. #define <b>ascii_zzz</b>()
-  <br/>
-  Sleep for frame rate limiting.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>ascii_write_init</b> (int fd,
-    <b>bool</b> reset_terminal)
-  <br/>
-  Initialize ASCII write subsystem. char * <b>ascii_convert</b> (<b>image_t</b>
-    *original, const ssize_t width, const ssize_t height, const <b>bool</b>
-    color, const <b>bool</b> aspect_ratio, const <b>bool</b> stretch, const char
-    *palette_chars, const char luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
-  <br/>
-  Convert image to ASCII art. char * <b>ascii_convert_with_capabilities</b>
-    (<b>image_t</b> *original, const ssize_t width, const ssize_t height, const
-    <b>terminal_capabilities_t</b> *caps, const <b>bool</b> use_aspect_ratio,
-    const <b>bool</b> stretch, const char *palette_chars)
-  <br/>
-  Convert image to ASCII art with terminal capability awareness. char *
-    <b>ascii_convert_with_capabilities_fit</b> (<b>image_t</b> *original, const
-    ssize_t width, const ssize_t height, const <b>terminal_capabilities_t</b>
-    *caps, const <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
-    char *palette_chars, const <b>bool</b> contain)
-  <br/>
-  char * <b>ascii_convert_with_capabilities_workspace</b> (<b>image_t</b>
-    *original, const ssize_t width, const ssize_t height, const
-    <b>terminal_capabilities_t</b> *caps, const <b>bool</b> use_aspect_ratio,
-    const <b>bool</b> stretch, const char *palette_chars, const <b>bool</b>
-    contain, <b>image_t</b> **workspace)
-  <br/>
-  char * <b>ascii_convert_with_buffers</b> (<b>image_t</b> *original, const
-    ssize_t width, const ssize_t height, const <b>terminal_capabilities_t</b>
-    *caps, const <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
-    char *palette_chars, const <b>bool</b> contain, <b>image_t</b> **workspace,
-    <b>outbuf_t</b> *output)
-  <br/>
-  char * <b>ascii_convert_with_buffers_stabilized</b> (<b>image_t</b> *original,
-    const ssize_t width, const ssize_t height, const
-    <b>terminal_capabilities_t</b> *caps, const <b>bool</b> use_aspect_ratio,
-    const <b>bool</b> stretch, const char *palette_chars, const <b>bool</b>
-    contain, <b>image_t</b> **workspace, <b>outbuf_t</b> *output,
-    <b>ascii_stabilizer_t</b> *stabilizer)
-  <br/>
-  char * <b>image_print_with_capabilities</b> (const <b>image_t</b> *image,
-    const <b>terminal_capabilities_t</b> *caps, const char *palette)
-  <br/>
-  Convert image to ASCII art with terminal capabilities.
-    <b>asciichat_error_t</b> <b>ascii_write</b> (const char *frame)
-  <br/>
-  Write ASCII frame to terminal. void <b>ascii_write_destroy</b> (int fd,
-    <b>bool</b> reset_terminal)
-  <br/>
-  Destroy ASCII write subsystem. char * <b>ascii_pad_frame_width</b> (const char
-    *frame, size_t pad)
-  <br/>
-  Add leading spaces (left-padding) to each line of a frame. char *
-    <b>ascii_pad_frame_height</b> (const char *frame, size_t pad_top)
-  <br/>
-  Add blank lines (vertical padding) to center a frame vertically.
-    <b>asciichat_error_t</b> <b>ascii_grid_layout</b> (int source_count, int
-    width, int height, int *grid_cols, int *grid_rows)
-  <br/>
-  char * <b>ascii_create_grid</b> (<b>ascii_frame_source_t</b> *sources, int
-    source_count, int width, int height, size_t *out_size)
-  <br/>
-  Create a grid layout from multiple ASCII frames. char * <b>get_lum_palette</b>
-    (void)
-  <br/>
-  Get luminance palette for character mapping.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">char <b>ascii_palette</b> []
-  <br/>
-  Default ASCII palette characters.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ascii_convert_with_buffers_("><a class="permalink" href="#char_*_ascii_convert_with_buffers_(">char
-  * ascii_convert_with_buffers (<b>image_t</b> * original, const ssize_t width,
-  const ssize_t height, const <b>terminal_capabilities_t</b> * caps, const
-  <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char *
-  palette_chars, const <b>bool</b> contain, <b>image_t</b> ** workspace,
-  <b>outbuf_t</b> * output)</a></h2>
-<p class="Pp">Borrow output from the caller-owned buffer until its next
-    conversion or release. Both workspaces require a single owner; passing NULL
-    output keeps owned-output semantics.</p>
-<p class="Pp">Definition at line <b>277</b> of file <b>ascii.c</b>.</p>
-<pre>279                                                                                                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ascii.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ascii.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ascii.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ascii.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ascii_frame_source_t</b>
+            <br />
+            Frame source structure for grid layout.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ASCII_LUMINANCE_LEVELS</b> 256
+            <br />
+            Number of luminance levels supported (256). #define
+            <b>ASCII_SLEEP_NS</b>
+            50000L
+            <br />
+            Sleep duration in nanoseconds between frames (50000 ns = 50
+            &#x03BC;s). #define
+            <b>ANSI_FG_PREFIX</b> '&#x00A0;33[38;2;'
+            <br />
+            ANSI foreground color prefix (truecolor mode). #define
+            <b>ANSI_BG_PREFIX</b>
+            '&#x00A0;33[48;2;'
+            <br />
+            ANSI background color prefix (truecolor mode). #define
+            <b>ANSI_COLOR_SUFFIX</b> 'm'
+            <br />
+            ANSI color suffix. #define <b>print</b>(s)
+            <br />
+            Print string to stdout. #define <b>console_clear</b>(fd)
+            <br />
+            Clear console and move cursor to home position. #define
+            <b>cursor_reset</b>(fd)
+            <br />
+            Reset cursor to home position. #define <b>ascii_clear_screen</b>(fd)
+            <br />
+            Clear terminal screen. #define <b>ascii_zzz</b>()
+            <br />
+            Sleep for frame rate limiting.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>ascii_write_init</b> (int fd,
+            <b>bool</b> reset_terminal)
+            <br />
+            Initialize ASCII write subsystem. char * <b>ascii_convert</b> (<b
+              >image_t</b
+            >
+            *original, const ssize_t width, const ssize_t height, const
+            <b>bool</b> color, const <b>bool</b> aspect_ratio, const
+            <b>bool</b> stretch, const char *palette_chars, const char
+            luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
+            <br />
+            Convert image to ASCII art. char *
+            <b>ascii_convert_with_capabilities</b> (<b>image_t</b>
+            *original, const ssize_t width, const ssize_t height, const
+            <b>terminal_capabilities_t</b> *caps, const
+            <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char
+            *palette_chars)
+            <br />
+            Convert image to ASCII art with terminal capability awareness. char
+            *
+            <b>ascii_convert_with_capabilities_fit</b> (<b>image_t</b>
+            *original, const ssize_t width, const ssize_t height, const
+            <b>terminal_capabilities_t</b> *caps, const
+            <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char
+            *palette_chars, const <b>bool</b> contain)
+            <br />
+            char * <b>ascii_convert_with_capabilities_workspace</b> (<b
+              >image_t</b
+            >
+            *original, const ssize_t width, const ssize_t height, const
+            <b>terminal_capabilities_t</b> *caps, const
+            <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char
+            *palette_chars, const <b>bool</b> contain,
+            <b>image_t</b> **workspace)
+            <br />
+            char * <b>ascii_convert_with_buffers</b> (<b>image_t</b> *original,
+            const ssize_t width, const ssize_t height, const
+            <b>terminal_capabilities_t</b> *caps, const
+            <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char
+            *palette_chars, const <b>bool</b> contain,
+            <b>image_t</b> **workspace, <b>outbuf_t</b> *output)
+            <br />
+            char * <b>ascii_convert_with_buffers_stabilized</b> (<b>image_t</b>
+            *original, const ssize_t width, const ssize_t height, const
+            <b>terminal_capabilities_t</b> *caps, const
+            <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char
+            *palette_chars, const <b>bool</b> contain,
+            <b>image_t</b> **workspace, <b>outbuf_t</b> *output,
+            <b>ascii_stabilizer_t</b> *stabilizer)
+            <br />
+            char * <b>image_print_with_capabilities</b> (const
+            <b>image_t</b> *image, const <b>terminal_capabilities_t</b> *caps,
+            const char *palette)
+            <br />
+            Convert image to ASCII art with terminal capabilities.
+            <b>asciichat_error_t</b> <b>ascii_write</b> (const char *frame)
+            <br />
+            Write ASCII frame to terminal. void <b>ascii_write_destroy</b> (int
+            fd, <b>bool</b> reset_terminal)
+            <br />
+            Destroy ASCII write subsystem. char *
+            <b>ascii_pad_frame_width</b> (const char *frame, size_t pad)
+            <br />
+            Add leading spaces (left-padding) to each line of a frame. char *
+            <b>ascii_pad_frame_height</b> (const char *frame, size_t pad_top)
+            <br />
+            Add blank lines (vertical padding) to center a frame vertically.
+            <b>asciichat_error_t</b> <b>ascii_grid_layout</b> (int source_count,
+            int width, int height, int *grid_cols, int *grid_rows)
+            <br />
+            char * <b>ascii_create_grid</b> (<b>ascii_frame_source_t</b>
+            *sources, int source_count, int width, int height, size_t *out_size)
+            <br />
+            Create a grid layout from multiple ASCII frames. char *
+            <b>get_lum_palette</b>
+            (void)
+            <br />
+            Get luminance palette for character mapping.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char <b>ascii_palette</b> []
+            <br />
+            Default ASCII palette characters.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ascii_convert_with_buffers_(">
+            <a class="permalink" href="#char_*_ascii_convert_with_buffers_("
+              >char * ascii_convert_with_buffers (<b>image_t</b> * original,
+              const ssize_t width, const ssize_t height, const
+              <b>terminal_capabilities_t</b> * caps, const
+              <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
+              char * palette_chars, const <b>bool</b> contain, <b>image_t</b> **
+              workspace, <b>outbuf_t</b> * output)</a
+            >
+          </h2>
+          <p class="Pp">
+            Borrow output from the caller-owned buffer until its next conversion
+            or release. Both workspaces require a single owner; passing NULL
+            output keeps owned-output semantics.
+          </p>
+          <p class="Pp">
+            Definition at line <b>277</b> of file <b>ascii.c</b>.
+          </p>
+          <pre>
+279                                                                                                                        {
 280   return ascii_convert_with_buffers_stabilized(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
 281                                                contain, workspace, output, NULL);
 282 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_convert_with_buffers()</b>, and
-    <b>ascii_convert_with_buffers_stabilized()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>ascii_convert_with_buffers()</b>, and
-    <b>ascii_convert_with_capabilities_workspace()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ascii_convert_with_buffers_stabilized_("><a class="permalink" href="#char_*_ascii_convert_with_buffers_stabilized_(">char
-  * ascii_convert_with_buffers_stabilized (<b>image_t</b> * original, const
-  ssize_t width, const ssize_t height, const <b>terminal_capabilities_t</b> *
-  caps, const <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
-  char * palette_chars, const <b>bool</b> contain, <b>image_t</b> ** workspace,
-  <b>outbuf_t</b> * output, <b>ascii_stabilizer_t</b> * stabilizer)</a></h2>
-<p class="Pp">Convert with a history owned by this stream; reset it when the
-    source changes.</p>
-<p class="Pp">Definition at line <b>284</b> of file <b>ascii.c</b>.</p>
-<pre>287                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_convert_with_buffers()</b>, and
+            <b>ascii_convert_with_buffers_stabilized()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_convert()</b>,
+            <b>ascii_convert_with_buffers()</b>, and
+            <b>ascii_convert_with_capabilities_workspace()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ascii_convert_with_buffers_stabilized_(">
+            <a
+              class="permalink"
+              href="#char_*_ascii_convert_with_buffers_stabilized_("
+              >char * ascii_convert_with_buffers_stabilized (<b>image_t</b> *
+              original, const ssize_t width, const ssize_t height, const
+              <b>terminal_capabilities_t</b> * caps, const
+              <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
+              char * palette_chars, const <b>bool</b> contain, <b>image_t</b> **
+              workspace, <b>outbuf_t</b> * output, <b>ascii_stabilizer_t</b> *
+              stabilizer)</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert with a history owned by this stream; reset it when the
+            source changes.
+          </p>
+          <p class="Pp">
+            Definition at line <b>284</b> of file <b>ascii.c</b>.
+          </p>
+          <pre>
+287                                                                                                                    {
 288   if (original == NULL || caps == NULL) {
 289     log_error(&quot;Invalid parameters for ascii_convert_with_capabilities&quot;);
 290     return NULL;
@@ -428,89 +514,137 @@
 520
 521   return ascii_padded;
 522 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>apply_color_filter()</b>, <b>ASCII_COLOR_16</b>,
-    <b>ASCII_COLOR_256</b>, <b>ASCII_COLOR_NONE</b>, <b>ASCII_COLOR_TRUE</b>,
-    <b>ascii_convert_with_buffers_stabilized()</b>,
-    <b>ascii_glyph_palette_supported()</b>, <b>ascii_render_glyph_match()</b>,
-    <b>ascii_render_set_output_target()</b>, <b>ASCII_RENDERER_GLYPH</b>,
-    <b>ascii_stabilizer_prepare()</b>, <b>ascii_stabilizer_set_target()</b>,
-    <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
-    <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
-    <b>terminal_capabilities_t::color_level</b>,
-    <b>ascii_stabilizer_t::elapsed_ns</b>,
-    <b>ascii_stabilizer_t::fixed_step_ns</b>, <b>rgb_pixel_t::g</b>,
-    <b>image_t::h</b>, <b>image_clear()</b>, <b>image_destroy()</b>,
-    <b>IMAGE_MAX_HEIGHT</b>, <b>IMAGE_MAX_WIDTH</b>, <b>image_new()</b>,
-    <b>image_print_with_capabilities()</b>, <b>image_resize()</b>,
-    <b>ascii_stabilizer_t::last_timestamp_ns</b>, <b>log_debug_every</b>,
-    <b>log_error</b>, <b>log_warn</b>, <b>log_warn_every</b>,
-    <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
-    <b>terminal_capabilities_t::palette_explicit</b>, <b>image_t::pixels</b>,
-    <b>rgb_pixel_t::r</b>, <b>terminal_capabilities_t::render_mode</b>,
-    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
-    <b>SAFE_FREE</b>, <b>simd_cells_backend()</b>, <b>TERM_COLOR_16</b>,
-    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_TRUECOLOR</b>,
-    <b>terminal_capabilities_t::text_renderer</b>, <b>time_elapsed_ns()</b>,
-    <b>time_get_ns()</b>, <b>US_PER_SEC_INT</b>, and <b>image_t::w</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>ascii_convert_with_buffers()</b>,
-    <b>ascii_convert_with_buffers_stabilized()</b>, and
-    <b>mirror_convert_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ascii_convert_with_capabilities_fit_("><a class="permalink" href="#char_*_ascii_convert_with_capabilities_fit_(">char
-  * ascii_convert_with_capabilities_fit (<b>image_t</b> * original, const
-  ssize_t width, const ssize_t height, const <b>terminal_capabilities_t</b> *
-  caps, const <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
-  char * palette_chars, const <b>bool</b> contain)</a></h2>
-<p class="Pp">Convert with explicit contain (true) or cover (false) viewport
-    fitting.</p>
-<p class="Pp">Definition at line <b>260</b> of file <b>ascii.c</b>.</p>
-<pre>262                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>apply_color_filter()</b>, <b>ASCII_COLOR_16</b>,
+            <b>ASCII_COLOR_256</b>, <b>ASCII_COLOR_NONE</b>,
+            <b>ASCII_COLOR_TRUE</b>,
+            <b>ascii_convert_with_buffers_stabilized()</b>,
+            <b>ascii_glyph_palette_supported()</b>,
+            <b>ascii_render_glyph_match()</b>,
+            <b>ascii_render_set_output_target()</b>,
+            <b>ASCII_RENDERER_GLYPH</b>, <b>ascii_stabilizer_prepare()</b>,
+            <b>ascii_stabilizer_set_target()</b>, <b>ASCIICHAT_OK</b>,
+            <b>rgb_pixel_t::b</b>, <b>terminal_capabilities_t::color_filter</b>,
+            <b>COLOR_FILTER_NONE</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>ascii_stabilizer_t::elapsed_ns</b>,
+            <b>ascii_stabilizer_t::fixed_step_ns</b>, <b>rgb_pixel_t::g</b>,
+            <b>image_t::h</b>, <b>image_clear()</b>, <b>image_destroy()</b>,
+            <b>IMAGE_MAX_HEIGHT</b>, <b>IMAGE_MAX_WIDTH</b>, <b>image_new()</b>,
+            <b>image_print_with_capabilities()</b>, <b>image_resize()</b>,
+            <b>ascii_stabilizer_t::last_timestamp_ns</b>,
+            <b>log_debug_every</b>, <b>log_error</b>, <b>log_warn</b>,
+            <b>log_warn_every</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+            <b>terminal_capabilities_t::palette_explicit</b>,
+            <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>,
+            <b>terminal_capabilities_t::render_mode</b>,
+            <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
+            <b>SAFE_FREE</b>, <b>simd_cells_backend()</b>, <b>TERM_COLOR_16</b>,
+            <b>TERM_COLOR_256</b>, <b>TERM_COLOR_TRUECOLOR</b>,
+            <b>terminal_capabilities_t::text_renderer</b>,
+            <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>,
+            <b>US_PER_SEC_INT</b>, and <b>image_t::w</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_convert()</b>,
+            <b>ascii_convert_with_buffers()</b>,
+            <b>ascii_convert_with_buffers_stabilized()</b>, and
+            <b>mirror_convert_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ascii_convert_with_capabilities_fit_(">
+            <a
+              class="permalink"
+              href="#char_*_ascii_convert_with_capabilities_fit_("
+              >char * ascii_convert_with_capabilities_fit (<b>image_t</b> *
+              original, const ssize_t width, const ssize_t height, const
+              <b>terminal_capabilities_t</b> * caps, const
+              <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
+              char * palette_chars, const <b>bool</b> contain)</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert with explicit contain (true) or cover (false) viewport
+            fitting.
+          </p>
+          <p class="Pp">
+            Definition at line <b>260</b> of file <b>ascii.c</b>.
+          </p>
+          <pre>
+262                                                                                                              {
 263
 264   return ascii_convert_with_capabilities_workspace(original, width, height, caps, use_aspect_ratio, stretch,
 265                                                    palette_chars, contain, NULL);
 266 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_convert_with_capabilities_fit()</b>, and
-    <b>ascii_convert_with_capabilities_workspace()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>ascii_convert_with_capabilities()</b>, and
-    <b>ascii_convert_with_capabilities_fit()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ascii_convert_with_capabilities_workspace_("><a class="permalink" href="#char_*_ascii_convert_with_capabilities_workspace_(">char
-  * ascii_convert_with_capabilities_workspace (<b>image_t</b> * original, const
-  ssize_t width, const ssize_t height, const <b>terminal_capabilities_t</b> *
-  caps, const <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
-  char * palette_chars, const <b>bool</b> contain, <b>image_t</b> **
-  workspace)</a></h2>
-<p class="Pp">Caller owns the reusable resize image; calls using it must be
-    serialized.</p>
-<p class="Pp">Definition at line <b>268</b> of file <b>ascii.c</b>.</p>
-<pre>271                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_convert_with_capabilities_fit()</b>, and
+            <b>ascii_convert_with_capabilities_workspace()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_convert()</b>,
+            <b>ascii_convert_with_capabilities()</b>, and
+            <b>ascii_convert_with_capabilities_fit()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_ascii_convert_with_capabilities_workspace_("
+          >
+            <a
+              class="permalink"
+              href="#char_*_ascii_convert_with_capabilities_workspace_("
+              >char * ascii_convert_with_capabilities_workspace (<b>image_t</b>
+              * original, const ssize_t width, const ssize_t height, const
+              <b>terminal_capabilities_t</b> * caps, const
+              <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const
+              char * palette_chars, const <b>bool</b> contain, <b>image_t</b> **
+              workspace)</a
+            >
+          </h2>
+          <p class="Pp">
+            Caller owns the reusable resize image; calls using it must be
+            serialized.
+          </p>
+          <p class="Pp">
+            Definition at line <b>268</b> of file <b>ascii.c</b>.
+          </p>
+          <pre>
+271                                                                      {
 272
 273   return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain,
 274                                     workspace, NULL);
 275 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_convert_with_buffers()</b>, and
-    <b>ascii_convert_with_capabilities_workspace()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>ascii_convert_with_capabilities_fit()</b>, and
-    <b>ascii_convert_with_capabilities_workspace()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> ascii_grid_layout (int source_count, int
-  width, int height, int * grid_cols, int * grid_rows)</h2>
-<p class="Pp">Calculate the shared grid layout before sizing source video
-  tiles.</p>
-<p class="Pp">Definition at line <b>648</b> of file <b>ascii.c</b>.</p>
-<pre>648                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_convert_with_buffers()</b>, and
+            <b>ascii_convert_with_capabilities_workspace()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_convert()</b>,
+            <b>ascii_convert_with_capabilities_fit()</b>, and
+            <b>ascii_convert_with_capabilities_workspace()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ascii_grid_layout (int source_count, int
+            width, int height, int * grid_cols, int * grid_rows)
+          </h2>
+          <p class="Pp">
+            Calculate the shared grid layout before sizing source video tiles.
+          </p>
+          <p class="Pp">
+            Definition at line <b>648</b> of file <b>ascii.c</b>.
+          </p>
+          <pre>
+648                                                                                                              {
 649   if (source_count &lt;= 0 || width &lt;= 0 || height &lt;= 0 || !grid_cols || !grid_rows)
 650     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid grid dimensions&quot;);
 651   // Multiple sources: create grid layout
@@ -578,24 +712,30 @@
 713   *grid_rows = best_rows;
 714   return ASCIICHAT_OK;
 715 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_grid_layout()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>, and
-    <b>ascii_grid_layout()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_grid_layout()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>, and
+            <b>ascii_grid_layout()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,262 +1,358 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>misc.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">misc.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">misc.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">misc.c - Miscellaneous stubs for WASM.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef void <b>ui_mdns_server_t</b>
-  <br/>
-  typedef void <b>render_file_t</b>
-  <br/>
-  typedef void <b>media_source_t</b>
-  <br/>
-  typedef void <b>symbol_cache_t</b>
-  <br/>
-  typedef void(*) <b>signal_handler_t</b>(int)
-  <br/>
-  Signal handler function type. typedef void <b>mdns_query_t</b>
-  <br/>
-  typedef void <b>mdns_result_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>audio_stop_duplex</b>
-    (<b>audio_context_t</b> *ctx)
-  <br/>
-  Stop full-duplex audio. void <b>audio_terminate_portaudio_final</b> (void)
-  <br/>
-  Terminate PortAudio and free all device resources. <b>bool</b>
-    <b>update_banner_is_checking</b> (void)
-  <br/>
-  <b>tty_info_t</b> <b>get_current_tty</b> (void)
-  <br/>
-  Get current TTY information. <b>terminal_capabilities_t</b>
-    <b>apply_color_mode_override</b> (<b>terminal_capabilities_t</b> caps)
-  <br/>
-  Apply command-line overrides to detected capabilities. <b>render_file_t</b> *
-    <b>render_file_create</b> (const char *output_file, int width, int height,
-    int fps, int vcodec_id, int acodec_id)
-  <br/>
-  void <b>render_file_set_audio_source</b> (<b>render_file_t</b> *rf,
-    <b>media_source_t</b> *source, int sample_rate)
-  <br/>
-  void <b>render_file_set_video_source</b> (<b>render_file_t</b> *rf,
-    <b>media_source_t</b> *source)
-  <br/>
-  int <b>render_file_write_frame</b> (<b>render_file_t</b> *rf, const
-    <b>uint8_t</b> *data, <b>uint64_t</b> duration_ns)
-  <br/>
-  int <b>render_file_destroy</b> (<b>render_file_t</b> *rf)
-  <br/>
-  void <b>render_file_set_snapshot_actual_duration</b> (<b>render_file_t</b>
-    *rf, double duration_sec)
-  <br/>
-  <b>asciichat_error_t</b> <b>terminal_clear_scrollback</b> (int fd)
-  <br/>
-  Clear terminal scrollback buffer. <b>asciichat_error_t</b>
-    <b>terminal_reset</b> (int fd)
-  <br/>
-  Reset terminal to default state. void <b>symbol_cache_destroy</b> (void)
-  <br/>
-  Clean up the symbol cache and free all resources. void
-    <b>terminal_stop_resize_detection</b> (void)
-  <br/>
-  No-op stub on POSIX platforms (no resize detection thread). void
-    <b>known_hosts_destroy</b> (void)
-  <br/>
-  Cleanup function to free cached known_hosts path. <b>asciichat_error_t</b>
-    <b>platform_restore_timer_resolution</b> (void)
-  <br/>
-  Restore default timer precision. <b>h265_encoder_t</b> *
-    <b>h265_encoder_create</b> (int width, int height, double fps)
-  <br/>
-  <b>signal_handler_t</b> <b>platform_signal</b> (int sig,
-    <b>signal_handler_t</b> handler)
-  <br/>
-  Set a signal handler. void <b>platform_force_exit</b> (int exit_code)
-  <br/>
-  Forcefully terminate the process immediately without cleanup. void
-    <b>set_interrupt_callback</b> (void(*callback)(void))
-  <br/>
-  void <b>signal_exit</b> (void)
-  <br/>
-  <b>bool</b> <b>should_exit</b> (void)
-  <br/>
-  <b>mdns_query_t</b> * <b>ui_mdns_query</b> (const char *service)
-  <br/>
-  <b>mdns_result_t</b> * <b>ui_mdns_get_best_address</b> (<b>mdns_query_t</b>
-    *query)
-  <br/>
-  int <b>ui_mdns_select</b> (const <b>ui_mdns_server_t</b> *servers, int count)
-  <br/>
-  void <b>ui_mdns_free_results</b> (<b>mdns_result_t</b> *results)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Miscellaneous stubs for WASM.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>misc.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef void <b>mdns_query_t</b></h2>
-<p class="Pp">Definition at line <b>138</b> of file <b>misc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef void <b>mdns_result_t</b></h2>
-<p class="Pp">Definition at line <b>139</b> of file <b>misc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void_media_source_t"><a class="permalink" href="#typedef_void_media_source_t">typedef
-  void media_source_t</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>misc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef void <b>render_file_t</b></h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>misc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef void <b>symbol_cache_t</b></h2>
-<p class="Pp">Definition at line <b>92</b> of file <b>misc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void_ui_mdns_server_t"><a class="permalink" href="#typedef_void_ui_mdns_server_t">typedef
-  void ui_mdns_server_t</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>misc.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>terminal_capabilities_t</b> apply_color_mode_override
-  (<b>terminal_capabilities_t</b> caps)</h2>
-<p class="Pp">Apply command-line overrides to detected capabilities.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>caps</i> Terminal capabilities structure to
-  modify</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Modified terminal capabilities structure</div>
-<p class="Pp">Applies any command-line option overrides to the detected terminal
-    capabilities. Overrides may include:</p>
-<ul class="Bl-bullet">
-  <li>Force color mode (--color, --no-color, --256, --truecolor)</li>
-  <li>Force UTF-8 mode (--utf8)</li>
-  <li>Render mode selection (--bg, --fg, --half-block)</li>
-  <li>Palette selection (--palette)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Returns a modified copy of the input structure.
-<p class="Pp"></p>
-<p class="Pp">Overrides take precedence over detected capabilities.</p>
-</div>
-<p class="Pp">Definition at line <b>34</b> of file <b>misc.c</b>.</p>
-<pre>34                                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>misc.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">misc.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">misc.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">misc.c - Miscellaneous stubs for WASM.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef void <b>ui_mdns_server_t</b>
+            <br />
+            typedef void <b>render_file_t</b>
+            <br />
+            typedef void <b>media_source_t</b>
+            <br />
+            typedef void <b>symbol_cache_t</b>
+            <br />
+            typedef void(*) <b>signal_handler_t</b>(int)
+            <br />
+            Signal handler function type. typedef void <b>mdns_query_t</b>
+            <br />
+            typedef void <b>mdns_result_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>audio_stop_duplex</b> (<b
+              >audio_context_t</b
+            >
+            *ctx)
+            <br />
+            Stop full-duplex audio. void
+            <b>audio_terminate_portaudio_final</b> (void)
+            <br />
+            Terminate PortAudio and free all device resources. <b>bool</b>
+            <b>update_banner_is_checking</b> (void)
+            <br />
+            <b>tty_info_t</b> <b>get_current_tty</b> (void)
+            <br />
+            Get current TTY information. <b>terminal_capabilities_t</b>
+            <b>apply_color_mode_override</b> (<b>terminal_capabilities_t</b>
+            caps)
+            <br />
+            Apply command-line overrides to detected capabilities.
+            <b>render_file_t</b> * <b>render_file_create</b> (const char
+            *output_file, int width, int height, int fps, int vcodec_id, int
+            acodec_id)
+            <br />
+            void <b>render_file_set_audio_source</b> (<b>render_file_t</b> *rf,
+            <b>media_source_t</b> *source, int sample_rate)
+            <br />
+            void <b>render_file_set_video_source</b> (<b>render_file_t</b> *rf,
+            <b>media_source_t</b> *source)
+            <br />
+            int <b>render_file_write_frame</b> (<b>render_file_t</b> *rf, const
+            <b>uint8_t</b> *data, <b>uint64_t</b> duration_ns)
+            <br />
+            int <b>render_file_destroy</b> (<b>render_file_t</b> *rf)
+            <br />
+            void <b>render_file_set_snapshot_actual_duration</b> (<b
+              >render_file_t</b
+            >
+            *rf, double duration_sec)
+            <br />
+            <b>asciichat_error_t</b> <b>terminal_clear_scrollback</b> (int fd)
+            <br />
+            Clear terminal scrollback buffer. <b>asciichat_error_t</b>
+            <b>terminal_reset</b> (int fd)
+            <br />
+            Reset terminal to default state. void
+            <b>symbol_cache_destroy</b> (void)
+            <br />
+            Clean up the symbol cache and free all resources. void
+            <b>terminal_stop_resize_detection</b> (void)
+            <br />
+            No-op stub on POSIX platforms (no resize detection thread). void
+            <b>known_hosts_destroy</b> (void)
+            <br />
+            Cleanup function to free cached known_hosts path.
+            <b>asciichat_error_t</b>
+            <b>platform_restore_timer_resolution</b> (void)
+            <br />
+            Restore default timer precision. <b>h265_encoder_t</b> *
+            <b>h265_encoder_create</b> (int width, int height, double fps)
+            <br />
+            <b>signal_handler_t</b> <b>platform_signal</b> (int sig,
+            <b>signal_handler_t</b> handler)
+            <br />
+            Set a signal handler. void <b>platform_force_exit</b> (int
+            exit_code)
+            <br />
+            Forcefully terminate the process immediately without cleanup. void
+            <b>set_interrupt_callback</b> (void(*callback)(void))
+            <br />
+            void <b>signal_exit</b> (void)
+            <br />
+            <b>bool</b> <b>should_exit</b> (void)
+            <br />
+            <b>mdns_query_t</b> * <b>ui_mdns_query</b> (const char *service)
+            <br />
+            <b>mdns_result_t</b> * <b>ui_mdns_get_best_address</b> (<b
+              >mdns_query_t</b
+            >
+            *query)
+            <br />
+            int <b>ui_mdns_select</b> (const <b>ui_mdns_server_t</b> *servers,
+            int count)
+            <br />
+            void <b>ui_mdns_free_results</b> (<b>mdns_result_t</b> *results)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Miscellaneous stubs for WASM.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>misc.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">typedef void <b>mdns_query_t</b></h2>
+          <p class="Pp">Definition at line <b>138</b> of file <b>misc.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">typedef void <b>mdns_result_t</b></h2>
+          <p class="Pp">Definition at line <b>139</b> of file <b>misc.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_void_media_source_t">
+            <a class="permalink" href="#typedef_void_media_source_t"
+              >typedef void media_source_t</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>39</b> of file <b>misc.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">typedef void <b>render_file_t</b></h2>
+          <p class="Pp">Definition at line <b>38</b> of file <b>misc.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">typedef void <b>symbol_cache_t</b></h2>
+          <p class="Pp">Definition at line <b>92</b> of file <b>misc.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_void_ui_mdns_server_t">
+            <a class="permalink" href="#typedef_void_ui_mdns_server_t"
+              >typedef void ui_mdns_server_t</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>misc.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_capabilities_t</b> apply_color_mode_override (<b
+              >terminal_capabilities_t</b
+            >
+            caps)
+          </h2>
+          <p class="Pp">
+            Apply command-line overrides to detected capabilities.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>caps</i> Terminal capabilities structure to modify
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Modified terminal capabilities structure</div>
+          <p class="Pp">
+            Applies any command-line option overrides to the detected terminal
+            capabilities. Overrides may include:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Force color mode (--color, --no-color, --256, --truecolor)</li>
+            <li>Force UTF-8 mode (--utf8)</li>
+            <li>Render mode selection (--bg, --fg, --half-block)</li>
+            <li>Palette selection (--palette)</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Returns a modified copy of the input structure.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Overrides take precedence over detected capabilities.
+            </p>
+          </div>
+          <p class="Pp">Definition at line <b>34</b> of file <b>misc.c</b>.</p>
+          <pre>
+34                                                                                 {
 35   return caps;
 36 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>apply_color_mode_override()</b>.</p>
-<p class="Pp">Referenced by <b>apply_color_mode_override()</b>, <b>main()</b>,
-    <b>session_display_create()</b>,
-    <b>session_protocol_build_capabilities()</b>, and
-    <b>test_terminal_output_modes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>tty_info_t</b> get_current_tty (void )</h2>
-<p class="Pp">Get current TTY information.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">TTY information structure with file descriptor and
-  path</div>
-<p class="Pp">Retrieves information about the current TTY (terminal). Returns
-    file descriptor for TTY access, device path, and ownership information.
-    Useful for advanced terminal operations that require direct TTY access.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">File descriptor may need to be closed if owns_fd is true.
-<p class="Pp"></p>
-<p class="Pp">TTY path is platform-specific (Unix: /dev/tty, Windows: CON,
-    etc.).</p>
-</div>
-<p class="Pp">Definition at line <b>29</b> of file <b>misc.c</b>.</p>
-<pre>29                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>apply_color_mode_override()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>apply_color_mode_override()</b>, <b>main()</b>,
+            <b>session_display_create()</b>,
+            <b>session_protocol_build_capabilities()</b>, and
+            <b>test_terminal_output_modes()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>tty_info_t</b> get_current_tty (void )</h2>
+          <p class="Pp">Get current TTY information.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            TTY information structure with file descriptor and path
+          </div>
+          <p class="Pp">
+            Retrieves information about the current TTY (terminal). Returns file
+            descriptor for TTY access, device path, and ownership information.
+            Useful for advanced terminal operations that require direct TTY
+            access.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            File descriptor may need to be closed if owns_fd is true.
+            <p class="Pp"></p>
+            <p class="Pp">
+              TTY path is platform-specific (Unix: /dev/tty, Windows: CON,
+              etc.).
+            </p>
+          </div>
+          <p class="Pp">Definition at line <b>29</b> of file <b>misc.c</b>.</p>
+          <pre>
+29                                  {
 30   tty_info_t tty = {0};
 31   return tty;
 32 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_current_tty()</b>.</p>
-<p class="Pp">Referenced by <b>get_current_tty()</b>, and
-    <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>h265_encoder_t</b> * h265_encoder_create (int width, int
-  height, double fps)</h2>
-<p class="Pp">Definition at line <b>107</b> of file <b>misc.c</b>.</p>
-<pre>107                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>get_current_tty()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>get_current_tty()</b>, and
+            <b>session_display_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>h265_encoder_t</b> * h265_encoder_create (int width, int height,
+            double fps)
+          </h2>
+          <p class="Pp">Definition at line <b>107</b> of file <b>misc.c</b>.</p>
+          <pre>
+107                                                                        {
 108   (void)width;
 109   (void)height;
 110   (void)fps;
 111   return NULL; // No video encoding in WASM
 112 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder_create()</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_context_create()</b>,
-    <b>h265_encoder_create()</b>, and <b>h265_encoder_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>render_file_t</b> * render_file_create (const char *
-  output_file, int width, int height, int fps, int vcodec_id, int
-  acodec_id)</h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>misc.c</b>.</p>
-<pre>42                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>h265_encoder_create()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>h265_client_context_create()</b>,
+            <b>h265_encoder_create()</b>, and <b>h265_encoder_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>render_file_t</b> * render_file_create (const char * output_file,
+            int width, int height, int fps, int vcodec_id, int acodec_id)
+          </h2>
+          <p class="Pp">Definition at line <b>41</b> of file <b>misc.c</b>.</p>
+          <pre>
+42                                                  {
 43   (void)output_file;
 44   (void)width;
 45   (void)height;
@@ -265,233 +361,325 @@
 48   (void)acodec_id;
 49   return NULL; // No file rendering in browser
 50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_render_file_destroy_("><a class="permalink" href="#int_render_file_destroy_(">int
-  render_file_destroy (<b>render_file_t</b> * rf)</a></h2>
-<p class="Pp">Definition at line <b>70</b> of file <b>misc.c</b>.</p>
-<pre>70                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>render_file_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_render_file_destroy_(">
+            <a class="permalink" href="#int_render_file_destroy_("
+              >int render_file_destroy (<b>render_file_t</b> * rf)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>70</b> of file <b>misc.c</b>.</p>
+          <pre>
+70                                            {
 71   (void)rf;
 72   return 0;
 73 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_audio_source_("><a class="permalink" href="#void_render_file_set_audio_source_(">void
-  render_file_set_audio_source (<b>render_file_t</b> * rf, <b>media_source_t</b>
-  * source, int sample_rate)</a></h2>
-<p class="Pp">Definition at line <b>52</b> of file <b>misc.c</b>.</p>
-<pre>52                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>render_file_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_audio_source_(">
+            <a class="permalink" href="#void_render_file_set_audio_source_("
+              >void render_file_set_audio_source (<b>render_file_t</b> * rf,
+              <b>media_source_t</b> * source, int sample_rate)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>52</b> of file <b>misc.c</b>.</p>
+          <pre>
+52                                                                                               {
 53   (void)rf;
 54   (void)source;
 55   (void)sample_rate;
 56 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_set_audio_source()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_set_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
-  render_file_set_snapshot_actual_duration (<b>render_file_t</b> * rf, double
-  duration_sec)</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>misc.c</b>.</p>
-<pre>75                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>render_file_set_audio_source()</b>.</p>
+          <p class="Pp">Referenced by <b>render_file_set_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_(">
+            <a
+              class="permalink"
+              href="#void_render_file_set_snapshot_actual_duration_("
+              >void render_file_set_snapshot_actual_duration (<b
+                >render_file_t</b
+              >
+              * rf, double duration_sec)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>75</b> of file <b>misc.c</b>.</p>
+          <pre>
+75                                                                                       {
 76   (void)rf;
 77   (void)duration_sec;
 78 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_set_snapshot_actual_duration()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_video_source_("><a class="permalink" href="#void_render_file_set_video_source_(">void
-  render_file_set_video_source (<b>render_file_t</b> * rf, <b>media_source_t</b>
-  * source)</a></h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>misc.c</b>.</p>
-<pre>58                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_set_snapshot_actual_duration()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_video_source_(">
+            <a class="permalink" href="#void_render_file_set_video_source_("
+              >void render_file_set_video_source (<b>render_file_t</b> * rf,
+              <b>media_source_t</b> * source)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>58</b> of file <b>misc.c</b>.</p>
+          <pre>
+58                                                                              {
 59   (void)rf;
 60   (void)source;
 61 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_set_video_source()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_set_video_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_render_file_write_frame_("><a class="permalink" href="#int_render_file_write_frame_(">int
-  render_file_write_frame (<b>render_file_t</b> * rf, const <b>uint8_t</b> *
-  data, <b>uint64_t</b> duration_ns)</a></h2>
-<p class="Pp">Definition at line <b>63</b> of file <b>misc.c</b>.</p>
-<pre>63                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>render_file_set_video_source()</b>.</p>
+          <p class="Pp">Referenced by <b>render_file_set_video_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_render_file_write_frame_(">
+            <a class="permalink" href="#int_render_file_write_frame_("
+              >int render_file_write_frame (<b>render_file_t</b> * rf, const
+              <b>uint8_t</b> * data, <b>uint64_t</b> duration_ns)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>63</b> of file <b>misc.c</b>.</p>
+          <pre>
+63                                                                                           {
 64   (void)rf;
 65   (void)data;
 66   (void)duration_ns;
 67   return 0;
 68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_write_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_set_interrupt_callback_(void(*_cb_)(void))"><a class="permalink" href="#void_set_interrupt_callback_(void(*_cb_)(void))">void
-  set_interrupt_callback (void(* cb )(void))</a></h2>
-<p class="Pp">Register a mode-specific interrupt callback</p>
-<p class="Pp"></p>
-<p class="Pp">Called by mode-specific code to register a callback that will be
-    invoked when <b>signal_exit()</b> is called. Used to shut down network
-    sockets so threads blocked in recv() unblock quickly instead of waiting for
-    timeouts.</p>
-<p class="Pp"></p>
-<p class="Pp">The callback is called synchronously from <b>signal_exit()</b>, so
-    it must be async-signal-safe (only atomics, <b>socket_shutdown()</b>, no
-    malloc/etc).</p>
-<p class="Pp"></p>
-<p class="Pp">Only one callback can be registered at a time. Setting a new
-    callback replaces the previous one.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
-  unregister</div>
-<p class="Pp">Definition at line <b>127</b> of file <b>misc.c</b>.</p>
-<pre>127                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>render_file_write_frame()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_set_interrupt_callback_(void(*_cb_)(void))">
+            <a
+              class="permalink"
+              href="#void_set_interrupt_callback_(void(*_cb_)(void))"
+              >void set_interrupt_callback (void(* cb )(void))</a
+            >
+          </h2>
+          <p class="Pp">Register a mode-specific interrupt callback</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called by mode-specific code to register a callback that will be
+            invoked when
+            <b>signal_exit()</b> is called. Used to shut down network sockets so
+            threads blocked in recv() unblock quickly instead of waiting for
+            timeouts.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The callback is called synchronously from <b>signal_exit()</b>, so
+            it must be async-signal-safe (only atomics,
+            <b>socket_shutdown()</b>, no malloc/etc).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Only one callback can be registered at a time. Setting a new
+            callback replaces the previous one.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>cb</i> Function to call on exit signal, or NULL to unregister
+          </div>
+          <p class="Pp">Definition at line <b>127</b> of file <b>misc.c</b>.</p>
+          <pre>
+127                                                     {
 128   (void)callback;
 129 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>set_interrupt_callback()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>client_main()</b>,
-    <b>discovery_main()</b>, <b>set_interrupt_callback()</b>, and
-    <b>set_interrupt_callback()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> should_exit (void )</h2>
-<p class="Pp">Check if the application should exit</p>
-<p class="Pp"></p>
-<p class="Pp">Called by mode main loops to detect shutdown requests from signals
-    or errors.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if shutdown has been requested, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
-<pre>133                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>set_interrupt_callback()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_main()</b>, <b>client_main()</b>,
+            <b>discovery_main()</b>, <b>set_interrupt_callback()</b>, and
+            <b>set_interrupt_callback()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> should_exit (void )</h2>
+          <p class="Pp">Check if the application should exit</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called by mode main loops to detect shutdown requests from signals
+            or errors.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if shutdown has been requested, false otherwise
+          </div>
+          <p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
+          <pre>
+133                        {
 134   return false;
 135 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>should_exit()</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_start()</b>,
-    <b>display_full_reset()</b>, <b>main()</b>, <b>mcp_http_run()</b>,
-    <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>, and
-    <b>should_exit()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_signal_exit_(void_)"><a class="permalink" href="#void_signal_exit_(void_)">void
-  signal_exit (void )</a></h2>
-<p class="Pp">Signal that the application should exit</p>
-<p class="Pp"></p>
-<p class="Pp">Sets the global exit flag and calls the registered interrupt
-    callback if set. Safe to call from signal handlers (uses only atomics and
-    function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
-    code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>131</b> of file <b>misc.c</b>.</p>
-<pre>131 {}</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>signal_exit()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>,
-    <b>session_display_write_ascii_frame()</b>, <b>session_render_loop()</b>,
-    <b>signal_exit()</b>, <b>ui_input_password()</b>, and
-    <b>update_banner_install_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_stop_resize_detection_(void_)"><a class="permalink" href="#void_terminal_stop_resize_detection_(void_)">void
-  terminal_stop_resize_detection (void )</a></h2>
-<p class="Pp">No-op stub on POSIX platforms (no resize detection thread).</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>misc.c</b>.</p>
-<pre>96 {}</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_stop_resize_detection()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>platform_ttyname()</b>, and <b>terminal_stop_resize_detection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_mdns_free_results_("><a class="permalink" href="#void_ui_mdns_free_results_(">void
-  ui_mdns_free_results (<b>mdns_result_t</b> * results)</a></h2>
-<p class="Pp">Definition at line <b>157</b> of file <b>misc.c</b>.</p>
-<pre>157                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>should_exit()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>,
+            <b>display_full_reset()</b>, <b>main()</b>, <b>mcp_http_run()</b>,
+            <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>,
+            and <b>should_exit()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_signal_exit_(void_)">
+            <a class="permalink" href="#void_signal_exit_(void_)"
+              >void signal_exit (void )</a
+            >
+          </h2>
+          <p class="Pp">Signal that the application should exit</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sets the global exit flag and calls the registered interrupt
+            callback if set. Safe to call from signal handlers (uses only
+            atomics and function pointers). Called by signal handlers (SIGTERM,
+            Ctrl+C) and normal code (errors, timeouts).
+          </p>
+          <p class="Pp">Definition at line <b>131</b> of file <b>misc.c</b>.</p>
+          <pre>131 {}</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>signal_exit()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>main()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_render_loop()</b>, <b>signal_exit()</b>,
+            <b>ui_input_password()</b>, and
+            <b>update_banner_install_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_terminal_stop_resize_detection_(void_)">
+            <a
+              class="permalink"
+              href="#void_terminal_stop_resize_detection_(void_)"
+              >void terminal_stop_resize_detection (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            No-op stub on POSIX platforms (no resize detection thread).
+          </p>
+          <p class="Pp">Definition at line <b>96</b> of file <b>misc.c</b>.</p>
+          <pre>96 {}</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>terminal_stop_resize_detection()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>platform_ttyname()</b>, and
+            <b>terminal_stop_resize_detection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_mdns_free_results_(">
+            <a class="permalink" href="#void_ui_mdns_free_results_("
+              >void ui_mdns_free_results (<b>mdns_result_t</b> * results)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>157</b> of file <b>misc.c</b>.</p>
+          <pre>
+157                                                   {
 158   (void)results;
 159 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_mdns_free_results()</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_free_results()</b>, and
-    <b>ui_mdns_free_results()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mdns_result_t</b> * ui_mdns_get_best_address
-  (<b>mdns_query_t</b> * query)</h2>
-<p class="Pp">Definition at line <b>146</b> of file <b>misc.c</b>.</p>
-<pre>146                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_mdns_free_results()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_mdns_free_results()</b>, and
+            <b>ui_mdns_free_results()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>mdns_result_t</b> * ui_mdns_get_best_address (<b>mdns_query_t</b>
+            * query)
+          </h2>
+          <p class="Pp">Definition at line <b>146</b> of file <b>misc.c</b>.</p>
+          <pre>
+146                                                              {
 147   (void)query;
 148   return NULL;
 149 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_mdns_get_best_address()</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_get_best_address()</b>, and
-    <b>ui_mdns_get_best_address()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mdns_query_t</b> * ui_mdns_query (const char * service)</h2>
-<p class="Pp">Definition at line <b>141</b> of file <b>misc.c</b>.</p>
-<pre>141                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_mdns_get_best_address()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_mdns_get_best_address()</b>, and
+            <b>ui_mdns_get_best_address()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>mdns_query_t</b> * ui_mdns_query (const char * service)
+          </h2>
+          <p class="Pp">Definition at line <b>141</b> of file <b>misc.c</b>.</p>
+          <pre>
+141                                                  {
 142   (void)service;
 143   return NULL;
 144 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_mdns_query()</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_query()</b>, and
-  <b>ui_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_mdns_select_(const_"><a class="permalink" href="#int_ui_mdns_select_(const_">int
-  ui_mdns_select (const <b>ui_mdns_server_t</b> * servers, int count)</a></h2>
-<p class="Pp">Shared controller list: arrows/j/k move, Enter selects, digits
-    choose by number, Esc/q cancels. Resizes retain the selection and scroll it
-    into view. Returns -1 without waiting when no interactive terminal is
-    available.</p>
-<p class="Pp">Definition at line <b>151</b> of file <b>misc.c</b>.</p>
-<pre>151                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_mdns_query()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_mdns_query()</b>, and <b>ui_mdns_query()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_mdns_select_(const_">
+            <a class="permalink" href="#int_ui_mdns_select_(const_"
+              >int ui_mdns_select (const <b>ui_mdns_server_t</b> * servers, int
+              count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared controller list: arrows/j/k move, Enter selects, digits
+            choose by number, Esc/q cancels. Resizes retain the selection and
+            scroll it into view. Returns -1 without waiting when no interactive
+            terminal is available.
+          </p>
+          <p class="Pp">Definition at line <b>151</b> of file <b>misc.c</b>.</p>
+          <pre>
+151                                                                {
 152   (void)servers;
 153   (void)count;
 154   return -1;
 155 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_mdns_select()</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_prompt_selection()</b>, and
-    <b>ui_mdns_select()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_mdns_select()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_mdns_prompt_selection()</b>, and
+            <b>ui_mdns_select()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,159 +1,241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>source.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">source.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">source.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">source.h - &#x1F3AC; Unified media source abstraction for webcam,
-    files, and stdin</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct media_source_t <b>media_source_t</b>
-  <br/>
-  Opaque media source handle.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>media_source_type_t</b> { <b>MEDIA_SOURCE_WEBCAM</b>,
-    <b>MEDIA_SOURCE_FILE</b>, <b>MEDIA_SOURCE_STDIN</b>,
-    <b>MEDIA_SOURCE_TEST</b> }
-  <br/>
-  Media source type enumeration.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>media_source_t</b> * <b>media_source_create</b>
-    (<b>media_source_type_t</b> type, const char *path)
-  <br/>
-  Create a new media source. void <b>media_source_destroy</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Destroy media source and free resources. <b>image_t</b> *
-    <b>media_source_read_video</b> (<b>media_source_t</b> *source)
-  <br/>
-  Read next video frame from media source. <b>bool</b>
-    <b>media_source_has_video</b> (<b>media_source_t</b> *source)
-  <br/>
-  Check if media source has video stream. size_t <b>media_source_read_audio</b>
-    (<b>media_source_t</b> *source, float *buffer, size_t num_samples)
-  <br/>
-  Read audio samples from media source. <b>bool</b>
-    <b>media_source_has_audio</b> (<b>media_source_t</b> *source)
-  <br/>
-  Check if media source has audio stream. void <b>media_source_set_loop</b>
-    (<b>media_source_t</b> *source, <b>bool</b> loop)
-  <br/>
-  Enable or disable looping. void <b>media_source_pause</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Pause media playback. void <b>media_source_resume</b> (<b>media_source_t</b>
-    *source)
-  <br/>
-  Resume media playback after pause. <b>bool</b> <b>media_source_is_paused</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Check if media source is paused. void <b>media_source_toggle_pause</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Toggle pause state of media source. <b>bool</b> <b>media_source_at_end</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Check if media source reached end of stream. <b>asciichat_error_t</b>
-    <b>media_source_rewind</b> (<b>media_source_t</b> *source)
-  <br/>
-  Rewind media source to beginning. <b>asciichat_error_t</b>
-    <b>media_source_seek</b> (<b>media_source_t</b> *source, double
-    timestamp_sec)
-  <br/>
-  Seek media source to timestamp. <b>media_source_type_t</b>
-    <b>media_source_get_type</b> (<b>media_source_t</b> *source)
-  <br/>
-  Get media source type. double <b>media_source_get_duration</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Get media duration in seconds. double <b>media_source_get_position</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  Get current playback position in seconds. double
-    <b>media_source_get_video_fps</b> (<b>media_source_t</b> *source)
-  <br/>
-  Get video frame rate in frames per second. void
-    <b>media_source_set_audio_context</b> (<b>media_source_t</b> *source, void
-    *audio_ctx)
-  <br/>
-  Set audio context for playback buffer management. void
-    <b>media_source_set_exit_callback</b> (<b>media_source_t</b> *source,
-    <b>bool</b>(*should_exit_callback)(void *), void *user_data)
-  <br/>
-  Set exit signal callback for graceful shutdown during I/O. <b>bool</b>
-    <b>media_source_uses_webcam</b> (<b>media_source_t</b> *source)
-  <br/>
-  <b>asciichat_error_t</b> <b>media_source_start_video</b>
-    (<b>media_source_t</b> *source)
-  <br/>
-  <b>media_source_t</b> * <b>media_source_create_interruptible</b>
-    (<b>media_source_type_t</b> type, const char *path,
-    <b>bool</b>(*cancel)(void *), void *data)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3AC; Unified media source abstraction for webcam, files, and
-    stdin</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>source.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_t</b> * media_source_create_interruptible
-  (<b>media_source_type_t</b> type, const char * path, <b>bool</b>(* cancel
-  )(void *), void * data)</h2>
-<p class="Pp">Definition at line <b>221</b> of file <b>source.c</b>.</p>
-<pre>222                                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>source.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">source.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">source.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          source.h - &#x1F3AC; Unified media source abstraction for webcam,
+          files, and stdin
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct media_source_t <b>media_source_t</b>
+            <br />
+            Opaque media source handle.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>media_source_type_t</b> { <b>MEDIA_SOURCE_WEBCAM</b>,
+            <b>MEDIA_SOURCE_FILE</b>, <b>MEDIA_SOURCE_STDIN</b>,
+            <b>MEDIA_SOURCE_TEST</b> }
+            <br />
+            Media source type enumeration.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>media_source_t</b> * <b>media_source_create</b> (<b
+              >media_source_type_t</b
+            >
+            type, const char *path)
+            <br />
+            Create a new media source. void <b>media_source_destroy</b> (<b
+              >media_source_t</b
+            >
+            *source)
+            <br />
+            Destroy media source and free resources. <b>image_t</b> *
+            <b>media_source_read_video</b> (<b>media_source_t</b> *source)
+            <br />
+            Read next video frame from media source. <b>bool</b>
+            <b>media_source_has_video</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            Check if media source has video stream. size_t
+            <b>media_source_read_audio</b> (<b>media_source_t</b>
+            *source, float *buffer, size_t num_samples)
+            <br />
+            Read audio samples from media source. <b>bool</b>
+            <b>media_source_has_audio</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            Check if media source has audio stream. void
+            <b>media_source_set_loop</b> (<b>media_source_t</b> *source,
+            <b>bool</b> loop)
+            <br />
+            Enable or disable looping. void <b>media_source_pause</b> (<b
+              >media_source_t</b
+            >
+            *source)
+            <br />
+            Pause media playback. void <b>media_source_resume</b> (<b
+              >media_source_t</b
+            >
+            *source)
+            <br />
+            Resume media playback after pause. <b>bool</b>
+            <b>media_source_is_paused</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            Check if media source is paused. void
+            <b>media_source_toggle_pause</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            Toggle pause state of media source. <b>bool</b>
+            <b>media_source_at_end</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            Check if media source reached end of stream.
+            <b>asciichat_error_t</b> <b>media_source_rewind</b> (<b
+              >media_source_t</b
+            >
+            *source)
+            <br />
+            Rewind media source to beginning. <b>asciichat_error_t</b>
+            <b>media_source_seek</b> (<b>media_source_t</b>
+            *source, double timestamp_sec)
+            <br />
+            Seek media source to timestamp. <b>media_source_type_t</b>
+            <b>media_source_get_type</b> (<b>media_source_t</b> *source)
+            <br />
+            Get media source type. double <b>media_source_get_duration</b> (<b
+              >media_source_t</b
+            >
+            *source)
+            <br />
+            Get media duration in seconds. double
+            <b>media_source_get_position</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            Get current playback position in seconds. double
+            <b>media_source_get_video_fps</b> (<b>media_source_t</b> *source)
+            <br />
+            Get video frame rate in frames per second. void
+            <b>media_source_set_audio_context</b> (<b>media_source_t</b>
+            *source, void *audio_ctx)
+            <br />
+            Set audio context for playback buffer management. void
+            <b>media_source_set_exit_callback</b> (<b>media_source_t</b>
+            *source, <b>bool</b>(*should_exit_callback)(void *), void
+            *user_data)
+            <br />
+            Set exit signal callback for graceful shutdown during I/O.
+            <b>bool</b> <b>media_source_uses_webcam</b> (<b>media_source_t</b>
+            *source)
+            <br />
+            <b>asciichat_error_t</b> <b>media_source_start_video</b> (<b
+              >media_source_t</b
+            >
+            *source)
+            <br />
+            <b>media_source_t</b> * <b>media_source_create_interruptible</b> (<b
+              >media_source_type_t</b
+            >
+            type, const char *path, <b>bool</b>(*cancel)(void *), void *data)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F3AC; Unified media source abstraction for webcam, files, and
+          stdin
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>source.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>media_source_t</b> * media_source_create_interruptible (<b
+              >media_source_type_t</b
+            >
+            type, const char * path, <b>bool</b>(* cancel )(void *), void *
+            data)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>221</b> of file <b>source.c</b>.
+          </p>
+          <pre>
+222                                                               {
 223   ASCII_OTEL_SCOPE(MEDIA_SOURCE_CREATE_INTERRUPTIBLE);
 224   media_source_t *source = SAFE_MALLOC(sizeof(media_source_t), media_source_t *);
 225   if (!source) {
@@ -434,50 +516,68 @@
 500
 501   return source;
 502 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
-    <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ASSERT_NO_ERRNO_SINCE</b>, <b>atomic_store_bool()</b>,
-    <b>media_source_t::audio_decoder</b>, <b>media_source_t::audio_only</b>,
-    <b>asciichat_error_context_t::context_message</b>,
-    <b>yt_dlp_request_options_t::cookies</b>,
-    <b>media_source_t::decoder_mutex</b>, <b>errno</b>,
-    <b>errno_checkpoint()</b>, <b>errno_scope_begin()</b>,
-    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEDIA_OPEN</b>, <b>ERROR_MEMORY</b>, <b>ERROR_WEBCAM</b>,
-    <b>ERROR_WEBCAM_IN_USE</b>, <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_decoder_create_with_request_options()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_has_audio()</b>,
-    <b>ffmpeg_decoder_has_video()</b>, <b>ffmpeg_decoder_start_prefetch()</b>,
-    <b>media_source_t::file_path</b>, <b>GET_OPTION</b>, <b>HAS_ERRNO</b>,
-    <b>yt_dlp_request_options_t::headers</b>, <b>media_source_t::is_paused</b>,
-    <b>media_source_t::is_shared_decoder</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_warn</b>,
-    <b>media_source_t::loop_enabled</b>,
-    <b>media_source_create_interruptible()</b>, <b>MEDIA_SOURCE_FILE</b>,
-    <b>MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE</b>, <b>MEDIA_SOURCE_STDIN</b>,
-    <b>MEDIA_SOURCE_TEST</b>, <b>MEDIA_SOURCE_WEBCAM</b>,
-    <b>MEDIA_STREAM_URL_SIZE</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
-    <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NAMED_REGISTER_MUTEX</b>, <b>NOTICE</b>,
-    <b>media_source_t::original_youtube_url</b>, <b>platform_strdup()</b>,
-    <b>yt_dlp_request_options_t::proxy</b>,
-    <b>yt_dlp_request_options_t::proxy_specified</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>media_source_t::test_pattern</b>,
-    <b>media_source_t::test_start_ns</b>, <b>media_source_t::type</b>,
-    <b>media_source_t::video_decoder</b>, <b>media_source_t::webcam_ctx</b>,
-    <b>media_source_t::webcam_index</b>, and <b>webcam_init_context()</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_create_interruptible()</b>, and
-    <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> media_source_start_video
-  (<b>media_source_t</b> * source)</h2>
-<p class="Pp">Definition at line <b>567</b> of file <b>source.c</b>.</p>
-<pre>567                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ASSERT_NO_ERRNO_SINCE</b>, <b>atomic_store_bool()</b>,
+            <b>media_source_t::audio_decoder</b>,
+            <b>media_source_t::audio_only</b>,
+            <b>asciichat_error_context_t::context_message</b>,
+            <b>yt_dlp_request_options_t::cookies</b>,
+            <b>media_source_t::decoder_mutex</b>, <b>errno</b>,
+            <b>errno_checkpoint()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEDIA_OPEN</b>, <b>ERROR_MEMORY</b>, <b>ERROR_WEBCAM</b>,
+            <b>ERROR_WEBCAM_IN_USE</b>, <b>ffmpeg_decoder_create_stdin()</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>,
+            <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_has_audio()</b>,
+            <b>ffmpeg_decoder_has_video()</b>,
+            <b>ffmpeg_decoder_start_prefetch()</b>,
+            <b>media_source_t::file_path</b>, <b>GET_OPTION</b>,
+            <b>HAS_ERRNO</b>, <b>yt_dlp_request_options_t::headers</b>,
+            <b>media_source_t::is_paused</b>,
+            <b>media_source_t::is_shared_decoder</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_warn</b>,
+            <b>media_source_t::loop_enabled</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>MEDIA_SOURCE_FILE</b>,
+            <b>MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE</b>,
+            <b>MEDIA_SOURCE_STDIN</b>, <b>MEDIA_SOURCE_TEST</b>,
+            <b>MEDIA_SOURCE_WEBCAM</b>, <b>MEDIA_STREAM_URL_SIZE</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_MUTEX</b>,
+            <b>NOTICE</b>, <b>media_source_t::original_youtube_url</b>,
+            <b>platform_strdup()</b>, <b>yt_dlp_request_options_t::proxy</b>,
+            <b>yt_dlp_request_options_t::proxy_specified</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>media_source_t::test_pattern</b>,
+            <b>media_source_t::test_start_ns</b>, <b>media_source_t::type</b>,
+            <b>media_source_t::video_decoder</b>,
+            <b>media_source_t::webcam_ctx</b>,
+            <b>media_source_t::webcam_index</b>, and
+            <b>webcam_init_context()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create()</b>,
+            <b>media_source_create_interruptible()</b>, and
+            <b>session_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> media_source_start_video (<b
+              >media_source_t</b
+            >
+            * source)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>567</b> of file <b>source.c</b>.
+          </p>
+          <pre>
+567                                                                    {
 568   ASCII_OTEL_SCOPE(MEDIA_SOURCE_START_VIDEO);
 569   if (!source)
 570     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing media source&quot;);
@@ -492,43 +592,59 @@
 579   log_info(&quot;Audio-only media: using webcam %u for video&quot;, source-&gt;webcam_index);
 580   return ASCIICHAT_OK;
 581 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>media_source_t::audio_only</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>GET_OPTION</b>, <b>log_info</b>, <b>media_source_start_video()</b>,
-    <b>MEDIA_SOURCE_WEBCAM</b>, <b>SET_ERRNO</b>, <b>media_source_t::type</b>,
-    <b>media_source_t::webcam_ctx</b>, <b>media_source_t::webcam_index</b>, and
-    <b>webcam_init_context()</b>.</p>
-<p class="Pp">Referenced by <b>media_source_read_video()</b>,
-    <b>media_source_start_video()</b>, and <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> media_source_uses_webcam (<b>media_source_t</b> *
-  source)</h2>
-<p class="Pp">Definition at line <b>583</b> of file <b>source.c</b>.</p>
-<pre>583                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>media_source_t::audio_only</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>GET_OPTION</b>, <b>log_info</b>,
+            <b>media_source_start_video()</b>, <b>MEDIA_SOURCE_WEBCAM</b>,
+            <b>SET_ERRNO</b>, <b>media_source_t::type</b>,
+            <b>media_source_t::webcam_ctx</b>,
+            <b>media_source_t::webcam_index</b>, and
+            <b>webcam_init_context()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_read_video()</b>,
+            <b>media_source_start_video()</b>, and
+            <b>session_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> media_source_uses_webcam (<b>media_source_t</b> *
+            source)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>583</b> of file <b>source.c</b>.
+          </p>
+          <pre>
+583                                                       {
 584   return source &amp;&amp; ((source-&gt;type == MEDIA_SOURCE_WEBCAM &amp;&amp; !GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)) ||
 585                     (source-&gt;audio_only &amp;&amp; !GET_OPTION(test_pattern) &amp;&amp; !GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)));
 586 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>media_source_t::audio_only</b>, <b>GET_OPTION</b>,
-    <b>media_source_uses_webcam()</b>, <b>MEDIA_SOURCE_WEBCAM</b>, and
-    <b>media_source_t::type</b>.</p>
-<p class="Pp">Referenced by <b>media_source_uses_webcam()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>media_source_t::audio_only</b>, <b>GET_OPTION</b>,
+            <b>media_source_uses_webcam()</b>, <b>MEDIA_SOURCE_WEBCAM</b>, and
+            <b>media_source_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>media_source_uses_webcam()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

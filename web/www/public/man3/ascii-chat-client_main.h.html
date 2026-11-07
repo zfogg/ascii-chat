@@ -1,223 +1,343 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.h - ascii-chat Client Mode Entry Point Header</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>client_main</b> (void)
-  <br/>
-  Client mode entry point for unified binary.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">struct <b>webrtc_peer_manager</b> * <b>g_peer_manager</b>
-  <br/>
-  Global WebRTC peer manager for P2P connections.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Client Mode Entry Point Header</p>
-<p class="Pp">This header exposes the client mode entry point for the unified
-    binary architecture. The unified binary dispatches to <b>client_main()</b>
-    when invoked as ascii-chat client.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Unified_Binary_Architecture"><a class="permalink" href="#Unified_Binary_Architecture">Unified
-  Binary Architecture</a></h2>
-<p class="Pp">The ascii-chat application uses a single binary with multiple
-    operating modes:</p>
-<ul class="Bl-bullet">
-  <li><b>ascii-chat server</b> - Run as server (multi-client connection
-    manager)</li>
-  <li><b>ascii-chat client</b> - Run as client (connects to server, streams
-      video/audio)</li>
-</ul>
-<p class="Pp">This design provides several benefits:</p>
-<ul class="Bl-bullet">
-  <li>Simplified distribution (single binary to install)</li>
-  <li>Reduced disk space (shared library code)</li>
-  <li>Easier testing (one binary to build and deploy)</li>
-  <li>Consistent versioning across modes</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Mode_Entry_Point_Contract"><a class="permalink" href="#Mode_Entry_Point_Contract">Mode
-  Entry Point Contract</a></h2>
-<p class="Pp">Each mode entry point (server_main, client_main) must:</p>
-<ul class="Bl-bullet">
-  <li>Accept no arguments: int mode_main(void)</li>
-  <li>Options are already parsed by main dispatcher (available via global opt_*
-      variables)</li>
-  <li>Return 0 on success, non-zero error code on failure</li>
-  <li>Perform mode-specific initialization and main loop</li>
-  <li>Perform complete cleanup before returning</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Notes"><a class="permalink" href="#Implementation_Notes">Implementation
-  Notes</a></h2>
-<p class="Pp">The <b>client_main()</b> function is the original <b>main()</b>
-    from <b>src/client/main.c</b>, adapted to the new dispatcher pattern. Common
-    initialization (options parsing, logging setup, lock debugging,
-    --show-capabilities) now happens in <b>src/main.c</b> before dispatch.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0</div>
-<p class="Pp">Definition in file <b>client/main.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_client_main_(void_)"><a class="permalink" href="#int_client_main_(void_)">int
-  client_main (void )</a></h2>
-<p class="Pp">Client mode entry point for unified binary. This function
-    implements the complete client lifecycle including:</p>
-<ul class="Bl-bullet">
-  <li>Client-specific subsystem initialization (display, capture, audio)</li>
-  <li>Server connection establishment with exponential backoff reconnection</li>
-  <li>Main event loop coordinating connection state and thread lifecycle</li>
-  <li>Media streaming (webcam frames and optional audio)</li>
-  <li>Frame display to terminal</li>
-  <li>Graceful shutdown and resource cleanup</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Lifecycle_Overview"><a class="permalink" href="#Lifecycle_Overview">Lifecycle
-  Overview</a></h2>
-<p class="Pp">The client follows this high-level state flow:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Initialize</b>: Set up display, capture, audio subsystems</dd>
-  <dt>2.</dt>
-  <dd><b>Connect Loop</b>:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Establish TCP connection to server</dd>
-  <dt> &#x2022;</dt>
-  <dd>Perform cryptographic handshake</dd>
-  <dt> &#x2022;</dt>
-  <dd>Spawn worker threads (data reception, capture, keepalive, audio)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Monitor connection health</dd>
-  <dt> &#x2022;</dt>
-  <dd>Detect connection loss via thread exit or socket errors</dd>
-  <dt>3.</dt>
-  <dd><b>Cleanup</b>: Stop threads, close socket, reset terminal</dd>
-  <dt>4.</dt>
-  <dd><b>Reconnect</b>: Exponential backoff, retry (unless fatal auth
-    error)</dd>
-  <dt>5.</dt>
-  <dd><b>Exit</b>: On user signal (SIGINT) or fatal error</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Connection_Failure_Handling"><a class="permalink" href="#Connection_Failure_Handling">Connection
-  Failure Handling</a></h2>
-<p class="Pp"><b>Transient Errors</b> (retryable):</p>
-<ul class="Bl-bullet">
-  <li>Connection refused, timeout, DNS failure &#x2192; exponential backoff
-      retry</li>
-  <li>Network temporarily unavailable &#x2192; wait and retry</li>
-</ul>
-<p class="Pp"><b>Fatal Errors</b> (no retry):</p>
-<ul class="Bl-bullet">
-  <li>Authentication failed (<b>CONNECTION_ERROR_AUTH_FAILED</b><b>) &#x2192;
-      exit immediately</b></li>
-  <li>Host key verification failed (<b>CONNECTION_ERROR_HOST_KEY_FAILED</b><b>)
-      &#x2192; exit immediately</b></li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Thread_Management"><a class="permalink" href="#Thread_Management">Thread
-  Management</a></h2>
-<p class="Pp">The client spawns several worker threads coordinated by the main
-    thread:</p>
-<ul class="Bl-bullet">
-  <li><b>Data Reception Thread</b>: Receives and processes server packets</li>
-  <li><b>Webcam Capture Thread</b>: Captures frames, transmits to server</li>
-  <li><b>Ping/Keepalive Thread</b>: Sends periodic pings, detects timeouts</li>
-  <li><b>Audio Threads</b> (optional): Captures/plays audio with Opus
-    encoding</li>
-</ul>
-<p class="Pp">All threads check the global <b>g_should_exit</b><b> flag and exit
-    cleanly on shutdown. Main thread waits for all threads to exit before
-    reconnection or final cleanup.</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Options"><a class="permalink" href="#Options">Options</a></h2>
-<p class="Pp">Options are already parsed by the main dispatcher
-    (<b>src/main.c</b>) before this function is called. They are available via
-    the global options API (GET_OPTION, etc.).</p>
-<p class="Pp"></p>
-<p class="Pp">Key options affecting behavior:</p>
-<ul class="Bl-bullet">
-  <li>opt_address: Server address or session string</li>
-  <li>opt_port: Server port (default 27224)</li>
-  <li>opt_audio_enabled: Enable audio capture/playback</li>
-  <li>opt_snapshot: Capture single frame and exit</li>
-  <li>opt_client_key, opt_server_key: SSH keys for authentication</li>
-</ul>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Exit code:
-<ul class="Bl-bullet">
-  <li>0: Success (clean exit or snapshot completed)</li>
-  <li>1: Initialization/configuration error</li>
-  <li>2: Connection fatal error (auth failed)</li>
-  <li>130: Signal interrupt (SIGINT/Ctrl+C)</li>
-</ul>
-</div>
-<p class="Pp"><b>Example</b></p>
-<div class="Bd-indent">
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Invoked by dispatcher after options are parsed:
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">main.h - ascii-chat Client Mode Entry Point Header</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>client_main</b> (void)
+            <br />
+            Client mode entry point for unified binary.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>webrtc_peer_manager</b> * <b>g_peer_manager</b>
+            <br />
+            Global WebRTC peer manager for P2P connections.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ascii-chat Client Mode Entry Point Header</p>
+        <p class="Pp">
+          This header exposes the client mode entry point for the unified binary
+          architecture. The unified binary dispatches to
+          <b>client_main()</b> when invoked as ascii-chat client.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Unified_Binary_Architecture">
+            <a class="permalink" href="#Unified_Binary_Architecture"
+              >Unified Binary Architecture</a
+            >
+          </h2>
+          <p class="Pp">
+            The ascii-chat application uses a single binary with multiple
+            operating modes:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>ascii-chat server</b> - Run as server (multi-client connection
+              manager)
+            </li>
+            <li>
+              <b>ascii-chat client</b> - Run as client (connects to server,
+              streams video/audio)
+            </li>
+          </ul>
+          <p class="Pp">This design provides several benefits:</p>
+          <ul class="Bl-bullet">
+            <li>Simplified distribution (single binary to install)</li>
+            <li>Reduced disk space (shared library code)</li>
+            <li>Easier testing (one binary to build and deploy)</li>
+            <li>Consistent versioning across modes</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Mode_Entry_Point_Contract">
+            <a class="permalink" href="#Mode_Entry_Point_Contract"
+              >Mode Entry Point Contract</a
+            >
+          </h2>
+          <p class="Pp">
+            Each mode entry point (server_main, client_main) must:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Accept no arguments: int mode_main(void)</li>
+            <li>
+              Options are already parsed by main dispatcher (available via
+              global opt_* variables)
+            </li>
+            <li>Return 0 on success, non-zero error code on failure</li>
+            <li>Perform mode-specific initialization and main loop</li>
+            <li>Perform complete cleanup before returning</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Notes">
+            <a class="permalink" href="#Implementation_Notes"
+              >Implementation Notes</a
+            >
+          </h2>
+          <p class="Pp">
+            The <b>client_main()</b> function is the original <b>main()</b> from
+            <b>src/client/main.c</b>, adapted to the new dispatcher pattern.
+            Common initialization (options parsing, logging setup, lock
+            debugging, --show-capabilities) now happens in
+            <b>src/main.c</b> before dispatch.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">2025</div>
+          <p class="Pp"><b>Version</b></p>
+          <div class="Bd-indent">2.0</div>
+          <p class="Pp">Definition in file <b>client/main.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_main_(void_)">
+            <a class="permalink" href="#int_client_main_(void_)"
+              >int client_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Client mode entry point for unified binary. This function implements
+            the complete client lifecycle including:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Client-specific subsystem initialization (display, capture, audio)
+            </li>
+            <li>
+              Server connection establishment with exponential backoff
+              reconnection
+            </li>
+            <li>
+              Main event loop coordinating connection state and thread lifecycle
+            </li>
+            <li>Media streaming (webcam frames and optional audio)</li>
+            <li>Frame display to terminal</li>
+            <li>Graceful shutdown and resource cleanup</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Lifecycle_Overview">
+            <a class="permalink" href="#Lifecycle_Overview"
+              >Lifecycle Overview</a
+            >
+          </h2>
+          <p class="Pp">The client follows this high-level state flow:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Initialize</b>: Set up display, capture, audio subsystems
+            </dd>
+            <dt>2.</dt>
+            <dd><b>Connect Loop</b>:</dd>
+            <dt>&#x2022;</dt>
+            <dd>Establish TCP connection to server</dd>
+            <dt>&#x2022;</dt>
+            <dd>Perform cryptographic handshake</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Spawn worker threads (data reception, capture, keepalive, audio)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Monitor connection health</dd>
+            <dt>&#x2022;</dt>
+            <dd>Detect connection loss via thread exit or socket errors</dd>
+            <dt>3.</dt>
+            <dd><b>Cleanup</b>: Stop threads, close socket, reset terminal</dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Reconnect</b>: Exponential backoff, retry (unless fatal auth
+              error)
+            </dd>
+            <dt>5.</dt>
+            <dd><b>Exit</b>: On user signal (SIGINT) or fatal error</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Connection_Failure_Handling">
+            <a class="permalink" href="#Connection_Failure_Handling"
+              >Connection Failure Handling</a
+            >
+          </h2>
+          <p class="Pp"><b>Transient Errors</b> (retryable):</p>
+          <ul class="Bl-bullet">
+            <li>
+              Connection refused, timeout, DNS failure &#x2192; exponential
+              backoff retry
+            </li>
+            <li>Network temporarily unavailable &#x2192; wait and retry</li>
+          </ul>
+          <p class="Pp"><b>Fatal Errors</b> (no retry):</p>
+          <ul class="Bl-bullet">
+            <li>
+              Authentication failed (<b>CONNECTION_ERROR_AUTH_FAILED</b
+              ><b>) &#x2192; exit immediately</b>
+            </li>
+            <li>
+              Host key verification failed (<b
+                >CONNECTION_ERROR_HOST_KEY_FAILED</b
+              ><b>) &#x2192; exit immediately</b>
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Thread_Management">
+            <a class="permalink" href="#Thread_Management">Thread Management</a>
+          </h2>
+          <p class="Pp">
+            The client spawns several worker threads coordinated by the main
+            thread:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Data Reception Thread</b>: Receives and processes server
+              packets
+            </li>
+            <li>
+              <b>Webcam Capture Thread</b>: Captures frames, transmits to server
+            </li>
+            <li>
+              <b>Ping/Keepalive Thread</b>: Sends periodic pings, detects
+              timeouts
+            </li>
+            <li>
+              <b>Audio Threads</b> (optional): Captures/plays audio with Opus
+              encoding
+            </li>
+          </ul>
+          <p class="Pp">
+            All threads check the global <b>g_should_exit</b
+            ><b>
+              flag and exit cleanly on shutdown. Main thread waits for all
+              threads to exit before reconnection or final cleanup.</b
+            >
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Options">
+            <a class="permalink" href="#Options">Options</a>
+          </h2>
+          <p class="Pp">
+            Options are already parsed by the main dispatcher
+            (<b>src/main.c</b>) before this function is called. They are
+            available via the global options API (GET_OPTION, etc.).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Key options affecting behavior:</p>
+          <ul class="Bl-bullet">
+            <li>opt_address: Server address or session string</li>
+            <li>opt_port: Server port (default 27224)</li>
+            <li>opt_audio_enabled: Enable audio capture/playback</li>
+            <li>opt_snapshot: Capture single frame and exit</li>
+            <li>opt_client_key, opt_server_key: SSH keys for authentication</li>
+          </ul>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Exit code:
+            <ul class="Bl-bullet">
+              <li>0: Success (clean exit or snapshot completed)</li>
+              <li>1: Initialization/configuration error</li>
+              <li>2: Connection fatal error (auth failed)</li>
+              <li>130: Signal interrupt (SIGINT/Ctrl+C)</li>
+            </ul>
+          </div>
+          <p class="Pp"><b>Example</b></p>
+          <div class="Bd-indent">
+            <p class="Pp"></p>
+            <p class="Pp"></p>
+            <pre>
+# Invoked by dispatcher after options are parsed:
 ascii-chat client --address localhost --audio
 # Dispatcher (src/main.c) handles:
 # - Option parsing
@@ -229,18 +349,28 @@ ascii-chat client --address localhost --audio
 # - Thread coordination
 # - Graceful shutdown
 </pre>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">topic_client &quot;Client Architecture Overview&quot;
-<p class="Pp"></p>
-<p class="Pp">topic_client_main &quot;Client Lifecycle Details&quot;</p>
-<p class="Pp"></p>
-<p class="Pp">topic_client_connection &quot;Connection Management&quot;</p>
-<p class="Pp"></p>
-<p class="Pp">topic_client_protocol &quot;Packet Processing&quot;</p>
-</div>
-<p class="Pp">Definition at line <b>613</b> of file <b>client/main.c</b>.</p>
-<pre>613                       {
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            topic_client &quot;Client Architecture Overview&quot;
+            <p class="Pp"></p>
+            <p class="Pp">
+              topic_client_main &quot;Client Lifecycle Details&quot;
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              topic_client_connection &quot;Connection Management&quot;
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              topic_client_protocol &quot;Packet Processing&quot;
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>613</b> of file <b>client/main.c</b>.
+          </p>
+          <pre>
+613                       {
 614   // Register cleanup function for graceful shutdown
 615   (void)atexit(shutdown_client);
 616
@@ -373,50 +503,71 @@ ascii-chat client --address localhost --audio
 743   // This is a fallback in case the connection never started
 744   return session_result;
 745 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_state::address</b>,
-    <b>asciichat_shared_destroy()</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>client_main()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
-    <b>options_get()</b>, <b>options_state::port</b>, <b>SAFE_STRNCPY</b>,
-    <b>SESSION_CLIENT_LIKE_KIND_CLIENT</b>, <b>session_client_like_run()</b>,
-    <b>set_interrupt_callback()</b>, and <b>url_is_websocket()</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
-  <b>webrtc_peer_manager</b>* g_peer_manager [extern]</a></h2>
-<p class="Pp">Global WebRTC peer manager for P2P connections. Global WebRTC peer
-    manager (legacy compatibility).</p>
-<p class="Pp"></p>
-<p class="Pp">Manages WebRTC peer connections for ACDS session participants.
-    Handles SDP/ICE exchange and DataChannel lifecycle for P2P ACIP
-  transport.</p>
-<p class="Pp"></p>
-<p class="Pp">NULL if WebRTC not initialized (TCP-only mode). Initialized when
-    joining/creating ACDS sessions with WebRTC transport.</p>
-<p class="Pp"></p>
-<p class="Pp">Global WebRTC peer manager for P2P connections.</p>
-<p class="Pp"></p>
-<p class="Pp">Client mode no longer uses WebRTC, but protocol.c still references
-    this. Always NULL in client mode.</p>
-<p class="Pp">Definition at line <b>144</b> of file <b>client/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_state::address</b>,
+            <b>asciichat_shared_destroy()</b>, <b>BUFFER_SIZE_SMALL</b>,
+            <b>client_main()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
+            <b>options_get()</b>, <b>options_state::port</b>,
+            <b>SAFE_STRNCPY</b>, <b>SESSION_CLIENT_LIKE_KIND_CLIENT</b>,
+            <b>session_client_like_run()</b>, <b>set_interrupt_callback()</b>,
+            and <b>url_is_websocket()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>webrtc_peer_manager</b>* g_peer_manager [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Global WebRTC peer manager for P2P connections. Global WebRTC peer
+            manager (legacy compatibility).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Manages WebRTC peer connections for ACDS session participants.
+            Handles SDP/ICE exchange and DataChannel lifecycle for P2P ACIP
+            transport.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            NULL if WebRTC not initialized (TCP-only mode). Initialized when
+            joining/creating ACDS sessions with WebRTC transport.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Global WebRTC peer manager for P2P connections.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Client mode no longer uses WebRTC, but protocol.c still references
+            this. Always NULL in client mode.
+          </p>
+          <p class="Pp">
+            Definition at line <b>144</b> of file <b>client/main.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

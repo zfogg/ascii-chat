@@ -1,101 +1,171 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>shortcuts.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">shortcuts.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">shortcuts.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">shortcuts.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>tui_shortcut_t</b> { <b>TUI_SHORTCUT_NONE</b>,
-    <b>TUI_SHORTCUT_HELP</b>, <b>TUI_SHORTCUT_LOGS</b>,
-    <b>TUI_SHORTCUT_STATS</b>, <b>TUI_SHORTCUT_SYNC</b>,
-    <b>TUI_SHORTCUT_ERRORS</b>, <b>TUI_SHORTCUT_UPDATE</b>,
-    <b>TUI_SHORTCUT_MEDIA</b> }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>tui_shortcut_t</b> <b>tui_shortcut_action</b>
-    (<b>keyboard_key_t</b> key)
-  <br/>
-  size_t <b>tui_shortcut_help</b> (<b>ui_help_entry_t</b> *entries, size_t
-    capacity, <b>bool</b> server, <b>bool</b> browser)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>tui_shortcut_t</b></a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="TUI_SHORTCUT_NONE"><a class="permalink" href="#TUI_SHORTCUT_NONE"><b><i>TUI_SHORTCUT_NONE
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_HELP"><a class="permalink" href="#TUI_SHORTCUT_HELP"><b><i>TUI_SHORTCUT_HELP
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_LOGS"><a class="permalink" href="#TUI_SHORTCUT_LOGS"><b><i>TUI_SHORTCUT_LOGS
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_STATS"><a class="permalink" href="#TUI_SHORTCUT_STATS"><b><i>TUI_SHORTCUT_STATS
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_SYNC"><a class="permalink" href="#TUI_SHORTCUT_SYNC"><b><i>TUI_SHORTCUT_SYNC
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_ERRORS"><a class="permalink" href="#TUI_SHORTCUT_ERRORS"><b><i>TUI_SHORTCUT_ERRORS
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_UPDATE"><a class="permalink" href="#TUI_SHORTCUT_UPDATE"><b><i>TUI_SHORTCUT_UPDATE
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="TUI_SHORTCUT_MEDIA"><a class="permalink" href="#TUI_SHORTCUT_MEDIA"><b><i>TUI_SHORTCUT_MEDIA
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>4</b> of file <b>shortcuts.h</b>.</p>
-<pre>4              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>shortcuts.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">shortcuts.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">shortcuts.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">shortcuts.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>tui_shortcut_t</b> { <b>TUI_SHORTCUT_NONE</b>,
+            <b>TUI_SHORTCUT_HELP</b>, <b>TUI_SHORTCUT_LOGS</b>,
+            <b>TUI_SHORTCUT_STATS</b>, <b>TUI_SHORTCUT_SYNC</b>,
+            <b>TUI_SHORTCUT_ERRORS</b>, <b>TUI_SHORTCUT_UPDATE</b>,
+            <b>TUI_SHORTCUT_MEDIA</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>tui_shortcut_t</b> <b>tui_shortcut_action</b> (<b
+              >keyboard_key_t</b
+            >
+            key)
+            <br />
+            size_t <b>tui_shortcut_help</b> (<b>ui_help_entry_t</b> *entries,
+            size_t capacity, <b>bool</b> server, <b>bool</b> browser)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_">enum <b>tui_shortcut_t</b></a>
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="TUI_SHORTCUT_NONE">
+              <a class="permalink" href="#TUI_SHORTCUT_NONE"
+                ><b><i>TUI_SHORTCUT_NONE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_HELP">
+              <a class="permalink" href="#TUI_SHORTCUT_HELP"
+                ><b><i>TUI_SHORTCUT_HELP </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_LOGS">
+              <a class="permalink" href="#TUI_SHORTCUT_LOGS"
+                ><b><i>TUI_SHORTCUT_LOGS </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_STATS">
+              <a class="permalink" href="#TUI_SHORTCUT_STATS"
+                ><b><i>TUI_SHORTCUT_STATS </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_SYNC">
+              <a class="permalink" href="#TUI_SHORTCUT_SYNC"
+                ><b><i>TUI_SHORTCUT_SYNC </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_ERRORS">
+              <a class="permalink" href="#TUI_SHORTCUT_ERRORS"
+                ><b><i>TUI_SHORTCUT_ERRORS </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_UPDATE">
+              <a class="permalink" href="#TUI_SHORTCUT_UPDATE"
+                ><b><i>TUI_SHORTCUT_UPDATE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="TUI_SHORTCUT_MEDIA">
+              <a class="permalink" href="#TUI_SHORTCUT_MEDIA"
+                ><b><i>TUI_SHORTCUT_MEDIA </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>shortcuts.h</b>.
+          </p>
+          <pre>
+4              {
 5   TUI_SHORTCUT_NONE,
 6   TUI_SHORTCUT_HELP,
 7   TUI_SHORTCUT_LOGS,
@@ -105,18 +175,26 @@
 11   TUI_SHORTCUT_UPDATE,
 12   TUI_SHORTCUT_MEDIA
 13 } tui_shortcut_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>tui_shortcut_t</b> tui_shortcut_action (<b>keyboard_key_t</b>
-  key)</h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>shortcuts.c</b>.</p>
-<pre>26                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>tui_shortcut_t</b> tui_shortcut_action (<b>keyboard_key_t</b>
+            key)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>shortcuts.c</b>.
+          </p>
+          <pre>
+26                                                        {
 27   if (key == KEY_NONE)
 28     return TUI_SHORTCUT_NONE;
 29   for (size_t i = 0; i &lt; sizeof(bindings) / sizeof(*bindings); ++i)
@@ -125,20 +203,32 @@
 32         return bindings[i].action;
 33   return TUI_SHORTCUT_NONE;
 34 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>KEY_NONE</b>, <b>tui_shortcut_action()</b>, and
-    <b>TUI_SHORTCUT_NONE</b>.</p>
-<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>, and
-    <b>tui_shortcut_action()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_tui_shortcut_help_("><a class="permalink" href="#size_t_tui_shortcut_help_(">size_t
-  tui_shortcut_help (<b>ui_help_entry_t</b> * entries, size_t capacity,
-  <b>bool</b> server, <b>bool</b> browser)</a></h2>
-<p class="Pp">Shared definitions used by both dispatch and mode help.</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>shortcuts.c</b>.</p>
-<pre>35                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>KEY_NONE</b>, <b>tui_shortcut_action()</b>, and
+            <b>TUI_SHORTCUT_NONE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_handle_keyboard_input()</b>, and
+            <b>tui_shortcut_action()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_tui_shortcut_help_(">
+            <a class="permalink" href="#size_t_tui_shortcut_help_("
+              >size_t tui_shortcut_help (<b>ui_help_entry_t</b> * entries,
+              size_t capacity, <b>bool</b> server, <b>bool</b> browser)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared definitions used by both dispatch and mode help.
+          </p>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>shortcuts.c</b>.
+          </p>
+          <pre>
+35                                                                                                {
 36   if (!entries || !capacity) {
 37     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help binding output is required&quot;);
 38     return 0;
@@ -156,26 +246,33 @@
 50   }
 51   return count;
 52 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>binding_t::description</b>,
-    <b>ERROR_BUFFER_OVERFLOW</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>binding_t::label</b>, <b>binding_t::media</b>, <b>binding_t::native</b>,
-    <b>SET_ERRNO</b>, and <b>tui_shortcut_help()</b>.</p>
-<p class="Pp">Referenced by <b>tui_shortcut_help()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>binding_t::description</b>,
+            <b>ERROR_BUFFER_OVERFLOW</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>binding_t::label</b>, <b>binding_t::media</b>,
+            <b>binding_t::native</b>, <b>SET_ERRNO</b>, and
+            <b>tui_shortcut_help()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>tui_shortcut_help()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

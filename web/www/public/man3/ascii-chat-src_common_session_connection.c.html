@@ -1,132 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>connection.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">connection.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">connection.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">connection.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>session_connection_init</b> (<b>session_connection_t</b>
-    *connection, <b>session_connection_ops_t</b> ops, void *context)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_connection_start</b>
-    (<b>session_connection_t</b> *connection)
-  <br/>
-  void <b>session_connection_request_stop</b> (<b>session_connection_t</b>
-    *connection)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_connection_stop</b>
-    (<b>session_connection_t</b> *connection)
-  <br/>
-  void <b>session_connection_interrupt_transport</b> (<b>acip_transport_t</b>
-    *transport)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_session_connection_init_("><a class="permalink" href="#void_session_connection_init_(">void
-  session_connection_init (<b>session_connection_t</b> * connection,
-  <b>session_connection_ops_t</b> ops, void * context)</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-    <b>src/common/session/connection.c</b>.</p>
-<pre>3                                                                                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>connection.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">connection.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">connection.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">connection.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>session_connection_init</b> (<b>session_connection_t</b>
+            *connection, <b>session_connection_ops_t</b> ops, void *context)
+            <br />
+            <b>asciichat_error_t</b> <b>session_connection_start</b> (<b
+              >session_connection_t</b
+            >
+            *connection)
+            <br />
+            void <b>session_connection_request_stop</b> (<b
+              >session_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>asciichat_error_t</b> <b>session_connection_stop</b> (<b
+              >session_connection_t</b
+            >
+            *connection)
+            <br />
+            void <b>session_connection_interrupt_transport</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_connection_init_(">
+            <a class="permalink" href="#void_session_connection_init_("
+              >void session_connection_init (<b>session_connection_t</b> *
+              connection, <b>session_connection_ops_t</b> ops, void *
+              context)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file
+            <b>src/common/session/connection.c</b>.
+          </p>
+          <pre>
+3                                                                                                             {
 4   connection-&gt;owner_thread = thread_self();
 5   connection-&gt;ops = ops;
 6   connection-&gt;context = context;
 7   atomic_store_int(&amp;connection-&gt;state, SESSION_CONNECTION_STARTING);
 8 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_int()</b>,
-    <b>session_connection_t::context</b>, <b>session_connection_t::ops</b>,
-    <b>session_connection_t::owner_thread</b>, <b>session_connection_init()</b>,
-    <b>SESSION_CONNECTION_STARTING</b>, <b>session_connection_t::state</b>, and
-    <b>thread_self</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_create()</b>, and
-    <b>session_connection_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_connection_interrupt_transport_("><a class="permalink" href="#void_session_connection_interrupt_transport_(">void
-  session_connection_interrupt_transport (<b>acip_transport_t</b> *
-  transport)</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file
-    <b>src/common/session/connection.c</b>.</p>
-<pre>44                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_int()</b>,
+            <b>session_connection_t::context</b>,
+            <b>session_connection_t::ops</b>,
+            <b>session_connection_t::owner_thread</b>,
+            <b>session_connection_init()</b>,
+            <b>SESSION_CONNECTION_STARTING</b>,
+            <b>session_connection_t::state</b>, and <b>thread_self</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_create()</b>, and
+            <b>session_connection_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_connection_interrupt_transport_(">
+            <a
+              class="permalink"
+              href="#void_session_connection_interrupt_transport_("
+              >void session_connection_interrupt_transport (<b
+                >acip_transport_t</b
+              >
+              * transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file
+            <b>src/common/session/connection.c</b>.
+          </p>
+          <pre>
+44                                                                          {
 45   acip_transport_interrupt(transport);
 46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_connection_interrupt_transport()</b>.</p>
-<p class="Pp">Referenced by <b>server_connection_shutdown()</b>, and
-    <b>session_connection_interrupt_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_connection_request_stop_("><a class="permalink" href="#void_session_connection_request_stop_(">void
-  session_connection_request_stop (<b>session_connection_t</b> *
-  connection)</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file
-    <b>src/common/session/connection.c</b>.</p>
-<pre>19                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_connection_interrupt_transport()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_shutdown()</b>, and
+            <b>session_connection_interrupt_transport()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_connection_request_stop_(">
+            <a class="permalink" href="#void_session_connection_request_stop_("
+              >void session_connection_request_stop (<b>session_connection_t</b>
+              * connection)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file
+            <b>src/common/session/connection.c</b>.
+          </p>
+          <pre>
+19                                                                        {
 20   if (!connection || atomic_load_int(&amp;connection-&gt;state) == SESSION_CONNECTION_STOPPED)
 21     return;
 22   atomic_store_int(&amp;connection-&gt;state, SESSION_CONNECTION_STOPPING);
 23   if (connection-&gt;ops.interrupt)
 24     connection-&gt;ops.interrupt(connection-&gt;context);
 25 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>, <b>atomic_store_int()</b>,
-    <b>session_connection_t::context</b>,
-    <b>session_connection_ops_t::interrupt</b>,
-    <b>session_connection_t::ops</b>, <b>session_connection_request_stop()</b>,
-    <b>SESSION_CONNECTION_STOPPED</b>, <b>SESSION_CONNECTION_STOPPING</b>, and
-    <b>session_connection_t::state</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_request_stop()</b>,
-    <b>session_connection_request_stop()</b>, and
-    <b>session_connection_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_connection_start
-  (<b>session_connection_t</b> * connection)</h2>
-<p class="Pp">Definition at line <b>10</b> of file
-    <b>src/common/session/connection.c</b>.</p>
-<pre>10                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_int()</b>, <b>atomic_store_int()</b>,
+            <b>session_connection_t::context</b>,
+            <b>session_connection_ops_t::interrupt</b>,
+            <b>session_connection_t::ops</b>,
+            <b>session_connection_request_stop()</b>,
+            <b>SESSION_CONNECTION_STOPPED</b>,
+            <b>SESSION_CONNECTION_STOPPING</b>, and
+            <b>session_connection_t::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_request_stop()</b>,
+            <b>session_connection_request_stop()</b>, and
+            <b>session_connection_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_connection_start (<b
+              >session_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file
+            <b>src/common/session/connection.c</b>.
+          </p>
+          <pre>
+10                                                                              {
 11   if (!connection || !thread_equal(connection-&gt;owner_thread, thread_self()))
 12     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection startup requires its controlling thread&quot;);
 13   int expected = SESSION_CONNECTION_STARTING;
@@ -134,25 +224,39 @@
 15     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Connection was stopped during startup&quot;);
 16   return ASCIICHAT_OK;
 17 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_cas_int()</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>session_connection_t::owner_thread</b>,
-    <b>SESSION_CONNECTION_RUNNING</b>, <b>session_connection_start()</b>,
-    <b>SESSION_CONNECTION_STARTING</b>, <b>SET_ERRNO</b>,
-    <b>session_connection_t::state</b>, <b>thread_equal</b>, and
-    <b>thread_self</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_start()</b>,
-    <b>session_connection_start()</b>, <b>session_participant_connect()</b>,
-    <b>session_participant_set_connection()</b>, and
-    <b>session_participant_set_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_connection_stop
-  (<b>session_connection_t</b> * connection)</h2>
-<p class="Pp">Definition at line <b>27</b> of file
-    <b>src/common/session/connection.c</b>.</p>
-<pre>27                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_cas_int()</b>,
+            <b>ERROR_INVALID_STATE</b>,
+            <b>session_connection_t::owner_thread</b>,
+            <b>SESSION_CONNECTION_RUNNING</b>,
+            <b>session_connection_start()</b>,
+            <b>SESSION_CONNECTION_STARTING</b>, <b>SET_ERRNO</b>,
+            <b>session_connection_t::state</b>, <b>thread_equal</b>, and
+            <b>thread_self</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>,
+            <b>session_connection_start()</b>,
+            <b>session_participant_connect()</b>,
+            <b>session_participant_set_connection()</b>, and
+            <b>session_participant_set_transport()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_connection_stop (<b
+              >session_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file
+            <b>src/common/session/connection.c</b>.
+          </p>
+          <pre>
+27                                                                             {
 28   if (!connection || atomic_load_int(&amp;connection-&gt;state) == SESSION_CONNECTION_STOPPED)
 29     return ASCIICHAT_OK;
 30   session_connection_request_stop(connection);
@@ -168,33 +272,41 @@
 40   atomic_store_int(&amp;connection-&gt;state, SESSION_CONNECTION_STOPPED);
 41   return ASCIICHAT_OK;
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_int()</b>,
-    <b>atomic_store_int()</b>, <b>session_connection_t::context</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>session_connection_ops_t::join</b>,
-    <b>session_connection_t::ops</b>, <b>session_connection_t::owner_thread</b>,
-    <b>session_connection_ops_t::release</b>,
-    <b>session_connection_request_stop()</b>, <b>session_connection_stop()</b>,
-    <b>SESSION_CONNECTION_STOPPED</b>, <b>SET_ERRNO</b>,
-    <b>session_connection_t::state</b>, <b>thread_equal</b>, and
-    <b>thread_self</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_stop()</b>,
-    <b>session_connection_stop()</b>, <b>session_participant_connect()</b>,
-    <b>session_participant_disconnect()</b>, and
-    <b>session_participant_set_transport()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_load_int()</b>,
+            <b>atomic_store_int()</b>, <b>session_connection_t::context</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>session_connection_ops_t::join</b>,
+            <b>session_connection_t::ops</b>,
+            <b>session_connection_t::owner_thread</b>,
+            <b>session_connection_ops_t::release</b>,
+            <b>session_connection_request_stop()</b>,
+            <b>session_connection_stop()</b>, <b>SESSION_CONNECTION_STOPPED</b>,
+            <b>SET_ERRNO</b>, <b>session_connection_t::state</b>,
+            <b>thread_equal</b>, and <b>thread_self</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_stop()</b>,
+            <b>session_connection_stop()</b>,
+            <b>session_participant_connect()</b>,
+            <b>session_participant_disconnect()</b>, and
+            <b>session_participant_set_transport()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

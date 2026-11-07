@@ -1,154 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server.h - ACIP server-side protocol API.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acip_frame_workspace_t</b>
-  <br/>
-  Send ASCII frame to client (server &#x2192; client).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_server_receive_and_dispatch</b>
-    (<b>acip_transport_t</b> *transport, void *client_ctx, const
-    <b>acip_server_callbacks_t</b> *callbacks)
-  <br/>
-  Receive packet from client and dispatch to callbacks. void
-    <b>acip_frame_workspace_destroy</b> (<b>acip_frame_workspace_t</b>
-    *workspace)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_send_ascii_frame</b> (<b>acip_transport_t</b>
-    *transport, <b>acip_frame_workspace_t</b> *workspace, const char
-    *frame_data, size_t frame_size, <b>uint32_t</b> width, <b>uint32_t</b>
-    height, const char *client_id)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_send_ascii_frame_contract</b>
-    (<b>acip_transport_t</b> *transport, <b>acip_frame_workspace_t</b>
-    *workspace, const char *text, size_t length, <b>uint32_t</b> width,
-    <b>uint32_t</b> height, const <b>acip_render_settings_t</b> *settings,
-    <b>uint32_t</b> effects, const char *client_id)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_send_clear_console</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  Send clear console command to client (server &#x2192; client).
-    <b>asciichat_error_t</b> <b>acip_send_server_state</b>
-    (<b>acip_transport_t</b> *transport, const <b>server_state_packet_t</b>
-    *state)
-  <br/>
-  Send server state update to client (server &#x2192; client).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ACIP server-side protocol API.</p>
-<p class="Pp">Server-side API for ascii-chat protocol. Provides functions
-  for:</p>
-<ul class="Bl-bullet">
-  <li>Receiving and dispatching packets from clients</li>
-  <li>Sending ASCII frames to clients</li>
-  <li>Sending server state updates</li>
-  <li>Sending console control commands</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file
-    <b>include/ascii-chat/network/acip/server.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_frame_workspace_destroy_("><a class="permalink" href="#void_acip_frame_workspace_destroy_(">void
-  acip_frame_workspace_destroy (<b>acip_frame_workspace_t</b> *
-  workspace)</a></h2>
-<p class="Pp">Definition at line <b>288</b> of file
-    <b>lib/network/acip/server.c</b>.</p>
-<pre>288                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server.h - ACIP server-side protocol API.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acip_frame_workspace_t</b>
+            <br />
+            Send ASCII frame to client (server &#x2192; client).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_server_receive_and_dispatch</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, void *client_ctx, const
+            <b>acip_server_callbacks_t</b> *callbacks)
+            <br />
+            Receive packet from client and dispatch to callbacks. void
+            <b>acip_frame_workspace_destroy</b> (<b>acip_frame_workspace_t</b>
+            *workspace)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_send_ascii_frame</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>acip_frame_workspace_t</b> *workspace, const char
+            *frame_data, size_t frame_size, <b>uint32_t</b> width,
+            <b>uint32_t</b>
+            height, const char *client_id)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_send_ascii_frame_contract</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>acip_frame_workspace_t</b> *workspace, const char
+            *text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height,
+            const <b>acip_render_settings_t</b> *settings,
+            <b>uint32_t</b> effects, const char *client_id)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_send_clear_console</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            Send clear console command to client (server &#x2192; client).
+            <b>asciichat_error_t</b> <b>acip_send_server_state</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, const <b>server_state_packet_t</b>
+            *state)
+            <br />
+            Send server state update to client (server &#x2192; client).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ACIP server-side protocol API.</p>
+        <p class="Pp">
+          Server-side API for ascii-chat protocol. Provides functions for:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Receiving and dispatching packets from clients</li>
+          <li>Sending ASCII frames to clients</li>
+          <li>Sending server state updates</li>
+          <li>Sending console control commands</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">
+          Definition in file <b>include/ascii-chat/network/acip/server.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_frame_workspace_destroy_(">
+            <a class="permalink" href="#void_acip_frame_workspace_destroy_("
+              >void acip_frame_workspace_destroy (<b>acip_frame_workspace_t</b>
+              * workspace)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>288</b> of file
+            <b>lib/network/acip/server.c</b>.
+          </p>
+          <pre>
+288                                                                      {
 289   if (!workspace)
 290     return;
 291   compression_workspace_destroy(&amp;workspace-&gt;compression);
 292 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_frame_workspace_destroy()</b>,
-    <b>acip_frame_workspace_t::compression</b>, and
-    <b>compression_workspace_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>acip_frame_workspace_destroy()</b>,
-    <b>client_video_render_thread()</b>, <b>session_host_create()</b>, and
-    <b>session_host_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_send_ascii_frame
-  (<b>acip_transport_t</b> * transport, <b>acip_frame_workspace_t</b> *
-  workspace, const char * frame_data, size_t frame_size, <b>uint32_t</b> width,
-  <b>uint32_t</b> height, const char * client_id)</h2>
-<p class="Pp">Definition at line <b>282</b> of file
-    <b>lib/network/acip/server.c</b>.</p>
-<pre>284                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_frame_workspace_destroy()</b>,
+            <b>acip_frame_workspace_t::compression</b>, and
+            <b>compression_workspace_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_frame_workspace_destroy()</b>,
+            <b>client_video_render_thread()</b>, <b>session_host_create()</b>,
+            and <b>session_host_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_send_ascii_frame (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>acip_frame_workspace_t</b> * workspace, const char *
+            frame_data, size_t frame_size, <b>uint32_t</b> width,
+            <b>uint32_t</b> height, const char * client_id)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>282</b> of file
+            <b>lib/network/acip/server.c</b>.
+          </p>
+          <pre>
+284                                                                {
 285   return acip_send_ascii_frame_contract(transport, workspace, text, length, width, height, NULL, 0, client_id);
 286 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_ascii_frame()</b>, and
-    <b>acip_send_ascii_frame_contract()</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>,
-    <b>session_host_broadcast_frame()</b>, and
-  <b>session_host_send_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_send_ascii_frame_contract
-  (<b>acip_transport_t</b> * transport, <b>acip_frame_workspace_t</b> *
-  workspace, const char * text, size_t length, <b>uint32_t</b> width,
-  <b>uint32_t</b> height, const <b>acip_render_settings_t</b> * settings,
-  <b>uint32_t</b> effects, const char * client_id)</h2>
-<p class="Pp">Definition at line <b>220</b> of file
-    <b>lib/network/acip/server.c</b>.</p>
-<pre>223                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_ascii_frame()</b>, and
+            <b>acip_send_ascii_frame_contract()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_ascii_frame()</b>,
+            <b>session_host_broadcast_frame()</b>, and
+            <b>session_host_send_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_send_ascii_frame_contract (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>acip_frame_workspace_t</b> * workspace, const char *
+            text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height,
+            const <b>acip_render_settings_t</b> * settings,
+            <b>uint32_t</b> effects, const char * client_id)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>220</b> of file
+            <b>lib/network/acip/server.c</b>.
+          </p>
+          <pre>
+223                                                                                           {
 224   ASCII_OTEL_SCOPE(ACIP_SEND_ASCII_FRAME_CONTRACT);
 225   if (!transport || !frame_data || !workspace) {
 226     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or frame_data&quot;);
@@ -206,70 +288,106 @@
 278   asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_ASCII_FRAME, slices, count, 0);
 279   return result;
 280 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_ascii_frame_contract()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>asciichat_crc32</b>, <b>ASCIICHAT_OK</b>,
-    <b>ascii_frame_packet_t::checksum</b>, <b>compress_workspace()</b>,
-    <b>ascii_frame_packet_t::compressed_size</b>,
-    <b>acip_frame_workspace_t::compression</b>, <b>COMPRESSION_MIN_SIZE</b>,
-    <b>buffer_workspace_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>ascii_frame_packet_t::flags</b>,
-    <b>FRAME_FLAG_IS_COMPRESSED</b>, <b>FRAME_FLAG_RENDER_CONTRACT</b>,
-    <b>frame_render_contract_encode()</b>, <b>FRAME_RENDER_CONTRACT_MAX</b>,
-    <b>ascii_frame_packet_t::height</b>, <b>HOST_TO_NET_U32</b>,
-    <b>buffer_workspace_t::length</b>, <b>log_debug</b>, <b>log_dev</b>,
-    <b>ascii_frame_packet_t::original_size</b>,
-    <b>compression_workspace_t::output</b>, <b>packet_send_via_transportv()</b>,
-    <b>PACKET_TYPE_ASCII_FRAME</b>, <b>SET_ERRNO</b>, <b>should_compress()</b>,
-    and <b>ascii_frame_packet_t::width</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>,
-    <b>acip_send_ascii_frame_contract()</b>, and <b>server_send_video()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_send_clear_console
-  (<b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Send clear console command to client (server &#x2192; client).
-    Instructs client to clear the terminal/console.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>294</b> of file
-    <b>lib/network/acip/server.c</b>.</p>
-<pre>294                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_ascii_frame_contract()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>asciichat_crc32</b>,
+            <b>ASCIICHAT_OK</b>, <b>ascii_frame_packet_t::checksum</b>,
+            <b>compress_workspace()</b>,
+            <b>ascii_frame_packet_t::compressed_size</b>,
+            <b>acip_frame_workspace_t::compression</b>,
+            <b>COMPRESSION_MIN_SIZE</b>, <b>buffer_workspace_t::data</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_SIZE</b>,
+            <b>ascii_frame_packet_t::flags</b>, <b>FRAME_FLAG_IS_COMPRESSED</b>,
+            <b>FRAME_FLAG_RENDER_CONTRACT</b>,
+            <b>frame_render_contract_encode()</b>,
+            <b>FRAME_RENDER_CONTRACT_MAX</b>,
+            <b>ascii_frame_packet_t::height</b>, <b>HOST_TO_NET_U32</b>,
+            <b>buffer_workspace_t::length</b>, <b>log_debug</b>, <b>log_dev</b>,
+            <b>ascii_frame_packet_t::original_size</b>,
+            <b>compression_workspace_t::output</b>,
+            <b>packet_send_via_transportv()</b>, <b>PACKET_TYPE_ASCII_FRAME</b>,
+            <b>SET_ERRNO</b>, <b>should_compress()</b>, and
+            <b>ascii_frame_packet_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_ascii_frame()</b>,
+            <b>acip_send_ascii_frame_contract()</b>, and
+            <b>server_send_video()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_send_clear_console (<b
+              >acip_transport_t</b
+            >
+            * transport)
+          </h2>
+          <p class="Pp">
+            Send clear console command to client (server &#x2192; client).
+            Instructs client to clear the terminal/console.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>transport</i> Transport instance</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>294</b> of file
+            <b>lib/network/acip/server.c</b>.
+          </p>
+          <pre>
+294                                                                        {
 295   if (!transport) {
 296     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
 297   }
 298
 299   return packet_send_via_transport(transport, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, 0);
 300 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_clear_console()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_CLEAR_CONSOLE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_clear_console()</b>, and
-    <b>server_send_video()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_send_server_state
-  (<b>acip_transport_t</b> * transport, const <b>server_state_packet_t</b> *
-  state)</h2>
-<p class="Pp">Send server state update to client (server &#x2192; client).
-    Notifies client of server state changes (client count, grid layout,
-  etc.)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>state</i> Server state structure</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>302</b> of file
-    <b>lib/network/acip/server.c</b>.</p>
-<pre>302                                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_clear_console()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_CLEAR_CONSOLE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_clear_console()</b>, and
+            <b>server_send_video()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_send_server_state (<b
+              >acip_transport_t</b
+            >
+            * transport, const <b>server_state_packet_t</b> * state)
+          </h2>
+          <p class="Pp">
+            Send server state update to client (server &#x2192; client).
+            Notifies client of server state changes (client count, grid layout,
+            etc.)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>state</i> Server state structure
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>302</b> of file
+            <b>lib/network/acip/server.c</b>.
+          </p>
+          <pre>
+302                                                                                                           {
 303   ASCII_OTEL_SCOPE(ACIP_SEND_SERVER_STATE);
 304   if (!transport || !state) {
 305     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or state&quot;);
@@ -277,36 +395,52 @@
 307
 308   return packet_send_via_transport(transport, PACKET_TYPE_SERVER_STATE, state, sizeof(*state), 0);
 309 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_server_state()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_SERVER_STATE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_server_state()</b>,
-    <b>send_server_state_to_client()</b>, <b>server_send_state()</b>, and
-    <b>session_host_set_client_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_server_receive_and_dispatch
-  (<b>acip_transport_t</b> * transport, void * client_ctx, const
-  <b>acip_server_callbacks_t</b> * callbacks)</h2>
-<p class="Pp">Receive packet from client and dispatch to callbacks. High-level
-    receive function for server side. Receives a single packet from the
-    transport, handles decryption, and dispatches to appropriate callback
-    handler.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>client_ctx</i> Client context pointer (passed to callbacks)
-<br/>
-<i>callbacks</i> Callback structure for handling received packets</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>33</b> of file
-    <b>lib/network/acip/server.c</b>.</p>
-<pre>34                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_server_state()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_SERVER_STATE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_server_state()</b>,
+            <b>send_server_state_to_client()</b>, <b>server_send_state()</b>,
+            and <b>session_host_set_client_transport()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_server_receive_and_dispatch (<b
+              >acip_transport_t</b
+            >
+            * transport, void * client_ctx, const
+            <b>acip_server_callbacks_t</b> * callbacks)
+          </h2>
+          <p class="Pp">
+            Receive packet from client and dispatch to callbacks. High-level
+            receive function for server side. Receives a single packet from the
+            transport, handles decryption, and dispatches to appropriate
+            callback handler.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>client_ctx</i> Client context pointer (passed to callbacks)
+            <br />
+            <i>callbacks</i> Callback structure for handling received packets
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>33</b> of file
+            <b>lib/network/acip/server.c</b>.
+          </p>
+          <pre>
+34                                                                                              {
 35   ASCII_OTEL_SCOPE(ACIP_SERVER_RECEIVE_AND_DISPATCH);
 36   uint64_t dispatch_start_ns = time_get_ns();
 37   log_dev_every(4500 * US_PER_MS_INT,
@@ -487,43 +621,53 @@
 212   // Return handler result
 213   return dispatch_result;
 214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_handle_server_packet()</b>,
-    <b>acip_server_receive_and_dispatch()</b>,
-    <b>packet_envelope_t::allocated_buffer</b>,
-    <b>packet_envelope_t::allocated_size</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>,
-    <b>buffer_release</b>, <b>acip_transport::crypto_ctx</b>,
-    <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
-    <b>packet_envelope_t::data</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_NETWORK_TIMEOUT</b>, <b>acip_transport_methods_t::get_socket</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>acip_transport_methods_t::is_connected</b>,
-    <b>packet_envelope_t::len</b>, <b>packet_header_t::length</b>,
-    <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>acip_transport::methods</b>, <b>NET_TO_HOST_U16</b>,
-    <b>NET_TO_HOST_U32</b>, <b>PACKET_RECV_EOF</b>,
-    <b>PACKET_RECV_SECURITY_VIOLATION</b>, <b>PACKET_RECV_SUCCESS</b>,
-    <b>PACKET_TYPE_ENCRYPTED</b>, <b>receive_packet_secure()</b>,
-    <b>acip_transport_methods_t::recv</b>, <b>SET_ERRNO</b>,
-    <b>acip_transport::stats_peer</b>, <b>stats_runtime_packet()</b>,
-    <b>TIME_DURATION_BUFFER_SIZE</b>, <b>time_get_ns()</b>,
-    <b>time_pretty()</b>, <b>packet_envelope_t::type</b>,
-    <b>packet_header_t::type</b>, and <b>US_PER_MS_INT</b>.</p>
-<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_server_packet()</b>,
+            <b>acip_server_receive_and_dispatch()</b>,
+            <b>packet_envelope_t::allocated_buffer</b>,
+            <b>packet_envelope_t::allocated_size</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>buffer_alloc()</b>, <b>buffer_release</b>,
+            <b>acip_transport::crypto_ctx</b>, <b>crypto_decrypt()</b>,
+            <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
+            <b>packet_envelope_t::data</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_TIMEOUT</b>,
+            <b>acip_transport_methods_t::get_socket</b>,
+            <b>INVALID_SOCKET_VALUE</b>,
+            <b>acip_transport_methods_t::is_connected</b>,
+            <b>packet_envelope_t::len</b>, <b>packet_header_t::length</b>,
+            <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>acip_transport::methods</b>,
+            <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
+            <b>PACKET_RECV_EOF</b>, <b>PACKET_RECV_SECURITY_VIOLATION</b>,
+            <b>PACKET_RECV_SUCCESS</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
+            <b>receive_packet_secure()</b>,
+            <b>acip_transport_methods_t::recv</b>, <b>SET_ERRNO</b>,
+            <b>acip_transport::stats_peer</b>, <b>stats_runtime_packet()</b>,
+            <b>TIME_DURATION_BUFFER_SIZE</b>, <b>time_get_ns()</b>,
+            <b>time_pretty()</b>, <b>packet_envelope_t::type</b>,
+            <b>packet_header_t::type</b>, and <b>US_PER_MS_INT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_server_receive_and_dispatch()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

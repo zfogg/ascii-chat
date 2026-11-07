@@ -1,67 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>invitation.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">invitation.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">invitation.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">invitation.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>invitation_render</b> (<b>frame_buffer_t</b> *buf,
-    <b>terminal_size_t</b> size, const char *session_string, <b>bool</b>
-    joining, int animation_frame, <b>bool</b> use_colors)
-  <br/>
-  void <b>invitation_render_logo</b> (<b>frame_buffer_t</b> *buf, int cols, int
-    animation_frame, <b>bool</b> use_colors, <b>bool</b> compact)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_invitation_render_("><a class="permalink" href="#void_invitation_render_(">void
-  invitation_render (<b>frame_buffer_t</b> * buf, <b>terminal_size_t</b> size,
-  const char * session_string, <b>bool</b> joining, int animation_frame,
-  <b>bool</b> use_colors)</a></h2>
-<p class="Pp">Render the discovery invitation into a frame without writing to
-    the terminal. An empty string shows creation progress; joining shows
-    connection progress. Text is plain ASCII, and the Run instruction
-    immediately follows the string.</p>
-<p class="Pp">Definition at line <b>58</b> of file <b>invitation.c</b>.</p>
-<pre>59                                     {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>invitation.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">invitation.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">invitation.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">invitation.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>invitation_render</b> (<b>frame_buffer_t</b> *buf,
+            <b>terminal_size_t</b> size, const char *session_string,
+            <b>bool</b> joining, int animation_frame, <b>bool</b> use_colors)
+            <br />
+            void <b>invitation_render_logo</b> (<b>frame_buffer_t</b> *buf, int
+            cols, int animation_frame, <b>bool</b> use_colors,
+            <b>bool</b> compact)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_invitation_render_(">
+            <a class="permalink" href="#void_invitation_render_("
+              >void invitation_render (<b>frame_buffer_t</b> * buf,
+              <b>terminal_size_t</b> size, const char * session_string,
+              <b>bool</b> joining, int animation_frame,
+              <b>bool</b> use_colors)</a
+            >
+          </h2>
+          <p class="Pp">
+            Render the discovery invitation into a frame without writing to the
+            terminal. An empty string shows creation progress; joining shows
+            connection progress. Text is plain ASCII, and the Run instruction
+            immediately follows the string.
+          </p>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>invitation.c</b>.
+          </p>
+          <pre>
+59                                     {
 60   if (!buf || size.cols &lt; 2 || size.rows &lt; 2)
 61     return;
 62   int cols = size.cols - 1;
@@ -106,23 +152,36 @@
 101   // Erase stale logs/rows after a layout change without clearing between frames.
 102   frame_buffer_printf(buf, &quot;\033[J&quot;);
 103 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_size_t::cols</b>,
-    <b>frame_buffer_printf()</b>, <b>invitation_render()</b>,
-    <b>invitation_render_logo()</b>, <b>terminal_size_t::rows</b>, and
-    <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>invitation_render()</b>, and
-    <b>ui_session_splash_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_invitation_render_logo_("><a class="permalink" href="#void_invitation_render_logo_(">void
-  invitation_render_logo (<b>frame_buffer_t</b> * buf, int cols, int
-  animation_frame, <b>bool</b> use_colors, <b>bool</b> compact)</a></h2>
-<p class="Pp">Shared rainbow logo used by the startup splash and discovery
-    invitation.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>invitation.c</b>.</p>
-<pre>34                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>,
+            <b>frame_buffer_printf()</b>, <b>invitation_render()</b>,
+            <b>invitation_render_logo()</b>, <b>terminal_size_t::rows</b>, and
+            <b>SESSION_STRING_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>invitation_render()</b>, and
+            <b>ui_session_splash_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_invitation_render_logo_(">
+            <a class="permalink" href="#void_invitation_render_logo_("
+              >void invitation_render_logo (<b>frame_buffer_t</b> * buf, int
+              cols, int animation_frame, <b>bool</b> use_colors,
+              <b>bool</b> compact)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared rainbow logo used by the startup splash and discovery
+            invitation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>invitation.c</b>.
+          </p>
+          <pre>
+34                                                                                                  {
 35   const char *ascii_logo[4] = {
 36       &quot;  __ _ ___  ___(_|_)       ___| |__   __ _| |_ &quot;, &quot; / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| &quot;,
 37       &quot;| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ &quot;, &quot; \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| &quot;};
@@ -145,25 +204,31 @@
 54     centered_line(buf, line, width &lt; cols ? width : cols, cols, frame, colors);
 55   }
 56 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>invitation_render_logo()</b>, and
-    <b>TUI_INVITATION_LINE_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>invitation_render()</b>,
-    <b>invitation_render_logo()</b>, <b>ui_media_panel_render()</b>,
-    <b>ui_session_render()</b>, and <b>ui_session_splash_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>invitation_render_logo()</b>, and
+            <b>TUI_INVITATION_LINE_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>invitation_render()</b>,
+            <b>invitation_render_logo()</b>, <b>ui_media_panel_render()</b>,
+            <b>ui_session_render()</b>, and <b>ui_session_splash_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

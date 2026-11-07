@@ -1,170 +1,278 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>acds_client.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">acds_client.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">acds_client.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">acds_client.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ACDS_SIGNATURE_PREFIX_SIZE</b> (sizeof(<b>uint8_t</b>)
-    + sizeof(<b>uint64_t</b>))
-  <br/>
-  #define <b>ACDS_CREATE_SIGNATURE_MESSAGE_SIZE</b>
-    (<b>ACDS_SIGNATURE_PREFIX_SIZE</b> + 2 * sizeof(<b>uint8_t</b>))
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acds_sign_session_create</b> (const
-    <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp,
-    <b>uint8_t</b> capabilities, <b>uint8_t</b> max_participants, <b>uint8_t</b>
-    signature_out[64])
-  <br/>
-  Sign a SESSION_CREATE message. <b>asciichat_error_t</b>
-    <b>acds_verify_session_create</b> (const <b>uint8_t</b> identity_pubkey[32],
-    <b>uint64_t</b> timestamp, <b>uint8_t</b> capabilities, <b>uint8_t</b>
-    max_participants, const <b>uint8_t</b> signature[64])
-  <br/>
-  Verify SESSION_CREATE signature. <b>asciichat_error_t</b>
-    <b>acds_sign_session_join</b> (const <b>uint8_t</b> identity_seckey[64],
-    <b>uint64_t</b> timestamp, const char *session_string, <b>uint8_t</b>
-    signature_out[64])
-  <br/>
-  Sign a SESSION_JOIN message. <b>asciichat_error_t</b>
-    <b>acds_verify_session_join</b> (const <b>uint8_t</b> identity_pubkey[32],
-    <b>uint64_t</b> timestamp, const char *session_string, const <b>uint8_t</b>
-    signature[64])
-  <br/>
-  Verify SESSION_JOIN signature. <b>bool</b> <b>acds_validate_timestamp</b>
-    (<b>uint64_t</b> timestamp_ms, <b>uint32_t</b> window_seconds)
-  <br/>
-  Check if timestamp is within acceptable window. void <b>acds_protocol_init</b>
-    (<b>acds_protocol_t</b> *p, <b>acds_protocol_send_fn</b> send, void
-    *user_data)
-  <br/>
-  void <b>acds_protocol_destroy</b> (<b>acds_protocol_t</b> *p)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_protocol_create</b> (<b>acds_protocol_t</b>
-    *p, const <b>acds_session_create_params_t</b> *params, <b>uint8_t</b>
-    total_keys, <b>uint8_t</b> key_index)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_protocol_lookup</b> (<b>acds_protocol_t</b>
-    *p, const char *name)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_protocol_join</b> (<b>acds_protocol_t</b> *p,
-    const <b>acds_session_join_params_t</b> *params)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_protocol_enter</b> (<b>acds_protocol_t</b>
-    *p, <b>bool</b> create, const char *name, const char *password)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_protocol_receive</b> (<b>acds_protocol_t</b>
-    *p, <b>packet_type_t</b> type, const void *payload, size_t length)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_protocol_leave</b> (<b>acds_protocol_t</b>
-    *p)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_handshake_begin</b> (<b>acip_transport_t</b>
-    *transport, <b>uint8_t</b> mode)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_handshake_receive</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport,
-    <b>packet_type_t</b> type, const void *payload, size_t length)
-  <br/>
-  <b>asciichat_error_t</b> <b>acds_receive_packet</b> (<b>acip_transport_t</b>
-    *transport, <b>packet_type_t</b> *type, void **payload, size_t *length, void
-    **allocation)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_CREATE_SIGNATURE_MESSAGE_SIZE___("><a class="permalink" href="#_define_ACDS_CREATE_SIGNATURE_MESSAGE_SIZE___(">#define
-  ACDS_CREATE_SIGNATURE_MESSAGE_SIZE (<b>ACDS_SIGNATURE_PREFIX_SIZE</b> + 2 *
-  sizeof(<b>uint8_t</b>))</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>acds_client.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_sign_session_create()</b>, and
-    <b>acds_verify_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_SIGNATURE_PREFIX_SIZE___(sizeof("><a class="permalink" href="#_define_ACDS_SIGNATURE_PREFIX_SIZE___(sizeof(">#define
-  ACDS_SIGNATURE_PREFIX_SIZE (sizeof(<b>uint8_t</b>) +
-  sizeof(<b>uint64_t</b>))</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>acds_client.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_sign_session_join()</b>, and
-    <b>acds_verify_session_join()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_handshake_begin
-  (<b>acip_transport_t</b> * transport, <b>uint8_t</b> mode)</h2>
-<p class="Pp">Handshake event steps shared by native receive loops and browser
-    socket events. Context must already be initialized and configured with any
-    identity options. Input remains caller-owned.</p>
-<p class="Pp">Definition at line <b>414</b> of file <b>acds_client.c</b>.</p>
-<pre>414                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>acds_client.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">acds_client.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">acds_client.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">acds_client.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ACDS_SIGNATURE_PREFIX_SIZE</b> (sizeof(<b>uint8_t</b>) +
+            sizeof(<b>uint64_t</b>))
+            <br />
+            #define <b>ACDS_CREATE_SIGNATURE_MESSAGE_SIZE</b> (<b
+              >ACDS_SIGNATURE_PREFIX_SIZE</b
+            >
+            + 2 * sizeof(<b>uint8_t</b>))
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acds_sign_session_create</b> (const
+            <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp,
+            <b>uint8_t</b> capabilities, <b>uint8_t</b> max_participants,
+            <b>uint8_t</b>
+            signature_out[64])
+            <br />
+            Sign a SESSION_CREATE message. <b>asciichat_error_t</b>
+            <b>acds_verify_session_create</b> (const
+            <b>uint8_t</b> identity_pubkey[32], <b>uint64_t</b> timestamp,
+            <b>uint8_t</b> capabilities, <b>uint8_t</b> max_participants, const
+            <b>uint8_t</b> signature[64])
+            <br />
+            Verify SESSION_CREATE signature. <b>asciichat_error_t</b>
+            <b>acds_sign_session_join</b> (const
+            <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp, const
+            char *session_string, <b>uint8_t</b>
+            signature_out[64])
+            <br />
+            Sign a SESSION_JOIN message. <b>asciichat_error_t</b>
+            <b>acds_verify_session_join</b> (const
+            <b>uint8_t</b> identity_pubkey[32], <b>uint64_t</b> timestamp, const
+            char *session_string, const <b>uint8_t</b>
+            signature[64])
+            <br />
+            Verify SESSION_JOIN signature. <b>bool</b>
+            <b>acds_validate_timestamp</b> (<b>uint64_t</b> timestamp_ms,
+            <b>uint32_t</b> window_seconds)
+            <br />
+            Check if timestamp is within acceptable window. void
+            <b>acds_protocol_init</b> (<b>acds_protocol_t</b> *p,
+            <b>acds_protocol_send_fn</b> send, void *user_data)
+            <br />
+            void <b>acds_protocol_destroy</b> (<b>acds_protocol_t</b> *p)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_protocol_create</b> (<b
+              >acds_protocol_t</b
+            >
+            *p, const <b>acds_session_create_params_t</b> *params,
+            <b>uint8_t</b> total_keys, <b>uint8_t</b> key_index)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_protocol_lookup</b> (<b
+              >acds_protocol_t</b
+            >
+            *p, const char *name)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_protocol_join</b> (<b
+              >acds_protocol_t</b
+            >
+            *p, const <b>acds_session_join_params_t</b> *params)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_protocol_enter</b> (<b
+              >acds_protocol_t</b
+            >
+            *p, <b>bool</b> create, const char *name, const char *password)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_protocol_receive</b> (<b
+              >acds_protocol_t</b
+            >
+            *p, <b>packet_type_t</b> type, const void *payload, size_t length)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_protocol_leave</b> (<b
+              >acds_protocol_t</b
+            >
+            *p)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_handshake_begin</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>uint8_t</b> mode)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_handshake_receive</b> (<b
+              >crypto_handshake_context_t</b
+            >
+            *ctx, <b>acip_transport_t</b> *transport, <b>packet_type_t</b> type,
+            const void *payload, size_t length)
+            <br />
+            <b>asciichat_error_t</b> <b>acds_receive_packet</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>packet_type_t</b> *type, void **payload, size_t
+            *length, void **allocation)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACDS_CREATE_SIGNATURE_MESSAGE_SIZE___(">
+            <a
+              class="permalink"
+              href="#_define_ACDS_CREATE_SIGNATURE_MESSAGE_SIZE___("
+              >#define ACDS_CREATE_SIGNATURE_MESSAGE_SIZE (<b
+                >ACDS_SIGNATURE_PREFIX_SIZE</b
+              >
+              + 2 * sizeof(<b>uint8_t</b>))</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>acds_client.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_sign_session_create()</b>, and
+            <b>acds_verify_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACDS_SIGNATURE_PREFIX_SIZE___(sizeof(">
+            <a
+              class="permalink"
+              href="#_define_ACDS_SIGNATURE_PREFIX_SIZE___(sizeof("
+              >#define ACDS_SIGNATURE_PREFIX_SIZE (sizeof(<b>uint8_t</b>) +
+              sizeof(<b>uint64_t</b>))</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>acds_client.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_sign_session_join()</b>, and
+            <b>acds_verify_session_join()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_handshake_begin (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>uint8_t</b> mode)
+          </h2>
+          <p class="Pp">
+            Handshake event steps shared by native receive loops and browser
+            socket events. Context must already be initialized and configured
+            with any identity options. Input remains caller-owned.
+          </p>
+          <p class="Pp">
+            Definition at line <b>414</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+414                                                                                   {
 415   protocol_version_packet_t version = {0};
 416   version.protocol_version = HOST_TO_NET_U16(1);
 417   version.supports_encryption = mode;
 418   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &amp;version, sizeof(version), 0);
 419 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_handshake_begin()</b>, <b>HOST_TO_NET_U16</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
-    <b>protocol_version_packet_t::protocol_version</b>, and
-    <b>protocol_version_packet_t::supports_encryption</b>.</p>
-<p class="Pp">Referenced by <b>acds_handshake_begin()</b>,
-    <b>client_acds_handshake_begin()</b>, and
-  <b>client_handshake_begin()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_handshake_receive
-  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> * transport,
-  <b>packet_type_t</b> type, const void * payload, size_t length)</h2>
-<p class="Pp">&lt;No encryption (plaintext mode)</p>
-<p class="Pp">Definition at line <b>420</b> of file <b>acds_client.c</b>.</p>
-<pre>421                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_handshake_begin()</b>, <b>HOST_TO_NET_U16</b>,
+            <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+            <b>protocol_version_packet_t::protocol_version</b>, and
+            <b>protocol_version_packet_t::supports_encryption</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_handshake_begin()</b>,
+            <b>client_acds_handshake_begin()</b>, and
+            <b>client_handshake_begin()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_handshake_receive (<b
+              >crypto_handshake_context_t</b
+            >
+            * ctx, <b>acip_transport_t</b> * transport,
+            <b>packet_type_t</b> type, const void * payload, size_t length)
+          </h2>
+          <p class="Pp">&lt;No encryption (plaintext mode)</p>
+          <p class="Pp">
+            Definition at line <b>420</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+421                                                                                                  {
 422   if (!ctx || !transport || (!payload &amp;&amp; length))
 423     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid handshake packet&quot;);
 424   switch (type) {
@@ -187,32 +295,44 @@
 441     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Unexpected discovery handshake packet: %u&quot;, type);
 442   }
 443 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_handshake_receive()</b>,
-    <b>CIPHER_ALGO_NONE</b>, <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>crypto_handshake_client_auth_response()</b>,
-    <b>crypto_handshake_client_complete()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
-    <b>crypto_handshake_set_parameters()</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
-    <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
-    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
-    <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>, <b>SET_ERRNO</b>, and
-    <b>crypto_handshake_context_t::state</b>.</p>
-<p class="Pp">Referenced by <b>acds_handshake_receive()</b>, and
-    <b>client_acds_handshake_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_protocol_create
-  (<b>acds_protocol_t</b> * p, const <b>acds_session_create_params_t</b> *
-  params, <b>uint8_t</b> total_keys, <b>uint8_t</b> key_index)</h2>
-<p class="Pp">Definition at line <b>240</b> of file <b>acds_client.c</b>.</p>
-<pre>241                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_handshake_receive()</b>, <b>CIPHER_ALGO_NONE</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>crypto_handshake_client_auth_response()</b>,
+            <b>crypto_handshake_client_complete()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>CRYPTO_HANDSHAKE_INIT</b>,
+            <b>crypto_handshake_set_parameters()</b>,
+            <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+            <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
+            <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
+            <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>, <b>SET_ERRNO</b>, and
+            <b>crypto_handshake_context_t::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_handshake_receive()</b>, and
+            <b>client_acds_handshake_receive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_protocol_create (<b
+              >acds_protocol_t</b
+            >
+            * p, const <b>acds_session_create_params_t</b> * params,
+            <b>uint8_t</b> total_keys, <b>uint8_t</b> key_index)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>240</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+241                                                                               {
 242   if (!p || !params)
 243     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid discovery create parameters&quot;);
 244   if (total_keys &gt; MAX_SESSION_KEYS || key_index &gt;= (total_keys ? total_keys : 1) || params-&gt;max_participants == 0 ||
@@ -246,52 +366,74 @@
 272   sodium_memzero(&amp;req, sizeof(req));
 273   return result;
 274 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_CREATING</b>,
-    <b>acds_session_create_params_t::acds_expose_ip</b>,
-    <b>acds_protocol_create()</b>, <b>acds_sign_session_create()</b>,
-    <b>acip_session_create_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>acds_session_create_params_t::capabilities</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>acds_session_create_params_t::has_password</b>,
-    <b>acds_session_create_params_t::identity_pubkey</b>,
-    <b>acds_session_create_params_t::identity_seckey</b>,
-    <b>acds_session_create_params_t::max_participants</b>,
-    <b>MAX_SESSION_KEYS</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>,
-    <b>acds_session_create_params_t::password</b>,
-    <b>acds_session_create_params_t::reserved_string</b>, <b>SAFE_STRNCPY</b>,
-    <b>acds_session_create_params_t::server_address</b>,
-    <b>acds_session_create_params_t::server_port</b>,
-    <b>acds_session_create_params_t::session_type</b>, <b>SET_ERRNO</b>,
-    <b>acds_protocol_t::state</b>, and <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_create()</b>,
-    <b>acds_protocol_enter()</b>, and <b>acds_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_protocol_destroy_("><a class="permalink" href="#void_acds_protocol_destroy_(">void
-  acds_protocol_destroy (<b>acds_protocol_t</b> * p)</a></h2>
-<p class="Pp">Definition at line <b>219</b> of file <b>acds_client.c</b>.</p>
-<pre>219                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_CREATING</b>,
+            <b>acds_session_create_params_t::acds_expose_ip</b>,
+            <b>acds_protocol_create()</b>, <b>acds_sign_session_create()</b>,
+            <b>acip_session_create_t</b>, <b>ASCIICHAT_OK</b>,
+            <b>acds_session_create_params_t::capabilities</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NOT_SUPPORTED</b>,
+            <b>acds_session_create_params_t::has_password</b>,
+            <b>acds_session_create_params_t::identity_pubkey</b>,
+            <b>acds_session_create_params_t::identity_seckey</b>,
+            <b>acds_session_create_params_t::max_participants</b>,
+            <b>MAX_SESSION_KEYS</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>,
+            <b>acds_session_create_params_t::password</b>,
+            <b>acds_session_create_params_t::reserved_string</b>,
+            <b>SAFE_STRNCPY</b>,
+            <b>acds_session_create_params_t::server_address</b>,
+            <b>acds_session_create_params_t::server_port</b>,
+            <b>acds_session_create_params_t::session_type</b>, <b>SET_ERRNO</b>,
+            <b>acds_protocol_t::state</b>, and <b>time_get_realtime_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_create()</b>,
+            <b>acds_protocol_enter()</b>, and <b>acds_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_protocol_destroy_(">
+            <a class="permalink" href="#void_acds_protocol_destroy_("
+              >void acds_protocol_destroy (<b>acds_protocol_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>219</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+219                                                {
 220   if (p)
 221     sodium_memzero(p, sizeof(*p));
 222 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_protocol_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_destroy()</b>,
-    <b>acds_session_create()</b>, <b>acds_session_join()</b>,
-    <b>acds_session_lookup()</b>, and <b>browser_discovery_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_protocol_enter
-  (<b>acds_protocol_t</b> * protocol, <b>bool</b> create, const char * name,
-  const char * password)</h2>
-<p class="Pp">Create then join, or look up then join, using the same identity
-    throughout.</p>
-<p class="Pp">Definition at line <b>309</b> of file <b>acds_client.c</b>.</p>
-<pre>309                                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>acds_protocol_destroy()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_destroy()</b>,
+            <b>acds_session_create()</b>, <b>acds_session_join()</b>,
+            <b>acds_session_lookup()</b>, and
+            <b>browser_discovery_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_protocol_enter (<b>acds_protocol_t</b>
+            * protocol, <b>bool</b> create, const char * name, const char *
+            password)
+          </h2>
+          <p class="Pp">
+            Create then join, or look up then join, using the same identity
+            throughout.
+          </p>
+          <p class="Pp">
+            Definition at line <b>309</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+309                                                                                                                {
 310   if (!p || !password)
 311     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid discovery parameters&quot;);
 312   if (strlen(password) &gt; 127)
@@ -316,49 +458,69 @@
 331   sodium_memzero(&amp;params, sizeof(params));
 332   return result;
 333 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_protocol_create()</b>,
-    <b>acds_protocol_enter()</b>, <b>acds_protocol_lookup()</b>,
-    <b>acds_protocol_t::auto_join</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>acds_session_join_params_t::has_password</b>,
-    <b>acds_session_create_params_t::identity_pubkey</b>,
-    <b>acds_session_join_params_t::identity_pubkey</b>,
-    <b>acds_session_create_params_t::identity_seckey</b>,
-    <b>acds_session_join_params_t::identity_seckey</b>,
-    <b>acds_protocol_t::join</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
-    <b>acds_protocol_t::name</b>, <b>acds_session_create_params_t::password</b>,
-    <b>acds_session_join_params_t::password</b>,
-    <b>acds_protocol_t::require_webrtc</b>, <b>SAFE_STRNCPY</b>,
-    <b>acds_session_join_params_t::session_string</b>,
-    <b>SESSION_TYPE_WEBRTC</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_enter()</b>, and
-    <b>browser_discovery_enter()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_protocol_init_("><a class="permalink" href="#void_acds_protocol_init_(">void
-  acds_protocol_init (<b>acds_protocol_t</b> * p, <b>acds_protocol_send_fn</b>
-  send, void * user_data)</a></h2>
-<p class="Pp">Definition at line <b>214</b> of file <b>acds_client.c</b>.</p>
-<pre>214                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_create()</b>,
+            <b>acds_protocol_enter()</b>, <b>acds_protocol_lookup()</b>,
+            <b>acds_protocol_t::auto_join</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>acds_session_join_params_t::has_password</b>,
+            <b>acds_session_create_params_t::identity_pubkey</b>,
+            <b>acds_session_join_params_t::identity_pubkey</b>,
+            <b>acds_session_create_params_t::identity_seckey</b>,
+            <b>acds_session_join_params_t::identity_seckey</b>,
+            <b>acds_protocol_t::join</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>acds_protocol_t::name</b>,
+            <b>acds_session_create_params_t::password</b>,
+            <b>acds_session_join_params_t::password</b>,
+            <b>acds_protocol_t::require_webrtc</b>, <b>SAFE_STRNCPY</b>,
+            <b>acds_session_join_params_t::session_string</b>,
+            <b>SESSION_TYPE_WEBRTC</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_enter()</b>, and
+            <b>browser_discovery_enter()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_protocol_init_(">
+            <a class="permalink" href="#void_acds_protocol_init_("
+              >void acds_protocol_init (<b>acds_protocol_t</b> * p,
+              <b>acds_protocol_send_fn</b> send, void * user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>214</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+214                                                                                          {
 215   memset(p, 0, sizeof(*p));
 216   p-&gt;send = send;
 217   p-&gt;user_data = user_data;
 218 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_protocol_init()</b>,
-    <b>acds_protocol_t::send</b>, and <b>acds_protocol_t::user_data</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_init()</b>,
-    <b>acds_session_create()</b>, <b>acds_session_join()</b>,
-    <b>acds_session_lookup()</b>, and <b>browser_discovery_new()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_protocol_join
-  (<b>acds_protocol_t</b> * p, const <b>acds_session_join_params_t</b> *
-  params)</h2>
-<p class="Pp">Definition at line <b>287</b> of file <b>acds_client.c</b>.</p>
-<pre>287                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_init()</b>,
+            <b>acds_protocol_t::send</b>, and <b>acds_protocol_t::user_data</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_init()</b>,
+            <b>acds_session_create()</b>, <b>acds_session_join()</b>,
+            <b>acds_session_lookup()</b>, and <b>browser_discovery_new()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_protocol_join (<b>acds_protocol_t</b>
+            * p, const <b>acds_session_join_params_t</b> * params)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>287</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+287                                                                                                    {
 288   if (!p || !params)
 289     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid discovery join parameters&quot;);
 290   if (!valid_name(params-&gt;session_string))
@@ -380,26 +542,35 @@
 306   sodium_memzero(&amp;req, sizeof(req));
 307   return result;
 308 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_JOINING</b>, <b>acds_protocol_join()</b>,
-    <b>acds_sign_session_join()</b>, <b>acip_session_join_t</b>,
-    <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acds_session_join_params_t::has_password</b>,
-    <b>acds_session_join_params_t::identity_pubkey</b>,
-    <b>acds_session_join_params_t::identity_seckey</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>,
-    <b>acds_session_join_params_t::password</b>, <b>SAFE_STRNCPY</b>,
-    <b>acds_session_join_params_t::session_string</b>, <b>SET_ERRNO</b>,
-    <b>acds_protocol_t::state</b>, and <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_join()</b>,
-    <b>acds_protocol_receive()</b>, and <b>acds_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_protocol_leave
-  (<b>acds_protocol_t</b> * p)</h2>
-<p class="Pp">Definition at line <b>403</b> of file <b>acds_client.c</b>.</p>
-<pre>403                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_JOINING</b>, <b>acds_protocol_join()</b>,
+            <b>acds_sign_session_join()</b>, <b>acip_session_join_t</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>acds_session_join_params_t::has_password</b>,
+            <b>acds_session_join_params_t::identity_pubkey</b>,
+            <b>acds_session_join_params_t::identity_seckey</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>,
+            <b>acds_session_join_params_t::password</b>, <b>SAFE_STRNCPY</b>,
+            <b>acds_session_join_params_t::session_string</b>, <b>SET_ERRNO</b>,
+            <b>acds_protocol_t::state</b>, and <b>time_get_realtime_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_join()</b>,
+            <b>acds_protocol_receive()</b>, and <b>acds_session_join()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_protocol_leave (<b>acds_protocol_t</b>
+            * p)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>403</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+403                                                           {
 404   if (!p)
 405     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing discovery protocol&quot;);
 406   if (p-&gt;state != ACDS_JOINED)
@@ -410,21 +581,33 @@
 411   p-&gt;state = ACDS_ENDED;
 412   return protocol_send(p, PACKET_TYPE_ACIP_SESSION_LEAVE, &amp;req, sizeof(req));
 413 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_ENDED</b>, <b>ACDS_JOINED</b>,
-    <b>acds_protocol_leave()</b>, <b>acip_session_leave_t</b>,
-    <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acds_protocol_t::joined</b>, <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>,
-    <b>SET_ERRNO</b>, and <b>acds_protocol_t::state</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_leave()</b>, and
-    <b>browser_discovery_leave()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_protocol_lookup
-  (<b>acds_protocol_t</b> * p, const char * name)</h2>
-<p class="Pp">Definition at line <b>275</b> of file <b>acds_client.c</b>.</p>
-<pre>275                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_ENDED</b>, <b>ACDS_JOINED</b>,
+            <b>acds_protocol_leave()</b>, <b>acip_session_leave_t</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>acds_protocol_t::joined</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>, <b>SET_ERRNO</b>, and
+            <b>acds_protocol_t::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_leave()</b>, and
+            <b>browser_discovery_leave()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_protocol_lookup (<b
+              >acds_protocol_t</b
+            >
+            * p, const char * name)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>275</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+275                                                                              {
 276   if (!p)
 277     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing discovery protocol&quot;);
 278   if (!valid_name(name))
@@ -436,22 +619,32 @@
 284   p-&gt;state = ACDS_LOOKING_UP;
 285   return protocol_send(p, PACKET_TYPE_ACIP_SESSION_LOOKUP, &amp;req, sizeof(req));
 286 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_LOOKING_UP</b>, <b>acds_protocol_lookup()</b>,
-    <b>acip_session_lookup_t</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acds_protocol_t::name</b>, <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b>,
-    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and
-  <b>acds_protocol_t::state</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_enter()</b>,
-    <b>acds_protocol_lookup()</b>, and <b>acds_session_lookup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_protocol_receive
-  (<b>acds_protocol_t</b> * p, <b>packet_type_t</b> type, const void * payload,
-  size_t length)</h2>
-<p class="Pp">Definition at line <b>334</b> of file <b>acds_client.c</b>.</p>
-<pre>334                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_LOOKING_UP</b>, <b>acds_protocol_lookup()</b>,
+            <b>acip_session_lookup_t</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>acds_protocol_t::name</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, and <b>acds_protocol_t::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_enter()</b>,
+            <b>acds_protocol_lookup()</b>, and <b>acds_session_lookup()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_protocol_receive (<b
+              >acds_protocol_t</b
+            >
+            * p, <b>packet_type_t</b> type, const void * payload, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>334</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+334                                                                                                                     {
 335   if (!p || (!payload &amp;&amp; length))
 336     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid discovery packet&quot;);
 337   if (p-&gt;state == ACDS_FAILED || p-&gt;state == ACDS_ENDED)
@@ -520,40 +713,56 @@
 400     return ASCIICHAT_OK;
 401   return protocol_fail(p, ERROR_NETWORK_PROTOCOL, &quot;Unexpected discovery response&quot;, true);
 402 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_CREATED</b>, <b>ACDS_CREATING</b>,
-    <b>ACDS_ENDED</b>, <b>ACDS_FAILED</b>, <b>ACDS_FOUND</b>,
-    <b>ACDS_JOINED</b>, <b>ACDS_JOINING</b>, <b>ACDS_LOOKING_UP</b>,
-    <b>acds_protocol_join()</b>, <b>acds_protocol_receive()</b>,
-    <b>ASCIICHAT_OK</b>, <b>acds_protocol_t::auto_join</b>,
-    <b>acds_protocol_t::created</b>, <b>acds_protocol_t::error</b>,
-    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>acds_session_join_params_t::has_password</b>,
-    <b>acds_session_join_params_t::identity_seckey</b>,
-    <b>acds_protocol_t::info</b>, <b>acds_protocol_t::join</b>,
-    <b>acds_protocol_t::joined</b>, <b>acds_protocol_t::name</b>,
-    <b>network_error_decode()</b>, <b>network_error_from_acip()</b>,
-    <b>PACKET_TYPE_ACIP_ERROR</b>, <b>PACKET_TYPE_ACIP_SESSION_CREATED</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_END</b>, <b>PACKET_TYPE_ACIP_SESSION_INFO</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
-    <b>acds_session_join_params_t::password</b>,
-    <b>acds_protocol_t::require_webrtc</b>, <b>SAFE_STRNCPY</b>,
-    <b>SESSION_TYPE_WEBRTC</b>, <b>SET_ERRNO</b>, <b>acds_protocol_t::state</b>,
-    and <b>acds_protocol_t::terminal</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_receive()</b>, and
-    <b>browser_discovery_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_receive_packet
-  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> * type, void **
-  payload, size_t * length, void ** allocation)</h2>
-<p class="Pp">Receive discovery traffic, including WS application encryption.
-    TCP decrypts in its transport.</p>
-<p class="Pp">Definition at line <b>445</b> of file <b>acds_client.c</b>.</p>
-<pre>446                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_CREATED</b>, <b>ACDS_CREATING</b>,
+            <b>ACDS_ENDED</b>, <b>ACDS_FAILED</b>, <b>ACDS_FOUND</b>,
+            <b>ACDS_JOINED</b>, <b>ACDS_JOINING</b>, <b>ACDS_LOOKING_UP</b>,
+            <b>acds_protocol_join()</b>, <b>acds_protocol_receive()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acds_protocol_t::auto_join</b>,
+            <b>acds_protocol_t::created</b>, <b>acds_protocol_t::error</b>,
+            <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>acds_session_join_params_t::has_password</b>,
+            <b>acds_session_join_params_t::identity_seckey</b>,
+            <b>acds_protocol_t::info</b>, <b>acds_protocol_t::join</b>,
+            <b>acds_protocol_t::joined</b>, <b>acds_protocol_t::name</b>,
+            <b>network_error_decode()</b>, <b>network_error_from_acip()</b>,
+            <b>PACKET_TYPE_ACIP_ERROR</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATED</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_END</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_INFO</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>,
+            <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+            <b>acds_session_join_params_t::password</b>,
+            <b>acds_protocol_t::require_webrtc</b>, <b>SAFE_STRNCPY</b>,
+            <b>SESSION_TYPE_WEBRTC</b>, <b>SET_ERRNO</b>,
+            <b>acds_protocol_t::state</b>, and <b>acds_protocol_t::terminal</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_receive()</b>, and
+            <b>browser_discovery_receive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_receive_packet (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>packet_type_t</b> * type, void ** payload, size_t *
+            length, void ** allocation)
+          </h2>
+          <p class="Pp">
+            Receive discovery traffic, including WS application encryption. TCP
+            decrypts in its transport.
+          </p>
+          <p class="Pp">
+            Definition at line <b>445</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+446                                                          {
 447   asciichat_error_t result = packet_receive_via_transport(transport, type, payload, length, allocation);
 448   if (result != ASCIICHAT_OK || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET ||
 449       !transport-&gt;crypto_ctx || !transport-&gt;crypto_ctx-&gt;encrypt_data)
@@ -574,43 +783,57 @@
 464   }
 465   return result;
 466 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_receive_packet()</b>,
-    <b>ACIP_TRANSPORT_WEBSOCKET</b>, <b>packet_envelope_t::allocated_buffer</b>,
-    <b>asciichat_crc32</b>, <b>ASCIICHAT_OK</b>, <b>packet_header_t::crc32</b>,
-    <b>acip_transport::crypto_ctx</b>, <b>packet_envelope_t::data</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>packet_envelope_t::len</b>,
-    <b>packet_header_t::magic</b>, <b>NET_TO_HOST_U32</b>,
-    <b>NET_TO_HOST_U64</b>, <b>packet_decrypt_envelope()</b>,
-    <b>PACKET_MAGIC</b>, <b>packet_receive_via_transport()</b>,
-    <b>PACKET_TYPE_ENCRYPTED</b>, <b>SET_ERRNO</b>, and
-    <b>packet_envelope_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acds_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_sign_session_create (const
-  <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp, <b>uint8_t</b>
-  capabilities, <b>uint8_t</b> max_participants, <b>uint8_t</b>
-  signature_out[64])</h2>
-<p class="Pp">Sign a SESSION_CREATE message. Computes Ed25519 signature over:
-    type || timestamp || capabilities || max_participants</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>identity_seckey</i> Ed25519 secret key (64 bytes)
-<br/>
-<i>timestamp</i> Unix milliseconds timestamp
-<br/>
-<i>capabilities</i> Capabilities bitfield
-<br/>
-<i>max_participants</i> Maximum participants (1-128)
-<br/>
-<i>signature_out</i> Output buffer for signature (64 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>45</b> of file <b>acds_client.c</b>.</p>
-<pre>47                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_receive_packet()</b>,
+            <b>ACIP_TRANSPORT_WEBSOCKET</b>,
+            <b>packet_envelope_t::allocated_buffer</b>, <b>asciichat_crc32</b>,
+            <b>ASCIICHAT_OK</b>, <b>packet_header_t::crc32</b>,
+            <b>acip_transport::crypto_ctx</b>, <b>packet_envelope_t::data</b>,
+            <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>packet_envelope_t::len</b>,
+            <b>packet_header_t::magic</b>, <b>NET_TO_HOST_U32</b>,
+            <b>NET_TO_HOST_U64</b>, <b>packet_decrypt_envelope()</b>,
+            <b>PACKET_MAGIC</b>, <b>packet_receive_via_transport()</b>,
+            <b>PACKET_TYPE_ENCRYPTED</b>, <b>SET_ERRNO</b>, and
+            <b>packet_envelope_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_receive_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_sign_session_create (const
+            <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp,
+            <b>uint8_t</b> capabilities, <b>uint8_t</b> max_participants,
+            <b>uint8_t</b> signature_out[64])
+          </h2>
+          <p class="Pp">
+            Sign a SESSION_CREATE message. Computes Ed25519 signature over: type
+            || timestamp || capabilities || max_participants
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>identity_seckey</i> Ed25519 secret key (64 bytes)
+            <br />
+            <i>timestamp</i> Unix milliseconds timestamp
+            <br />
+            <i>capabilities</i> Capabilities bitfield
+            <br />
+            <i>max_participants</i> Maximum participants (1-128)
+            <br />
+            <i>signature_out</i> Output buffer for signature (64 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+47                                                                                           {
 48   if (!identity_seckey || !signature_out) {
 49     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 50   }
@@ -636,36 +859,51 @@
 70
 71   return ASCIICHAT_OK;
 72 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_CREATE_SIGNATURE_MESSAGE_SIZE</b>,
-    <b>acds_sign_session_create()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U64</b>,
-    <b>log_debug</b>, <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_create()</b>, and
-    <b>acds_sign_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_sign_session_join (const
-  <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp, const char *
-  session_string, <b>uint8_t</b> signature_out[64])</h2>
-<p class="Pp">Sign a SESSION_JOIN message. Computes Ed25519 signature over: type
-    || timestamp || session_string</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>identity_seckey</i> Ed25519 secret key (64 bytes)
-<br/>
-<i>timestamp</i> Unix milliseconds timestamp
-<br/>
-<i>session_string</i> Session string (null-terminated)
-<br/>
-<i>signature_out</i> Output buffer for signature (64 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>102</b> of file <b>acds_client.c</b>.</p>
-<pre>103                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_CREATE_SIGNATURE_MESSAGE_SIZE</b>,
+            <b>acds_sign_session_create()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>HOST_TO_NET_U64</b>, <b>log_debug</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_create()</b>, and
+            <b>acds_sign_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_sign_session_join (const
+            <b>uint8_t</b> identity_seckey[64], <b>uint64_t</b> timestamp, const
+            char * session_string, <b>uint8_t</b> signature_out[64])
+          </h2>
+          <p class="Pp">
+            Sign a SESSION_JOIN message. Computes Ed25519 signature over: type
+            || timestamp || session_string
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>identity_seckey</i> Ed25519 secret key (64 bytes)
+            <br />
+            <i>timestamp</i> Unix milliseconds timestamp
+            <br />
+            <i>session_string</i> Session string (null-terminated)
+            <br />
+            <i>signature_out</i> Output buffer for signature (64 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>102</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+103                                                                                                                     {
 104   if (!identity_seckey || !session_string || !signature_out) {
 105     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 106   }
@@ -698,33 +936,49 @@
 133
 134   return ASCIICHAT_OK;
 135 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_sign_session_join()</b>,
-    <b>ACDS_SIGNATURE_PREFIX_SIZE</b>, <b>ACIP_MAX_SESSION_STRING_LEN</b>,
-    <b>ASCIICHAT_OK</b>, <b>ED25519_PRIVATE_KEY_SIZE</b>,
-    <b>ED25519_SIGNATURE_SIZE</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U64</b>, <b>log_debug</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_protocol_join()</b>, and
-    <b>acds_sign_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acds_validate_timestamp (<b>uint64_t</b>
-  timestamp_ms, <b>uint32_t</b> window_seconds)</h2>
-<p class="Pp">Check if timestamp is within acceptable window. Validates
-    timestamp is recent (within window_seconds of current time) and not in the
-    future.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>timestamp_ms</i> Unix milliseconds timestamp
-<br/>
-<i>window_seconds</i> Acceptable age window (e.g., 300 for 5 minutes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if timestamp is valid, false if too old or in the
-  future</div>
-<p class="Pp">Definition at line <b>172</b> of file <b>acds_client.c</b>.</p>
-<pre>172                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_sign_session_join()</b>,
+            <b>ACDS_SIGNATURE_PREFIX_SIZE</b>,
+            <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>HOST_TO_NET_U64</b>, <b>log_debug</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_protocol_join()</b>, and
+            <b>acds_sign_session_join()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> acds_validate_timestamp (<b>uint64_t</b> timestamp_ms,
+            <b>uint32_t</b> window_seconds)
+          </h2>
+          <p class="Pp">
+            Check if timestamp is within acceptable window. Validates timestamp
+            is recent (within window_seconds of current time) and not in the
+            future.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>timestamp_ms</i> Unix milliseconds timestamp
+            <br />
+            <i>window_seconds</i> Acceptable age window (e.g., 300 for 5
+            minutes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if timestamp is valid, false if too old or in the future
+          </div>
+          <p class="Pp">
+            Definition at line <b>172</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+172                                                                              {
 173   uint64_t now_ms = time_ns_to_ms(time_get_realtime_ns());
 174   uint64_t window_ms = (uint64_t)window_seconds * 1000;
 175
@@ -747,36 +1001,50 @@
 192   log_debug(&quot;Timestamp validation passed (age: %lld ms, window: %u seconds)&quot;, (long long)age, window_seconds);
 193   return true;
 194 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_validate_timestamp()</b>, <b>log_debug</b>,
-    <b>log_warn</b>, and <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>acds_create_key_set_collect()</b>, and
-    <b>acds_validate_timestamp()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_verify_session_create (const
-  <b>uint8_t</b> identity_pubkey[32], <b>uint64_t</b> timestamp, <b>uint8_t</b>
-  capabilities, <b>uint8_t</b> max_participants, const <b>uint8_t</b>
-  signature[64])</h2>
-<p class="Pp">Verify SESSION_CREATE signature. Verifies Ed25519 signature
-    matches the message fields.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>identity_pubkey</i> Ed25519 public key (32 bytes)
-<br/>
-<i>timestamp</i> Unix milliseconds timestamp
-<br/>
-<i>capabilities</i> Capabilities bitfield
-<br/>
-<i>max_participants</i> Maximum participants
-<br/>
-<i>signature</i> Signature to verify (64 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if
-  invalid</div>
-<p class="Pp">Definition at line <b>74</b> of file <b>acds_client.c</b>.</p>
-<pre>76                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_validate_timestamp()</b>, <b>log_debug</b>,
+            <b>log_warn</b>, and <b>time_get_realtime_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_create_key_set_collect()</b>, and
+            <b>acds_validate_timestamp()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_verify_session_create (const
+            <b>uint8_t</b> identity_pubkey[32], <b>uint64_t</b> timestamp,
+            <b>uint8_t</b> capabilities, <b>uint8_t</b> max_participants, const
+            <b>uint8_t</b> signature[64])
+          </h2>
+          <p class="Pp">
+            Verify SESSION_CREATE signature. Verifies Ed25519 signature matches
+            the message fields.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>identity_pubkey</i> Ed25519 public key (32 bytes)
+            <br />
+            <i>timestamp</i> Unix milliseconds timestamp
+            <br />
+            <i>capabilities</i> Capabilities bitfield
+            <br />
+            <i>max_participants</i> Maximum participants
+            <br />
+            <i>signature</i> Signature to verify (64 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+76                                                                                               {
 77   if (!identity_pubkey || !signature) {
 78     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 79   }
@@ -801,37 +1069,51 @@
 98   log_debug(&quot;SESSION_CREATE signature verified successfully&quot;);
 99   return ASCIICHAT_OK;
 100 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_CREATE_SIGNATURE_MESSAGE_SIZE</b>,
-    <b>acds_verify_session_create()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
-    <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>HOST_TO_NET_U64</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_create_key_set_collect()</b>, and
-    <b>acds_verify_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_verify_session_join (const
-  <b>uint8_t</b> identity_pubkey[32], <b>uint64_t</b> timestamp, const char *
-  session_string, const <b>uint8_t</b> signature[64])</h2>
-<p class="Pp">Verify SESSION_JOIN signature. Verifies Ed25519 signature matches
-    the message fields.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>identity_pubkey</i> Ed25519 public key (32 bytes)
-<br/>
-<i>timestamp</i> Unix milliseconds timestamp
-<br/>
-<i>session_string</i> Session string (null-terminated)
-<br/>
-<i>signature</i> Signature to verify (64 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if
-  invalid</div>
-<p class="Pp">Definition at line <b>137</b> of file <b>acds_client.c</b>.</p>
-<pre>139                                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_CREATE_SIGNATURE_MESSAGE_SIZE</b>,
+            <b>acds_verify_session_create()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>HOST_TO_NET_U64</b>, <b>log_debug</b>, <b>log_warn</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_create_key_set_collect()</b>, and
+            <b>acds_verify_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_verify_session_join (const
+            <b>uint8_t</b> identity_pubkey[32], <b>uint64_t</b> timestamp, const
+            char * session_string, const <b>uint8_t</b> signature[64])
+          </h2>
+          <p class="Pp">
+            Verify SESSION_JOIN signature. Verifies Ed25519 signature matches
+            the message fields.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>identity_pubkey</i> Ed25519 public key (32 bytes)
+            <br />
+            <i>timestamp</i> Unix milliseconds timestamp
+            <br />
+            <i>session_string</i> Session string (null-terminated)
+            <br />
+            <i>signature</i> Signature to verify (64 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>137</b> of file <b>acds_client.c</b>.
+          </p>
+          <pre>
+139                                                                                             {
 140   if (!identity_pubkey || !session_string || !signature) {
 141     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
 142   }
@@ -863,28 +1145,32 @@
 168   log_debug(&quot;SESSION_JOIN signature verified successfully&quot;);
 169   return ASCIICHAT_OK;
 170 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACDS_SIGNATURE_PREFIX_SIZE</b>,
-    <b>acds_verify_session_join()</b>, <b>ACIP_MAX_SESSION_STRING_LEN</b>,
-    <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ED25519_SIGNATURE_SIZE</b>, <b>ERROR_CRYPTO_VERIFICATION</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U64</b>, <b>log_debug</b>,
-    <b>log_warn</b>, <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>, and
-  <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_verify_session_join()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACDS_SIGNATURE_PREFIX_SIZE</b>,
+            <b>acds_verify_session_join()</b>,
+            <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>HOST_TO_NET_U64</b>, <b>log_debug</b>, <b>log_warn</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_verify_session_join()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

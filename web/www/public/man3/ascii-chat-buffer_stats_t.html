@@ -1,146 +1,235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>buffer_stats_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">buffer_stats_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">buffer_stats_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">buffer_stats_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/buffer.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">size_t <b>reserved_bytes</b>
-  <br/>
-  size_t <b>live_bytes</b>
-  <br/>
-  size_t <b>requested_bytes</b>
-  <br/>
-  size_t <b>cached_bytes</b>
-  <br/>
-  size_t <b>peak_bytes</b>
-  <br/>
-  size_t <b>outstanding</b>
-  <br/>
-  <b>uint64_t</b> <b>hits</b>
-  <br/>
-  <b>uint64_t</b> <b>allocations</b>
-  <br/>
-  <b>uint64_t</b> <b>failures</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>38</b> of file <b>buffer.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> buffer_stats_t::allocations</h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_stats_t::cached_bytes"><a class="permalink" href="#size_t_buffer_stats_t::cached_bytes">size_t
-  buffer_stats_t::cached_bytes</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>,
-    <b>buffer_domain_log_stats()</b>, and <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> buffer_stats_t::failures</h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
-    <b>buffer_domain_log_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> buffer_stats_t::hits</h2>
-<p class="Pp">Definition at line <b>45</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
-    <b>buffer_domain_log_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_stats_t::live_bytes"><a class="permalink" href="#size_t_buffer_stats_t::live_bytes">size_t
-  buffer_stats_t::live_bytes</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>,
-    <b>buffer_domain_log_stats()</b>, and <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_stats_t::outstanding"><a class="permalink" href="#size_t_buffer_stats_t::outstanding">size_t
-  buffer_stats_t::outstanding</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>,
-    <b>buffer_domain_close()</b>, <b>buffer_domain_log_stats()</b>, and
-    <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_stats_t::peak_bytes"><a class="permalink" href="#size_t_buffer_stats_t::peak_bytes">size_t
-  buffer_stats_t::peak_bytes</a></h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_stats_t::requested_bytes"><a class="permalink" href="#size_t_buffer_stats_t::requested_bytes">size_t
-  buffer_stats_t::requested_bytes</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>,
-    <b>buffer_domain_log_stats()</b>, <b>buffer_set_size()</b>, and
-    <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_stats_t::reserved_bytes"><a class="permalink" href="#size_t_buffer_stats_t::reserved_bytes">size_t
-  buffer_stats_t::reserved_bytes</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
-    <b>buffer_domain_log_stats()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>buffer_stats_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">buffer_stats_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">buffer_stats_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">buffer_stats_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/buffer.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>reserved_bytes</b>
+            <br />
+            size_t <b>live_bytes</b>
+            <br />
+            size_t <b>requested_bytes</b>
+            <br />
+            size_t <b>cached_bytes</b>
+            <br />
+            size_t <b>peak_bytes</b>
+            <br />
+            size_t <b>outstanding</b>
+            <br />
+            <b>uint64_t</b> <b>hits</b>
+            <br />
+            <b>uint64_t</b> <b>allocations</b>
+            <br />
+            <b>uint64_t</b> <b>failures</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>38</b> of file <b>buffer.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> buffer_stats_t::allocations</h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_stats_t::cached_bytes">
+            <a class="permalink" href="#size_t_buffer_stats_t::cached_bytes"
+              >size_t buffer_stats_t::cached_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>,
+            <b>buffer_domain_log_stats()</b>, and <b>buffer_unref()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> buffer_stats_t::failures</h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, and
+            <b>buffer_domain_log_stats()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> buffer_stats_t::hits</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, and
+            <b>buffer_domain_log_stats()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_stats_t::live_bytes">
+            <a class="permalink" href="#size_t_buffer_stats_t::live_bytes"
+              >size_t buffer_stats_t::live_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>,
+            <b>buffer_domain_log_stats()</b>, and <b>buffer_unref()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_stats_t::outstanding">
+            <a class="permalink" href="#size_t_buffer_stats_t::outstanding"
+              >size_t buffer_stats_t::outstanding</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, <b>buffer_domain_close()</b>,
+            <b>buffer_domain_log_stats()</b>, and <b>buffer_unref()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_stats_t::peak_bytes">
+            <a class="permalink" href="#size_t_buffer_stats_t::peak_bytes"
+              >size_t buffer_stats_t::peak_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_stats_t::requested_bytes">
+            <a class="permalink" href="#size_t_buffer_stats_t::requested_bytes"
+              >size_t buffer_stats_t::requested_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>,
+            <b>buffer_domain_log_stats()</b>, <b>buffer_set_size()</b>, and
+            <b>buffer_unref()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_stats_t::reserved_bytes">
+            <a class="permalink" href="#size_t_buffer_stats_t::reserved_bytes"
+              >size_t buffer_stats_t::reserved_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>39</b> of file <b>buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, and
+            <b>buffer_domain_log_stats()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,167 +1,245 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>platform_event_loop(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">platform_event_loop(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">platform_event_loop(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">platform_event_loop</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">uv_loop_t <b>uv</b>
-  <br/>
-  uv_async_t <b>wake</b>
-  <br/>
-  uv_timer_t <b>tick</b>
-  <br/>
-  <b>platform_event_task_fn</b> <b>tick_fn</b>
-  <br/>
-  void * <b>tick_arg</b>
-  <br/>
-  <b>bool</b> <b>tick_initialized</b>
-  <br/>
-  size_t <b>streams</b>
-  <br/>
-  uv_mutex_t <b>mutex</b>
-  <br/>
-  <b>event_command_t</b> <b>commands</b> [1024]
-  <br/>
-  size_t <b>head</b>
-  <br/>
-  size_t <b>count</b>
-  <br/>
-  <b>bool</b> <b>stopping</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>17</b> of file <b>event.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>event_command_t</b> platform_event_loop::commands[1024]</h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_platform_event_loop::count"><a class="permalink" href="#size_t_platform_event_loop::count">size_t
-  platform_event_loop::count</a></h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_platform_event_loop::head"><a class="permalink" href="#size_t_platform_event_loop::head">size_t
-  platform_event_loop::head</a></h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uv_mutex_t_platform_event_loop::mutex"><a class="permalink" href="#uv_mutex_t_platform_event_loop::mutex">uv_mutex_t
-  platform_event_loop::mutex</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_create()</b>,
-    <b>platform_event_loop_destroy()</b>, <b>platform_event_loop_post()</b>, and
-    <b>platform_event_loop_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_event_loop::stopping</h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_post()</b>, and
-    <b>platform_event_loop_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_platform_event_loop::streams"><a class="permalink" href="#size_t_platform_event_loop::streams">size_t
-  platform_event_loop::streams</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>event.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uv_timer_t_platform_event_loop::tick"><a class="permalink" href="#uv_timer_t_platform_event_loop::tick">uv_timer_t
-  platform_event_loop::tick</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_platform_event_loop::tick_arg"><a class="permalink" href="#void*_platform_event_loop::tick_arg">void*
-  platform_event_loop::tick_arg</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>platform_event_task_fn</b> platform_event_loop::tick_fn</h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_event_loop::tick_initialized</h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uv_loop_t_platform_event_loop::uv"><a class="permalink" href="#uv_loop_t_platform_event_loop::uv">uv_loop_t
-  platform_event_loop::uv</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_listen()</b>,
-    <b>platform_event_loop_create()</b>, <b>platform_event_loop_destroy()</b>,
-    <b>platform_event_loop_run()</b>, <b>platform_event_loop_tick()</b>,
-    <b>platform_event_loop_work()</b>, and
-  <b>platform_event_stream_adopt()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uv_async_t_platform_event_loop::wake"><a class="permalink" href="#uv_async_t_platform_event_loop::wake">uv_async_t
-  platform_event_loop::wake</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_create()</b>,
-    <b>platform_event_loop_post()</b>, and
-  <b>platform_event_loop_stop()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>platform_event_loop(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">platform_event_loop(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">platform_event_loop(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">platform_event_loop</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            uv_loop_t <b>uv</b>
+            <br />
+            uv_async_t <b>wake</b>
+            <br />
+            uv_timer_t <b>tick</b>
+            <br />
+            <b>platform_event_task_fn</b> <b>tick_fn</b>
+            <br />
+            void * <b>tick_arg</b>
+            <br />
+            <b>bool</b> <b>tick_initialized</b>
+            <br />
+            size_t <b>streams</b>
+            <br />
+            uv_mutex_t <b>mutex</b>
+            <br />
+            <b>event_command_t</b> <b>commands</b> [1024]
+            <br />
+            size_t <b>head</b>
+            <br />
+            size_t <b>count</b>
+            <br />
+            <b>bool</b> <b>stopping</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>17</b> of file <b>event.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>event_command_t</b> platform_event_loop::commands[1024]
+          </h2>
+          <p class="Pp">Definition at line <b>26</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_platform_event_loop::count">
+            <a class="permalink" href="#size_t_platform_event_loop::count"
+              >size_t platform_event_loop::count</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>27</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_platform_event_loop::head">
+            <a class="permalink" href="#size_t_platform_event_loop::head"
+              >size_t platform_event_loop::head</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>27</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uv_mutex_t_platform_event_loop::mutex">
+            <a class="permalink" href="#uv_mutex_t_platform_event_loop::mutex"
+              >uv_mutex_t platform_event_loop::mutex</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>25</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_loop_create()</b>,
+            <b>platform_event_loop_destroy()</b>,
+            <b>platform_event_loop_post()</b>, and
+            <b>platform_event_loop_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> platform_event_loop::stopping</h2>
+          <p class="Pp">Definition at line <b>28</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_loop_post()</b>, and
+            <b>platform_event_loop_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_platform_event_loop::streams">
+            <a class="permalink" href="#size_t_platform_event_loop::streams"
+              >size_t platform_event_loop::streams</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>24</b> of file <b>event.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uv_timer_t_platform_event_loop::tick">
+            <a class="permalink" href="#uv_timer_t_platform_event_loop::tick"
+              >uv_timer_t platform_event_loop::tick</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>20</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_platform_event_loop::tick_arg">
+            <a class="permalink" href="#void*_platform_event_loop::tick_arg"
+              >void* platform_event_loop::tick_arg</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>22</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>platform_event_task_fn</b> platform_event_loop::tick_fn
+          </h2>
+          <p class="Pp">Definition at line <b>21</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> platform_event_loop::tick_initialized</h2>
+          <p class="Pp">Definition at line <b>23</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_loop_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uv_loop_t_platform_event_loop::uv">
+            <a class="permalink" href="#uv_loop_t_platform_event_loop::uv"
+              >uv_loop_t platform_event_loop::uv</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_listen()</b>,
+            <b>platform_event_loop_create()</b>,
+            <b>platform_event_loop_destroy()</b>,
+            <b>platform_event_loop_run()</b>, <b>platform_event_loop_tick()</b>,
+            <b>platform_event_loop_work()</b>, and
+            <b>platform_event_stream_adopt()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uv_async_t_platform_event_loop::wake">
+            <a class="permalink" href="#uv_async_t_platform_event_loop::wake"
+              >uv_async_t platform_event_loop::wake</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>19</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_loop_create()</b>,
+            <b>platform_event_loop_post()</b>, and
+            <b>platform_event_loop_stop()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

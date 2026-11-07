@@ -39,31 +39,30 @@ if [ -d "$REPO_ROOT" ]; then
 
   # Check if man3 directory exists and has files
   if [ -d "$BUILD_DIR/share/man/man3" ]; then
-    # Convert man3 pages to HTML with mandoc
+    # Generate a complete replacement before changing the published pages.
     mkdir -p public/man3
+    staging_dir=$(mktemp -d "${TMPDIR:-/tmp}/ascii-chat-man3.XXXXXXXX")
+    trap 'rm -rf "$staging_dir"' EXIT
     for manfile in "$BUILD_DIR/share/man/man3"/*.3; do
       if [ -f "$manfile" ]; then
         basename=$(basename "$manfile" .3)
-        htmlfile="public/man3/${basename}.html"
+        htmlfile="$staging_dir/${basename}.html"
         mandoc -Thtml "$manfile" > "$htmlfile"
-
-        # Fix malformed closing tags split across lines (e.g., </pre\n          >)
-        # mandoc sometimes puts the > on the next line after whitespace, which breaks HTML parsing
-        # TODO: Verify this regex more thoroughly - test edge cases and ensure it doesn't break
-        # other HTML patterns. The pattern is broad and may have unintended side effects.
         perl -pi -e 's/<\/([a-zA-Z][a-zA-Z0-9]*)\s*\n\s*>/<\/\1>/g' "$htmlfile"
         perl -pi -e 's/[ \t]+$//' "$htmlfile"
       fi
     done
 
-    # Generate pages.json index from converted HTML files
-    BUILD_DIR="$BUILD_DIR" python3 scripts/generate_man3.py
-    if [ $? -ne 0 ]; then
-      echo "Failed to generate pages.json"
-      exit 1
-    fi
+    BUILD_DIR="$BUILD_DIR" MAN3_HTML_DIR="$staging_dir" python3 scripts/generate_man3.py
 
-    echo "📜 man(3) pages generated ($(ls public/man3/*.html 2>/dev/null | wc -l) pages)"
+    # Replace only generated pages after conversion and indexing succeed.
+    for old_page in public/man3/ascii-chat-*.html; do
+      [ ! -f "$old_page" ] || rm -f -- "$old_page"
+    done
+    cp "$staging_dir"/*.html public/man3/
+    cp "$staging_dir/pages.json" public/man3/pages.json
+    echo "📜 man(3) pages generated ($(find "$staging_dir" -name '*.html' | wc -l) pages)"
+
   else
     echo "⚠️  man(3) directory not found. Ensure Doxygen is installed."
   fi

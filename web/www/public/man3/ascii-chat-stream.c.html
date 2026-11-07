@@ -1,387 +1,547 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>stream.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">stream.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">stream.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">stream.c - &#x1F3AC; Multi-client video mixer: frame generation,
-    ASCII conversion, and per-client personalized rendering</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>image_source_t</b>
-  <br/>
-  Image source structure for multi-client video mixing.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SERVER_STREAM_HEX_BUFFER_SIZE</b> 300
-  <br/>
-  #define <b>SERVER_STREAM_ASCII_BUFFER_SIZE</b> 100
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">char * <b>create_mixed_ascii_frame_for_client</b> (const char
-    *target_client_id, unsigned short width, unsigned short height, <b>bool</b>
-    wants_stretch, size_t *out_size, <b>bool</b> *out_grid_changed, int
-    *out_sources_count, <b>acip_render_settings_t</b> *out_rendering)
-  <br/>
-  Generate personalized ASCII frame for a specific client. <b>bool</b>
-    <b>any_clients_sending_video</b> (void)
-  <br/>
-  Queue ASCII frame for delivery to specific client.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3AC; Multi-client video mixer: frame generation, ASCII
-    conversion, and per-client personalized rendering</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="1"><a class="permalink" href="#1">1. Collect video frames
-  from all active clientsclientsCreate composite video layouts (single client,
-  2x2, 3x3 grids))Generate client-specific ASCII art with terminal capability
-  awarenessawarenessProcess latest frames from double-buffer system for
-  real-time performanceperformanceManage memory efficiently with owned buffers
-  and zero-copy operationsoperationsSupport advanced rendering modes
-  (half-block, color, custom palettes) VIDEO MIXING ARCHITECTURE: </a></h1>
-<p class="Pp">The mixing system operates in several stages:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>FRAME COLLECTION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Scans all active clients for available video frames</dd>
-  <dt> &#x2022;</dt>
-  <dd>Uses per-client double-buffer system for smooth frame handling</dd>
-  <dt> &#x2022;</dt>
-  <dd>Implements aggressive frame dropping to maintain real-time
-    performance</dd>
-  <dt> &#x2022;</dt>
-  <dd>Always uses the latest available frame for professional-grade
-    performance</dd>
-  <dt>2.</dt>
-  <dd>LAYOUT CALCULATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Determines grid size based on number of active video sources</dd>
-  <dt> &#x2022;</dt>
-  <dd>Supports: single (1x1), side-by-side (2x1), 2x2, 3x2, 3x3 layouts</dd>
-  <dt> &#x2022;</dt>
-  <dd>Calculates aspect-ratio preserving dimensions for each cell</dd>
-  <dt>3.</dt>
-  <dd>COMPOSITE GENERATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Creates composite image with proper aspect ratio handling</dd>
-  <dt> &#x2022;</dt>
-  <dd>Places each client's video in appropriate grid cell</dd>
-  <dt> &#x2022;</dt>
-  <dd>Supports both normal and half-block rendering modes</dd>
-  <dt>4.</dt>
-  <dd>ASCII CONVERSION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Converts composite to ASCII using client-specific capabilities</dd>
-  <dt> &#x2022;</dt>
-  <dd>Respects terminal color support, palette preferences, UTF-8
-    capability</dd>
-  <dt> &#x2022;</dt>
-  <dd>Generates ANSI escape sequences for color output</dd>
-  <dt>5.</dt>
-  <dd>PACKET GENERATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Wraps ASCII frames in protocol packets with metadata</dd>
-  <dt> &#x2022;</dt>
-  <dd>Includes checksums, dimensions, and capability flags</dd>
-  <dt> &#x2022;</dt>
-  <dd>Queues packets for delivery via client send threads</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PER-CLIENT_CUSTOMIZATION:"><a class="permalink" href="#PER-CLIENT_CUSTOMIZATION:">PER-CLIENT
-  CUSTOMIZATION: </a></h1>
-<p class="Pp">Unlike traditional video mixing that generates one output, this
-    system creates personalized frames for each client:</p>
-<p class="Pp"></p>
-<p class="Pp">TERMINAL CAPABILITY AWARENESS:</p>
-<ul class="Bl-bullet">
-  <li>Color depth: 1-bit (mono), 8-color, 16-color, 256-color, 24-bit RGB</li>
-  <li>Character support: ASCII-only vs UTF-8 box drawing</li>
-  <li>Render modes: foreground, background, half-block (2x resolution)</li>
-  <li>Custom ASCII palettes: brightness-to-character mapping</li>
-</ul>
-<p class="Pp">PERFORMANCE OPTIMIZATIONS:</p>
-<ul class="Bl-bullet">
-  <li>Per-client palette caches (avoid repeated initialization)</li>
-  <li>Double-buffer system for smooth frame delivery</li>
-  <li>buffer domain allocation to reduce malloc/free overhead</li>
-  <li>Aggressive frame dropping under load</li>
-  <li>Zero-copy operations where possible</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREADING_AND_CONCURRENCY:"><a class="permalink" href="#THREADING_AND_CONCURRENCY:">THREADING
-  AND CONCURRENCY: </a></h1>
-<p class="Pp">This module operates in a high-concurrency environment:</p>
-<p class="Pp"></p>
-<p class="Pp">THREAD SAFETY MECHANISMS:</p>
-<ul class="Bl-bullet">
-  <li>Double-buffer thread safety (atomic operations)</li>
-  <li>Reader-writer locks on client manager (allows concurrent reads)</li>
-  <li>buffer domain thread safety (lock-free where possible)</li>
-  <li>Atomic snapshot operations for client state</li>
-</ul>
-<p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
-<ul class="Bl-bullet">
-  <li>Supports 60fps per client with linear scaling</li>
-  <li>Handles burst traffic with frame buffer overruns</li>
-  <li>Minimal CPU overhead with double-buffer system</li>
-  <li>Memory usage scales with number of active clients</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="FRAME_BUFFER_MANAGEMENT:"><a class="permalink" href="#FRAME_BUFFER_MANAGEMENT:">FRAME
-  BUFFER MANAGEMENT: </a></h1>
-<p class="Pp">DOUBLE-BUFFER STRATEGY: Each client uses a double-buffer system
-    for smooth frame delivery:</p>
-<ul class="Bl-bullet">
-  <li>Always provides the latest available frame</li>
-  <li>No frame caching complexity or stale data concerns</li>
-  <li>Professional-grade real-time performance like Zoom/Google Meet</li>
-  <li>Memory managed via owned buffers</li>
-</ul>
-<p class="Pp">BUFFER OVERFLOW HANDLING: When clients send frames faster than
-    processing:</p>
-<ul class="Bl-bullet">
-  <li>Aggressive frame dropping (keep only latest)</li>
-  <li>Logarithmic drop rate based on buffer occupancy</li>
-  <li>Maintains real-time performance under load</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
-  WITH OTHER MODULES: </a></h1>
-<ul class="Bl-bullet">
-  <li>render.c: Calls frame generation functions at 60fps per client</li>
-  <li>client.c: Provides client state and capabilities</li>
-  <li>protocol.c: Stores incoming video frames in per-client buffers</li>
-  <li>video/: Performs actual RGB-to-ASCII conversion</li>
-  <li><b>palette.c</b>: Manages client-specific character palettes</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:"><a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:">WHY
-  THIS MODULAR DESIGN: </a></h1>
-<p class="Pp">The original server.c contained all video mixing logic inline,
-    making it:</p>
-<ul class="Bl-bullet">
-  <li>Impossible to understand the video pipeline</li>
-  <li>Difficult to optimize performance bottlenecks</li>
-  <li>Hard to add new rendering features</li>
-  <li>Challenging to debug frame generation issues</li>
-</ul>
-<p class="Pp">This separation provides:</p>
-<ul class="Bl-bullet">
-  <li>Clear video processing pipeline</li>
-  <li>Isolated performance optimization</li>
-  <li>Easier feature development</li>
-  <li>Better error isolation and debugging</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MEMORY_MANAGEMENT_PHILOSOPHY:"><a class="permalink" href="#MEMORY_MANAGEMENT_PHILOSOPHY:">MEMORY
-  MANAGEMENT PHILOSOPHY: </a></h1>
-<ul class="Bl-bullet">
-  <li>All allocations use owned buffers where possible</li>
-  <li>Frame data is reference-counted (avoid copies)</li>
-  <li>Double-buffer system eliminates need for frame copies</li>
-  <li>Automatic cleanup on client disconnect</li>
-  <li>Graceful degradation on allocation failures</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">September 2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0 (Post-Modularization)</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">render.c For frame generation scheduling
-<p class="Pp"></p>
-<p class="Pp">video/ For RGB-to-ASCII conversion implementation</p>
-<p class="Pp"></p>
-<p class="Pp"><b>palette.c</b> For client <b>Character Palettes</b>
-  management</p>
-</div>
-<p class="Pp">Definition in file <b>stream.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_STREAM_ASCII_BUFFER_SIZE___100"><a class="permalink" href="#_define_SERVER_STREAM_ASCII_BUFFER_SIZE___100">#define
-  SERVER_STREAM_ASCII_BUFFER_SIZE 100</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>stream.c</b>.</p>
-<p class="Pp">Referenced by <b>create_mixed_ascii_frame_for_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_STREAM_HEX_BUFFER_SIZE___300"><a class="permalink" href="#_define_SERVER_STREAM_HEX_BUFFER_SIZE___300">#define
-  SERVER_STREAM_HEX_BUFFER_SIZE 300</a></h2>
-<p class="Pp">Definition at line <b>132</b> of file <b>stream.c</b>.</p>
-<p class="Pp">Referenced by <b>create_mixed_ascii_frame_for_client()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> any_clients_sending_video (void )</h2>
-<p class="Pp">Queue ASCII frame for delivery to specific client. Packages a
-    generated ASCII frame into a protocol packet and queues it for asynchronous
-    delivery to the target client. This function handles all protocol details
-    including headers, checksums, and metadata.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PACKET_STRUCTURE_CREATED:"><a class="permalink" href="#PACKET_STRUCTURE_CREATED:">PACKET
-  STRUCTURE CREATED: </a></h1>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>ascii_frame_packet_t</b> header containing:</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>width, height: Client terminal dimensions</dd>
-  <dt> &#x2022;</dt>
-  <dd>original_size: Uncompressed frame size</dd>
-  <dt> &#x2022;</dt>
-  <dd>compressed_size: Compressed size (currently 0)</dd>
-  <dt> &#x2022;</dt>
-  <dd>checksum: CRC32 of frame data for integrity</dd>
-  <dt> &#x2022;</dt>
-  <dd>flags: Capability flags (color support, etc.)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Frame data: Complete ASCII art string with ANSI codes</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PROTOCOL_INTEGRATION:"><a class="permalink" href="#PROTOCOL_INTEGRATION:">PROTOCOL
-  INTEGRATION: </a></h1>
-<ul class="Bl-bullet">
-  <li>Converts dimensions to network byte order</li>
-  <li>Generates CRC32 checksum for error detection</li>
-  <li>Sets appropriate capability flags based on client</li>
-  <li>Uses PACKET_TYPE_ASCII_FRAME packet type</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="DELIVERY_MECHANISM:"><a class="permalink" href="#DELIVERY_MECHANISM:">DELIVERY
-  MECHANISM: </a></h1>
-<ul class="Bl-bullet">
-  <li>Queues packet in client's video packet queue</li>
-  <li>Send thread delivers packet asynchronously</li>
-  <li>Queue overflow handling prevents memory exhaustion</li>
-  <li>Error conditions are logged but don't affect other clients</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">MEMORY MANAGEMENT: </h1>
-<ul class="Bl-bullet">
-  <li>Creates temporary packet buffer for header+data combination</li>
-  <li><b>packet_queue_push_copy()</b> copies data (safe to free temp
-    buffer)</li>
-  <li>No memory leaks on success or failure paths</li>
-  <li>buffer domain allocation not used here (temporary buffer)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_HANDLING:"><a class="permalink" href="#ERROR_HANDLING:">ERROR
-  HANDLING: </a></h1>
-<ul class="Bl-bullet">
-  <li>Invalid parameters: Return -1, no side effects</li>
-  <li>Memory allocation failure: Logged, return -1</li>
-  <li>Queue overflow: Logged as debug (expected under load)</li>
-  <li>Client shutdown: Graceful failure without error spam</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Target client for frame delivery
-<br/>
-<i>ascii_frame</i> Generated ASCII art string (null-terminated)
-<br/>
-<i>frame_size</i> Size of ASCII frame in bytes</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on successful queuing, -1 on error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Frame delivery happens asynchronously via send thread
-<p class="Pp"></p>
-<p class="Pp">Queue overflow drops frames to maintain real-time performance</p>
-<p class="Pp"></p>
-<p class="Pp">Checksums enable client-side integrity verification</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>packet_queue_push_copy()</b> For underlying queue
-  implementation
-<p class="Pp"></p>
-<p class="Pp"><b>asciichat_crc32()</b> For checksum generation</p>
-</div>
-<p class="Pp">Check if any connected clients are currently sending video</p>
-<p class="Pp"></p>
-<p class="Pp">This function scans all active clients to determine if at least
-    one is sending video frames. Used by render threads to avoid generating
-    frames when no video sources are available (e.g., during webcam warmup).</p>
-<p class="Pp"></p>
-<p class="Pp">LOCK OPTIMIZATION: Uses atomic reads only, no rwlock acquisition
-    This is safe because client_id, active, and is_sending_video are all
-  atomics</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if at least one client has is_sending_video flag
-  set, false otherwise</div>
-<p class="Pp">Definition at line <b>1283</b> of file <b>stream.c</b>.</p>
-<pre>1283                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>stream.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">stream.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">stream.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          stream.c - &#x1F3AC; Multi-client video mixer: frame generation, ASCII
+          conversion, and per-client personalized rendering
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>image_source_t</b>
+            <br />
+            Image source structure for multi-client video mixing.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SERVER_STREAM_HEX_BUFFER_SIZE</b> 300
+            <br />
+            #define <b>SERVER_STREAM_ASCII_BUFFER_SIZE</b> 100
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char * <b>create_mixed_ascii_frame_for_client</b> (const char
+            *target_client_id, unsigned short width, unsigned short height,
+            <b>bool</b> wants_stretch, size_t *out_size,
+            <b>bool</b> *out_grid_changed, int *out_sources_count,
+            <b>acip_render_settings_t</b> *out_rendering)
+            <br />
+            Generate personalized ASCII frame for a specific client. <b>bool</b>
+            <b>any_clients_sending_video</b> (void)
+            <br />
+            Queue ASCII frame for delivery to specific client.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F3AC; Multi-client video mixer: frame generation, ASCII
+          conversion, and per-client personalized rendering
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="1">
+          <a class="permalink" href="#1"
+            >1. Collect video frames from all active clientsclientsCreate
+            composite video layouts (single client, 2x2, 3x3 grids))Generate
+            client-specific ASCII art with terminal capability
+            awarenessawarenessProcess latest frames from double-buffer system
+            for real-time performanceperformanceManage memory efficiently with
+            owned buffers and zero-copy operationsoperationsSupport advanced
+            rendering modes (half-block, color, custom palettes) VIDEO MIXING
+            ARCHITECTURE:
+          </a>
+        </h1>
+        <p class="Pp">The mixing system operates in several stages:</p>
+        <p class="Pp"></p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>FRAME COLLECTION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Scans all active clients for available video frames</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Uses per-client double-buffer system for smooth frame handling
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Implements aggressive frame dropping to maintain real-time
+            performance
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Always uses the latest available frame for professional-grade
+            performance
+          </dd>
+          <dt>2.</dt>
+          <dd>LAYOUT CALCULATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Determines grid size based on number of active video sources</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Supports: single (1x1), side-by-side (2x1), 2x2, 3x2, 3x3 layouts
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Calculates aspect-ratio preserving dimensions for each cell</dd>
+          <dt>3.</dt>
+          <dd>COMPOSITE GENERATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Creates composite image with proper aspect ratio handling</dd>
+          <dt>&#x2022;</dt>
+          <dd>Places each client's video in appropriate grid cell</dd>
+          <dt>&#x2022;</dt>
+          <dd>Supports both normal and half-block rendering modes</dd>
+          <dt>4.</dt>
+          <dd>ASCII CONVERSION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Converts composite to ASCII using client-specific capabilities
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Respects terminal color support, palette preferences, UTF-8
+            capability
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Generates ANSI escape sequences for color output</dd>
+          <dt>5.</dt>
+          <dd>PACKET GENERATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Wraps ASCII frames in protocol packets with metadata</dd>
+          <dt>&#x2022;</dt>
+          <dd>Includes checksums, dimensions, and capability flags</dd>
+          <dt>&#x2022;</dt>
+          <dd>Queues packets for delivery via client send threads</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PER-CLIENT_CUSTOMIZATION:">
+          <a class="permalink" href="#PER-CLIENT_CUSTOMIZATION:"
+            >PER-CLIENT CUSTOMIZATION:
+          </a>
+        </h1>
+        <p class="Pp">
+          Unlike traditional video mixing that generates one output, this system
+          creates personalized frames for each client:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">TERMINAL CAPABILITY AWARENESS:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Color depth: 1-bit (mono), 8-color, 16-color, 256-color, 24-bit RGB
+          </li>
+          <li>Character support: ASCII-only vs UTF-8 box drawing</li>
+          <li>
+            Render modes: foreground, background, half-block (2x resolution)
+          </li>
+          <li>Custom ASCII palettes: brightness-to-character mapping</li>
+        </ul>
+        <p class="Pp">PERFORMANCE OPTIMIZATIONS:</p>
+        <ul class="Bl-bullet">
+          <li>Per-client palette caches (avoid repeated initialization)</li>
+          <li>Double-buffer system for smooth frame delivery</li>
+          <li>buffer domain allocation to reduce malloc/free overhead</li>
+          <li>Aggressive frame dropping under load</li>
+          <li>Zero-copy operations where possible</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREADING_AND_CONCURRENCY:">
+          <a class="permalink" href="#THREADING_AND_CONCURRENCY:"
+            >THREADING AND CONCURRENCY:
+          </a>
+        </h1>
+        <p class="Pp">
+          This module operates in a high-concurrency environment:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">THREAD SAFETY MECHANISMS:</p>
+        <ul class="Bl-bullet">
+          <li>Double-buffer thread safety (atomic operations)</li>
+          <li>
+            Reader-writer locks on client manager (allows concurrent reads)
+          </li>
+          <li>buffer domain thread safety (lock-free where possible)</li>
+          <li>Atomic snapshot operations for client state</li>
+        </ul>
+        <p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
+        <ul class="Bl-bullet">
+          <li>Supports 60fps per client with linear scaling</li>
+          <li>Handles burst traffic with frame buffer overruns</li>
+          <li>Minimal CPU overhead with double-buffer system</li>
+          <li>Memory usage scales with number of active clients</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="FRAME_BUFFER_MANAGEMENT:">
+          <a class="permalink" href="#FRAME_BUFFER_MANAGEMENT:"
+            >FRAME BUFFER MANAGEMENT:
+          </a>
+        </h1>
+        <p class="Pp">
+          DOUBLE-BUFFER STRATEGY: Each client uses a double-buffer system for
+          smooth frame delivery:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Always provides the latest available frame</li>
+          <li>No frame caching complexity or stale data concerns</li>
+          <li>
+            Professional-grade real-time performance like Zoom/Google Meet
+          </li>
+          <li>Memory managed via owned buffers</li>
+        </ul>
+        <p class="Pp">
+          BUFFER OVERFLOW HANDLING: When clients send frames faster than
+          processing:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Aggressive frame dropping (keep only latest)</li>
+          <li>Logarithmic drop rate based on buffer occupancy</li>
+          <li>Maintains real-time performance under load</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:">
+          <a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:"
+            >INTEGRATION WITH OTHER MODULES:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            render.c: Calls frame generation functions at 60fps per client
+          </li>
+          <li>client.c: Provides client state and capabilities</li>
+          <li>
+            protocol.c: Stores incoming video frames in per-client buffers
+          </li>
+          <li>video/: Performs actual RGB-to-ASCII conversion</li>
+          <li><b>palette.c</b>: Manages client-specific character palettes</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:">
+          <a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:"
+            >WHY THIS MODULAR DESIGN:
+          </a>
+        </h1>
+        <p class="Pp">
+          The original server.c contained all video mixing logic inline, making
+          it:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Impossible to understand the video pipeline</li>
+          <li>Difficult to optimize performance bottlenecks</li>
+          <li>Hard to add new rendering features</li>
+          <li>Challenging to debug frame generation issues</li>
+        </ul>
+        <p class="Pp">This separation provides:</p>
+        <ul class="Bl-bullet">
+          <li>Clear video processing pipeline</li>
+          <li>Isolated performance optimization</li>
+          <li>Easier feature development</li>
+          <li>Better error isolation and debugging</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MEMORY_MANAGEMENT_PHILOSOPHY:">
+          <a class="permalink" href="#MEMORY_MANAGEMENT_PHILOSOPHY:"
+            >MEMORY MANAGEMENT PHILOSOPHY:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>All allocations use owned buffers where possible</li>
+          <li>Frame data is reference-counted (avoid copies)</li>
+          <li>Double-buffer system eliminates need for frame copies</li>
+          <li>Automatic cleanup on client disconnect</li>
+          <li>Graceful degradation on allocation failures</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">September 2025</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">2.0 (Post-Modularization)</div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          render.c For frame generation scheduling
+          <p class="Pp"></p>
+          <p class="Pp">video/ For RGB-to-ASCII conversion implementation</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>palette.c</b> For client <b>Character Palettes</b> management
+          </p>
+        </div>
+        <p class="Pp">Definition in file <b>stream.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_STREAM_ASCII_BUFFER_SIZE___100">
+            <a
+              class="permalink"
+              href="#_define_SERVER_STREAM_ASCII_BUFFER_SIZE___100"
+              >#define SERVER_STREAM_ASCII_BUFFER_SIZE 100</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>133</b> of file <b>stream.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>create_mixed_ascii_frame_for_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_STREAM_HEX_BUFFER_SIZE___300">
+            <a
+              class="permalink"
+              href="#_define_SERVER_STREAM_HEX_BUFFER_SIZE___300"
+              >#define SERVER_STREAM_HEX_BUFFER_SIZE 300</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>132</b> of file <b>stream.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>create_mixed_ascii_frame_for_client()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> any_clients_sending_video (void )</h2>
+          <p class="Pp">
+            Queue ASCII frame for delivery to specific client. Packages a
+            generated ASCII frame into a protocol packet and queues it for
+            asynchronous delivery to the target client. This function handles
+            all protocol details including headers, checksums, and metadata.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PACKET_STRUCTURE_CREATED:">
+          <a class="permalink" href="#PACKET_STRUCTURE_CREATED:"
+            >PACKET STRUCTURE CREATED:
+          </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd><b>ascii_frame_packet_t</b> header containing:</dd>
+        </dl>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>width, height: Client terminal dimensions</dd>
+          <dt>&#x2022;</dt>
+          <dd>original_size: Uncompressed frame size</dd>
+          <dt>&#x2022;</dt>
+          <dd>compressed_size: Compressed size (currently 0)</dd>
+          <dt>&#x2022;</dt>
+          <dd>checksum: CRC32 of frame data for integrity</dd>
+          <dt>&#x2022;</dt>
+          <dd>flags: Capability flags (color support, etc.)</dd>
+        </dl>
+        <dl class="Bl-tag">
+          <dt>&#x2022;</dt>
+          <dd>Frame data: Complete ASCII art string with ANSI codes</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PROTOCOL_INTEGRATION:">
+          <a class="permalink" href="#PROTOCOL_INTEGRATION:"
+            >PROTOCOL INTEGRATION:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Converts dimensions to network byte order</li>
+          <li>Generates CRC32 checksum for error detection</li>
+          <li>Sets appropriate capability flags based on client</li>
+          <li>Uses PACKET_TYPE_ASCII_FRAME packet type</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="DELIVERY_MECHANISM:">
+          <a class="permalink" href="#DELIVERY_MECHANISM:"
+            >DELIVERY MECHANISM:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Queues packet in client's video packet queue</li>
+          <li>Send thread delivers packet asynchronously</li>
+          <li>Queue overflow handling prevents memory exhaustion</li>
+          <li>Error conditions are logged but don't affect other clients</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">MEMORY MANAGEMENT:</h1>
+        <ul class="Bl-bullet">
+          <li>Creates temporary packet buffer for header+data combination</li>
+          <li>
+            <b>packet_queue_push_copy()</b> copies data (safe to free temp
+            buffer)
+          </li>
+          <li>No memory leaks on success or failure paths</li>
+          <li>buffer domain allocation not used here (temporary buffer)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_HANDLING:">
+          <a class="permalink" href="#ERROR_HANDLING:">ERROR HANDLING: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Invalid parameters: Return -1, no side effects</li>
+          <li>Memory allocation failure: Logged, return -1</li>
+          <li>Queue overflow: Logged as debug (expected under load)</li>
+          <li>Client shutdown: Graceful failure without error spam</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>client</i> Target client for frame delivery
+          <br />
+          <i>ascii_frame</i> Generated ASCII art string (null-terminated)
+          <br />
+          <i>frame_size</i> Size of ASCII frame in bytes
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">0 on successful queuing, -1 on error</div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Frame delivery happens asynchronously via send thread
+          <p class="Pp"></p>
+          <p class="Pp">
+            Queue overflow drops frames to maintain real-time performance
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Checksums enable client-side integrity verification</p>
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>packet_queue_push_copy()</b> For underlying queue implementation
+          <p class="Pp"></p>
+          <p class="Pp"><b>asciichat_crc32()</b> For checksum generation</p>
+        </div>
+        <p class="Pp">
+          Check if any connected clients are currently sending video
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          This function scans all active clients to determine if at least one is
+          sending video frames. Used by render threads to avoid generating
+          frames when no video sources are available (e.g., during webcam
+          warmup).
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          LOCK OPTIMIZATION: Uses atomic reads only, no rwlock acquisition This
+          is safe because client_id, active, and is_sending_video are all
+          atomics
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">
+          true if at least one client has is_sending_video flag set, false
+          otherwise
+        </div>
+        <p class="Pp">
+          Definition at line <b>1283</b> of file <b>stream.c</b>.
+        </p>
+        <pre>
+1283                                      {
 1284   // LOCK OPTIMIZATION: Don't acquire rwlock - all fields we access are atomic
 1285   // client_id, active, is_sending_video are all atomic variables
 1286
@@ -405,164 +565,216 @@
 1304
 1305   return false;
 1306 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::active</b>,
-    <b>any_clients_sending_video()</b>, <b>atomic_load_bool()</b>,
-    <b>client_info::client_id</b>, <b>client_manager_t::clients</b>,
-    <b>g_client_manager</b>, <b>client_info::is_sending_video</b>, and
-    <b>MAX_CLIENTS</b>.</p>
-<p class="Pp">Referenced by <b>any_clients_sending_video()</b>, and
-    <b>client_video_render_thread()</b>.</p>
-<section class="Ss">
-<h2 class="Ss" id="char_*_create_mixed_ascii_frame_for_client_(const_char_*_target_client_id,_unsigned_short_width,_unsigned_short_height,_"><a class="permalink" href="#char_*_create_mixed_ascii_frame_for_client_(const_char_*_target_client_id,_unsigned_short_width,_unsigned_short_height,_">char
-  * create_mixed_ascii_frame_for_client (const char * target_client_id, unsigned
-  short width, unsigned short height, <b>bool</b> wants_stretch, size_t *
-  out_size, <b>bool</b> * out_grid_changed, int * out_sources_count,
-  <b>acip_render_settings_t</b> * out_rendering)</a></h2>
-<p class="Pp">Generate personalized ASCII frame for a specific client. This is
-    the core video mixing function that creates customized ASCII art frames for
-    individual clients. It collects video from all active clients, creates an
-    appropriate grid layout, and converts to ASCII using the target client's
-    terminal capabilities.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ALGORITHM_OVERVIEW:"><a class="permalink" href="#ALGORITHM_OVERVIEW:">ALGORITHM
-  OVERVIEW: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>FRAME COLLECTION PHASE:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Scan all active clients for available video frames</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use double-buffer system to get latest frames</dd>
-  <dt> &#x2022;</dt>
-  <dd>Implement aggressive frame dropping under load (maintains real-time)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Always use the most current frame for professional-grade quality</dd>
-  <dt>2.</dt>
-  <dd>LAYOUT CALCULATION PHASE:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Determine grid dimensions based on active client count</dd>
-  <dt> &#x2022;</dt>
-  <dd>Calculate cell sizes with aspect ratio preservation</dd>
-  <dt> &#x2022;</dt>
-  <dd>Handle special cases: single client, multiple clients</dd>
-  <dt>3.</dt>
-  <dd>COMPOSITE GENERATION PHASE:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Create composite image with appropriate dimensions</dd>
-  <dt> &#x2022;</dt>
-  <dd>Place each client's video in grid cell with proper scaling</dd>
-  <dt> &#x2022;</dt>
-  <dd>Support both normal and half-block rendering modes</dd>
-  <dt>4.</dt>
-  <dd>ASCII CONVERSION PHASE:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Convert composite to ASCII using client capabilities</dd>
-  <dt> &#x2022;</dt>
-  <dd>Apply client-specific palette and color settings</dd>
-  <dt> &#x2022;</dt>
-  <dd>Generate ANSI escape sequences if supported</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_OPTIMIZATIONS:"><a class="permalink" href="#PERFORMANCE_OPTIMIZATIONS:">PERFORMANCE
-  OPTIMIZATIONS: </a></h1>
-<p class="Pp">FRAME BUFFER MANAGEMENT:</p>
-<ul class="Bl-bullet">
-  <li>Aggressive frame dropping: always read latest available</li>
-  <li>Double-buffer system: ensures smooth frame delivery</li>
-  <li>buffer domain allocation: reduces malloc/free overhead</li>
-  <li>Zero-copy operations where possible</li>
-</ul>
-<p class="Pp">CONCURRENCY OPTIMIZATIONS:</p>
-<ul class="Bl-bullet">
-  <li>Reader locks on client manager (allows parallel execution)</li>
-  <li>Double-buffer atomic operations (lock-free access)</li>
-  <li>Atomic snapshots of client state</li>
-  <li>Thread-safe buffer operations</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CLIENT_CAPABILITY_INTEGRATION:"><a class="permalink" href="#CLIENT_CAPABILITY_INTEGRATION:">CLIENT
-  CAPABILITY INTEGRATION: </a></h1>
-<p class="Pp">TERMINAL AWARENESS:</p>
-<ul class="Bl-bullet">
-  <li>Respects client's color depth capabilities</li>
-  <li>Uses client's preferred ASCII palette</li>
-  <li>Handles UTF-8 vs ASCII-only terminals</li>
-  <li>Supports half-block mode for 2x vertical resolution</li>
-</ul>
-<p class="Pp">RENDERING MODES SUPPORTED:</p>
-<ul class="Bl-bullet">
-  <li>RENDER_MODE_FOREGROUND: Traditional ASCII art</li>
-  <li>RENDER_MODE_BACKGROUND: Inverted colors for better contrast</li>
-  <li>RENDER_MODE_HALF_BLOCK: Unicode half-blocks for 2x resolution</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_HANDLING_STRATEGY:"><a class="permalink" href="#ERROR_HANDLING_STRATEGY:">ERROR
-  HANDLING STRATEGY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Invalid dimensions: Logged and frame generation aborted</li>
-  <li>Memory allocation failures: Graceful degradation, cleanup resources</li>
-  <li>Client disconnections: Skip client in current frame, continue</li>
-  <li>Buffer overruns: Frame dropping maintains real-time performance</li>
-  <li>Capability missing: Wait for capabilities before generating frames</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh">MEMORY MANAGEMENT: </h1>
-<ul class="Bl-bullet">
-  <li>All image operations use buffer domain allocation</li>
-  <li>Frame data is properly freed after use</li>
-  <li>Cached frames use deep copies (prevent corruption)</li>
-  <li>Automatic cleanup on function exit</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>target_client_id</i> Client who will receive this
-  customized frame
-<br/>
-<i>width</i> Terminal width in characters for this client
-<br/>
-<i>height</i> Terminal height in characters for this client
-<br/>
-<i>wants_stretch</i> Unused parameter (aspect ratio always preserved)
-<br/>
-<i>out_size</i> Pointer to store resulting ASCII frame size</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated ASCII frame string (caller must free), or NULL
-  on error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function is called at 60fps per client by render
-  threads
-<p class="Pp"></p>
-<p class="Pp">Generated frame is customized for target client's capabilities</p>
-<p class="Pp"></p>
-<p class="Pp">Memory allocated from buffer domain - caller must free
-  properly</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Function performs extensive validation - invalid input
-  returns NULL
-<p class="Pp"></p>
-<p class="Pp">Client capabilities must be received before frame generation</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>ascii_convert_with_capabilities()</b> For ASCII
-  conversion implementation
-<p class="Pp"></p>
-<p class="Pp"><b>framebuffer_read_multi_frame()</b> For frame <b>Owned
-    Buffers</b> operations</p>
-<p class="Pp"></p>
-<p class="Pp"><b>calculate_fit_dimensions_pixel()</b> For aspect ratio
-    calculations</p>
-</div>
-<p class="Pp">Definition at line <b>1018</b> of file <b>stream.c</b>.</p>
-<pre>1020                                                                                                          {
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>client_info::active</b>,
+          <b>any_clients_sending_video()</b>, <b>atomic_load_bool()</b>,
+          <b>client_info::client_id</b>, <b>client_manager_t::clients</b>,
+          <b>g_client_manager</b>, <b>client_info::is_sending_video</b>, and
+          <b>MAX_CLIENTS</b>.
+        </p>
+        <p class="Pp">
+          Referenced by <b>any_clients_sending_video()</b>, and
+          <b>client_video_render_thread()</b>.
+        </p>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_create_mixed_ascii_frame_for_client_(const_char_*_target_client_id,_unsigned_short_width,_unsigned_short_height,_"
+          >
+            <a
+              class="permalink"
+              href="#char_*_create_mixed_ascii_frame_for_client_(const_char_*_target_client_id,_unsigned_short_width,_unsigned_short_height,_"
+              >char * create_mixed_ascii_frame_for_client (const char *
+              target_client_id, unsigned short width, unsigned short height,
+              <b>bool</b> wants_stretch, size_t * out_size, <b>bool</b> *
+              out_grid_changed, int * out_sources_count,
+              <b>acip_render_settings_t</b> * out_rendering)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate personalized ASCII frame for a specific client. This is the
+            core video mixing function that creates customized ASCII art frames
+            for individual clients. It collects video from all active clients,
+            creates an appropriate grid layout, and converts to ASCII using the
+            target client's terminal capabilities.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ALGORITHM_OVERVIEW:">
+          <a class="permalink" href="#ALGORITHM_OVERVIEW:"
+            >ALGORITHM OVERVIEW:
+          </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>FRAME COLLECTION PHASE:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Scan all active clients for available video frames</dd>
+          <dt>&#x2022;</dt>
+          <dd>Use double-buffer system to get latest frames</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Implement aggressive frame dropping under load (maintains real-time)
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Always use the most current frame for professional-grade quality
+          </dd>
+          <dt>2.</dt>
+          <dd>LAYOUT CALCULATION PHASE:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Determine grid dimensions based on active client count</dd>
+          <dt>&#x2022;</dt>
+          <dd>Calculate cell sizes with aspect ratio preservation</dd>
+          <dt>&#x2022;</dt>
+          <dd>Handle special cases: single client, multiple clients</dd>
+          <dt>3.</dt>
+          <dd>COMPOSITE GENERATION PHASE:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Create composite image with appropriate dimensions</dd>
+          <dt>&#x2022;</dt>
+          <dd>Place each client's video in grid cell with proper scaling</dd>
+          <dt>&#x2022;</dt>
+          <dd>Support both normal and half-block rendering modes</dd>
+          <dt>4.</dt>
+          <dd>ASCII CONVERSION PHASE:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Convert composite to ASCII using client capabilities</dd>
+          <dt>&#x2022;</dt>
+          <dd>Apply client-specific palette and color settings</dd>
+          <dt>&#x2022;</dt>
+          <dd>Generate ANSI escape sequences if supported</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_OPTIMIZATIONS:">
+          <a class="permalink" href="#PERFORMANCE_OPTIMIZATIONS:"
+            >PERFORMANCE OPTIMIZATIONS:
+          </a>
+        </h1>
+        <p class="Pp">FRAME BUFFER MANAGEMENT:</p>
+        <ul class="Bl-bullet">
+          <li>Aggressive frame dropping: always read latest available</li>
+          <li>Double-buffer system: ensures smooth frame delivery</li>
+          <li>buffer domain allocation: reduces malloc/free overhead</li>
+          <li>Zero-copy operations where possible</li>
+        </ul>
+        <p class="Pp">CONCURRENCY OPTIMIZATIONS:</p>
+        <ul class="Bl-bullet">
+          <li>Reader locks on client manager (allows parallel execution)</li>
+          <li>Double-buffer atomic operations (lock-free access)</li>
+          <li>Atomic snapshots of client state</li>
+          <li>Thread-safe buffer operations</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="CLIENT_CAPABILITY_INTEGRATION:">
+          <a class="permalink" href="#CLIENT_CAPABILITY_INTEGRATION:"
+            >CLIENT CAPABILITY INTEGRATION:
+          </a>
+        </h1>
+        <p class="Pp">TERMINAL AWARENESS:</p>
+        <ul class="Bl-bullet">
+          <li>Respects client's color depth capabilities</li>
+          <li>Uses client's preferred ASCII palette</li>
+          <li>Handles UTF-8 vs ASCII-only terminals</li>
+          <li>Supports half-block mode for 2x vertical resolution</li>
+        </ul>
+        <p class="Pp">RENDERING MODES SUPPORTED:</p>
+        <ul class="Bl-bullet">
+          <li>RENDER_MODE_FOREGROUND: Traditional ASCII art</li>
+          <li>RENDER_MODE_BACKGROUND: Inverted colors for better contrast</li>
+          <li>RENDER_MODE_HALF_BLOCK: Unicode half-blocks for 2x resolution</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_HANDLING_STRATEGY:">
+          <a class="permalink" href="#ERROR_HANDLING_STRATEGY:"
+            >ERROR HANDLING STRATEGY:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Invalid dimensions: Logged and frame generation aborted</li>
+          <li>
+            Memory allocation failures: Graceful degradation, cleanup resources
+          </li>
+          <li>Client disconnections: Skip client in current frame, continue</li>
+          <li>
+            Buffer overruns: Frame dropping maintains real-time performance
+          </li>
+          <li>
+            Capability missing: Wait for capabilities before generating frames
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh">MEMORY MANAGEMENT:</h1>
+        <ul class="Bl-bullet">
+          <li>All image operations use buffer domain allocation</li>
+          <li>Frame data is properly freed after use</li>
+          <li>Cached frames use deep copies (prevent corruption)</li>
+          <li>Automatic cleanup on function exit</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>target_client_id</i> Client who will receive this customized frame
+          <br />
+          <i>width</i> Terminal width in characters for this client
+          <br />
+          <i>height</i> Terminal height in characters for this client
+          <br />
+          <i>wants_stretch</i> Unused parameter (aspect ratio always preserved)
+          <br />
+          <i>out_size</i> Pointer to store resulting ASCII frame size
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">
+          Allocated ASCII frame string (caller must free), or NULL on error
+        </div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          This function is called at 60fps per client by render threads
+          <p class="Pp"></p>
+          <p class="Pp">
+            Generated frame is customized for target client's capabilities
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Memory allocated from buffer domain - caller must free properly
+          </p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Function performs extensive validation - invalid input returns NULL
+          <p class="Pp"></p>
+          <p class="Pp">
+            Client capabilities must be received before frame generation
+          </p>
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>ascii_convert_with_capabilities()</b> For ASCII conversion
+          implementation
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>framebuffer_read_multi_frame()</b> For frame
+            <b>Owned Buffers</b> operations
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>calculate_fit_dimensions_pixel()</b> For aspect ratio
+            calculations
+          </p>
+        </div>
+        <p class="Pp">
+          Definition at line <b>1018</b> of file <b>stream.c</b>.
+        </p>
+        <pre>
+1020                                                                                                          {
 1021   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 1022
 1023   // Register the stream counter once even when per-client render workers enter
@@ -748,32 +960,40 @@
 1203
 1204   return out;
 1205 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, <b>atomic_load_u64()</b>,
-    <b>create_mixed_ascii_frame_for_client()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_TERMINAL</b>,
-    <b>image_destroy()</b>, <b>image_new_copy()</b>, <b>log_dev_every</b>,
-    <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>,
-    <b>log_warn_every</b>, <b>MAX_CLIENTS</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NS_PER_MS</b>, <b>NS_PER_MS_INT</b>, <b>SAFE_FREE</b>,
-    <b>SERVER_STREAM_ASCII_BUFFER_SIZE</b>,
-    <b>SERVER_STREAM_HEX_BUFFER_SIZE</b>, <b>SET_ERRNO</b>, <b>START_TIMER</b>,
-    <b>STOP_TIMER_AND_LOG</b>, <b>TIME_DURATION_BUFFER_SIZE</b>,
-    <b>time_get_ns()</b>, <b>time_pretty()</b>, and <b>US_PER_MS_INT</b>.</p>
-<p class="Pp">Referenced by <b>client_video_render_thread()</b>, and
-    <b>create_mixed_ascii_frame_for_client()</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>atomic_cas_u64()</b>, <b>atomic_load_u64()</b>,
+          <b>create_mixed_ascii_frame_for_client()</b>,
+          <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+          <b>ERROR_MEMORY</b>, <b>ERROR_TERMINAL</b>, <b>image_destroy()</b>,
+          <b>image_new_copy()</b>, <b>log_dev_every</b>, <b>log_error</b>,
+          <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>, <b>log_warn_every</b>,
+          <b>MAX_CLIENTS</b>, <b>NAMED_REGISTER_ATOMIC</b>, <b>NS_PER_MS</b>,
+          <b>NS_PER_MS_INT</b>, <b>SAFE_FREE</b>,
+          <b>SERVER_STREAM_ASCII_BUFFER_SIZE</b>,
+          <b>SERVER_STREAM_HEX_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
+          <b>START_TIMER</b>, <b>STOP_TIMER_AND_LOG</b>,
+          <b>TIME_DURATION_BUFFER_SIZE</b>, <b>time_get_ns()</b>,
+          <b>time_pretty()</b>, and <b>US_PER_MS_INT</b>.
+        </p>
+        <p class="Pp">
+          Referenced by <b>client_video_render_thread()</b>, and
+          <b>create_mixed_ascii_frame_for_client()</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

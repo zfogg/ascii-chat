@@ -1,414 +1,613 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>webcam(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">webcam(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">webcam(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">webcam - Webcam Module</p>
-<p class="Pp">
-  <br/>
-   - &#x1F4F7; Cross-platform webcam capture API</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>webcam_v4l2.c</b>
-  <br/>
-  &#x1F4F7; Linux V4L2 webcam capture with multi-format support file
-    <b>webcam_avfoundation.m</b>
-  <br/>
-  &#x1F4F7; macOS AVFoundation webcam capture implementation with hardware
-    acceleration file <b>webcam_wasm.c</b>
-  <br/>
-  WebAssembly (browser) webcam capture backend. file
-    <b>webcam_mediafoundation.c</b>
-  <br/>
-  &#x1F4F7; Windows Media Foundation webcam capture with hardware acceleration
-    support
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>webcam_device_info_t</b>
-  <br/>
-  Webcam device information structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>WEBCAM_DEVICE_NAME_MAX</b> 256
-  <br/>
-  Maximum length of webcam device name.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>webcam_context_t</b> <b>webcam_context_t</b>
-  <br/>
-  Opaque webcam context structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>webcam_list_devices</b>
-    (<b>webcam_device_info_t</b> **devices, unsigned int *count)
-  <br/>
-  Enumerate available webcam devices. void <b>webcam_free_device_list</b>
-    (<b>webcam_device_info_t</b> *devices)
-  <br/>
-  Free device list returned by <b>webcam_list_devices()</b>. void
-    <b>webcam_print_init_error_help</b> (<b>asciichat_error_t</b> error_code)
-  <br/>
-  Print helpful error diagnostics for webcam initialization failures.
-    <b>asciichat_error_t</b> <b>webcam_init_context</b> (<b>webcam_context_t</b>
-    **ctx, unsigned short int device_index)
-  <br/>
-  Initialize webcam context for advanced operations. void
-    <b>webcam_cleanup_context</b> (<b>webcam_context_t</b> *ctx)
-  <br/>
-  Clean up webcam context and release resources. void
-    <b>webcam_flush_context</b> (<b>webcam_context_t</b> *ctx)
-  <br/>
-  Flush/interrupt pending read operations on webcam context. <b>image_t</b> *
-    <b>webcam_read_context</b> (<b>webcam_context_t</b> *ctx)
-  <br/>
-  Capture a frame from webcam context. <b>image_t</b> * <b>webcam_read_async</b>
-    (<b>webcam_context_t</b> *ctx)
-  <br/>
-  Get the most recent frame from async camera thread (non-blocking).
-    <b>asciichat_error_t</b> <b>webcam_get_dimensions</b>
-    (<b>webcam_context_t</b> *ctx, int *width, int *height)
-  <br/>
-  Get webcam frame dimensions.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4F7; Cross-platform webcam capture API</p>
-<p class="Pp">This header provides a cross-platform webcam capture interface for
-    ascii-chat. The system abstracts platform-specific webcam APIs (Windows
-    Media Foundation, Linux V4L2, macOS AVFoundation) behind a unified interface
-    for video frame capture.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CORE_FEATURES:"><a class="permalink" href="#CORE_FEATURES:">CORE
-  FEATURES: </a></h1>
-<ul class="Bl-bullet">
-  <li>Cross-platform webcam access (Windows, Linux, macOS)</li>
-  <li>Device enumeration and selection</li>
-  <li>Real-time video frame capture</li>
-  <li>Automatic format conversion to RGB</li>
-  <li>Thread-safe context management</li>
-  <li>Error handling with helpful diagnostics</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PLATFORM_SUPPORT:"><a class="permalink" href="#PLATFORM_SUPPORT:">PLATFORM
-  SUPPORT: </a></h1>
-<ul class="Bl-bullet">
-  <li>Windows: Media Foundation API</li>
-  <li>Linux: Video4Linux2 (V4L2)</li>
-  <li>macOS: AVFoundation framework</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ARCHITECTURE:"><a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE:
-  </a></h1>
-<p class="Pp">The webcam system uses a context-based architecture:</p>
-<ul class="Bl-bullet">
-  <li>Per-context management for multi-webcam support</li>
-  <li>Automatic format detection and conversion</li>
-  <li>Frame rate management and throttling</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="VIDEO_FORMATS:"><a class="permalink" href="#VIDEO_FORMATS:">VIDEO
-  FORMATS: </a></h1>
-<p class="Pp">The system supports:</p>
-<ul class="Bl-bullet">
-  <li>Various native formats (YUY2, RGB, MJPEG, etc.)</li>
-  <li>Automatic conversion to RGB for processing</li>
-  <li>Format negotiation with webcam hardware</li>
-  <li>Frame rate configuration</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Use context-based functions to manage each webcam
-  independently.
-<p class="Pp"></p>
-<p class="Pp">Webcam frames are returned as <b>image_t</b> structures compatible
-    with the video conversion pipeline.</p>
-<p class="Pp"></p>
-<p class="Pp">Error codes include specific diagnostics for webcam issues
-    (permission denied, device in use, etc.).</p>
-</div>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">August 2025</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBCAM_DEVICE_NAME_MAX___256"><a class="permalink" href="#_define_WEBCAM_DEVICE_NAME_MAX___256">#define
-  WEBCAM_DEVICE_NAME_MAX 256</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum length of webcam device name.</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>webcam.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>webcam_context_t</b> <b>webcam_context_t</b></a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Opaque webcam context structure. Forward declaration of webcam
-    context for context-based operations. Context provides per-webcam state
-    management for advanced scenarios.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Use <b>webcam_init_context()</b> to create a new context.
-<p class="Pp"></p>
-<p class="Pp">Context must be cleaned up with
-  <b>webcam_cleanup_context()</b>.</p>
-</div>
-<p class="Pp">Definition at line <b>150</b> of file <b>webcam.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_cleanup_context_("><a class="permalink" href="#void_webcam_cleanup_context_(">void
-  webcam_cleanup_context (<b>webcam_context_t</b> * ctx)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Clean up webcam context and release resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Webcam context to clean up (can be NULL)</div>
-<p class="Pp">Cleans up a webcam context and releases all associated resources.
-    Closes the webcam device, frees memory, and invalidates the context.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call multiple times or with NULL pointer (no-op).
-<p class="Pp"></p>
-<p class="Pp">After cleanup, context pointer is invalid and must not be
-  used.</p>
-</div>
-<p class="Pp">Definition at line <b>98</b> of file
-  <b>video/webcam/webcam.c</b>.</p>
-<pre>98                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>webcam(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">webcam(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">webcam(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">webcam - Webcam Module</p>
+        <p class="Pp">
+          <br />
+          - &#x1F4F7; Cross-platform webcam capture API
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>webcam_v4l2.c</b>
+            <br />
+            &#x1F4F7; Linux V4L2 webcam capture with multi-format support file
+            <b>webcam_avfoundation.m</b>
+            <br />
+            &#x1F4F7; macOS AVFoundation webcam capture implementation with
+            hardware acceleration file <b>webcam_wasm.c</b>
+            <br />
+            WebAssembly (browser) webcam capture backend. file
+            <b>webcam_mediafoundation.c</b>
+            <br />
+            &#x1F4F7; Windows Media Foundation webcam capture with hardware
+            acceleration support
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>webcam_device_info_t</b>
+            <br />
+            Webcam device information structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>WEBCAM_DEVICE_NAME_MAX</b> 256
+            <br />
+            Maximum length of webcam device name.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>webcam_context_t</b> <b>webcam_context_t</b>
+            <br />
+            Opaque webcam context structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>webcam_list_devices</b> (<b
+              >webcam_device_info_t</b
+            >
+            **devices, unsigned int *count)
+            <br />
+            Enumerate available webcam devices. void
+            <b>webcam_free_device_list</b> (<b>webcam_device_info_t</b>
+            *devices)
+            <br />
+            Free device list returned by <b>webcam_list_devices()</b>. void
+            <b>webcam_print_init_error_help</b> (<b>asciichat_error_t</b>
+            error_code)
+            <br />
+            Print helpful error diagnostics for webcam initialization failures.
+            <b>asciichat_error_t</b> <b>webcam_init_context</b> (<b
+              >webcam_context_t</b
+            >
+            **ctx, unsigned short int device_index)
+            <br />
+            Initialize webcam context for advanced operations. void
+            <b>webcam_cleanup_context</b> (<b>webcam_context_t</b> *ctx)
+            <br />
+            Clean up webcam context and release resources. void
+            <b>webcam_flush_context</b> (<b>webcam_context_t</b> *ctx)
+            <br />
+            Flush/interrupt pending read operations on webcam context.
+            <b>image_t</b> * <b>webcam_read_context</b> (<b>webcam_context_t</b>
+            *ctx)
+            <br />
+            Capture a frame from webcam context. <b>image_t</b> *
+            <b>webcam_read_async</b> (<b>webcam_context_t</b>
+            *ctx)
+            <br />
+            Get the most recent frame from async camera thread (non-blocking).
+            <b>asciichat_error_t</b> <b>webcam_get_dimensions</b> (<b
+              >webcam_context_t</b
+            >
+            *ctx, int *width, int *height)
+            <br />
+            Get webcam frame dimensions.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x1F4F7; Cross-platform webcam capture API</p>
+        <p class="Pp">
+          This header provides a cross-platform webcam capture interface for
+          ascii-chat. The system abstracts platform-specific webcam APIs
+          (Windows Media Foundation, Linux V4L2, macOS AVFoundation) behind a
+          unified interface for video frame capture.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="CORE_FEATURES:">
+          <a class="permalink" href="#CORE_FEATURES:">CORE FEATURES: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Cross-platform webcam access (Windows, Linux, macOS)</li>
+          <li>Device enumeration and selection</li>
+          <li>Real-time video frame capture</li>
+          <li>Automatic format conversion to RGB</li>
+          <li>Thread-safe context management</li>
+          <li>Error handling with helpful diagnostics</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PLATFORM_SUPPORT:">
+          <a class="permalink" href="#PLATFORM_SUPPORT:">PLATFORM SUPPORT: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Windows: Media Foundation API</li>
+          <li>Linux: Video4Linux2 (V4L2)</li>
+          <li>macOS: AVFoundation framework</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ARCHITECTURE:">
+          <a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE: </a>
+        </h1>
+        <p class="Pp">The webcam system uses a context-based architecture:</p>
+        <ul class="Bl-bullet">
+          <li>Per-context management for multi-webcam support</li>
+          <li>Automatic format detection and conversion</li>
+          <li>Frame rate management and throttling</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="VIDEO_FORMATS:">
+          <a class="permalink" href="#VIDEO_FORMATS:">VIDEO FORMATS: </a>
+        </h1>
+        <p class="Pp">The system supports:</p>
+        <ul class="Bl-bullet">
+          <li>Various native formats (YUY2, RGB, MJPEG, etc.)</li>
+          <li>Automatic conversion to RGB for processing</li>
+          <li>Format negotiation with webcam hardware</li>
+          <li>Frame rate configuration</li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Use context-based functions to manage each webcam independently.
+          <p class="Pp"></p>
+          <p class="Pp">
+            Webcam frames are returned as <b>image_t</b> structures compatible
+            with the video conversion pipeline.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Error codes include specific diagnostics for webcam issues
+            (permission denied, device in use, etc.).
+          </p>
+        </div>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">August 2025</div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBCAM_DEVICE_NAME_MAX___256">
+            <a class="permalink" href="#_define_WEBCAM_DEVICE_NAME_MAX___256"
+              >#define WEBCAM_DEVICE_NAME_MAX 256</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Maximum length of webcam device name.</p>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>webcam.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>webcam_context_t</b> <b>webcam_context_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Opaque webcam context structure. Forward declaration of webcam
+            context for context-based operations. Context provides per-webcam
+            state management for advanced scenarios.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Use <b>webcam_init_context()</b> to create a new context.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Context must be cleaned up with <b>webcam_cleanup_context()</b>.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>150</b> of file <b>webcam.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webcam_cleanup_context_(">
+            <a class="permalink" href="#void_webcam_cleanup_context_("
+              >void webcam_cleanup_context (<b>webcam_context_t</b> * ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Clean up webcam context and release resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Webcam context to clean up (can be NULL)
+          </div>
+          <p class="Pp">
+            Cleans up a webcam context and releases all associated resources.
+            Closes the webcam device, frees memory, and invalidates the context.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call multiple times or with NULL pointer (no-op).
+            <p class="Pp"></p>
+            <p class="Pp">
+              After cleanup, context pointer is invalid and must not be used.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+98                                                    {
 99   (void)ctx;
 100   log_warn(&quot;Webcam cleanup called on unsupported platform&quot;);
 101 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_warn</b>, and
-  <b>webcam_cleanup_context()</b>.</p>
-<p class="Pp">Referenced by <b>media_source_destroy()</b>, and
-    <b>webcam_cleanup_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_flush_context_("><a class="permalink" href="#void_webcam_flush_context_(">void
-  webcam_flush_context (<b>webcam_context_t</b> * ctx)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Flush/interrupt pending read operations on webcam context.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Webcam context (may be NULL - no-op)</div>
-<p class="Pp">Cancels any blocking read operations. Call before stopping capture
-    thread.</p>
-<p class="Pp">Definition at line <b>103</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>103                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_warn</b>, and <b>webcam_cleanup_context()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_destroy()</b>, and
+            <b>webcam_cleanup_context()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webcam_flush_context_(">
+            <a class="permalink" href="#void_webcam_flush_context_("
+              >void webcam_flush_context (<b>webcam_context_t</b> * ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Flush/interrupt pending read operations on webcam context.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Webcam context (may be NULL - no-op)
+          </div>
+          <p class="Pp">
+            Cancels any blocking read operations. Call before stopping capture
+            thread.
+          </p>
+          <p class="Pp">
+            Definition at line <b>103</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+103                                                  {
 104   (void)ctx;
 105   // No-op on unsupported platforms
 106 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webcam_flush_context()</b>.</p>
-<p class="Pp">Referenced by <b>webcam_flush_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_free_device_list_("><a class="permalink" href="#void_webcam_free_device_list_(">void
-  webcam_free_device_list (<b>webcam_device_info_t</b> * devices)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Free device list returned by <b>webcam_list_devices()</b>.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>devices</i> Device list to free (can be NULL)</div>
-<p class="Pp">Frees a device list allocated by <b>webcam_list_devices()</b>.
-    Safe to call with NULL pointer (no-op).</p>
-<p class="Pp">Definition at line <b>131</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>131                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>webcam_flush_context()</b>.</p>
+          <p class="Pp">Referenced by <b>webcam_flush_context()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webcam_free_device_list_(">
+            <a class="permalink" href="#void_webcam_free_device_list_("
+              >void webcam_free_device_list (<b>webcam_device_info_t</b> *
+              devices)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Free device list returned by <b>webcam_list_devices()</b>.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>devices</i> Device list to free (can be NULL)
+          </div>
+          <p class="Pp">
+            Frees a device list allocated by <b>webcam_list_devices()</b>. Safe
+            to call with NULL pointer (no-op).
+          </p>
+          <p class="Pp">
+            Definition at line <b>131</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+131                                                             {
 132   (void)devices;
 133   // No-op on unsupported platforms
 134 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webcam_free_device_list()</b>.</p>
-<p class="Pp">Referenced by <b>webcam_free_device_list()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webcam_get_dimensions
-  (<b>webcam_context_t</b> * ctx, int * width, int * height)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Get webcam frame dimensions.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Webcam context (must not be NULL)
-<br/>
-<i>width</i> Output pointer for frame width (must not be NULL)
-<br/>
-<i>height</i> Output pointer for frame height (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Queries the webcam context for current frame dimensions. Returns
-    the width and height in pixels as determined during format negotiation with
-    the webcam hardware.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Dimensions may change if webcam format is renegotiated.
-<p class="Pp"></p>
-<p class="Pp">Frame dimensions are set during <b>webcam_init_context()</b>.</p>
-</div>
-<p class="Pp">Definition at line <b>116</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>116                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>webcam_free_device_list()</b>.</p>
+          <p class="Pp">Referenced by <b>webcam_free_device_list()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webcam_get_dimensions (<b
+              >webcam_context_t</b
+            >
+            * ctx, int * width, int * height)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Get webcam frame dimensions.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Webcam context (must not be NULL)
+            <br />
+            <i>width</i> Output pointer for frame width (must not be NULL)
+            <br />
+            <i>height</i> Output pointer for frame height (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Queries the webcam context for current frame dimensions. Returns the
+            width and height in pixels as determined during format negotiation
+            with the webcam hardware.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Dimensions may change if webcam format is renegotiated.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Frame dimensions are set during <b>webcam_init_context()</b>.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>116</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+116                                                                                         {
 117   (void)ctx;
 118   (void)width;
 119   (void)height;
 120   return SET_ERRNO(ERROR_WEBCAM, &quot;Webcam get dimensions not supported on this platform&quot;);
 121 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
-    <b>webcam_get_dimensions()</b>.</p>
-<p class="Pp">Referenced by <b>webcam_get_dimensions()</b>, and
-    <b>webcam_read_async()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webcam_init_context
-  (<b>webcam_context_t</b> ** ctx, unsigned short int device_index)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Initialize webcam context for advanced operations.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Output pointer to webcam context (must not be
-  NULL)
-<br/>
-<i>device_index</i> Webcam device index (0 for default device)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Initializes a new webcam context for context-based webcam
-    management. This allows multiple webcams to be used simultaneously or
-    provides more control over webcam lifecycle. Context must be cleaned up with
-    <b>webcam_cleanup_context()</b> when done.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Context is allocated by this function and must be freed
-  with <b>webcam_cleanup_context()</b>.
-<p class="Pp"></p>
-<p class="Pp">Use <b>webcam_read_context()</b> to capture frames from this
-    context.</p>
-<p class="Pp"></p>
-<p class="Pp">Use <b>webcam_get_dimensions()</b> to query frame dimensions.</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">On failure, use <b>webcam_print_init_error_help()</b> for
-  diagnostics.</div>
-<p class="Pp">Definition at line <b>91</b> of file
-  <b>video/webcam/webcam.c</b>.</p>
-<pre>91                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
+            <b>webcam_get_dimensions()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webcam_get_dimensions()</b>, and
+            <b>webcam_read_async()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webcam_init_context (<b
+              >webcam_context_t</b
+            >
+            ** ctx, unsigned short int device_index)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Initialize webcam context for advanced operations.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Output pointer to webcam context (must not be NULL)
+            <br />
+            <i>device_index</i> Webcam device index (0 for default device)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Initializes a new webcam context for context-based webcam
+            management. This allows multiple webcams to be used simultaneously
+            or provides more control over webcam lifecycle. Context must be
+            cleaned up with <b>webcam_cleanup_context()</b> when done.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Context is allocated by this function and must be freed with
+            <b>webcam_cleanup_context()</b>.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Use <b>webcam_read_context()</b> to capture frames from this
+              context.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Use <b>webcam_get_dimensions()</b> to query frame dimensions.
+            </p>
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            On failure, use <b>webcam_print_init_error_help()</b> for
+            diagnostics.
+          </div>
+          <p class="Pp">
+            Definition at line <b>91</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+91                                                                                                {
 92   (void)ctx;
 93   (void)device_index;
 94   SET_ERRNO(ERROR_WEBCAM, &quot;Webcam platform not supported on this system&quot;);
 95   return ERROR_WEBCAM;
 96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
-    <b>webcam_init_context()</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create_interruptible()</b>,
-    <b>media_source_start_video()</b>, and <b>webcam_init_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> webcam_list_devices
-  (<b>webcam_device_info_t</b> ** devices, unsigned int * count)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Enumerate available webcam devices.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>devices</i> Output pointer to array of device info
-  structures (must not be NULL)
-<br/>
-<i>count</i> Output pointer to number of devices found (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Enumerates all available webcam devices and returns their
-    information. The devices array is allocated by this function and must be
-    freed with <b>webcam_free_device_list()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">On success, *devices will point to a dynamically
-  allocated array.
-<p class="Pp"></p>
-<p class="Pp">If no devices are found, *count will be 0 and *devices will be
-    NULL.</p>
-<p class="Pp"></p>
-<p class="Pp">Call <b>webcam_free_device_list()</b> to free the returned
-  array.</p>
-</div>
-<p class="Pp">Example:</p>
-<p class="Pp"></p>
-<pre>webcam_device_info_t *devices = NULL;
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
+            <b>webcam_init_context()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>,
+            <b>media_source_start_video()</b>, and <b>webcam_init_context()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> webcam_list_devices (<b
+              >webcam_device_info_t</b
+            >
+            ** devices, unsigned int * count)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Enumerate available webcam devices.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>devices</i> Output pointer to array of device info structures
+            (must not be NULL)
+            <br />
+            <i>count</i> Output pointer to number of devices found (must not be
+            NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Enumerates all available webcam devices and returns their
+            information. The devices array is allocated by this function and
+            must be freed with <b>webcam_free_device_list()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            On success, *devices will point to a dynamically allocated array.
+            <p class="Pp"></p>
+            <p class="Pp">
+              If no devices are found, *count will be 0 and *devices will be
+              NULL.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Call <b>webcam_free_device_list()</b> to free the returned array.
+            </p>
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>webcam_device_info_t *devices = NULL;
 unsigned int count = 0;
 if (webcam_list_devices(&amp;devices, &amp;count) == ASCIICHAT_OK) {
 <br/>
@@ -421,43 +620,60 @@ if (webcam_list_devices(&amp;devices, &amp;count) == ASCIICHAT_OK) {
     webcam_free_device_list(devices);
 }
 </pre>
-<p class="Pp">Definition at line <b>123</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>123                                                                                                    {
+          <p class="Pp">
+            Definition at line <b>123</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+123                                                                                                    {
 124   if (out_devices)
 125     *out_devices = NULL;
 126   if (out_count)
 127     *out_count = 0;
 128   return SET_ERRNO(ERROR_WEBCAM, &quot;Webcam device enumeration not supported on this platform&quot;);
 129 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
-    <b>webcam_list_devices()</b>.</p>
-<p class="Pp">Referenced by <b>webcam_list_devices()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_print_init_error_help_("><a class="permalink" href="#void_webcam_print_init_error_help_(">void
-  webcam_print_init_error_help (<b>asciichat_error_t</b> error_code)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Print helpful error diagnostics for webcam initialization
-    failures.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>error_code</i> Error code from
-  <b>webcam_init_context()</b></div>
-<p class="Pp">Prints human-readable error diagnostics to help diagnose webcam
-    initialization failures. Includes platform-specific troubleshooting advice
-    for common issues (permission denied, device in use, etc.).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function prints to stderr with detailed diagnostics.
-<p class="Pp"></p>
-<p class="Pp">Useful for debugging webcam access issues.</p>
-</div>
-<p class="Pp">Definition at line <b>14</b> of file
-  <b>video/webcam/webcam.c</b>.</p>
-<pre>14                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
+            <b>webcam_list_devices()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webcam_list_devices()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_webcam_print_init_error_help_(">
+            <a class="permalink" href="#void_webcam_print_init_error_help_("
+              >void webcam_print_init_error_help (<b>asciichat_error_t</b>
+              error_code)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Print helpful error diagnostics for webcam initialization failures.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>error_code</i> Error code from <b>webcam_init_context()</b>
+          </div>
+          <p class="Pp">
+            Prints human-readable error diagnostics to help diagnose webcam
+            initialization failures. Includes platform-specific troubleshooting
+            advice for common issues (permission denied, device in use, etc.).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function prints to stderr with detailed diagnostics.
+            <p class="Pp"></p>
+            <p class="Pp">Useful for debugging webcam access issues.</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+14                                                                 {
 15   // Platform-specific error messages and troubleshooting help
 16 #ifdef __linux__
 17   safe_fprintf(stderr, &quot;\n&quot;);
@@ -531,103 +747,150 @@ if (webcam_list_devices(&amp;devices, &amp;count) == ASCIICHAT_OK) {
 85   (void)fflush(stderr);
 86 #endif
 87 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_WEBCAM</b>, <b>ERROR_WEBCAM_IN_USE</b>,
-    <b>ERROR_WEBCAM_PERMISSION</b>, <b>safe_fprintf()</b>, and
-    <b>webcam_print_init_error_help()</b>.</p>
-<p class="Pp">Referenced by <b>webcam_print_init_error_help()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b> * webcam_read_async (<b>webcam_context_t</b> *
-  ctx)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Get the most recent frame from async camera thread
-  (non-blocking).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Webcam context (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to captured image, or NULL if no frame available
-  yet</div>
-<p class="Pp">Retrieves the most recent frame from the background camera thread
-    without blocking. Returns an <b>image_t</b> structure containing the latest
-    frame data in RGB format, or NULL if the async thread hasn't yet captured a
-    frame.</p>
-<p class="Pp"></p>
-<p class="Pp">This function is used with async camera initialization to decouple
-    slow camera I/O from the render loop. The background thread continuously
-    captures frames at the camera's native frame rate, and this function
-    retrieves the latest available frame on demand without waiting.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Returns NULL if no frame has been captured yet by the
-  background thread.
-<p class="Pp"></p>
-<p class="Pp">The caller takes ownership of the returned frame and must NOT free
-    it.</p>
-<p class="Pp"></p>
-<p class="Pp">Subsequent calls may return NULL if no new frame is available.</p>
-<p class="Pp"></p>
-<p class="Pp">Only valid after <b>webcam_init_context()</b> has started the
-    background thread.</p>
-</div>
-<p class="Pp">References <b>webcam_get_dimensions()</b>,
-    <b>webcam_get_fps()</b>, and <b>webcam_read_async()</b>.</p>
-<p class="Pp">Referenced by <b>webcam_read_async()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b> * webcam_read_context (<b>webcam_context_t</b> *
-  ctx)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b></b></p>
-<p class="Pp">Capture a frame from webcam context.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Webcam context (must not be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to captured image, or NULL on error</div>
-<p class="Pp">Captures a single video frame from the specified webcam context.
-    Returns an <b>image_t</b> structure containing the frame data in RGB format.
-    The image is automatically converted from native webcam format to RGB.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Returns NULL on error (device disconnected, I/O error,
-  etc.).
-<p class="Pp"></p>
-<p class="Pp">Image structure is allocated internally and must NOT be freed by
-    caller.</p>
-<p class="Pp"></p>
-<p class="Pp">Subsequent calls reuse the same buffer (frame overwrites previous
-    frame).</p>
-<p class="Pp"></p>
-<p class="Pp">Frame rate is limited by webcam hardware and format
-  negotiation.</p>
-</div>
-<p class="Pp">Definition at line <b>108</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>108                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_WEBCAM</b>, <b>ERROR_WEBCAM_IN_USE</b>,
+            <b>ERROR_WEBCAM_PERMISSION</b>, <b>safe_fprintf()</b>, and
+            <b>webcam_print_init_error_help()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webcam_print_init_error_help()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>image_t</b> * webcam_read_async (<b>webcam_context_t</b> * ctx)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">
+            Get the most recent frame from async camera thread (non-blocking).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Webcam context (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to captured image, or NULL if no frame available yet
+          </div>
+          <p class="Pp">
+            Retrieves the most recent frame from the background camera thread
+            without blocking. Returns an <b>image_t</b> structure containing the
+            latest frame data in RGB format, or NULL if the async thread hasn't
+            yet captured a frame.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This function is used with async camera initialization to decouple
+            slow camera I/O from the render loop. The background thread
+            continuously captures frames at the camera's native frame rate, and
+            this function retrieves the latest available frame on demand without
+            waiting.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Returns NULL if no frame has been captured yet by the background
+            thread.
+            <p class="Pp"></p>
+            <p class="Pp">
+              The caller takes ownership of the returned frame and must NOT free
+              it.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Subsequent calls may return NULL if no new frame is available.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Only valid after <b>webcam_init_context()</b> has started the
+              background thread.
+            </p>
+          </div>
+          <p class="Pp">
+            References <b>webcam_get_dimensions()</b>, <b>webcam_get_fps()</b>,
+            and <b>webcam_read_async()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webcam_read_async()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>image_t</b> * webcam_read_context (<b>webcam_context_t</b> * ctx)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/webcam/webcam.h</b>&gt;<b
+            ></b>
+          </p>
+          <p class="Pp">Capture a frame from webcam context.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Webcam context (must not be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to captured image, or NULL on error
+          </div>
+          <p class="Pp">
+            Captures a single video frame from the specified webcam context.
+            Returns an
+            <b>image_t</b> structure containing the frame data in RGB format.
+            The image is automatically converted from native webcam format to
+            RGB.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Returns NULL on error (device disconnected, I/O error, etc.).
+            <p class="Pp"></p>
+            <p class="Pp">
+              Image structure is allocated internally and must NOT be freed by
+              caller.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Subsequent calls reuse the same buffer (frame overwrites previous
+              frame).
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Frame rate is limited by webcam hardware and format negotiation.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>108</b> of file <b>video/webcam/webcam.c</b>.
+          </p>
+          <pre>
+108                                                     {
 109   (void)ctx;
 110   SET_ERRNO(ERROR_WEBCAM, &quot;Webcam read not supported on this platform&quot;);
 111   return NULL;
 112 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
-    <b>webcam_read_context()</b>.</p>
-<p class="Pp">Referenced by <b>media_source_read_video()</b>, and
-    <b>webcam_read_context()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_WEBCAM</b>, <b>SET_ERRNO</b>, and
+            <b>webcam_read_context()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_read_video()</b>, and
+            <b>webcam_read_context()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

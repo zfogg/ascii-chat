@@ -1,129 +1,209 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>flow_control.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">flow_control.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">flow_control.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">flow_control.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>flow_control_debounce_trigger</b>
-    (<b>flow_control_debounce_t</b> *debounce, <b>uint64_t</b> now_ns,
-    <b>uint64_t</b> delay_ns)
-  <br/>
-  <b>bool</b> <b>flow_control_debounce_take_ready</b>
-    (<b>flow_control_debounce_t</b> *debounce, <b>uint64_t</b> now_ns)
-  <br/>
-  void <b>flow_control_debounce_cancel</b> (<b>flow_control_debounce_t</b>
-    *debounce)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_flow_control_debounce_cancel_("><a class="permalink" href="#void_flow_control_debounce_cancel_(">void
-  flow_control_debounce_cancel (<b>flow_control_debounce_t</b> *
-  debounce)</a></h2>
-<p class="Pp">Discard a pending action.</p>
-<p class="Pp">Definition at line <b>17</b> of file <b>flow_control.c</b>.</p>
-<pre>17                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>flow_control.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">flow_control.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">flow_control.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">flow_control.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>flow_control_debounce_trigger</b> (<b
+              >flow_control_debounce_t</b
+            >
+            *debounce, <b>uint64_t</b> now_ns, <b>uint64_t</b> delay_ns)
+            <br />
+            <b>bool</b> <b>flow_control_debounce_take_ready</b> (<b
+              >flow_control_debounce_t</b
+            >
+            *debounce, <b>uint64_t</b> now_ns)
+            <br />
+            void <b>flow_control_debounce_cancel</b> (<b
+              >flow_control_debounce_t</b
+            >
+            *debounce)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_flow_control_debounce_cancel_(">
+            <a class="permalink" href="#void_flow_control_debounce_cancel_("
+              >void flow_control_debounce_cancel (<b>flow_control_debounce_t</b>
+              * debounce)</a
+            >
+          </h2>
+          <p class="Pp">Discard a pending action.</p>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>flow_control.c</b>.
+          </p>
+          <pre>
+17                                                                      {
 18   if (!debounce)
 19     return;
 20   debounce-&gt;pending = false;
 21   debounce-&gt;due_ns = 0;
 22 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>flow_control_debounce_t::due_ns</b>,
-    <b>flow_control_debounce_cancel()</b>, and
-    <b>flow_control_debounce_t::pending</b>.</p>
-<p class="Pp">Referenced by <b>flow_control_debounce_cancel()</b>, and
-    <b>log_search_enter_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> flow_control_debounce_take_ready
-  (<b>flow_control_debounce_t</b> * debounce, <b>uint64_t</b> now_ns)</h2>
-<p class="Pp">Consume a pending action once its quiet period has elapsed.</p>
-<p class="Pp">Definition at line <b>10</b> of file <b>flow_control.c</b>.</p>
-<pre>10                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>flow_control_debounce_t::due_ns</b>,
+            <b>flow_control_debounce_cancel()</b>, and
+            <b>flow_control_debounce_t::pending</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>flow_control_debounce_cancel()</b>, and
+            <b>log_search_enter_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> flow_control_debounce_take_ready (<b
+              >flow_control_debounce_t</b
+            >
+            * debounce, <b>uint64_t</b> now_ns)
+          </h2>
+          <p class="Pp">
+            Consume a pending action once its quiet period has elapsed.
+          </p>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>flow_control.c</b>.
+          </p>
+          <pre>
+10                                                                                           {
 11   if (!debounce || !debounce-&gt;pending || now_ns &lt; debounce-&gt;due_ns)
 12     return false;
 13   debounce-&gt;pending = false;
 14   return true;
 15 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>flow_control_debounce_take_ready()</b>, and
-    <b>flow_control_debounce_t::pending</b>.</p>
-<p class="Pp">Referenced by <b>flow_control_debounce_take_ready()</b>, and
-    <b>log_search_insert_text()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_flow_control_debounce_trigger_("><a class="permalink" href="#void_flow_control_debounce_trigger_(">void
-  flow_control_debounce_trigger (<b>flow_control_debounce_t</b> * debounce,
-  <b>uint64_t</b> now_ns, <b>uint64_t</b> delay_ns)</a></h2>
-<p class="Pp">Record an event whose action should run after delay_ns of
-    inactivity.</p>
-<p class="Pp">Definition at line <b>3</b> of file <b>flow_control.c</b>.</p>
-<pre>3                                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>flow_control_debounce_take_ready()</b>, and
+            <b>flow_control_debounce_t::pending</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>flow_control_debounce_take_ready()</b>, and
+            <b>log_search_insert_text()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_flow_control_debounce_trigger_(">
+            <a class="permalink" href="#void_flow_control_debounce_trigger_("
+              >void flow_control_debounce_trigger (<b
+                >flow_control_debounce_t</b
+              >
+              * debounce, <b>uint64_t</b> now_ns, <b>uint64_t</b> delay_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Record an event whose action should run after delay_ns of
+            inactivity.
+          </p>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>flow_control.c</b>.
+          </p>
+          <pre>
+3                                                                                                           {
 4   if (!debounce)
 5     return;
 6   debounce-&gt;due_ns = UINT64_MAX - now_ns &lt; delay_ns ? UINT64_MAX : now_ns + delay_ns;
 7   debounce-&gt;pending = true;
 8 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>flow_control_debounce_t::due_ns</b>,
-    <b>flow_control_debounce_trigger()</b>, and
-    <b>flow_control_debounce_t::pending</b>.</p>
-<p class="Pp">Referenced by <b>flow_control_debounce_trigger()</b>, and
-    <b>log_search_handle_key()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>flow_control_debounce_t::due_ns</b>,
+            <b>flow_control_debounce_trigger()</b>, and
+            <b>flow_control_debounce_t::pending</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>flow_control_debounce_trigger()</b>, and
+            <b>log_search_handle_key()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

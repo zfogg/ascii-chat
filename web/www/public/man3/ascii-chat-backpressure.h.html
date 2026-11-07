@@ -1,192 +1,341 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>backpressure.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">backpressure.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">backpressure.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">backpressure.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acip_outbound_stats_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ACIP_OUTBOUND_BUDGET</b> (8U * 1024U * 1024U)
-  <br/>
-  #define <b>ACIP_OUTBOUND_CONTROL_RESERVE</b> (512U * 1024U)
-  <br/>
-  #define <b>ACIP_OUTBOUND_AUDIO_RESERVE</b> (512U * 1024U)
-  <br/>
-  #define <b>ACIP_OUTBOUND_SCTP_RESERVE</b> (64U * 1024U)
-  <br/>
-  #define <b>ACIP_OUTBOUND_VIDEO_AGE_NS</b> (100ULL * 1000000ULL)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>acip_outbound</b> <b>acip_outbound_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>acip_admission_t</b> { <b>ACIP_ADMISSION_ACCEPTED</b>,
-    <b>ACIP_ADMISSION_CONGESTED</b>, <b>ACIP_ADMISSION_DROPPED_STALE</b>,
-    <b>ACIP_ADMISSION_NEEDS_KEYFRAME</b> }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_outbound_create</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  void <b>acip_outbound_stop</b> (<b>acip_transport_t</b> *transport)
-  <br/>
-  void <b>acip_outbound_destroy</b> (<b>acip_transport_t</b> *transport)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_outbound_submitv</b> (<b>acip_transport_t</b>
-    *transport, const <b>socket_buffer_t</b> *buffers, size_t count,
-    <b>acip_admission_t</b> *admission)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_outbound_snapshot</b>
-    (<b>acip_transport_t</b> *transport, <b>acip_outbound_stats_t</b> *stats)
-  <br/>
-  <b>bool</b> <b>acip_outbound_needs_keyframe</b> (<b>acip_transport_t</b>
-    *transport, <b>uint16_t</b> packet_type, <b>uint32_t</b> stream_id)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_OUTBOUND_AUDIO_RESERVE___(512U_*_1024U)"><a class="permalink" href="#_define_ACIP_OUTBOUND_AUDIO_RESERVE___(512U_*_1024U)">#define
-  ACIP_OUTBOUND_AUDIO_RESERVE (512U * 1024U)</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_OUTBOUND_BUDGET___(8U_*_1024U_*_1024U)"><a class="permalink" href="#_define_ACIP_OUTBOUND_BUDGET___(8U_*_1024U_*_1024U)">#define
-  ACIP_OUTBOUND_BUDGET (8U * 1024U * 1024U)</a></h2>
-<p class="Pp">All limits include ACIP/encryption overhead. Backend bytes exclude
-    OS buffers.</p>
-<p class="Pp">Definition at line <b>12</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_OUTBOUND_CONTROL_RESERVE___(512U_*_1024U)"><a class="permalink" href="#_define_ACIP_OUTBOUND_CONTROL_RESERVE___(512U_*_1024U)">#define
-  ACIP_OUTBOUND_CONTROL_RESERVE (512U * 1024U)</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_OUTBOUND_SCTP_RESERVE___(64U_*_1024U)"><a class="permalink" href="#_define_ACIP_OUTBOUND_SCTP_RESERVE___(64U_*_1024U)">#define
-  ACIP_OUTBOUND_SCTP_RESERVE (64U * 1024U)</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>backpressure.h</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_OUTBOUND_VIDEO_AGE_NS___(100ULL_*_1000000ULL)"><a class="permalink" href="#_define_ACIP_OUTBOUND_VIDEO_AGE_NS___(100ULL_*_1000000ULL)">#define
-  ACIP_OUTBOUND_VIDEO_AGE_NS (100ULL * 1000000ULL)</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>backpressure.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>acip_outbound</b> <b>acip_outbound_t</b></a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>backpressure.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>acip_admission_t</b></a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ACIP_ADMISSION_ACCEPTED"><a class="permalink" href="#ACIP_ADMISSION_ACCEPTED"><b><i>ACIP_ADMISSION_ACCEPTED
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ACIP_ADMISSION_CONGESTED"><a class="permalink" href="#ACIP_ADMISSION_CONGESTED"><b><i>ACIP_ADMISSION_CONGESTED
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ACIP_ADMISSION_DROPPED_STALE"><a class="permalink" href="#ACIP_ADMISSION_DROPPED_STALE"><b><i>ACIP_ADMISSION_DROPPED_STALE
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ACIP_ADMISSION_NEEDS_KEYFRAME"><a class="permalink" href="#ACIP_ADMISSION_NEEDS_KEYFRAME"><b><i>ACIP_ADMISSION_NEEDS_KEYFRAME
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>18</b> of file <b>backpressure.h</b>.</p>
-<pre>18              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>backpressure.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">backpressure.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">backpressure.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">backpressure.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acip_outbound_stats_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ACIP_OUTBOUND_BUDGET</b> (8U * 1024U * 1024U)
+            <br />
+            #define <b>ACIP_OUTBOUND_CONTROL_RESERVE</b> (512U * 1024U)
+            <br />
+            #define <b>ACIP_OUTBOUND_AUDIO_RESERVE</b> (512U * 1024U)
+            <br />
+            #define <b>ACIP_OUTBOUND_SCTP_RESERVE</b> (64U * 1024U)
+            <br />
+            #define <b>ACIP_OUTBOUND_VIDEO_AGE_NS</b> (100ULL * 1000000ULL)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>acip_outbound</b> <b>acip_outbound_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>acip_admission_t</b> { <b>ACIP_ADMISSION_ACCEPTED</b>,
+            <b>ACIP_ADMISSION_CONGESTED</b>,
+            <b>ACIP_ADMISSION_DROPPED_STALE</b>,
+            <b>ACIP_ADMISSION_NEEDS_KEYFRAME</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_outbound_create</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            void <b>acip_outbound_stop</b> (<b>acip_transport_t</b> *transport)
+            <br />
+            void <b>acip_outbound_destroy</b> (<b>acip_transport_t</b>
+            *transport)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_outbound_submitv</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, const <b>socket_buffer_t</b> *buffers, size_t count,
+            <b>acip_admission_t</b> *admission)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_outbound_snapshot</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>acip_outbound_stats_t</b> *stats)
+            <br />
+            <b>bool</b> <b>acip_outbound_needs_keyframe</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>uint16_t</b> packet_type, <b>uint32_t</b> stream_id)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACIP_OUTBOUND_AUDIO_RESERVE___(512U_*_1024U)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACIP_OUTBOUND_AUDIO_RESERVE___(512U_*_1024U)"
+              >#define ACIP_OUTBOUND_AUDIO_RESERVE (512U * 1024U)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACIP_OUTBOUND_BUDGET___(8U_*_1024U_*_1024U)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACIP_OUTBOUND_BUDGET___(8U_*_1024U_*_1024U)"
+              >#define ACIP_OUTBOUND_BUDGET (8U * 1024U * 1024U)</a
+            >
+          </h2>
+          <p class="Pp">
+            All limits include ACIP/encryption overhead. Backend bytes exclude
+            OS buffers.
+          </p>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACIP_OUTBOUND_CONTROL_RESERVE___(512U_*_1024U)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACIP_OUTBOUND_CONTROL_RESERVE___(512U_*_1024U)"
+              >#define ACIP_OUTBOUND_CONTROL_RESERVE (512U * 1024U)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACIP_OUTBOUND_SCTP_RESERVE___(64U_*_1024U)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACIP_OUTBOUND_SCTP_RESERVE___(64U_*_1024U)"
+              >#define ACIP_OUTBOUND_SCTP_RESERVE (64U * 1024U)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>backpressure.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ACIP_OUTBOUND_VIDEO_AGE_NS___(100ULL_*_1000000ULL)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ACIP_OUTBOUND_VIDEO_AGE_NS___(100ULL_*_1000000ULL)"
+              >#define ACIP_OUTBOUND_VIDEO_AGE_NS (100ULL * 1000000ULL)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>acip_outbound</b> <b>acip_outbound_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>backpressure.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_">enum <b>acip_admission_t</b></a>
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ACIP_ADMISSION_ACCEPTED">
+              <a class="permalink" href="#ACIP_ADMISSION_ACCEPTED"
+                ><b><i>ACIP_ADMISSION_ACCEPTED </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ACIP_ADMISSION_CONGESTED">
+              <a class="permalink" href="#ACIP_ADMISSION_CONGESTED"
+                ><b><i>ACIP_ADMISSION_CONGESTED </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ACIP_ADMISSION_DROPPED_STALE">
+              <a class="permalink" href="#ACIP_ADMISSION_DROPPED_STALE"
+                ><b><i>ACIP_ADMISSION_DROPPED_STALE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ACIP_ADMISSION_NEEDS_KEYFRAME">
+              <a class="permalink" href="#ACIP_ADMISSION_NEEDS_KEYFRAME"
+                ><b><i>ACIP_ADMISSION_NEEDS_KEYFRAME </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>backpressure.h</b>.
+          </p>
+          <pre>
+18              {
 19   ACIP_ADMISSION_ACCEPTED,
 20   ACIP_ADMISSION_CONGESTED,
 21   ACIP_ADMISSION_DROPPED_STALE,
 22   ACIP_ADMISSION_NEEDS_KEYFRAME
 23 } acip_admission_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_outbound_create
-  (<b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Definition at line <b>282</b> of file <b>backpressure.c</b>.</p>
-<pre>282                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_outbound_create (<b
+              >acip_transport_t</b
+            >
+            * transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>282</b> of file <b>backpressure.c</b>.
+          </p>
+          <pre>
+282                                                                     {
 283   ASCII_OTEL_SCOPE(ACIP_OUTBOUND_CREATE);
 284   if (!transport || !transport-&gt;methods || !transport-&gt;methods-&gt;send)
 285     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing outbound backend&quot;);
@@ -213,29 +362,44 @@
 306   transport-&gt;outbound = out;
 307   return ASCIICHAT_OK;
 308 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>, <b>acthread_create</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>acip_outbound::changed</b>,
-    <b>cond_destroy()</b>, <b>cond_init()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>GET_ERRNO</b>, <b>acip_transport::methods</b>,
-    <b>acip_outbound::mutex</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
-    <b>acip_transport::outbound</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>acip_transport_methods_t::send</b>, <b>SET_ERRNO</b>,
-    <b>acip_outbound::transport</b>, and <b>acip_outbound::worker</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>,
-    <b>acip_async_tcp_transport_create()</b>, <b>acip_outbound_create()</b>,
-    <b>acip_tcp_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>, and
-    <b>acip_websocket_server_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_outbound_destroy_("><a class="permalink" href="#void_acip_outbound_destroy_(">void
-  acip_outbound_destroy (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Stop admission, interrupt writes, join the worker, and release
-    every queued owner.</p>
-<p class="Pp">Definition at line <b>321</b> of file <b>backpressure.c</b>.</p>
-<pre>321                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>, <b>acthread_create</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>acip_outbound::changed</b>, <b>cond_destroy()</b>,
+            <b>cond_init()</b>, <b>ERROR_INVALID_PARAM</b>, <b>GET_ERRNO</b>,
+            <b>acip_transport::methods</b>, <b>acip_outbound::mutex</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+            <b>acip_transport::outbound</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>acip_transport_methods_t::send</b>,
+            <b>SET_ERRNO</b>, <b>acip_outbound::transport</b>, and
+            <b>acip_outbound::worker</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_client_create()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_outbound_create()</b>, <b>acip_tcp_transport_create()</b>,
+            <b>acip_websocket_client_transport_create()</b>, and
+            <b>acip_websocket_server_transport_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_outbound_destroy_(">
+            <a class="permalink" href="#void_acip_outbound_destroy_("
+              >void acip_outbound_destroy (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stop admission, interrupt writes, join the worker, and release every
+            queued owner.
+          </p>
+          <p class="Pp">
+            Definition at line <b>321</b> of file <b>backpressure.c</b>.
+          </p>
+          <pre>
+321                                                         {
 322   ASCII_OTEL_SCOPE(ACIP_OUTBOUND_DESTROY);
 323   acip_outbound_t *out = transport-&gt;outbound;
 324   if (!out)
@@ -266,26 +430,36 @@
 349   mutex_destroy(&amp;out-&gt;mutex);
 350   SAFE_FREE(transport-&gt;outbound);
 351 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_destroy()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>acip_outbound::changed</b>,
-    <b>acip_transport_methods_t::close</b>, <b>cond_broadcast()</b>,
-    <b>cond_destroy()</b>, <b>ERROR_NETWORK</b>,
-    <b>acip_transport_methods_t::interrupt</b>, <b>acip_transport::methods</b>,
-    <b>acip_outbound::mutex</b>, <b>mutex_destroy()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>outbound_packet::next</b>,
-    <b>acip_transport::outbound</b>, <b>acip_outbound::recycled</b>,
-    <b>SAFE_FREE</b>, <b>acip_outbound::stopping</b>, <b>thread_join</b>, and
-    <b>acip_outbound::worker</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_destroy()</b>, and
-    <b>acip_transport_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acip_outbound_needs_keyframe (<b>acip_transport_t</b>
-  * transport, <b>uint16_t</b> packet_type, <b>uint32_t</b> stream_id)</h2>
-<p class="Pp">Definition at line <b>522</b> of file <b>backpressure.c</b>.</p>
-<pre>522                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_destroy()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>acip_outbound::changed</b>,
+            <b>acip_transport_methods_t::close</b>, <b>cond_broadcast()</b>,
+            <b>cond_destroy()</b>, <b>ERROR_NETWORK</b>,
+            <b>acip_transport_methods_t::interrupt</b>,
+            <b>acip_transport::methods</b>, <b>acip_outbound::mutex</b>,
+            <b>mutex_destroy()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>outbound_packet::next</b>, <b>acip_transport::outbound</b>,
+            <b>acip_outbound::recycled</b>, <b>SAFE_FREE</b>,
+            <b>acip_outbound::stopping</b>, <b>thread_join</b>, and
+            <b>acip_outbound::worker</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_destroy()</b>, and
+            <b>acip_transport_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> acip_outbound_needs_keyframe (<b>acip_transport_t</b> *
+            transport, <b>uint16_t</b> packet_type, <b>uint32_t</b> stream_id)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>522</b> of file <b>backpressure.c</b>.
+          </p>
+          <pre>
+522                                                                                            {
 523   if (!transport || !transport-&gt;outbound)
 524     return false;
 525   acip_outbound_t *out = transport-&gt;outbound;
@@ -295,21 +469,31 @@
 529       return out-&gt;streams[i].needs_keyframe;
 530   return true;
 531 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_needs_keyframe()</b>,
-    <b>acip_transport::outbound</b>, <b>outbound_stream_t::stream</b>,
-    <b>acip_outbound::streams</b>, and <b>outbound_stream_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_needs_keyframe()</b>,
-    <b>acip_send_image_frame_h265()</b>, and
-    <b>threaded_send_image_frame_encoded()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_outbound_snapshot
-  (<b>acip_transport_t</b> * transport, <b>acip_outbound_stats_t</b> *
-  stats)</h2>
-<p class="Pp">Definition at line <b>505</b> of file <b>backpressure.c</b>.</p>
-<pre>505                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_needs_keyframe()</b>,
+            <b>acip_transport::outbound</b>, <b>outbound_stream_t::stream</b>,
+            <b>acip_outbound::streams</b>, and <b>outbound_stream_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_needs_keyframe()</b>,
+            <b>acip_send_image_frame_h265()</b>, and
+            <b>threaded_send_image_frame_encoded()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_outbound_snapshot (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>acip_outbound_stats_t</b> * stats)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>505</b> of file <b>backpressure.c</b>.
+          </p>
+          <pre>
+505                                                                                                     {
 506   if (!transport || !transport-&gt;outbound || !stats)
 507     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing outbound statistics&quot;);
 508   acip_outbound_t *out = transport-&gt;outbound;
@@ -325,30 +509,41 @@
 518   mutex_unlock(&amp;out-&gt;mutex);
 519   return ASCIICHAT_OK;
 520 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_snapshot()</b>,
-    <b>acip_outbound::active_bytes</b>,
-    <b>acip_outbound_stats_t::application_bytes</b>, <b>ASCIICHAT_OK</b>,
-    <b>acip_outbound_stats_t::backend_bytes</b>,
-    <b>acip_outbound_stats_t::backend_reserved_bytes</b>,
-    <b>acip_outbound::bytes</b>, <b>outbound_packet::created</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>acip_outbound::head</b>,
-    <b>acip_transport::methods</b>, <b>acip_outbound::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>outbound_packet::next</b>,
-    <b>acip_outbound_stats_t::oldest_frame_age_ns</b>,
-    <b>acip_transport::outbound</b>,
-    <b>acip_transport_methods_t::reserved_bytes</b>, <b>SET_ERRNO</b>,
-    <b>time_get_ns()</b>, and <b>outbound_packet::video</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_outbound_stop_("><a class="permalink" href="#void_acip_outbound_stop_(">void
-  acip_outbound_stop (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Stop admission and wake queued producers without joining the
-    worker or releasing backend resources.</p>
-<p class="Pp">Definition at line <b>310</b> of file <b>backpressure.c</b>.</p>
-<pre>310                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_snapshot()</b>,
+            <b>acip_outbound::active_bytes</b>,
+            <b>acip_outbound_stats_t::application_bytes</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_outbound_stats_t::backend_bytes</b>,
+            <b>acip_outbound_stats_t::backend_reserved_bytes</b>,
+            <b>acip_outbound::bytes</b>, <b>outbound_packet::created</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>acip_outbound::head</b>,
+            <b>acip_transport::methods</b>, <b>acip_outbound::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>outbound_packet::next</b>,
+            <b>acip_outbound_stats_t::oldest_frame_age_ns</b>,
+            <b>acip_transport::outbound</b>,
+            <b>acip_transport_methods_t::reserved_bytes</b>, <b>SET_ERRNO</b>,
+            <b>time_get_ns()</b>, and <b>outbound_packet::video</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_outbound_stop_(">
+            <a class="permalink" href="#void_acip_outbound_stop_("
+              >void acip_outbound_stop (<b>acip_transport_t</b> * transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stop admission and wake queued producers without joining the worker
+            or releasing backend resources.
+          </p>
+          <p class="Pp">
+            Definition at line <b>310</b> of file <b>backpressure.c</b>.
+          </p>
+          <pre>
+310                                                      {
 311   acip_outbound_t *out = transport ? transport-&gt;outbound : NULL;
 312   if (!out)
 313     return;
@@ -358,26 +553,39 @@
 317   outbound_record_failure_and_fail_pending(out, ERROR_NETWORK, NULL, NULL);
 318   mutex_unlock(&amp;out-&gt;mutex);
 319 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_stop()</b>, <b>ERROR_NETWORK</b>,
-    <b>acip_outbound::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>acip_transport::outbound</b>, <b>acip_outbound::stopped_by_caller</b>,
-    and <b>acip_outbound::stopping</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_outbound_submitv
-  (<b>acip_transport_t</b> * transport, const <b>socket_buffer_t</b> * buffers,
-  size_t count, <b>acip_admission_t</b> * admission)</h2>
-<p class="Pp">Copy plaintext before returning ACCEPTED; congestion never changes
-    encryption state. Handshake/control submissions except ping/pong wait for
-    backend submission so crypto/setup barriers hold. Success describes local
-    admission/submission, never receiver delivery. A terminal backend failure
-    retains its status and errno context for waiting and subsequent producers.
-    Congestion remains a nonfatal admission outcome.</p>
-<p class="Pp">Definition at line <b>353</b> of file <b>backpressure.c</b>.</p>
-<pre>354                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_stop()</b>, <b>ERROR_NETWORK</b>,
+            <b>acip_outbound::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>acip_transport::outbound</b>,
+            <b>acip_outbound::stopped_by_caller</b>, and
+            <b>acip_outbound::stopping</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_stop()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_outbound_submitv (<b
+              >acip_transport_t</b
+            >
+            * transport, const <b>socket_buffer_t</b> * buffers, size_t count,
+            <b>acip_admission_t</b> * admission)
+          </h2>
+          <p class="Pp">
+            Copy plaintext before returning ACCEPTED; congestion never changes
+            encryption state. Handshake/control submissions except ping/pong
+            wait for backend submission so crypto/setup barriers hold. Success
+            describes local admission/submission, never receiver delivery. A
+            terminal backend failure retains its status and errno context for
+            waiting and subsequent producers. Congestion remains a nonfatal
+            admission outcome.
+          </p>
+          <p class="Pp">
+            Definition at line <b>353</b> of file <b>backpressure.c</b>.
+          </p>
+          <pre>
+354                                                                      {
 355   ASCII_OTEL_SCOPE(ACIP_OUTBOUND_SUBMITV);
 356   if (!transport || !transport-&gt;outbound || !buffers || !count || count &gt; SOCKET_IOV_MAX || !admission)
 357     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid outbound submission&quot;);
@@ -527,59 +735,70 @@
 501     return result;
 502   return cause.code == result ? import_failure(&amp;cause, &amp;detail) : SET_ERRNO(result, &quot;Outbound submission failed&quot;);
 503 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_ADMISSION_ACCEPTED</b>,
-    <b>ACIP_ADMISSION_CONGESTED</b>, <b>ACIP_ADMISSION_NEEDS_KEYFRAME</b>,
-    <b>ACIP_OUTBOUND_AUDIO_RESERVE</b>, <b>ACIP_OUTBOUND_BUDGET</b>,
-    <b>ACIP_OUTBOUND_CONTROL_RESERVE</b>, <b>acip_outbound_submitv()</b>,
-    <b>acip_outbound::active_bytes</b>, <b>ASCII_OTEL_ATTR_INT</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
-    <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>outbound_packet::audio</b>, <b>buffer_alloc()</b>,
-    <b>buffer_capacity()</b>, <b>buffer_control_domain()</b>,
-    <b>acip_outbound::bytes</b>, <b>acip_outbound::changed</b>,
-    <b>packet_header_t::client_id</b>, <b>asciichat_error_context_t::code</b>,
-    <b>cond_broadcast()</b>, <b>cond_wait</b>, <b>outbound_packet::cost</b>,
-    <b>acip_outbound::count</b>, <b>outbound_packet::created</b>,
-    <b>outbound_packet::data</b>, <b>socket_buffer_t::data</b>,
-    <b>outbound_packet::done</b>, <b>outbound_packet::encoded</b>,
-    <b>ERROR_INVALID_FRAME</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_SIZE</b>,
-    <b>acip_outbound::failed</b>, <b>acip_outbound::failure</b>,
-    <b>acip_outbound::failure_code</b>, <b>acip_outbound::failure_detail</b>,
-    <b>acip_outbound::head</b>, <b>outbound_packet::keyframe</b>,
-    <b>socket_buffer_t::len</b>, <b>acip_transport::methods</b>,
-    <b>acip_outbound::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
-    <b>outbound_packet::next</b>, <b>acip_transport::outbound</b>,
-    <b>OUTBOUND_MAX_PACKETS</b>, <b>PACKET_TYPE_ASCII_FRAME</b>,
-    <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
-    <b>PACKET_TYPE_IMAGE_FRAME</b>, <b>PACKET_TYPE_IMAGE_FRAME_H264</b>,
-    <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, <b>PACKET_TYPE_PING</b>,
-    <b>PACKET_TYPE_PONG</b>, <b>acip_outbound::recycled</b>,
-    <b>acip_outbound::recycled_count</b>,
-    <b>acip_transport_methods_t::reserved_bytes</b>,
-    <b>outbound_packet::result</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, <b>SOCKET_IOV_MAX</b>, <b>acip_outbound::stopping</b>,
-    <b>outbound_packet::stream</b>, <b>outbound_packet::telemetry_context</b>,
-    <b>time_get_ns()</b>, <b>outbound_packet::type</b>,
-    <b>packet_header_t::type</b>, <b>outbound_packet::video</b>,
-    <b>outbound_packet::wait</b>, and <b>WIRE_OVERHEAD</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>, and
-    <b>acip_transport_sendv()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_ADMISSION_ACCEPTED</b>,
+            <b>ACIP_ADMISSION_CONGESTED</b>,
+            <b>ACIP_ADMISSION_NEEDS_KEYFRAME</b>,
+            <b>ACIP_OUTBOUND_AUDIO_RESERVE</b>, <b>ACIP_OUTBOUND_BUDGET</b>,
+            <b>ACIP_OUTBOUND_CONTROL_RESERVE</b>,
+            <b>acip_outbound_submitv()</b>, <b>acip_outbound::active_bytes</b>,
+            <b>ASCII_OTEL_ATTR_INT</b>, <b>ASCII_OTEL_ATTR_STRING</b>,
+            <b>ascii_otel_context()</b>, <b>ascii_otel_metric()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>outbound_packet::audio</b>, <b>buffer_alloc()</b>,
+            <b>buffer_capacity()</b>, <b>buffer_control_domain()</b>,
+            <b>acip_outbound::bytes</b>, <b>acip_outbound::changed</b>,
+            <b>packet_header_t::client_id</b>,
+            <b>asciichat_error_context_t::code</b>, <b>cond_broadcast()</b>,
+            <b>cond_wait</b>, <b>outbound_packet::cost</b>,
+            <b>acip_outbound::count</b>, <b>outbound_packet::created</b>,
+            <b>outbound_packet::data</b>, <b>socket_buffer_t::data</b>,
+            <b>outbound_packet::done</b>, <b>outbound_packet::encoded</b>,
+            <b>ERROR_INVALID_FRAME</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_SIZE</b>, <b>acip_outbound::failed</b>,
+            <b>acip_outbound::failure</b>, <b>acip_outbound::failure_code</b>,
+            <b>acip_outbound::failure_detail</b>, <b>acip_outbound::head</b>,
+            <b>outbound_packet::keyframe</b>, <b>socket_buffer_t::len</b>,
+            <b>acip_transport::methods</b>, <b>acip_outbound::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+            <b>NET_TO_HOST_U32</b>, <b>outbound_packet::next</b>,
+            <b>acip_transport::outbound</b>, <b>OUTBOUND_MAX_PACKETS</b>,
+            <b>PACKET_TYPE_ASCII_FRAME</b>, <b>PACKET_TYPE_AUDIO_BATCH</b>,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME_H264</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, <b>PACKET_TYPE_PING</b>,
+            <b>PACKET_TYPE_PONG</b>, <b>acip_outbound::recycled</b>,
+            <b>acip_outbound::recycled_count</b>,
+            <b>acip_transport_methods_t::reserved_bytes</b>,
+            <b>outbound_packet::result</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>SOCKET_IOV_MAX</b>,
+            <b>acip_outbound::stopping</b>, <b>outbound_packet::stream</b>,
+            <b>outbound_packet::telemetry_context</b>, <b>time_get_ns()</b>,
+            <b>outbound_packet::type</b>, <b>packet_header_t::type</b>,
+            <b>outbound_packet::video</b>, <b>outbound_packet::wait</b>, and
+            <b>WIRE_OVERHEAD</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>, and
+            <b>acip_transport_sendv()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

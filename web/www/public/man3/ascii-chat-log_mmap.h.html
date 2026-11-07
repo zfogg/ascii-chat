@@ -1,161 +1,247 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mmap.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mmap.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mmap.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mmap.h - Lock-free memory-mapped text logging with crash
-  safety.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>log_mmap_config</b>
-  <br/>
-  Configuration for mmap logging.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>LOG_MMAP_DEFAULT_SIZE</b> (4 * 1024 * 1024)
-  <br/>
-  Default mmap log file size (4MB).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>log_mmap_config</b> <b>log_mmap_config_t</b>
-  <br/>
-  Configuration for mmap logging.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>log_mmap_init</b> (const
-    <b>log_mmap_config_t</b> *config)
-  <br/>
-  Initialize mmap-based text logging. <b>asciichat_error_t</b>
-    <b>log_mmap_init_simple</b> (const char *log_path, size_t max_size)
-  <br/>
-  Initialize mmap logging with simple parameters. void <b>log_mmap_destroy</b>
-    (void)
-  <br/>
-  Shutdown mmap logging. void <b>log_mmap_write</b> (int level, const char
-    *file, int line, const char *func, const char *fmt,...)
-  <br/>
-  Write a log entry directly to the mmap'd file (lock-free). <b>bool</b>
-    <b>log_mmap_is_active</b> (void)
-  <br/>
-  Check if mmap logging is active. void <b>log_mmap_sync</b> (void)
-  <br/>
-  Force sync the mmap'd file to disk. void
-    <b>log_mmap_install_crash_handlers</b> (void)
-  <br/>
-  Install signal handlers for crash safety. void <b>log_mmap_get_stats</b>
-    (<b>uint64_t</b> *bytes_written, <b>uint64_t</b> *wrap_count)
-  <br/>
-  Get statistics about the mmap log. <b>bool</b> <b>log_mmap_get_usage</b>
-    (size_t *used, size_t *capacity)
-  <br/>
-  Get current mmap log usage. void <b>log_mmap_rotate</b> (void)
-  <br/>
-  Rotate the mmap log (tail-keeping rotation).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Lock-free memory-mapped text logging with crash safety.</p>
-<p class="Pp">This module provides crash-safe logging by writing human-readable
-    text directly to a memory-mapped log file. Key features:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Lock-free logging: Uses atomic fetch_add for position claiming</li>
-  <li>Crash-safe: Text is written directly to mmap'd file, readable after
-    crash</li>
-  <li>No flusher needed: Logs are human-readable in the file immediately</li>
-  <li>Pure text: No binary header, works with grep/rg/cat without special
-    flags</li>
-  <li>Simple design: Just mmap the .log file and write text to it</li>
-</ul>
-<p class="Pp">Usage:</p>
-<p class="Pp"></p>
-<pre>// Initialize mmap logging (call once at startup)
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mmap.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mmap.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mmap.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          mmap.h - Lock-free memory-mapped text logging with crash safety.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>log_mmap_config</b>
+            <br />
+            Configuration for mmap logging.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LOG_MMAP_DEFAULT_SIZE</b> (4 * 1024 * 1024)
+            <br />
+            Default mmap log file size (4MB).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>log_mmap_config</b> <b>log_mmap_config_t</b>
+            <br />
+            Configuration for mmap logging.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>log_mmap_init</b> (const
+            <b>log_mmap_config_t</b> *config)
+            <br />
+            Initialize mmap-based text logging. <b>asciichat_error_t</b>
+            <b>log_mmap_init_simple</b> (const char *log_path, size_t max_size)
+            <br />
+            Initialize mmap logging with simple parameters. void
+            <b>log_mmap_destroy</b>
+            (void)
+            <br />
+            Shutdown mmap logging. void <b>log_mmap_write</b> (int level, const
+            char *file, int line, const char *func, const char *fmt,...)
+            <br />
+            Write a log entry directly to the mmap'd file (lock-free).
+            <b>bool</b> <b>log_mmap_is_active</b> (void)
+            <br />
+            Check if mmap logging is active. void <b>log_mmap_sync</b> (void)
+            <br />
+            Force sync the mmap'd file to disk. void
+            <b>log_mmap_install_crash_handlers</b> (void)
+            <br />
+            Install signal handlers for crash safety. void
+            <b>log_mmap_get_stats</b> (<b>uint64_t</b> *bytes_written,
+            <b>uint64_t</b> *wrap_count)
+            <br />
+            Get statistics about the mmap log. <b>bool</b>
+            <b>log_mmap_get_usage</b>
+            (size_t *used, size_t *capacity)
+            <br />
+            Get current mmap log usage. void <b>log_mmap_rotate</b> (void)
+            <br />
+            Rotate the mmap log (tail-keeping rotation).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Lock-free memory-mapped text logging with crash safety.
+        </p>
+        <p class="Pp">
+          This module provides crash-safe logging by writing human-readable text
+          directly to a memory-mapped log file. Key features:
+        </p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            Lock-free logging: Uses atomic fetch_add for position claiming
+          </li>
+          <li>
+            Crash-safe: Text is written directly to mmap'd file, readable after
+            crash
+          </li>
+          <li>
+            No flusher needed: Logs are human-readable in the file immediately
+          </li>
+          <li>
+            Pure text: No binary header, works with grep/rg/cat without special
+            flags
+          </li>
+          <li>Simple design: Just mmap the .log file and write text to it</li>
+        </ul>
+        <p class="Pp">Usage:</p>
+        <p class="Pp"></p>
+        <pre>
+// Initialize mmap logging (call once at startup)
 log_mmap_init(&quot;/tmp/myapp.log&quot;, 4 * 1024 * 1024);  // 4MB log file
 // Use normal log_* macros - they automatically use mmap backend
 log_debug(&quot;This uses atomic operations, no mutex!&quot;);
 // Cleanup on shutdown
 log_mmap_destroy();
 </pre>
-<p class="Pp">Definition in file <b>log/mmap.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_MMAP_DEFAULT_SIZE___(4_*_1024_*_1024)"><a class="permalink" href="#_define_LOG_MMAP_DEFAULT_SIZE___(4_*_1024_*_1024)">#define
-  LOG_MMAP_DEFAULT_SIZE (4 * 1024 * 1024)</a></h2>
-<p class="Pp">Default mmap log file size (4MB).</p>
-<p class="Pp">Definition at line <b>46</b> of file <b>log/mmap.h</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>log_mmap_config</b> <b>log_mmap_config_t</b></a></h2>
-<p class="Pp">Configuration for mmap logging.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_destroy_(void_)"><a class="permalink" href="#void_log_mmap_destroy_(void_)">void
-  log_mmap_destroy (void )</a></h2>
-<p class="Pp">Shutdown mmap logging. Syncs and unmaps the log file.</p>
-<p class="Pp">Definition at line <b>263</b> of file <b>mmap.c</b>.</p>
-<pre>263                             {
+        <p class="Pp">Definition in file <b>log/mmap.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_MMAP_DEFAULT_SIZE___(4_*_1024_*_1024)">
+            <a
+              class="permalink"
+              href="#_define_LOG_MMAP_DEFAULT_SIZE___(4_*_1024_*_1024)"
+              >#define LOG_MMAP_DEFAULT_SIZE (4 * 1024 * 1024)</a
+            >
+          </h2>
+          <p class="Pp">Default mmap log file size (4MB).</p>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>log/mmap.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_mmap_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>log_mmap_config</b> <b>log_mmap_config_t</b></a
+            >
+          </h2>
+          <p class="Pp">Configuration for mmap logging.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_destroy_(void_)">
+            <a class="permalink" href="#void_log_mmap_destroy_(void_)"
+              >void log_mmap_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Shutdown mmap logging. Syncs and unmaps the log file.
+          </p>
+          <p class="Pp">Definition at line <b>263</b> of file <b>mmap.c</b>.</p>
+          <pre>
+263                             {
 264   if (!g_mmap_log.initialized) {
 265     return;
 266   }
@@ -206,25 +292,35 @@ log_mmap_destroy();
 311   g_mmap_log.initialized = false;
 312   log_debug(&quot;mmap log: destroyed&quot;);
 313 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, <b>log_debug</b>,
-    <b>log_mmap_destroy()</b>, <b>log_mmap_write()</b>,
-    <b>platform_mmap_close()</b>, and <b>platform_mmap_sync()</b>.</p>
-<p class="Pp">Referenced by <b>log_destroy()</b>, <b>log_disable_mmap()</b>,
-    <b>log_mmap_destroy()</b>, and <b>log_mmap_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_get_stats_("><a class="permalink" href="#void_log_mmap_get_stats_(">void
-  log_mmap_get_stats (<b>uint64_t</b> * bytes_written, <b>uint64_t</b> *
-  wrap_count)</a></h2>
-<p class="Pp">Get statistics about the mmap log.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>bytes_written</i> Total bytes written since init
-<br/>
-<i>wrap_count</i> Number of times log has wrapped</div>
-<p class="Pp">Definition at line <b>403</b> of file <b>mmap.c</b>.</p>
-<pre>403                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, <b>log_debug</b>,
+            <b>log_mmap_destroy()</b>, <b>log_mmap_write()</b>,
+            <b>platform_mmap_close()</b>, and <b>platform_mmap_sync()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_destroy()</b>, <b>log_disable_mmap()</b>,
+            <b>log_mmap_destroy()</b>, and <b>log_mmap_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_get_stats_(">
+            <a class="permalink" href="#void_log_mmap_get_stats_("
+              >void log_mmap_get_stats (<b>uint64_t</b> * bytes_written,
+              <b>uint64_t</b> * wrap_count)</a
+            >
+          </h2>
+          <p class="Pp">Get statistics about the mmap log.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>bytes_written</i> Total bytes written since init
+            <br />
+            <i>wrap_count</i> Number of times log has wrapped
+          </div>
+          <p class="Pp">Definition at line <b>403</b> of file <b>mmap.c</b>.</p>
+          <pre>
+403                                                                        {
 404   if (bytes_written) {
 405     *bytes_written = atomic_load_u64(&amp;g_mmap_log.bytes_written);
 406   }
@@ -232,24 +328,32 @@ log_mmap_destroy();
 408     *wrap_count = atomic_load_u64(&amp;g_mmap_log.wrap_count);
 409   }
 410 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, and
-    <b>log_mmap_get_stats()</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_get_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_mmap_get_usage (size_t * used, size_t *
-  capacity)</h2>
-<p class="Pp">Get current mmap log usage.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>used</i> Current bytes used in the log
-<br/>
-<i>capacity</i> Total capacity of the log</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if mmap is active and values are valid</div>
-<p class="Pp">Definition at line <b>412</b> of file <b>mmap.c</b>.</p>
-<pre>412                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, and
+            <b>log_mmap_get_stats()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_mmap_get_stats()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> log_mmap_get_usage (size_t * used, size_t * capacity)
+          </h2>
+          <p class="Pp">Get current mmap log usage.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>used</i> Current bytes used in the log
+            <br />
+            <i>capacity</i> Total capacity of the log
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if mmap is active and values are valid
+          </div>
+          <p class="Pp">Definition at line <b>412</b> of file <b>mmap.c</b>.</p>
+          <pre>
+412                                                         {
 413   if (!g_mmap_log.initialized) {
 414     return false;
 415   }
@@ -262,25 +366,34 @@ log_mmap_destroy();
 422   }
 423   return true;
 424 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, and
-    <b>log_mmap_get_usage()</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_get_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_mmap_init (const
-  <b>log_mmap_config_t</b> * config)</h2>
-<p class="Pp">Initialize mmap-based text logging. Creates or opens a
-    memory-mapped log file. Text is written directly to the file, so it's
-    readable even after a crash.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Configuration options</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>194</b> of file <b>mmap.c</b>.</p>
-<pre>194                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, and
+            <b>log_mmap_get_usage()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_mmap_get_usage()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_mmap_init (const
+            <b>log_mmap_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Initialize mmap-based text logging. Creates or opens a memory-mapped
+            log file. Text is written directly to the file, so it's readable
+            even after a crash.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>config</i> Configuration options</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>194</b> of file <b>mmap.c</b>.</p>
+          <pre>
+194                                                                  {
 195   if (!config || !config-&gt;log_path) {
 196     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mmap log: config or log_path is NULL&quot;);
 197   }
@@ -340,56 +453,86 @@ log_mmap_destroy();
 251
 252   return ASCIICHAT_OK;
 253 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_u64()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>, <b>LOG_MMAP_DEFAULT_SIZE</b>,
-    <b>log_mmap_destroy()</b>, <b>log_mmap_init()</b>,
-    <b>log_mmap_install_crash_handlers()</b>, <b>log_mmap_write()</b>,
-    <b>log_mmap_config::log_path</b>, <b>log_warn</b>,
-    <b>log_mmap_config::max_size</b>, <b>platform_mmap_init()</b>,
-    <b>platform_mmap_open()</b>, <b>SAFE_STRNCPY</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_init()</b>, and
-    <b>log_mmap_init_simple()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_mmap_init_simple (const char *
-  log_path, size_t max_size)</h2>
-<p class="Pp">Initialize mmap logging with simple parameters. Convenience
-    wrapper around <b>log_mmap_init()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>log_path</i> Path to log file
-<br/>
-<i>max_size</i> Maximum file size (0 = default 4MB)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>255</b> of file <b>mmap.c</b>.</p>
-<pre>255                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_u64()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
+            <b>LOG_MMAP_DEFAULT_SIZE</b>, <b>log_mmap_destroy()</b>,
+            <b>log_mmap_init()</b>, <b>log_mmap_install_crash_handlers()</b>,
+            <b>log_mmap_write()</b>, <b>log_mmap_config::log_path</b>,
+            <b>log_warn</b>, <b>log_mmap_config::max_size</b>,
+            <b>platform_mmap_init()</b>, <b>platform_mmap_open()</b>,
+            <b>SAFE_STRNCPY</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_mmap_init()</b>, and
+            <b>log_mmap_init_simple()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_mmap_init_simple (const char *
+            log_path, size_t max_size)
+          </h2>
+          <p class="Pp">
+            Initialize mmap logging with simple parameters. Convenience wrapper
+            around
+            <b>log_mmap_init()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>log_path</i> Path to log file
+            <br />
+            <i>max_size</i> Maximum file size (0 = default 4MB)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>255</b> of file <b>mmap.c</b>.</p>
+          <pre>
+255                                                                               {
 256   log_mmap_config_t config = {
 257       .log_path = log_path,
 258       .max_size = max_size,
 259   };
 260   return log_mmap_init(&amp;config);
 261 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_mmap_init()</b>, and
-    <b>log_mmap_init_simple()</b>.</p>
-<p class="Pp">Referenced by <b>log_enable_mmap_sized()</b>, <b>log_init()</b>,
-    and <b>log_mmap_init_simple()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_install_crash_handlers_(void_)"><a class="permalink" href="#void_log_mmap_install_crash_handlers_(void_)">void
-  log_mmap_install_crash_handlers (void )</a></h2>
-<p class="Pp">Install signal handlers for crash safety. Registers handlers for
-    SIGSEGV, SIGABRT, etc. that sync the mmap before the process terminates.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Signal handlers are automatically installed by
-  <b>log_mmap_init()</b>.</div>
-<p class="Pp">Definition at line <b>147</b> of file <b>mmap.c</b>.</p>
-<pre>147                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>log_mmap_init()</b>, and
+            <b>log_mmap_init_simple()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_enable_mmap_sized()</b>, <b>log_init()</b>, and
+            <b>log_mmap_init_simple()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_install_crash_handlers_(void_)">
+            <a
+              class="permalink"
+              href="#void_log_mmap_install_crash_handlers_(void_)"
+              >void log_mmap_install_crash_handlers (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Install signal handlers for crash safety. Registers handlers for
+            SIGSEGV, SIGABRT, etc. that sync the mmap before the process
+            terminates.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Signal handlers are automatically installed by
+            <b>log_mmap_init()</b>.
+          </div>
+          <p class="Pp">Definition at line <b>147</b> of file <b>mmap.c</b>.</p>
+          <pre>
+147                                            {
 148 #ifndef _WIN32
 149   struct sigaction sa = {0};
 150   sa.sa_handler = crash_signal_handler;
@@ -405,40 +548,55 @@ log_mmap_destroy();
 160   SetUnhandledExceptionFilter(windows_crash_handler);
 161 #endif
 162 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_install_crash_handlers()</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_init()</b>, and
-    <b>log_mmap_install_crash_handlers()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_mmap_is_active (void )</h2>
-<p class="Pp">Check if mmap logging is active.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if mmap logging is initialized and active</div>
-<p class="Pp">Definition at line <b>393</b> of file <b>mmap.c</b>.</p>
-<pre>393                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_install_crash_handlers()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>log_mmap_init()</b>, and
+            <b>log_mmap_install_crash_handlers()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_mmap_is_active (void )</h2>
+          <p class="Pp">Check if mmap logging is active.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if mmap logging is initialized and active
+          </div>
+          <p class="Pp">Definition at line <b>393</b> of file <b>mmap.c</b>.</p>
+          <pre>
+393                               {
 394   return g_mmap_log.initialized;
 395 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_is_active()</b>.</p>
-<p class="Pp">Referenced by <b>log_destroy()</b>, <b>log_disable_mmap()</b>,
-    <b>log_file_msg()</b>, <b>log_mmap_is_active()</b>, <b>log_msg()</b>, and
-    <b>log_plain_msg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_rotate_(void_)"><a class="permalink" href="#void_log_mmap_rotate_(void_)">void
-  log_mmap_rotate (void )</a></h2>
-<p class="Pp">Rotate the mmap log (tail-keeping rotation). Keeps the most recent
-    log entries (tail) and discards old ones. This is the mmap equivalent of
-    file-based log rotation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller must hold the rotation mutex from logging.c. This
-  is called by maybe_rotate_log() which handles locking.</div>
-<p class="Pp">Definition at line <b>426</b> of file <b>mmap.c</b>.</p>
-<pre>426                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_is_active()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>log_destroy()</b>, <b>log_disable_mmap()</b>,
+            <b>log_file_msg()</b>, <b>log_mmap_is_active()</b>,
+            <b>log_msg()</b>, and <b>log_plain_msg()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_rotate_(void_)">
+            <a class="permalink" href="#void_log_mmap_rotate_(void_)"
+              >void log_mmap_rotate (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Rotate the mmap log (tail-keeping rotation). Keeps the most recent
+            log entries (tail) and discards old ones. This is the mmap
+            equivalent of file-based log rotation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller must hold the rotation mutex from logging.c. This is called
+            by maybe_rotate_log() which handles locking.
+          </div>
+          <p class="Pp">Definition at line <b>426</b> of file <b>mmap.c</b>.</p>
+          <pre>
+426                            {
 427   if (!g_mmap_log.initialized || !g_mmap_log.text_region) {
 428     return;
 429   }
@@ -499,53 +657,75 @@ log_mmap_destroy();
 484   /* Sync after rotation */
 485   platform_mmap_sync(&amp;g_mmap_log.mmap, true);
 486 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
-    <b>log_mmap_rotate()</b>, and <b>platform_mmap_sync()</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_rotate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_sync_(void_)"><a class="permalink" href="#void_log_mmap_sync_(void_)">void
-  log_mmap_sync (void )</a></h2>
-<p class="Pp">Force sync the mmap'd file to disk. Ensures all written data is
-    flushed to the underlying file. Called automatically for ERROR/FATAL levels
-    and on shutdown.</p>
-<p class="Pp">Definition at line <b>397</b> of file <b>mmap.c</b>.</p>
-<pre>397                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_fetch_add_u64()</b>, <b>atomic_load_u64()</b>,
+            <b>atomic_store_u64()</b>, <b>log_mmap_rotate()</b>, and
+            <b>platform_mmap_sync()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_mmap_rotate()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_sync_(void_)">
+            <a class="permalink" href="#void_log_mmap_sync_(void_)"
+              >void log_mmap_sync (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Force sync the mmap'd file to disk. Ensures all written data is
+            flushed to the underlying file. Called automatically for ERROR/FATAL
+            levels and on shutdown.
+          </p>
+          <p class="Pp">Definition at line <b>397</b> of file <b>mmap.c</b>.</p>
+          <pre>
+397                          {
 398   if (g_mmap_log.initialized) {
 399     platform_mmap_sync(&amp;g_mmap_log.mmap, true);
 400   }
 401 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_sync()</b>, and
-    <b>platform_mmap_sync()</b>.</p>
-<p class="Pp">Referenced by <b>log_mmap_sync()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"><a class="permalink" href="#void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__">void
-  log_mmap_write (int level, const char * file, int line, const char * func,
-  const char * fmt, ...)</a></h2>
-<p class="Pp">Write a log entry directly to the mmap'd file (lock-free). Formats
-    the log message and writes it directly as human-readable text. Uses atomic
-    operations only, no mutex.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log level
-<br/>
-<i>file</i> Source file (can be NULL)
-<br/>
-<i>line</i> Source line
-<br/>
-<i>func</i> Function name (can be NULL)
-<br/>
-<i>fmt</i> Format string
-<br/>
-<i>...</i> Format arguments</div>
-<p class="Pp">Definition at line <b>315</b> of file <b>mmap.c</b>.</p>
-<pre>315                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_mmap_sync()</b>, and <b>platform_mmap_sync()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_mmap_sync()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"
+          >
+            <a
+              class="permalink"
+              href="#void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"
+              >void log_mmap_write (int level, const char * file, int line,
+              const char * func, const char * fmt, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write a log entry directly to the mmap'd file (lock-free). Formats
+            the log message and writes it directly as human-readable text. Uses
+            atomic operations only, no mutex.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>level</i> Log level
+            <br />
+            <i>file</i> Source file (can be NULL)
+            <br />
+            <i>line</i> Source line
+            <br />
+            <i>func</i> Function name (can be NULL)
+            <br />
+            <i>fmt</i> Format string
+            <br />
+            <i>...</i> Format arguments
+          </div>
+          <p class="Pp">Definition at line <b>315</b> of file <b>mmap.c</b>.</p>
+          <pre>
+315                                                                                                    {
 316   if (!g_mmap_log.initialized || !g_mmap_log.text_region) {
 317     return;
 318   }
@@ -622,28 +802,35 @@ log_mmap_destroy();
 389     platform_mmap_sync(&amp;g_mmap_log.mmap, false);
 390   }
 391 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_strip_escapes()</b>,
-    <b>atomic_fetch_add_u64()</b>, <b>atomic_fetch_sub_u64()</b>,
-    <b>LOG_MMAP_MSG_BUFFER_SIZE</b>, <b>log_mmap_write()</b>,
-    <b>LOG_TIMESTAMP_BUFFER_SIZE</b>, <b>platform_mmap_sync()</b>,
-    <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and <b>safe_vsnprintf()</b>.</p>
-<p class="Pp">Referenced by <b>log_file_msg()</b>, <b>log_mmap_destroy()</b>,
-    <b>log_mmap_init()</b>, <b>log_mmap_write()</b>, <b>log_msg()</b>, and
-    <b>log_plain_msg()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_strip_escapes()</b>,
+            <b>atomic_fetch_add_u64()</b>, <b>atomic_fetch_sub_u64()</b>,
+            <b>LOG_MMAP_MSG_BUFFER_SIZE</b>, <b>log_mmap_write()</b>,
+            <b>LOG_TIMESTAMP_BUFFER_SIZE</b>, <b>platform_mmap_sync()</b>,
+            <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and
+            <b>safe_vsnprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_file_msg()</b>, <b>log_mmap_destroy()</b>,
+            <b>log_mmap_init()</b>, <b>log_mmap_write()</b>, <b>log_msg()</b>,
+            and <b>log_plain_msg()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

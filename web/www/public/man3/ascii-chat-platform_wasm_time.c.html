@@ -1,129 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>time.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">time.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">time.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">time.c - Time functions for WASM/Emscripten.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>platform_get_time_ms</b> (void)
-  <br/>
-  <b>uint64_t</b> <b>platform_get_time_us</b> (void)
-  <br/>
-  void <b>platform_sleep_ms</b> (unsigned int ms)
-  <br/>
-  Sleep for a specified number of milliseconds. void <b>platform_sleep_us</b>
-    (unsigned int us)
-  <br/>
-  High-precision sleep function with microsecond precision. <b>uint64_t</b>
-    <b>platform_get_monotonic_time_ns</b> (void)
-  <br/>
-  <b>uint64_t</b> <b>platform_get_monotonic_time_us</b> (void)
-  <br/>
-  Get monotonic time in microseconds. void <b>platform_sleep_ns</b>
-    (<b>uint64_t</b> ns)
-  <br/>
-  Platform-safe sleep function with nanosecond precision.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Time functions for WASM/Emscripten.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/time.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> platform_get_monotonic_time_ns (void )</h2>
-<p class="Pp">Definition at line <b>38</b> of file
-  <b>platform/wasm/time.c</b>.</p>
-<pre>38                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>time.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">time.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">time.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">time.c - Time functions for WASM/Emscripten.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>platform_get_time_ms</b> (void)
+            <br />
+            <b>uint64_t</b> <b>platform_get_time_us</b> (void)
+            <br />
+            void <b>platform_sleep_ms</b> (unsigned int ms)
+            <br />
+            Sleep for a specified number of milliseconds. void
+            <b>platform_sleep_us</b>
+            (unsigned int us)
+            <br />
+            High-precision sleep function with microsecond precision.
+            <b>uint64_t</b> <b>platform_get_monotonic_time_ns</b> (void)
+            <br />
+            <b>uint64_t</b> <b>platform_get_monotonic_time_us</b> (void)
+            <br />
+            Get monotonic time in microseconds. void
+            <b>platform_sleep_ns</b> (<b>uint64_t</b> ns)
+            <br />
+            Platform-safe sleep function with nanosecond precision.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Time functions for WASM/Emscripten.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>platform/wasm/time.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> platform_get_monotonic_time_ns (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>platform/wasm/time.c</b>.
+          </p>
+          <pre>
+38                                               {
 39   struct timespec ts;
 40   clock_gettime(CLOCK_MONOTONIC, &amp;ts);
 41   return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_get_monotonic_time_ns()</b>.</p>
-<p class="Pp">Referenced by <b>platform_get_monotonic_time_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> platform_get_time_ms (void )</h2>
-<p class="Pp">Definition at line <b>12</b> of file
-  <b>platform/wasm/time.c</b>.</p>
-<pre>12                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_get_monotonic_time_ns()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_get_monotonic_time_ns()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> platform_get_time_ms (void )</h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>platform/wasm/time.c</b>.
+          </p>
+          <pre>
+12                                     {
 13   struct timeval tv;
 14   gettimeofday(&amp;tv, NULL);
 15   return (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
 16 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_get_time_ms()</b>.</p>
-<p class="Pp">Referenced by <b>platform_get_time_ms()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> platform_get_time_us (void )</h2>
-<p class="Pp">Definition at line <b>18</b> of file
-  <b>platform/wasm/time.c</b>.</p>
-<pre>18                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_get_time_ms()</b>.</p>
+          <p class="Pp">Referenced by <b>platform_get_time_ms()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> platform_get_time_us (void )</h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>platform/wasm/time.c</b>.
+          </p>
+          <pre>
+18                                     {
 19   struct timeval tv;
 20   gettimeofday(&amp;tv, NULL);
 21   return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
 22 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_get_time_us()</b>.</p>
-<p class="Pp">Referenced by <b>platform_get_time_us()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_get_time_us()</b>.</p>
+          <p class="Pp">Referenced by <b>platform_get_time_us()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

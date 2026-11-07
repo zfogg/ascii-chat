@@ -1,301 +1,393 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>stats.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">stats.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">stats.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">stats.c - &#x1F4CA; Server performance monitoring: resource
-    utilization tracking, client metrics, and health reporting</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>stats_init</b> (void)
-  <br/>
-  Initialize the stats mutex. void <b>stats_cleanup</b> (void)
-  <br/>
-  Cleanup the stats mutex. void * <b>stats_logger_thread</b> (void *arg)
-  <br/>
-  Main statistics collection and reporting thread function. void
-    <b>update_server_stats</b> (void)
-  <br/>
-  Update global server statistics (placeholder). void <b>log_server_stats</b>
-    (void)
-  <br/>
-  Log comprehensive server statistics summary.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>server_stats_t</b> <b>g_stats</b> = {0}
-  <br/>
-  Global server statistics structure. <b>mutex_t</b> <b>g_stats_mutex</b> = {0}
-  <br/>
-  Mutex protecting global server statistics.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4CA; Server performance monitoring: resource utilization
-    tracking, client metrics, and health reporting</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="1"><a class="permalink" href="#1">1. Continuous monitoring of
-  server performance metricsmetricsPer-client statistics collection and
-  reportingreportingBuffer pool utilization trackingtrackingPacket queue
-  performance analysisanalysisHash table efficiency monitoringmonitoringPeriodic
-  statistics logging for operational visibility MONITORING ARCHITECTURE:
-  </a></h1>
-<p class="Pp">STATISTICS COLLECTION THREAD:</p>
-<ul class="Bl-bullet">
-  <li>Dedicated background thread for non-intrusive monitoring</li>
-  <li>30-second reporting intervals (configurable)</li>
-  <li>Interruptible sleep for responsive shutdown</li>
-  <li>Thread-safe data collection from all system components</li>
-</ul>
-<p class="Pp">PERFORMANCE IMPACT MINIMIZATION:</p>
-<ul class="Bl-bullet">
-  <li>Read-only access to operational data structures</li>
-  <li>Minimal locking (reader locks where possible)</li>
-  <li>Background processing doesn't affect real-time performance</li>
-  <li>Throttled logging to prevent log spam</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MONITORED_SUBSYSTEMS:"><a class="permalink" href="#MONITORED_SUBSYSTEMS:">MONITORED
-  SUBSYSTEMS: </a></h1>
-<p class="Pp">CLIENT MANAGEMENT METRICS:</p>
-<ul class="Bl-bullet">
-  <li>Active client count</li>
-  <li>Clients with audio capabilities</li>
-  <li>Clients with video capabilities</li>
-  <li>Connection duration and activity patterns</li>
-</ul>
-<p class="Pp">BUFFER POOL PERFORMANCE:</p>
-<ul class="Bl-bullet">
-  <li>Global buffer pool utilization</li>
-  <li>Allocation/deallocation rates</li>
-  <li>Peak usage patterns</li>
-  <li>Memory efficiency metrics</li>
-</ul>
-<p class="Pp">PACKET QUEUE STATISTICS:</p>
-<ul class="Bl-bullet">
-  <li>Per-client queue depths</li>
-  <li>Enqueue/dequeue rates</li>
-  <li>Packet drop rates under load</li>
-  <li>Queue overflow incidents</li>
-</ul>
-<p class="Pp">HASH TABLE EFFICIENCY:</p>
-<ul class="Bl-bullet">
-  <li>Client lookup performance</li>
-  <li>Hash collision rates</li>
-  <li>Load factor monitoring</li>
-  <li>Access pattern analysis</li>
-</ul>
-<p class="Pp">FRAME PROCESSING METRICS:</p>
-<ul class="Bl-bullet">
-  <li>Total frames captured</li>
-  <li>Total frames sent to clients</li>
-  <li>Frame drop rate under load</li>
-  <li>Blank frame count (no video sources)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY_AND_DATA_CONSISTENCY:"><a class="permalink" href="#THREAD_SAFETY_AND_DATA_CONSISTENCY:">THREAD
-  SAFETY AND DATA CONSISTENCY: </a></h1>
-<p class="Pp">NON-INTRUSIVE MONITORING:</p>
-<ul class="Bl-bullet">
-  <li>Uses reader locks to avoid blocking operational threads</li>
-  <li>Takes atomic snapshots of volatile data</li>
-  <li>Minimal impact on render thread performance</li>
-  <li>Safe concurrent access to client data</li>
-</ul>
-<p class="Pp">STATISTICS ATOMICITY:</p>
-<ul class="Bl-bullet">
-  <li>Global statistics protected by dedicated mutex</li>
-  <li>Consistent reporting even during concurrent updates</li>
-  <li>Thread-safe access to shared counters</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="OPERATIONAL_INTEGRATION:"><a class="permalink" href="#OPERATIONAL_INTEGRATION:">OPERATIONAL
-  INTEGRATION: </a></h1>
-<p class="Pp">LIFECYCLE MANAGEMENT:</p>
-<ul class="Bl-bullet">
-  <li>Statistics thread started in main.c during server initialization</li>
-  <li>Graceful shutdown coordination with other threads</li>
-  <li>Clean resource cleanup on server termination</li>
-</ul>
-<p class="Pp">DEBUGGING SUPPORT:</p>
-<ul class="Bl-bullet">
-  <li>Extensive debug logging for troubleshooting</li>
-  <li>Performance bottleneck identification</li>
-  <li>System health monitoring</li>
-  <li>Operational visibility for administrators</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="EXTENSIBILITY_FRAMEWORK:"><a class="permalink" href="#EXTENSIBILITY_FRAMEWORK:">EXTENSIBILITY
-  FRAMEWORK: </a></h1>
-<p class="Pp">METRIC ADDITION:</p>
-<ul class="Bl-bullet">
-  <li>Easy addition of new performance counters</li>
-  <li>Modular statistics collection</li>
-  <li>Configurable reporting intervals</li>
-  <li>Custom metric aggregation</li>
-</ul>
-<p class="Pp">INTEGRATION POINTS:</p>
-<ul class="Bl-bullet">
-  <li>client.c: Client lifecycle statistics</li>
-  <li>render.c: Frame processing metrics</li>
-  <li><b>buffer_pool.c</b>: Memory utilization data</li>
-  <li>packet_queue.c: Queue performance data</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:"><a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:">WHY
-  THIS MODULAR DESIGN: </a></h1>
-<p class="Pp">The original server.c had no centralized monitoring, making it
-    impossible to:</p>
-<ul class="Bl-bullet">
-  <li>Understand system performance characteristics</li>
-  <li>Debug performance issues under load</li>
-  <li>Monitor resource utilization</li>
-  <li>Track client behavior patterns</li>
-</ul>
-<p class="Pp">This separation provides:</p>
-<ul class="Bl-bullet">
-  <li>Centralized performance visibility</li>
-  <li>Non-intrusive monitoring infrastructure</li>
-  <li>Operational debugging capabilities</li>
-  <li>System health awareness</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_PHILOSOPHY:"><a class="permalink" href="#PERFORMANCE_PHILOSOPHY:">PERFORMANCE
-  PHILOSOPHY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Monitoring should never impact real-time performance</li>
-  <li>Statistics collection uses minimal CPU overhead</li>
-  <li>Background processing model</li>
-  <li>Graceful degradation under extreme load</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">September 2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0 (Post-Modularization)</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">main.c For statistics thread <b>lifecycle</b> management
-<p class="Pp"></p>
-<p class="Pp"><b>buffer_pool.c</b> For memory utilization monitoring</p>
-<p class="Pp"></p>
-<p class="Pp">packet_queue.c For queue performance metrics</p>
-</div>
-<p class="Pp">Definition in file <b>stats.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_log_server_stats_(void_)"><a class="permalink" href="#void_log_server_stats_(void_)">void
-  log_server_stats (void )</a></h2>
-<p class="Pp">Log comprehensive server statistics summary. Outputs a formatted
-    summary of server performance statistics including frame processing rates,
-    throughput metrics, and system health indicators. This function provides
-    operational visibility into server performance.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="STATISTICS_REPORTED:"><a class="permalink" href="#STATISTICS_REPORTED:">STATISTICS
-  REPORTED: </a></h1>
-<p class="Pp">FRAME PROCESSING METRICS:</p>
-<ul class="Bl-bullet">
-  <li>frames_captured: Total frames received from all clients</li>
-  <li>frames_sent: Total ASCII frames delivered to all clients</li>
-  <li>frames_dropped: Frames lost due to overload or errors</li>
-</ul>
-<p class="Pp">PERFORMANCE INDICATORS:</p>
-<ul class="Bl-bullet">
-  <li>avg_capture_fps: Moving average of frame capture rate</li>
-  <li>avg_send_fps: Moving average of frame delivery rate</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
-  SAFETY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Acquires g_stats_mutex for atomic statistics snapshot</li>
-  <li>Prevents inconsistent reporting during concurrent updates</li>
-  <li>Minimal lock hold time (only during data copy)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="USAGE_SCENARIOS:"><a class="permalink" href="#USAGE_SCENARIOS:">USAGE
-  SCENARIOS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Periodic performance reporting</li>
-  <li>Debug information during troubleshooting</li>
-  <li>System health monitoring</li>
-  <li>Performance trend analysis</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="OUTPUT_FORMAT:"><a class="permalink" href="#OUTPUT_FORMAT:">OUTPUT
-  FORMAT: </a></h1>
-<ul class="Bl-bullet">
-  <li>Human-readable format suitable for log analysis</li>
-  <li>Structured data for automated monitoring</li>
-  <li>Consistent formatting for operational visibility</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Function provides thread-safe access to global statistics
-<p class="Pp"></p>
-<p class="Pp">Statistics snapshot is atomic to ensure consistency</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>update_server_stats()</b> For statistics update
-  implementation</div>
-<p class="Pp">Definition at line <b>554</b> of file <b>stats.c</b>.</p>
-<pre>554                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>stats.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">stats.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">stats.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          stats.c - &#x1F4CA; Server performance monitoring: resource
+          utilization tracking, client metrics, and health reporting
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>stats_init</b> (void)
+            <br />
+            Initialize the stats mutex. void <b>stats_cleanup</b> (void)
+            <br />
+            Cleanup the stats mutex. void * <b>stats_logger_thread</b> (void
+            *arg)
+            <br />
+            Main statistics collection and reporting thread function. void
+            <b>update_server_stats</b> (void)
+            <br />
+            Update global server statistics (placeholder). void
+            <b>log_server_stats</b>
+            (void)
+            <br />
+            Log comprehensive server statistics summary.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>server_stats_t</b> <b>g_stats</b> = {0}
+            <br />
+            Global server statistics structure. <b>mutex_t</b>
+            <b>g_stats_mutex</b> = {0}
+            <br />
+            Mutex protecting global server statistics.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4CA; Server performance monitoring: resource utilization
+          tracking, client metrics, and health reporting
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="1">
+          <a class="permalink" href="#1"
+            >1. Continuous monitoring of server performance
+            metricsmetricsPer-client statistics collection and
+            reportingreportingBuffer pool utilization trackingtrackingPacket
+            queue performance analysisanalysisHash table efficiency
+            monitoringmonitoringPeriodic statistics logging for operational
+            visibility MONITORING ARCHITECTURE:
+          </a>
+        </h1>
+        <p class="Pp">STATISTICS COLLECTION THREAD:</p>
+        <ul class="Bl-bullet">
+          <li>Dedicated background thread for non-intrusive monitoring</li>
+          <li>30-second reporting intervals (configurable)</li>
+          <li>Interruptible sleep for responsive shutdown</li>
+          <li>Thread-safe data collection from all system components</li>
+        </ul>
+        <p class="Pp">PERFORMANCE IMPACT MINIMIZATION:</p>
+        <ul class="Bl-bullet">
+          <li>Read-only access to operational data structures</li>
+          <li>Minimal locking (reader locks where possible)</li>
+          <li>Background processing doesn't affect real-time performance</li>
+          <li>Throttled logging to prevent log spam</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MONITORED_SUBSYSTEMS:">
+          <a class="permalink" href="#MONITORED_SUBSYSTEMS:"
+            >MONITORED SUBSYSTEMS:
+          </a>
+        </h1>
+        <p class="Pp">CLIENT MANAGEMENT METRICS:</p>
+        <ul class="Bl-bullet">
+          <li>Active client count</li>
+          <li>Clients with audio capabilities</li>
+          <li>Clients with video capabilities</li>
+          <li>Connection duration and activity patterns</li>
+        </ul>
+        <p class="Pp">BUFFER POOL PERFORMANCE:</p>
+        <ul class="Bl-bullet">
+          <li>Global buffer pool utilization</li>
+          <li>Allocation/deallocation rates</li>
+          <li>Peak usage patterns</li>
+          <li>Memory efficiency metrics</li>
+        </ul>
+        <p class="Pp">PACKET QUEUE STATISTICS:</p>
+        <ul class="Bl-bullet">
+          <li>Per-client queue depths</li>
+          <li>Enqueue/dequeue rates</li>
+          <li>Packet drop rates under load</li>
+          <li>Queue overflow incidents</li>
+        </ul>
+        <p class="Pp">HASH TABLE EFFICIENCY:</p>
+        <ul class="Bl-bullet">
+          <li>Client lookup performance</li>
+          <li>Hash collision rates</li>
+          <li>Load factor monitoring</li>
+          <li>Access pattern analysis</li>
+        </ul>
+        <p class="Pp">FRAME PROCESSING METRICS:</p>
+        <ul class="Bl-bullet">
+          <li>Total frames captured</li>
+          <li>Total frames sent to clients</li>
+          <li>Frame drop rate under load</li>
+          <li>Blank frame count (no video sources)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY_AND_DATA_CONSISTENCY:">
+          <a class="permalink" href="#THREAD_SAFETY_AND_DATA_CONSISTENCY:"
+            >THREAD SAFETY AND DATA CONSISTENCY:
+          </a>
+        </h1>
+        <p class="Pp">NON-INTRUSIVE MONITORING:</p>
+        <ul class="Bl-bullet">
+          <li>Uses reader locks to avoid blocking operational threads</li>
+          <li>Takes atomic snapshots of volatile data</li>
+          <li>Minimal impact on render thread performance</li>
+          <li>Safe concurrent access to client data</li>
+        </ul>
+        <p class="Pp">STATISTICS ATOMICITY:</p>
+        <ul class="Bl-bullet">
+          <li>Global statistics protected by dedicated mutex</li>
+          <li>Consistent reporting even during concurrent updates</li>
+          <li>Thread-safe access to shared counters</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="OPERATIONAL_INTEGRATION:">
+          <a class="permalink" href="#OPERATIONAL_INTEGRATION:"
+            >OPERATIONAL INTEGRATION:
+          </a>
+        </h1>
+        <p class="Pp">LIFECYCLE MANAGEMENT:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Statistics thread started in main.c during server initialization
+          </li>
+          <li>Graceful shutdown coordination with other threads</li>
+          <li>Clean resource cleanup on server termination</li>
+        </ul>
+        <p class="Pp">DEBUGGING SUPPORT:</p>
+        <ul class="Bl-bullet">
+          <li>Extensive debug logging for troubleshooting</li>
+          <li>Performance bottleneck identification</li>
+          <li>System health monitoring</li>
+          <li>Operational visibility for administrators</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="EXTENSIBILITY_FRAMEWORK:">
+          <a class="permalink" href="#EXTENSIBILITY_FRAMEWORK:"
+            >EXTENSIBILITY FRAMEWORK:
+          </a>
+        </h1>
+        <p class="Pp">METRIC ADDITION:</p>
+        <ul class="Bl-bullet">
+          <li>Easy addition of new performance counters</li>
+          <li>Modular statistics collection</li>
+          <li>Configurable reporting intervals</li>
+          <li>Custom metric aggregation</li>
+        </ul>
+        <p class="Pp">INTEGRATION POINTS:</p>
+        <ul class="Bl-bullet">
+          <li>client.c: Client lifecycle statistics</li>
+          <li>render.c: Frame processing metrics</li>
+          <li><b>buffer_pool.c</b>: Memory utilization data</li>
+          <li>packet_queue.c: Queue performance data</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:">
+          <a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:"
+            >WHY THIS MODULAR DESIGN:
+          </a>
+        </h1>
+        <p class="Pp">
+          The original server.c had no centralized monitoring, making it
+          impossible to:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Understand system performance characteristics</li>
+          <li>Debug performance issues under load</li>
+          <li>Monitor resource utilization</li>
+          <li>Track client behavior patterns</li>
+        </ul>
+        <p class="Pp">This separation provides:</p>
+        <ul class="Bl-bullet">
+          <li>Centralized performance visibility</li>
+          <li>Non-intrusive monitoring infrastructure</li>
+          <li>Operational debugging capabilities</li>
+          <li>System health awareness</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_PHILOSOPHY:">
+          <a class="permalink" href="#PERFORMANCE_PHILOSOPHY:"
+            >PERFORMANCE PHILOSOPHY:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Monitoring should never impact real-time performance</li>
+          <li>Statistics collection uses minimal CPU overhead</li>
+          <li>Background processing model</li>
+          <li>Graceful degradation under extreme load</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">September 2025</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">2.0 (Post-Modularization)</div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          main.c For statistics thread <b>lifecycle</b> management
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>buffer_pool.c</b> For memory utilization monitoring
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">packet_queue.c For queue performance metrics</p>
+        </div>
+        <p class="Pp">Definition in file <b>stats.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_server_stats_(void_)">
+            <a class="permalink" href="#void_log_server_stats_(void_)"
+              >void log_server_stats (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Log comprehensive server statistics summary. Outputs a formatted
+            summary of server performance statistics including frame processing
+            rates, throughput metrics, and system health indicators. This
+            function provides operational visibility into server performance.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="STATISTICS_REPORTED:">
+          <a class="permalink" href="#STATISTICS_REPORTED:"
+            >STATISTICS REPORTED:
+          </a>
+        </h1>
+        <p class="Pp">FRAME PROCESSING METRICS:</p>
+        <ul class="Bl-bullet">
+          <li>frames_captured: Total frames received from all clients</li>
+          <li>frames_sent: Total ASCII frames delivered to all clients</li>
+          <li>frames_dropped: Frames lost due to overload or errors</li>
+        </ul>
+        <p class="Pp">PERFORMANCE INDICATORS:</p>
+        <ul class="Bl-bullet">
+          <li>avg_capture_fps: Moving average of frame capture rate</li>
+          <li>avg_send_fps: Moving average of frame delivery rate</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY:">
+          <a class="permalink" href="#THREAD_SAFETY:">THREAD SAFETY: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Acquires g_stats_mutex for atomic statistics snapshot</li>
+          <li>Prevents inconsistent reporting during concurrent updates</li>
+          <li>Minimal lock hold time (only during data copy)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="USAGE_SCENARIOS:">
+          <a class="permalink" href="#USAGE_SCENARIOS:">USAGE SCENARIOS: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Periodic performance reporting</li>
+          <li>Debug information during troubleshooting</li>
+          <li>System health monitoring</li>
+          <li>Performance trend analysis</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="OUTPUT_FORMAT:">
+          <a class="permalink" href="#OUTPUT_FORMAT:">OUTPUT FORMAT: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Human-readable format suitable for log analysis</li>
+          <li>Structured data for automated monitoring</li>
+          <li>Consistent formatting for operational visibility</li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Function provides thread-safe access to global statistics
+          <p class="Pp"></p>
+          <p class="Pp">Statistics snapshot is atomic to ensure consistency</p>
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          <b>update_server_stats()</b> For statistics update implementation
+        </div>
+        <p class="Pp">Definition at line <b>554</b> of file <b>stats.c</b>.</p>
+        <pre>
+554                             {
 555   // Check if stats mutex is initialized (safe in debug builds where stats_init() may not be called)
 556   if (!lifecycle_is_initialized(&amp;g_stats_lc)) {
 557     return; // Mutex not initialized, skip logging
@@ -312,206 +404,255 @@
 568            (unsigned long long)g_stats.frames_dropped, g_stats.avg_capture_fps, g_stats.avg_send_fps);
 569   mutex_unlock(&amp;g_stats_mutex);
 570 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_stats</b>, <b>g_stats_mutex</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_info</b>, <b>mutex_lock</b>, and
-    <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
-<section class="Ss">
-<h2 class="Ss" id="void_stats_cleanup_(void_)"><a class="permalink" href="#void_stats_cleanup_(void_)">void
-  stats_cleanup (void )</a></h2>
-<p class="Pp">Cleanup the stats mutex. Uses lifecycle gate to safely destroy the
-    stats mutex. Ensures other threads don't attempt to use the mutex after it's
-    destroyed.</p>
-<p class="Pp">Definition at line <b>201</b> of file <b>stats.c</b>.</p>
-<pre>201                          {
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>g_stats</b>, <b>g_stats_mutex</b>,
+          <b>lifecycle_is_initialized()</b>, <b>log_info</b>, <b>mutex_lock</b>,
+          and <b>mutex_unlock</b>.
+        </p>
+        <p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
+        <section class="Ss">
+          <h2 class="Ss" id="void_stats_cleanup_(void_)">
+            <a class="permalink" href="#void_stats_cleanup_(void_)"
+              >void stats_cleanup (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Cleanup the stats mutex. Uses lifecycle gate to safely destroy the
+            stats mutex. Ensures other threads don't attempt to use the mutex
+            after it's destroyed.
+          </p>
+          <p class="Pp">
+            Definition at line <b>201</b> of file <b>stats.c</b>.
+          </p>
+          <pre>
+201                          {
 202   lifecycle_shutdown(&amp;g_stats_lc);
 203 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_stats_init_(void_)"><a class="permalink" href="#int_stats_init_(void_)">int
-  stats_init (void )</a></h2>
-<p class="Pp">Initialize the stats mutex.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>188</b> of file <b>stats.c</b>.</p>
-<pre>188                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_stats_init_(void_)">
+            <a class="permalink" href="#int_stats_init_(void_)"
+              >int stats_init (void )</a
+            >
+          </h2>
+          <p class="Pp">Initialize the stats mutex.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>188</b> of file <b>stats.c</b>.
+          </p>
+          <pre>
+188                      {
 189   if (!lifecycle_init(&amp;g_stats_lc, &quot;stats&quot;)) {
 190     return 0; // Already initialized
 191   }
 192   return 0;
 193 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_init()</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_stats_logger_thread_(void_*_arg)"><a class="permalink" href="#void_*_stats_logger_thread_(void_*_arg)">void
-  * stats_logger_thread (void * arg)</a></h2>
-<p class="Pp">Main statistics collection and reporting thread function. This
-    background thread performs continuous monitoring of server performance and
-    logs comprehensive statistics reports at regular intervals. It operates
-    independently of the main server processing threads to avoid performance
-    impact.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_EXECUTION_FLOW:"><a class="permalink" href="#THREAD_EXECUTION_FLOW:">THREAD
-  EXECUTION FLOW: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>INITIALIZATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Log thread startup (with debug instrumentation)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Initialize loop counters for debugging</dd>
-  <dt> &#x2022;</dt>
-  <dd>Set up monitoring infrastructure</dd>
-  <dt>2.</dt>
-  <dd>MAIN MONITORING LOOP:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check shutdown flag frequently (every 10ms)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Sleep in small intervals to maintain responsiveness</dd>
-  <dt> &#x2022;</dt>
-  <dd>Collect statistics from all system components every 30 seconds</dd>
-  <dt> &#x2022;</dt>
-  <dd>Generate comprehensive performance reports</dd>
-  <dt>3.</dt>
-  <dd>STATISTICS COLLECTION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Global buffer pool utilization</dd>
-  <dt> &#x2022;</dt>
-  <dd>Per-client connection and activity status</dd>
-  <dt> &#x2022;</dt>
-  <dd>Packet queue performance metrics</dd>
-  <dt> &#x2022;</dt>
-  <dd>Hash table efficiency statistics</dd>
-  <dt> &#x2022;</dt>
-  <dd>Frame processing counters</dd>
-  <dt>4.</dt>
-  <dd>CLEANUP AND EXIT:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Detect shutdown signal and exit loop gracefully</dd>
-  <dt> &#x2022;</dt>
-  <dd>Log thread termination for debugging</dd>
-  <dt> &#x2022;</dt>
-  <dd>Return NULL to indicate clean exit</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MONITORING_METHODOLOGY:"><a class="permalink" href="#MONITORING_METHODOLOGY:">MONITORING
-  METHODOLOGY: </a></h1>
-<p class="Pp">NON-BLOCKING DATA COLLECTION:</p>
-<ul class="Bl-bullet">
-  <li>Uses reader locks on shared data structures</li>
-  <li>Takes atomic snapshots of volatile counters</li>
-  <li>Minimal impact on operational performance</li>
-  <li>Safe concurrent access with render threads</li>
-</ul>
-<p class="Pp">RESPONSIVE SHUTDOWN:</p>
-<ul class="Bl-bullet">
-  <li>Checks g_should_exit every 10ms during sleep periods</li>
-  <li>Exits monitoring loop immediately when shutdown detected</li>
-  <li>No hanging or delayed shutdown behavior</li>
-  <li>Clean resource cleanup</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_METRICS_COLLECTED:"><a class="permalink" href="#PERFORMANCE_METRICS_COLLECTED:">PERFORMANCE
-  METRICS COLLECTED: </a></h1>
-<p class="Pp">CLIENT STATISTICS:</p>
-<ul class="Bl-bullet">
-  <li>Total active clients</li>
-  <li>Clients with audio queues active</li>
-  <li>Clients with video queues active</li>
-  <li>Per-client connection duration</li>
-</ul>
-<p class="Pp">BUFFER POOL METRICS:</p>
-<ul class="Bl-bullet">
-  <li>Global allocation/deallocation rates</li>
-  <li>Peak memory usage patterns</li>
-  <li>Buffer pool efficiency</li>
-  <li>Memory fragmentation indicators</li>
-</ul>
-<p class="Pp">PACKET QUEUE PERFORMANCE:</p>
-<ul class="Bl-bullet">
-  <li>Per-client enqueue/dequeue rates</li>
-  <li>Packet drop incidents</li>
-  <li>Queue depth histograms</li>
-  <li>Overflow frequency analysis</li>
-</ul>
-<p class="Pp">HASH TABLE EFFICIENCY:</p>
-<ul class="Bl-bullet">
-  <li>Client lookup performance</li>
-  <li>Hash collision statistics</li>
-  <li>Load balancing effectiveness</li>
-  <li>Access pattern analysis</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="DEBUGGING_AND_TROUBLESHOOTING:"><a class="permalink" href="#DEBUGGING_AND_TROUBLESHOOTING:">DEBUGGING
-  AND TROUBLESHOOTING: </a></h1>
-<p class="Pp">EXTENSIVE DEBUG LOGGING: The function contains detailed debug
-    printf statements for troubleshooting threading issues. This instrumentation
-    helps diagnose:</p>
-<ul class="Bl-bullet">
-  <li>Thread startup/shutdown problems</li>
-  <li>Shutdown detection timing issues</li>
-  <li>Sleep/wake cycle behavior</li>
-  <li>Statistics collection reliability</li>
-</ul>
-<p class="Pp">DEBUG OUTPUT INCLUDES:</p>
-<ul class="Bl-bullet">
-  <li>Function entry/exit points</li>
-  <li>Loop iteration counts</li>
-  <li>Shutdown flag state changes</li>
-  <li>Sleep cycle progression</li>
-  <li>Statistics collection timing</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_HANDLING:"><a class="permalink" href="#ERROR_HANDLING:">ERROR
-  HANDLING: </a></h1>
-<ul class="Bl-bullet">
-  <li>Graceful handling of data access failures</li>
-  <li>Continued operation if individual metrics fail</li>
-  <li>No fatal errors that would crash statistics thread</li>
-  <li>Degraded reporting if subsystems unavailable</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PERFORMANCE_CONSIDERATIONS:"><a class="permalink" href="#PERFORMANCE_CONSIDERATIONS:">PERFORMANCE
-  CONSIDERATIONS: </a></h1>
-<ul class="Bl-bullet">
-  <li>30-second reporting interval balances visibility vs overhead</li>
-  <li>10ms sleep granularity provides responsive shutdown</li>
-  <li>Read-only access minimizes lock contention</li>
-  <li>Background processing doesn't affect real-time performance</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Thread argument (unused - required by thread
-  interface)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">NULL on clean thread termination</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function runs continuously until server shutdown
-<p class="Pp"></p>
-<p class="Pp">Debug printf statements help diagnose threading issues</p>
-<p class="Pp"></p>
-<p class="Pp">All statistics collection is non-blocking and read-only</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Thread must be properly joined to prevent resource
-  leaks</div>
-<p class="Pp">Definition at line <b>327</b> of file <b>stats.c</b>.</p>
-<pre>327                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>lifecycle_init()</b>.</p>
+          <p class="Pp">Referenced by <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_stats_logger_thread_(void_*_arg)">
+            <a class="permalink" href="#void_*_stats_logger_thread_(void_*_arg)"
+              >void * stats_logger_thread (void * arg)</a
+            >
+          </h2>
+          <p class="Pp">
+            Main statistics collection and reporting thread function. This
+            background thread performs continuous monitoring of server
+            performance and logs comprehensive statistics reports at regular
+            intervals. It operates independently of the main server processing
+            threads to avoid performance impact.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_EXECUTION_FLOW:">
+          <a class="permalink" href="#THREAD_EXECUTION_FLOW:"
+            >THREAD EXECUTION FLOW:
+          </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>INITIALIZATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Log thread startup (with debug instrumentation)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Initialize loop counters for debugging</dd>
+          <dt>&#x2022;</dt>
+          <dd>Set up monitoring infrastructure</dd>
+          <dt>2.</dt>
+          <dd>MAIN MONITORING LOOP:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Check shutdown flag frequently (every 10ms)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Sleep in small intervals to maintain responsiveness</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Collect statistics from all system components every 30 seconds
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Generate comprehensive performance reports</dd>
+          <dt>3.</dt>
+          <dd>STATISTICS COLLECTION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Global buffer pool utilization</dd>
+          <dt>&#x2022;</dt>
+          <dd>Per-client connection and activity status</dd>
+          <dt>&#x2022;</dt>
+          <dd>Packet queue performance metrics</dd>
+          <dt>&#x2022;</dt>
+          <dd>Hash table efficiency statistics</dd>
+          <dt>&#x2022;</dt>
+          <dd>Frame processing counters</dd>
+          <dt>4.</dt>
+          <dd>CLEANUP AND EXIT:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Detect shutdown signal and exit loop gracefully</dd>
+          <dt>&#x2022;</dt>
+          <dd>Log thread termination for debugging</dd>
+          <dt>&#x2022;</dt>
+          <dd>Return NULL to indicate clean exit</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MONITORING_METHODOLOGY:">
+          <a class="permalink" href="#MONITORING_METHODOLOGY:"
+            >MONITORING METHODOLOGY:
+          </a>
+        </h1>
+        <p class="Pp">NON-BLOCKING DATA COLLECTION:</p>
+        <ul class="Bl-bullet">
+          <li>Uses reader locks on shared data structures</li>
+          <li>Takes atomic snapshots of volatile counters</li>
+          <li>Minimal impact on operational performance</li>
+          <li>Safe concurrent access with render threads</li>
+        </ul>
+        <p class="Pp">RESPONSIVE SHUTDOWN:</p>
+        <ul class="Bl-bullet">
+          <li>Checks g_should_exit every 10ms during sleep periods</li>
+          <li>Exits monitoring loop immediately when shutdown detected</li>
+          <li>No hanging or delayed shutdown behavior</li>
+          <li>Clean resource cleanup</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_METRICS_COLLECTED:">
+          <a class="permalink" href="#PERFORMANCE_METRICS_COLLECTED:"
+            >PERFORMANCE METRICS COLLECTED:
+          </a>
+        </h1>
+        <p class="Pp">CLIENT STATISTICS:</p>
+        <ul class="Bl-bullet">
+          <li>Total active clients</li>
+          <li>Clients with audio queues active</li>
+          <li>Clients with video queues active</li>
+          <li>Per-client connection duration</li>
+        </ul>
+        <p class="Pp">BUFFER POOL METRICS:</p>
+        <ul class="Bl-bullet">
+          <li>Global allocation/deallocation rates</li>
+          <li>Peak memory usage patterns</li>
+          <li>Buffer pool efficiency</li>
+          <li>Memory fragmentation indicators</li>
+        </ul>
+        <p class="Pp">PACKET QUEUE PERFORMANCE:</p>
+        <ul class="Bl-bullet">
+          <li>Per-client enqueue/dequeue rates</li>
+          <li>Packet drop incidents</li>
+          <li>Queue depth histograms</li>
+          <li>Overflow frequency analysis</li>
+        </ul>
+        <p class="Pp">HASH TABLE EFFICIENCY:</p>
+        <ul class="Bl-bullet">
+          <li>Client lookup performance</li>
+          <li>Hash collision statistics</li>
+          <li>Load balancing effectiveness</li>
+          <li>Access pattern analysis</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="DEBUGGING_AND_TROUBLESHOOTING:">
+          <a class="permalink" href="#DEBUGGING_AND_TROUBLESHOOTING:"
+            >DEBUGGING AND TROUBLESHOOTING:
+          </a>
+        </h1>
+        <p class="Pp">
+          EXTENSIVE DEBUG LOGGING: The function contains detailed debug printf
+          statements for troubleshooting threading issues. This instrumentation
+          helps diagnose:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Thread startup/shutdown problems</li>
+          <li>Shutdown detection timing issues</li>
+          <li>Sleep/wake cycle behavior</li>
+          <li>Statistics collection reliability</li>
+        </ul>
+        <p class="Pp">DEBUG OUTPUT INCLUDES:</p>
+        <ul class="Bl-bullet">
+          <li>Function entry/exit points</li>
+          <li>Loop iteration counts</li>
+          <li>Shutdown flag state changes</li>
+          <li>Sleep cycle progression</li>
+          <li>Statistics collection timing</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_HANDLING:">
+          <a class="permalink" href="#ERROR_HANDLING:">ERROR HANDLING: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Graceful handling of data access failures</li>
+          <li>Continued operation if individual metrics fail</li>
+          <li>No fatal errors that would crash statistics thread</li>
+          <li>Degraded reporting if subsystems unavailable</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PERFORMANCE_CONSIDERATIONS:">
+          <a class="permalink" href="#PERFORMANCE_CONSIDERATIONS:"
+            >PERFORMANCE CONSIDERATIONS:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>30-second reporting interval balances visibility vs overhead</li>
+          <li>10ms sleep granularity provides responsive shutdown</li>
+          <li>Read-only access minimizes lock contention</li>
+          <li>Background processing doesn't affect real-time performance</li>
+        </ul>
+        <p class="Pp"><b>Parameters</b></p>
+        <div class="Bd-indent">
+          <i>arg</i> Thread argument (unused - required by thread interface)
+        </div>
+        <p class="Pp"><b>Returns</b></p>
+        <div class="Bd-indent">NULL on clean thread termination</div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          This function runs continuously until server shutdown
+          <p class="Pp"></p>
+          <p class="Pp">
+            Debug printf statements help diagnose threading issues
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            All statistics collection is non-blocking and read-only
+          </p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Thread must be properly joined to prevent resource leaks
+        </div>
+        <p class="Pp">Definition at line <b>327</b> of file <b>stats.c</b>.</p>
+        <pre>
+327                                      {
 328   (void)arg;
 329
 330   while (!atomic_load_bool(&amp;g_should_exit)) {
@@ -628,60 +769,75 @@
 441
 442   return NULL;
 443 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::active</b>,
-    <b>asciichat_errno_destroy()</b>, <b>asciichat_error_stats_print()</b>,
-    <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
-    <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_XLARGE</b>,
-    <b>client_info::client_id</b>, <b>debug_sync_get_stats()</b>,
-    <b>debug_sync_is_initialized()</b>, <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, <b>g_should_exit</b>, <b>log_info</b>,
-    <b>log_server_stats()</b>, <b>MAX_CLIENTS</b>,
-    <b>client_info::outgoing_video_buffer</b>, <b>packet_queue_get_stats()</b>,
-    <b>platform_sleep_us()</b>, <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>,
-    <b>safe_snprintf()</b>, <b>stats</b>, <b>US_PER_MS_INT</b>, and
-    <b>video_frame_get_stats()</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
-<section class="Ss">
-<h2 class="Ss" id="void_update_server_stats_(void_)"><a class="permalink" href="#void_update_server_stats_(void_)">void
-  update_server_stats (void )</a></h2>
-<p class="Pp">Update global server statistics (placeholder). This function is
-    intended to update the global server statistics structure with current
-    performance metrics. Currently unimplemented but provides the framework for
-    centralized statistics updates.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PLANNED_FUNCTIONALITY:"><a class="permalink" href="#PLANNED_FUNCTIONALITY:">PLANNED
-  FUNCTIONALITY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Aggregate per-client frame counts into global totals</li>
-  <li>Calculate moving averages for FPS metrics</li>
-  <li>Update system health indicators</li>
-  <li>Compute performance trend data</li>
-</ul>
-<p class="Pp">IMPLEMENTATION STRATEGY:</p>
-<ul class="Bl-bullet">
-  <li>Thread-safe updates using g_stats_mutex</li>
-  <li>Atomic operations for frequently updated counters</li>
-  <li>Efficient aggregation algorithms</li>
-  <li>Minimal performance impact</li>
-</ul>
-<p class="Pp">INTEGRATION POINTS:</p>
-<ul class="Bl-bullet">
-  <li>Called by render threads when updating frame counts</li>
-  <li>Invoked by client management code for connection metrics</li>
-  <li>Used by packet queue systems for throughput tracking</li>
-</ul>
-<p class="Pp"><b>Todo</b></p>
-<div class="Bd-indent">Implement comprehensive statistics aggregation</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Function currently serves as placeholder for future
-  development</div>
-<p class="Pp">Definition at line <b>473</b> of file <b>stats.c</b>.</p>
-<pre>473                                {
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>client_info::active</b>,
+          <b>asciichat_errno_destroy()</b>,
+          <b>asciichat_error_stats_print()</b>, <b>atomic_load_bool()</b>,
+          <b>client_info::audio_queue</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+          <b>BUFFER_SIZE_XLARGE</b>, <b>client_info::client_id</b>,
+          <b>debug_sync_get_stats()</b>, <b>debug_sync_is_initialized()</b>,
+          <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
+          <b>g_should_exit</b>, <b>log_info</b>, <b>log_server_stats()</b>,
+          <b>MAX_CLIENTS</b>, <b>client_info::outgoing_video_buffer</b>,
+          <b>packet_queue_get_stats()</b>, <b>platform_sleep_us()</b>,
+          <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, <b>safe_snprintf()</b>,
+          <b>stats</b>, <b>US_PER_MS_INT</b>, and
+          <b>video_frame_get_stats()</b>.
+        </p>
+        <p class="Pp">Referenced by <b>server_main()</b>.</p>
+        <section class="Ss">
+          <h2 class="Ss" id="void_update_server_stats_(void_)">
+            <a class="permalink" href="#void_update_server_stats_(void_)"
+              >void update_server_stats (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Update global server statistics (placeholder). This function is
+            intended to update the global server statistics structure with
+            current performance metrics. Currently unimplemented but provides
+            the framework for centralized statistics updates.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PLANNED_FUNCTIONALITY:">
+          <a class="permalink" href="#PLANNED_FUNCTIONALITY:"
+            >PLANNED FUNCTIONALITY:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Aggregate per-client frame counts into global totals</li>
+          <li>Calculate moving averages for FPS metrics</li>
+          <li>Update system health indicators</li>
+          <li>Compute performance trend data</li>
+        </ul>
+        <p class="Pp">IMPLEMENTATION STRATEGY:</p>
+        <ul class="Bl-bullet">
+          <li>Thread-safe updates using g_stats_mutex</li>
+          <li>Atomic operations for frequently updated counters</li>
+          <li>Efficient aggregation algorithms</li>
+          <li>Minimal performance impact</li>
+        </ul>
+        <p class="Pp">INTEGRATION POINTS:</p>
+        <ul class="Bl-bullet">
+          <li>Called by render threads when updating frame counts</li>
+          <li>Invoked by client management code for connection metrics</li>
+          <li>Used by packet queue systems for throughput tracking</li>
+        </ul>
+        <p class="Pp"><b>Todo</b></p>
+        <div class="Bd-indent">
+          Implement comprehensive statistics aggregation
+        </div>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Function currently serves as placeholder for future development
+        </div>
+        <p class="Pp">Definition at line <b>473</b> of file <b>stats.c</b>.</p>
+        <pre>
+473                                {
 474   // Aggregate statistics from all active clients
 475   uint64_t total_frames_sent = 0;
 476   uint64_t total_frames_dropped = 0;
@@ -719,66 +875,89 @@
 508
 509   mutex_unlock(&amp;g_stats_mutex);
 510 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::active</b>, <b>atomic_load_bool()</b>,
-    <b>client_info::client_id</b>, <b>client_info::frames_sent</b>,
-    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>, <b>g_stats</b>,
-    <b>g_stats_mutex</b>, <b>MAX_CLIENTS</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>client_info::outgoing_video_buffer</b>,
-    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, <b>stats</b>, and
-    <b>video_frame_get_stats()</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>server_stats_t</b> g_stats = {0}</h2>
-<p class="Pp">Global server statistics structure. Maintains aggregated
-    performance metrics for the entire server including frame processing rates,
-    client counts, and system health indicators. All access to this structure
-    must be protected by g_stats_mutex.</p>
-<p class="Pp"></p>
-<p class="Pp">CONTENTS:</p>
-<ul class="Bl-bullet">
-  <li>frames_captured: Total frames received from all clients</li>
-  <li>frames_sent: Total ASCII frames delivered to all clients</li>
-  <li>frames_dropped: Frames lost due to buffer overflows or processing
-    delays</li>
-  <li>avg_capture_fps: Moving average of frame capture rate</li>
-  <li>avg_send_fps: Moving average of frame delivery rate</li>
-</ul>
-<p class="Pp">Definition at line <b>163</b> of file <b>stats.c</b>.</p>
-<pre>163 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>log_server_stats()</b>, <b>server_main()</b>, and
-    <b>update_server_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> g_stats_mutex = {0}</h2>
-<p class="Pp">Mutex protecting global server statistics. Ensures thread-safe
-    access to g_stats structure from both the statistics collection thread and
-    any operational threads that update counters. Uses standard mutex (not
-    reader-writer) due to relatively infrequent access.</p>
-<p class="Pp">Definition at line <b>172</b> of file <b>stats.c</b>.</p>
-<pre>172 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>log_server_stats()</b>, <b>server_main()</b>, and
-    <b>update_server_stats()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.25</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        <pre></pre>
+        <p class="Pp"></p>
+        <p class="Pp">
+          References <b>client_info::active</b>, <b>atomic_load_bool()</b>,
+          <b>client_info::client_id</b>, <b>client_info::frames_sent</b>,
+          <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
+          <b>g_stats</b>, <b>g_stats_mutex</b>, <b>MAX_CLIENTS</b>,
+          <b>mutex_lock</b>, <b>mutex_unlock</b>,
+          <b>client_info::outgoing_video_buffer</b>, <b>rwlock_rdlock</b>,
+          <b>rwlock_rdunlock</b>, <b>stats</b>, and
+          <b>video_frame_get_stats()</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>server_stats_t</b> g_stats = {0}</h2>
+          <p class="Pp">
+            Global server statistics structure. Maintains aggregated performance
+            metrics for the entire server including frame processing rates,
+            client counts, and system health indicators. All access to this
+            structure must be protected by g_stats_mutex.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">CONTENTS:</p>
+          <ul class="Bl-bullet">
+            <li>frames_captured: Total frames received from all clients</li>
+            <li>frames_sent: Total ASCII frames delivered to all clients</li>
+            <li>
+              frames_dropped: Frames lost due to buffer overflows or processing
+              delays
+            </li>
+            <li>avg_capture_fps: Moving average of frame capture rate</li>
+            <li>avg_send_fps: Moving average of frame delivery rate</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>163</b> of file <b>stats.c</b>.
+          </p>
+          <pre>163 {0};</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>log_server_stats()</b>, <b>server_main()</b>, and
+            <b>update_server_stats()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> g_stats_mutex = {0}</h2>
+          <p class="Pp">
+            Mutex protecting global server statistics. Ensures thread-safe
+            access to g_stats structure from both the statistics collection
+            thread and any operational threads that update counters. Uses
+            standard mutex (not reader-writer) due to relatively infrequent
+            access.
+          </p>
+          <p class="Pp">
+            Definition at line <b>172</b> of file <b>stats.c</b>.
+          </p>
+          <pre>172 {0};</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>log_server_stats()</b>, <b>server_main()</b>, and
+            <b>update_server_stats()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

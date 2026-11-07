@@ -1,104 +1,162 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>webrtc.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">webrtc.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">webrtc.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">webrtc.c - WebRTC P2P signaling for discovery mode failover.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>[struct].g_session_context</b>
-  <br/>
-  Local session context.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>webrtc_signaling_callbacks_t</b>
-    <b>discovery_webrtc_get_direct_signaling_callbacks</b>
-    (<b>acip_transport_t</b> *tcp_transport, const <b>uint8_t</b>
-    session_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    participant_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Create signaling callbacks for direct peer-to-peer connection during failover.
-    void <b>discovery_webrtc_set_tcp_transport</b> (<b>acip_transport_t</b>
-    *transport)
-  <br/>
-  Set the TCP transport for direct peer-to-peer signaling. void
-    <b>discovery_webrtc_set_session_context</b> (const <b>uint8_t</b>
-    session_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    participant_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Set session and participant IDs for direct signaling. void
-    <b>discovery_webrtc_cleanup_transport</b> (void)
-  <br/>
-  Cleanup and release the direct peer-to-peer transport.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WebRTC P2P signaling for discovery mode failover.</p>
-<p class="Pp">Implements direct peer-to-peer SDP/ICE exchange for discovery mode
-    migration. Unlike client mode (which uses ACDS relay), failover uses direct
-    TCP connections to send WebRTC signaling messages.</p>
-<p class="Pp">Definition in file <b>src/discovery/webrtc.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_webrtc_cleanup_transport_(void_)"><a class="permalink" href="#void_discovery_webrtc_cleanup_transport_(void_)">void
-  discovery_webrtc_cleanup_transport (void )</a></h2>
-<p class="Pp">Cleanup and release the direct peer-to-peer transport. Clears the
-    TCP transport used for direct signaling. Called on migration completion or
-    when the P2P connection is torn down.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Actual transport cleanup (closing connections, freeing
-  resources) should be done by caller before calling this.
-<p class="Pp"></p>
-<p class="Pp">Thread-safe.</p>
-</div>
-<p class="Pp">Definition at line <b>291</b> of file
-    <b>src/discovery/webrtc.c</b>.</p>
-<pre>291                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>webrtc.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">webrtc.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">webrtc.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          webrtc.c - WebRTC P2P signaling for discovery mode failover.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>[struct].g_session_context</b>
+            <br />
+            Local session context.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>webrtc_signaling_callbacks_t</b>
+            <b>discovery_webrtc_get_direct_signaling_callbacks</b>
+            (<b>acip_transport_t</b> *tcp_transport, const
+            <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const
+            <b>uint8_t</b>
+            participant_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Create signaling callbacks for direct peer-to-peer connection during
+            failover. void
+            <b>discovery_webrtc_set_tcp_transport</b> (<b>acip_transport_t</b>
+            *transport)
+            <br />
+            Set the TCP transport for direct peer-to-peer signaling. void
+            <b>discovery_webrtc_set_session_context</b> (const
+            <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const
+            <b>uint8_t</b>
+            participant_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Set session and participant IDs for direct signaling. void
+            <b>discovery_webrtc_cleanup_transport</b> (void)
+            <br />
+            Cleanup and release the direct peer-to-peer transport.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WebRTC P2P signaling for discovery mode failover.</p>
+        <p class="Pp">
+          Implements direct peer-to-peer SDP/ICE exchange for discovery mode
+          migration. Unlike client mode (which uses ACDS relay), failover uses
+          direct TCP connections to send WebRTC signaling messages.
+        </p>
+        <p class="Pp">Definition in file <b>src/discovery/webrtc.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_webrtc_cleanup_transport_(void_)">
+            <a
+              class="permalink"
+              href="#void_discovery_webrtc_cleanup_transport_(void_)"
+              >void discovery_webrtc_cleanup_transport (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Cleanup and release the direct peer-to-peer transport. Clears the
+            TCP transport used for direct signaling. Called on migration
+            completion or when the P2P connection is torn down.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Actual transport cleanup (closing connections, freeing resources)
+            should be done by caller before calling this.
+            <p class="Pp"></p>
+            <p class="Pp">Thread-safe.</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>291</b> of file <b>src/discovery/webrtc.c</b>.
+          </p>
+          <pre>
+291                                               {
 292   ensure_mutex_initialized();
 293   mutex_lock(&amp;g_webrtc_mutex);
 294
@@ -107,43 +165,63 @@
 297
 298   mutex_unlock(&amp;g_webrtc_mutex);
 299 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_webrtc_cleanup_transport()</b>,
-    <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>discovery_webrtc_cleanup_transport()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>webrtc_signaling_callbacks_t</b>
-  discovery_webrtc_get_direct_signaling_callbacks (<b>acip_transport_t</b> *
-  tcp_transport, const <b>uint8_t</b> session_id[SESSION_ID_SIZE], const
-  <b>uint8_t</b> participant_id[SESSION_ID_SIZE])</h2>
-<p class="Pp">Create signaling callbacks for direct peer-to-peer connection
-    during failover. Returns callbacks that send SDP/ICE directly over TCP to
-    the peer (not through ACDS). Used when participants reconnect to a new host
-    after migration.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>tcp_transport</i> TCP transport connected to the new
-  host
-<br/>
-<i>session_id</i> Session UUID (16 bytes, copied)
-<br/>
-<i>participant_id</i> Local participant UUID (16 bytes, copied)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Signaling callbacks for use with peer manager</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The returned structure points to static callbacks and is
-  valid for program lifetime.
-<p class="Pp"></p>
-<p class="Pp">TCP transport must be connected and valid when callbacks are
-    invoked.</p>
-<p class="Pp"></p>
-<p class="Pp">Set tcp_transport to NULL to disable the callbacks.</p>
-</div>
-<p class="Pp">Definition at line <b>243</b> of file
-    <b>src/discovery/webrtc.c</b>.</p>
-<pre>245                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_webrtc_cleanup_transport()</b>,
+            <b>mutex_lock</b>, and <b>mutex_unlock</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_webrtc_cleanup_transport()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>webrtc_signaling_callbacks_t</b>
+            discovery_webrtc_get_direct_signaling_callbacks (<b
+              >acip_transport_t</b
+            >
+            * tcp_transport, const <b>uint8_t</b> session_id[SESSION_ID_SIZE],
+            const <b>uint8_t</b> participant_id[SESSION_ID_SIZE])
+          </h2>
+          <p class="Pp">
+            Create signaling callbacks for direct peer-to-peer connection during
+            failover. Returns callbacks that send SDP/ICE directly over TCP to
+            the peer (not through ACDS). Used when participants reconnect to a
+            new host after migration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>tcp_transport</i> TCP transport connected to the new host
+            <br />
+            <i>session_id</i> Session UUID (16 bytes, copied)
+            <br />
+            <i>participant_id</i> Local participant UUID (16 bytes, copied)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Signaling callbacks for use with peer manager
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The returned structure points to static callbacks and is valid for
+            program lifetime.
+            <p class="Pp"></p>
+            <p class="Pp">
+              TCP transport must be connected and valid when callbacks are
+              invoked.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Set tcp_transport to NULL to disable the callbacks.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>243</b> of file <b>src/discovery/webrtc.c</b>.
+          </p>
+          <pre>
+245                                                                                                {
 246   ensure_mutex_initialized();
 247   mutex_lock(&amp;g_webrtc_mutex);
 248
@@ -165,33 +243,48 @@
 264
 265   return callbacks;
 266 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References
-    <b>discovery_webrtc_get_direct_signaling_callbacks()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, and <b>SESSION_ID_SIZE</b>.</p>
-<p class="Pp">Referenced by
-    <b>discovery_webrtc_get_direct_signaling_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_webrtc_set_session_context_(const_"><a class="permalink" href="#void_discovery_webrtc_set_session_context_(const_">void
-  discovery_webrtc_set_session_context (const <b>uint8_t</b>
-  session_id[SESSION_ID_SIZE], const <b>uint8_t</b>
-  participant_id[SESSION_ID_SIZE])</a></h2>
-<p class="Pp">Set session and participant IDs for direct signaling. Configures
-    the session context used when sending SDP/ICE messages directly. Must be
-    called before peer manager generates any local descriptions.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session_id</i> Session UUID (16 bytes, copied)
-<br/>
-<i>participant_id</i> Local participant UUID (16 bytes, copied)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Callbacks will fail with ERROR_INVALID_STATE if IDs are
-  not set.</div>
-<p class="Pp">Definition at line <b>275</b> of file
-    <b>src/discovery/webrtc.c</b>.</p>
-<pre>276                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_webrtc_get_direct_signaling_callbacks()</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>SESSION_ID_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by
+            <b>discovery_webrtc_get_direct_signaling_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_webrtc_set_session_context_(const_">
+            <a
+              class="permalink"
+              href="#void_discovery_webrtc_set_session_context_(const_"
+              >void discovery_webrtc_set_session_context (const
+              <b>uint8_t</b> session_id[SESSION_ID_SIZE], const
+              <b>uint8_t</b> participant_id[SESSION_ID_SIZE])</a
+            >
+          </h2>
+          <p class="Pp">
+            Set session and participant IDs for direct signaling. Configures the
+            session context used when sending SDP/ICE messages directly. Must be
+            called before peer manager generates any local descriptions.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session_id</i> Session UUID (16 bytes, copied)
+            <br />
+            <i>participant_id</i> Local participant UUID (16 bytes, copied)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Callbacks will fail with ERROR_INVALID_STATE if IDs are not set.
+          </div>
+          <p class="Pp">
+            Definition at line <b>275</b> of file <b>src/discovery/webrtc.c</b>.
+          </p>
+          <pre>
+276                                                                                          {
 277   ensure_mutex_initialized();
 278   mutex_lock(&amp;g_webrtc_mutex);
 279
@@ -205,56 +298,77 @@
 287
 288   mutex_unlock(&amp;g_webrtc_mutex);
 289 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_webrtc_set_session_context()</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>SESSION_ID_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>discovery_webrtc_set_session_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_webrtc_set_tcp_transport_("><a class="permalink" href="#void_discovery_webrtc_set_tcp_transport_(">void
-  discovery_webrtc_set_tcp_transport (<b>acip_transport_t</b> *
-  transport)</a></h2>
-<p class="Pp">Set the TCP transport for direct peer-to-peer signaling.
-    Configures the transport that will be used to send SDP/ICE messages directly
-    to the peer (bypassing ACDS). Must be called before peer manager generates
-    any local descriptions.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> TCP transport to new host (NULL to
-  disable)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is separate from the ACDS transport used in client
-  mode.
-<p class="Pp"></p>
-<p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if transport is
-  NULL.</p>
-</div>
-<p class="Pp">Definition at line <b>268</b> of file
-    <b>src/discovery/webrtc.c</b>.</p>
-<pre>268                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_webrtc_set_session_context()</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>SESSION_ID_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_webrtc_set_session_context()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_webrtc_set_tcp_transport_(">
+            <a
+              class="permalink"
+              href="#void_discovery_webrtc_set_tcp_transport_("
+              >void discovery_webrtc_set_tcp_transport (<b>acip_transport_t</b>
+              * transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Set the TCP transport for direct peer-to-peer signaling. Configures
+            the transport that will be used to send SDP/ICE messages directly to
+            the peer (bypassing ACDS). Must be called before peer manager
+            generates any local descriptions.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> TCP transport to new host (NULL to disable)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is separate from the ACDS transport used in client mode.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Callbacks will fail with ERROR_INVALID_STATE if transport is NULL.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>268</b> of file <b>src/discovery/webrtc.c</b>.
+          </p>
+          <pre>
+268                                                                      {
 269   ensure_mutex_initialized();
 270   mutex_lock(&amp;g_webrtc_mutex);
 271   g_tcp_transport = transport;
 272   mutex_unlock(&amp;g_webrtc_mutex);
 273 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_webrtc_set_tcp_transport()</b>,
-    <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>discovery_webrtc_set_tcp_transport()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_webrtc_set_tcp_transport()</b>,
+            <b>mutex_lock</b>, and <b>mutex_unlock</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_webrtc_set_tcp_transport()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

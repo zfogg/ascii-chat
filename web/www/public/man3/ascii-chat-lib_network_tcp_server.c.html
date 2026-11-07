@@ -1,89 +1,153 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_TCP_SERVER_PORT_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE</b> 32
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>tcp_server_init</b>
-    (<b>tcp_server_t</b> *server, const <b>tcp_server_config_t</b> *config)
-  <br/>
-  <b>asciichat_error_t</b> <b>tcp_server_run</b> (<b>tcp_server_t</b> *server)
-  <br/>
-  void <b>tcp_server_destroy</b> (<b>tcp_server_t</b> *server)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_TCP_SERVER_PORT_BUFFER_SIZE___16"><a class="permalink" href="#_define_NETWORK_TCP_SERVER_PORT_BUFFER_SIZE___16">#define
-  NETWORK_TCP_SERVER_PORT_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file
-    <b>lib/network/tcp/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE___32"><a class="permalink" href="#_define_NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE___32">#define
-  NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file
-    <b>lib/network/tcp/server.c</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_tcp_server_destroy_("><a class="permalink" href="#void_tcp_server_destroy_(">void
-  tcp_server_destroy (<b>tcp_server_t</b> * server)</a></h2>
-<p class="Pp">Definition at line <b>203</b> of file
-    <b>lib/network/tcp/server.c</b>.</p>
-<pre>203                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_TCP_SERVER_PORT_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>tcp_server_init</b> (<b>tcp_server_t</b>
+            *server, const <b>tcp_server_config_t</b> *config)
+            <br />
+            <b>asciichat_error_t</b> <b>tcp_server_run</b> (<b>tcp_server_t</b>
+            *server)
+            <br />
+            void <b>tcp_server_destroy</b> (<b>tcp_server_t</b> *server)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_TCP_SERVER_PORT_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_TCP_SERVER_PORT_BUFFER_SIZE___16"
+              >#define NETWORK_TCP_SERVER_PORT_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>lib/network/tcp/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE___32"
+              >#define NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>lib/network/tcp/server.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_tcp_server_destroy_(">
+            <a class="permalink" href="#void_tcp_server_destroy_("
+              >void tcp_server_destroy (<b>tcp_server_t</b> * server)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>203</b> of file
+            <b>lib/network/tcp/server.c</b>.
+          </p>
+          <pre>
+203                                               {
 204   if (!server) {
 205     return;
 206   }
@@ -110,22 +174,31 @@
 227   NAMED_UNREGISTER(&amp;server-&gt;running);
 228   NAMED_UNREGISTER(server);
 229 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>tcp_server::listen_socket</b>,
-    <b>tcp_server::listen_socket6</b>, <b>log_debug</b>,
-    <b>NAMED_UNREGISTER</b>, <b>tcp_server::running</b>, <b>socket_close()</b>,
-    and <b>tcp_server_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>network_server_destroy()</b>, and
-    <b>tcp_server_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_init (<b>tcp_server_t</b> *
-  server, const <b>tcp_server_config_t</b> * config)</h2>
-<p class="Pp">Definition at line <b>108</b> of file
-    <b>lib/network/tcp/server.c</b>.</p>
-<pre>108                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>INVALID_SOCKET_VALUE</b>,
+            <b>tcp_server::listen_socket</b>, <b>tcp_server::listen_socket6</b>,
+            <b>log_debug</b>, <b>NAMED_UNREGISTER</b>,
+            <b>tcp_server::running</b>, <b>socket_close()</b>, and
+            <b>tcp_server_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_destroy()</b>, and
+            <b>tcp_server_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> tcp_server_init (<b>tcp_server_t</b> *
+            server, const <b>tcp_server_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>108</b> of file
+            <b>lib/network/tcp/server.c</b>.
+          </p>
+          <pre>
+108                                                                                            {
 109   if (!server || !config) {
 110     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or config is NULL&quot;);
 111   }
@@ -177,28 +250,39 @@
 157
 158   return ASCIICHAT_OK;
 159 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>tcp_server_config_t::bind_ipv4</b>,
-    <b>tcp_server_config_t::bind_ipv6</b>, <b>tcp_server::config</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_BIND</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>tcp_server_config_t::ipv4_address</b>,
-    <b>tcp_server_config_t::ipv6_address</b>, <b>tcp_server::listen_socket</b>,
-    <b>tcp_server::listen_socket6</b>, <b>log_warn</b>, <b>NAMED_REGISTER</b>,
-    <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_UNREGISTER</b>,
-    <b>NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE</b>,
-    <b>tcp_server_config_t::port</b>, <b>tcp_server::running</b>,
-    <b>SET_ERRNO</b>, and <b>tcp_server_init()</b>.</p>
-<p class="Pp">Referenced by <b>network_server_create()</b>, and
-    <b>tcp_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_run (<b>tcp_server_t</b> *
-  server)</h2>
-<p class="Pp">Definition at line <b>193</b> of file
-    <b>lib/network/tcp/server.c</b>.</p>
-<pre>193                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>tcp_server_config_t::bind_ipv4</b>,
+            <b>tcp_server_config_t::bind_ipv6</b>, <b>tcp_server::config</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_BIND</b>,
+            <b>INVALID_SOCKET_VALUE</b>,
+            <b>tcp_server_config_t::ipv4_address</b>,
+            <b>tcp_server_config_t::ipv6_address</b>,
+            <b>tcp_server::listen_socket</b>, <b>tcp_server::listen_socket6</b>,
+            <b>log_warn</b>, <b>NAMED_REGISTER</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_UNREGISTER</b>,
+            <b>NETWORK_TCP_SERVER_PORT_NAME_BUFFER_SIZE</b>,
+            <b>tcp_server_config_t::port</b>, <b>tcp_server::running</b>,
+            <b>SET_ERRNO</b>, and <b>tcp_server_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_create()</b>, and
+            <b>tcp_server_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> tcp_server_run (<b>tcp_server_t</b> *
+            server)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>193</b> of file
+            <b>lib/network/tcp/server.c</b>.
+          </p>
+          <pre>
+193                                                        {
 194   if (!server) {
 195     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
 196   }
@@ -207,25 +291,31 @@
 199     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;TCP event handler is required&quot;);
 200   return tcp_server_run_events(server);
 201 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>tcp_server::config</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>tcp_server_config_t::event_handler</b>, <b>SET_ERRNO</b>, and
-    <b>tcp_server_run()</b>.</p>
-<p class="Pp">Referenced by <b>network_server_run()</b>, and
-    <b>tcp_server_run()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>tcp_server::config</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>tcp_server_config_t::event_handler</b>, <b>SET_ERRNO</b>, and
+            <b>tcp_server_run()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_run()</b>, and
+            <b>tcp_server_run()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,159 +1,232 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>event_write(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">event_write(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">event_write(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">event_write</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">uv_write_t <b>request</b>
-  <br/>
-  <b>platform_event_stream_t</b> * <b>stream</b>
-  <br/>
-  <b>platform_event_write_fn</b> <b>done</b>
-  <br/>
-  void * <b>arg</b>
-  <br/>
-  size_t <b>size</b>
-  <br/>
-  struct <b>event_write</b> * <b>next</b>
-  <br/>
-  <b>socket_send_buffer_t</b> <b>storage</b>
-  <br/>
-  size_t <b>offset</b>
-  <br/>
-  <b>uint64_t</b> <b>started</b>
-  <br/>
-  <b>bool</b> <b>waiting</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>66</b> of file <b>event.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void*_event_write::arg"><a class="permalink" href="#void*_event_write::arg">void*
-  event_write::arg</a></h2>
-<p class="Pp">Definition at line <b>70</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_listen()</b>,
-    <b>platform_event_loop_post()</b>, <b>platform_event_loop_tick()</b>,
-    <b>platform_event_stream_close()</b>, <b>platform_event_stream_start()</b>,
-    and <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>platform_event_write_fn</b> event_write::done</h2>
-<p class="Pp">Definition at line <b>69</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
-    <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
-  <b>event_write</b>* event_write::next</a></h2>
-<p class="Pp">Definition at line <b>72</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
-    <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_event_write::offset"><a class="permalink" href="#size_t_event_write::offset">size_t
-  event_write::offset</a></h2>
-<p class="Pp">Definition at line <b>74</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uv_write_t_event_write::request"><a class="permalink" href="#uv_write_t_event_write::request">uv_write_t
-  event_write::request</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
-    <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_event_write::size"><a class="permalink" href="#size_t_event_write::size">size_t
-  event_write::size</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
-    <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> event_write::started</h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>event.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>socket_send_buffer_t</b> event_write::storage</h2>
-<p class="Pp">Definition at line <b>73</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
-    <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>platform_event_stream_t</b>* event_write::stream</h2>
-<p class="Pp">Definition at line <b>68</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_adopt()</b>,
-    <b>platform_event_stream_close()</b>,
-    <b>platform_event_stream_deadline()</b>,
-    <b>platform_event_stream_observe_queue()</b>,
-    <b>platform_event_stream_pause()</b>,
-    <b>platform_event_stream_queued_bytes()</b>,
-    <b>platform_event_stream_request_close()</b>,
-    <b>platform_event_stream_resume()</b>,
-    <b>platform_event_stream_set_zerocopy()</b>,
-    <b>platform_event_stream_start()</b>, and
-    <b>platform_event_stream_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> event_write::waiting</h2>
-<p class="Pp">Definition at line <b>76</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_close()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>event_write(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">event_write(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">event_write(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">event_write</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            uv_write_t <b>request</b>
+            <br />
+            <b>platform_event_stream_t</b> * <b>stream</b>
+            <br />
+            <b>platform_event_write_fn</b> <b>done</b>
+            <br />
+            void * <b>arg</b>
+            <br />
+            size_t <b>size</b>
+            <br />
+            struct <b>event_write</b> * <b>next</b>
+            <br />
+            <b>socket_send_buffer_t</b> <b>storage</b>
+            <br />
+            size_t <b>offset</b>
+            <br />
+            <b>uint64_t</b> <b>started</b>
+            <br />
+            <b>bool</b> <b>waiting</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>66</b> of file <b>event.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_event_write::arg">
+            <a class="permalink" href="#void*_event_write::arg"
+              >void* event_write::arg</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>70</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_listen()</b>,
+            <b>platform_event_loop_post()</b>,
+            <b>platform_event_loop_tick()</b>,
+            <b>platform_event_stream_close()</b>,
+            <b>platform_event_stream_start()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>platform_event_write_fn</b> event_write::done</h2>
+          <p class="Pp">Definition at line <b>69</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_close()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>event_write</b>* event_write::next</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>72</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_close()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_event_write::offset">
+            <a class="permalink" href="#size_t_event_write::offset"
+              >size_t event_write::offset</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>74</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_stream_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uv_write_t_event_write::request">
+            <a class="permalink" href="#uv_write_t_event_write::request"
+              >uv_write_t event_write::request</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>67</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_close()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_event_write::size">
+            <a class="permalink" href="#size_t_event_write::size"
+              >size_t event_write::size</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>71</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_close()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> event_write::started</h2>
+          <p class="Pp">Definition at line <b>75</b> of file <b>event.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>socket_send_buffer_t</b> event_write::storage</h2>
+          <p class="Pp">Definition at line <b>73</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_close()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>platform_event_stream_t</b>* event_write::stream
+          </h2>
+          <p class="Pp">Definition at line <b>68</b> of file <b>event.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_adopt()</b>,
+            <b>platform_event_stream_close()</b>,
+            <b>platform_event_stream_deadline()</b>,
+            <b>platform_event_stream_observe_queue()</b>,
+            <b>platform_event_stream_pause()</b>,
+            <b>platform_event_stream_queued_bytes()</b>,
+            <b>platform_event_stream_request_close()</b>,
+            <b>platform_event_stream_resume()</b>,
+            <b>platform_event_stream_set_zerocopy()</b>,
+            <b>platform_event_stream_start()</b>, and
+            <b>platform_event_stream_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> event_write::waiting</h2>
+          <p class="Pp">Definition at line <b>76</b> of file <b>event.c</b>.</p>
+          <p class="Pp">Referenced by <b>platform_event_stream_close()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

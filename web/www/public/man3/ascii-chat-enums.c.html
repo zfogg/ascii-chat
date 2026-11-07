@@ -1,87 +1,138 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>enums.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">enums.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">enums.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">enums.c - Enum views backed by the option registry metadata.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const <b>enum_to_string_entry_t</b> *
-    <b>options_get_enum_entries</b> (const char *option_name, size_t
-    *entry_count)
-  <br/>
-  Get enum entries with descriptions for an option. const char **
-    <b>options_get_enum_values</b> (const char *option_name, size_t
-    *value_count)
-  <br/>
-  Get enum values for an option. <b>bool</b> <b>options_is_enum_option</b>
-    (const char *option_name)
-  <br/>
-  Check if an option has enum values.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Enum views backed by the option registry metadata.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>enums.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>enum_to_string_entry_t</b> * options_get_enum_entries (const char *
-  option_name, size_t * entry_count)</a></h2>
-<p class="Pp">Get enum entries with descriptions for an option. Returns entries
-    containing both string values and descriptions for shell completion.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
-  &quot;log-level&quot;)
-<br/>
-<i>entry_count</i> OUTPUT: Number of entries returned</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated array (caller uses SAFE_FREE), or NULL. Strings
-  are borrowed.</div>
-<p class="Pp">Definition at line <b>9</b> of file <b>enums.c</b>.</p>
-<pre>9                                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>enums.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">enums.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">enums.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          enums.c - Enum views backed by the option registry metadata.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>enum_to_string_entry_t</b> *
+            <b>options_get_enum_entries</b> (const char *option_name, size_t
+            *entry_count)
+            <br />
+            Get enum entries with descriptions for an option. const char **
+            <b>options_get_enum_values</b> (const char *option_name, size_t
+            *value_count)
+            <br />
+            Get enum values for an option. <b>bool</b>
+            <b>options_is_enum_option</b>
+            (const char *option_name)
+            <br />
+            Check if an option has enum values.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Enum views backed by the option registry metadata.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>enums.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>enum_to_string_entry_t</b> * options_get_enum_entries
+              (const char * option_name, size_t * entry_count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get enum entries with descriptions for an option. Returns entries
+            containing both string values and descriptions for shell completion.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>option_name</i> Option long name (e.g., &quot;log-level&quot;)
+            <br />
+            <i>entry_count</i> OUTPUT: Number of entries returned
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated array (caller uses SAFE_FREE), or NULL. Strings are
+            borrowed.
+          </div>
+          <p class="Pp">Definition at line <b>9</b> of file <b>enums.c</b>.</p>
+          <pre>
+9                                                                                                      {
 10   if (!entry_count)
 11     return NULL;
 12   *entry_count = 0;
@@ -101,32 +152,47 @@
 26   entries[*entry_count].enum_value = -1;
 27   return entries;
 28 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>enum_to_string_entry_t::desc</b>,
-    <b>option_metadata_t::enum_descriptions</b>,
-    <b>option_metadata_t::enum_integer_values</b>,
-    <b>enum_to_string_entry_t::enum_value</b>,
-    <b>option_metadata_t::enum_values</b>, <b>options_get_enum_entries()</b>,
-    <b>options_registry_get_metadata()</b>, <b>SAFE_CALLOC</b>, and
-    <b>enum_to_string_entry_t::string</b>.</p>
-<p class="Pp">Referenced by <b>options_get_enum_entries()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
-  char ** options_get_enum_values (const char * option_name, size_t *
-  value_count)</a></h2>
-<p class="Pp">Get enum values for an option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
-  &quot;log-level&quot;)
-<br/>
-<i>value_count</i> OUTPUT: Number of values returned</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated NULL-terminated array (caller uses SAFE_FREE),
-  or NULL. Strings are borrowed.</div>
-<p class="Pp">Definition at line <b>30</b> of file <b>enums.c</b>.</p>
-<pre>30                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>enum_to_string_entry_t::desc</b>,
+            <b>option_metadata_t::enum_descriptions</b>,
+            <b>option_metadata_t::enum_integer_values</b>,
+            <b>enum_to_string_entry_t::enum_value</b>,
+            <b>option_metadata_t::enum_values</b>,
+            <b>options_get_enum_entries()</b>,
+            <b>options_registry_get_metadata()</b>, <b>SAFE_CALLOC</b>, and
+            <b>enum_to_string_entry_t::string</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_get_enum_entries()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"
+              >const char ** options_get_enum_values (const char * option_name,
+              size_t * value_count)</a
+            >
+          </h2>
+          <p class="Pp">Get enum values for an option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>option_name</i> Option long name (e.g., &quot;log-level&quot;)
+            <br />
+            <i>value_count</i> OUTPUT: Number of values returned
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated NULL-terminated array (caller uses SAFE_FREE), or NULL.
+            Strings are borrowed.
+          </div>
+          <p class="Pp">Definition at line <b>30</b> of file <b>enums.c</b>.</p>
+          <pre>
+30                                                                                    {
 31   if (!value_count)
 32     return NULL;
 33   *value_count = 0;
@@ -139,44 +205,54 @@
 40   memcpy(copy, values, (*value_count + 1) * sizeof(*copy));
 41   return copy;
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_get_enum_values()</b>,
-    <b>options_registry_get_enum_values()</b>, and <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>options_get_enum_values()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> options_is_enum_option (const char *
-  option_name)</h2>
-<p class="Pp">Check if an option has enum values.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option long name</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if option has enum values, false otherwise</div>
-<p class="Pp">Definition at line <b>44</b> of file <b>enums.c</b>.</p>
-<pre>44                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_get_enum_values()</b>,
+            <b>options_registry_get_enum_values()</b>, and <b>SAFE_MALLOC</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_get_enum_values()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> options_is_enum_option (const char * option_name)
+          </h2>
+          <p class="Pp">Check if an option has enum values.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>option_name</i> Option long name</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if option has enum values, false otherwise
+          </div>
+          <p class="Pp">Definition at line <b>44</b> of file <b>enums.c</b>.</p>
+          <pre>
+44                                                      {
 45   if (!option_name)
 46     return false;
 47   size_t count = 0;
 48   return options_registry_get_enum_values(option_name, NULL, &amp;count) != NULL;
 49 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_is_enum_option()</b>, and
-    <b>options_registry_get_enum_values()</b>.</p>
-<p class="Pp">Referenced by <b>options_is_enum_option()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_is_enum_option()</b>, and
+            <b>options_registry_get_enum_values()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_is_enum_option()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

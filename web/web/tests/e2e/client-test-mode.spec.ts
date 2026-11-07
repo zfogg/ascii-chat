@@ -34,7 +34,9 @@ test("?test auto-connects, renders, sends synthetic video and audio", async ({
 
   await page.goto(
     `${WEB_CLIENT_URL}?test&testServerUrl=${encodeURIComponent(serverUrl)}`,
-    { waitUntil: "networkidle" },
+    {
+      waitUntil: "networkidle",
+    },
   );
 
   await expect(page.locator(".status")).toContainText("Connected", {

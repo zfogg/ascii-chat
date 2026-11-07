@@ -1,93 +1,143 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>signaling.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">signaling.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">signaling.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">signaling.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>signaling_relay_sdp</b> (sqlite3 *db,
-    <b>network_server_t</b> *network_server, const <b>acip_webrtc_sdp_t</b>
-    *sdp, size_t total_packet_len)
-  <br/>
-  Relay SDP offer/answer to recipient. <b>asciichat_error_t</b>
-    <b>signaling_relay_ice</b> (sqlite3 *db, <b>network_server_t</b>
-    *network_server, const <b>acip_webrtc_ice_t</b> *ice, size_t
-    total_packet_len)
-  <br/>
-  Relay ICE candidate to recipient. <b>asciichat_error_t</b>
-    <b>signaling_broadcast</b> (sqlite3 *db, <b>network_server_t</b>
-    *network_server, const <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>],
-    <b>packet_type_t</b> packet_type, const void *packet, size_t packet_len,
-    const <b>uint8_t</b> *exclude_participant_id)
-  <br/>
-  Broadcast packet to all session participants.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> signaling_broadcast (sqlite3 * db,
-  <b>network_server_t</b> * network_server, const <b>uint8_t</b>
-  session_id[SESSION_ID_SIZE], <b>packet_type_t</b> packet_type, const void *
-  packet, size_t packet_len, const <b>uint8_t</b> * exclude_participant_id)</h2>
-<p class="Pp">Broadcast packet to all session participants. Sends packet to all
-    participants in a session (optionally excluding one). Used internally by
-    SDP/ICE relay when recipient_id is all zeros.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
-<br/>
-<i>server</i> Shared connection registry
-<br/>
-<i>session_id</i> Session UUID
-<br/>
-<i>packet_type</i> Packet type to send
-<br/>
-<i>packet</i> Packet data to broadcast
-<br/>
-<i>packet_len</i> Packet length
-<br/>
-<i>exclude_participant_id</i> Participant to exclude (NULL = no exclusion,
-  typically sender)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>231</b> of file <b>signaling.c</b>.</p>
-<pre>233                                                                                                                     {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>signaling.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">signaling.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">signaling.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">signaling.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>signaling_relay_sdp</b> (sqlite3 *db,
+            <b>network_server_t</b> *network_server, const
+            <b>acip_webrtc_sdp_t</b>
+            *sdp, size_t total_packet_len)
+            <br />
+            Relay SDP offer/answer to recipient. <b>asciichat_error_t</b>
+            <b>signaling_relay_ice</b> (sqlite3 *db,
+            <b>network_server_t</b> *network_server, const
+            <b>acip_webrtc_ice_t</b> *ice, size_t total_packet_len)
+            <br />
+            Relay ICE candidate to recipient. <b>asciichat_error_t</b>
+            <b>signaling_broadcast</b> (sqlite3 *db,
+            <b>network_server_t</b> *network_server, const
+            <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>],
+            <b>packet_type_t</b> packet_type, const void *packet, size_t
+            packet_len, const <b>uint8_t</b> *exclude_participant_id)
+            <br />
+            Broadcast packet to all session participants.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> signaling_broadcast (sqlite3 * db,
+            <b>network_server_t</b> * network_server, const
+            <b>uint8_t</b> session_id[SESSION_ID_SIZE],
+            <b>packet_type_t</b> packet_type, const void * packet, size_t
+            packet_len, const <b>uint8_t</b> * exclude_participant_id)
+          </h2>
+          <p class="Pp">
+            Broadcast packet to all session participants. Sends packet to all
+            participants in a session (optionally excluding one). Used
+            internally by SDP/ICE relay when recipient_id is all zeros.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> SQLite database handle (for session validation)
+            <br />
+            <i>server</i> Shared connection registry
+            <br />
+            <i>session_id</i> Session UUID
+            <br />
+            <i>packet_type</i> Packet type to send
+            <br />
+            <i>packet</i> Packet data to broadcast
+            <br />
+            <i>packet_len</i> Packet length
+            <br />
+            <i>exclude_participant_id</i> Participant to exclude (NULL = no
+            exclusion, typically sender)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>231</b> of file <b>signaling.c</b>.
+          </p>
+          <pre>
+233                                                                                                                     {
 234   if (!db || !network_server || !session_id || !packet) {
 235     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, network server, session_id, or packet is NULL&quot;);
 236   }
@@ -124,38 +174,54 @@
 267
 268   return ASCIICHAT_OK;
 269 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>network_server_foreach()</b>, <b>broadcast_context_t::sent_count</b>,
-    <b>session_entry_destroy()</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
-    and <b>signaling_broadcast()</b>.</p>
-<p class="Pp">Referenced by <b>signaling_broadcast()</b>,
-    <b>signaling_relay_ice()</b>, and <b>signaling_relay_sdp()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_ice (sqlite3 * db,
-  <b>network_server_t</b> * network_server, const <b>acip_webrtc_ice_t</b> *
-  ice, size_t total_packet_len)</h2>
-<p class="Pp">Relay ICE candidate to recipient. Relays ICE packet to specific
-    participant or broadcasts to all participants in the session if recipient_id
-    is all zeros.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
-<br/>
-<i>server</i> Shared connection registry
-<br/>
-<i>ice</i> ICE packet to relay (with variable-length candidate data following
-  struct)
-<br/>
-<i>total_packet_len</i> Total packet length including variable data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>186</b> of file <b>signaling.c</b>.</p>
-<pre>187                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_warn</b>,
+            <b>network_server_foreach()</b>,
+            <b>broadcast_context_t::sent_count</b>,
+            <b>session_entry_destroy()</b>, <b>SESSION_ID_SIZE</b>,
+            <b>SET_ERRNO</b>, and <b>signaling_broadcast()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>signaling_broadcast()</b>,
+            <b>signaling_relay_ice()</b>, and <b>signaling_relay_sdp()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> signaling_relay_ice (sqlite3 * db,
+            <b>network_server_t</b> * network_server, const
+            <b>acip_webrtc_ice_t</b> * ice, size_t total_packet_len)
+          </h2>
+          <p class="Pp">
+            Relay ICE candidate to recipient. Relays ICE packet to specific
+            participant or broadcasts to all participants in the session if
+            recipient_id is all zeros.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> SQLite database handle (for session validation)
+            <br />
+            <i>server</i> Shared connection registry
+            <br />
+            <i>ice</i> ICE packet to relay (with variable-length candidate data
+            following struct)
+            <br />
+            <i>total_packet_len</i> Total packet length including variable data
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>186</b> of file <b>signaling.c</b>.
+          </p>
+          <pre>
+187                                                                {
 188   if (!db || !network_server || !ice) {
 189     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, network server, or ice is NULL&quot;);
 190   }
@@ -198,38 +264,52 @@
 227
 228   return ASCIICHAT_OK;
 229 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_ice_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>find_client_context_t::found</b>, <b>log_debug</b>,
-    <b>network_server_foreach()</b>, <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>,
-    <b>find_client_context_t::result</b>, <b>session_entry_destroy()</b>,
-    <b>SET_ERRNO</b>, <b>signaling_broadcast()</b>, and
-    <b>signaling_relay_ice()</b>.</p>
-<p class="Pp">Referenced by <b>signaling_relay_ice()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_sdp (sqlite3 * db,
-  <b>network_server_t</b> * network_server, const <b>acip_webrtc_sdp_t</b> *
-  sdp, size_t total_packet_len)</h2>
-<p class="Pp">Relay SDP offer/answer to recipient. Relays SDP packet to specific
-    participant or broadcasts to all participants in the session if recipient_id
-    is all zeros.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
-<br/>
-<i>server</i> Shared connection registry
-<br/>
-<i>sdp</i> SDP packet to relay (with variable-length SDP data following struct)
-<br/>
-<i>total_packet_len</i> Total packet length including variable data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>136</b> of file <b>signaling.c</b>.</p>
-<pre>137                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_webrtc_ice_t</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>find_client_context_t::found</b>, <b>log_debug</b>,
+            <b>network_server_foreach()</b>, <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>,
+            <b>find_client_context_t::result</b>,
+            <b>session_entry_destroy()</b>, <b>SET_ERRNO</b>,
+            <b>signaling_broadcast()</b>, and <b>signaling_relay_ice()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>signaling_relay_ice()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> signaling_relay_sdp (sqlite3 * db,
+            <b>network_server_t</b> * network_server, const
+            <b>acip_webrtc_sdp_t</b> * sdp, size_t total_packet_len)
+          </h2>
+          <p class="Pp">
+            Relay SDP offer/answer to recipient. Relays SDP packet to specific
+            participant or broadcasts to all participants in the session if
+            recipient_id is all zeros.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> SQLite database handle (for session validation)
+            <br />
+            <i>server</i> Shared connection registry
+            <br />
+            <i>sdp</i> SDP packet to relay (with variable-length SDP data
+            following struct)
+            <br />
+            <i>total_packet_len</i> Total packet length including variable data
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>136</b> of file <b>signaling.c</b>.
+          </p>
+          <pre>
+137                                                                {
 138   if (!db || !network_server || !sdp) {
 139     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, network server, or sdp is NULL&quot;);
 140   }
@@ -277,29 +357,33 @@
 182
 183   return ASCIICHAT_OK;
 184 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_sdp_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>find_client_context_t::found</b>, <b>log_debug</b>,
-    <b>network_server_foreach()</b>, <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b>,
-    <b>find_client_context_t::result</b>, <b>session_entry_destroy()</b>,
-    <b>SET_ERRNO</b>, <b>signaling_broadcast()</b>, and
-    <b>signaling_relay_sdp()</b>.</p>
-<p class="Pp">Referenced by <b>signaling_relay_sdp()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_webrtc_sdp_t</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>find_client_context_t::found</b>, <b>log_debug</b>,
+            <b>network_server_foreach()</b>, <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b>,
+            <b>find_client_context_t::result</b>,
+            <b>session_entry_destroy()</b>, <b>SET_ERRNO</b>,
+            <b>signaling_broadcast()</b>, and <b>signaling_relay_sdp()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>signaling_relay_sdp()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

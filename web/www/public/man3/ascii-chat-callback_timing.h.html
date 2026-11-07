@@ -1,103 +1,165 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>callback_timing.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">callback_timing.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">callback_timing.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">callback_timing.h - WebSocket callback timing instrumentation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>websocket_callback_stats_t</b>
-  <br/>
-  Per-callback timing statistics. struct <b>websocket_callback_timing_t</b>
-  <br/>
-  WebSocket callback timing data for protocol lifecycle.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>websocket_callback_timing_record</b>
-    (<b>websocket_callback_stats_t</b> *stats, <b>uint64_t</b> start_ns,
-    <b>uint64_t</b> end_ns)
-  <br/>
-  Record callback invocation. void <b>websocket_callback_timing_log_stats</b>
-    (void)
-  <br/>
-  Log current callback statistics. void <b>websocket_callback_timing_reset</b>
-    (void)
-  <br/>
-  Reset timing statistics.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>websocket_callback_timing_t</b> <b>g_ws_callback_timing</b>
-  <br/>
-  Global timing tracker.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WebSocket callback timing instrumentation.</p>
-<p class="Pp">Tracks timing and frequency of libwebsockets callbacks to diagnose
-    performance issues (Issue #305: WebSocket FPS bug).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Claude (Anthropic)</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Definition in file <b>callback_timing.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_callback_timing_log_stats_(void_)"><a class="permalink" href="#void_websocket_callback_timing_log_stats_(void_)">void
-  websocket_callback_timing_log_stats (void )</a></h2>
-<p class="Pp">Log current callback statistics. Prints aggregate statistics for
-    all tracked callbacks to help diagnose callback frequency and performance
-    issues.</p>
-<p class="Pp">Definition at line <b>66</b> of file <b>callback_timing.c</b>.</p>
-<pre>66                                                {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>callback_timing.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">callback_timing.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">callback_timing.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          callback_timing.h - WebSocket callback timing instrumentation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>websocket_callback_stats_t</b>
+            <br />
+            Per-callback timing statistics. struct
+            <b>websocket_callback_timing_t</b>
+            <br />
+            WebSocket callback timing data for protocol lifecycle.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>websocket_callback_timing_record</b> (<b
+              >websocket_callback_stats_t</b
+            >
+            *stats, <b>uint64_t</b> start_ns, <b>uint64_t</b> end_ns)
+            <br />
+            Record callback invocation. void
+            <b>websocket_callback_timing_log_stats</b>
+            (void)
+            <br />
+            Log current callback statistics. void
+            <b>websocket_callback_timing_reset</b>
+            (void)
+            <br />
+            Reset timing statistics.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>websocket_callback_timing_t</b> <b>g_ws_callback_timing</b>
+            <br />
+            Global timing tracker.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WebSocket callback timing instrumentation.</p>
+        <p class="Pp">
+          Tracks timing and frequency of libwebsockets callbacks to diagnose
+          performance issues (Issue #305: WebSocket FPS bug).
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Claude (Anthropic)</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">Definition in file <b>callback_timing.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_websocket_callback_timing_log_stats_(void_)">
+            <a
+              class="permalink"
+              href="#void_websocket_callback_timing_log_stats_(void_)"
+              >void websocket_callback_timing_log_stats (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Log current callback statistics. Prints aggregate statistics for all
+            tracked callbacks to help diagnose callback frequency and
+            performance issues.
+          </p>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>callback_timing.c</b>.
+          </p>
+          <pre>
+66                                                {
 67   uint64_t protocol_init_count = atomic_load_u64(&amp;g_ws_callback_timing.protocol_init.count);
 68   uint64_t protocol_destroy_count = atomic_load_u64(&amp;g_ws_callback_timing.protocol_destroy.count);
 69   uint64_t writeable_count = atomic_load_u64(&amp;g_ws_callback_timing.server_writeable.count);
@@ -160,35 +222,53 @@
 126
 127   log_info(&quot;===== END TIMING STATISTICS =====\n&quot;);
 128 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>websocket_callback_stats_t::count</b>, <b>g_ws_callback_timing</b>,
-    <b>log_info</b>, <b>websocket_callback_stats_t::max_interval_ns</b>,
-    <b>websocket_callback_stats_t::min_interval_ns</b>,
-    <b>websocket_callback_timing_t::protocol_destroy</b>,
-    <b>websocket_callback_timing_t::protocol_init</b>,
-    <b>websocket_callback_timing_t::receive</b>,
-    <b>websocket_callback_timing_t::server_writeable</b>,
-    <b>websocket_callback_stats_t::total_duration_ns</b>, and
-    <b>websocket_callback_timing_log_stats()</b>.</p>
-<p class="Pp">Referenced by <b>websocket_callback_timing_log_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_callback_timing_record_("><a class="permalink" href="#void_websocket_callback_timing_record_(">void
-  websocket_callback_timing_record (<b>websocket_callback_stats_t</b> * stats,
-  <b>uint64_t</b> start_ns, <b>uint64_t</b> end_ns)</a></h2>
-<p class="Pp">Record callback invocation. Updates statistics for the given
-    callback type with timing information.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stats</i> Pointer to callback statistics structure
-<br/>
-<i>start_ns</i> Start timestamp from websocket_callback_timing_start()
-<br/>
-<i>end_ns</i> End timestamp (typically current time)</div>
-<p class="Pp">Definition at line <b>21</b> of file <b>callback_timing.c</b>.</p>
-<pre>21                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>websocket_callback_stats_t::count</b>,
+            <b>g_ws_callback_timing</b>, <b>log_info</b>,
+            <b>websocket_callback_stats_t::max_interval_ns</b>,
+            <b>websocket_callback_stats_t::min_interval_ns</b>,
+            <b>websocket_callback_timing_t::protocol_destroy</b>,
+            <b>websocket_callback_timing_t::protocol_init</b>,
+            <b>websocket_callback_timing_t::receive</b>,
+            <b>websocket_callback_timing_t::server_writeable</b>,
+            <b>websocket_callback_stats_t::total_duration_ns</b>, and
+            <b>websocket_callback_timing_log_stats()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>websocket_callback_timing_log_stats()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_websocket_callback_timing_record_(">
+            <a class="permalink" href="#void_websocket_callback_timing_record_("
+              >void websocket_callback_timing_record (<b
+                >websocket_callback_stats_t</b
+              >
+              * stats, <b>uint64_t</b> start_ns, <b>uint64_t</b> end_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Record callback invocation. Updates statistics for the given
+            callback type with timing information.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stats</i> Pointer to callback statistics structure
+            <br />
+            <i>start_ns</i> Start timestamp from
+            websocket_callback_timing_start()
+            <br />
+            <i>end_ns</i> End timestamp (typically current time)
+          </div>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>callback_timing.c</b>.
+          </p>
+          <pre>
+21                                                                                                              {
 22   if (!stats) {
 23     return;
 24   }
@@ -232,74 +312,105 @@
 62     }
 63   }
 64 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_u64()</b>, <b>websocket_callback_stats_t::count</b>,
-    <b>websocket_callback_stats_t::last_ns</b>,
-    <b>websocket_callback_stats_t::max_interval_ns</b>,
-    <b>websocket_callback_stats_t::min_interval_ns</b>,
-    <b>websocket_callback_stats_t::total_duration_ns</b>, and
-    <b>websocket_callback_timing_record()</b>.</p>
-<p class="Pp">Referenced by <b>websocket_callback_timing_record()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_callback_timing_reset_(void_)"><a class="permalink" href="#void_websocket_callback_timing_reset_(void_)">void
-  websocket_callback_timing_reset (void )</a></h2>
-<p class="Pp">Reset timing statistics. Clears all counters and timing
-    information. Useful for baseline measurements.</p>
-<p class="Pp">Definition at line <b>130</b> of file
-  <b>callback_timing.c</b>.</p>
-<pre>130                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_cas_u64()</b>, <b>atomic_fetch_add_u64()</b>,
+            <b>atomic_load_u64()</b>, <b>websocket_callback_stats_t::count</b>,
+            <b>websocket_callback_stats_t::last_ns</b>,
+            <b>websocket_callback_stats_t::max_interval_ns</b>,
+            <b>websocket_callback_stats_t::min_interval_ns</b>,
+            <b>websocket_callback_stats_t::total_duration_ns</b>, and
+            <b>websocket_callback_timing_record()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>websocket_callback_timing_record()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_websocket_callback_timing_reset_(void_)">
+            <a
+              class="permalink"
+              href="#void_websocket_callback_timing_reset_(void_)"
+              >void websocket_callback_timing_reset (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Reset timing statistics. Clears all counters and timing information.
+            Useful for baseline measurements.
+          </p>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>callback_timing.c</b>.
+          </p>
+          <pre>
+130                                            {
 131   memset(&amp;g_ws_callback_timing, 0, sizeof(g_ws_callback_timing));
 132   atomic_store_u64(&amp;g_ws_callback_timing.protocol_init.min_interval_ns, UINT64_MAX);
 133   atomic_store_u64(&amp;g_ws_callback_timing.protocol_destroy.min_interval_ns, UINT64_MAX);
 134   atomic_store_u64(&amp;g_ws_callback_timing.server_writeable.min_interval_ns, UINT64_MAX);
 135   atomic_store_u64(&amp;g_ws_callback_timing.receive.min_interval_ns, UINT64_MAX);
 136 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>, <b>g_ws_callback_timing</b>,
-    <b>websocket_callback_stats_t::min_interval_ns</b>,
-    <b>websocket_callback_timing_t::protocol_destroy</b>,
-    <b>websocket_callback_timing_t::protocol_init</b>,
-    <b>websocket_callback_timing_t::receive</b>,
-    <b>websocket_callback_timing_t::server_writeable</b>, and
-    <b>websocket_callback_timing_reset()</b>.</p>
-<p class="Pp">Referenced by <b>websocket_callback_timing_reset()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>websocket_callback_timing_t</b> g_ws_callback_timing
-  [extern]</h2>
-<p class="Pp">Global timing tracker. Global timing tracker - shared across all
-    WebSocket connections.</p>
-<p class="Pp"></p>
-<p class="Pp">Shared across all WebSocket connections to profile callback
-    efficiency.</p>
-<p class="Pp"></p>
-<p class="Pp">Global timing tracker.</p>
-<p class="Pp">Definition at line <b>19</b> of file <b>callback_timing.c</b>.</p>
-<pre>19 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>websocket_callback_timing_log_stats()</b>, and
-    <b>websocket_callback_timing_reset()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_u64()</b>, <b>g_ws_callback_timing</b>,
+            <b>websocket_callback_stats_t::min_interval_ns</b>,
+            <b>websocket_callback_timing_t::protocol_destroy</b>,
+            <b>websocket_callback_timing_t::protocol_init</b>,
+            <b>websocket_callback_timing_t::receive</b>,
+            <b>websocket_callback_timing_t::server_writeable</b>, and
+            <b>websocket_callback_timing_reset()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>websocket_callback_timing_reset()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>websocket_callback_timing_t</b> g_ws_callback_timing [extern]
+          </h2>
+          <p class="Pp">
+            Global timing tracker. Global timing tracker - shared across all
+            WebSocket connections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shared across all WebSocket connections to profile callback
+            efficiency.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Global timing tracker.</p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>callback_timing.c</b>.
+          </p>
+          <pre>19 {0};</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>websocket_callback_timing_log_stats()</b>, and
+            <b>websocket_callback_timing_reset()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

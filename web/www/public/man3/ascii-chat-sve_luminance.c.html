@@ -1,61 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>luminance.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">luminance.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">luminance.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">luminance.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>glyph_shape_correlation_sve</b> (const int16_t samples[16],
-    const int16_t mask[16])
-  <br/>
-  void <b>simd_luminance_sve</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
-    *out, size_t width)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"><a class="permalink" href="#int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)">int
-  glyph_shape_correlation_sve (const int16_t samples[16], const int16_t
-  mask[16])</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>sve/luminance.c</b>.</p>
-<pre>7                                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>luminance.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">luminance.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">luminance.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">luminance.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>glyph_shape_correlation_sve</b> (const int16_t samples[16],
+            const int16_t mask[16])
+            <br />
+            void <b>simd_luminance_sve</b> (const <b>uint8_t</b> *rgb,
+            <b>uint8_t</b>
+            *out, size_t width)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+          >
+            <a
+              class="permalink"
+              href="#int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"
+              >int glyph_shape_correlation_sve (const int16_t samples[16], const
+              int16_t mask[16])</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>sve/luminance.c</b>.
+          </p>
+          <pre>
+7                                                                                    {
 8   int sum = 0;
 9   for (uint64_t i = 0; i &lt; 16; i += svcntw()) {
 10     svbool_t active = svwhilelt_b32(i, (uint64_t)16);
@@ -65,17 +113,23 @@
 14   }
 15   return sum;
 16 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>glyph_shape_correlation_sve()</b>.</p>
-<p class="Pp">Referenced by <b>glyph_shape_correlation_sve()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_simd_luminance_sve_(const_"><a class="permalink" href="#void_simd_luminance_sve_(const_">void
-  simd_luminance_sve (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
-  width)</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>sve/luminance.c</b>.</p>
-<pre>17                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>glyph_shape_correlation_sve()</b>.</p>
+          <p class="Pp">Referenced by <b>glyph_shape_correlation_sve()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_luminance_sve_(const_">
+            <a class="permalink" href="#void_simd_luminance_sve_(const_"
+              >void simd_luminance_sve (const <b>uint8_t</b> * rgb,
+              <b>uint8_t</b> * out, size_t width)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>sve/luminance.c</b>.
+          </p>
+          <pre>
+17                                                                         {
 18   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
 19   size_t x = 0;
 20   while (x &lt; width) {
@@ -124,24 +178,29 @@
 63     x += process_count;
 64   }
 65 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
-    <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>, <b>LUMA_THRESHOLD</b>,
-    <b>rgb_pixel_t::r</b>, and <b>simd_luminance_sve()</b>.</p>
-<p class="Pp">Referenced by <b>simd_luminance_sve()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+            <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>,
+            <b>LUMA_THRESHOLD</b>, <b>rgb_pixel_t::r</b>, and
+            <b>simd_luminance_sve()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simd_luminance_sve()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

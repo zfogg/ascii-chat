@@ -1,66 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>sync.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">sync.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">sync.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">sync.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>ui_sync_start</b> (int fd)
-  <br/>
-  void <b>ui_sync_stop</b> (void)
-  <br/>
-  <b>bool</b> <b>ui_sync_is_visible</b> (void)
-  <br/>
-  <b>keyboard_key_t</b> <b>ui_sync_handle_key</b> (<b>keyboard_key_t</b> key)
-  <br/>
-  void <b>ui_sync_render</b> (<b>terminal_size_t</b> size)
-  <br/>
-  int <b>ui_sync_output_fd</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>keyboard_key_t</b> ui_sync_handle_key (<b>keyboard_key_t</b>
-  key)</h2>
-<p class="Pp">Definition at line <b>350</b> of file <b>tui/sync.c</b>.</p>
-<pre>350                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sync.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sync.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sync.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">sync.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>ui_sync_start</b> (int fd)
+            <br />
+            void <b>ui_sync_stop</b> (void)
+            <br />
+            <b>bool</b> <b>ui_sync_is_visible</b> (void)
+            <br />
+            <b>keyboard_key_t</b> <b>ui_sync_handle_key</b> (<b
+              >keyboard_key_t</b
+            >
+            key)
+            <br />
+            void <b>ui_sync_render</b> (<b>terminal_size_t</b> size)
+            <br />
+            int <b>ui_sync_output_fd</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>keyboard_key_t</b> ui_sync_handle_key (<b>keyboard_key_t</b> key)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>350</b> of file <b>tui/sync.c</b>.
+          </p>
+          <pre>
+350                                                       {
 351   if (key == KEY_0) {
 352     ui_controller_select_interactive(ui_sync_is_visible() ? -1 : UI_SCREEN_SYNC);
 353     return KEY_NONE;
@@ -80,49 +123,77 @@
 367   atomic_store(&amp;g_sync_selected, (int)viewport.selected);
 368   return key == 'q' || key == 3 ? key : KEY_NONE;
 369 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>KEY_0</b>, <b>KEY_BACKTICK</b>, <b>KEY_ESCAPE</b>,
-    <b>KEY_NONE</b>, <b>KEY_QUESTION</b>, <b>ui_viewport_t::page_size</b>,
-    <b>ui_viewport_t::selected</b>, <b>ui_controller_select_interactive()</b>,
-    <b>UI_SCREEN_SYNC</b>, <b>ui_sync_handle_key()</b>,
-    <b>ui_sync_is_visible()</b>, and <b>ui_viewport_key()</b>.</p>
-<p class="Pp">Referenced by <b>ui_input_poll_sync()</b>,
-    <b>ui_input_read_key()</b>, and <b>ui_sync_handle_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_sync_is_visible (void )</h2>
-<p class="Pp">Definition at line <b>343</b> of file <b>tui/sync.c</b>.</p>
-<pre>343                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>KEY_0</b>, <b>KEY_BACKTICK</b>, <b>KEY_ESCAPE</b>,
+            <b>KEY_NONE</b>, <b>KEY_QUESTION</b>,
+            <b>ui_viewport_t::page_size</b>, <b>ui_viewport_t::selected</b>,
+            <b>ui_controller_select_interactive()</b>, <b>UI_SCREEN_SYNC</b>,
+            <b>ui_sync_handle_key()</b>, <b>ui_sync_is_visible()</b>, and
+            <b>ui_viewport_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_input_poll_sync()</b>,
+            <b>ui_input_read_key()</b>, and <b>ui_sync_handle_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_sync_is_visible (void )</h2>
+          <p class="Pp">
+            Definition at line <b>343</b> of file <b>tui/sync.c</b>.
+          </p>
+          <pre>
+343                               {
 344   return ui_controller_interactive_screen() == UI_SCREEN_SYNC;
 345 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_controller_interactive_screen()</b>,
-    <b>UI_SCREEN_SYNC</b>, and <b>ui_sync_is_visible()</b>.</p>
-<p class="Pp">Referenced by <b>ui_sync_handle_key()</b>,
-    <b>ui_sync_is_visible()</b>, and <b>ui_sync_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_sync_output_fd_(void_)"><a class="permalink" href="#int_ui_sync_output_fd_(void_)">int
-  ui_sync_output_fd (void )</a></h2>
-<p class="Pp">Definition at line <b>346</b> of file <b>tui/sync.c</b>.</p>
-<pre>346                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_controller_interactive_screen()</b>,
+            <b>UI_SCREEN_SYNC</b>, and <b>ui_sync_is_visible()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_sync_handle_key()</b>,
+            <b>ui_sync_is_visible()</b>, and <b>ui_sync_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_sync_output_fd_(void_)">
+            <a class="permalink" href="#int_ui_sync_output_fd_(void_)"
+              >int ui_sync_output_fd (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>346</b> of file <b>tui/sync.c</b>.
+          </p>
+          <pre>
+346                             {
 347   return g_sync_fd;
 348 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_sync_output_fd()</b>.</p>
-<p class="Pp">Referenced by <b>ui_sync_output_fd()</b>, and
-    <b>ui_sync_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_sync_render_("><a class="permalink" href="#void_ui_sync_render_(">void
-  ui_sync_render (<b>terminal_size_t</b> size)</a></h2>
-<p class="Pp">Called only by the presentation thread; uses already-owned
-    snapshots.</p>
-<p class="Pp">Definition at line <b>472</b> of file <b>tui/sync.c</b>.</p>
-<pre>472                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_sync_output_fd()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_sync_output_fd()</b>, and
+            <b>ui_sync_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_sync_render_(">
+            <a class="permalink" href="#void_ui_sync_render_("
+              >void ui_sync_render (<b>terminal_size_t</b> size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Called only by the presentation thread; uses already-owned
+            snapshots.
+          </p>
+          <p class="Pp">
+            Definition at line <b>472</b> of file <b>tui/sync.c</b>.
+          </p>
+          <pre>
+472                                           {
 473   colored_string_set_output_fd(ui_sync_output_fd() &gt;= 0 ? ui_sync_output_fd() : STDOUT_FILENO);
 474   terminal_capabilities_t caps = detect_terminal_capabilities();
 475   terminal_color_mode_t mode = GET_OPTION(color_mode);
@@ -368,56 +439,71 @@
 715   sync_write(&quot;\033[?2026l&quot;, 8);
 716   sync_flush();
 717 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>sync_row_t::actions</b>, <b>ASCIICHAT_OK</b>,
-    <b>ui_layout_t::body_rows</b>, <b>sync_sample_t::busy</b>,
-    <b>sync_row_t::change_rate</b>, <b>terminal_capabilities_t::color_level</b>,
-    <b>COLOR_SETTING_FALSE</b>, <b>colored_string_set_output_fd()</b>,
-    <b>terminal_size_t::cols</b>, <b>sync_sample_t::count</b>,
-    <b>sync_row_t::cycle</b>, <b>detect_terminal_capabilities()</b>,
-    <b>sync_row_t::file</b>, <b>format_number_compact()</b>, <b>GET_OPTION</b>,
-    <b>sync_row_t::key</b>, <b>sync_row_t::last_ns</b>,
-    <b>sync_sample_t::limited</b>, <b>sync_row_t::line</b>,
-    <b>sync_row_t::lock_rate</b>, <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_RESET</b>,
-    <b>LOG_COLOR_WARN</b>, <b>NS_PER_SEC_INT</b>, <b>sync_row_t::owner</b>,
-    <b>sync_sample_t::rows</b>, <b>terminal_size_t::rows</b>,
-    <b>sync_sample_t::sampled_ns</b>, <b>SYNC_ROW_CAPACITY</b>,
-    <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
-    <b>terminal_should_use_utf8()</b>, <b>TIME_DURATION_BUFFER_SIZE</b>,
-    <b>time_get_ns()</b>, <b>time_pretty()</b>,
-    <b>TUI_SYNC_ACTIONS_BUFFER_SIZE</b>, <b>TUI_SYNC_CHANGES_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_COLORED_NAME_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_COLORED_WAIT_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_DEADLOCK_BUFFER_SIZE</b>, <b>TUI_SYNC_FULL_NAME_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_LABEL_BUFFER_SIZE</b>, <b>TUI_SYNC_LINE_SHORT_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_LOCKS_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_NAME_EXTENDED_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_NUMBERS_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_OUTPUT_SHORT_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_PADDED_ACTIONS_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_PADDED_STATE_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_PADDED_WAIT_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_PLAIN_ACTIONS_BUFFER_SIZE</b>,
-    <b>TUI_SYNC_STATE_BUFFER_SIZE</b>, <b>TUI_SYNC_UNLOCKS_BUFFER_SIZE</b>,
-    <b>sync_row_t::type</b>, <b>UI_ALIGN_LEFT</b>, <b>UI_ALIGN_RIGHT</b>,
-    <b>ui_controller_write()</b>, <b>ui_layout_measure()</b>,
-    <b>ui_sync_output_fd()</b>, <b>ui_sync_render()</b>, <b>ui_table_row()</b>,
-    <b>ui_too_small()</b>, <b>ui_too_small_format()</b>,
-    <b>sync_row_t::unlock_rate</b>, <b>utf8_display_width()</b>,
-    <b>utf8_display_width_n()</b>, <b>utf8_next_char_bytes()</b>,
-    <b>sync_row_t::value</b>, <b>sync_row_t::wait_known</b>,
-    <b>sync_row_t::wait_ns</b>, <b>sync_row_t::waiter</b>,
-    <b>sync_row_t::waiters</b>, and <b>sync_sample_t::waits_complete</b>.</p>
-<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> ui_sync_start (int fd)</h2>
-<p class="Pp">Debug-only service. Collection and input never wait on application
-    locks.</p>
-<p class="Pp">Definition at line <b>297</b> of file <b>tui/sync.c</b>.</p>
-<pre>297                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>sync_row_t::actions</b>, <b>ASCIICHAT_OK</b>,
+            <b>ui_layout_t::body_rows</b>, <b>sync_sample_t::busy</b>,
+            <b>sync_row_t::change_rate</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>COLOR_SETTING_FALSE</b>, <b>colored_string_set_output_fd()</b>,
+            <b>terminal_size_t::cols</b>, <b>sync_sample_t::count</b>,
+            <b>sync_row_t::cycle</b>, <b>detect_terminal_capabilities()</b>,
+            <b>sync_row_t::file</b>, <b>format_number_compact()</b>,
+            <b>GET_OPTION</b>, <b>sync_row_t::key</b>,
+            <b>sync_row_t::last_ns</b>, <b>sync_sample_t::limited</b>,
+            <b>sync_row_t::line</b>, <b>sync_row_t::lock_rate</b>,
+            <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+            <b>LOG_COLOR_RESET</b>, <b>LOG_COLOR_WARN</b>,
+            <b>NS_PER_SEC_INT</b>, <b>sync_row_t::owner</b>,
+            <b>sync_sample_t::rows</b>, <b>terminal_size_t::rows</b>,
+            <b>sync_sample_t::sampled_ns</b>, <b>SYNC_ROW_CAPACITY</b>,
+            <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
+            <b>terminal_should_use_utf8()</b>, <b>TIME_DURATION_BUFFER_SIZE</b>,
+            <b>time_get_ns()</b>, <b>time_pretty()</b>,
+            <b>TUI_SYNC_ACTIONS_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_CHANGES_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_COLORED_NAME_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_COLORED_WAIT_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_DEADLOCK_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_FULL_NAME_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_LABEL_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_LINE_SHORT_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_LOCKS_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_NAME_EXTENDED_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_NUMBERS_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_OUTPUT_SHORT_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_PADDED_ACTIONS_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_PADDED_STATE_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_PADDED_WAIT_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_PLAIN_ACTIONS_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_STATE_BUFFER_SIZE</b>,
+            <b>TUI_SYNC_UNLOCKS_BUFFER_SIZE</b>, <b>sync_row_t::type</b>,
+            <b>UI_ALIGN_LEFT</b>, <b>UI_ALIGN_RIGHT</b>,
+            <b>ui_controller_write()</b>, <b>ui_layout_measure()</b>,
+            <b>ui_sync_output_fd()</b>, <b>ui_sync_render()</b>,
+            <b>ui_table_row()</b>, <b>ui_too_small()</b>,
+            <b>ui_too_small_format()</b>, <b>sync_row_t::unlock_rate</b>,
+            <b>utf8_display_width()</b>, <b>utf8_display_width_n()</b>,
+            <b>utf8_next_char_bytes()</b>, <b>sync_row_t::value</b>,
+            <b>sync_row_t::wait_known</b>, <b>sync_row_t::wait_ns</b>,
+            <b>sync_row_t::waiter</b>, <b>sync_row_t::waiters</b>, and
+            <b>sync_sample_t::waits_complete</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> ui_sync_start (int fd)</h2>
+          <p class="Pp">
+            Debug-only service. Collection and input never wait on application
+            locks.
+          </p>
+          <p class="Pp">
+            Definition at line <b>297</b> of file <b>tui/sync.c</b>.
+          </p>
+          <pre>
+297                                         {
 298   while (atomic_flag_test_and_set(&amp;g_sync_starting))
 299     platform_sleep_ms(1);
 300   asciichat_error_t result = ASCIICHAT_OK;
@@ -444,21 +530,32 @@
 321   atomic_flag_clear(&amp;g_sync_starting);
 322   return result;
 323 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_THREAD</b>, <b>keyboard_destroy()</b>,
-    <b>keyboard_init()</b>, <b>platform_close()</b>, <b>platform_dup()</b>,
-    <b>platform_isatty()</b>, <b>platform_sleep_ms()</b>, <b>SET_ERRNO</b>,
-    <b>SET_ERRNO_SYS</b>, and <b>ui_sync_start()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_start_terminal()</b>, and
-    <b>ui_sync_start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_sync_stop_(void_)"><a class="permalink" href="#void_ui_sync_stop_(void_)">void
-  ui_sync_stop (void )</a></h2>
-<p class="Pp">Definition at line <b>325</b> of file <b>tui/sync.c</b>.</p>
-<pre>325                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_FILE_OPERATION</b>, <b>ERROR_THREAD</b>,
+            <b>keyboard_destroy()</b>, <b>keyboard_init()</b>,
+            <b>platform_close()</b>, <b>platform_dup()</b>,
+            <b>platform_isatty()</b>, <b>platform_sleep_ms()</b>,
+            <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, and <b>ui_sync_start()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_start_terminal()</b>, and
+            <b>ui_sync_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_sync_stop_(void_)">
+            <a class="permalink" href="#void_ui_sync_stop_(void_)"
+              >void ui_sync_stop (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>325</b> of file <b>tui/sync.c</b>.
+          </p>
+          <pre>
+325                         {
 326   if (!g_sync_started)
 327     return;
 328   atomic_store(&amp;g_sync_stop, true);
@@ -475,26 +572,32 @@
 339     ui_controller_select_interactive(-1);
 340   g_sync_started = false;
 341 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>keyboard_destroy()</b>, <b>platform_close()</b>,
-    <b>thread_join</b>, <b>ui_controller_select_interactive()</b>,
-    <b>ui_sync_is_visible()</b>, <b>ui_sync_stop()</b>, and
-    <b>UNTRACKED_FREE</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_shutdown()</b>, and
-    <b>ui_sync_stop()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>keyboard_destroy()</b>, <b>platform_close()</b>,
+            <b>thread_join</b>, <b>ui_controller_select_interactive()</b>,
+            <b>ui_sync_is_visible()</b>, <b>ui_sync_stop()</b>, and
+            <b>UNTRACKED_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>, and
+            <b>ui_sync_stop()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

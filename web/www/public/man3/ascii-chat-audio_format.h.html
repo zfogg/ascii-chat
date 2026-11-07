@@ -1,78 +1,123 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>format.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">format.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">format.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">format.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>audio_resampler_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>audio_route_capture</b> (const float
-    *input, size_t frames, unsigned channels, int first_channel, unsigned
-    selected_channels, float *output)
-  <br/>
-  <b>asciichat_error_t</b> <b>audio_convert_channels</b> (const float *input,
-    size_t frames, unsigned input_channels, float *output, unsigned
-    output_channels)
-  <br/>
-  size_t <b>audio_resample_stereo</b> (<b>audio_resampler_t</b> *state, const
-    float *input, size_t frames, double input_rate, float *output, size_t
-    capacity, double output_rate)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_convert_channels (const float *
-  input, size_t frames, unsigned input_channels, float * output, unsigned
-  output_channels)</h2>
-<p class="Pp">Convert interleaved mono/stereo PCM. In-place conversion is
-    supported in both directions.</p>
-<p class="Pp">Definition at line <b>28</b> of file <b>audio/format.c</b>.</p>
-<pre>29                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>format.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">format.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">format.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">format.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>audio_resampler_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>audio_route_capture</b> (const float
+            *input, size_t frames, unsigned channels, int first_channel,
+            unsigned selected_channels, float *output)
+            <br />
+            <b>asciichat_error_t</b> <b>audio_convert_channels</b> (const float
+            *input, size_t frames, unsigned input_channels, float *output,
+            unsigned output_channels)
+            <br />
+            size_t <b>audio_resample_stereo</b> (<b>audio_resampler_t</b>
+            *state, const float *input, size_t frames, double input_rate, float
+            *output, size_t capacity, double output_rate)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_convert_channels (const float *
+            input, size_t frames, unsigned input_channels, float * output,
+            unsigned output_channels)
+          </h2>
+          <p class="Pp">
+            Convert interleaved mono/stereo PCM. In-place conversion is
+            supported in both directions.
+          </p>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>audio/format.c</b>.
+          </p>
+          <pre>
+29                                                                    {
 30   if (!input || !output || (input_channels != 1 &amp;&amp; input_channels != 2) ||
 31       (output_channels != 1 &amp;&amp; output_channels != 2))
 32     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Only mono and stereo PCM are supported&quot;);
@@ -94,24 +139,37 @@
 48   }
 49   return ASCIICHAT_OK;
 50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_convert_channels()</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>audio_convert_channels()</b>,
-    <b>client_audio_pipeline_capture()</b>, <b>handle_audio_batch_packet()</b>,
-    and <b>handle_audio_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_audio_resample_stereo_("><a class="permalink" href="#size_t_audio_resample_stereo_(">size_t
-  audio_resample_stereo (<b>audio_resampler_t</b> * state, const float * input,
-  size_t frames, double input_rate, float * output, size_t capacity, double
-  output_rate)</a></h2>
-<p class="Pp">Stateful interleaved resampling; capacities and return value are
-    frames. Invalid arguments return zero and set ERROR_INVALID_PARAM. On
-    insufficient capacity the state and output are left unchanged.</p>
-<p class="Pp">Definition at line <b>52</b> of file <b>audio/format.c</b>.</p>
-<pre>53                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>audio_convert_channels()</b>,
+            <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_convert_channels()</b>,
+            <b>client_audio_pipeline_capture()</b>,
+            <b>handle_audio_batch_packet()</b>, and
+            <b>handle_audio_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_audio_resample_stereo_(">
+            <a class="permalink" href="#size_t_audio_resample_stereo_("
+              >size_t audio_resample_stereo (<b>audio_resampler_t</b> * state,
+              const float * input, size_t frames, double input_rate, float *
+              output, size_t capacity, double output_rate)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stateful interleaved resampling; capacities and return value are
+            frames. Invalid arguments return zero and set ERROR_INVALID_PARAM.
+            On insufficient capacity the state and output are left unchanged.
+          </p>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>audio/format.c</b>.
+          </p>
+          <pre>
+53                                                                                  {
 54   if (!state || !input || !output || !frames || !isfinite(input_rate) || !isfinite(output_rate) || input_rate &lt; 8000 ||
 55       input_rate &gt; 192000 || output_rate &lt; 8000 || output_rate &gt; 192000) {
 56     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid stereo resampling buffers, frame count, or sample rates&quot;);
@@ -143,25 +201,34 @@
 82   state-&gt;has_previous = true;
 83   return produced;
 84 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_resample_stereo()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>audio_resampler_t::has_previous</b>,
-    <b>audio_resampler_t::phase</b>, <b>audio_resampler_t::previous</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>audio_resample_stereo()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_route_capture (const float *
-  input, size_t frames, unsigned channels, int first_channel, unsigned
-  selected_channels, float * output)</h2>
-<p class="Pp">Internal PCM is interleaved stereo. PCM sample counts include both
-    channels. Route a zero-based mono input or adjacent stereo pair to internal
-    PCM. A negative first_channel downmixes all input channels to centered mono.
-    Input and output must not overlap. No allocation or locking is
-  performed.</p>
-<p class="Pp">Definition at line <b>4</b> of file <b>audio/format.c</b>.</p>
-<pre>5                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_resample_stereo()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>audio_resampler_t::has_previous</b>,
+            <b>audio_resampler_t::phase</b>, <b>audio_resampler_t::previous</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_resample_stereo()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_route_capture (const float * input,
+            size_t frames, unsigned channels, int first_channel, unsigned
+            selected_channels, float * output)
+          </h2>
+          <p class="Pp">
+            Internal PCM is interleaved stereo. PCM sample counts include both
+            channels. Route a zero-based mono input or adjacent stereo pair to
+            internal PCM. A negative first_channel downmixes all input channels
+            to centered mono. Input and output must not overlap. No allocation
+            or locking is performed.
+          </p>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>audio/format.c</b>.
+          </p>
+          <pre>
+5                                                                                  {
 6   if (!input || !output || channels == 0 || channels &gt; AUDIO_DEVICE_MAX_CHANNELS ||
 7       (selected_channels != 1 &amp;&amp; selected_channels != 2) || first_channel &lt; -1 ||
 8       (first_channel &gt;= 0 &amp;&amp;
@@ -183,24 +250,28 @@
 24   }
 25   return ASCIICHAT_OK;
 26 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUDIO_DEVICE_MAX_CHANNELS</b>,
-    <b>audio_route_capture()</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>audio_route_capture()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>AUDIO_DEVICE_MAX_CHANNELS</b>,
+            <b>audio_route_capture()</b>, <b>ERROR_INVALID_PARAM</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_route_capture()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

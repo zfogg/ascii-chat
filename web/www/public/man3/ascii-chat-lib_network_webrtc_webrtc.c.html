@@ -1,228 +1,374 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>webrtc.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">webrtc.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">webrtc.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">webrtc.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>webrtc_peer_connection</b>
-  <br/>
-  WebRTC peer connection state. struct <b>webrtc_data_channel</b>
-  <br/>
-  WebRTC data channel for sending/receiving messages.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>NETWORK_WEBRTC_LABEL_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>WEBRTC_AUTH_INPUT_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>WEBRTC_PERCENT_ESCAPE_EXPANSION</b> 3
-  <br/>
-  #define <b>WEBRTC_ESCAPED_AUTH_BUFFER_SIZE</b>
-    (<b>WEBRTC_AUTH_INPUT_BUFFER_SIZE</b> *
-    <b>WEBRTC_PERCENT_ESCAPE_EXPANSION</b>)
-  <br/>
-  #define <b>WEBRTC_TURN_URL_BUFFER_SIZE</b> 1024
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>webrtc_init</b> (void)
-  <br/>
-  Initialize WebRTC library (libdatachannel). void <b>webrtc_destroy</b> (void)
-  <br/>
-  Cleanup WebRTC library resources. <b>asciichat_error_t</b>
-    <b>webrtc_create_peer_connection</b> (const <b>webrtc_config_t</b> *config,
-    <b>webrtc_peer_connection_t</b> **pc_out)
-  <br/>
-  Create a new WebRTC peer connection. void <b>webrtc_close_peer_connection</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Close and destroy a peer connection. <b>webrtc_state_t</b>
-    <b>webrtc_get_state</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get current connection state. <b>webrtc_gathering_state_t</b>
-    <b>webrtc_get_gathering_state</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get current ICE gathering state. <b>bool</b>
-    <b>webrtc_is_gathering_timed_out</b> (<b>webrtc_peer_connection_t</b> *pc,
-    <b>uint32_t</b> timeout_ms)
-  <br/>
-  Check if ICE gathering has timed out. void * <b>webrtc_get_user_data</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get user data pointer from connection. <b>asciichat_error_t</b>
-    <b>webrtc_create_offer</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Create and set local SDP offer (for connection initiator).
-    <b>asciichat_error_t</b> <b>webrtc_set_remote_description</b>
-    (<b>webrtc_peer_connection_t</b> *pc, const char *sdp, const char *type)
-  <br/>
-  Set remote SDP offer/answer. <b>asciichat_error_t</b>
-    <b>webrtc_add_remote_candidate</b> (<b>webrtc_peer_connection_t</b> *pc,
-    const char *candidate, const char *mid)
-  <br/>
-  Add remote ICE candidate. <b>asciichat_error_t</b>
-    <b>webrtc_create_datachannel</b> (<b>webrtc_peer_connection_t</b> *pc, const
-    char *label, <b>webrtc_data_channel_t</b> **dc_out)
-  <br/>
-  Create a DataChannel (for connection initiator). <b>asciichat_error_t</b>
-    <b>webrtc_datachannel_get_buffered_amount</b> (<b>webrtc_data_channel_t</b>
-    *dc, size_t *amount)
-  <br/>
-  <b>asciichat_error_t</b> <b>webrtc_datachannel_get_max_message_size</b>
-    (<b>webrtc_data_channel_t</b> *dc, size_t *size)
-  <br/>
-  <b>asciichat_error_t</b> <b>webrtc_datachannel_send</b>
-    (<b>webrtc_data_channel_t</b> *dc, const <b>uint8_t</b> *data, size_t size)
-  <br/>
-  Send data over DataChannel. <b>bool</b> <b>webrtc_datachannel_is_open</b>
-    (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Check if DataChannel is open and ready. void
-    <b>webrtc_datachannel_set_open_state</b> (<b>webrtc_data_channel_t</b> *dc,
-    <b>bool</b> is_open)
-  <br/>
-  Set DataChannel open state (internal use). const char *
-    <b>webrtc_datachannel_get_label</b> (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Get DataChannel label. void <b>webrtc_close_datachannel</b>
-    (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Close a DataChannel. <b>asciichat_error_t</b>
-    <b>webrtc_datachannel_set_callbacks</b> (<b>webrtc_data_channel_t</b> *dc,
-    const <b>webrtc_datachannel_callbacks_t</b> *callbacks)
-  <br/>
-  Set DataChannel callbacks. void <b>webrtc_datachannel_destroy</b>
-    (<b>webrtc_data_channel_t</b> *dc)
-  <br/>
-  Destroy a DataChannel and free resources. void
-    <b>webrtc_peer_connection_close</b> (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Close a peer connection. void <b>webrtc_peer_connection_destroy</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Destroy a peer connection and free resources. int <b>webrtc_get_rtc_id</b>
-    (<b>webrtc_peer_connection_t</b> *pc)
-  <br/>
-  Get the internal libdatachannel peer connection ID.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_LABEL_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_WEBRTC_LABEL_BUFFER_SIZE___256">#define
-  NETWORK_WEBRTC_LABEL_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_datachannel_get_label()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE___512">#define
-  NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE___64">#define
-  NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE___512">#define
-  NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_AUTH_INPUT_BUFFER_SIZE___128"><a class="permalink" href="#_define_WEBRTC_AUTH_INPUT_BUFFER_SIZE___128">#define
-  WEBRTC_AUTH_INPUT_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_ESCAPED_AUTH_BUFFER_SIZE___("><a class="permalink" href="#_define_WEBRTC_ESCAPED_AUTH_BUFFER_SIZE___(">#define
-  WEBRTC_ESCAPED_AUTH_BUFFER_SIZE (<b>WEBRTC_AUTH_INPUT_BUFFER_SIZE</b> *
-  <b>WEBRTC_PERCENT_ESCAPE_EXPANSION</b>)</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_PERCENT_ESCAPE_EXPANSION___3"><a class="permalink" href="#_define_WEBRTC_PERCENT_ESCAPE_EXPANSION___3">#define
-  WEBRTC_PERCENT_ESCAPE_EXPANSION 3</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBRTC_TURN_URL_BUFFER_SIZE___1024"><a class="permalink" href="#_define_WEBRTC_TURN_URL_BUFFER_SIZE___1024">#define
-  WEBRTC_TURN_URL_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>webrtc.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">webrtc.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">webrtc.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">webrtc.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>webrtc_peer_connection</b>
+            <br />
+            WebRTC peer connection state. struct <b>webrtc_data_channel</b>
+            <br />
+            WebRTC data channel for sending/receiving messages.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>NETWORK_WEBRTC_LABEL_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>WEBRTC_AUTH_INPUT_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>WEBRTC_PERCENT_ESCAPE_EXPANSION</b> 3
+            <br />
+            #define <b>WEBRTC_ESCAPED_AUTH_BUFFER_SIZE</b> (<b
+              >WEBRTC_AUTH_INPUT_BUFFER_SIZE</b
+            >
+            * <b>WEBRTC_PERCENT_ESCAPE_EXPANSION</b>)
+            <br />
+            #define <b>WEBRTC_TURN_URL_BUFFER_SIZE</b> 1024
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>webrtc_init</b> (void)
+            <br />
+            Initialize WebRTC library (libdatachannel). void
+            <b>webrtc_destroy</b> (void)
+            <br />
+            Cleanup WebRTC library resources. <b>asciichat_error_t</b>
+            <b>webrtc_create_peer_connection</b> (const
+            <b>webrtc_config_t</b> *config,
+            <b>webrtc_peer_connection_t</b> **pc_out)
+            <br />
+            Create a new WebRTC peer connection. void
+            <b>webrtc_close_peer_connection</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Close and destroy a peer connection. <b>webrtc_state_t</b>
+            <b>webrtc_get_state</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get current connection state. <b>webrtc_gathering_state_t</b>
+            <b>webrtc_get_gathering_state</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get current ICE gathering state. <b>bool</b>
+            <b>webrtc_is_gathering_timed_out</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, <b>uint32_t</b> timeout_ms)
+            <br />
+            Check if ICE gathering has timed out. void *
+            <b>webrtc_get_user_data</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get user data pointer from connection. <b>asciichat_error_t</b>
+            <b>webrtc_create_offer</b> (<b>webrtc_peer_connection_t</b> *pc)
+            <br />
+            Create and set local SDP offer (for connection initiator).
+            <b>asciichat_error_t</b> <b>webrtc_set_remote_description</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, const char *sdp, const char *type)
+            <br />
+            Set remote SDP offer/answer. <b>asciichat_error_t</b>
+            <b>webrtc_add_remote_candidate</b> (<b>webrtc_peer_connection_t</b>
+            *pc, const char *candidate, const char *mid)
+            <br />
+            Add remote ICE candidate. <b>asciichat_error_t</b>
+            <b>webrtc_create_datachannel</b> (<b>webrtc_peer_connection_t</b>
+            *pc, const char *label, <b>webrtc_data_channel_t</b> **dc_out)
+            <br />
+            Create a DataChannel (for connection initiator).
+            <b>asciichat_error_t</b>
+            <b>webrtc_datachannel_get_buffered_amount</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, size_t *amount)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>webrtc_datachannel_get_max_message_size</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, size_t *size)
+            <br />
+            <b>asciichat_error_t</b> <b>webrtc_datachannel_send</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const <b>uint8_t</b> *data, size_t size)
+            <br />
+            Send data over DataChannel. <b>bool</b>
+            <b>webrtc_datachannel_is_open</b> (<b>webrtc_data_channel_t</b>
+            *dc)
+            <br />
+            Check if DataChannel is open and ready. void
+            <b>webrtc_datachannel_set_open_state</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, <b>bool</b> is_open)
+            <br />
+            Set DataChannel open state (internal use). const char *
+            <b>webrtc_datachannel_get_label</b> (<b>webrtc_data_channel_t</b>
+            *dc)
+            <br />
+            Get DataChannel label. void <b>webrtc_close_datachannel</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc)
+            <br />
+            Close a DataChannel. <b>asciichat_error_t</b>
+            <b>webrtc_datachannel_set_callbacks</b> (<b
+              >webrtc_data_channel_t</b
+            >
+            *dc, const <b>webrtc_datachannel_callbacks_t</b> *callbacks)
+            <br />
+            Set DataChannel callbacks. void
+            <b>webrtc_datachannel_destroy</b> (<b>webrtc_data_channel_t</b>
+            *dc)
+            <br />
+            Destroy a DataChannel and free resources. void
+            <b>webrtc_peer_connection_close</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Close a peer connection. void
+            <b>webrtc_peer_connection_destroy</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc)
+            <br />
+            Destroy a peer connection and free resources. int
+            <b>webrtc_get_rtc_id</b> (<b>webrtc_peer_connection_t</b>
+            *pc)
+            <br />
+            Get the internal libdatachannel peer connection ID.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_WEBRTC_LABEL_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_LABEL_BUFFER_SIZE___256"
+              >#define NETWORK_WEBRTC_LABEL_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>webrtc_datachannel_get_label()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE___512"
+              >#define NETWORK_WEBRTC_LOCAL_CANDIDATE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE___64"
+              >#define NETWORK_WEBRTC_PC_NAME_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE___512"
+              >#define NETWORK_WEBRTC_REMOTE_CANDIDATE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_AUTH_INPUT_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_AUTH_INPUT_BUFFER_SIZE___128"
+              >#define WEBRTC_AUTH_INPUT_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_ESCAPED_AUTH_BUFFER_SIZE___(">
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_ESCAPED_AUTH_BUFFER_SIZE___("
+              >#define WEBRTC_ESCAPED_AUTH_BUFFER_SIZE (<b
+                >WEBRTC_AUTH_INPUT_BUFFER_SIZE</b
+              >
+              * <b>WEBRTC_PERCENT_ESCAPE_EXPANSION</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_PERCENT_ESCAPE_EXPANSION___3">
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_PERCENT_ESCAPE_EXPANSION___3"
+              >#define WEBRTC_PERCENT_ESCAPE_EXPANSION 3</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBRTC_TURN_URL_BUFFER_SIZE___1024">
+            <a
+              class="permalink"
+              href="#_define_WEBRTC_TURN_URL_BUFFER_SIZE___1024"
+              >#define WEBRTC_TURN_URL_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file
+            <b>lib/network/webrtc/webrtc.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

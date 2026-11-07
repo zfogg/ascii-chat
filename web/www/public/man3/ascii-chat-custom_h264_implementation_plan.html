@@ -1,84 +1,140 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_h264_implementation_plan(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_h264_implementation_plan(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_h264_implementation_plan(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_h264_implementation_plan - H.264 Implementation Plan</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="H"><a class="permalink" href="#H">H.264 Implementation
-  Plan</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
-<p class="Pp">Reduce WebSocket fragmentation (1500+ &#x2192; 1-2 fragments per
-    frame) by encoding client frames as H.264 before transmission. Uses FFmpeg
-    which is already a project dependency.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_1:_FFmpeg_Encoder_Setup_(30_mins)"><a class="permalink" href="#Phase_1:_FFmpeg_Encoder_Setup_(30_mins)">Phase
-  1: FFmpeg Encoder Setup (30 mins)</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_1:_Enable_H"><a class="permalink" href="#Step_1:_Enable_H">Step
-  1: Enable H.264 encoder in CMake</a></h2>
-<p class="Pp"><b>File:</b> cmake/dependencies/FFmpeg.cmake</p>
-<p class="Pp"></p>
-<p class="Pp">Add encoder configuration to FFmpeg build. Find line 149:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Current (decoders only):
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_h264_implementation_plan(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_h264_implementation_plan(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_h264_implementation_plan(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_h264_implementation_plan - H.264 Implementation Plan
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="H">
+          <a class="permalink" href="#H">H.264 Implementation Plan</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+          <p class="Pp">
+            Reduce WebSocket fragmentation (1500+ &#x2192; 1-2 fragments per
+            frame) by encoding client frames as H.264 before transmission. Uses
+            FFmpeg which is already a project dependency.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_1:_FFmpeg_Encoder_Setup_(30_mins)">
+            <a class="permalink" href="#Phase_1:_FFmpeg_Encoder_Setup_(30_mins)"
+              >Phase 1: FFmpeg Encoder Setup (30 mins)</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_1:_Enable_H">
+            <a class="permalink" href="#Step_1:_Enable_H"
+              >Step 1: Enable H.264 encoder in CMake</a
+            >
+          </h2>
+          <p class="Pp"><b>File:</b> cmake/dependencies/FFmpeg.cmake</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Add encoder configuration to FFmpeg build. Find line 149:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Current (decoders only):
 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
 # Change to (add encoder):
 --enable-encoder=libx264,mpeg4,png
 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le</pre>
-<p class="Pp">Alternative (if libx264 unavailable):</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>--enable-encoder=h264,mpeg4,png</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_2:_Rebuild_FFmpeg"><a class="permalink" href="#Step_2:_Rebuild_FFmpeg">Step
-  2: Rebuild FFmpeg</a></h2>
-<pre>rm -rf ~/.cache/asciichat-deps/ffmpeg*
+          <p class="Pp">Alternative (if libx264 unavailable):</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>--enable-encoder=h264,mpeg4,png</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_2:_Rebuild_FFmpeg">
+            <a class="permalink" href="#Step_2:_Rebuild_FFmpeg"
+              >Step 2: Rebuild FFmpeg</a
+            >
+          </h2>
+          <pre>
+rm -rf ~/.cache/asciichat-deps/ffmpeg*
 cmake --preset default -B build
 cmake --build build</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_2:_Create_ffmpeg_encoder_Module_(1"><a class="permalink" href="#Phase_2:_Create_ffmpeg_encoder_Module_(1">Phase
-  2: Create ffmpeg_encoder Module (1.5-2 hours)</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_1:_Create_"><a class="permalink" href="#Step_1:_Create_">Step
-  1: Create lib/media/ffmpeg_encoder.h</a></h2>
-<pre>#ifndef FFMPEG_ENCODER_H
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_2:_Create_ffmpeg_encoder_Module_(1">
+            <a
+              class="permalink"
+              href="#Phase_2:_Create_ffmpeg_encoder_Module_(1"
+              >Phase 2: Create ffmpeg_encoder Module (1.5-2 hours)</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_1:_Create_">
+            <a class="permalink" href="#Step_1:_Create_"
+              >Step 1: Create lib/media/ffmpeg_encoder.h</a
+            >
+          </h2>
+          <pre>#ifndef FFMPEG_ENCODER_H
 #define FFMPEG_ENCODER_H
 #include &lt;stdint.h&gt;
 #include &lt;stddef.h&gt;
@@ -92,40 +148,50 @@ int ffmpeg_encoder_flush(ffmpeg_encoder_t *encoder, uint8_t *out_buffer,
                          size_t *out_size, size_t out_buffer_size);
 void ffmpeg_encoder_destroy(ffmpeg_encoder_t *encoder);
 #endif // FFMPEG_ENCODER_H</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_2:_Create_"><a class="permalink" href="#Step_2:_Create_">Step
-  2: Create <b>lib/media/ffmpeg_encoder.c</b><b></b></a></h2>
-<p class="Pp">Follow the pattern of ffmpeg_decoder.c:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Copy ffmpeg_decoder.c structure</dd>
-  <dt>2.</dt>
-  <dd>Replace AVCodecContext decoder with encoder</dd>
-  <dt>3.</dt>
-  <dd>Implement encoding loop instead of decoding loop</dd>
-  <dt>4.</dt>
-  <dd>Handle NAL unit output (H.264 bitstream)</dd>
-</dl>
-<p class="Pp"><b>Key differences from decoder:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Use avcodec_find_encoder_by_name(&quot;libx264&quot;) instead of
-    decoder</li>
-  <li>Use avcodec_send_frame() to send raw frames</li>
-  <li>Use av_packet_alloc() to receive encoded packets</li>
-  <li>Output is bitstream NAL units, not decoded frames</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_3:_Update_CMakeLists"><a class="permalink" href="#Step_3:_Update_CMakeLists">Step
-  3: Update CMakeLists.txt</a></h2>
-<p class="Pp">Add to source file list in src/CMakeLists.txt or
-    lib/media/CMakeLists.txt:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>if(FFMPEG_FOUND)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_2:_Create_">
+            <a class="permalink" href="#Step_2:_Create_"
+              >Step 2: Create <b>lib/media/ffmpeg_encoder.c</b><b></b
+            ></a>
+          </h2>
+          <p class="Pp">Follow the pattern of ffmpeg_decoder.c:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Copy ffmpeg_decoder.c structure</dd>
+            <dt>2.</dt>
+            <dd>Replace AVCodecContext decoder with encoder</dd>
+            <dt>3.</dt>
+            <dd>Implement encoding loop instead of decoding loop</dd>
+            <dt>4.</dt>
+            <dd>Handle NAL unit output (H.264 bitstream)</dd>
+          </dl>
+          <p class="Pp"><b>Key differences from decoder:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Use avcodec_find_encoder_by_name(&quot;libx264&quot;) instead of
+              decoder
+            </li>
+            <li>Use avcodec_send_frame() to send raw frames</li>
+            <li>Use av_packet_alloc() to receive encoded packets</li>
+            <li>Output is bitstream NAL units, not decoded frames</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_3:_Update_CMakeLists">
+            <a class="permalink" href="#Step_3:_Update_CMakeLists"
+              >Step 3: Update CMakeLists.txt</a
+            >
+          </h2>
+          <p class="Pp">
+            Add to source file list in src/CMakeLists.txt or
+            lib/media/CMakeLists.txt:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>if(FFMPEG_FOUND)
 <br/>
     target_sources(ascii-chat-lib PRIVATE
 <br/>
@@ -135,30 +201,42 @@ void ffmpeg_encoder_destroy(ffmpeg_encoder_t *encoder);
 <br/>
     )
 endif()</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_3:_Client_Integration_(1-2_hours)"><a class="permalink" href="#Phase_3:_Client_Integration_(1-2_hours)">Phase
-  3: Client Integration (1-2 hours)</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_1:_Update_packet_format"><a class="permalink" href="#Step_1:_Update_packet_format">Step
-  1: Update packet format</a></h2>
-<p class="Pp"><b>File:</b> include/ascii-chat/network/packet.h</p>
-<p class="Pp"></p>
-<p class="Pp">Add format enum to IMAGE_FRAME:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#define PIXEL_FORMAT_RGB24   0
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_3:_Client_Integration_(1-2_hours)">
+            <a class="permalink" href="#Phase_3:_Client_Integration_(1-2_hours)"
+              >Phase 3: Client Integration (1-2 hours)</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_1:_Update_packet_format">
+            <a class="permalink" href="#Step_1:_Update_packet_format"
+              >Step 1: Update packet format</a
+            >
+          </h2>
+          <p class="Pp"><b>File:</b> include/ascii-chat/network/packet.h</p>
+          <p class="Pp"></p>
+          <p class="Pp">Add format enum to IMAGE_FRAME:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+#define PIXEL_FORMAT_RGB24   0
 #define PIXEL_FORMAT_H264    1  // Add this
 #define PIXEL_FORMAT_HEVC    2  // Future</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_2:_Modify_client_capture_loop"><a class="permalink" href="#Step_2:_Modify_client_capture_loop">Step
-  2: Modify client capture loop</a></h2>
-<p class="Pp"><b>File:</b> src/client/client.c or equivalent capture handler</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Before sending frame:
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_2:_Modify_client_capture_loop">
+            <a class="permalink" href="#Step_2:_Modify_client_capture_loop"
+              >Step 2: Modify client capture loop</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>File:</b> src/client/client.c or equivalent capture handler
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Before sending frame:
 if (use_h264_encoding) {
 <br/>
     ffmpeg_encoder_t *encoder = get_encoder();
@@ -180,36 +258,50 @@ if (use_h264_encoding) {
 <br/>
     send_image_frame_packet(sock, rgb_data, width, height, PIXEL_FORMAT_RGB24);
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_3:_Add_CLI_option"><a class="permalink" href="#Step_3:_Add_CLI_option">Step
-  3: Add CLI option</a></h2>
-<p class="Pp"><b>File:</b> <b>lib/options/options.c</b><b> or similar</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Add to options struct:
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_3:_Add_CLI_option">
+            <a class="permalink" href="#Step_3:_Add_CLI_option"
+              >Step 3: Add CLI option</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>File:</b> <b>lib/options/options.c</b><b> or similar</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Add to options struct:
 bool use_h264_encoding;
 uint32_t h264_bitrate_kbps;
 const char *h264_preset;  // &quot;fast&quot;, &quot;medium&quot;, &quot;slow&quot;</pre>
-<p class="Pp">Parse from CLI:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>--h264                    Enable H.264 encoding
+          <p class="Pp">Parse from CLI:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+--h264                    Enable H.264 encoding
 --h264-bitrate &lt;kbps&gt;    Target bitrate (default: 2000)
 --h264-preset &lt;preset&gt;   Encoding preset (default: medium)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_4:_Server_Integration_(1_hour)"><a class="permalink" href="#Phase_4:_Server_Integration_(1_hour)">Phase
-  4: Server Integration (1 hour)</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_1:_Update_packet_receiving"><a class="permalink" href="#Step_1:_Update_packet_receiving">Step
-  1: Update packet receiving</a></h2>
-<p class="Pp"><b>File:</b> src/server/packet_handler.c or network receive
-    handler</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// When receiving IMAGE_FRAME:
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_4:_Server_Integration_(1_hour)">
+            <a class="permalink" href="#Phase_4:_Server_Integration_(1_hour)"
+              >Phase 4: Server Integration (1 hour)</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_1:_Update_packet_receiving">
+            <a class="permalink" href="#Step_1:_Update_packet_receiving"
+              >Step 1: Update packet receiving</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>File:</b> src/server/packet_handler.c or network receive handler
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// When receiving IMAGE_FRAME:
 if (packet-&gt;format == PIXEL_FORMAT_H264) {
 <br/>
     // Decode H.264 to RGB
@@ -231,49 +323,63 @@ if (packet-&gt;format == PIXEL_FORMAT_H264) {
 <br/>
     process_frame_for_ascii(packet-&gt;data, width, height);
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Step_2:_Manage_decoders_per_client"><a class="permalink" href="#Step_2:_Manage_decoders_per_client">Step
-  2: Manage decoders per client</a></h2>
-<p class="Pp">Add to <b>client_info_t</b><b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>struct client_info_t {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Step_2:_Manage_decoders_per_client">
+            <a class="permalink" href="#Step_2:_Manage_decoders_per_client"
+              >Step 2: Manage decoders per client</a
+            >
+          </h2>
+          <p class="Pp">Add to <b>client_info_t</b><b>:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>struct client_info_t {
 <br/>
     // ... existing fields ...
 <br/>
     ffmpeg_decoder_t *h264_decoder;  // Add this
 };</pre>
-<p class="Pp">Initialize/destroy with client lifecycle.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_5:_Testing_(1-2_hours)"><a class="permalink" href="#Phase_5:_Testing_(1-2_hours)">Phase
-  5: Testing (1-2 hours)</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Unit_Tests"><a class="permalink" href="#Unit_Tests">Unit
-  Tests</a></h2>
-<pre># Test encoder creation
+          <p class="Pp">Initialize/destroy with client lifecycle.</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_5:_Testing_(1-2_hours)">
+            <a class="permalink" href="#Phase_5:_Testing_(1-2_hours)"
+              >Phase 5: Testing (1-2 hours)</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Unit_Tests">
+            <a class="permalink" href="#Unit_Tests">Unit Tests</a>
+          </h2>
+          <pre>
+# Test encoder creation
 ./build/bin/test_media_encoder --filter &quot;*create*&quot;
 # Test compression ratio
 ./build/bin/test_media_encoder --filter &quot;*compression*&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Integration_Tests"><a class="permalink" href="#Integration_Tests">Integration
-  Tests</a></h2>
-<pre># Client-only test (mirror mode)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Integration_Tests">
+            <a class="permalink" href="#Integration_Tests">Integration Tests</a>
+          </h2>
+          <pre>
+# Client-only test (mirror mode)
 ./build/bin/ascii-chat mirror --h264 --snapshot 5
 # End-to-end server + client
 ./build/bin/ascii-chat server --h264 &amp;
 sleep 1
 ./build/bin/ascii-chat client --h264 --snapshot 5
 pkill -f &quot;ascii-chat server&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Manual_Verification"><a class="permalink" href="#Manual_Verification">Manual
-  Verification</a></h2>
-<pre># Check fragmentation reduction
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Manual_Verification">
+            <a class="permalink" href="#Manual_Verification"
+              >Manual Verification</a
+            >
+          </h2>
+          <pre>
+# Check fragmentation reduction
 ./build/bin/ascii-chat --log-level debug server --grep &quot;fragment|packet_size&quot;
 # Verify encoding quality (visually)
 ./build/bin/ascii-chat server --h264
@@ -281,69 +387,86 @@ pkill -f &quot;ascii-chat server&quot;</pre>
 # Compare bandwidth with/without H.264
 # Use: iftop, nethogs, or tcpdump
 tcpdump -i lo port 27224</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Timeline"><a class="permalink" href="#Timeline">Timeline</a></h2>
-<p class="Pp">Phase Task Time 1 FFmpeg encoder in CMake 30 mins 2 Create
-    ffmpeg_encoder module 1.5-2 hrs 3 Client integration 1-2 hrs 4 Server
-    integration 1 hr 5 Testing &amp; debugging 1-2 hrs <b>Total</b> <b>5-7
-    hours</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Success_Criteria"><a class="permalink" href="#Success_Criteria">Success
-  Criteria</a></h2>
-<ul class="Bl-bullet">
-  <li>&#x2705; Frame size: 6.2MB &#x2192; &lt;50KB (147&#x00D7; reduction)</li>
-  <li>&#x2705; Fragments: 1500+ &#x2192; 1-2 per frame</li>
-  <li>&#x2705; No frame loss at 60fps</li>
-  <li>&#x2705; Encoding latency &lt;50ms (with GPU accel)</li>
-  <li>&#x2705; Server CPU usage reasonable</li>
-  <li>&#x2705; End-to-end latency &lt;150ms</li>
-  <li>&#x2705; Visual quality acceptable (no visible artifacts)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Rollback_Plan"><a class="permalink" href="#Rollback_Plan">Rollback
-  Plan</a></h2>
-<p class="Pp">If H.264 causes issues:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Add --disable-h264 flag</dd>
-  <dt>2.</dt>
-  <dd>Fall back to RGB transmission</dd>
-  <dt>3.</dt>
-  <dd>Keep both codepaths (dynamic selection)</dd>
-  <dt>4.</dt>
-  <dd>Default to whichever works best</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Future_Work"><a class="permalink" href="#Future_Work">Future
-  Work</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Adaptive bitrate</b> - Monitor network, adjust quality dynamically</dd>
-  <dt>2.</dt>
-  <dd><b>VP8/VP9 support</b> - Already enabled in FFmpeg</dd>
-  <dt>3.</dt>
-  <dd><b>HEVC/H.265</b> - Better compression for future</dd>
-  <dt>4.</dt>
-  <dd><b>SVC (Scalable Video Coding)</b> - Multiple quality layers</dd>
-  <dt>5.</dt>
-  <dd><b>Key frame insertion</b> - Force I-frames on scene changes</dd>
-  <dt>6.</dt>
-  <dd><b>Bandwidth profiling</b> - Measure actual vs theoretical</dd>
-</dl>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timeline">
+            <a class="permalink" href="#Timeline">Timeline</a>
+          </h2>
+          <p class="Pp">
+            Phase Task Time 1 FFmpeg encoder in CMake 30 mins 2 Create
+            ffmpeg_encoder module 1.5-2 hrs 3 Client integration 1-2 hrs 4
+            Server integration 1 hr 5 Testing &amp; debugging 1-2 hrs
+            <b>Total</b> <b>5-7 hours</b>
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Success_Criteria">
+            <a class="permalink" href="#Success_Criteria">Success Criteria</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              &#x2705; Frame size: 6.2MB &#x2192; &lt;50KB (147&#x00D7;
+              reduction)
+            </li>
+            <li>&#x2705; Fragments: 1500+ &#x2192; 1-2 per frame</li>
+            <li>&#x2705; No frame loss at 60fps</li>
+            <li>&#x2705; Encoding latency &lt;50ms (with GPU accel)</li>
+            <li>&#x2705; Server CPU usage reasonable</li>
+            <li>&#x2705; End-to-end latency &lt;150ms</li>
+            <li>&#x2705; Visual quality acceptable (no visible artifacts)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Rollback_Plan">
+            <a class="permalink" href="#Rollback_Plan">Rollback Plan</a>
+          </h2>
+          <p class="Pp">If H.264 causes issues:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Add --disable-h264 flag</dd>
+            <dt>2.</dt>
+            <dd>Fall back to RGB transmission</dd>
+            <dt>3.</dt>
+            <dd>Keep both codepaths (dynamic selection)</dd>
+            <dt>4.</dt>
+            <dd>Default to whichever works best</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Work">
+            <a class="permalink" href="#Future_Work">Future Work</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Adaptive bitrate</b> - Monitor network, adjust quality
+              dynamically
+            </dd>
+            <dt>2.</dt>
+            <dd><b>VP8/VP9 support</b> - Already enabled in FFmpeg</dd>
+            <dt>3.</dt>
+            <dd><b>HEVC/H.265</b> - Better compression for future</dd>
+            <dt>4.</dt>
+            <dd>
+              <b>SVC (Scalable Video Coding)</b> - Multiple quality layers
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>Key frame insertion</b> - Force I-frames on scene changes
+            </dd>
+            <dt>6.</dt>
+            <dd><b>Bandwidth profiling</b> - Measure actual vs theoretical</dd>
+          </dl>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

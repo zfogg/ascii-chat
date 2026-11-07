@@ -211,4 +211,3 @@
  * - @ref topic_defer "Defer Statements" - 🔄 Go/Zig-style defer statements for automatic cleanup
  * - @ref topic_panic "Panic Instrumentation" - 🚨 Per-statement logging for crash debugging
  */
-

@@ -1,175 +1,282 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>prompt_snapshot_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">prompt_snapshot_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">prompt_snapshot_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">prompt_snapshot_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>ui_prompt_kind_t</b> <b>kind</b>
-  <br/>
-  size_t <b>prompt_bytes</b>
-  <br/>
-  size_t <b>cursor</b>
-  <br/>
-  size_t <b>selected_button</b>
-  <br/>
-  <b>bool</b> <b>password_dialog</b>
-  <br/>
-  <b>bool</b> <b>incorrect</b>
-  <br/>
-  <b>bool</b> <b>can_confirm</b>
-  <br/>
-  <b>bool</b> <b>newline_limit</b>
-  <br/>
-  <b>ui_notice_severity_t</b> <b>severity</b>
-  <br/>
-  <b>bool</b> <b>color</b>
-  <br/>
-  <b>bool</b> <b>unicode</b>
-  <br/>
-  <b>bool</b> <b>secret</b>
-  <br/>
-  char <b>text</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>24</b> of file <b>prompt.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::can_confirm</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::color</h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_prompt_snapshot_t::cursor"><a class="permalink" href="#size_t_prompt_snapshot_t::cursor">size_t
-  prompt_snapshot_t::cursor</a></h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::incorrect</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_prompt_kind_t</b> prompt_snapshot_t::kind</h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>,
-    <b>ui_prompt_present_kind()</b>, and <b>ui_prompt_usage_name()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::newline_limit</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::password_dialog</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>,
-    <b>ui_prompt_present_kind()</b>, and <b>ui_prompt_required_rows()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_prompt_snapshot_t::prompt_bytes"><a class="permalink" href="#size_t_prompt_snapshot_t::prompt_bytes">size_t
-  prompt_snapshot_t::prompt_bytes</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::secret</h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>,
-    <b>ui_prompt_present_kind()</b>, and <b>ui_prompt_title()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_prompt_snapshot_t::selected_button"><a class="permalink" href="#size_t_prompt_snapshot_t::selected_button">size_t
-  prompt_snapshot_t::selected_button</a></h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>, and
-    <b>ui_prompt_present_kind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_notice_severity_t</b> prompt_snapshot_t::severity</h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_prompt_present_kind()</b>, and
-    <b>ui_prompt_required_rows()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_prompt_snapshot_t::text__"><a class="permalink" href="#char_prompt_snapshot_t::text__">char
-  prompt_snapshot_t::text[]</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>,
-    <b>ui_prompt_present_kind()</b>, <b>ui_prompt_required_rows()</b>, and
-    <b>ui_prompt_title()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_snapshot_t::unicode</h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>prompt.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_prompt_present_kind()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>prompt_snapshot_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">prompt_snapshot_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">prompt_snapshot_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">prompt_snapshot_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ui_prompt_kind_t</b> <b>kind</b>
+            <br />
+            size_t <b>prompt_bytes</b>
+            <br />
+            size_t <b>cursor</b>
+            <br />
+            size_t <b>selected_button</b>
+            <br />
+            <b>bool</b> <b>password_dialog</b>
+            <br />
+            <b>bool</b> <b>incorrect</b>
+            <br />
+            <b>bool</b> <b>can_confirm</b>
+            <br />
+            <b>bool</b> <b>newline_limit</b>
+            <br />
+            <b>ui_notice_severity_t</b> <b>severity</b>
+            <br />
+            <b>bool</b> <b>color</b>
+            <br />
+            <b>bool</b> <b>unicode</b>
+            <br />
+            <b>bool</b> <b>secret</b>
+            <br />
+            char <b>text</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>24</b> of file <b>prompt.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::can_confirm</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::color</h2>
+          <p class="Pp">
+            Definition at line <b>31</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_prompt_snapshot_t::cursor">
+            <a class="permalink" href="#size_t_prompt_snapshot_t::cursor"
+              >size_t prompt_snapshot_t::cursor</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::incorrect</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_prompt_kind_t</b> prompt_snapshot_t::kind</h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>,
+            <b>ui_prompt_present_kind()</b>, and <b>ui_prompt_usage_name()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::newline_limit</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::password_dialog</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>,
+            <b>ui_prompt_present_kind()</b>, and
+            <b>ui_prompt_required_rows()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_prompt_snapshot_t::prompt_bytes">
+            <a class="permalink" href="#size_t_prompt_snapshot_t::prompt_bytes"
+              >size_t prompt_snapshot_t::prompt_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::secret</h2>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>,
+            <b>ui_prompt_present_kind()</b>, and <b>ui_prompt_title()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_prompt_snapshot_t::selected_button">
+            <a
+              class="permalink"
+              href="#size_t_prompt_snapshot_t::selected_button"
+              >size_t prompt_snapshot_t::selected_button</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>, and
+            <b>ui_prompt_present_kind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_notice_severity_t</b> prompt_snapshot_t::severity
+          </h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_prompt_present_kind()</b>, and
+            <b>ui_prompt_required_rows()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_prompt_snapshot_t::text__">
+            <a class="permalink" href="#char_prompt_snapshot_t::text__"
+              >char prompt_snapshot_t::text[]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_password_prompt_present()</b>,
+            <b>ui_prompt_present_kind()</b>, <b>ui_prompt_required_rows()</b>,
+            and <b>ui_prompt_title()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> prompt_snapshot_t::unicode</h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>prompt.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_prompt_present_kind()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

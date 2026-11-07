@@ -1,591 +1,891 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_capture_ctx(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_capture_ctx(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_capture_ctx(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_capture_ctx - Internal session capture context
-  structure.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>media_source_t</b> * <b>source</b>
-  <br/>
-  Underlying media source (webcam, file, stdin, test). <b>mutex_t</b>
-    <b>source_mutex</b>
-  <br/>
-  <b>mutex_t</b> <b>load_mutex</b>
-  <br/>
-  <b>session_capture_audio_update_fn</b> <b>audio_update</b>
-  <br/>
-  void * <b>audio_update_data</b>
-  <br/>
-  <b>session_capture_should_exit_fn</b> <b>should_exit_callback</b>
-  <br/>
-  void * <b>callback_data</b>
-  <br/>
-  <b>bool</b> <b>media_locks_ready</b>
-  <br/>
-  _Atomic <b>bool</b> <b>loader_created</b>
-  <br/>
-  _Atomic <b>bool</b> <b>loader_done</b>
-  <br/>
-  <b>asciichat_thread_t</b> <b>loader</b>
-  <br/>
-  <b>atomic_t</b> <b>load_cancel</b>
-  <br/>
-  <b>atomic_t</b> <b>playlist_skip</b>
-  <br/>
-  <b>media_playlist_t</b> <b>playlist</b>
-  <br/>
-  <b>media_playlist_t</b> <b>load_playlist</b>
-  <br/>
-  <b>bool</b> <b>advance_failed</b>
-  <br/>
-  <b>bool</b> <b>load_is_advance</b>
-  <br/>
-  <b>atomic_t</b> <b>source_epoch</b>
-  <br/>
-  <b>atomic_t</b> <b>frame_serial</b>
-  <br/>
-  <b>atomic_t</b> <b>awaiting_presentation</b>
-  <br/>
-  <b>media_source_t</b> * <b>loaded_source</b>
-  <br/>
-  <b>image_t</b> * <b>loaded_frame</b>
-  <br/>
-  <b>image_t</b> * <b>initial_frame</b>
-  <br/>
-  <b>bool</b> <b>initial_frame_pending</b>
-  <br/>
-  char <b>load_path</b> [8192]
-  <br/>
-  char <b>load_error</b> [512]
-  <br/>
-  <b>face_follow_image_t</b> * <b>face_follow</b>
-  <br/>
-  double <b>face_media_position</b>
-  <br/>
-  double <b>face_media_tick</b>
-  <br/>
-  <b>bool</b> <b>face_media_valid</b>
-  <br/>
-  <b>media_source_t</b> * <b>webcam_source</b>
-  <br/>
-  <b>image_t</b> * <b>last_media_frame</b>
-  <br/>
-  <b>image_t</b> * <b>empty_frame</b>
-  <br/>
-  <b>bool</b> <b>webcam_attempted</b>
-  <br/>
-  <b>atomic_t</b> <b>toggle_media</b>
-  <br/>
-  <b>atomic_t</b> <b>redraw_media</b>
-  <br/>
-  <b>bool</b> <b>retained_frame_shown</b>
-  <br/>
-  <b>atomic_t</b> <b>non_media_active</b>
-  <br/>
-  <b>bool</b> <b>media_was_paused</b>
-  <br/>
-  <b>bool</b> <b>saved_matrix</b>
-  <br/>
-  <b>bool</b> <b>saved_waveform</b>
-  <br/>
-  <b>bool</b> <b>saved_fft</b>
-  <br/>
-  <b>bool</b> <b>non_media_requested</b>
-  <br/>
-  <b>media_source_t</b> * <b>saved_audio_source</b>
-  <br/>
-  <b>bool</b> <b>saved_playback_only</b>
-  <br/>
-  <b>bool</b> <b>saved_monitor_media</b>
-  <br/>
-  <b>fps_t</b> <b>fps_tracker</b>
-  <br/>
-  FPS tracker for monitoring capture rate. <b>uint32_t</b> <b>target_fps</b>
-  <br/>
-  Target frames per second. <b>bool</b> <b>resize_for_network</b>
-  <br/>
-  Whether to resize frames for network transmission. <b>bool</b>
-    <b>initialized</b>
-  <br/>
-  Context has been successfully initialized. <b>uint64_t</b> <b>frame_count</b>
-  <br/>
-  Frame count for FPS calculation. <b>uint64_t</b> <b>start_time_ns</b>
-  <br/>
-  Start time for FPS calculation (nanoseconds). <b>uint64_t</b>
-    <b>next_frame_deadline_ns</b>
-  <br/>
-  Next capture deadline on the monotonic clock (nanoseconds). _Atomic
-    <b>bool</b> <b>audio_enabled</b>
-  <br/>
-  Audio is enabled for capture. <b>bool</b> <b>file_has_audio</b>
-  <br/>
-  File has audio stream available. <b>bool</b> <b>using_file_audio</b>
-  <br/>
-  Using file audio (true) or microphone fallback (false). <b>bool</b>
-    <b>audio_fallback_enabled</b>
-  <br/>
-  Fall back to microphone if file has no audio. void * <b>mic_audio_ctx</b>
-  <br/>
-  Microphone audio context for fallback (borrowed, not owned).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Internal session capture context structure.</p>
-<p class="Pp">Contains all state for media capture including source, timing, and
-    FPS tracking.</p>
-<p class="Pp">Definition at line <b>75</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::advance_failed</h2>
-<p class="Pp">Definition at line <b>89</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_at_end()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">_Atomic <b>bool</b> session_capture_ctx::audio_enabled</h2>
-<p class="Pp">Audio is enabled for capture.</p>
-<p class="Pp">Definition at line <b>135</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>,
-    <b>session_capture_has_audio()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::audio_fallback_enabled</h2>
-<p class="Pp">Fall back to microphone if file has no audio.</p>
-<p class="Pp">Definition at line <b>144</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_capture_audio_update_fn</b>
-  session_capture_ctx::audio_update</h2>
-<p class="Pp">Definition at line <b>79</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_set_audio_updater()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_capture_ctx::audio_update_data"><a class="permalink" href="#void*_session_capture_ctx::audio_update_data">void*
-  session_capture_ctx::audio_update_data</a></h2>
-<p class="Pp">Definition at line <b>80</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_set_audio_updater()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::awaiting_presentation</h2>
-<p class="Pp">Definition at line <b>90</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_complete_open()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_capture_ctx::callback_data"><a class="permalink" href="#void*_session_capture_ctx::callback_data">void*
-  session_capture_ctx::callback_data</a></h2>
-<p class="Pp">Definition at line <b>82</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b>* session_capture_ctx::empty_frame</h2>
-<p class="Pp">Definition at line <b>101</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>face_follow_image_t</b>* session_capture_ctx::face_follow</h2>
-<p class="Pp">Definition at line <b>96</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_session_capture_ctx::face_media_position"><a class="permalink" href="#double_session_capture_ctx::face_media_position">double
-  session_capture_ctx::face_media_position</a></h2>
-<p class="Pp">Definition at line <b>97</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_session_capture_ctx::face_media_tick"><a class="permalink" href="#double_session_capture_ctx::face_media_tick">double
-  session_capture_ctx::face_media_tick</a></h2>
-<p class="Pp">Definition at line <b>97</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::face_media_valid</h2>
-<p class="Pp">Definition at line <b>98</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::file_has_audio</h2>
-<p class="Pp">File has audio stream available.</p>
-<p class="Pp">Definition at line <b>138</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>fps_t</b> session_capture_ctx::fps_tracker</h2>
-<p class="Pp">FPS tracker for monitoring capture rate.</p>
-<p class="Pp">Definition at line <b>114</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>,
-    <b>session_capture_destroy()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_capture_ctx::frame_count</h2>
-<p class="Pp">Frame count for FPS calculation.</p>
-<p class="Pp">Definition at line <b>126</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>, and
-    <b>session_capture_get_current_fps()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::frame_serial</h2>
-<p class="Pp">Definition at line <b>90</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_frame_serial()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b> * session_capture_ctx::initial_frame</h2>
-<p class="Pp">Definition at line <b>92</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::initial_frame_pending</h2>
-<p class="Pp">Definition at line <b>93</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::initialized</h2>
-<p class="Pp">Context has been successfully initialized.</p>
-<p class="Pp">Definition at line <b>123</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_at_end()</b>,
-    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
-    <b>session_capture_get_audio_context()</b>,
-    <b>session_capture_get_current_fps()</b>,
-    <b>session_capture_get_media_source()</b>,
-    <b>session_capture_has_audio()</b>, <b>session_capture_is_valid()</b>,
-    <b>session_capture_sleep_for_fps()</b>,
-    <b>session_capture_using_file_audio()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b>* session_capture_ctx::last_media_frame</h2>
-<p class="Pp">Definition at line <b>100</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::load_cancel</h2>
-<p class="Pp">Definition at line <b>86</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_cancel_open()</b>, and
-    <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_session_capture_ctx::load_error_512_"><a class="permalink" href="#char_session_capture_ctx::load_error_512_">char
-  session_capture_ctx::load_error[512]</a></h2>
-<p class="Pp">Definition at line <b>94</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::load_is_advance</h2>
-<p class="Pp">Definition at line <b>89</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> session_capture_ctx::load_mutex</h2>
-<p class="Pp">Definition at line <b>78</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_cancel_open()</b>,
-    <b>session_capture_complete_open()</b>, <b>session_capture_create()</b>, and
-    <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_session_capture_ctx::load_path_8192_"><a class="permalink" href="#char_session_capture_ctx::load_path_8192_">char
-  session_capture_ctx::load_path[8192]</a></h2>
-<p class="Pp">Definition at line <b>94</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_playlist_t</b> session_capture_ctx::load_playlist</h2>
-<p class="Pp">Definition at line <b>88</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b>* session_capture_ctx::loaded_frame</h2>
-<p class="Pp">Definition at line <b>92</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_t</b>* session_capture_ctx::loaded_source</h2>
-<p class="Pp">Definition at line <b>91</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b> session_capture_ctx::loader</h2>
-<p class="Pp">Definition at line <b>85</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">_Atomic <b>bool</b> session_capture_ctx::loader_created</h2>
-<p class="Pp">Definition at line <b>84</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_at_end()</b>,
-    <b>session_capture_cancel_open()</b>, and
-  <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">_Atomic <b>bool</b> session_capture_ctx::loader_done</h2>
-<p class="Pp">Definition at line <b>84</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::media_locks_ready</h2>
-<p class="Pp">Definition at line <b>83</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_cancel_open()</b>,
-    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
-    <b>session_capture_lock_source()</b>, and
-    <b>session_capture_unlock_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::media_was_paused</h2>
-<p class="Pp">Definition at line <b>107</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_capture_ctx::mic_audio_ctx"><a class="permalink" href="#void*_session_capture_ctx::mic_audio_ctx">void*
-  session_capture_ctx::mic_audio_ctx</a></h2>
-<p class="Pp">Microphone audio context for fallback (borrowed, not owned).</p>
-<p class="Pp">Definition at line <b>147</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_capture_ctx::next_frame_deadline_ns</h2>
-<p class="Pp">Next capture deadline on the monotonic clock (nanoseconds).</p>
-<p class="Pp">Definition at line <b>132</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_sleep_for_fps()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::non_media_active</h2>
-<p class="Pp">Definition at line <b>106</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_media_active()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::non_media_requested</h2>
-<p class="Pp">Definition at line <b>109</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_toggle_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_playlist_t</b> session_capture_ctx::playlist</h2>
-<p class="Pp">Definition at line <b>88</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_at_end()</b>, and
-    <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::playlist_skip</h2>
-<p class="Pp">Definition at line <b>87</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_skip_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::redraw_media</h2>
-<p class="Pp">Definition at line <b>104</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_redraw_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::resize_for_network</h2>
-<p class="Pp">Whether to resize frames for network transmission.</p>
-<p class="Pp">Definition at line <b>120</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>,
-    <b>session_capture_process_for_transmission_into()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::retained_frame_shown</h2>
-<p class="Pp">Definition at line <b>105</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_t</b>*
-  session_capture_ctx::saved_audio_source</h2>
-<p class="Pp">Definition at line <b>110</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::saved_fft</h2>
-<p class="Pp">Definition at line <b>108</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>, and
-    <b>session_capture_toggle_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::saved_matrix</h2>
-<p class="Pp">Definition at line <b>108</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>, and
-    <b>session_capture_toggle_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::saved_monitor_media</h2>
-<p class="Pp">Definition at line <b>111</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::saved_playback_only</h2>
-<p class="Pp">Definition at line <b>111</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::saved_waveform</h2>
-<p class="Pp">Definition at line <b>108</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>, and
-    <b>session_capture_toggle_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_capture_should_exit_fn</b>
-  session_capture_ctx::should_exit_callback</h2>
-<p class="Pp">Definition at line <b>81</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_t</b>* session_capture_ctx::source</h2>
-<p class="Pp">Underlying media source (webcam, file, stdin, test).</p>
-<p class="Pp">Definition at line <b>77</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_at_end()</b>,
-    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
-    <b>session_capture_get_media_source()</b>,
-    <b>session_capture_is_valid()</b>, <b>session_capture_sleep_for_fps()</b>,
-    <b>session_capture_toggle_media()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::source_epoch</h2>
-<p class="Pp">Definition at line <b>90</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_source_epoch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> session_capture_ctx::source_mutex</h2>
-<p class="Pp">Definition at line <b>78</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>,
-    <b>session_capture_destroy()</b>, <b>session_capture_lock_source()</b>, and
-    <b>session_capture_unlock_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_capture_ctx::start_time_ns</h2>
-<p class="Pp">Start time for FPS calculation (nanoseconds).</p>
-<p class="Pp">Definition at line <b>129</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>,
-    <b>session_capture_get_current_fps()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> session_capture_ctx::target_fps</h2>
-<p class="Pp">Target frames per second.</p>
-<p class="Pp">Definition at line <b>117</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>,
-    <b>session_capture_get_target_fps()</b>,
-    <b>session_capture_sleep_for_fps()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_capture_ctx::toggle_media</h2>
-<p class="Pp">Definition at line <b>103</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_toggle_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::using_file_audio</h2>
-<p class="Pp">Using file audio (true) or microphone fallback (false).</p>
-<p class="Pp">Definition at line <b>141</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_create()</b>, and
-    <b>session_capture_using_file_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_ctx::webcam_attempted</h2>
-<p class="Pp">Definition at line <b>102</b> of file
-    <b>common/session/capture.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_t</b>* session_capture_ctx::webcam_source</h2>
-<p class="Pp">Definition at line <b>99</b> of file
-    <b>common/session/capture.c</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_capture_ctx(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_capture_ctx(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_capture_ctx(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          session_capture_ctx - Internal session capture context structure.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>media_source_t</b> * <b>source</b>
+            <br />
+            Underlying media source (webcam, file, stdin, test). <b>mutex_t</b>
+            <b>source_mutex</b>
+            <br />
+            <b>mutex_t</b> <b>load_mutex</b>
+            <br />
+            <b>session_capture_audio_update_fn</b> <b>audio_update</b>
+            <br />
+            void * <b>audio_update_data</b>
+            <br />
+            <b>session_capture_should_exit_fn</b> <b>should_exit_callback</b>
+            <br />
+            void * <b>callback_data</b>
+            <br />
+            <b>bool</b> <b>media_locks_ready</b>
+            <br />
+            _Atomic <b>bool</b> <b>loader_created</b>
+            <br />
+            _Atomic <b>bool</b> <b>loader_done</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>loader</b>
+            <br />
+            <b>atomic_t</b> <b>load_cancel</b>
+            <br />
+            <b>atomic_t</b> <b>playlist_skip</b>
+            <br />
+            <b>media_playlist_t</b> <b>playlist</b>
+            <br />
+            <b>media_playlist_t</b> <b>load_playlist</b>
+            <br />
+            <b>bool</b> <b>advance_failed</b>
+            <br />
+            <b>bool</b> <b>load_is_advance</b>
+            <br />
+            <b>atomic_t</b> <b>source_epoch</b>
+            <br />
+            <b>atomic_t</b> <b>frame_serial</b>
+            <br />
+            <b>atomic_t</b> <b>awaiting_presentation</b>
+            <br />
+            <b>media_source_t</b> * <b>loaded_source</b>
+            <br />
+            <b>image_t</b> * <b>loaded_frame</b>
+            <br />
+            <b>image_t</b> * <b>initial_frame</b>
+            <br />
+            <b>bool</b> <b>initial_frame_pending</b>
+            <br />
+            char <b>load_path</b> [8192]
+            <br />
+            char <b>load_error</b> [512]
+            <br />
+            <b>face_follow_image_t</b> * <b>face_follow</b>
+            <br />
+            double <b>face_media_position</b>
+            <br />
+            double <b>face_media_tick</b>
+            <br />
+            <b>bool</b> <b>face_media_valid</b>
+            <br />
+            <b>media_source_t</b> * <b>webcam_source</b>
+            <br />
+            <b>image_t</b> * <b>last_media_frame</b>
+            <br />
+            <b>image_t</b> * <b>empty_frame</b>
+            <br />
+            <b>bool</b> <b>webcam_attempted</b>
+            <br />
+            <b>atomic_t</b> <b>toggle_media</b>
+            <br />
+            <b>atomic_t</b> <b>redraw_media</b>
+            <br />
+            <b>bool</b> <b>retained_frame_shown</b>
+            <br />
+            <b>atomic_t</b> <b>non_media_active</b>
+            <br />
+            <b>bool</b> <b>media_was_paused</b>
+            <br />
+            <b>bool</b> <b>saved_matrix</b>
+            <br />
+            <b>bool</b> <b>saved_waveform</b>
+            <br />
+            <b>bool</b> <b>saved_fft</b>
+            <br />
+            <b>bool</b> <b>non_media_requested</b>
+            <br />
+            <b>media_source_t</b> * <b>saved_audio_source</b>
+            <br />
+            <b>bool</b> <b>saved_playback_only</b>
+            <br />
+            <b>bool</b> <b>saved_monitor_media</b>
+            <br />
+            <b>fps_t</b> <b>fps_tracker</b>
+            <br />
+            FPS tracker for monitoring capture rate. <b>uint32_t</b>
+            <b>target_fps</b>
+            <br />
+            Target frames per second. <b>bool</b> <b>resize_for_network</b>
+            <br />
+            Whether to resize frames for network transmission. <b>bool</b>
+            <b>initialized</b>
+            <br />
+            Context has been successfully initialized. <b>uint64_t</b>
+            <b>frame_count</b>
+            <br />
+            Frame count for FPS calculation. <b>uint64_t</b>
+            <b>start_time_ns</b>
+            <br />
+            Start time for FPS calculation (nanoseconds). <b>uint64_t</b>
+            <b>next_frame_deadline_ns</b>
+            <br />
+            Next capture deadline on the monotonic clock (nanoseconds). _Atomic
+            <b>bool</b> <b>audio_enabled</b>
+            <br />
+            Audio is enabled for capture. <b>bool</b> <b>file_has_audio</b>
+            <br />
+            File has audio stream available. <b>bool</b> <b>using_file_audio</b>
+            <br />
+            Using file audio (true) or microphone fallback (false). <b>bool</b>
+            <b>audio_fallback_enabled</b>
+            <br />
+            Fall back to microphone if file has no audio. void *
+            <b>mic_audio_ctx</b>
+            <br />
+            Microphone audio context for fallback (borrowed, not owned).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Internal session capture context structure.</p>
+        <p class="Pp">
+          Contains all state for media capture including source, timing, and FPS
+          tracking.
+        </p>
+        <p class="Pp">
+          Definition at line <b>75</b> of file <b>common/session/capture.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::advance_failed</h2>
+          <p class="Pp">
+            Definition at line <b>89</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_at_end()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>bool</b> session_capture_ctx::audio_enabled
+          </h2>
+          <p class="Pp">Audio is enabled for capture.</p>
+          <p class="Pp">
+            Definition at line <b>135</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>,
+            <b>session_capture_has_audio()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::audio_fallback_enabled
+          </h2>
+          <p class="Pp">Fall back to microphone if file has no audio.</p>
+          <p class="Pp">
+            Definition at line <b>144</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_capture_audio_update_fn</b>
+            session_capture_ctx::audio_update
+          </h2>
+          <p class="Pp">
+            Definition at line <b>79</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_set_audio_updater()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_session_capture_ctx::audio_update_data">
+            <a
+              class="permalink"
+              href="#void*_session_capture_ctx::audio_update_data"
+              >void* session_capture_ctx::audio_update_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>80</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_set_audio_updater()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> session_capture_ctx::awaiting_presentation
+          </h2>
+          <p class="Pp">
+            Definition at line <b>90</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_complete_open()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_session_capture_ctx::callback_data">
+            <a
+              class="permalink"
+              href="#void*_session_capture_ctx::callback_data"
+              >void* session_capture_ctx::callback_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>82</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>image_t</b>* session_capture_ctx::empty_frame</h2>
+          <p class="Pp">
+            Definition at line <b>101</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>face_follow_image_t</b>* session_capture_ctx::face_follow
+          </h2>
+          <p class="Pp">
+            Definition at line <b>96</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_session_capture_ctx::face_media_position">
+            <a
+              class="permalink"
+              href="#double_session_capture_ctx::face_media_position"
+              >double session_capture_ctx::face_media_position</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_session_capture_ctx::face_media_tick">
+            <a
+              class="permalink"
+              href="#double_session_capture_ctx::face_media_tick"
+              >double session_capture_ctx::face_media_tick</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::face_media_valid</h2>
+          <p class="Pp">
+            Definition at line <b>98</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::file_has_audio</h2>
+          <p class="Pp">File has audio stream available.</p>
+          <p class="Pp">
+            Definition at line <b>138</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>fps_t</b> session_capture_ctx::fps_tracker</h2>
+          <p class="Pp">FPS tracker for monitoring capture rate.</p>
+          <p class="Pp">
+            Definition at line <b>114</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>,
+            <b>session_capture_destroy()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> session_capture_ctx::frame_count</h2>
+          <p class="Pp">Frame count for FPS calculation.</p>
+          <p class="Pp">
+            Definition at line <b>126</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>, and
+            <b>session_capture_get_current_fps()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_capture_ctx::frame_serial</h2>
+          <p class="Pp">
+            Definition at line <b>90</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_frame_serial()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>image_t</b> * session_capture_ctx::initial_frame
+          </h2>
+          <p class="Pp">
+            Definition at line <b>92</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::initial_frame_pending
+          </h2>
+          <p class="Pp">
+            Definition at line <b>93</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::initialized</h2>
+          <p class="Pp">Context has been successfully initialized.</p>
+          <p class="Pp">
+            Definition at line <b>123</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_at_end()</b>,
+            <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
+            <b>session_capture_get_audio_context()</b>,
+            <b>session_capture_get_current_fps()</b>,
+            <b>session_capture_get_media_source()</b>,
+            <b>session_capture_has_audio()</b>,
+            <b>session_capture_is_valid()</b>,
+            <b>session_capture_sleep_for_fps()</b>,
+            <b>session_capture_using_file_audio()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>image_t</b>* session_capture_ctx::last_media_frame
+          </h2>
+          <p class="Pp">
+            Definition at line <b>100</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_capture_ctx::load_cancel</h2>
+          <p class="Pp">
+            Definition at line <b>86</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_cancel_open()</b>, and
+            <b>session_capture_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_session_capture_ctx::load_error_512_">
+            <a
+              class="permalink"
+              href="#char_session_capture_ctx::load_error_512_"
+              >char session_capture_ctx::load_error[512]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>94</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::load_is_advance</h2>
+          <p class="Pp">
+            Definition at line <b>89</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> session_capture_ctx::load_mutex</h2>
+          <p class="Pp">
+            Definition at line <b>78</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_cancel_open()</b>,
+            <b>session_capture_complete_open()</b>,
+            <b>session_capture_create()</b>, and
+            <b>session_capture_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_session_capture_ctx::load_path_8192_">
+            <a
+              class="permalink"
+              href="#char_session_capture_ctx::load_path_8192_"
+              >char session_capture_ctx::load_path[8192]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>94</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>media_playlist_t</b> session_capture_ctx::load_playlist
+          </h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>image_t</b>* session_capture_ctx::loaded_frame</h2>
+          <p class="Pp">
+            Definition at line <b>92</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>media_source_t</b>* session_capture_ctx::loaded_source
+          </h2>
+          <p class="Pp">
+            Definition at line <b>91</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> session_capture_ctx::loader
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>bool</b> session_capture_ctx::loader_created
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_at_end()</b>,
+            <b>session_capture_cancel_open()</b>, and
+            <b>session_capture_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            _Atomic <b>bool</b> session_capture_ctx::loader_done
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::media_locks_ready</h2>
+          <p class="Pp">
+            Definition at line <b>83</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_cancel_open()</b>,
+            <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
+            <b>session_capture_lock_source()</b>, and
+            <b>session_capture_unlock_source()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::media_was_paused</h2>
+          <p class="Pp">
+            Definition at line <b>107</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_session_capture_ctx::mic_audio_ctx">
+            <a
+              class="permalink"
+              href="#void*_session_capture_ctx::mic_audio_ctx"
+              >void* session_capture_ctx::mic_audio_ctx</a
+            >
+          </h2>
+          <p class="Pp">
+            Microphone audio context for fallback (borrowed, not owned).
+          </p>
+          <p class="Pp">
+            Definition at line <b>147</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_capture_ctx::next_frame_deadline_ns
+          </h2>
+          <p class="Pp">
+            Next capture deadline on the monotonic clock (nanoseconds).
+          </p>
+          <p class="Pp">
+            Definition at line <b>132</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_sleep_for_fps()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> session_capture_ctx::non_media_active
+          </h2>
+          <p class="Pp">
+            Definition at line <b>106</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_media_active()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::non_media_requested
+          </h2>
+          <p class="Pp">
+            Definition at line <b>109</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_toggle_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>media_playlist_t</b> session_capture_ctx::playlist
+          </h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_at_end()</b>, and
+            <b>session_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_capture_ctx::playlist_skip</h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_skip_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_capture_ctx::redraw_media</h2>
+          <p class="Pp">
+            Definition at line <b>104</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_redraw_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::resize_for_network
+          </h2>
+          <p class="Pp">Whether to resize frames for network transmission.</p>
+          <p class="Pp">
+            Definition at line <b>120</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>,
+            <b>session_capture_process_for_transmission_into()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::retained_frame_shown
+          </h2>
+          <p class="Pp">
+            Definition at line <b>105</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>media_source_t</b>* session_capture_ctx::saved_audio_source
+          </h2>
+          <p class="Pp">
+            Definition at line <b>110</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::saved_fft</h2>
+          <p class="Pp">
+            Definition at line <b>108</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>, and
+            <b>session_capture_toggle_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::saved_matrix</h2>
+          <p class="Pp">
+            Definition at line <b>108</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>, and
+            <b>session_capture_toggle_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::saved_monitor_media
+          </h2>
+          <p class="Pp">
+            Definition at line <b>111</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_ctx::saved_playback_only
+          </h2>
+          <p class="Pp">
+            Definition at line <b>111</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::saved_waveform</h2>
+          <p class="Pp">
+            Definition at line <b>108</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>, and
+            <b>session_capture_toggle_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_capture_should_exit_fn</b>
+            session_capture_ctx::should_exit_callback
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>media_source_t</b>* session_capture_ctx::source</h2>
+          <p class="Pp">Underlying media source (webcam, file, stdin, test).</p>
+          <p class="Pp">
+            Definition at line <b>77</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_at_end()</b>,
+            <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
+            <b>session_capture_get_media_source()</b>,
+            <b>session_capture_is_valid()</b>,
+            <b>session_capture_sleep_for_fps()</b>,
+            <b>session_capture_toggle_media()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_capture_ctx::source_epoch</h2>
+          <p class="Pp">
+            Definition at line <b>90</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_source_epoch()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> session_capture_ctx::source_mutex</h2>
+          <p class="Pp">
+            Definition at line <b>78</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>,
+            <b>session_capture_destroy()</b>,
+            <b>session_capture_lock_source()</b>, and
+            <b>session_capture_unlock_source()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> session_capture_ctx::start_time_ns</h2>
+          <p class="Pp">Start time for FPS calculation (nanoseconds).</p>
+          <p class="Pp">
+            Definition at line <b>129</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>,
+            <b>session_capture_get_current_fps()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> session_capture_ctx::target_fps</h2>
+          <p class="Pp">Target frames per second.</p>
+          <p class="Pp">
+            Definition at line <b>117</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>,
+            <b>session_capture_get_target_fps()</b>,
+            <b>session_capture_sleep_for_fps()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_capture_ctx::toggle_media</h2>
+          <p class="Pp">
+            Definition at line <b>103</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_toggle_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::using_file_audio</h2>
+          <p class="Pp">
+            Using file audio (true) or microphone fallback (false).
+          </p>
+          <p class="Pp">
+            Definition at line <b>141</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_create()</b>, and
+            <b>session_capture_using_file_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_capture_ctx::webcam_attempted</h2>
+          <p class="Pp">
+            Definition at line <b>102</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>media_source_t</b>* session_capture_ctx::webcam_source
+          </h2>
+          <p class="Pp">
+            Definition at line <b>99</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_destroy()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

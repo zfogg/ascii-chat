@@ -1,144 +1,215 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ringbuffer.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ringbuffer.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ringbuffer.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ringbuffer.c - &#x1F3AF; Lock-free circular buffer for audio
-    streaming with atomic operations</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>RINGBUFFER_CLIENT_ID_BUFFER_SIZE</b> 64
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t
-    element_size, size_t capacity)
-  <br/>
-  Create a new ring buffer. void <b>ringbuffer_destroy</b> (<b>ringbuffer_t</b>
-    *rb)
-  <br/>
-  Destroy a ring buffer and free its memory. <b>bool</b> <b>ringbuffer_write</b>
-    (<b>ringbuffer_t</b> *rb, const void *data)
-  <br/>
-  Try to write an element to the ring buffer (non-blocking). <b>bool</b>
-    <b>ringbuffer_read</b> (<b>ringbuffer_t</b> *rb, void *data)
-  <br/>
-  Try to read an element from the ring buffer (non-blocking). <b>bool</b>
-    <b>ringbuffer_peek</b> (<b>ringbuffer_t</b> *rb, void *data)
-  <br/>
-  Peek at the next element without removing it. size_t <b>ringbuffer_size</b>
-    (const <b>ringbuffer_t</b> *rb)
-  <br/>
-  Get current number of elements in the buffer. <b>bool</b>
-    <b>ringbuffer_is_empty</b> (const <b>ringbuffer_t</b> *rb)
-  <br/>
-  Check if buffer is empty. <b>bool</b> <b>ringbuffer_is_full</b> (const
-    <b>ringbuffer_t</b> *rb)
-  <br/>
-  Check if buffer is full. void <b>ringbuffer_clear</b> (<b>ringbuffer_t</b>
-    *rb)
-  <br/>
-  Clear all elements from the buffer. <b>framebuffer_t</b> *
-    <b>framebuffer_create</b> (size_t capacity)
-  <br/>
-  Create a frame buffer for ASCII frames. <b>framebuffer_t</b> *
-    <b>framebuffer_create_multi</b> (size_t capacity)
-  <br/>
-  Create a multi-source frame buffer for multi-user support. void
-    <b>framebuffer_destroy</b> (<b>framebuffer_t</b> *fb)
-  <br/>
-  Destroy a frame buffer. <b>bool</b> <b>framebuffer_write_frame</b>
-    (<b>framebuffer_t</b> *fb, const char *frame_data, size_t frame_size)
-  <br/>
-  Write a frame to the buffer. <b>bool</b> <b>framebuffer_read_frame</b>
-    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *frame)
-  <br/>
-  Read a frame from the buffer. void <b>framebuffer_clear</b>
-    (<b>framebuffer_t</b> *fb)
-  <br/>
-  Clear all frames from the buffer, freeing their data. <b>bool</b>
-    <b>framebuffer_write_multi_frame</b> (<b>framebuffer_t</b> *fb, const char
-    *frame_data, size_t frame_size, <b>uint32_t</b> source_client_id,
-    <b>uint32_t</b> frame_sequence, <b>uint32_t</b> timestamp)
-  <br/>
-  Write a multi-source frame to the buffer (for multi-user support). <b>bool</b>
-    <b>framebuffer_read_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *frame)
-  <br/>
-  Read a multi-source frame from the buffer. <b>bool</b>
-    <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *frame)
-  <br/>
-  Peek at the latest multi-source frame without removing it.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3AF; Lock-free circular buffer for audio streaming with
-    atomic operations</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>ringbuffer.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_RINGBUFFER_CLIENT_ID_BUFFER_SIZE___64"><a class="permalink" href="#_define_RINGBUFFER_CLIENT_ID_BUFFER_SIZE___64">#define
-  RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>ringbuffer.c</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_multi_frame()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ringbuffer.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ringbuffer.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ringbuffer.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          ringbuffer.c - &#x1F3AF; Lock-free circular buffer for audio streaming
+          with atomic operations
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>RINGBUFFER_CLIENT_ID_BUFFER_SIZE</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t element_size,
+            size_t capacity)
+            <br />
+            Create a new ring buffer. void <b>ringbuffer_destroy</b> (<b
+              >ringbuffer_t</b
+            >
+            *rb)
+            <br />
+            Destroy a ring buffer and free its memory. <b>bool</b>
+            <b>ringbuffer_write</b> (<b>ringbuffer_t</b>
+            *rb, const void *data)
+            <br />
+            Try to write an element to the ring buffer (non-blocking).
+            <b>bool</b> <b>ringbuffer_read</b> (<b>ringbuffer_t</b> *rb, void
+            *data)
+            <br />
+            Try to read an element from the ring buffer (non-blocking).
+            <b>bool</b> <b>ringbuffer_peek</b> (<b>ringbuffer_t</b> *rb, void
+            *data)
+            <br />
+            Peek at the next element without removing it. size_t
+            <b>ringbuffer_size</b> (const <b>ringbuffer_t</b> *rb)
+            <br />
+            Get current number of elements in the buffer. <b>bool</b>
+            <b>ringbuffer_is_empty</b> (const <b>ringbuffer_t</b> *rb)
+            <br />
+            Check if buffer is empty. <b>bool</b>
+            <b>ringbuffer_is_full</b> (const <b>ringbuffer_t</b> *rb)
+            <br />
+            Check if buffer is full. void <b>ringbuffer_clear</b> (<b
+              >ringbuffer_t</b
+            >
+            *rb)
+            <br />
+            Clear all elements from the buffer. <b>framebuffer_t</b> *
+            <b>framebuffer_create</b> (size_t capacity)
+            <br />
+            Create a frame buffer for ASCII frames. <b>framebuffer_t</b> *
+            <b>framebuffer_create_multi</b> (size_t capacity)
+            <br />
+            Create a multi-source frame buffer for multi-user support. void
+            <b>framebuffer_destroy</b> (<b>framebuffer_t</b> *fb)
+            <br />
+            Destroy a frame buffer. <b>bool</b>
+            <b>framebuffer_write_frame</b> (<b>framebuffer_t</b>
+            *fb, const char *frame_data, size_t frame_size)
+            <br />
+            Write a frame to the buffer. <b>bool</b>
+            <b>framebuffer_read_frame</b> (<b>framebuffer_t</b> *fb,
+            <b>frame_t</b> *frame)
+            <br />
+            Read a frame from the buffer. void <b>framebuffer_clear</b> (<b
+              >framebuffer_t</b
+            >
+            *fb)
+            <br />
+            Clear all frames from the buffer, freeing their data. <b>bool</b>
+            <b>framebuffer_write_multi_frame</b> (<b>framebuffer_t</b> *fb,
+            const char *frame_data, size_t frame_size,
+            <b>uint32_t</b> source_client_id, <b>uint32_t</b> frame_sequence,
+            <b>uint32_t</b> timestamp)
+            <br />
+            Write a multi-source frame to the buffer (for multi-user support).
+            <b>bool</b> <b>framebuffer_read_multi_frame</b> (<b
+              >framebuffer_t</b
+            >
+            *fb, <b>multi_source_frame_t</b> *frame)
+            <br />
+            Read a multi-source frame from the buffer. <b>bool</b>
+            <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b>
+            *fb, <b>multi_source_frame_t</b> *frame)
+            <br />
+            Peek at the latest multi-source frame without removing it.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F3AF; Lock-free circular buffer for audio streaming with atomic
+          operations
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>ringbuffer.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RINGBUFFER_CLIENT_ID_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_RINGBUFFER_CLIENT_ID_BUFFER_SIZE___64"
+              >#define RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>ringbuffer.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>framebuffer_write_multi_frame()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

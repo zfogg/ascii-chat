@@ -1,174 +1,279 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>internal.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">internal.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">internal.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">internal.h - Internal declarations for builder implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>option_builder_handler_t</b>
-  <br/>
-  Type handler for builder operations.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>INITIAL_DESCRIPTOR_CAPACITY</b> 32
-  <br/>
-  #define <b>INITIAL_DEPENDENCY_CAPACITY</b> 16
-  <br/>
-  #define <b>INITIAL_POSITIONAL_ARG_CAPACITY</b> 8
-  <br/>
-  #define <b>INITIAL_OWNED_STRINGS_CAPACITY</b> 32
-  <br/>
-  #define <b>NUM_OPTION_TYPES</b> 6
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>get_option_help_placeholder_str</b> (const
-    <b>option_descriptor_t</b> *desc)
-  <br/>
-  Get help placeholder string for an option type. int
-    <b>format_option_default_value_str</b> (const <b>option_descriptor_t</b>
-    *desc, char *buf, size_t bufsize)
-  <br/>
-  Format option default value as a string. <b>bool</b>
-    <b>option_applies_to_mode</b> (const <b>option_descriptor_t</b> *desc,
-    <b>asciichat_mode_t</b> mode, <b>bool</b> for_binary_help)
-  <br/>
-  Check if an option applies to a specific mode using bitmask. void
-    <b>ensure_descriptor_capacity</b> (<b>options_builder_t</b> *builder)
-  <br/>
-  Grow descriptor array if needed. void <b>ensure_dependency_capacity</b>
-    (<b>options_builder_t</b> *builder)
-  <br/>
-  Grow dependency array if needed. void <b>ensure_positional_arg_capacity</b>
-    (<b>options_builder_t</b> *builder)
-  <br/>
-  Grow positional arg array if needed. void <b>ensure_owned_strings_capacity</b>
-    (<b>options_builder_t</b> *builder)
-  <br/>
-  const <b>option_descriptor_t</b> * <b>find_option</b> (const
-    <b>options_config_t</b> *config, const char *long_name)
-  <br/>
-  Find option descriptor by long name. <b>bool</b> <b>is_option_set</b> (const
-    <b>options_config_t</b> *config, const void *options_struct, const char
-    *option_name)
-  <br/>
-  Check if an option is set (has non-default value).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const <b>option_builder_handler_t</b> <b>g_builder_handlers</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Internal declarations for builder implementation.</p>
-<p class="Pp">Shared structures and forward declarations used across builder
-    modules.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>options/builder/internal.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_INITIAL_DEPENDENCY_CAPACITY___16"><a class="permalink" href="#_define_INITIAL_DEPENDENCY_CAPACITY___16">#define
-  INITIAL_DEPENDENCY_CAPACITY 16</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file
-    <b>options/builder/internal.h</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_INITIAL_DESCRIPTOR_CAPACITY___32"><a class="permalink" href="#_define_INITIAL_DESCRIPTOR_CAPACITY___32">#define
-  INITIAL_DESCRIPTOR_CAPACITY 32</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file
-    <b>options/builder/internal.h</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_INITIAL_OWNED_STRINGS_CAPACITY___32"><a class="permalink" href="#_define_INITIAL_OWNED_STRINGS_CAPACITY___32">#define
-  INITIAL_OWNED_STRINGS_CAPACITY 32</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file
-    <b>options/builder/internal.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_INITIAL_POSITIONAL_ARG_CAPACITY___8"><a class="permalink" href="#_define_INITIAL_POSITIONAL_ARG_CAPACITY___8">#define
-  INITIAL_POSITIONAL_ARG_CAPACITY 8</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file
-    <b>options/builder/internal.h</b>.</p>
-<p class="Pp">Referenced by <b>ensure_positional_arg_capacity()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NUM_OPTION_TYPES___6"><a class="permalink" href="#_define_NUM_OPTION_TYPES___6">#define
-  NUM_OPTION_TYPES 6</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file
-    <b>options/builder/internal.h</b>.</p>
-<p class="Pp">Referenced by <b>is_option_set()</b>,
-    <b>options_config_set_defaults()</b>, <b>options_config_validate()</b>, and
-    <b>options_json_parse_value()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ensure_dependency_capacity_("><a class="permalink" href="#void_ensure_dependency_capacity_(">void
-  ensure_dependency_capacity (<b>options_builder_t</b> * builder)</a></h2>
-<p class="Pp">Grow dependency array if needed.</p>
-<p class="Pp">Definition at line <b>264</b> of file <b>builder.c</b>.</p>
-<pre>264                                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>internal.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">internal.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">internal.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          internal.h - Internal declarations for builder implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>option_builder_handler_t</b>
+            <br />
+            Type handler for builder operations.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>INITIAL_DESCRIPTOR_CAPACITY</b> 32
+            <br />
+            #define <b>INITIAL_DEPENDENCY_CAPACITY</b> 16
+            <br />
+            #define <b>INITIAL_POSITIONAL_ARG_CAPACITY</b> 8
+            <br />
+            #define <b>INITIAL_OWNED_STRINGS_CAPACITY</b> 32
+            <br />
+            #define <b>NUM_OPTION_TYPES</b> 6
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>get_option_help_placeholder_str</b> (const
+            <b>option_descriptor_t</b> *desc)
+            <br />
+            Get help placeholder string for an option type. int
+            <b>format_option_default_value_str</b> (const
+            <b>option_descriptor_t</b>
+            *desc, char *buf, size_t bufsize)
+            <br />
+            Format option default value as a string. <b>bool</b>
+            <b>option_applies_to_mode</b> (const
+            <b>option_descriptor_t</b> *desc, <b>asciichat_mode_t</b> mode,
+            <b>bool</b> for_binary_help)
+            <br />
+            Check if an option applies to a specific mode using bitmask. void
+            <b>ensure_descriptor_capacity</b> (<b>options_builder_t</b>
+            *builder)
+            <br />
+            Grow descriptor array if needed. void
+            <b>ensure_dependency_capacity</b> (<b>options_builder_t</b>
+            *builder)
+            <br />
+            Grow dependency array if needed. void
+            <b>ensure_positional_arg_capacity</b> (<b>options_builder_t</b>
+            *builder)
+            <br />
+            Grow positional arg array if needed. void
+            <b>ensure_owned_strings_capacity</b> (<b>options_builder_t</b>
+            *builder)
+            <br />
+            const <b>option_descriptor_t</b> * <b>find_option</b> (const
+            <b>options_config_t</b> *config, const char *long_name)
+            <br />
+            Find option descriptor by long name. <b>bool</b>
+            <b>is_option_set</b> (const <b>options_config_t</b> *config, const
+            void *options_struct, const char *option_name)
+            <br />
+            Check if an option is set (has non-default value).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>option_builder_handler_t</b> <b>g_builder_handlers</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Internal declarations for builder implementation.</p>
+        <p class="Pp">
+          Shared structures and forward declarations used across builder
+          modules.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>options/builder/internal.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_INITIAL_DEPENDENCY_CAPACITY___16">
+            <a
+              class="permalink"
+              href="#_define_INITIAL_DEPENDENCY_CAPACITY___16"
+              >#define INITIAL_DEPENDENCY_CAPACITY 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file
+            <b>options/builder/internal.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_INITIAL_DESCRIPTOR_CAPACITY___32">
+            <a
+              class="permalink"
+              href="#_define_INITIAL_DESCRIPTOR_CAPACITY___32"
+              >#define INITIAL_DESCRIPTOR_CAPACITY 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file
+            <b>options/builder/internal.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_INITIAL_OWNED_STRINGS_CAPACITY___32">
+            <a
+              class="permalink"
+              href="#_define_INITIAL_OWNED_STRINGS_CAPACITY___32"
+              >#define INITIAL_OWNED_STRINGS_CAPACITY 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file
+            <b>options/builder/internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_INITIAL_POSITIONAL_ARG_CAPACITY___8">
+            <a
+              class="permalink"
+              href="#_define_INITIAL_POSITIONAL_ARG_CAPACITY___8"
+              >#define INITIAL_POSITIONAL_ARG_CAPACITY 8</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file
+            <b>options/builder/internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_positional_arg_capacity()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NUM_OPTION_TYPES___6">
+            <a class="permalink" href="#_define_NUM_OPTION_TYPES___6"
+              >#define NUM_OPTION_TYPES 6</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file
+            <b>options/builder/internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>is_option_set()</b>,
+            <b>options_config_set_defaults()</b>,
+            <b>options_config_validate()</b>, and
+            <b>options_json_parse_value()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ensure_dependency_capacity_(">
+            <a class="permalink" href="#void_ensure_dependency_capacity_("
+              >void ensure_dependency_capacity (<b>options_builder_t</b> *
+              builder)</a
+            >
+          </h2>
+          <p class="Pp">Grow dependency array if needed.</p>
+          <p class="Pp">
+            Definition at line <b>264</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+264                                                             {
 265   if (builder-&gt;num_dependencies &gt;= builder-&gt;dependency_capacity) {
 266     size_t new_capacity = builder-&gt;dependency_capacity * 2;
 267     option_dependency_t *new_dependencies =
@@ -181,24 +286,35 @@
 274     builder-&gt;dependency_capacity = new_capacity;
 275   }
 276 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_builder_t::dependencies</b>,
-    <b>options_builder_t::dependency_capacity</b>,
-    <b>ensure_dependency_capacity()</b>, <b>log_fatal</b>,
-    <b>options_builder_t::num_dependencies</b>, and <b>SAFE_REALLOC</b>.</p>
-<p class="Pp">Referenced by <b>ensure_dependency_capacity()</b>,
-    <b>options_builder_add_dependency()</b>,
-    <b>options_builder_add_dependency_conflicts()</b>,
-    <b>options_builder_add_dependency_implies()</b>, and
-    <b>options_builder_add_dependency_requires()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ensure_descriptor_capacity_("><a class="permalink" href="#void_ensure_descriptor_capacity_(">void
-  ensure_descriptor_capacity (<b>options_builder_t</b> * builder)</a></h2>
-<p class="Pp">Grow descriptor array if needed.</p>
-<p class="Pp">Definition at line <b>247</b> of file <b>builder.c</b>.</p>
-<pre>247                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_builder_t::dependencies</b>,
+            <b>options_builder_t::dependency_capacity</b>,
+            <b>ensure_dependency_capacity()</b>, <b>log_fatal</b>,
+            <b>options_builder_t::num_dependencies</b>, and <b>SAFE_REALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_dependency_capacity()</b>,
+            <b>options_builder_add_dependency()</b>,
+            <b>options_builder_add_dependency_conflicts()</b>,
+            <b>options_builder_add_dependency_implies()</b>, and
+            <b>options_builder_add_dependency_requires()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ensure_descriptor_capacity_(">
+            <a class="permalink" href="#void_ensure_descriptor_capacity_("
+              >void ensure_descriptor_capacity (<b>options_builder_t</b> *
+              builder)</a
+            >
+          </h2>
+          <p class="Pp">Grow descriptor array if needed.</p>
+          <p class="Pp">
+            Definition at line <b>247</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+247                                                             {
 248   if (builder-&gt;num_descriptors &gt;= builder-&gt;descriptor_capacity) {
 249     size_t new_capacity = builder-&gt;descriptor_capacity * 2;
 250     option_descriptor_t *new_descriptors =
@@ -211,37 +327,57 @@
 257     builder-&gt;descriptor_capacity = new_capacity;
 258   }
 259 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_builder_t::descriptor_capacity</b>,
-    <b>options_builder_t::descriptors</b>, <b>ensure_descriptor_capacity()</b>,
-    <b>log_fatal</b>, <b>options_builder_t::num_descriptors</b>, and
-    <b>SAFE_REALLOC</b>.</p>
-<p class="Pp">Referenced by <b>ensure_descriptor_capacity()</b>,
-    <b>options_builder_add_action()</b>, <b>options_builder_add_bool()</b>,
-    <b>options_builder_add_callback()</b>,
-    <b>options_builder_add_callback_optional()</b>,
-    <b>options_builder_add_callback_with_metadata()</b>,
-    <b>options_builder_add_descriptor()</b>,
-    <b>options_builder_add_double()</b>,
-    <b>options_builder_add_double_with_metadata()</b>,
-    <b>options_builder_add_int()</b>,
-    <b>options_builder_add_int_with_metadata()</b>, and
-    <b>options_builder_add_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ensure_owned_strings_capacity_("><a class="permalink" href="#void_ensure_owned_strings_capacity_(">void
-  ensure_owned_strings_capacity (<b>options_builder_t</b> * builder)</a></h2>
-<p class="Pp">References <b>ensure_owned_strings_capacity()</b>,
-    <b>find_option()</b>, and <b>is_option_set()</b>.</p>
-<p class="Pp">Referenced by <b>ensure_owned_strings_capacity()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ensure_positional_arg_capacity_("><a class="permalink" href="#void_ensure_positional_arg_capacity_(">void
-  ensure_positional_arg_capacity (<b>options_builder_t</b> * builder)</a></h2>
-<p class="Pp">Grow positional arg array if needed.</p>
-<p class="Pp">Definition at line <b>281</b> of file <b>builder.c</b>.</p>
-<pre>281                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_builder_t::descriptor_capacity</b>,
+            <b>options_builder_t::descriptors</b>,
+            <b>ensure_descriptor_capacity()</b>, <b>log_fatal</b>,
+            <b>options_builder_t::num_descriptors</b>, and <b>SAFE_REALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_descriptor_capacity()</b>,
+            <b>options_builder_add_action()</b>,
+            <b>options_builder_add_bool()</b>,
+            <b>options_builder_add_callback()</b>,
+            <b>options_builder_add_callback_optional()</b>,
+            <b>options_builder_add_callback_with_metadata()</b>,
+            <b>options_builder_add_descriptor()</b>,
+            <b>options_builder_add_double()</b>,
+            <b>options_builder_add_double_with_metadata()</b>,
+            <b>options_builder_add_int()</b>,
+            <b>options_builder_add_int_with_metadata()</b>, and
+            <b>options_builder_add_string()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ensure_owned_strings_capacity_(">
+            <a class="permalink" href="#void_ensure_owned_strings_capacity_("
+              >void ensure_owned_strings_capacity (<b>options_builder_t</b> *
+              builder)</a
+            >
+          </h2>
+          <p class="Pp">
+            References <b>ensure_owned_strings_capacity()</b>,
+            <b>find_option()</b>, and <b>is_option_set()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_owned_strings_capacity()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ensure_positional_arg_capacity_(">
+            <a class="permalink" href="#void_ensure_positional_arg_capacity_("
+              >void ensure_positional_arg_capacity (<b>options_builder_t</b> *
+              builder)</a
+            >
+          </h2>
+          <p class="Pp">Grow positional arg array if needed.</p>
+          <p class="Pp">
+            Definition at line <b>281</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+281                                                                 {
 282   if (builder-&gt;num_positional_args &gt;= builder-&gt;positional_arg_capacity) {
 283     size_t new_capacity = builder-&gt;positional_arg_capacity * 2;
 284     if (new_capacity == 0)
@@ -257,22 +393,31 @@
 294     builder-&gt;positional_arg_capacity = new_capacity;
 295   }
 296 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ensure_positional_arg_capacity()</b>,
-    <b>INITIAL_POSITIONAL_ARG_CAPACITY</b>, <b>log_fatal</b>,
-    <b>options_builder_t::num_positional_args</b>,
-    <b>options_builder_t::positional_arg_capacity</b>,
-    <b>options_builder_t::positional_args</b>, and <b>SAFE_REALLOC</b>.</p>
-<p class="Pp">Referenced by <b>ensure_positional_arg_capacity()</b>, and
-    <b>options_builder_add_positional()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>option_descriptor_t</b> * find_option (const
-  <b>options_config_t</b> * config, const char * long_name)</h2>
-<p class="Pp">Find option descriptor by long name.</p>
-<p class="Pp">Definition at line <b>378</b> of file <b>builder.c</b>.</p>
-<pre>378                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ensure_positional_arg_capacity()</b>,
+            <b>INITIAL_POSITIONAL_ARG_CAPACITY</b>, <b>log_fatal</b>,
+            <b>options_builder_t::num_positional_args</b>,
+            <b>options_builder_t::positional_arg_capacity</b>,
+            <b>options_builder_t::positional_args</b>, and <b>SAFE_REALLOC</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_positional_arg_capacity()</b>, and
+            <b>options_builder_add_positional()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>option_descriptor_t</b> * find_option (const
+            <b>options_config_t</b> * config, const char * long_name)
+          </h2>
+          <p class="Pp">Find option descriptor by long name.</p>
+          <p class="Pp">
+            Definition at line <b>378</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+378                                                                                               {
 379   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
 380     if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
 381       return &amp;config-&gt;descriptors[i];
@@ -280,29 +425,43 @@
 383   }
 384   return NULL;
 385 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_config_t::descriptors</b>,
-    <b>find_option()</b>, <b>option_descriptor_t::long_name</b>, and
-    <b>options_config_t::num_descriptors</b>.</p>
-<p class="Pp">Referenced by <b>ensure_owned_strings_capacity()</b>,
-    <b>find_option()</b>, and <b>is_option_set()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_format_option_default_value_str_(const_"><a class="permalink" href="#int_format_option_default_value_str_(const_">int
-  format_option_default_value_str (const <b>option_descriptor_t</b> * desc, char
-  * buf, size_t bufsize)</a></h2>
-<p class="Pp">Format option default value as a string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>desc</i> Option descriptor
-<br/>
-<i>buf</i> Output buffer
-<br/>
-<i>bufsize</i> Size of buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of characters written to buf</div>
-<p class="Pp">Definition at line <b>117</b> of file <b>builder.c</b>.</p>
-<pre>117                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_config_t::descriptors</b>,
+            <b>find_option()</b>, <b>option_descriptor_t::long_name</b>, and
+            <b>options_config_t::num_descriptors</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_owned_strings_capacity()</b>,
+            <b>find_option()</b>, and <b>is_option_set()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_format_option_default_value_str_(const_">
+            <a
+              class="permalink"
+              href="#int_format_option_default_value_str_(const_"
+              >int format_option_default_value_str (const
+              <b>option_descriptor_t</b> * desc, char * buf, size_t bufsize)</a
+            >
+          </h2>
+          <p class="Pp">Format option default value as a string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>desc</i> Option descriptor
+            <br />
+            <i>buf</i> Output buffer
+            <br />
+            <i>bufsize</i> Size of buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of characters written to buf</div>
+          <p class="Pp">
+            Definition at line <b>117</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+117                                                                                                 {
 118   if (!desc || !buf || bufsize == 0) {
 119     return 0;
 120   }
@@ -384,34 +543,52 @@
 196
 197   return options_format_default_value(desc-&gt;type, desc-&gt;default_value, buf, bufsize);
 198 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>option_descriptor_t::default_value</b>,
-    <b>option_metadata_t::enum_integer_values</b>,
-    <b>option_metadata_t::enum_values</b>,
-    <b>format_option_default_value_str()</b>,
-    <b>option_descriptor_t::metadata</b>,
-    <b>option_metadata_t::numeric_range</b>, <b>OPTION_TYPE_CALLBACK</b>,
-    <b>OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE</b>,
-    <b>options_format_default_value()</b>, <b>safe_snprintf()</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>format_option_default_value_str()</b>,
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_get_option_help_placeholder_str_(const_"><a class="permalink" href="#const_char_*_get_option_help_placeholder_str_(const_">const
-  char * get_option_help_placeholder_str (const <b>option_descriptor_t</b> *
-  desc)</a></h2>
-<p class="Pp">Get help placeholder string for an option type.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>desc</i> Option descriptor</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to string literal (&quot;INTEGER&quot;,
-  &quot;NUMBER&quot;, &quot;STRING&quot;, &quot;VALUE&quot;,
-  &quot;[BOOLEAN]&quot;), custom placeholder, or empty string</div>
-<p class="Pp">Definition at line <b>77</b> of file <b>builder.c</b>.</p>
-<pre>77                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>option_descriptor_t::default_value</b>,
+            <b>option_metadata_t::enum_integer_values</b>,
+            <b>option_metadata_t::enum_values</b>,
+            <b>format_option_default_value_str()</b>,
+            <b>option_descriptor_t::metadata</b>,
+            <b>option_metadata_t::numeric_range</b>,
+            <b>OPTION_TYPE_CALLBACK</b>,
+            <b>OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE</b>,
+            <b>options_format_default_value()</b>, <b>safe_snprintf()</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>format_option_default_value_str()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_get_option_help_placeholder_str_(const_"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_get_option_help_placeholder_str_(const_"
+              >const char * get_option_help_placeholder_str (const
+              <b>option_descriptor_t</b> * desc)</a
+            >
+          </h2>
+          <p class="Pp">Get help placeholder string for an option type.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>desc</i> Option descriptor</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to string literal (&quot;INTEGER&quot;, &quot;NUMBER&quot;,
+            &quot;STRING&quot;, &quot;VALUE&quot;, &quot;[BOOLEAN]&quot;),
+            custom placeholder, or empty string
+          </div>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+77                                                                              {
 78   if (!desc) {
 79     return &quot;&quot;;
 80   }
@@ -443,25 +620,34 @@
 106
 107   return options_get_type_placeholder(desc-&gt;type);
 108 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>option_descriptor_t::arg_placeholder</b>,
-    <b>option_metadata_t::enum_values</b>,
-    <b>get_option_help_placeholder_str()</b>,
-    <b>option_descriptor_t::metadata</b>, <b>OPT_VALUE_FALSE</b>,
-    <b>OPT_VALUE_TRUE</b>, <b>OPTION_TYPE_CALLBACK</b>,
-    <b>options_get_type_placeholder()</b>, and
-  <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>get_option_help_placeholder_str()</b>,
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> is_option_set (const <b>options_config_t</b> *
-  config, const void * options_struct, const char * option_name)</h2>
-<p class="Pp">Check if an option is set (has non-default value).</p>
-<p class="Pp">Definition at line <b>390</b> of file <b>builder.c</b>.</p>
-<pre>390                                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>option_descriptor_t::arg_placeholder</b>,
+            <b>option_metadata_t::enum_values</b>,
+            <b>get_option_help_placeholder_str()</b>,
+            <b>option_descriptor_t::metadata</b>, <b>OPT_VALUE_FALSE</b>,
+            <b>OPT_VALUE_TRUE</b>, <b>OPTION_TYPE_CALLBACK</b>,
+            <b>options_get_type_placeholder()</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>get_option_help_placeholder_str()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> is_option_set (const <b>options_config_t</b> * config,
+            const void * options_struct, const char * option_name)
+          </h2>
+          <p class="Pp">Check if an option is set (has non-default value).</p>
+          <p class="Pp">
+            Definition at line <b>390</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+390                                                                                                         {
 391   const option_descriptor_t *desc = find_option(config, option_name);
 392   if (!desc)
 393     return false;
@@ -478,30 +664,47 @@
 404
 405   return false;
 406 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>find_option()</b>, <b>g_builder_handlers</b>,
-    <b>is_option_set()</b>, <b>option_builder_handler_t::is_set</b>,
-    <b>NUM_OPTION_TYPES</b>, <b>option_descriptor_t::offset</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>ensure_owned_strings_capacity()</b>,
-    <b>is_option_set()</b>, and <b>options_config_validate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> option_applies_to_mode (const
-  <b>option_descriptor_t</b> * desc, <b>asciichat_mode_t</b> mode, <b>bool</b>
-  for_binary_help)</h2>
-<p class="Pp">Check if an option applies to a specific mode using bitmask.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>desc</i> Option descriptor
-<br/>
-<i>mode</i> Mode to check (use invalid value like -1 for binary help)
-<br/>
-<i>for_binary_help</i> If true, show binary options; if false, hide them</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if option should be shown for this mode</div>
-<p class="Pp">Definition at line <b>211</b> of file <b>builder.c</b>.</p>
-<pre>211                                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>find_option()</b>, <b>g_builder_handlers</b>,
+            <b>is_option_set()</b>, <b>option_builder_handler_t::is_set</b>,
+            <b>NUM_OPTION_TYPES</b>, <b>option_descriptor_t::offset</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ensure_owned_strings_capacity()</b>,
+            <b>is_option_set()</b>, and <b>options_config_validate()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> option_applies_to_mode (const
+            <b>option_descriptor_t</b> * desc, <b>asciichat_mode_t</b> mode,
+            <b>bool</b> for_binary_help)
+          </h2>
+          <p class="Pp">
+            Check if an option applies to a specific mode using bitmask.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>desc</i> Option descriptor
+            <br />
+            <i>mode</i> Mode to check (use invalid value like -1 for binary
+            help)
+            <br />
+            <i>for_binary_help</i> If true, show binary options; if false, hide
+            them
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if option should be shown for this mode
+          </div>
+          <p class="Pp">
+            Definition at line <b>211</b> of file <b>builder.c</b>.
+          </p>
+          <pre>
+211                                                                                                           {
 212   if (!desc) {
 213     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Descriptor is NULL&quot;);
 214     return false;
@@ -533,28 +736,39 @@
 240
 241   return applies &amp;&amp; !desc-&gt;hide_from_mode_help;
 242 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
-    <b>option_descriptor_t::hide_from_binary_help</b>,
-    <b>option_descriptor_t::hide_from_mode_help</b>,
-    <b>option_descriptor_t::mode_bitmask</b>, <b>MODE_INVALID</b>,
-    <b>option_applies_to_mode()</b>, <b>OPTION_MODE_BINARY</b>,
-    <b>OPTION_MODE_DISCOVERY</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>option_applies_to_mode()</b>,
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">const <b>option_builder_handler_t</b> g_builder_handlers[]
-  [extern]</h2>
-<p class="Pp">Definition at line <b>57</b> of file
-    <b>options/builder/handlers.c</b>.</p>
-<pre>57                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>,
+            <b>option_descriptor_t::hide_from_binary_help</b>,
+            <b>option_descriptor_t::hide_from_mode_help</b>,
+            <b>option_descriptor_t::mode_bitmask</b>, <b>MODE_INVALID</b>,
+            <b>option_applies_to_mode()</b>, <b>OPTION_MODE_BINARY</b>,
+            <b>OPTION_MODE_DISCOVERY</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>option_applies_to_mode()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>option_builder_handler_t</b> g_builder_handlers[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>57</b> of file
+            <b>options/builder/handlers.c</b>.
+          </p>
+          <pre>
+57                                                     {
 58     [OPTION_TYPE_BOOL] = {is_set_bool, apply_env_bool, apply_cli_bool, format_help_placeholder_bool},
 59     [OPTION_TYPE_INT] = {is_set_int, apply_env_int, apply_cli_int, format_help_placeholder_int},
 60     [OPTION_TYPE_STRING] = {is_set_string, apply_env_string, apply_cli_string, format_help_placeholder_string},
@@ -563,23 +777,28 @@
 63                               format_help_placeholder_callback},
 64     [OPTION_TYPE_ACTION] = {is_set_action, apply_env_action, apply_cli_action, format_help_placeholder_action},
 65 };</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>is_option_set()</b>,
-    <b>options_config_set_defaults()</b>, <b>options_config_validate()</b>, and
-    <b>options_json_parse_value()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>is_option_set()</b>,
+            <b>options_config_set_defaults()</b>,
+            <b>options_config_validate()</b>, and
+            <b>options_json_parse_value()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

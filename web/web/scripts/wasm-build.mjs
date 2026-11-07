@@ -98,7 +98,9 @@ if (
     execFileSync(
       "cmake",
       ["--build", build, "--target", "mirror-web", "client-web"],
-      { stdio: "inherit" },
+      {
+        stdio: "inherit",
+      },
     );
   const source = artifactDirectory
     ? resolve(repo, artifactDirectory)

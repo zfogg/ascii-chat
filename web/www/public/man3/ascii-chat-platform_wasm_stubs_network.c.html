@@ -1,134 +1,209 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>network.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">network.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">network.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">network.c - Network function stubs for WASM.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct app_callbacks_t <b>app_callbacks_t</b>
-  <br/>
-  typedef void <b>app_callbacks_reg_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>socket_sendv_all</b> (<b>socket_t</b>
-    sock, const <b>socket_buffer_t</b> *buffers, size_t count, <b>uint64_t</b>
-    timeout_ns)
-  <br/>
-  <b>asciichat_error_t</b> <b>platform_popen</b> (const char *name, const char
-    *command, const char *mode, FILE **out_stream)
-  <br/>
-  Execute a command and return a file stream for reading/writing.
-    <b>asciichat_error_t</b> <b>platform_pclose</b> (FILE **stream_ptr)
-  <br/>
-  Close a process stream opened with <b>platform_popen()</b>.
-    <b>app_callbacks_t</b> * <b>app_callbacks_get</b> (void)
-  <br/>
-  void <b>app_callbacks_register</b> (<b>app_callbacks_reg_t</b> *callbacks)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Network function stubs for WASM.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/stubs/network.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void_"><a class="permalink" href="#typedef_void_">typedef
-  void <b>app_callbacks_reg_t</b></a></h2>
-<p class="Pp">Definition at line <b>36</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_app_callbacks_t_app_callbacks_t"><a class="permalink" href="#typedef_struct_app_callbacks_t_app_callbacks_t">typedef
-  struct app_callbacks_t app_callbacks_t</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>app_callbacks_t</b> * app_callbacks_get (void )</h2>
-<p class="Pp">Get registered callbacks (returns NULL if not registered)</p>
-<p class="Pp">Definition at line <b>33</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>33                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>network.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">network.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">network.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">network.c - Network function stubs for WASM.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct app_callbacks_t <b>app_callbacks_t</b>
+            <br />
+            typedef void <b>app_callbacks_reg_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>socket_sendv_all</b> (<b>socket_t</b>
+            sock, const <b>socket_buffer_t</b> *buffers, size_t count,
+            <b>uint64_t</b>
+            timeout_ns)
+            <br />
+            <b>asciichat_error_t</b> <b>platform_popen</b> (const char *name,
+            const char *command, const char *mode, FILE **out_stream)
+            <br />
+            Execute a command and return a file stream for reading/writing.
+            <b>asciichat_error_t</b> <b>platform_pclose</b> (FILE **stream_ptr)
+            <br />
+            Close a process stream opened with <b>platform_popen()</b>.
+            <b>app_callbacks_t</b> * <b>app_callbacks_get</b> (void)
+            <br />
+            void <b>app_callbacks_register</b> (<b>app_callbacks_reg_t</b>
+            *callbacks)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Network function stubs for WASM.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file <b>platform/wasm/stubs/network.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_void_">
+            <a class="permalink" href="#typedef_void_"
+              >typedef void <b>app_callbacks_reg_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file
+            <b>platform/wasm/stubs/network.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_app_callbacks_t_app_callbacks_t">
+            <a
+              class="permalink"
+              href="#typedef_struct_app_callbacks_t_app_callbacks_t"
+              >typedef struct app_callbacks_t app_callbacks_t</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file
+            <b>platform/wasm/stubs/network.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>app_callbacks_t</b> * app_callbacks_get (void )</h2>
+          <p class="Pp">
+            Get registered callbacks (returns NULL if not registered)
+          </p>
+          <p class="Pp">
+            Definition at line <b>33</b> of file
+            <b>platform/wasm/stubs/network.c</b>.
+          </p>
+          <pre>
+33                                          {
 34   return NULL;
 35 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>app_callbacks_get()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_app_callbacks_register_("><a class="permalink" href="#void_app_callbacks_register_(">void
-  app_callbacks_register (<b>app_callbacks_reg_t</b> * callbacks)</a></h2>
-<p class="Pp">Definition at line <b>37</b> of file
-    <b>platform/wasm/stubs/network.c</b>.</p>
-<pre>37                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>app_callbacks_get()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_app_callbacks_register_(">
+            <a class="permalink" href="#void_app_callbacks_register_("
+              >void app_callbacks_register (<b>app_callbacks_reg_t</b> *
+              callbacks)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file
+            <b>platform/wasm/stubs/network.c</b>.
+          </p>
+          <pre>
+37                                                             {
 38   (void)callbacks;
 39 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>app_callbacks_register()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>app_callbacks_register()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

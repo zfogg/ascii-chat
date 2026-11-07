@@ -1,286 +1,457 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>audio_ring_buffer(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">audio_ring_buffer(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">audio_ring_buffer(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio_ring_buffer - Audio ring buffer for real-time audio
-    streaming.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/ringbuffer.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">unsigned <b>channels</b>
-  <br/>
-  Frame width, configured before the first read/write. float <b>data</b>
-    [192000]
-  <br/>
-  Audio sample data buffer. <b>atomic_t</b> <b>write_index</b>
-  <br/>
-  Write index (producer position) - LOCK-FREE with atomic operations.
-    <b>atomic_t</b> <b>read_index</b>
-  <br/>
-  Read index (consumer position) - LOCK-FREE with atomic operations.
-    <b>atomic_t</b> <b>discard_pending</b>
-  <br/>
-  Consumer should discard queued samples before its next read. <b>atomic_t</b>
-    <b>discard_to_index</b>
-  <br/>
-  Producer position at which the stale queue ends. <b>atomic_t</b>
-    <b>jitter_buffer_filled</b>
-  <br/>
-  True after initial jitter buffer fill. <b>atomic_t</b>
-    <b>crossfade_samples_remaining</b>
-  <br/>
-  Samples remaining in crossfade (0 = no crossfade active). <b>atomic_t</b>
-    <b>crossfade_fade_in</b>
-  <br/>
-  True if we're fading in (recovering from underrun). float <b>last_sample</b>
-  <br/>
-  Last sample value for smooth fade-out during underrun - NOT atomic (only
-    written by reader). <b>atomic_t</b> <b>underrun_count</b>
-  <br/>
-  Count of underrun events for diagnostics. <b>bool</b>
-    <b>jitter_buffer_enabled</b>
-  <br/>
-  Whether jitter buffering is enabled (false for capture, true for playback).
-    <b>uint32_t</b> <b>jitter_target_samples</b>
-  <br/>
-  <b>uint32_t</b> <b>jitter_initial_samples</b>
-  <br/>
-  <b>uint64_t</b> <b>jitter_stable_samples</b>
-  <br/>
-  double <b>jitter_drift_phase</b>
-  <br/>
-  Consumer-owned fractional clock correction. <b>mutex_t</b> <b>mutex</b>
-  <br/>
-  Mutex for SLOW PATH only (clear/destroy operations, not regular read/write).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Audio ring buffer for real-time audio streaming.</p>
-<p class="Pp">Specialized ring buffer for audio samples with jitter buffering to
-    compensate for network latency and packet timing variations. Uses
-    mutex-protected operations for thread-safe audio access.</p>
-<p class="Pp"></p>
-<p class="Pp">Features:</p>
-<ul class="Bl-bullet">
-  <li>Jitter buffering: waits for threshold fill before starting playback</li>
-  <li>Low water mark: resets jitter state when buffer runs low</li>
-  <li>Crossfade: smoothly fades audio in/out during underrun recovery</li>
-  <li>Underrun tracking: counts underruns for diagnostics</li>
-</ul>
-<p class="Pp">Definition at line <b>206</b> of file <b>ringbuffer.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_audio_ring_buffer::channels"><a class="permalink" href="#unsigned_audio_ring_buffer::channels">unsigned
-  audio_ring_buffer::channels</a></h2>
-<p class="Pp">Frame width, configured before the first read/write.</p>
-<p class="Pp">Definition at line <b>207</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_create_format()</b>,
-    <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_set_jitter_target()</b>,
-    <b>audio_ring_buffer_write()</b>, and <b>mixer_add_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::crossfade_fade_in</h2>
-<p class="Pp">True if we're fading in (recovering from underrun).</p>
-<p class="Pp">Definition at line <b>223</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>, and
-    <b>audio_ring_buffer_unregister_atomics()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b>
-  audio_ring_buffer::crossfade_samples_remaining</h2>
-<p class="Pp">Samples remaining in crossfade (0 = no crossfade active).</p>
-<p class="Pp">Definition at line <b>221</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>, and
-    <b>audio_ring_buffer_unregister_atomics()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_ring_buffer::data_192000_"><a class="permalink" href="#float_audio_ring_buffer::data_192000_">float
-  audio_ring_buffer::data[192000]</a></h2>
-<p class="Pp">Audio sample data buffer.</p>
-<p class="Pp">Definition at line <b>209</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_peek()</b>, <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_write()</b>, and
-  <b>session_display_write_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::discard_pending</h2>
-<p class="Pp">Consumer should discard queued samples before its next read.</p>
-<p class="Pp">Definition at line <b>215</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_discard_pending()</b>, <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>, and
-    <b>audio_ring_buffer_unregister_atomics()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::discard_to_index</h2>
-<p class="Pp">Producer position at which the stale queue ends.</p>
-<p class="Pp">Definition at line <b>217</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_discard_pending()</b>, <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>, and
-    <b>audio_ring_buffer_unregister_atomics()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> audio_ring_buffer::jitter_buffer_enabled</h2>
-<p class="Pp">Whether jitter buffering is enabled (false for capture, true for
-    playback).</p>
-<p class="Pp">Definition at line <b>229</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_read()</b>, <b>audio_ring_buffer_write()</b>, and
-    <b>audio_start_duplex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::jitter_buffer_filled</h2>
-<p class="Pp">True after initial jitter buffer fill.</p>
-<p class="Pp">Definition at line <b>219</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>, and
-    <b>audio_ring_buffer_unregister_atomics()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_audio_ring_buffer::jitter_drift_phase"><a class="permalink" href="#double_audio_ring_buffer::jitter_drift_phase">double
-  audio_ring_buffer::jitter_drift_phase</a></h2>
-<p class="Pp">Consumer-owned fractional clock correction.</p>
-<p class="Pp">Definition at line <b>234</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_read()</b>, and
-    <b>audio_ring_buffer_set_jitter_target()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> audio_ring_buffer::jitter_initial_samples</h2>
-<p class="Pp">Definition at line <b>232</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_create_format()</b>, <b>audio_ring_buffer_read()</b>,
-    and <b>audio_ring_buffer_set_jitter_target()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> audio_ring_buffer::jitter_stable_samples</h2>
-<p class="Pp">Definition at line <b>233</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_read()</b>, and
-    <b>audio_ring_buffer_set_jitter_target()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> audio_ring_buffer::jitter_target_samples</h2>
-<p class="Pp">Consumer-owned adaptive target and stable-playback counter (48 kHz
-    samples).</p>
-<p class="Pp">Definition at line <b>231</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_create_format()</b>, <b>audio_ring_buffer_read()</b>,
-    and <b>audio_ring_buffer_set_jitter_target()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_ring_buffer::last_sample"><a class="permalink" href="#float_audio_ring_buffer::last_sample">float
-  audio_ring_buffer::last_sample</a></h2>
-<p class="Pp">Last sample value for smooth fade-out during underrun - NOT atomic
-    (only written by reader).</p>
-<p class="Pp">Definition at line <b>225</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>, and
-    <b>audio_ring_buffer_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> audio_ring_buffer::mutex</h2>
-<p class="Pp">Mutex for SLOW PATH only (clear/destroy operations, not regular
-    read/write).</p>
-<p class="Pp">Definition at line <b>236</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_clear()</b>, and
-    <b>audio_ring_buffer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::read_index</h2>
-<p class="Pp">Read index (consumer position) - LOCK-FREE with atomic
-  operations.</p>
-<p class="Pp">Definition at line <b>213</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_available_read()</b>,
-    <b>audio_ring_buffer_clear()</b>, <b>audio_ring_buffer_peek()</b>,
-    <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>,
-    <b>audio_ring_buffer_unregister_atomics()</b>,
-    <b>audio_ring_buffer_write()</b>, and
-  <b>session_display_write_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::underrun_count</h2>
-<p class="Pp">Count of underrun events for diagnostics.</p>
-<p class="Pp">Definition at line <b>227</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>, and
-    <b>audio_ring_buffer_unregister_atomics()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::write_index</h2>
-<p class="Pp">Write index (producer position) - LOCK-FREE with atomic
-    operations.</p>
-<p class="Pp">Definition at line <b>211</b> of file <b>ringbuffer.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_available_read()</b>,
-    <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_discard_pending()</b>, <b>audio_ring_buffer_peek()</b>,
-    <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_register_atomics()</b>,
-    <b>audio_ring_buffer_unregister_atomics()</b>,
-    <b>audio_ring_buffer_write()</b>, and
-  <b>session_display_write_audio()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>audio_ring_buffer(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">audio_ring_buffer(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">audio_ring_buffer(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          audio_ring_buffer - Audio ring buffer for real-time audio streaming.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/ringbuffer.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            unsigned <b>channels</b>
+            <br />
+            Frame width, configured before the first read/write. float
+            <b>data</b>
+            [192000]
+            <br />
+            Audio sample data buffer. <b>atomic_t</b> <b>write_index</b>
+            <br />
+            Write index (producer position) - LOCK-FREE with atomic operations.
+            <b>atomic_t</b> <b>read_index</b>
+            <br />
+            Read index (consumer position) - LOCK-FREE with atomic operations.
+            <b>atomic_t</b> <b>discard_pending</b>
+            <br />
+            Consumer should discard queued samples before its next read.
+            <b>atomic_t</b>
+            <b>discard_to_index</b>
+            <br />
+            Producer position at which the stale queue ends. <b>atomic_t</b>
+            <b>jitter_buffer_filled</b>
+            <br />
+            True after initial jitter buffer fill. <b>atomic_t</b>
+            <b>crossfade_samples_remaining</b>
+            <br />
+            Samples remaining in crossfade (0 = no crossfade active).
+            <b>atomic_t</b>
+            <b>crossfade_fade_in</b>
+            <br />
+            True if we're fading in (recovering from underrun). float
+            <b>last_sample</b>
+            <br />
+            Last sample value for smooth fade-out during underrun - NOT atomic
+            (only written by reader). <b>atomic_t</b> <b>underrun_count</b>
+            <br />
+            Count of underrun events for diagnostics. <b>bool</b>
+            <b>jitter_buffer_enabled</b>
+            <br />
+            Whether jitter buffering is enabled (false for capture, true for
+            playback).
+            <b>uint32_t</b> <b>jitter_target_samples</b>
+            <br />
+            <b>uint32_t</b> <b>jitter_initial_samples</b>
+            <br />
+            <b>uint64_t</b> <b>jitter_stable_samples</b>
+            <br />
+            double <b>jitter_drift_phase</b>
+            <br />
+            Consumer-owned fractional clock correction. <b>mutex_t</b>
+            <b>mutex</b>
+            <br />
+            Mutex for SLOW PATH only (clear/destroy operations, not regular
+            read/write).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Audio ring buffer for real-time audio streaming.</p>
+        <p class="Pp">
+          Specialized ring buffer for audio samples with jitter buffering to
+          compensate for network latency and packet timing variations. Uses
+          mutex-protected operations for thread-safe audio access.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Features:</p>
+        <ul class="Bl-bullet">
+          <li>
+            Jitter buffering: waits for threshold fill before starting playback
+          </li>
+          <li>Low water mark: resets jitter state when buffer runs low</li>
+          <li>
+            Crossfade: smoothly fades audio in/out during underrun recovery
+          </li>
+          <li>Underrun tracking: counts underruns for diagnostics</li>
+        </ul>
+        <p class="Pp">
+          Definition at line <b>206</b> of file <b>ringbuffer.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_audio_ring_buffer::channels">
+            <a class="permalink" href="#unsigned_audio_ring_buffer::channels"
+              >unsigned audio_ring_buffer::channels</a
+            >
+          </h2>
+          <p class="Pp">Frame width, configured before the first read/write.</p>
+          <p class="Pp">
+            Definition at line <b>207</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_create_format()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_set_jitter_target()</b>,
+            <b>audio_ring_buffer_write()</b>, and <b>mixer_add_source()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> audio_ring_buffer::crossfade_fade_in
+          </h2>
+          <p class="Pp">True if we're fading in (recovering from underrun).</p>
+          <p class="Pp">
+            Definition at line <b>223</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>, and
+            <b>audio_ring_buffer_unregister_atomics()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> audio_ring_buffer::crossfade_samples_remaining
+          </h2>
+          <p class="Pp">
+            Samples remaining in crossfade (0 = no crossfade active).
+          </p>
+          <p class="Pp">
+            Definition at line <b>221</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>, and
+            <b>audio_ring_buffer_unregister_atomics()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_ring_buffer::data_192000_">
+            <a class="permalink" href="#float_audio_ring_buffer::data_192000_"
+              >float audio_ring_buffer::data[192000]</a
+            >
+          </h2>
+          <p class="Pp">Audio sample data buffer.</p>
+          <p class="Pp">
+            Definition at line <b>209</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_peek()</b>, <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_write()</b>, and
+            <b>session_display_write_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::discard_pending</h2>
+          <p class="Pp">
+            Consumer should discard queued samples before its next read.
+          </p>
+          <p class="Pp">
+            Definition at line <b>215</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_discard_pending()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>, and
+            <b>audio_ring_buffer_unregister_atomics()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> audio_ring_buffer::discard_to_index
+          </h2>
+          <p class="Pp">Producer position at which the stale queue ends.</p>
+          <p class="Pp">
+            Definition at line <b>217</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_discard_pending()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>, and
+            <b>audio_ring_buffer_unregister_atomics()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> audio_ring_buffer::jitter_buffer_enabled
+          </h2>
+          <p class="Pp">
+            Whether jitter buffering is enabled (false for capture, true for
+            playback).
+          </p>
+          <p class="Pp">
+            Definition at line <b>229</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_read()</b>, <b>audio_ring_buffer_write()</b>,
+            and <b>audio_start_duplex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> audio_ring_buffer::jitter_buffer_filled
+          </h2>
+          <p class="Pp">True after initial jitter buffer fill.</p>
+          <p class="Pp">
+            Definition at line <b>219</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>, and
+            <b>audio_ring_buffer_unregister_atomics()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_audio_ring_buffer::jitter_drift_phase">
+            <a
+              class="permalink"
+              href="#double_audio_ring_buffer::jitter_drift_phase"
+              >double audio_ring_buffer::jitter_drift_phase</a
+            >
+          </h2>
+          <p class="Pp">Consumer-owned fractional clock correction.</p>
+          <p class="Pp">
+            Definition at line <b>234</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_read()</b>, and
+            <b>audio_ring_buffer_set_jitter_target()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> audio_ring_buffer::jitter_initial_samples
+          </h2>
+          <p class="Pp">
+            Definition at line <b>232</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_create_format()</b>,
+            <b>audio_ring_buffer_read()</b>, and
+            <b>audio_ring_buffer_set_jitter_target()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> audio_ring_buffer::jitter_stable_samples
+          </h2>
+          <p class="Pp">
+            Definition at line <b>233</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_read()</b>, and
+            <b>audio_ring_buffer_set_jitter_target()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> audio_ring_buffer::jitter_target_samples
+          </h2>
+          <p class="Pp">
+            Consumer-owned adaptive target and stable-playback counter (48 kHz
+            samples).
+          </p>
+          <p class="Pp">
+            Definition at line <b>231</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_create_format()</b>,
+            <b>audio_ring_buffer_read()</b>, and
+            <b>audio_ring_buffer_set_jitter_target()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_ring_buffer::last_sample">
+            <a class="permalink" href="#float_audio_ring_buffer::last_sample"
+              >float audio_ring_buffer::last_sample</a
+            >
+          </h2>
+          <p class="Pp">
+            Last sample value for smooth fade-out during underrun - NOT atomic
+            (only written by reader).
+          </p>
+          <p class="Pp">
+            Definition at line <b>225</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>, and
+            <b>audio_ring_buffer_read()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> audio_ring_buffer::mutex</h2>
+          <p class="Pp">
+            Mutex for SLOW PATH only (clear/destroy operations, not regular
+            read/write).
+          </p>
+          <p class="Pp">
+            Definition at line <b>236</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_clear()</b>, and
+            <b>audio_ring_buffer_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::read_index</h2>
+          <p class="Pp">
+            Read index (consumer position) - LOCK-FREE with atomic operations.
+          </p>
+          <p class="Pp">
+            Definition at line <b>213</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_available_read()</b>,
+            <b>audio_ring_buffer_clear()</b>, <b>audio_ring_buffer_peek()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>,
+            <b>audio_ring_buffer_unregister_atomics()</b>,
+            <b>audio_ring_buffer_write()</b>, and
+            <b>session_display_write_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::underrun_count</h2>
+          <p class="Pp">Count of underrun events for diagnostics.</p>
+          <p class="Pp">
+            Definition at line <b>227</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>, and
+            <b>audio_ring_buffer_unregister_atomics()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> audio_ring_buffer::write_index</h2>
+          <p class="Pp">
+            Write index (producer position) - LOCK-FREE with atomic operations.
+          </p>
+          <p class="Pp">
+            Definition at line <b>211</b> of file <b>ringbuffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_ring_buffer_available_read()</b>,
+            <b>audio_ring_buffer_clear()</b>,
+            <b>audio_ring_buffer_discard_pending()</b>,
+            <b>audio_ring_buffer_peek()</b>, <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_register_atomics()</b>,
+            <b>audio_ring_buffer_unregister_atomics()</b>,
+            <b>audio_ring_buffer_write()</b>, and
+            <b>session_display_write_audio()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,206 +1,309 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mcp.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mcp.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mcp.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mcp.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>mcp_policy_t</b>
-  <br/>
-  struct <b>mcp_render_request_t</b>
-  <br/>
-  struct <b>mcp_render_result_t</b>
-  <br/>
-  struct <b>mcp_job</b>
-  <br/>
-  struct <b>mcp_server</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MCP_SERVER_MCP_ERROR_BUFFER_SIZE</b> 2048
-  <br/>
-  #define <b>MCP_MAX_INPUT</b> (24u * 1024u * 1024u)
-  <br/>
-  #define <b>MCP_MAX_OUTPUT</b> (8u * 1024u * 1024u)
-  <br/>
-  #define <b>MCP_SESSION_ID_LENGTH</b> 32
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>mcp_job</b> <b>mcp_job_t</b>
-  <br/>
-  typedef struct <b>mcp_server</b> <b>mcp_server_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>mcp_tool_t</b> { <b>MCP_FILE</b>, <b>MCP_URL</b>,
-    <b>MCP_WEBCAM</b>, <b>MCP_VISUALIZATION</b> }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>mcp_server_main</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>mcp_stdio_reserve</b> (void)
-  <br/>
-  void <b>mcp_stdio_release</b> (void)
-  <br/>
-  yyjson_mut_val * <b>mcp_tools_schema</b> (yyjson_mut_doc *doc, const
-    <b>mcp_policy_t</b> *policy)
-  <br/>
-  <b>asciichat_error_t</b> <b>mcp_request_parse</b> (const <b>mcp_policy_t</b>
-    *policy, <b>mcp_tool_t</b> tool, yyjson_val *arguments,
-    <b>mcp_render_request_t</b> *out)
-  <br/>
-  void <b>mcp_request_destroy</b> (<b>mcp_render_request_t</b> *request)
-  <br/>
-  void <b>mcp_render_execute</b> (<b>mcp_render_request_t</b> *request,
-    <b>atomic_t</b> *cancelled, <b>mcp_render_result_t</b> *result)
-  <br/>
-  yyjson_mut_doc * <b>mcp_dispatch</b> (<b>mcp_server_t</b> *server, yyjson_doc
-    *message, void *connection, const char *session_id, <b>bool</b> *pending)
-  <br/>
-  yyjson_mut_doc * <b>mcp_error</b> (yyjson_val *id, int code, const char
-    *message)
-  <br/>
-  void <b>mcp_jobs_reap</b> (<b>mcp_server_t</b> *server, <b>bool</b> all)
-  <br/>
-  void <b>mcp_stdio_send</b> (<b>mcp_server_t</b> *server, yyjson_mut_doc
-    *response)
-  <br/>
-  <b>asciichat_error_t</b> <b>mcp_stdio_run</b> (<b>mcp_server_t</b> *server)
-  <br/>
-  <b>asciichat_error_t</b> <b>mcp_http_run</b> (<b>mcp_server_t</b> *server)
-  <br/>
-  void <b>mcp_http_wake</b> (<b>mcp_server_t</b> *server)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_MAX_INPUT___(24u_*_1024u_*_1024u)"><a class="permalink" href="#_define_MCP_MAX_INPUT___(24u_*_1024u_*_1024u)">#define
-  MCP_MAX_INPUT (24u * 1024u * 1024u)</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_MAX_OUTPUT___(8u_*_1024u_*_1024u)"><a class="permalink" href="#_define_MCP_MAX_OUTPUT___(8u_*_1024u_*_1024u)">#define
-  MCP_MAX_OUTPUT (8u * 1024u * 1024u)</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_MCP_ERROR_BUFFER_SIZE___2048"><a class="permalink" href="#_define_MCP_SERVER_MCP_ERROR_BUFFER_SIZE___2048">#define
-  MCP_SERVER_MCP_ERROR_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>mcp.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SESSION_ID_LENGTH___32"><a class="permalink" href="#_define_MCP_SESSION_ID_LENGTH___32">#define
-  MCP_SESSION_ID_LENGTH 32</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>mcp.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>mcp_job</b> <b>mcp_job_t</b></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>mcp_server</b> <b>mcp_server_t</b></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>mcp_tool_t</b></a></h2>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="MCP_FILE"><a class="permalink" href="#MCP_FILE"><b><i>MCP_FILE
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="MCP_URL"><a class="permalink" href="#MCP_URL"><b><i>MCP_URL
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="MCP_WEBCAM"><a class="permalink" href="#MCP_WEBCAM"><b><i>MCP_WEBCAM
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="MCP_VISUALIZATION"><a class="permalink" href="#MCP_VISUALIZATION"><b><i>MCP_VISUALIZATION
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>28</b> of file <b>mcp.h</b>.</p>
-<pre>28 { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="yyjson_mut_doc_*_mcp_dispatch_("><a class="permalink" href="#yyjson_mut_doc_*_mcp_dispatch_(">yyjson_mut_doc
-  * mcp_dispatch (<b>mcp_server_t</b> * server, yyjson_doc * message, void *
-  connection, const char * session_id, <b>bool</b> * pending)</a></h2>
-<p class="Pp">Definition at line <b>176</b> of file
-    <b>mcp-server/protocol.c</b>.</p>
-<pre>177                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mcp.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mcp.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mcp.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">mcp.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>mcp_policy_t</b>
+            <br />
+            struct <b>mcp_render_request_t</b>
+            <br />
+            struct <b>mcp_render_result_t</b>
+            <br />
+            struct <b>mcp_job</b>
+            <br />
+            struct <b>mcp_server</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MCP_SERVER_MCP_ERROR_BUFFER_SIZE</b> 2048
+            <br />
+            #define <b>MCP_MAX_INPUT</b> (24u * 1024u * 1024u)
+            <br />
+            #define <b>MCP_MAX_OUTPUT</b> (8u * 1024u * 1024u)
+            <br />
+            #define <b>MCP_SESSION_ID_LENGTH</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>mcp_job</b> <b>mcp_job_t</b>
+            <br />
+            typedef struct <b>mcp_server</b> <b>mcp_server_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>mcp_tool_t</b> { <b>MCP_FILE</b>, <b>MCP_URL</b>,
+            <b>MCP_WEBCAM</b>, <b>MCP_VISUALIZATION</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>mcp_server_main</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_stdio_reserve</b> (void)
+            <br />
+            void <b>mcp_stdio_release</b> (void)
+            <br />
+            yyjson_mut_val * <b>mcp_tools_schema</b> (yyjson_mut_doc *doc, const
+            <b>mcp_policy_t</b> *policy)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_request_parse</b> (const
+            <b>mcp_policy_t</b> *policy, <b>mcp_tool_t</b> tool, yyjson_val
+            *arguments, <b>mcp_render_request_t</b> *out)
+            <br />
+            void <b>mcp_request_destroy</b> (<b>mcp_render_request_t</b>
+            *request)
+            <br />
+            void <b>mcp_render_execute</b> (<b>mcp_render_request_t</b>
+            *request, <b>atomic_t</b> *cancelled,
+            <b>mcp_render_result_t</b> *result)
+            <br />
+            yyjson_mut_doc * <b>mcp_dispatch</b> (<b>mcp_server_t</b> *server,
+            yyjson_doc *message, void *connection, const char *session_id,
+            <b>bool</b> *pending)
+            <br />
+            yyjson_mut_doc * <b>mcp_error</b> (yyjson_val *id, int code, const
+            char *message)
+            <br />
+            void <b>mcp_jobs_reap</b> (<b>mcp_server_t</b> *server,
+            <b>bool</b> all)
+            <br />
+            void <b>mcp_stdio_send</b> (<b>mcp_server_t</b> *server,
+            yyjson_mut_doc *response)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_stdio_run</b> (<b>mcp_server_t</b>
+            *server)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_http_run</b> (<b>mcp_server_t</b>
+            *server)
+            <br />
+            void <b>mcp_http_wake</b> (<b>mcp_server_t</b> *server)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_MAX_INPUT___(24u_*_1024u_*_1024u)">
+            <a
+              class="permalink"
+              href="#_define_MCP_MAX_INPUT___(24u_*_1024u_*_1024u)"
+              >#define MCP_MAX_INPUT (24u * 1024u * 1024u)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>24</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">Referenced by <b>mcp_stdio_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_MAX_OUTPUT___(8u_*_1024u_*_1024u)">
+            <a
+              class="permalink"
+              href="#_define_MCP_MAX_OUTPUT___(8u_*_1024u_*_1024u)"
+              >#define MCP_MAX_OUTPUT (8u * 1024u * 1024u)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>25</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_MCP_ERROR_BUFFER_SIZE___2048">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_MCP_ERROR_BUFFER_SIZE___2048"
+              >#define MCP_SERVER_MCP_ERROR_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>mcp.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SESSION_ID_LENGTH___32">
+            <a class="permalink" href="#_define_MCP_SESSION_ID_LENGTH___32"
+              >#define MCP_SESSION_ID_LENGTH 32</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>26</b> of file <b>mcp.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">typedef struct <b>mcp_job</b> <b>mcp_job_t</b></h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>mcp_server</b> <b>mcp_server_t</b>
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_">enum <b>mcp_tool_t</b></a>
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="MCP_FILE">
+              <a class="permalink" href="#MCP_FILE"
+                ><b><i>MCP_FILE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="MCP_URL">
+              <a class="permalink" href="#MCP_URL"
+                ><b><i>MCP_URL </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="MCP_WEBCAM">
+              <a class="permalink" href="#MCP_WEBCAM"
+                ><b><i>MCP_WEBCAM </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="MCP_VISUALIZATION">
+              <a class="permalink" href="#MCP_VISUALIZATION"
+                ><b><i>MCP_VISUALIZATION </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">Definition at line <b>28</b> of file <b>mcp.h</b>.</p>
+          <pre>
+28 { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="yyjson_mut_doc_*_mcp_dispatch_(">
+            <a class="permalink" href="#yyjson_mut_doc_*_mcp_dispatch_("
+              >yyjson_mut_doc * mcp_dispatch (<b>mcp_server_t</b> * server,
+              yyjson_doc * message, void * connection, const char * session_id,
+              <b>bool</b> * pending)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>176</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+177                                             {
 178   ASCII_OTEL_SCOPE(MCP_REQUEST);
 179   ASCII_OTEL_ATTR_STRING(&quot;rpc.system&quot;, &quot;jsonrpc&quot;);
 180   ASCII_OTEL_ATTR_STRING(&quot;mcp.transport&quot;, s-&gt;policy.hosted ? &quot;http&quot; : &quot;stdio&quot;);
@@ -334,35 +437,51 @@
 308   *pending = true;
 309   return NULL;
 310 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>mcp_job::cancelled</b>, <b>mcp_job::connection</b>,
-    <b>asciichat_error_context_t::context_message</b>,
-    <b>mcp_render_result_t::error</b>, <b>HAS_ERRNO</b>,
-    <b>mcp_policy_t::hosted</b>, <b>mcp_server::initialized</b>,
-    <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
-    <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
-    <b>mcp_request_destroy()</b>, <b>mcp_request_parse()</b>,
-    <b>mcp_tools_schema()</b>, <b>MCP_WEBCAM</b>, <b>mcp_job::message</b>,
-    <b>mcp_server::policy</b>, <b>mcp_job::request</b>,
-    <b>mcp_policy_t::restricted</b>, <b>safe_snprintf()</b>,
-    <b>SAFE_STRNCPY</b>, <b>mcp_job::server</b>, <b>mcp_job::session_id</b>,
-    <b>mcp_job::started</b>, <b>stats_counter_add()</b>,
-    <b>STATS_COUNTER_MCP_REJECTED</b>, <b>STATS_COUNTER_MCP_REQUESTS</b>,
-    <b>stats_runtime_scope()</b>, <b>mcp_job::telemetry_parent</b>,
-    <b>mcp_job::thread</b>, and <b>mcp_job::tool</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-  <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"><a class="permalink" href="#yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)">yyjson_mut_doc
-  * mcp_error (yyjson_val * id, int code, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file
-  <b>mcp-server/protocol.c</b>.</p>
-<pre>18                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>mcp_job::connection</b>,
+            <b>asciichat_error_context_t::context_message</b>,
+            <b>mcp_render_result_t::error</b>, <b>HAS_ERRNO</b>,
+            <b>mcp_policy_t::hosted</b>, <b>mcp_server::initialized</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
+            <b>mcp_request_destroy()</b>, <b>mcp_request_parse()</b>,
+            <b>mcp_tools_schema()</b>, <b>MCP_WEBCAM</b>,
+            <b>mcp_job::message</b>, <b>mcp_server::policy</b>,
+            <b>mcp_job::request</b>, <b>mcp_policy_t::restricted</b>,
+            <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>, <b>mcp_job::server</b>,
+            <b>mcp_job::session_id</b>, <b>mcp_job::started</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_MCP_REJECTED</b>,
+            <b>STATS_COUNTER_MCP_REQUESTS</b>, <b>stats_runtime_scope()</b>,
+            <b>mcp_job::telemetry_parent</b>, <b>mcp_job::thread</b>, and
+            <b>mcp_job::tool</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"
+          >
+            <a
+              class="permalink"
+              href="#yyjson_mut_doc_*_mcp_error_(yyjson_val_*_id,_int_code,_const_char_*_message)"
+              >yyjson_mut_doc * mcp_error (yyjson_val * id, int code, const char
+              * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+18                                                                          {
 19   ASCII_OTEL_SCOPE(MCP_PROTOCOL_ERROR);
 20   ASCII_OTEL_ATTR_INT(&quot;rpc.jsonrpc.error_code&quot;, code);
 21   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
@@ -374,19 +493,26 @@
 27   yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), &quot;error&quot;, e);
 28   return d;
 29 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_ATTR_INT</b>, <b>ascii_otel_error()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>mcp_error()</b>, <b>stats_counter_add()</b>,
-    <b>STATS_COUNTER_MCP_REJECTED</b>, and <b>stats_runtime_scope()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_error()</b>, and
-    <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> mcp_http_run (<b>mcp_server_t</b> *
-  server)</h2>
-<p class="Pp">Definition at line <b>206</b> of file <b>http.c</b>.</p>
-<pre>206                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>, <b>ascii_otel_error()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>mcp_error()</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_MCP_REJECTED</b>, and
+            <b>stats_runtime_scope()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_error()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> mcp_http_run (<b>mcp_server_t</b> * server)
+          </h2>
+          <p class="Pp">Definition at line <b>206</b> of file <b>http.c</b>.</p>
+          <pre>
+206                                                 {
 207   static const struct lws_protocols protocols[] = {{&quot;http&quot;, callback, sizeof(http_session_t), 16384, 0, NULL, 0},
 208                                                    {NULL, NULL, 0, 0, 0, NULL, 0}};
 209   struct lws_context_creation_info info = {0};
@@ -475,51 +601,68 @@
 292   s-&gt;http_context = NULL;
 293   return ASCIICHAT_OK;
 294 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_policy_t::address</b>,
-    <b>mcp_policy_t::address6</b>, <b>APP_CALLBACK_BOOL</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>mcp_job::cancelled</b>, <b>ui_status_t::connected_count</b>,
-    <b>mcp_job::done</b>, <b>ERROR_NETWORK</b>, <b>GET_OPTION</b>,
-    <b>mcp_server::http_context</b>, <b>ui_status_t::ipv4_address</b>,
-    <b>ui_status_t::ipv4_bound</b>, <b>ui_status_t::ipv6_address</b>,
-    <b>ui_status_t::ipv6_bound</b>, <b>mcp_server::jobs</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>, <b>mcp_policy_t::max_jobs</b>,
-    <b>mcp_http_run()</b>, <b>mcp_jobs_reap()</b>, <b>nat_upnp_close()</b>,
-    <b>nat_upnp_open()</b>, <b>nat_upnp_refresh()</b>,
-    <b>mcp_server::policy</b>, <b>mcp_policy_t::port</b>,
-    <b>nat_upnp_context::refresh_at_ns</b>, <b>SAFE_SNPRINTF</b>,
-    <b>SET_ERRNO</b>, <b>should_exit()</b>, <b>mcp_job::started</b>,
-    <b>mcp_server::stopping</b>, <b>terminal_is_interactive()</b>,
-    <b>time_get_ns()</b>, <b>http_pulse_t::timer</b>,
-    <b>mcp_policy_t::tls_cert</b>, <b>mcp_policy_t::tls_key</b>,
-    <b>mcp_policy_t::tls_password</b>, <b>ui_controller_remove()</b>,
-    <b>UI_SCREEN_STATUS</b>, <b>ui_status_display_interactive()</b>,
-    <b>ui_status_log_destroy()</b>, and <b>ui_status_log_init()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>, and
-  <b>mcp_server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_http_wake_("><a class="permalink" href="#void_mcp_http_wake_(">void
-  mcp_http_wake (<b>mcp_server_t</b> * server)</a></h2>
-<p class="Pp">Definition at line <b>192</b> of file <b>http.c</b>.</p>
-<pre>192                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_policy_t::address</b>,
+            <b>mcp_policy_t::address6</b>, <b>APP_CALLBACK_BOOL</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>ui_status_t::connected_count</b>, <b>mcp_job::done</b>,
+            <b>ERROR_NETWORK</b>, <b>GET_OPTION</b>,
+            <b>mcp_server::http_context</b>, <b>ui_status_t::ipv4_address</b>,
+            <b>ui_status_t::ipv4_bound</b>, <b>ui_status_t::ipv6_address</b>,
+            <b>ui_status_t::ipv6_bound</b>, <b>mcp_server::jobs</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>,
+            <b>mcp_policy_t::max_jobs</b>, <b>mcp_http_run()</b>,
+            <b>mcp_jobs_reap()</b>, <b>nat_upnp_close()</b>,
+            <b>nat_upnp_open()</b>, <b>nat_upnp_refresh()</b>,
+            <b>mcp_server::policy</b>, <b>mcp_policy_t::port</b>,
+            <b>nat_upnp_context::refresh_at_ns</b>, <b>SAFE_SNPRINTF</b>,
+            <b>SET_ERRNO</b>, <b>should_exit()</b>, <b>mcp_job::started</b>,
+            <b>mcp_server::stopping</b>, <b>terminal_is_interactive()</b>,
+            <b>time_get_ns()</b>, <b>http_pulse_t::timer</b>,
+            <b>mcp_policy_t::tls_cert</b>, <b>mcp_policy_t::tls_key</b>,
+            <b>mcp_policy_t::tls_password</b>, <b>ui_controller_remove()</b>,
+            <b>UI_SCREEN_STATUS</b>, <b>ui_status_display_interactive()</b>,
+            <b>ui_status_log_destroy()</b>, and <b>ui_status_log_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_http_run()</b>, and <b>mcp_server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_http_wake_(">
+            <a class="permalink" href="#void_mcp_http_wake_("
+              >void mcp_http_wake (<b>mcp_server_t</b> * server)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>192</b> of file <b>http.c</b>.</p>
+          <pre>
+192                                     {
 193   if (s-&gt;http_context)
 194     lws_cancel_service(s-&gt;http_context);
 195 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_server::http_context</b>, and
-    <b>mcp_http_wake()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_wake()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_jobs_reap_("><a class="permalink" href="#void_mcp_jobs_reap_(">void
-  mcp_jobs_reap (<b>mcp_server_t</b> * server, <b>bool</b> all)</a></h2>
-<p class="Pp">Definition at line <b>158</b> of file
-    <b>mcp-server/protocol.c</b>.</p>
-<pre>158                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_server::http_context</b>, and
+            <b>mcp_http_wake()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_http_wake()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_jobs_reap_(">
+            <a class="permalink" href="#void_mcp_jobs_reap_("
+              >void mcp_jobs_reap (<b>mcp_server_t</b> * server,
+              <b>bool</b> all)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>mcp-server/protocol.c</b>.
+          </p>
+          <pre>
+158                                               {
 159   for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i) {
 160     mcp_job_t *j = &amp;s-&gt;jobs[i];
 161     if (!j-&gt;started || (!all &amp;&amp; (!atomic_load_bool(&amp;j-&gt;done) || (s-&gt;policy.hosted &amp;&amp; j-&gt;connection))))
@@ -531,25 +674,37 @@
 167     memset(j, 0, sizeof(*j));
 168   }
 169 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>mcp_job::connection</b>,
-    <b>mcp_job::done</b>, <b>mcp_policy_t::hosted</b>, <b>mcp_server::jobs</b>,
-    <b>mcp_policy_t::max_jobs</b>, <b>mcp_jobs_reap()</b>,
-    <b>mcp_job::message</b>, <b>mcp_server::policy</b>,
-    <b>mcp_job::response</b>, <b>mcp_job::started</b>, <b>mcp_job::thread</b>,
-    and <b>thread_join</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
-    <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
-    <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_render_execute_("><a class="permalink" href="#void_mcp_render_execute_(">void
-  mcp_render_execute (<b>mcp_render_request_t</b> * request, <b>atomic_t</b> *
-  cancelled, <b>mcp_render_result_t</b> * result)</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file
-    <b>src/mcp-server/render.c</b>.</p>
-<pre>107                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>mcp_job::connection</b>,
+            <b>mcp_job::done</b>, <b>mcp_policy_t::hosted</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_job::message</b>,
+            <b>mcp_server::policy</b>, <b>mcp_job::response</b>,
+            <b>mcp_job::started</b>, <b>mcp_job::thread</b>, and
+            <b>thread_join</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_render_execute_(">
+            <a class="permalink" href="#void_mcp_render_execute_("
+              >void mcp_render_execute (<b>mcp_render_request_t</b> * request,
+              <b>atomic_t</b> * cancelled, <b>mcp_render_result_t</b> *
+              result)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>107</b> of file
+            <b>src/mcp-server/render.c</b>.
+          </p>
+          <pre>
+107                                                                                                    {
 108   memset(result, 0, sizeof(*result));
 109   render_worker_t w = {.cancelled = cancelled, .result = result, .started = time_get_ns(), .timeout = r-&gt;timeout_ms};
 110   result-&gt;text = SAFE_CALLOC(MCP_MAX_OUTPUT + 1, 1, char *);
@@ -631,31 +786,41 @@
 186     SAFE_STRNCPY(result-&gt;output_path, r-&gt;output_path, sizeof(result-&gt;output_path));
 187   }
 188 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_render_request_t::argv</b>,
-    <b>mcp_render_request_t::capture_webcam</b>,
-    <b>mcp_render_result_t::elapsed_ms</b>, <b>mcp_render_result_t::error</b>,
-    <b>render_worker_t::errors</b>, <b>render_worker_t::failed</b>,
-    <b>mcp_render_result_t::length</b>, <b>render_worker_t::loop</b>,
-    <b>MCP_MAX_OUTPUT</b>, <b>MCP_RENDER_ENV_CAPACITY</b>,
-    <b>mcp_render_execute()</b>, <b>render_worker_t::output</b>,
-    <b>mcp_render_request_t::output_path</b>,
-    <b>mcp_render_result_t::output_path</b>, <b>platform_getenv()</b>,
-    <b>platform_strdup()</b>, <b>render_worker_t::process</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
-    <b>mcp_render_request_t::stage_file</b>, <b>render_worker_t::started</b>,
-    <b>mcp_render_result_t::text</b>, <b>time_get_ns()</b>,
-    <b>mcp_render_request_t::timeout_ms</b>, and
-  <b>render_worker_t::timer</b>.</p>
-<p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_request_destroy_("><a class="permalink" href="#void_mcp_request_destroy_(">void
-  mcp_request_destroy (<b>mcp_render_request_t</b> * request)</a></h2>
-<p class="Pp">Definition at line <b>564</b> of file <b>request.c</b>.</p>
-<pre>564                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argv</b>,
+            <b>mcp_render_request_t::capture_webcam</b>,
+            <b>mcp_render_result_t::elapsed_ms</b>,
+            <b>mcp_render_result_t::error</b>, <b>render_worker_t::errors</b>,
+            <b>render_worker_t::failed</b>, <b>mcp_render_result_t::length</b>,
+            <b>render_worker_t::loop</b>, <b>MCP_MAX_OUTPUT</b>,
+            <b>MCP_RENDER_ENV_CAPACITY</b>, <b>mcp_render_execute()</b>,
+            <b>render_worker_t::output</b>,
+            <b>mcp_render_request_t::output_path</b>,
+            <b>mcp_render_result_t::output_path</b>, <b>platform_getenv()</b>,
+            <b>platform_strdup()</b>, <b>render_worker_t::process</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+            <b>mcp_render_request_t::stage_file</b>,
+            <b>render_worker_t::started</b>, <b>mcp_render_result_t::text</b>,
+            <b>time_get_ns()</b>, <b>mcp_render_request_t::timeout_ms</b>, and
+            <b>render_worker_t::timer</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_request_destroy_(">
+            <a class="permalink" href="#void_mcp_request_destroy_("
+              >void mcp_request_destroy (<b>mcp_render_request_t</b> *
+              request)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>564</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+564                                                   {
 565   for (size_t i = 0; i &lt; r-&gt;argc; ++i)
 566     SAFE_FREE(r-&gt;argv[i]);
 567   SAFE_FREE(r-&gt;argv);
@@ -669,22 +834,31 @@
 575   }
 576   memset(r, 0, sizeof(*r));
 577 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_render_request_t::argc</b>,
-    <b>mcp_render_request_t::argv</b>, <b>mcp_request_destroy()</b>,
-    <b>platform_rmdir_recursive()</b>, <b>SAFE_FREE</b>,
-    <b>mcp_render_request_t::stage_dir</b>, and
-    <b>mcp_render_request_t::upload_dir</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-    <b>mcp_request_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> mcp_request_parse (const
-  <b>mcp_policy_t</b> * policy, <b>mcp_tool_t</b> tool, yyjson_val * arguments,
-  <b>mcp_render_request_t</b> * out)</h2>
-<p class="Pp">Definition at line <b>367</b> of file <b>request.c</b>.</p>
-<pre>367                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argc</b>,
+            <b>mcp_render_request_t::argv</b>, <b>mcp_request_destroy()</b>,
+            <b>platform_rmdir_recursive()</b>, <b>SAFE_FREE</b>,
+            <b>mcp_render_request_t::stage_dir</b>, and
+            <b>mcp_render_request_t::upload_dir</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and
+            <b>mcp_request_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> mcp_request_parse (const
+            <b>mcp_policy_t</b> * policy, <b>mcp_tool_t</b> tool, yyjson_val *
+            arguments, <b>mcp_render_request_t</b> * out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>367</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+367                                                                                                                     {
 368   memset(r, 0, sizeof(*r));
 369   r-&gt;timeout_ms = 45000;
 370   r-&gt;argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
@@ -881,29 +1055,39 @@
 561   }
 562   return ASCIICHAT_OK;
 563 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_render_request_t::argv</b>, <b>ASCIICHAT_OK</b>,
-    <b>mcp_render_request_t::capture_webcam</b>, <b>ERROR_FILE_OPERATION</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>MCP_FILE</b>,
-    <b>MCP_REQUEST_ARGV_CAPACITY</b>, <b>mcp_request_parse()</b>,
-    <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b>,
-    <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b>,
-    <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b>,
-    <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b>, <b>MCP_URL</b>,
-    <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
-    <b>options_json_parse_value()</b>, <b>platform_get_executable_path()</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>mcp_policy_t::restricted</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>, and
-    <b>mcp_render_request_t::timeout_ms</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-    <b>mcp_request_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_mcp_server_main_(void_)"><a class="permalink" href="#int_mcp_server_main_(void_)">int
-  mcp_server_main (void )</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>mcp-server/main.c</b>.</p>
-<pre>19                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argv</b>, <b>ASCIICHAT_OK</b>,
+            <b>mcp_render_request_t::capture_webcam</b>,
+            <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>MCP_FILE</b>, <b>MCP_REQUEST_ARGV_CAPACITY</b>,
+            <b>mcp_request_parse()</b>, <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b>, <b>MCP_URL</b>,
+            <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
+            <b>options_json_parse_value()</b>,
+            <b>platform_get_executable_path()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>mcp_policy_t::restricted</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>, and
+            <b>mcp_render_request_t::timeout_ms</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_request_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_mcp_server_main_(void_)">
+            <a class="permalink" href="#int_mcp_server_main_(void_)"
+              >int mcp_server_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>mcp-server/main.c</b>.
+          </p>
+          <pre>
+19                           {
 20   if (strcmp(GET_OPTION(mcp_transport), &quot;http&quot;) &amp;&amp; strcmp(GET_OPTION(mcp_transport), &quot;stdio&quot;))
 21     return SET_ERRNO(ERROR_CONFIG, &quot;--transport must be http or stdio&quot;);
 22   mcp_server_t *s = SAFE_CALLOC(1, sizeof(*s), mcp_server_t *);
@@ -956,61 +1140,77 @@
 69   SAFE_FREE(s);
 70   return err;
 71 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
-    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>GET_OPTION</b>, <b>mcp_policy_t::hosted</b>, <b>mcp_server::jobs</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>log_set_terminal_output()</b>,
-    <b>mcp_policy_t::max_jobs</b>, <b>mcp_http_run()</b>,
-    <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>,
-    <b>mcp_stdio_release()</b>, <b>mcp_stdio_run()</b>, <b>mutex_destroy()</b>,
-    <b>mutex_init()</b>, <b>mcp_server::output_mutex</b>,
-    <b>mcp_server::policy</b>, <b>registry_init_size()</b>,
-    <b>mcp_policy_t::restricted</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>SET_ERRNO</b>, <b>mcp_job::started</b>,
-    <b>stats_runtime_set_provider()</b>, <b>mcp_policy_t::tls_cert</b>, and
-    <b>mcp_policy_t::tls_key</b>.</p>
-<p class="Pp">Referenced by <b>mcp_server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_stdio_release_(void_)"><a class="permalink" href="#void_mcp_stdio_release_(void_)">void
-  mcp_stdio_release (void )</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>stdio.c</b>.</p>
-<pre>13                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>GET_OPTION</b>, <b>mcp_policy_t::hosted</b>,
+            <b>mcp_server::jobs</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>log_set_terminal_output()</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_http_run()</b>, <b>mcp_jobs_reap()</b>,
+            <b>mcp_server_main()</b>, <b>mcp_stdio_release()</b>,
+            <b>mcp_stdio_run()</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+            <b>mcp_server::output_mutex</b>, <b>mcp_server::policy</b>,
+            <b>registry_init_size()</b>, <b>mcp_policy_t::restricted</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+            <b>mcp_job::started</b>, <b>stats_runtime_set_provider()</b>,
+            <b>mcp_policy_t::tls_cert</b>, and <b>mcp_policy_t::tls_key</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_stdio_release_(void_)">
+            <a class="permalink" href="#void_mcp_stdio_release_(void_)"
+              >void mcp_stdio_release (void )</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>13</b> of file <b>stdio.c</b>.</p>
+          <pre>
+13                              {
 14   if (protocol_fd &gt;= 0) {
 15     platform_close(protocol_fd);
 16     protocol_fd = -1;
 17   }
 18 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_stdio_release()</b>, and
-    <b>platform_close()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_server_main()</b>, and
-    <b>mcp_stdio_release()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> mcp_stdio_reserve (void )</h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>stdio.c</b>.</p>
-<pre>7                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_stdio_release()</b>, and <b>platform_close()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_server_main()</b>, and
+            <b>mcp_stdio_release()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_error_t</b> mcp_stdio_reserve (void )</h2>
+          <p class="Pp">Definition at line <b>7</b> of file <b>stdio.c</b>.</p>
+          <pre>
+7                                           {
 8   protocol_fd = platform_dup(STDOUT_FILENO);
 9   if (protocol_fd &lt; 0)
 10     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Cannot reserve MCP stdout&quot;);
 11   return platform_dup2(STDERR_FILENO, STDOUT_FILENO);
 12 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_FILE_OPERATION</b>,
-    <b>mcp_stdio_reserve()</b>, <b>platform_dup()</b>, <b>platform_dup2()</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, and <b>mcp_stdio_reserve()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> mcp_stdio_run (<b>mcp_server_t</b> *
-  server)</h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>stdio.c</b>.</p>
-<pre>31                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_FILE_OPERATION</b>, <b>mcp_stdio_reserve()</b>,
+            <b>platform_dup()</b>, <b>platform_dup2()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, and <b>mcp_stdio_reserve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> mcp_stdio_run (<b>mcp_server_t</b> *
+            server)
+          </h2>
+          <p class="Pp">Definition at line <b>31</b> of file <b>stdio.c</b>.</p>
+          <pre>
+31                                                  {
 32   char *line = SAFE_MALLOC(MCP_MAX_INPUT + 1, char *);
 33   size_t n = 0;
 34   bool overflow = false;
@@ -1051,24 +1251,32 @@
 69   mcp_jobs_reap(s, true);
 70   return ASCIICHAT_OK;
 71 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
-    <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
-    <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
-    <b>MCP_MAX_INPUT</b>, <b>mcp_stdio_run()</b>, <b>mcp_stdio_send()</b>,
-    <b>mcp_server::policy</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>mcp_job::started</b>, and <b>mcp_server::stopping</b>.</p>
-<p class="Pp">Referenced by <b>mcp_server_main()</b>, and
-    <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_stdio_send_("><a class="permalink" href="#void_mcp_stdio_send_(">void
-  mcp_stdio_send (<b>mcp_server_t</b> * server, yyjson_mut_doc *
-  response)</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>stdio.c</b>.</p>
-<pre>19                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+            <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
+            <b>MCP_MAX_INPUT</b>, <b>mcp_stdio_run()</b>,
+            <b>mcp_stdio_send()</b>, <b>mcp_server::policy</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>mcp_job::started</b>, and
+            <b>mcp_server::stopping</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_server_main()</b>, and <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_stdio_send_(">
+            <a class="permalink" href="#void_mcp_stdio_send_("
+              >void mcp_stdio_send (<b>mcp_server_t</b> * server, yyjson_mut_doc
+              * response)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>19</b> of file <b>stdio.c</b>.</p>
+          <pre>
+19                                                                {
 20   size_t size;
 21   char *json = yyjson_mut_write(response, 0, &amp;size);
 22   if (!json)
@@ -1080,20 +1288,35 @@
 28   if (!ok)
 29     atomic_store_bool(&amp;s-&gt;stopping, true);
 30 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>mcp_stdio_send()</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>mcp_server::output_mutex</b>,
-    <b>platform_write_all()</b>, and <b>mcp_server::stopping</b>.</p>
-<p class="Pp">Referenced by <b>mcp_stdio_run()</b>, and
-  <b>mcp_stdio_send()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_doc,_const_"><a class="permalink" href="#yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_doc,_const_">yyjson_mut_val
-  * mcp_tools_schema (yyjson_mut_doc * doc, const <b>mcp_policy_t</b> *
-  policy)</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file <b>request.c</b>.</p>
-<pre>130                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>mcp_stdio_send()</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>mcp_server::output_mutex</b>, <b>platform_write_all()</b>, and
+            <b>mcp_server::stopping</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_stdio_run()</b>, and <b>mcp_stdio_send()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_doc,_const_"
+          >
+            <a
+              class="permalink"
+              href="#yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_doc,_const_"
+              >yyjson_mut_val * mcp_tools_schema (yyjson_mut_doc * doc, const
+              <b>mcp_policy_t</b> * policy)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+130                                                                            {
 131   const char *names[] = {&quot;render_file&quot;, &quot;render_url&quot;, &quot;render_webcam&quot;, &quot;render_visualization&quot;};
 132   const char *descs[] = {
 133       &quot;Convert uploaded media or a local file into ASCII art. Source can be omitted for test-pattern/test-audio.&quot;,
@@ -1188,26 +1411,31 @@
 222   }
 223   return tools;
 224 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>MCP_FILE</b>, <b>mcp_tools_schema()</b>,
-    <b>MCP_URL</b>, <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
-    <b>options_json_schema_for_option()</b>, and
-    <b>mcp_policy_t::restricted</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-    <b>mcp_tools_schema()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>MCP_FILE</b>, <b>mcp_tools_schema()</b>,
+            <b>MCP_URL</b>, <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
+            <b>options_json_schema_for_option()</b>, and
+            <b>mcp_policy_t::restricted</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_tools_schema()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

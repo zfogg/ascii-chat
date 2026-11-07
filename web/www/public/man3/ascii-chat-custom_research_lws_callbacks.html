@@ -1,175 +1,274 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_research_lws_callbacks(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_research_lws_callbacks(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_research_lws_callbacks(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_research_lws_callbacks - LibWebSockets (LWS) Callback
-    Efficiency Research</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="LibWebSockets_(LWS)_Callback_Efficiency_Research"><a class="permalink" href="#LibWebSockets_(LWS)_Callback_Efficiency_Research">LibWebSockets
-  (LWS) Callback Efficiency Research</a></h1>
-<p class="Pp"><b>Issue:</b> #305 - WebSocket FPS bug (1 frame per 45
-  seconds)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Objective:</b> Profile libwebsockets callback efficiency to
-    diagnose WebSocket performance degradation and identify bottlenecks in the
-    event loop.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Executive_Summary"><a class="permalink" href="#Executive_Summary">Executive
-  Summary</a></h2>
-<p class="Pp">This research adds timing instrumentation to critical
-    libwebsockets callbacks to identify performance bottlenecks causing the
-    observed WebSocket FPS issue (#305). The investigation tracks callback
-    invocation frequency, execution duration, and inter-callback timing to
-    determine if the LWS event loop or callbacks themselves are causing the
-    45-second frame interval.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation"><a class="permalink" href="#Implementation">Implementation</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Callback_Timing_Infrastructure_("><a class="permalink" href="#Callback_Timing_Infrastructure_(">Callback
-  Timing Infrastructure (<b>callback_timing.h</b><b> /
-  </b><b>callback_timing.c</b><b>)</b></a></h2>
-<p class="Pp">A lightweight, thread-safe timing system was added to track
-    callback statistics:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key Components:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b></b><b>websocket_callback_stats_t</b><b></b> - Per-callback statistics
-      structure</dd>
-  <dt> &#x2022;</dt>
-  <dd>count - Total callback invocations</dd>
-  <dt> &#x2022;</dt>
-  <dd>last_ns - Last callback timestamp (nanoseconds)</dd>
-  <dt> &#x2022;</dt>
-  <dd>min_interval_ns - Minimum interval between successive callbacks</dd>
-  <dt> &#x2022;</dt>
-  <dd>max_interval_ns - Maximum interval between successive callbacks</dd>
-  <dt> &#x2022;</dt>
-  <dd>total_duration_ns - Cumulative callback execution time</dd>
-  <dt>2.</dt>
-  <dd><b>Global Tracking</b> - <b>g_ws_callback_timing</b><b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Aggregates statistics for all tracked callbacks</dd>
-  <dt> &#x2022;</dt>
-  <dd>Uses atomic operations for thread-safe updates without locking</dd>
-  <dt>3.</dt>
-  <dd><b>Functions:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>websocket_callback_timing_start() - Capture high-resolution timestamp</dd>
-  <dt> &#x2022;</dt>
-  <dd><b>websocket_callback_timing_record()</b><b> - Record callback execution
-      with timing</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>websocket_callback_timing_log_stats()</b><b> - Display aggregate
-      statistics</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>websocket_callback_timing_reset()</b><b> - Clear statistics</b></dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Instrumented_Callbacks"><a class="permalink" href="#Instrumented_Callbacks">Instrumented
-  Callbacks</a></h2>
-<p class="Pp">Timing calls added to four critical LWS callbacks in
-    <b>lib/network/websocket/server.c</b><b>:</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">1. LWS_CALLBACK_PROTOCOL_INIT</h2>
-<ul class="Bl-bullet">
-  <li><b>When:</b> Protocol layer initialization (early in connection
-    lifecycle)</li>
-  <li><b>Tracked:</b> Invocation count and execution duration</li>
-  <li><b>Purpose:</b> Verify initialization isn't blocked or delayed</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">2. LWS_CALLBACK_PROTOCOL_DESTROY</h2>
-<ul class="Bl-bullet">
-  <li><b>When:</b> Protocol layer cleanup (connection termination)</li>
-  <li><b>Tracked:</b> Invocation count and execution duration</li>
-  <li><b>Purpose:</b> Identify cleanup delays that might affect connection
-    reuse</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">3. LWS_CALLBACK_SERVER_WRITEABLE</h2>
-<ul class="Bl-bullet">
-  <li><b>When:</b> Socket ready for writing (triggered by
-      lws_callback_on_writable())</li>
-  <li><b>Tracked:</b> Count, duration, min/max intervals, frequency (Hz)</li>
-  <li><b>Purpose:</b> <b>Critical</b> - Diagnose if WRITEABLE callbacks fire
-      frequently enough</li>
-  <li><b>Hypothesis:</b> If min_interval is very large (e.g., 45 seconds), the
-      event loop isn't waking up to send data</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="4"><a class="permalink" href="#4">4.
-  LWS_CALLBACK_RECEIVE</a></h2>
-<ul class="Bl-bullet">
-  <li><b>When:</b> Data received from client</li>
-  <li><b>Tracked:</b> Count, duration, min/max intervals, frequency (Hz)</li>
-  <li><b>Purpose:</b> Verify receive callbacks fire with expected frequency and
-      aren't blocked</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Instrumentation_Details"><a class="permalink" href="#Instrumentation_Details">Instrumentation
-  Details</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Atomic_Recording"><a class="permalink" href="#Atomic_Recording">Atomic
-  Recording</a></h2>
-<pre>websocket_callback_timing_record(&amp;g_ws_callback_timing.server_writeable, start_ns, end_ns);</pre>
-<ul class="Bl-bullet">
-  <li>Records callback duration: end_ns - start_ns</li>
-  <li>Updates min/max intervals between successive callbacks</li>
-  <li>Accumulates total duration for average calculation</li>
-  <li>Thread-safe via atomic operations (no locks)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Statistics_Logging"><a class="permalink" href="#Statistics_Logging">Statistics
-  Logging</a></h2>
-<pre>websocket_callback_timing_log_stats();</pre>
-<p class="Pp">Outputs:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>===== WEBSOCKET CALLBACK TIMING STATISTICS =====
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_research_lws_callbacks(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_research_lws_callbacks(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_research_lws_callbacks(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_research_lws_callbacks - LibWebSockets (LWS) Callback
+          Efficiency Research
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="LibWebSockets_(LWS)_Callback_Efficiency_Research">
+          <a
+            class="permalink"
+            href="#LibWebSockets_(LWS)_Callback_Efficiency_Research"
+            >LibWebSockets (LWS) Callback Efficiency Research</a
+          >
+        </h1>
+        <p class="Pp">
+          <b>Issue:</b> #305 - WebSocket FPS bug (1 frame per 45 seconds)
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Objective:</b> Profile libwebsockets callback efficiency to
+          diagnose WebSocket performance degradation and identify bottlenecks in
+          the event loop.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Executive_Summary">
+            <a class="permalink" href="#Executive_Summary">Executive Summary</a>
+          </h2>
+          <p class="Pp">
+            This research adds timing instrumentation to critical libwebsockets
+            callbacks to identify performance bottlenecks causing the observed
+            WebSocket FPS issue (#305). The investigation tracks callback
+            invocation frequency, execution duration, and inter-callback timing
+            to determine if the LWS event loop or callbacks themselves are
+            causing the 45-second frame interval.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation">
+            <a class="permalink" href="#Implementation">Implementation</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Callback_Timing_Infrastructure_(">
+            <a class="permalink" href="#Callback_Timing_Infrastructure_("
+              >Callback Timing Infrastructure (<b>callback_timing.h</b><b> / </b
+              ><b>callback_timing.c</b><b>)</b></a
+            >
+          </h2>
+          <p class="Pp">
+            A lightweight, thread-safe timing system was added to track callback
+            statistics:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Key Components:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b></b><b>websocket_callback_stats_t</b><b></b> - Per-callback
+              statistics structure
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>count - Total callback invocations</dd>
+            <dt>&#x2022;</dt>
+            <dd>last_ns - Last callback timestamp (nanoseconds)</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              min_interval_ns - Minimum interval between successive callbacks
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              max_interval_ns - Maximum interval between successive callbacks
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>total_duration_ns - Cumulative callback execution time</dd>
+            <dt>2.</dt>
+            <dd><b>Global Tracking</b> - <b>g_ws_callback_timing</b><b></b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Aggregates statistics for all tracked callbacks</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Uses atomic operations for thread-safe updates without locking
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Functions:</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              websocket_callback_timing_start() - Capture high-resolution
+              timestamp
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>websocket_callback_timing_record()</b
+              ><b> - Record callback execution with timing</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>websocket_callback_timing_log_stats()</b
+              ><b> - Display aggregate statistics</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>websocket_callback_timing_reset()</b><b> - Clear statistics</b>
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Instrumented_Callbacks">
+            <a class="permalink" href="#Instrumented_Callbacks"
+              >Instrumented Callbacks</a
+            >
+          </h2>
+          <p class="Pp">
+            Timing calls added to four critical LWS callbacks in
+            <b>lib/network/websocket/server.c</b><b>:</b>
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">1. LWS_CALLBACK_PROTOCOL_INIT</h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>When:</b> Protocol layer initialization (early in connection
+              lifecycle)
+            </li>
+            <li><b>Tracked:</b> Invocation count and execution duration</li>
+            <li>
+              <b>Purpose:</b> Verify initialization isn't blocked or delayed
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">2. LWS_CALLBACK_PROTOCOL_DESTROY</h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>When:</b> Protocol layer cleanup (connection termination)
+            </li>
+            <li><b>Tracked:</b> Invocation count and execution duration</li>
+            <li>
+              <b>Purpose:</b> Identify cleanup delays that might affect
+              connection reuse
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">3. LWS_CALLBACK_SERVER_WRITEABLE</h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>When:</b> Socket ready for writing (triggered by
+              lws_callback_on_writable())
+            </li>
+            <li>
+              <b>Tracked:</b> Count, duration, min/max intervals, frequency (Hz)
+            </li>
+            <li>
+              <b>Purpose:</b> <b>Critical</b> - Diagnose if WRITEABLE callbacks
+              fire frequently enough
+            </li>
+            <li>
+              <b>Hypothesis:</b> If min_interval is very large (e.g., 45
+              seconds), the event loop isn't waking up to send data
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="4">
+            <a class="permalink" href="#4">4. LWS_CALLBACK_RECEIVE</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>When:</b> Data received from client</li>
+            <li>
+              <b>Tracked:</b> Count, duration, min/max intervals, frequency (Hz)
+            </li>
+            <li>
+              <b>Purpose:</b> Verify receive callbacks fire with expected
+              frequency and aren't blocked
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Instrumentation_Details">
+            <a class="permalink" href="#Instrumentation_Details"
+              >Instrumentation Details</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Atomic_Recording">
+            <a class="permalink" href="#Atomic_Recording">Atomic Recording</a>
+          </h2>
+          <pre>
+websocket_callback_timing_record(&amp;g_ws_callback_timing.server_writeable, start_ns, end_ns);</pre>
+          <ul class="Bl-bullet">
+            <li>Records callback duration: end_ns - start_ns</li>
+            <li>Updates min/max intervals between successive callbacks</li>
+            <li>Accumulates total duration for average calculation</li>
+            <li>Thread-safe via atomic operations (no locks)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Statistics_Logging">
+            <a class="permalink" href="#Statistics_Logging"
+              >Statistics Logging</a
+            >
+          </h2>
+          <pre>websocket_callback_timing_log_stats();</pre>
+          <p class="Pp">Outputs:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>===== WEBSOCKET CALLBACK TIMING STATISTICS =====
 Timestamp: 1613851234567890000 ns
 LWS_CALLBACK_SERVER_WRITEABLE:
 <br/>
@@ -190,300 +289,398 @@ LWS_CALLBACK_RECEIVE:
 <br/>
   Max interval between callbacks: 50000000 ns (0.02 Hz)
 ===== END TIMING STATISTICS =====</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Expected_Results"><a class="permalink" href="#Expected_Results">Expected
-  Results</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Normal_Operation"><a class="permalink" href="#Normal_Operation">Normal
-  Operation</a></h2>
-<ul class="Bl-bullet">
-  <li><b>WRITEABLE callback frequency:</b> Should match target frame rate (30 Hz
-      for video = ~33ms intervals)</li>
-  <li><b>RECEIVE callback frequency:</b> Variable, depends on input data
-    rate</li>
-  <li><b>Duration:</b> Individual callbacks should complete in microseconds
-      (&lt; 1000 ns)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Issue__305_Symptoms"><a class="permalink" href="#Issue__305_Symptoms">Issue
-  #305 Symptoms</a></h2>
-<p class="Pp">If the 45-second frame interval is confirmed:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>WRITEABLE min_interval:</b> Would show ~45 seconds (very large
-      interval)</li>
-  <li><b>Root cause:</b> Event loop not waking up to send frames, or LWS
-      stalling callbacks</li>
-  <li><b>Potential issues:</b></li>
-</ul>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>LWS event loop blocked or sleeping</dd>
-  <dt> &#x2022;</dt>
-  <dd>Cross-thread send requests not triggering lws_callback_on_writable()</dd>
-  <dt> &#x2022;</dt>
-  <dd>TCP/network buffer saturation</dd>
-  <dt> &#x2022;</dt>
-  <dd>Thread synchronization deadlock</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage"><a class="permalink" href="#Usage">Usage</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Capture_Statistics_During_Test"><a class="permalink" href="#Capture_Statistics_During_Test">Capture
-  Statistics During Test</a></h2>
-<pre># Run server
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Expected_Results">
+            <a class="permalink" href="#Expected_Results">Expected Results</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Normal_Operation">
+            <a class="permalink" href="#Normal_Operation">Normal Operation</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>WRITEABLE callback frequency:</b> Should match target frame
+              rate (30 Hz for video = ~33ms intervals)
+            </li>
+            <li>
+              <b>RECEIVE callback frequency:</b> Variable, depends on input data
+              rate
+            </li>
+            <li>
+              <b>Duration:</b> Individual callbacks should complete in
+              microseconds (&lt; 1000 ns)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Issue__305_Symptoms">
+            <a class="permalink" href="#Issue__305_Symptoms"
+              >Issue #305 Symptoms</a
+            >
+          </h2>
+          <p class="Pp">If the 45-second frame interval is confirmed:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>WRITEABLE min_interval:</b> Would show ~45 seconds (very large
+              interval)
+            </li>
+            <li>
+              <b>Root cause:</b> Event loop not waking up to send frames, or LWS
+              stalling callbacks
+            </li>
+            <li><b>Potential issues:</b></li>
+          </ul>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>LWS event loop blocked or sleeping</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Cross-thread send requests not triggering
+              lws_callback_on_writable()
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>TCP/network buffer saturation</dd>
+            <dt>&#x2022;</dt>
+            <dd>Thread synchronization deadlock</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage">
+            <a class="permalink" href="#Usage">Usage</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Capture_Statistics_During_Test">
+            <a class="permalink" href="#Capture_Statistics_During_Test"
+              >Capture Statistics During Test</a
+            >
+          </h2>
+          <pre>
+# Run server
 ./build/bin/ascii-chat server
 # In another terminal, connect client
 ./build/bin/ascii-chat client
 # Server logs will show callback statistics automatically
 # Look for WebSocket callback timing output in logs</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Manual_Statistics_Dump"><a class="permalink" href="#Manual_Statistics_Dump">Manual
-  Statistics Dump</a></h2>
-<p class="Pp">To force a statistics dump at any time, the application can
-  call:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>websocket_callback_timing_log_stats();</pre>
-<p class="Pp">This should be integrated into:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Status screen (show live callback rates)</li>
-  <li>Exit handlers (final statistics dump)</li>
-  <li>Performance monitoring endpoints</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Resetting_Statistics"><a class="permalink" href="#Resetting_Statistics">Resetting
-  Statistics</a></h2>
-<p class="Pp">To capture statistics for a specific test period:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>websocket_callback_timing_reset();
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Manual_Statistics_Dump">
+            <a class="permalink" href="#Manual_Statistics_Dump"
+              >Manual Statistics Dump</a
+            >
+          </h2>
+          <p class="Pp">
+            To force a statistics dump at any time, the application can call:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>websocket_callback_timing_log_stats();</pre>
+          <p class="Pp">This should be integrated into:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Status screen (show live callback rates)</li>
+            <li>Exit handlers (final statistics dump)</li>
+            <li>Performance monitoring endpoints</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Resetting_Statistics">
+            <a class="permalink" href="#Resetting_Statistics"
+              >Resetting Statistics</a
+            >
+          </h2>
+          <p class="Pp">To capture statistics for a specific test period:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+websocket_callback_timing_reset();
 // ... run test ...
 websocket_callback_timing_log_stats();</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Analysis_Method"><a class="permalink" href="#Analysis_Method">Analysis
-  Method</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss">1. Baseline Capture</h2>
-<p class="Pp">Run server + client pair for 30 seconds, capture stats.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Questions to answer:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>How often is WRITEABLE callback invoked?</li>
-  <li>What's the minimum interval between WRITEABLE callbacks?</li>
-  <li>Are intervals consistent or highly variable?</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">2. Single Frame Latency</h2>
-<p class="Pp">Send one frame, measure:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Time from RECEIVE &#x2192; WRITEABLE</li>
-  <li>Number of WRITEABLE callbacks triggered</li>
-  <li>Correlation between RECEIVE and WRITEABLE</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">3. Sustained Load</h2>
-<p class="Pp">Stream continuous video for 60+ seconds:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Do callback rates remain stable?</li>
-  <li>Do intervals grow (stalling)?</li>
-  <li>Any correlation with memory usage or CPU?</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Notes"><a class="permalink" href="#Implementation_Notes">Implementation
-  Notes</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Design_Choices"><a class="permalink" href="#Design_Choices">Design
-  Choices</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Atomic Operations, No Locks</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Avoids lock contention in hot callback path</dd>
-  <dt> &#x2022;</dt>
-  <dd>Min/max updates use compare-and-swap for thread safety</dd>
-  <dt> &#x2022;</dt>
-  <dd>Slight possibility of lost updates (acceptable for statistics)</dd>
-  <dt>2.</dt>
-  <dd><b>Nanosecond Resolution</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>clock_gettime(CLOCK_MONOTONIC) provides stable, high-precision timing</dd>
-  <dt> &#x2022;</dt>
-  <dd>Not affected by system clock adjustments</dd>
-  <dt> &#x2022;</dt>
-  <dd>Compatible across Linux, macOS, Windows</dd>
-  <dt>3.</dt>
-  <dd><b>Global Statistics</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Single shared tracker across all connections</dd>
-  <dt> &#x2022;</dt>
-  <dd>Works for multi-client scenarios</dd>
-  <dt> &#x2022;</dt>
-  <dd>Per-connection tracking could be added if needed</dd>
-  <dt>4.</dt>
-  <dd><b>Minimal Overhead</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Two clock_gettime() calls per callback (~100-500 ns total)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Atomic increments (~10-50 ns each)</dd>
-  <dt> &#x2022;</dt>
-  <dd>&lt; 5% overhead on callback execution time</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Limitations"><a class="permalink" href="#Limitations">Limitations</a></h2>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>Per-Connection Tracking:</b> Currently not implemented. If multiple
-      simultaneous connections have different callback patterns, this won't show
-      it.</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd><i>Fix:</i> Add per-connection stats to
-      <b>websocket_connection_data_t</b><b> if needed</b></dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>Callback Reentrancy:</b> No protection if callbacks recursively invoke
-      callbacks</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd><i>Status:</i> LWS doesn't support callback reentrancy, so not a
-    concern</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>Statistics Accuracy:</b> Min/max values could be skewed by
-      initialization</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd><i>Mitigation:</i> Reset stats before test run; discard first 10
-    samples</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Findings_&amp;_Recommendations"><a class="permalink" href="#Findings_&amp;_Recommendations">Findings
-  &amp; Recommendations</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="What_to_Look_For"><a class="permalink" href="#What_to_Look_For">What
-  to Look For</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>WRITEABLE Callback Frequency Anomaly</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>If frequency drops to near-zero or 45-second intervals, event loop is
-      stalling</dd>
-  <dt> &#x2022;</dt>
-  <dd>If frequency matches frame rate, LWS is working correctly</dd>
-  <dt> &#x2022;</dt>
-  <dd>If frequency spikes then drops, thread synchronization issue</dd>
-  <dt>2.</dt>
-  <dd><b>RECEIVE &#x2192; WRITEABLE Correlation</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Normal: RECEIVE triggers WRITEABLE within milliseconds</dd>
-  <dt> &#x2022;</dt>
-  <dd>Abnormal: Large delay between RECEIVE and subsequent WRITEABLE</dd>
-  <dt> &#x2022;</dt>
-  <dd>Could indicate: Send queue not being processed, or
-      lws_callback_on_writable() not being called</dd>
-  <dt>3.</dt>
-  <dd><b>Callback Duration Outliers</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Occasional 100+ microsecond callbacks: expected (memory allocation,
-      network I/O)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Frequent 1+ millisecond callbacks: investigate for locking/blocking</dd>
-  <dt> &#x2022;</dt>
-  <dd>Consistent multi-second callbacks: definite bottleneck</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Next_Steps"><a class="permalink" href="#Next_Steps">Next
-  Steps</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Run Baseline Test</b>
-    <p class="Pp"></p>
-  </dd>
-</dl>
-<p class="Pp"></p>
-<pre># Start server, stream video, capture output
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Analysis_Method">
+            <a class="permalink" href="#Analysis_Method">Analysis Method</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">1. Baseline Capture</h2>
+          <p class="Pp">
+            Run server + client pair for 30 seconds, capture stats.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Questions to answer:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>How often is WRITEABLE callback invoked?</li>
+            <li>What's the minimum interval between WRITEABLE callbacks?</li>
+            <li>Are intervals consistent or highly variable?</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">2. Single Frame Latency</h2>
+          <p class="Pp">Send one frame, measure:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Time from RECEIVE &#x2192; WRITEABLE</li>
+            <li>Number of WRITEABLE callbacks triggered</li>
+            <li>Correlation between RECEIVE and WRITEABLE</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">3. Sustained Load</h2>
+          <p class="Pp">Stream continuous video for 60+ seconds:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Do callback rates remain stable?</li>
+            <li>Do intervals grow (stalling)?</li>
+            <li>Any correlation with memory usage or CPU?</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Notes">
+            <a class="permalink" href="#Implementation_Notes"
+              >Implementation Notes</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Design_Choices">
+            <a class="permalink" href="#Design_Choices">Design Choices</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Atomic Operations, No Locks</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Avoids lock contention in hot callback path</dd>
+            <dt>&#x2022;</dt>
+            <dd>Min/max updates use compare-and-swap for thread safety</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Slight possibility of lost updates (acceptable for statistics)
+            </dd>
+            <dt>2.</dt>
+            <dd><b>Nanosecond Resolution</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              clock_gettime(CLOCK_MONOTONIC) provides stable, high-precision
+              timing
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Not affected by system clock adjustments</dd>
+            <dt>&#x2022;</dt>
+            <dd>Compatible across Linux, macOS, Windows</dd>
+            <dt>3.</dt>
+            <dd><b>Global Statistics</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Single shared tracker across all connections</dd>
+            <dt>&#x2022;</dt>
+            <dd>Works for multi-client scenarios</dd>
+            <dt>&#x2022;</dt>
+            <dd>Per-connection tracking could be added if needed</dd>
+            <dt>4.</dt>
+            <dd><b>Minimal Overhead</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Two clock_gettime() calls per callback (~100-500 ns total)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Atomic increments (~10-50 ns each)</dd>
+            <dt>&#x2022;</dt>
+            <dd>&lt; 5% overhead on callback execution time</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Limitations">
+            <a class="permalink" href="#Limitations">Limitations</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>Per-Connection Tracking:</b> Currently not implemented. If
+              multiple simultaneous connections have different callback
+              patterns, this won't show it.
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Fix:</i> Add per-connection stats to
+              <b>websocket_connection_data_t</b><b> if needed</b>
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>Callback Reentrancy:</b> No protection if callbacks recursively
+              invoke callbacks
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Status:</i> LWS doesn't support callback reentrancy, so not a
+              concern
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>Statistics Accuracy:</b> Min/max values could be skewed by
+              initialization
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Mitigation:</i> Reset stats before test run; discard first 10
+              samples
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Findings_&amp;_Recommendations">
+            <a class="permalink" href="#Findings_&amp;_Recommendations"
+              >Findings &amp; Recommendations</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="What_to_Look_For">
+            <a class="permalink" href="#What_to_Look_For">What to Look For</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>WRITEABLE Callback Frequency Anomaly</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If frequency drops to near-zero or 45-second intervals, event loop
+              is stalling
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>If frequency matches frame rate, LWS is working correctly</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If frequency spikes then drops, thread synchronization issue
+            </dd>
+            <dt>2.</dt>
+            <dd><b>RECEIVE &#x2192; WRITEABLE Correlation</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Normal: RECEIVE triggers WRITEABLE within milliseconds</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Abnormal: Large delay between RECEIVE and subsequent WRITEABLE
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Could indicate: Send queue not being processed, or
+              lws_callback_on_writable() not being called
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Callback Duration Outliers</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Occasional 100+ microsecond callbacks: expected (memory
+              allocation, network I/O)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Frequent 1+ millisecond callbacks: investigate for
+              locking/blocking
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Consistent multi-second callbacks: definite bottleneck</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Next_Steps">
+            <a class="permalink" href="#Next_Steps">Next Steps</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Run Baseline Test</b>
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+# Start server, stream video, capture output
 ./build/bin/ascii-chat server | grep &quot;WEBSOCKET CALLBACK TIMING&quot;</pre>
-<dl class="Bl-tag">
-  <dt>2.</dt>
-  <dd><b>Correlation Analysis</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Cross-reference callback timing with frame timestamps</dd>
-  <dt> &#x2022;</dt>
-  <dd>Identify if frames are being blocked by specific callbacks</dd>
-  <dt> &#x2022;</dt>
-  <dd>Correlate with system CPU/memory usage</dd>
-  <dt>3.</dt>
-  <dd><b>Targeted Fix</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>If WRITEABLE is slow: optimize callback body or investigate LWS
-      configuration</dd>
-  <dt> &#x2022;</dt>
-  <dd>If RECEIVE is blocking: investigate data processing or downstream
-    handler</dd>
-  <dt> &#x2022;</dt>
-  <dd>If intervals large: profile event loop wake-up mechanism</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Related_Code"><a class="permalink" href="#Related_Code">Related
-  Code</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Instrumentation:</b>
-      <b>lib/network/websocket/callback_timing.c</b><b></b></li>
-  <li><b>Interface:</b>
-      <b>include/ascii-chat/network/websocket/callback_timing.h</b><b></b></li>
-  <li><b>Integration:</b> <b>lib/network/websocket/server.c</b><b> (LWS callback
-      handler)</b></li>
-  <li><b>Build:</b> lib/network/CMakeLists.txt</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="References"><a class="permalink" href="#References">References</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Issue:</b> #305 - WebSocket FPS bug (1 frame per 45 seconds)</li>
-  <li><b>libwebsockets:</b> https://libwebsockets.org/</li>
-  <li><b>LWS Callbacks:</b> https://libwebsockets.org/lws-api-index.html
-      (lws_callback_reasons)</li>
-</ul>
-<p class="Pp"><b>Status:</b> Research infrastructure implemented. Awaiting test
-    results to diagnose root cause of FPS issue.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Last Updated:</b> February 2026</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <dl class="Bl-tag">
+            <dt>2.</dt>
+            <dd><b>Correlation Analysis</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Cross-reference callback timing with frame timestamps</dd>
+            <dt>&#x2022;</dt>
+            <dd>Identify if frames are being blocked by specific callbacks</dd>
+            <dt>&#x2022;</dt>
+            <dd>Correlate with system CPU/memory usage</dd>
+            <dt>3.</dt>
+            <dd><b>Targeted Fix</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If WRITEABLE is slow: optimize callback body or investigate LWS
+              configuration
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If RECEIVE is blocking: investigate data processing or downstream
+              handler
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>If intervals large: profile event loop wake-up mechanism</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Related_Code">
+            <a class="permalink" href="#Related_Code">Related Code</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Instrumentation:</b>
+              <b>lib/network/websocket/callback_timing.c</b><b></b>
+            </li>
+            <li>
+              <b>Interface:</b>
+              <b>include/ascii-chat/network/websocket/callback_timing.h</b
+              ><b></b>
+            </li>
+            <li>
+              <b>Integration:</b> <b>lib/network/websocket/server.c</b
+              ><b> (LWS callback handler)</b>
+            </li>
+            <li><b>Build:</b> lib/network/CMakeLists.txt</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="References">
+            <a class="permalink" href="#References">References</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Issue:</b> #305 - WebSocket FPS bug (1 frame per 45 seconds)
+            </li>
+            <li><b>libwebsockets:</b> https://libwebsockets.org/</li>
+            <li>
+              <b>LWS Callbacks:</b> https://libwebsockets.org/lws-api-index.html
+              (lws_callback_reasons)
+            </li>
+          </ul>
+          <p class="Pp">
+            <b>Status:</b> Research infrastructure implemented. Awaiting test
+            results to diagnose root cause of FPS issue.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Last Updated:</b> February 2026</p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

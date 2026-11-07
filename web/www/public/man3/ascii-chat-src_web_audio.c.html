@@ -1,70 +1,116 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>audio.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">audio.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">audio.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
-    <b>wasm_audio_processor_create</b> (int sample_rate, <b>bool</b> bypass)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
-    <b>wasm_audio_processor_create_stereo</b> (int sample_rate, <b>bool</b>
-    bypass)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-    <b>wasm_audio_processor_process</b> (<b>audio_processor_t</b> *processor,
-    float *samples, size_t count)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>wasm_audio_processor_destroy</b>
-    (<b>audio_processor_t</b> *processor)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
-  wasm_audio_processor_create (int sample_rate, <b>bool</b> bypass)</h2>
-<p class="Pp">Browser AEC runs at microphone capture; this API owns the
-    remaining DSP.</p>
-<p class="Pp">Definition at line <b>5</b> of file <b>src/web/audio.c</b>.</p>
-<pre>5                                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>audio.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">audio.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">audio.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">audio.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
+            <b>wasm_audio_processor_create</b> (int sample_rate,
+            <b>bool</b> bypass)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
+            <b>wasm_audio_processor_create_stereo</b> (int sample_rate,
+            <b>bool</b>
+            bypass)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>wasm_audio_processor_process</b> (<b>audio_processor_t</b>
+            *processor, float *samples, size_t count)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void
+            <b>wasm_audio_processor_destroy</b> (<b>audio_processor_t</b>
+            *processor)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
+            wasm_audio_processor_create (int sample_rate, <b>bool</b> bypass)
+          </h2>
+          <p class="Pp">
+            Browser AEC runs at microphone capture; this API owns the remaining
+            DSP.
+          </p>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>src/web/audio.c</b>.
+          </p>
+          <pre>
+5                                                                                                   {
 6   audio_processor_config_t config = audio_processor_default_config(sample_rate);
 7   if (bypass) {
 8     config.spectral_enabled = false;
@@ -75,22 +121,32 @@
 13     return NULL;
 14   return processor;
 15 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_processor_create()</b>,
-    <b>audio_processor_default_config()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
-    <b>audio_processor_config_t::flags</b>,
-    <b>audio_processor_config_t::spectral_enabled</b>, and
-    <b>wasm_audio_processor_create()</b>.</p>
-<p class="Pp">Referenced by <b>wasm_audio_processor_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
-  wasm_audio_processor_create_stereo (int sample_rate, <b>bool</b> bypass)</h2>
-<p class="Pp">Stereo microphone enhancement keeps independent filters and linked
-    dynamics.</p>
-<p class="Pp">Definition at line <b>18</b> of file <b>src/web/audio.c</b>.</p>
-<pre>18                                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>audio_processor_create()</b>,
+            <b>audio_processor_default_config()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, <b>audio_processor_config_t::flags</b>,
+            <b>audio_processor_config_t::spectral_enabled</b>, and
+            <b>wasm_audio_processor_create()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_audio_processor_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>audio_processor_t</b> *
+            wasm_audio_processor_create_stereo (int sample_rate,
+            <b>bool</b> bypass)
+          </h2>
+          <p class="Pp">
+            Stereo microphone enhancement keeps independent filters and linked
+            dynamics.
+          </p>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>src/web/audio.c</b>.
+          </p>
+          <pre>
+18                                                                                                          {
 19   audio_processor_config_t config = audio_processor_default_config(sample_rate);
 20   config.channels = 2;
 21   if (bypass) {
@@ -102,54 +158,80 @@
 27     return NULL;
 28   return processor;
 29 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_processor_create()</b>,
-    <b>audio_processor_default_config()</b>,
-    <b>audio_processor_config_t::channels</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
-    <b>audio_processor_config_t::flags</b>,
-    <b>audio_processor_config_t::spectral_enabled</b>, and
-    <b>wasm_audio_processor_create_stereo()</b>.</p>
-<p class="Pp">Referenced by <b>wasm_audio_processor_create_stereo()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void wasm_audio_processor_destroy
-  (<b>audio_processor_t</b> * processor)</h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>src/web/audio.c</b>.</p>
-<pre>36                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>audio_processor_create()</b>,
+            <b>audio_processor_default_config()</b>,
+            <b>audio_processor_config_t::channels</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, <b>audio_processor_config_t::flags</b>,
+            <b>audio_processor_config_t::spectral_enabled</b>, and
+            <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>wasm_audio_processor_create_stereo()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void wasm_audio_processor_destroy (<b
+              >audio_processor_t</b
+            >
+            * processor)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file <b>src/web/audio.c</b>.
+          </p>
+          <pre>
+36                                                                                      {
 37   audio_processor_destroy(processor);
 38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_destroy()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>wasm_audio_processor_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>wasm_audio_processor_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-  wasm_audio_processor_process (<b>audio_processor_t</b> * processor, float *
-  samples, size_t count)</h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>src/web/audio.c</b>.</p>
-<pre>32                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_destroy()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>wasm_audio_processor_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_audio_processor_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> wasm_audio_processor_process (<b
+              >audio_processor_t</b
+            >
+            * processor, float * samples, size_t count)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>31</b> of file <b>src/web/audio.c</b>.
+          </p>
+          <pre>
+32                                                                                   {
 33   return audio_processor_process(processor, samples, samples, count);
 34 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_process()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>wasm_audio_processor_process()</b>.</p>
-<p class="Pp">Referenced by <b>wasm_audio_processor_process()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_process()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>wasm_audio_processor_process()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_audio_processor_process()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

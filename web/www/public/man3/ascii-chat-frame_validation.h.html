@@ -1,78 +1,128 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>frame_validation.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">frame_validation.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">frame_validation.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">frame_validation.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>session_frame_validate</b> (const char
-    *text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_frame_validate_contract</b> (const char
-    *text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height, const
-    <b>acip_render_settings_t</b> *settings, <b>uint32_t</b> effects)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_frame_validate (const char *
-  text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height)</h2>
-<p class="Pp">Definition at line <b>205</b> of file
-  <b>frame_validation.c</b>.</p>
-<pre>205                                                                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>frame_validation.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">frame_validation.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">frame_validation.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">frame_validation.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>session_frame_validate</b> (const char
+            *text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>session_frame_validate_contract</b> (const char *text, size_t
+            length, <b>uint32_t</b> width, <b>uint32_t</b> height, const
+            <b>acip_render_settings_t</b> *settings, <b>uint32_t</b> effects)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_frame_validate (const char * text,
+            size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>205</b> of file <b>frame_validation.c</b>.
+          </p>
+          <pre>
+205                                                                                                            {
 206   return session_frame_validate_contract(text, length, width, height, NULL, 0);
 207 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_frame_validate()</b>, and
-    <b>session_frame_validate_contract()</b>.</p>
-<p class="Pp">Referenced by <b>mirror_render_audio_visualization()</b>, and
-    <b>session_frame_validate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_frame_validate_contract (const
-  char * text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height,
-  const <b>acip_render_settings_t</b> * settings, <b>uint32_t</b> effects)</h2>
-<p class="Pp">Definition at line <b>193</b> of file
-  <b>frame_validation.c</b>.</p>
-<pre>194                                                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_frame_validate()</b>, and
+            <b>session_frame_validate_contract()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mirror_render_audio_visualization()</b>, and
+            <b>session_frame_validate()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_frame_validate_contract (const char
+            * text, size_t length, <b>uint32_t</b> width,
+            <b>uint32_t</b> height, const <b>acip_render_settings_t</b> *
+            settings, <b>uint32_t</b> effects)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>193</b> of file <b>frame_validation.c</b>.
+          </p>
+          <pre>
+194                                                                                                             {
 195   asciichat_error_t result = validate_contract(text, length, width, height, settings, effects);
 196   ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_CHECKED, 1);
 197   if (result != ASCIICHAT_OK) {
@@ -82,27 +132,33 @@
 201   }
 202   return result;
 203 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_frame_rejected()</b>,
-    <b>ascii_otel_metric()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>, and
-    <b>session_frame_validate_contract()</b>.</p>
-<p class="Pp">Referenced by <b>client_validate_frame()</b>,
-    <b>mirror_convert_frame()</b>, <b>session_frame_validate()</b>, and
-    <b>session_frame_validate_contract()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_frame_rejected()</b>,
+            <b>ascii_otel_metric()</b>, <b>ASCIICHAT_OK</b>,
+            <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>,
+            and <b>session_frame_validate_contract()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_validate_frame()</b>,
+            <b>mirror_convert_frame()</b>, <b>session_frame_validate()</b>, and
+            <b>session_frame_validate_contract()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

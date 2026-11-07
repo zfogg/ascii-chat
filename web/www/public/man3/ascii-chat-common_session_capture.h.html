@@ -1,202 +1,327 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>capture.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">capture.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">capture.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">capture.h - &#x1F4F9; Unified media capture abstraction for
-    session-based video sources</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_capture_config_t</b>
-  <br/>
-  Configuration for session capture context.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>bool</b>(*) <b>session_capture_should_exit_fn</b>(void
-    *user_data)
-  <br/>
-  Callback type to check if initialization should be cancelled. typedef struct
-    <b>session_capture_ctx</b> <b>session_capture_ctx_t</b>
-  <br/>
-  Opaque session capture context handle. typedef void *(*)
-    <b>session_capture_audio_update_fn</b>(<b>media_source_t</b> *source, void
-    *user_data)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>session_capture_ctx_t</b> *
-    <b>session_mirror_capture_create</b> (const <b>session_capture_config_t</b>
-    *config)
-  <br/>
-  Create a new session capture context. <b>session_capture_ctx_t</b> *
-    <b>session_network_capture_create</b> (<b>uint32_t</b> target_fps)
-  <br/>
-  Create network mode capture context without media source.
-    <b>session_capture_ctx_t</b> * <b>session_capture_create</b> (const
-    <b>session_capture_config_t</b> *config)
-  <br/>
-  Legacy function - creates either mirror or network capture based on options.
-    void <b>session_capture_destroy</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Destroy session capture context and free resources. <b>image_t</b> *
-    <b>session_capture_read_frame</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Read the next video frame from the capture source. <b>image_t</b> *
-    <b>session_capture_process_for_transmission</b>
-    (<b>session_capture_ctx_t</b> *ctx, <b>image_t</b> *frame)
-  <br/>
-  Process a frame for network transmission (resize if needed).
-    <b>asciichat_error_t</b>
-    <b>session_capture_process_for_transmission_into</b>
-    (<b>session_capture_ctx_t</b> *ctx, <b>image_t</b> *frame, <b>image_t</b>
-    **output)
-  <br/>
-  void <b>session_capture_sleep_for_fps</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Sleep to maintain target frame rate. <b>bool</b> <b>session_capture_at_end</b>
-    (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Check if capture source has reached end of stream. <b>bool</b>
-    <b>session_capture_is_valid</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Check if capture context is initialized and valid. double
-    <b>session_capture_get_current_fps</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Get the current FPS being achieved by the capture source. <b>uint32_t</b>
-    <b>session_capture_get_target_fps</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Get the target FPS configured for this capture context. <b>bool</b>
-    <b>session_capture_has_audio</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Check if capture source has audio available. size_t
-    <b>session_capture_read_audio</b> (<b>session_capture_ctx_t</b> *ctx, float
-    *buffer, size_t num_samples)
-  <br/>
-  Read audio samples from capture source. <b>bool</b>
-    <b>session_capture_using_file_audio</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Check if currently using file audio vs microphone fallback. void *
-    <b>session_capture_get_media_source</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Get the underlying media source from capture context. void *
-    <b>session_capture_get_audio_context</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  Get the audio context for playback control. void
-    <b>session_capture_set_audio_context</b> (<b>session_capture_ctx_t</b> *ctx,
-    void *audio_ctx)
-  <br/>
-  Set the audio context for playback control. void
-    <b>session_capture_set_audio_updater</b> (<b>session_capture_ctx_t</b> *ctx,
-    <b>session_capture_audio_update_fn</b> update, void *user_data)
-  <br/>
-  void <b>session_capture_toggle_media</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  <b>bool</b> <b>session_capture_media_active</b> (<b>session_capture_ctx_t</b>
-    *ctx)
-  <br/>
-  void <b>session_capture_redraw_media</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_capture_open_media</b>
-    (<b>session_capture_ctx_t</b> *ctx, const char *path)
-  <br/>
-  <b>bool</b> <b>session_capture_cancel_open</b> (<b>session_capture_ctx_t</b>
-    *ctx)
-  <br/>
-  void <b>session_capture_lock_source</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  void <b>session_capture_unlock_source</b> (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  <b>uint64_t</b> <b>session_capture_source_epoch</b>
-    (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  <b>uint64_t</b> <b>session_capture_frame_serial</b>
-    (<b>session_capture_ctx_t</b> *ctx)
-  <br/>
-  void <b>session_capture_complete_open</b> (<b>session_capture_ctx_t</b> *ctx,
-    <b>uint64_t</b> epoch)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_capture_open_playlist</b>
-    (<b>session_capture_ctx_t</b> *ctx, const char *text)
-  <br/>
-  void <b>session_capture_skip_media</b> (<b>session_capture_ctx_t</b> *ctx, int
-    direction)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4F9; Unified media capture abstraction for session-based
-    video sources</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>common/session/capture.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void_*(*)_session_capture_audio_update_fn("><a class="permalink" href="#typedef_void_*(*)_session_capture_audio_update_fn(">typedef
-  void *(*) session_capture_audio_update_fn(<b>media_source_t</b> *source, void
-  *user_data)</a></h2>
-<p class="Pp">Capture-owner callback for on-demand local audio; NULL keeps
-    existing behavior.</p>
-<p class="Pp">Definition at line <b>371</b> of file
-    <b>common/session/capture.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_cancel_open
-  (<b>session_capture_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>596</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>596                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>capture.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">capture.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">capture.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          capture.h - &#x1F4F9; Unified media capture abstraction for
+          session-based video sources
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_capture_config_t</b>
+            <br />
+            Configuration for session capture context.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>bool</b>(*) <b>session_capture_should_exit_fn</b>(void
+            *user_data)
+            <br />
+            Callback type to check if initialization should be cancelled.
+            typedef struct
+            <b>session_capture_ctx</b> <b>session_capture_ctx_t</b>
+            <br />
+            Opaque session capture context handle. typedef void *(*)
+            <b>session_capture_audio_update_fn</b>(<b>media_source_t</b>
+            *source, void *user_data)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_capture_ctx_t</b> *
+            <b>session_mirror_capture_create</b> (const
+            <b>session_capture_config_t</b>
+            *config)
+            <br />
+            Create a new session capture context. <b>session_capture_ctx_t</b> *
+            <b>session_network_capture_create</b> (<b>uint32_t</b> target_fps)
+            <br />
+            Create network mode capture context without media source.
+            <b>session_capture_ctx_t</b> * <b>session_capture_create</b> (const
+            <b>session_capture_config_t</b> *config)
+            <br />
+            Legacy function - creates either mirror or network capture based on
+            options. void
+            <b>session_capture_destroy</b> (<b>session_capture_ctx_t</b> *ctx)
+            <br />
+            Destroy session capture context and free resources. <b>image_t</b> *
+            <b>session_capture_read_frame</b> (<b>session_capture_ctx_t</b>
+            *ctx)
+            <br />
+            Read the next video frame from the capture source. <b>image_t</b> *
+            <b>session_capture_process_for_transmission</b>
+            (<b>session_capture_ctx_t</b> *ctx, <b>image_t</b> *frame)
+            <br />
+            Process a frame for network transmission (resize if needed).
+            <b>asciichat_error_t</b>
+            <b>session_capture_process_for_transmission_into</b>
+            (<b>session_capture_ctx_t</b> *ctx, <b>image_t</b> *frame,
+            <b>image_t</b>
+            **output)
+            <br />
+            void <b>session_capture_sleep_for_fps</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            Sleep to maintain target frame rate. <b>bool</b>
+            <b>session_capture_at_end</b> (<b>session_capture_ctx_t</b>
+            *ctx)
+            <br />
+            Check if capture source has reached end of stream. <b>bool</b>
+            <b>session_capture_is_valid</b> (<b>session_capture_ctx_t</b> *ctx)
+            <br />
+            Check if capture context is initialized and valid. double
+            <b>session_capture_get_current_fps</b> (<b>session_capture_ctx_t</b>
+            *ctx)
+            <br />
+            Get the current FPS being achieved by the capture source.
+            <b>uint32_t</b> <b>session_capture_get_target_fps</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            Get the target FPS configured for this capture context. <b>bool</b>
+            <b>session_capture_has_audio</b> (<b>session_capture_ctx_t</b> *ctx)
+            <br />
+            Check if capture source has audio available. size_t
+            <b>session_capture_read_audio</b> (<b>session_capture_ctx_t</b>
+            *ctx, float *buffer, size_t num_samples)
+            <br />
+            Read audio samples from capture source. <b>bool</b>
+            <b>session_capture_using_file_audio</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            Check if currently using file audio vs microphone fallback. void *
+            <b>session_capture_get_media_source</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            Get the underlying media source from capture context. void *
+            <b>session_capture_get_audio_context</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            Get the audio context for playback control. void
+            <b>session_capture_set_audio_context</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx, void *audio_ctx)
+            <br />
+            Set the audio context for playback control. void
+            <b>session_capture_set_audio_updater</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx, <b>session_capture_audio_update_fn</b> update, void
+            *user_data)
+            <br />
+            void <b>session_capture_toggle_media</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <b>bool</b> <b>session_capture_media_active</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            void <b>session_capture_redraw_media</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <b>asciichat_error_t</b> <b>session_capture_open_media</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx, const char *path)
+            <br />
+            <b>bool</b> <b>session_capture_cancel_open</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            void <b>session_capture_lock_source</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            void <b>session_capture_unlock_source</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <b>uint64_t</b> <b>session_capture_source_epoch</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <b>uint64_t</b> <b>session_capture_frame_serial</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx)
+            <br />
+            void <b>session_capture_complete_open</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx, <b>uint64_t</b> epoch)
+            <br />
+            <b>asciichat_error_t</b> <b>session_capture_open_playlist</b> (<b
+              >session_capture_ctx_t</b
+            >
+            *ctx, const char *text)
+            <br />
+            void <b>session_capture_skip_media</b> (<b>session_capture_ctx_t</b>
+            *ctx, int direction)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4F9; Unified media capture abstraction for session-based video
+          sources
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>common/session/capture.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void_*(*)_session_capture_audio_update_fn("
+          >
+            <a
+              class="permalink"
+              href="#typedef_void_*(*)_session_capture_audio_update_fn("
+              >typedef void *(*) session_capture_audio_update_fn(<b
+                >media_source_t</b
+              >
+              *source, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Capture-owner callback for on-demand local audio; NULL keeps
+            existing behavior.
+          </p>
+          <p class="Pp">
+            Definition at line <b>371</b> of file
+            <b>common/session/capture.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_cancel_open (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>596</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+596                                                              {
 597   if (!ctx || !ctx-&gt;media_locks_ready)
 598     return false;
 599   mutex_lock(&amp;ctx-&gt;load_mutex);
@@ -208,27 +333,39 @@
 605     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
 606   return busy;
 607 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>session_capture_ctx::load_cancel</b>,
-    <b>session_capture_ctx::load_mutex</b>,
-    <b>session_capture_ctx::loader_created</b>,
-    <b>session_capture_ctx::media_locks_ready</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>session_capture_cancel_open()</b>,
-    <b>ui_controller_remove()</b>, and <b>UI_SCREEN_RENDER_PROGRESS</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_cancel_open()</b>, and
-    <b>session_handle_keyboard_input()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_complete_open_("><a class="permalink" href="#void_session_capture_complete_open_(">void
-  session_capture_complete_open (<b>session_capture_ctx_t</b> * ctx,
-  <b>uint64_t</b> epoch)</a></h2>
-<p class="Pp">Reveal the committed source after its first frame has been
-    published or transmitted.</p>
-<p class="Pp">Definition at line <b>1240</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1240                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>,
+            <b>session_capture_ctx::load_cancel</b>,
+            <b>session_capture_ctx::load_mutex</b>,
+            <b>session_capture_ctx::loader_created</b>,
+            <b>session_capture_ctx::media_locks_ready</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_capture_cancel_open()</b>,
+            <b>ui_controller_remove()</b>, and <b>UI_SCREEN_RENDER_PROGRESS</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_cancel_open()</b>, and
+            <b>session_handle_keyboard_input()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_complete_open_(">
+            <a class="permalink" href="#void_session_capture_complete_open_("
+              >void session_capture_complete_open (<b>session_capture_ctx_t</b>
+              * ctx, <b>uint64_t</b> epoch)</a
+            >
+          </h2>
+          <p class="Pp">
+            Reveal the committed source after its first frame has been published
+            or transmitted.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1240</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1240                                                                                {
 1241   if (!ctx || !atomic_load_bool(&amp;ctx-&gt;awaiting_presentation))
 1242     return;
 1243   mutex_lock(&amp;ctx-&gt;load_mutex);
@@ -236,138 +373,221 @@
 1245     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
 1246   mutex_unlock(&amp;ctx-&gt;load_mutex);
 1247 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_exchange_bool()</b>,
-    <b>atomic_load_bool()</b>,
-    <b>session_capture_ctx::awaiting_presentation</b>,
-    <b>session_capture_ctx::load_mutex</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>session_capture_complete_open()</b>,
-    <b>session_capture_source_epoch()</b>, <b>ui_controller_remove()</b>, and
-    <b>UI_SCREEN_RENDER_PROGRESS</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_complete_open()</b>, and
-    <b>session_pipeline_run_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_capture_frame_serial
-  (<b>session_capture_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>1237</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1237                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_exchange_bool()</b>, <b>atomic_load_bool()</b>,
+            <b>session_capture_ctx::awaiting_presentation</b>,
+            <b>session_capture_ctx::load_mutex</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_capture_complete_open()</b>,
+            <b>session_capture_source_epoch()</b>,
+            <b>ui_controller_remove()</b>, and <b>UI_SCREEN_RENDER_PROGRESS</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_complete_open()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_capture_frame_serial (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1237</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1237                                                                   {
 1238   return ctx ? atomic_load_u64(&amp;ctx-&gt;frame_serial) : 0;
 1239 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>session_capture_ctx::frame_serial</b>, and
-    <b>session_capture_frame_serial()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_frame_serial()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_session_capture_get_audio_context_("><a class="permalink" href="#void_*_session_capture_get_audio_context_(">void
-  * session_capture_get_audio_context (<b>session_capture_ctx_t</b> *
-  ctx)</a></h2>
-<p class="Pp">Get the audio context for playback control.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Capture context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Audio context pointer (borrowed, not owned) or NULL</div>
-<p class="Pp">Definition at line <b>1180</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1180                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>session_capture_ctx::frame_serial</b>, and
+            <b>session_capture_frame_serial()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_frame_serial()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_session_capture_get_audio_context_(">
+            <a
+              class="permalink"
+              href="#void_*_session_capture_get_audio_context_("
+              >void * session_capture_get_audio_context (<b
+                >session_capture_ctx_t</b
+              >
+              * ctx)</a
+            >
+          </h2>
+          <p class="Pp">Get the audio context for playback control.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>ctx</i> Capture context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Audio context pointer (borrowed, not owned) or NULL
+          </div>
+          <p class="Pp">
+            Definition at line <b>1180</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1180                                                                     {
 1181   if (!ctx || !ctx-&gt;initialized) {
 1182     return NULL;
 1183   }
 1184   return ctx-&gt;audio_ctx;
 1185 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_capture_ctx::initialized</b>, and
-    <b>session_capture_get_audio_context()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_get_audio_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_lock_source_("><a class="permalink" href="#void_session_capture_lock_source_(">void
-  session_capture_lock_source (<b>session_capture_ctx_t</b> * ctx)</a></h2>
-<p class="Pp">Serialize decoder controls with capture-owner replacement.</p>
-<p class="Pp">Definition at line <b>828</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>828                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_capture_ctx::initialized</b>, and
+            <b>session_capture_get_audio_context()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_get_audio_context()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_lock_source_(">
+            <a class="permalink" href="#void_session_capture_lock_source_("
+              >void session_capture_lock_source (<b>session_capture_ctx_t</b> *
+              ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Serialize decoder controls with capture-owner replacement.
+          </p>
+          <p class="Pp">
+            Definition at line <b>828</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+828                                                              {
 829   if (ctx &amp;&amp; ctx-&gt;media_locks_ready)
 830     mutex_lock(&amp;ctx-&gt;source_mutex);
 831 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_capture_ctx::media_locks_ready</b>,
-    <b>mutex_lock</b>, <b>session_capture_lock_source()</b>, and
-    <b>session_capture_ctx::source_mutex</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_lock_source()</b>,
-    <b>session_capture_read_audio()</b>, <b>session_capture_read_frame()</b>,
-    <b>session_capture_set_audio_context()</b>, and
-    <b>session_handle_keyboard_input()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_capture_media_active
-  (<b>session_capture_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>1225</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1225                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_capture_ctx::media_locks_ready</b>,
+            <b>mutex_lock</b>, <b>session_capture_lock_source()</b>, and
+            <b>session_capture_ctx::source_mutex</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_lock_source()</b>,
+            <b>session_capture_read_audio()</b>,
+            <b>session_capture_read_frame()</b>,
+            <b>session_capture_set_audio_context()</b>, and
+            <b>session_handle_keyboard_input()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_capture_media_active (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1225</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1225                                                               {
 1226   return ctx &amp;&amp; !atomic_load_bool(&amp;ctx-&gt;non_media_active);
 1227 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>session_capture_ctx::non_media_active</b>, and
-    <b>session_capture_media_active()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_media_active()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_capture_open_media
-  (<b>session_capture_ctx_t</b> * ctx, const char * path)</h2>
-<p class="Pp">Definition at line <b>644</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>644                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>,
+            <b>session_capture_ctx::non_media_active</b>, and
+            <b>session_capture_media_active()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_media_active()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_capture_open_media (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx, const char * path)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>644</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+644                                                                                            {
 645   ASCII_OTEL_SCOPE(SESSION_CAPTURE_OPEN_MEDIA);
 646   media_playlist_t list = {0};
 647   asciichat_error_t result = media_playlist_append(&amp;list, path, path &amp;&amp; strstr(path, &quot;://&quot;) != NULL);
 648   return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &amp;list, 0, false) : result;
 649 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>media_playlist_append()</b>, and <b>session_capture_open_media()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_open_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_capture_open_playlist
-  (<b>session_capture_ctx_t</b> * ctx, const char * text)</h2>
-<p class="Pp">Replace the current playlist with quoted paths or URLs.</p>
-<p class="Pp">Definition at line <b>650</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>650                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>media_playlist_append()</b>, and
+            <b>session_capture_open_media()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_open_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_capture_open_playlist (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx, const char * text)
+          </h2>
+          <p class="Pp">
+            Replace the current playlist with quoted paths or URLs.
+          </p>
+          <p class="Pp">
+            Definition at line <b>650</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+650                                                                                               {
 651   ASCII_OTEL_SCOPE(SESSION_CAPTURE_OPEN_PLAYLIST);
 652   media_playlist_t list = {0};
 653   asciichat_error_t result = media_playlist_parse(text, &amp;list);
 654   return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &amp;list, 0, false) : result;
 655 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>media_playlist_parse()</b>, and
-  <b>session_capture_open_playlist()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_open_playlist()</b>, and
-    <b>session_handle_keyboard_input()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>
-  session_capture_process_for_transmission_into (<b>session_capture_ctx_t</b> *
-  ctx, <b>image_t</b> * frame, <b>image_t</b> ** output)</h2>
-<p class="Pp">Reuse capture-worker-owned storage; preserves it on allocation
-    failure. The caller destroys *output after capture joins. Input may equal
-    *output.</p>
-<p class="Pp">Definition at line <b>1035</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1036                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>media_playlist_parse()</b>, and
+            <b>session_capture_open_playlist()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_open_playlist()</b>, and
+            <b>session_handle_keyboard_input()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b>
+            session_capture_process_for_transmission_into (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx, <b>image_t</b> * frame, <b>image_t</b> ** output)
+          </h2>
+          <p class="Pp">
+            Reuse capture-worker-owned storage; preserves it on allocation
+            failure. The caller destroys *output after capture joins. Input may
+            equal *output.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1035</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1036                                                                                   {
 1037   ASCII_OTEL_SCOPE(SESSION_CAPTURE_PROCESS_FOR_TRANSMISSION_INTO);
 1038   if (!ctx || !frame || !output)
 1039     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing transmission frame or workspace&quot;);
@@ -390,127 +610,204 @@
 1056   }
 1057   return ASCIICHAT_OK;
 1058 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>image_t::h</b>,
-    <b>image_destroy()</b>, <b>image_new()</b>, <b>image_resize()</b>,
-    <b>image_t::pixels</b>, <b>session_capture_ctx::resize_for_network</b>,
-    <b>session_capture_process_for_transmission_into()</b>,
-    <b>SESSION_MAX_FRAME_HEIGHT</b>, <b>SESSION_MAX_FRAME_WIDTH</b>,
-    <b>SET_ERRNO</b>, and <b>image_t::w</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_process_for_transmission()</b>,
-    and <b>session_capture_process_for_transmission_into()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_redraw_media_("><a class="permalink" href="#void_session_capture_redraw_media_(">void
-  session_capture_redraw_media (<b>session_capture_ctx_t</b> * ctx)</a></h2>
-<p class="Pp">Definition at line <b>1229</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1229                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>image_t::h</b>,
+            <b>image_destroy()</b>, <b>image_new()</b>, <b>image_resize()</b>,
+            <b>image_t::pixels</b>,
+            <b>session_capture_ctx::resize_for_network</b>,
+            <b>session_capture_process_for_transmission_into()</b>,
+            <b>SESSION_MAX_FRAME_HEIGHT</b>, <b>SESSION_MAX_FRAME_WIDTH</b>,
+            <b>SET_ERRNO</b>, and <b>image_t::w</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_process_for_transmission()</b>, and
+            <b>session_capture_process_for_transmission_into()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_redraw_media_(">
+            <a class="permalink" href="#void_session_capture_redraw_media_("
+              >void session_capture_redraw_media (<b>session_capture_ctx_t</b> *
+              ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1229</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1229                                                               {
 1230   if (ctx)
 1231     atomic_store_bool(&amp;ctx-&gt;redraw_media, true);
 1232 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>session_capture_ctx::redraw_media</b>, and
-    <b>session_capture_redraw_media()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_redraw_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_set_audio_context_("><a class="permalink" href="#void_session_capture_set_audio_context_(">void
-  session_capture_set_audio_context (<b>session_capture_ctx_t</b> * ctx, void *
-  audio_ctx)</a></h2>
-<p class="Pp">Set the audio context for playback control.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Capture context (must not be NULL)
-<br/>
-<i>audio_ctx</i> Audio context pointer (borrowed, not owned)</div>
-<p class="Pp">Definition at line <b>1195</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1195                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>,
+            <b>session_capture_ctx::redraw_media</b>, and
+            <b>session_capture_redraw_media()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_redraw_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_set_audio_context_(">
+            <a
+              class="permalink"
+              href="#void_session_capture_set_audio_context_("
+              >void session_capture_set_audio_context (<b
+                >session_capture_ctx_t</b
+              >
+              * ctx, void * audio_ctx)</a
+            >
+          </h2>
+          <p class="Pp">Set the audio context for playback control.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Capture context (must not be NULL)
+            <br />
+            <i>audio_ctx</i> Audio context pointer (borrowed, not owned)
+          </div>
+          <p class="Pp">
+            Definition at line <b>1195</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1195                                                                                     {
 1196   if (ctx) {
 1197     session_capture_lock_source(ctx);
 1198     ctx-&gt;audio_ctx = audio_ctx;
 1199     session_capture_unlock_source(ctx);
 1200   }
 1201 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_capture_lock_source()</b>,
-    <b>session_capture_set_audio_context()</b>, and
-    <b>session_capture_unlock_source()</b>.</p>
-<p class="Pp">Referenced by <b>client_protocol_start()</b>,
-    <b>session_capture_set_audio_context()</b>,
-    <b>session_participant_start_audio()</b>, and
-    <b>session_participant_stop_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_set_audio_updater_("><a class="permalink" href="#void_session_capture_set_audio_updater_(">void
-  session_capture_set_audio_updater (<b>session_capture_ctx_t</b> * ctx,
-  <b>session_capture_audio_update_fn</b> update, void * user_data)</a></h2>
-<p class="Pp">Definition at line <b>1187</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1188                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_capture_lock_source()</b>,
+            <b>session_capture_set_audio_context()</b>, and
+            <b>session_capture_unlock_source()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_start()</b>,
+            <b>session_capture_set_audio_context()</b>,
+            <b>session_participant_start_audio()</b>, and
+            <b>session_participant_stop_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_set_audio_updater_(">
+            <a
+              class="permalink"
+              href="#void_session_capture_set_audio_updater_("
+              >void session_capture_set_audio_updater (<b
+                >session_capture_ctx_t</b
+              >
+              * ctx, <b>session_capture_audio_update_fn</b> update, void *
+              user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1187</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1188                                                         {
 1189   if (ctx) {
 1190     ctx-&gt;audio_update = update;
 1191     ctx-&gt;audio_update_data = user_data;
 1192   }
 1193 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_capture_ctx::audio_update</b>,
-    <b>session_capture_ctx::audio_update_data</b>, and
-    <b>session_capture_set_audio_updater()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_set_audio_updater()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_skip_media_("><a class="permalink" href="#void_session_capture_skip_media_(">void
-  session_capture_skip_media (<b>session_capture_ctx_t</b> * ctx, int
-  direction)</a></h2>
-<p class="Pp">Queue a relative playlist change on the capture owner.</p>
-<p class="Pp">Definition at line <b>656</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>656                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_capture_ctx::audio_update</b>,
+            <b>session_capture_ctx::audio_update_data</b>, and
+            <b>session_capture_set_audio_updater()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_set_audio_updater()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_skip_media_(">
+            <a class="permalink" href="#void_session_capture_skip_media_("
+              >void session_capture_skip_media (<b>session_capture_ctx_t</b> *
+              ctx, int direction)</a
+            >
+          </h2>
+          <p class="Pp">
+            Queue a relative playlist change on the capture owner.
+          </p>
+          <p class="Pp">
+            Definition at line <b>656</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+656                                                                            {
 657   ASCII_OTEL_SCOPE(SESSION_CAPTURE_SKIP_MEDIA);
 658   if (ctx &amp;&amp; (direction == -1 || direction == 1))
 659     atomic_store_u64(&amp;ctx-&gt;playlist_skip, direction &gt; 0 ? 1 : 2);
 660 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>atomic_store_u64()</b>,
-    <b>session_capture_ctx::playlist_skip</b>, and
-    <b>session_capture_skip_media()</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_skip_media()</b>, and
-    <b>session_handle_keyboard_input()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_capture_source_epoch
-  (<b>session_capture_ctx_t</b> * ctx)</h2>
-<p class="Pp">Source identity and successful acquisition count; retained redraws
-    do not advance the serial.</p>
-<p class="Pp">Definition at line <b>1234</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1234                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>atomic_store_u64()</b>,
+            <b>session_capture_ctx::playlist_skip</b>, and
+            <b>session_capture_skip_media()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_skip_media()</b>, and
+            <b>session_handle_keyboard_input()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_capture_source_epoch (<b
+              >session_capture_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Source identity and successful acquisition count; retained redraws
+            do not advance the serial.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1234</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1234                                                                   {
 1235   return ctx ? atomic_load_u64(&amp;ctx-&gt;source_epoch) : 0;
 1236 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>session_capture_source_epoch()</b>, and
-    <b>session_capture_ctx::source_epoch</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_complete_open()</b>,
-    <b>session_capture_source_epoch()</b>, and
-    <b>session_pipeline_run_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_toggle_media_("><a class="permalink" href="#void_session_capture_toggle_media_(">void
-  session_capture_toggle_media (<b>session_capture_ctx_t</b> * ctx)</a></h2>
-<p class="Pp">Request a source change on the capture thread.</p>
-<p class="Pp">Definition at line <b>1203</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>1203                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>session_capture_source_epoch()</b>, and
+            <b>session_capture_ctx::source_epoch</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_complete_open()</b>,
+            <b>session_capture_source_epoch()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_toggle_media_(">
+            <a class="permalink" href="#void_session_capture_toggle_media_("
+              >void session_capture_toggle_media (<b>session_capture_ctx_t</b> *
+              ctx)</a
+            >
+          </h2>
+          <p class="Pp">Request a source change on the capture thread.</p>
+          <p class="Pp">
+            Definition at line <b>1203</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+1203                                                               {
 1204   if (!ctx || !ctx-&gt;source || media_source_get_type(ctx-&gt;source) != MEDIA_SOURCE_FILE)
 1205     return;
 1206   // Swap UI preferences in input order so a following animation key applies to
@@ -531,49 +828,65 @@
 1221   }
 1222   atomic_fetch_add_u64(&amp;ctx-&gt;toggle_media, 1);
 1223 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_add_u64()</b>, <b>GET_OPTION</b>,
-    <b>MEDIA_SOURCE_FILE</b>, <b>media_source_get_type()</b>,
-    <b>session_capture_ctx::non_media_requested</b>, <b>options_set_bool()</b>,
-    <b>session_capture_ctx::saved_fft</b>,
-    <b>session_capture_ctx::saved_matrix</b>,
-    <b>session_capture_ctx::saved_waveform</b>,
-    <b>session_capture_toggle_media()</b>, <b>session_capture_ctx::source</b>,
-    and <b>session_capture_ctx::toggle_media</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_toggle_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_capture_unlock_source_("><a class="permalink" href="#void_session_capture_unlock_source_(">void
-  session_capture_unlock_source (<b>session_capture_ctx_t</b> * ctx)</a></h2>
-<p class="Pp">Definition at line <b>832</b> of file
-    <b>common/session/capture.c</b>.</p>
-<pre>832                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_fetch_add_u64()</b>, <b>GET_OPTION</b>,
+            <b>MEDIA_SOURCE_FILE</b>, <b>media_source_get_type()</b>,
+            <b>session_capture_ctx::non_media_requested</b>,
+            <b>options_set_bool()</b>, <b>session_capture_ctx::saved_fft</b>,
+            <b>session_capture_ctx::saved_matrix</b>,
+            <b>session_capture_ctx::saved_waveform</b>,
+            <b>session_capture_toggle_media()</b>,
+            <b>session_capture_ctx::source</b>, and
+            <b>session_capture_ctx::toggle_media</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_capture_toggle_media()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_capture_unlock_source_(">
+            <a class="permalink" href="#void_session_capture_unlock_source_("
+              >void session_capture_unlock_source (<b>session_capture_ctx_t</b>
+              * ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>832</b> of file
+            <b>common/session/capture.c</b>.
+          </p>
+          <pre>
+832                                                                {
 833   if (ctx &amp;&amp; ctx-&gt;media_locks_ready)
 834     mutex_unlock(&amp;ctx-&gt;source_mutex);
 835 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_capture_ctx::media_locks_ready</b>,
-    <b>mutex_unlock</b>, <b>session_capture_unlock_source()</b>, and
-    <b>session_capture_ctx::source_mutex</b>.</p>
-<p class="Pp">Referenced by <b>session_capture_read_audio()</b>,
-    <b>session_capture_read_frame()</b>,
-    <b>session_capture_set_audio_context()</b>,
-    <b>session_capture_unlock_source()</b>, and
-    <b>session_handle_keyboard_input()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_capture_ctx::media_locks_ready</b>,
+            <b>mutex_unlock</b>, <b>session_capture_unlock_source()</b>, and
+            <b>session_capture_ctx::source_mutex</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_capture_read_audio()</b>,
+            <b>session_capture_read_frame()</b>,
+            <b>session_capture_set_audio_context()</b>,
+            <b>session_capture_unlock_source()</b>, and
+            <b>session_handle_keyboard_input()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

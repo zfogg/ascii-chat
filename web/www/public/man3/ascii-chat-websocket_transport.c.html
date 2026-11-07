@@ -1,234 +1,373 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>transport.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">transport.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">transport.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">transport.c - WebSocket transport implementation for ACIP
-    protocol.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>websocket_endpoint_t</b>
-  <br/>
-  struct <b>acip_websocket_runtime</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b> 64
-  <br/>
-  Maximum incoming message queue size (frames received from peer). #define
-    <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b> 512
-  <br/>
-  Maximum outgoing message queue size (frames to send to peer). #define
-    <b>WEBSOCKET_RECV_QUEUE_SIZE</b>
-    <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b>
-  <br/>
-  #define <b>WEBSOCKET_SEND_QUEUE_SIZE</b>
-    <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>websocket_transport_write_pending</b> (struct lws *wsi,
-    <b>websocket_transport_data_t</b> *ws_data)
-  <br/>
-  Drain client messages from the send queue on the service thread.
-    <b>asciichat_error_t</b> <b>websocket_transport_send</b>
-    (<b>acip_transport_t</b> *transport, const void *data, size_t len)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_websocket_transport_flush</b>
-    (<b>acip_transport_t</b> *transport, <b>uint64_t</b> timeout_ns)
-  <br/>
-  Create WebSocket client transport. <b>asciichat_error_t</b>
-    <b>acip_websocket_runtime_create</b> (<b>acip_websocket_runtime_t</b> **out)
-  <br/>
-  void <b>acip_websocket_runtime_destroy</b> (<b>acip_websocket_runtime_t</b>
-    **runtime)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_websocket_client_transport_create</b> (const
-    char *name, const char *url, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create WebSocket client transport. <b>acip_transport_t</b> *
-    <b>acip_websocket_server_transport_create</b> (const char *name, struct lws
-    *wsi, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create WebSocket server transport from existing connection.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WebSocket transport implementation for ACIP protocol.</p>
-<p class="Pp">Implements the <b>acip_transport_t</b> interface for WebSocket
-    connections. Enables browser clients to connect via WebSocket protocol.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ARCHITECTURE:"><a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE:
-  </a></h1>
-<ul class="Bl-bullet">
-  <li>Uses libwebsockets for WebSocket protocol handling</li>
-  <li>Async libwebsockets callbacks bridge to sync recv() via ringbuffer</li>
-  <li>Thread-safe receive queue handles async message arrival</li>
-  <li>Same pattern as WebRTC transport for consistency</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MESSAGE_FLOW:"><a class="permalink" href="#MESSAGE_FLOW:">MESSAGE
-  FLOW: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>send(): Synchronous write via lws_write()</dd>
-  <dt>2.</dt>
-  <dd>LWS callback: Async write to receive ringbuffer</dd>
-  <dt>3.</dt>
-  <dd>recv(): Blocking read from receive ringbuffer</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MEMORY_OWNERSHIP:"><a class="permalink" href="#MEMORY_OWNERSHIP:">MEMORY
-  OWNERSHIP: </a></h1>
-<ul class="Bl-bullet">
-  <li>Transport OWNS wsi (WebSocket instance)</li>
-  <li>Receive queue owns buffered message data</li>
-  <li>recv() allocates message buffer, caller must free</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Definition in file <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE___64">#define
-  NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE___64">#define
-  NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE___256">#define
-  NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE___64">#define
-  NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING___64"><a class="permalink" href="#_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING___64">#define
-  WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING 64</a></h2>
-<p class="Pp">Maximum incoming message queue size (frames received from peer).
-    Set to 64 for balance: allows buffering across one large frame's fragments
-    while keeping latency reasonable. With ~70 fragments per 291KB frame, we
-    need at least 64 slots to avoid dropping the frame while it's
-  fragmenting.</p>
-<p class="Pp">Definition at line <b>71</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING___512"><a class="permalink" href="#_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING___512">#define
-  WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 512</a></h2>
-<p class="Pp">Maximum outgoing message queue size (frames to send to peer). Set
-    to 64 to match incoming queue and prevent &quot;BINARY after FIN&quot;
-    errors. Large video frames fragment into ~70 chunks; queue must be large
-    enough to buffer one complete message worth of fragments.</p>
-<p class="Pp">Definition at line <b>80</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBSOCKET_RECV_QUEUE_SIZE___"><a class="permalink" href="#_define_WEBSOCKET_RECV_QUEUE_SIZE___">#define
-  WEBSOCKET_RECV_QUEUE_SIZE
-  <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b></a></h2>
-<p class="Pp">Definition at line <b>83</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_WEBSOCKET_SEND_QUEUE_SIZE___"><a class="permalink" href="#_define_WEBSOCKET_SEND_QUEUE_SIZE___">#define
-  WEBSOCKET_SEND_QUEUE_SIZE
-  <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b></a></h2>
-<p class="Pp">Definition at line <b>84</b> of file
-  <b>websocket/transport.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_client_transport_create
-  (const char * name, const char * url, <b>crypto_context_t</b> *
-  crypto_ctx)</h2>
-<p class="Pp">Create WebSocket client transport.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>url</i> WebSocket URL (e.g.,
-  &quot;ws://localhost:27225&quot;)
-<br/>
-<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on failure</div>
-<p class="Pp">Definition at line <b>1538</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1539                                                                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>transport.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">transport.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">transport.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          transport.c - WebSocket transport implementation for ACIP protocol.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>websocket_endpoint_t</b>
+            <br />
+            struct <b>acip_websocket_runtime</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b> 64
+            <br />
+            Maximum incoming message queue size (frames received from peer).
+            #define
+            <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b> 512
+            <br />
+            Maximum outgoing message queue size (frames to send to peer).
+            #define
+            <b>WEBSOCKET_RECV_QUEUE_SIZE</b>
+            <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b>
+            <br />
+            #define <b>WEBSOCKET_SEND_QUEUE_SIZE</b>
+            <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>websocket_transport_write_pending</b> (struct lws *wsi,
+            <b>websocket_transport_data_t</b> *ws_data)
+            <br />
+            Drain client messages from the send queue on the service thread.
+            <b>asciichat_error_t</b> <b>websocket_transport_send</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, const void *data, size_t len)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_websocket_transport_flush</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>uint64_t</b> timeout_ns)
+            <br />
+            Create WebSocket client transport. <b>asciichat_error_t</b>
+            <b>acip_websocket_runtime_create</b> (<b
+              >acip_websocket_runtime_t</b
+            >
+            **out)
+            <br />
+            void <b>acip_websocket_runtime_destroy</b> (<b
+              >acip_websocket_runtime_t</b
+            >
+            **runtime)
+            <br />
+            <b>acip_transport_t</b> *
+            <b>acip_websocket_client_transport_create</b> (const char *name,
+            const char *url, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create WebSocket client transport. <b>acip_transport_t</b> *
+            <b>acip_websocket_server_transport_create</b> (const char *name,
+            struct lws *wsi, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create WebSocket server transport from existing connection.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WebSocket transport implementation for ACIP protocol.</p>
+        <p class="Pp">
+          Implements the <b>acip_transport_t</b> interface for WebSocket
+          connections. Enables browser clients to connect via WebSocket
+          protocol.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ARCHITECTURE:">
+          <a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Uses libwebsockets for WebSocket protocol handling</li>
+          <li>
+            Async libwebsockets callbacks bridge to sync recv() via ringbuffer
+          </li>
+          <li>Thread-safe receive queue handles async message arrival</li>
+          <li>Same pattern as WebRTC transport for consistency</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MESSAGE_FLOW:">
+          <a class="permalink" href="#MESSAGE_FLOW:">MESSAGE FLOW: </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>send(): Synchronous write via lws_write()</dd>
+          <dt>2.</dt>
+          <dd>LWS callback: Async write to receive ringbuffer</dd>
+          <dt>3.</dt>
+          <dd>recv(): Blocking read from receive ringbuffer</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MEMORY_OWNERSHIP:">
+          <a class="permalink" href="#MEMORY_OWNERSHIP:">MEMORY OWNERSHIP: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Transport OWNS wsi (WebSocket instance)</li>
+          <li>Receive queue owns buffered message data</li>
+          <li>recv() allocates message buffer, caller must free</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">Definition in file <b>websocket/transport.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE___64"
+              >#define NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE___64"
+              >#define NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE___256"
+              >#define NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE___64"
+              >#define NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING___64"
+              >#define WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum incoming message queue size (frames received from peer). Set
+            to 64 for balance: allows buffering across one large frame's
+            fragments while keeping latency reasonable. With ~70 fragments per
+            291KB frame, we need at least 64 slots to avoid dropping the frame
+            while it's fragmenting.
+          </p>
+          <p class="Pp">
+            Definition at line <b>71</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING___512"
+              >#define WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum outgoing message queue size (frames to send to peer). Set to
+            64 to match incoming queue and prevent &quot;BINARY after FIN&quot;
+            errors. Large video frames fragment into ~70 chunks; queue must be
+            large enough to buffer one complete message worth of fragments.
+          </p>
+          <p class="Pp">
+            Definition at line <b>80</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBSOCKET_RECV_QUEUE_SIZE___">
+            <a class="permalink" href="#_define_WEBSOCKET_RECV_QUEUE_SIZE___"
+              >#define WEBSOCKET_RECV_QUEUE_SIZE
+              <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>83</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_WEBSOCKET_SEND_QUEUE_SIZE___">
+            <a class="permalink" href="#_define_WEBSOCKET_SEND_QUEUE_SIZE___"
+              >#define WEBSOCKET_SEND_QUEUE_SIZE
+              <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file <b>websocket/transport.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_websocket_client_transport_create
+            (const char * name, const char * url, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">Create WebSocket client transport.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot;)
+            <br />
+            <i>crypto_ctx</i> Optional encryption context (can be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on failure</div>
+          <p class="Pp">
+            Definition at line <b>1538</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1539                                                                                        {
 1540   if (!name) {
 1541     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
 1542     return NULL;
@@ -360,43 +499,57 @@
 1668   }
 1669   return transport;
 1670 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>,
-    <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_client_transport_create()</b>, <b>acthread_create</b>,
-    <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>,
-    <b>websocket_transport_data_t::connection_failed</b>,
-    <b>websocket_transport_data_t::context</b>,
-    <b>acip_transport::crypto_ctx</b>, <b>ERROR_INTERNAL</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_NETWORK</b>, <b>websocket_endpoint_t::host</b>,
-    <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>acip_transport::methods</b>, <b>mutex_destroy()</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
-    <b>websocket_transport_data_t::owns_context</b>,
-    <b>websocket_endpoint_t::path</b>, <b>websocket_endpoint_t::port</b>,
-    <b>websocket_transport_data_t::recv_cond</b>,
-    <b>websocket_transport_data_t::recv_mutex</b>,
-    <b>websocket_transport_data_t::recv_queue</b>, <b>ringbuffer_destroy()</b>,
-    <b>SAFE_FREE</b>, <b>websocket_transport_data_t::send_queue</b>,
-    <b>websocket_transport_data_t::service_running</b>,
-    <b>websocket_transport_data_t::service_thread</b>, <b>SET_ERRNO</b>,
-    <b>websocket_transport_data_t::state_cond</b>,
-    <b>websocket_transport_data_t::state_mutex</b>,
-    <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_close()</b>,
-    <b>stats_runtime_peer_open()</b>, <b>websocket_endpoint_t::use_ssl</b>, and
-    <b>websocket_transport_data_t::wsi</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
-    <b>network_connection_open()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_websocket_runtime_create
-  (<b>acip_websocket_runtime_t</b> ** out)</h2>
-<p class="Pp">Definition at line <b>1408</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1408                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acthread_create</b>, <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>,
+            <b>websocket_transport_data_t::connection_failed</b>,
+            <b>websocket_transport_data_t::context</b>,
+            <b>acip_transport::crypto_ctx</b>, <b>ERROR_INTERNAL</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_NETWORK</b>, <b>websocket_endpoint_t::host</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>acip_transport::methods</b>,
+            <b>mutex_destroy()</b>, <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
+            <b>websocket_transport_data_t::owns_context</b>,
+            <b>websocket_endpoint_t::path</b>,
+            <b>websocket_endpoint_t::port</b>,
+            <b>websocket_transport_data_t::recv_cond</b>,
+            <b>websocket_transport_data_t::recv_mutex</b>,
+            <b>websocket_transport_data_t::recv_queue</b>,
+            <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>,
+            <b>websocket_transport_data_t::send_queue</b>,
+            <b>websocket_transport_data_t::service_running</b>,
+            <b>websocket_transport_data_t::service_thread</b>, <b>SET_ERRNO</b>,
+            <b>websocket_transport_data_t::state_cond</b>,
+            <b>websocket_transport_data_t::state_mutex</b>,
+            <b>acip_transport::stats_peer</b>,
+            <b>stats_runtime_peer_close()</b>, <b>stats_runtime_peer_open()</b>,
+            <b>websocket_endpoint_t::use_ssl</b>, and
+            <b>websocket_transport_data_t::wsi</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_client_transport_create()</b>, and
+            <b>network_connection_open()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_websocket_runtime_create (<b
+              >acip_websocket_runtime_t</b
+            >
+            ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1408</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1408                                                                                 {
 1409   if (!out || *out)
 1410     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;WebSocket runtime output must be empty&quot;);
 1411   acip_websocket_runtime_t *runtime = SAFE_CALLOC(1, sizeof(*runtime), acip_websocket_runtime_t *);
@@ -412,54 +565,78 @@
 1421   *out = runtime;
 1422   return ASCIICHAT_OK;
 1423 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_websocket_runtime_create()</b>,
-    <b>ASCIICHAT_OK</b>, <b>acip_websocket_runtime::context</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_runtime_create()</b>, and
-    <b>discovery_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_websocket_runtime_destroy_("><a class="permalink" href="#void_acip_websocket_runtime_destroy_(">void
-  acip_websocket_runtime_destroy (<b>acip_websocket_runtime_t</b> **
-  runtime)</a></h2>
-<p class="Pp">Definition at line <b>1425</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1425                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_websocket_runtime_create()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_websocket_runtime::context</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_runtime_create()</b>, and
+            <b>discovery_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_websocket_runtime_destroy_(">
+            <a class="permalink" href="#void_acip_websocket_runtime_destroy_("
+              >void acip_websocket_runtime_destroy (<b
+                >acip_websocket_runtime_t</b
+              >
+              ** runtime)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1425</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1425                                                                         {
 1426   if (!runtime || !*runtime)
 1427     return;
 1428   lws_context_destroy((*runtime)-&gt;context);
 1429   SAFE_FREE(*runtime);
 1430   *runtime = NULL;
 1431 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_websocket_runtime_destroy()</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_runtime_destroy()</b>, and
-    <b>discovery_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_server_transport_create
-  (const char * name, struct lws * wsi, <b>crypto_context_t</b> *
-  crypto_ctx)</h2>
-<p class="Pp">Create WebSocket server transport from existing connection. Wraps
-    an already-established libwebsockets connection (from server accept). Used
-    by <b>websocket_server</b> module to create transports for incoming
-  clients.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>wsi</i> Established libwebsockets connection (not
-  owned by transport)
-<br/>
-<i>crypto_ctx</i> Optional crypto context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error</div>
-<p class="Pp">Definition at line <b>1792</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1793                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_websocket_runtime_destroy()</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_runtime_destroy()</b>, and
+            <b>discovery_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_websocket_server_transport_create
+            (const char * name, struct lws * wsi, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Create WebSocket server transport from existing connection. Wraps an
+            already-established libwebsockets connection (from server accept).
+            Used by <b>websocket_server</b> module to create transports for
+            incoming clients.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>wsi</i> Established libwebsockets connection (not owned by
+            transport)
+            <br />
+            <i>crypto_ctx</i> Optional crypto context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on error</div>
+          <p class="Pp">
+            Definition at line <b>1792</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1793                                                                                        {
 1794   if (!name) {
 1795     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
 1796     return NULL;
@@ -514,55 +691,74 @@
 1845   }
 1846   return transport;
 1847 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>,
-    <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_server_transport_create()</b>, <b>ASCIICHAT_OK</b>,
-    <b>websocket_transport_data_t::context</b>,
-    <b>acip_transport::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_debug_every</b>, <b>acip_transport::methods</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
-    <b>websocket_transport_data_t::owns_context</b>, <b>SET_ERRNO</b>,
-    <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
-    <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>acip_transport::stats_peer</b>,
-    <b>stats_runtime_peer_open()</b>, <b>US_PER_SEC_INT</b>, and
-    <b>websocket_transport_data_t::wsi</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_server_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_websocket_transport_flush
-  (<b>acip_transport_t</b> * transport, <b>uint64_t</b> timeout_ns)</h2>
-<p class="Pp">Create WebSocket client transport. Connects to a WebSocket server
-    at the specified URL and creates a transport for sending/receiving ACIP
-    packets over the WebSocket connection.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
-  (required, e.g., &quot;transport_websocket_client&quot;)
-<br/>
-<i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot; or
-  &quot;wss://example.com/path&quot;)
-<br/>
-<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The URL must include the protocol (ws:// or wss://)
-<p class="Pp"></p>
-<p class="Pp">Port defaults to 80 for ws:// and 443 for wss:// if not
-  specified</p>
-<p class="Pp"></p>
-<p class="Pp">Connection is established synchronously during creation Wait for
-    queued messages to reach their writable completion callback. Call from a
-    worker, never from the libwebsockets service thread.</p>
-</div>
-<p class="Pp">Definition at line <b>1086</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1086                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_server_transport_create()</b>,
+            <b>ASCIICHAT_OK</b>, <b>websocket_transport_data_t::context</b>,
+            <b>acip_transport::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_debug_every</b>, <b>acip_transport::methods</b>,
+            <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
+            <b>websocket_transport_data_t::owns_context</b>, <b>SET_ERRNO</b>,
+            <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
+            <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>acip_transport::stats_peer</b>,
+            <b>stats_runtime_peer_open()</b>, <b>US_PER_SEC_INT</b>, and
+            <b>websocket_transport_data_t::wsi</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_server_transport_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_websocket_transport_flush (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>uint64_t</b> timeout_ns)
+          </h2>
+          <p class="Pp">
+            Create WebSocket client transport. Connects to a WebSocket server at
+            the specified URL and creates a transport for sending/receiving ACIP
+            packets over the WebSocket connection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for tracking this transport (required, e.g.,
+            &quot;transport_websocket_client&quot;)
+            <br />
+            <i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot; or
+            &quot;wss://example.com/path&quot;)
+            <br />
+            <i>crypto_ctx</i> Optional encryption context (can be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on failure</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The URL must include the protocol (ws:// or wss://)
+            <p class="Pp"></p>
+            <p class="Pp">
+              Port defaults to 80 for ws:// and 443 for wss:// if not specified
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Connection is established synchronously during creation Wait for
+              queued messages to reach their writable completion callback. Call
+              from a worker, never from the libwebsockets service thread.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>1086</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1086                                                                                                    {
 1087   if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET)
 1088     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Expected WebSocket transport&quot;);
 1089   websocket_transport_data_t *ws_data = transport-&gt;impl_data;
@@ -579,27 +775,40 @@
 1100   }
 1101   return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket closed before send queue drained&quot;);
 1102 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_TRANSPORT_WEBSOCKET</b>,
-    <b>acip_websocket_transport_flush()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_NETWORK_TIMEOUT</b>, <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::inflight_buffer</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>platform_sleep_us()</b>,
-    <b>ringbuffer_is_empty()</b>, <b>websocket_transport_data_t::send_mutex</b>,
-    <b>websocket_transport_data_t::send_queue</b>, <b>SET_ERRNO</b>, and
-    <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_transport_flush()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> websocket_transport_send
-  (<b>acip_transport_t</b> * transport, const void * data, size_t len)</h2>
-<p class="Pp">Queue one packet, preserving its control budget through encryption
-    and ownership transfer.</p>
-<p class="Pp">Definition at line <b>641</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>641                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_WEBSOCKET</b>,
+            <b>acip_websocket_transport_flush()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_TIMEOUT</b>, <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::inflight_buffer</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>platform_sleep_us()</b>,
+            <b>ringbuffer_is_empty()</b>,
+            <b>websocket_transport_data_t::send_mutex</b>,
+            <b>websocket_transport_data_t::send_queue</b>, <b>SET_ERRNO</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_transport_flush()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> websocket_transport_send (<b
+              >acip_transport_t</b
+            >
+            * transport, const void * data, size_t len)
+          </h2>
+          <p class="Pp">
+            Queue one packet, preserving its control budget through encryption
+            and ownership transfer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>641</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+641                                                                                                       {
 642   // NOTE: Disabled START_TIMER/STOP_TIMER due to thread safety issues with timer hashtable
 643   // causing heap-use-after-free crashes in ASAN. The timer system has race conditions
 644   // when accessed from the service thread context. See: line 325 (similar issue).
@@ -658,31 +867,45 @@
 697   }
 698   return result;
 699 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_control_domain()</b>,
-    <b>buffer_release</b>, <b>websocket_transport_data_t::connection_failed</b>,
-    <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_dev_every</b>, <b>log_error</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
-    <b>websocket_transport_data_t::owns_context</b>,
-    <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>,
-    <b>websocket_transport_data_t::state_mutex</b>,
-    <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>,
-    <b>websocket_transport_send()</b>, and
-    <b>websocket_transport_data_t::wsi</b>.</p>
-<p class="Pp">Referenced by <b>websocket_transport_send()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_transport_write_pending_(struct_lws_*_wsi,_"><a class="permalink" href="#void_websocket_transport_write_pending_(struct_lws_*_wsi,_">void
-  websocket_transport_write_pending (struct lws * wsi,
-  <b>websocket_transport_data_t</b> * ws_data)</a></h2>
-<p class="Pp">Drain client messages from the send queue on the service
-  thread.</p>
-<p class="Pp">Definition at line <b>458</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>458                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>buffer_control_domain()</b>,
+            <b>buffer_release</b>,
+            <b>websocket_transport_data_t::connection_failed</b>,
+            <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_dev_every</b>, <b>log_error</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+            <b>websocket_transport_data_t::owns_context</b>,
+            <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>,
+            <b>websocket_transport_data_t::state_mutex</b>,
+            <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>,
+            <b>websocket_transport_send()</b>, and
+            <b>websocket_transport_data_t::wsi</b>.
+          </p>
+          <p class="Pp">Referenced by <b>websocket_transport_send()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_websocket_transport_write_pending_(struct_lws_*_wsi,_"
+          >
+            <a
+              class="permalink"
+              href="#void_websocket_transport_write_pending_(struct_lws_*_wsi,_"
+              >void websocket_transport_write_pending (struct lws * wsi,
+              <b>websocket_transport_data_t</b> * ws_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Drain client messages from the send queue on the service thread.
+          </p>
+          <p class="Pp">
+            Definition at line <b>458</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+458                                                                                              {
 459   if (!ws_data || atomic_load_bool(&amp;ws_data-&gt;is_destroying))
 460     return;
 461   /* lws suppresses writable callbacks until previously buffered output is
@@ -715,36 +938,43 @@
 488    * there is no next message, so the final owner is promptly released. */
 489   lws_callback_on_writable(wsi);
 490 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>buffer_release</b>,
-    <b>cond_broadcast()</b>,
-    <b>websocket_transport_data_t::connection_failed</b>,
-    <b>websocket_msg_t::data</b>,
-    <b>websocket_transport_data_t::inflight_buffer</b>,
-    <b>websocket_transport_data_t::inflight_bytes</b>,
-    <b>websocket_transport_data_t::is_connected</b>,
-    <b>websocket_transport_data_t::is_destroying</b>,
-    <b>websocket_msg_t::len</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>websocket_transport_data_t::pending_send_bytes</b>,
-    <b>ringbuffer_read()</b>, <b>websocket_transport_data_t::send_mutex</b>,
-    <b>websocket_transport_data_t::send_queue</b>,
-    <b>websocket_transport_data_t::state_cond</b>,
-    <b>websocket_transport_data_t::state_mutex</b>, and
-    <b>websocket_transport_write_pending()</b>.</p>
-<p class="Pp">Referenced by <b>websocket_transport_write_pending()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>buffer_release</b>,
+            <b>cond_broadcast()</b>,
+            <b>websocket_transport_data_t::connection_failed</b>,
+            <b>websocket_msg_t::data</b>,
+            <b>websocket_transport_data_t::inflight_buffer</b>,
+            <b>websocket_transport_data_t::inflight_bytes</b>,
+            <b>websocket_transport_data_t::is_connected</b>,
+            <b>websocket_transport_data_t::is_destroying</b>,
+            <b>websocket_msg_t::len</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>websocket_transport_data_t::pending_send_bytes</b>,
+            <b>ringbuffer_read()</b>,
+            <b>websocket_transport_data_t::send_mutex</b>,
+            <b>websocket_transport_data_t::send_queue</b>,
+            <b>websocket_transport_data_t::state_cond</b>,
+            <b>websocket_transport_data_t::state_mutex</b>, and
+            <b>websocket_transport_write_pending()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>websocket_transport_write_pending()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

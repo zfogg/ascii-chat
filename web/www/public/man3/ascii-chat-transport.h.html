@@ -1,205 +1,297 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>transport.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">transport.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">transport.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">transport.h - Transport abstraction layer for ACIP protocol.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acip_transport_methods_t</b>
-  <br/>
-  Transport method table (virtual function table). struct <b>acip_transport</b>
-  <br/>
-  Transport instance structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>acip_websocket_runtime</b>
-    <b>acip_websocket_runtime_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>acip_transport_type_t</b> { <b>ACIP_TRANSPORT_TCP</b> = 1,
-    <b>ACIP_TRANSPORT_WEBSOCKET</b> = 2, <b>ACIP_TRANSPORT_WEBRTC</b> = 3,
-    <b>ACIP_TRANSPORT_HTTP</b> = 4, <b>ACIP_TRANSPORT_QUIC</b> = 5 }
-  <br/>
-  Transport type enumeration. enum <b>acip_transport_ownership_t</b> {
-    <b>ACIP_TRANSPORT_BORROWED</b>, <b>ACIP_TRANSPORT_OWNED</b> }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>acip_transport_destroy</b> (<b>acip_transport_t</b>
-    *transport)
-  <br/>
-  Destroy transport and free all resources. <b>asciichat_error_t</b>
-    <b>acip_transport_sendv</b> (<b>acip_transport_t</b> *transport, const
-    <b>socket_buffer_t</b> *buffers, size_t count)
-  <br/>
-  Send data through transport. <b>asciichat_error_t</b>
-    <b>acip_transport_send</b> (<b>acip_transport_t</b> *transport, const void
-    *data, size_t len)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const char *name,
-    <b>socket_t</b> sockfd, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create TCP transport from existing socket. <b>acip_transport_t</b> *
-    <b>acip_tcp_transport_create_owned</b> (const char *name, <b>socket_t</b>
-    sockfd, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create a TCP transport that owns its connected socket.
-    <b>asciichat_error_t</b> <b>acip_tcp_transport_set_zerocopy</b>
-    (<b>acip_transport_t</b> *transport, <b>bool</b> enabled)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_websocket_transport_flush</b>
-    (<b>acip_transport_t</b> *transport, <b>uint64_t</b> timeout_ns)
-  <br/>
-  Create WebSocket client transport. <b>asciichat_error_t</b>
-    <b>acip_websocket_runtime_create</b> (<b>acip_websocket_runtime_t</b> **out)
-  <br/>
-  void <b>acip_websocket_runtime_destroy</b> (<b>acip_websocket_runtime_t</b>
-    **runtime)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_websocket_client_transport_create</b> (const
-    char *name, const char *url, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create WebSocket client transport. <b>acip_transport_t</b> *
-    <b>acip_websocket_server_transport_create</b> (const char *name, struct lws
-    *wsi, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create WebSocket server transport from existing connection.
-    <b>acip_transport_t</b> * <b>acip_webrtc_transport_create</b> (struct
-    <b>webrtc_peer_connection</b> *peer_conn, struct <b>webrtc_data_channel</b>
-    *data_channel, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Transport abstraction layer for ACIP protocol.</p>
-<p class="Pp">Provides a transport-agnostic interface that allows ACIP protocol
-    handlers to work with any underlying transport (TCP, WebSocket, HTTP,
-  etc.).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Transport_Layer_Design"><a class="permalink" href="#Transport_Layer_Design">Transport
-  Layer Design</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
-<p class="Pp">The transport layer abstracts protocol delivery, allowing the same
-    ACIP protocol handlers to work with multiple underlying transports:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>TCP</b> (acip_tcp_transport_create): Raw TCP sockets, binary packet
-      streaming</li>
-  <li><b>WebSocket</b> (acip_websocket_client_transport_create): HTTP upgrade,
-      frame-based</li>
-  <li><b>WebRTC</b> (acip_webrtc_transport_create): P2P data channels,
-      encryption at transport</li>
-  <li><b>HTTP</b> (future): Long-polling, REST-style</li>
-  <li><b>QUIC</b> (future): UDP with congestion control</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Design_Principles"><a class="permalink" href="#Design_Principles">Design
-  Principles</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Protocol code never calls socket()/send()/recv() directly</dd>
-  <dt>2.</dt>
-  <dd>Same ACIP handlers work with any transport implementation</dd>
-  <dt>3.</dt>
-  <dd>Each transport handles its own connection state and reliability</dd>
-  <dt>4.</dt>
-  <dd>Clean separation between protocol logic (acip_*) and transport logic</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Packet_Framing"><a class="permalink" href="#Packet_Framing">Packet
-  Framing</a></h2>
-<p class="Pp">Transports handle packet framing transparently:</p>
-<ul class="Bl-bullet">
-  <li><b>TCP</b>: Uses <b>packet_header_t</b> (magic + type + length + CRC32 +
-      client_id)</li>
-  <li><b>WebSocket</b>: Wraps packets in WebSocket frames</li>
-  <li><b>WebRTC</b>: Sends packets directly on data channel</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Version_Information"><a class="permalink" href="#Version_Information">Version
-  Information</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Transport API Version</b>: 1.0 (stable)</li>
-  <li><b>Supported ACIP Version</b>: 1.0</li>
-  <li><b>Release Date</b>: January 2026</li>
-</ul>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="DESIGN_GOALS:"><a class="permalink" href="#DESIGN_GOALS:">DESIGN
-  GOALS: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Protocol code never calls socket()/send()/recv() directly</dd>
-  <dt>2.</dt>
-  <dd>Same ACIP handlers work with TCP, WebSocket, or any future transport</dd>
-  <dt>3.</dt>
-  <dd>Transport implementations handle their own connection state</dd>
-  <dt>4.</dt>
-  <dd>Clean separation between protocol logic and transport logic</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="USAGE_PATTERN:"><a class="permalink" href="#USAGE_PATTERN:">USAGE
-  PATTERN: </a></h1>
-<pre>// Create TCP transport from existing socket
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>transport.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">transport.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">transport.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          transport.h - Transport abstraction layer for ACIP protocol.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acip_transport_methods_t</b>
+            <br />
+            Transport method table (virtual function table). struct
+            <b>acip_transport</b>
+            <br />
+            Transport instance structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>acip_websocket_runtime</b>
+            <b>acip_websocket_runtime_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>acip_transport_type_t</b> { <b>ACIP_TRANSPORT_TCP</b> = 1,
+            <b>ACIP_TRANSPORT_WEBSOCKET</b> = 2, <b>ACIP_TRANSPORT_WEBRTC</b> =
+            3, <b>ACIP_TRANSPORT_HTTP</b> = 4, <b>ACIP_TRANSPORT_QUIC</b> = 5 }
+            <br />
+            Transport type enumeration. enum <b>acip_transport_ownership_t</b> {
+            <b>ACIP_TRANSPORT_BORROWED</b>, <b>ACIP_TRANSPORT_OWNED</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>acip_transport_destroy</b> (<b>acip_transport_t</b>
+            *transport)
+            <br />
+            Destroy transport and free all resources. <b>asciichat_error_t</b>
+            <b>acip_transport_sendv</b> (<b>acip_transport_t</b> *transport,
+            const <b>socket_buffer_t</b> *buffers, size_t count)
+            <br />
+            Send data through transport. <b>asciichat_error_t</b>
+            <b>acip_transport_send</b> (<b>acip_transport_t</b>
+            *transport, const void *data, size_t len)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const
+            char *name, <b>socket_t</b> sockfd,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create TCP transport from existing socket. <b>acip_transport_t</b> *
+            <b>acip_tcp_transport_create_owned</b> (const char *name,
+            <b>socket_t</b> sockfd, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create a TCP transport that owns its connected socket.
+            <b>asciichat_error_t</b> <b>acip_tcp_transport_set_zerocopy</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>bool</b> enabled)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_websocket_transport_flush</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>uint64_t</b> timeout_ns)
+            <br />
+            Create WebSocket client transport. <b>asciichat_error_t</b>
+            <b>acip_websocket_runtime_create</b> (<b
+              >acip_websocket_runtime_t</b
+            >
+            **out)
+            <br />
+            void <b>acip_websocket_runtime_destroy</b> (<b
+              >acip_websocket_runtime_t</b
+            >
+            **runtime)
+            <br />
+            <b>acip_transport_t</b> *
+            <b>acip_websocket_client_transport_create</b> (const char *name,
+            const char *url, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create WebSocket client transport. <b>acip_transport_t</b> *
+            <b>acip_websocket_server_transport_create</b> (const char *name,
+            struct lws *wsi, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create WebSocket server transport from existing connection.
+            <b>acip_transport_t</b> *
+            <b>acip_webrtc_transport_create</b> (struct
+            <b>webrtc_peer_connection</b> *peer_conn, struct
+            <b>webrtc_data_channel</b> *data_channel,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Transport abstraction layer for ACIP protocol.</p>
+        <p class="Pp">
+          Provides a transport-agnostic interface that allows ACIP protocol
+          handlers to work with any underlying transport (TCP, WebSocket, HTTP,
+          etc.).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Transport_Layer_Design">
+          <a class="permalink" href="#Transport_Layer_Design"
+            >Transport Layer Design</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+          <p class="Pp">
+            The transport layer abstracts protocol delivery, allowing the same
+            ACIP protocol handlers to work with multiple underlying transports:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>TCP</b> (acip_tcp_transport_create): Raw TCP sockets, binary
+              packet streaming
+            </li>
+            <li>
+              <b>WebSocket</b> (acip_websocket_client_transport_create): HTTP
+              upgrade, frame-based
+            </li>
+            <li>
+              <b>WebRTC</b> (acip_webrtc_transport_create): P2P data channels,
+              encryption at transport
+            </li>
+            <li><b>HTTP</b> (future): Long-polling, REST-style</li>
+            <li><b>QUIC</b> (future): UDP with congestion control</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Design_Principles">
+            <a class="permalink" href="#Design_Principles">Design Principles</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Protocol code never calls socket()/send()/recv() directly</dd>
+            <dt>2.</dt>
+            <dd>Same ACIP handlers work with any transport implementation</dd>
+            <dt>3.</dt>
+            <dd>
+              Each transport handles its own connection state and reliability
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              Clean separation between protocol logic (acip_*) and transport
+              logic
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Packet_Framing">
+            <a class="permalink" href="#Packet_Framing">Packet Framing</a>
+          </h2>
+          <p class="Pp">Transports handle packet framing transparently:</p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>TCP</b>: Uses <b>packet_header_t</b> (magic + type + length +
+              CRC32 + client_id)
+            </li>
+            <li><b>WebSocket</b>: Wraps packets in WebSocket frames</li>
+            <li><b>WebRTC</b>: Sends packets directly on data channel</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Version_Information">
+            <a class="permalink" href="#Version_Information"
+              >Version Information</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>Transport API Version</b>: 1.0 (stable)</li>
+            <li><b>Supported ACIP Version</b>: 1.0</li>
+            <li><b>Release Date</b>: January 2026</li>
+          </ul>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="DESIGN_GOALS:">
+          <a class="permalink" href="#DESIGN_GOALS:">DESIGN GOALS: </a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>Protocol code never calls socket()/send()/recv() directly</dd>
+          <dt>2.</dt>
+          <dd>
+            Same ACIP handlers work with TCP, WebSocket, or any future transport
+          </dd>
+          <dt>3.</dt>
+          <dd>Transport implementations handle their own connection state</dd>
+          <dt>4.</dt>
+          <dd>Clean separation between protocol logic and transport logic</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="USAGE_PATTERN:">
+          <a class="permalink" href="#USAGE_PATTERN:">USAGE PATTERN: </a>
+        </h1>
+        <pre>
+// Create TCP transport from existing socket
 acip_transport_t *tcp = acip_tcp_transport_create(sockfd, crypto_ctx);
 // Send packet with type-specific helper
 asciichat_error_t result = acip_send_ascii_frame(tcp, frame_data, frame_size, ...);
@@ -211,120 +303,185 @@ asciichat_error_t result = acip_send_ascii_frame(ws, frame_data, frame_size, ...
 // Cleanup
 acip_transport_destroy(tcp);
 acip_transport_destroy(ws);</pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MEMORY_OWNERSHIP:"><a class="permalink" href="#MEMORY_OWNERSHIP:">MEMORY
-  OWNERSHIP: </a></h1>
-<ul class="Bl-bullet">
-  <li>Transport owns its connection state (socket, pointers, etc.)</li>
-  <li>send() does NOT take ownership of data (caller must keep it valid)</li>
-  <li>recv() allocates buffer, caller must free via out_allocated_buffer</li>
-  <li>destroy() cleans up all transport resources and frees transport
-    structure</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">1.0 (Transport API)</div>
-<p class="Pp">Definition in file <b>transport.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>acip_websocket_runtime</b> <b>acip_websocket_runtime_t</b></a></h2>
-<p class="Pp">Application lifetime reference for libwebsockets TLS
-    initialization. Keep it alive across connection contexts and release it
-    after the last user.</p>
-<p class="Pp">Definition at line <b>424</b> of file <b>transport.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">enum <b>acip_transport_ownership_t</b></h2>
-<p class="Pp">Ownership transfers only after successful registration.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ACIP_TRANSPORT_BORROWED"><a class="permalink" href="#ACIP_TRANSPORT_BORROWED"><b><i>ACIP_TRANSPORT_BORROWED
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ACIP_TRANSPORT_OWNED"><a class="permalink" href="#ACIP_TRANSPORT_OWNED"><b><i>ACIP_TRANSPORT_OWNED
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>112</b> of file <b>transport.h</b>.</p>
-<pre>112              {
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MEMORY_OWNERSHIP:">
+          <a class="permalink" href="#MEMORY_OWNERSHIP:">MEMORY OWNERSHIP: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Transport owns its connection state (socket, pointers, etc.)</li>
+          <li>
+            send() does NOT take ownership of data (caller must keep it valid)
+          </li>
+          <li>
+            recv() allocates buffer, caller must free via out_allocated_buffer
+          </li>
+          <li>
+            destroy() cleans up all transport resources and frees transport
+            structure
+          </li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">1.0 (Transport API)</div>
+        <p class="Pp">Definition in file <b>transport.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>acip_websocket_runtime</b>
+              <b>acip_websocket_runtime_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Application lifetime reference for libwebsockets TLS initialization.
+            Keep it alive across connection contexts and release it after the
+            last user.
+          </p>
+          <p class="Pp">
+            Definition at line <b>424</b> of file <b>transport.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>acip_transport_ownership_t</b></h2>
+          <p class="Pp">
+            Ownership transfers only after successful registration.
+          </p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ACIP_TRANSPORT_BORROWED">
+              <a class="permalink" href="#ACIP_TRANSPORT_BORROWED"
+                ><b><i>ACIP_TRANSPORT_BORROWED </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ACIP_TRANSPORT_OWNED">
+              <a class="permalink" href="#ACIP_TRANSPORT_OWNED"
+                ><b><i>ACIP_TRANSPORT_OWNED </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>112</b> of file <b>transport.h</b>.
+          </p>
+          <pre>
+112              {
 113   ACIP_TRANSPORT_BORROWED,
 114   ACIP_TRANSPORT_OWNED,
 115 } acip_transport_ownership_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">enum <b>acip_transport_type_t</b></h2>
-<p class="Pp">Transport type enumeration. Identifies which transport
-    implementation is being used. Useful for debugging and conditional
-  logic.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ACIP_TRANSPORT_TCP"><a class="permalink" href="#ACIP_TRANSPORT_TCP"><b><i>ACIP_TRANSPORT_TCP
-    </i></b></a></dt>
-  <dd>Raw TCP socket.</dd>
-  <dt id="ACIP_TRANSPORT_WEBSOCKET"><a class="permalink" href="#ACIP_TRANSPORT_WEBSOCKET"><b><i>ACIP_TRANSPORT_WEBSOCKET
-    </i></b></a></dt>
-  <dd>WebSocket over TCP.</dd>
-  <dt id="ACIP_TRANSPORT_WEBRTC"><a class="permalink" href="#ACIP_TRANSPORT_WEBRTC"><b><i>ACIP_TRANSPORT_WEBRTC
-    </i></b></a></dt>
-  <dd>WebRTC DataChannel (P2P).</dd>
-  <dt id="ACIP_TRANSPORT_HTTP"><a class="permalink" href="#ACIP_TRANSPORT_HTTP"><b><i>ACIP_TRANSPORT_HTTP
-    </i></b></a></dt>
-  <dd>HTTP long-polling (future).</dd>
-  <dt id="ACIP_TRANSPORT_QUIC"><a class="permalink" href="#ACIP_TRANSPORT_QUIC"><b><i>ACIP_TRANSPORT_QUIC
-    </i></b></a></dt>
-  <dd>QUIC/UDP (future).</dd>
-</dl>
-<p class="Pp">Definition at line <b>95</b> of file <b>transport.h</b>.</p>
-<pre>95              {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>acip_transport_type_t</b></h2>
+          <p class="Pp">
+            Transport type enumeration. Identifies which transport
+            implementation is being used. Useful for debugging and conditional
+            logic.
+          </p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ACIP_TRANSPORT_TCP">
+              <a class="permalink" href="#ACIP_TRANSPORT_TCP"
+                ><b><i>ACIP_TRANSPORT_TCP </i></b></a
+              >
+            </dt>
+            <dd>Raw TCP socket.</dd>
+            <dt id="ACIP_TRANSPORT_WEBSOCKET">
+              <a class="permalink" href="#ACIP_TRANSPORT_WEBSOCKET"
+                ><b><i>ACIP_TRANSPORT_WEBSOCKET </i></b></a
+              >
+            </dt>
+            <dd>WebSocket over TCP.</dd>
+            <dt id="ACIP_TRANSPORT_WEBRTC">
+              <a class="permalink" href="#ACIP_TRANSPORT_WEBRTC"
+                ><b><i>ACIP_TRANSPORT_WEBRTC </i></b></a
+              >
+            </dt>
+            <dd>WebRTC DataChannel (P2P).</dd>
+            <dt id="ACIP_TRANSPORT_HTTP">
+              <a class="permalink" href="#ACIP_TRANSPORT_HTTP"
+                ><b><i>ACIP_TRANSPORT_HTTP </i></b></a
+              >
+            </dt>
+            <dd>HTTP long-polling (future).</dd>
+            <dt id="ACIP_TRANSPORT_QUIC">
+              <a class="permalink" href="#ACIP_TRANSPORT_QUIC"
+                ><b><i>ACIP_TRANSPORT_QUIC </i></b></a
+              >
+            </dt>
+            <dd>QUIC/UDP (future).</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>95</b> of file <b>transport.h</b>.
+          </p>
+          <pre>
+95              {
 96   ACIP_TRANSPORT_TCP = 1,
 97   ACIP_TRANSPORT_WEBSOCKET = 2,
 98   ACIP_TRANSPORT_WEBRTC = 3,
 99   ACIP_TRANSPORT_HTTP = 4,
 100   ACIP_TRANSPORT_QUIC = 5
 101 } acip_transport_type_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create (const char *
-  name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)</h2>
-<p class="Pp">Create TCP transport from existing socket.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
-  (required, e.g., &quot;transport_client_5&quot;)
-<br/>
-<i>sockfd</i> Connected socket descriptor
-<br/>
-<i>crypto_ctx</i> Optional crypto context (may be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller retains socket ownership (transport doesn't close
-  on destroy)</div>
-<p class="Pp">Definition at line <b>286</b> of file <b>tcp/transport.c</b>.</p>
-<pre>286                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_tcp_transport_create (const char *
+            name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)
+          </h2>
+          <p class="Pp">Create TCP transport from existing socket.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for tracking this transport (required, e.g.,
+            &quot;transport_client_5&quot;)
+            <br />
+            <i>sockfd</i> Connected socket descriptor
+            <br />
+            <i>crypto_ctx</i> Optional crypto context (may be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on error</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller retains socket ownership (transport doesn't close on destroy)
+          </div>
+          <p class="Pp">
+            Definition at line <b>286</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+286                                                                                                              {
 287   if (!name) {
 288     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
 289     return NULL;
@@ -414,63 +571,95 @@ acip_transport_destroy(ws);</pre>
 373 #endif
 374   return transport;
 375 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>tcp_transport_data_t::is_connected</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>acip_transport::methods</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>tcp_transport_data_t::owns_socket</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRERROR</b>, <b>tcp_transport_data_t::send_mutex</b>,
-    <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
-    <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>tcp_transport_data_t::sockfd</b>,
-    <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_open()</b>, and
-    <b>tcp_transport_data_t::zerocopy_disabled</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>, and
-    <b>acip_tcp_transport_create_owned()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create_owned (const
-  char * name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> *
-  crypto_ctx)</h2>
-<p class="Pp">Create a TCP transport that owns its connected socket.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for the transport
-<br/>
-<i>sockfd</i> Connected socket; ownership transfers only on success
-<br/>
-<i>crypto_ctx</i> Optional borrowed crypto context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error Closing or destroying
-  the transport closes the socket.</div>
-<p class="Pp">Definition at line <b>377</b> of file <b>tcp/transport.c</b>.</p>
-<pre>377                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
+            <b>errno</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+            <b>INVALID_SOCKET_VALUE</b>,
+            <b>tcp_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>acip_transport::methods</b>, <b>mutex_init()</b>,
+            <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>tcp_transport_data_t::owns_socket</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRERROR</b>,
+            <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>,
+            <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
+            <b>SOCKET_STREAM_SEND_BUFFER</b>,
+            <b>tcp_transport_data_t::sockfd</b>,
+            <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_open()</b>,
+            and <b>tcp_transport_data_t::zerocopy_disabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create()</b>, and
+            <b>acip_tcp_transport_create_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_tcp_transport_create_owned (const
+            char * name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Create a TCP transport that owns its connected socket.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for the transport
+            <br />
+            <i>sockfd</i> Connected socket; ownership transfers only on success
+            <br />
+            <i>crypto_ctx</i> Optional borrowed crypto context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Transport instance or NULL on error Closing or destroying the
+            transport closes the socket.
+          </div>
+          <p class="Pp">
+            Definition at line <b>377</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+377                                                                                                                    {
 378   acip_transport_t *transport = acip_tcp_transport_create(name, sockfd, crypto_ctx);
 379   if (transport)
 380     ((tcp_transport_data_t *)transport-&gt;impl_data)-&gt;owns_socket = true;
 381   return transport;
 382 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_tcp_transport_create_owned()</b>, and
-    <b>acip_transport::impl_data</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create_owned()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_tcp_transport_set_zerocopy
-  (<b>acip_transport_t</b> * transport, <b>bool</b> enabled)</h2>
-<p class="Pp">Override the automatic kernel copy-avoidance policy for this TCP
-    transport. Large Linux encrypted sends may pin pages; other platforms fall
-    back to vectors. Copy avoidance is attempted automatically and disabled
-    after copied completions.</p>
-<p class="Pp">Definition at line <b>109</b> of file <b>tcp/transport.c</b>.</p>
-<pre>109                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_tcp_transport_create()</b>,
+            <b>acip_tcp_transport_create_owned()</b>, and
+            <b>acip_transport::impl_data</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_tcp_transport_set_zerocopy (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>bool</b> enabled)
+          </h2>
+          <p class="Pp">
+            Override the automatic kernel copy-avoidance policy for this TCP
+            transport. Large Linux encrypted sends may pin pages; other
+            platforms fall back to vectors. Copy avoidance is attempted
+            automatically and disabled after copied completions.
+          </p>
+          <p class="Pp">
+            Definition at line <b>109</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+109                                                                                              {
 110   if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_TCP)
 111     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Expected TCP transport&quot;);
 112   tcp_transport_data_t *tcp = transport-&gt;impl_data;
@@ -479,30 +668,45 @@ acip_transport_destroy(ws);</pre>
 115   mutex_unlock(&amp;tcp-&gt;send_mutex);
 116   return ASCIICHAT_OK;
 117 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_set_zerocopy()</b>,
-    <b>ACIP_TRANSPORT_TCP</b>, <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acip_transport::impl_data</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>, and
-    <b>tcp_transport_data_t::zerocopy_disabled</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_set_zerocopy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_transport_destroy_("><a class="permalink" href="#void_acip_transport_destroy_(">void
-  acip_transport_destroy (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Destroy transport and free all resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport to destroy (may be NULL)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Calls close() first if still connected
-<p class="Pp"></p>
-<p class="Pp">Frees the transport structure itself</p>
-<p class="Pp"></p>
-<p class="Pp">Safe to pass NULL</p>
-</div>
-<p class="Pp">Definition at line <b>388</b> of file <b>tcp/transport.c</b>.</p>
-<pre>388                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_tcp_transport_set_zerocopy()</b>,
+            <b>ACIP_TRANSPORT_TCP</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>acip_transport::impl_data</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>, and
+            <b>tcp_transport_data_t::zerocopy_disabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_set_zerocopy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_transport_destroy_(">
+            <a class="permalink" href="#void_acip_transport_destroy_("
+              >void acip_transport_destroy (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">Destroy transport and free all resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport to destroy (may be NULL)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Calls close() first if still connected
+            <p class="Pp"></p>
+            <p class="Pp">Frees the transport structure itself</p>
+            <p class="Pp"></p>
+            <p class="Pp">Safe to pass NULL</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>388</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+388                                                          {
 389   if (!transport) {
 390     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
 391     return;
@@ -560,56 +764,79 @@ acip_transport_destroy(ws);</pre>
 443
 444   log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
 445 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_destroy()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>acip_transport_methods_t::close</b>,
-    <b>acip_transport_methods_t::destroy_impl</b>,
-    <b>acip_transport_methods_t::get_type</b>, <b>acip_transport::impl_data</b>,
-    <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_warn</b>, <b>acip_transport::methods</b>, <b>NAMED_UNREGISTER</b>,
-    <b>SAFE_FREE</b>, <b>acip_transport::stats_peer</b>, and
-    <b>stats_runtime_peer_close()</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>,
-    <b>acip_async_tcp_client_create()</b>,
-    <b>acip_async_tcp_transport_create()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, and
-    <b>network_connection_open()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_transport_send
-  (<b>acip_transport_t</b> * transport, const void * data, size_t len)</h2>
-<p class="Pp">Definition at line <b>99</b> of file <b>send.c</b>.</p>
-<pre>99                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_destroy()</b>,
+            <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
+            <b>acip_transport_methods_t::close</b>,
+            <b>acip_transport_methods_t::destroy_impl</b>,
+            <b>acip_transport_methods_t::get_type</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>acip_transport::methods</b>,
+            <b>NAMED_UNREGISTER</b>, <b>SAFE_FREE</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_peer_close()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_accepted_create()</b>,
+            <b>acip_async_tcp_client_create()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acip_websocket_server_transport_create()</b>, and
+            <b>network_connection_open()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_transport_send (<b
+              >acip_transport_t</b
+            >
+            * transport, const void * data, size_t len)
+          </h2>
+          <p class="Pp">Definition at line <b>99</b> of file <b>send.c</b>.</p>
+          <pre>
+99                                                                                                  {
 100   socket_buffer_t buffer = {data, len};
 101   return acip_transport_sendv(transport, &amp;buffer, 1);
 102 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_transport_send()</b>, and
-    <b>acip_transport_sendv()</b>.</p>
-<p class="Pp">Referenced by <b>acip_transport_send()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_transport_sendv
-  (<b>acip_transport_t</b> * transport, const <b>socket_buffer_t</b> * buffers,
-  size_t count)</h2>
-<p class="Pp">Send data through transport. Convenience wrapper around
-    transport-&gt;methods-&gt;send().</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>data</i> Data to send
-<br/>
-<i>len</i> Data length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>84</b> of file <b>send.c</b>.</p>
-<pre>84                                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_transport_send()</b>, and
+            <b>acip_transport_sendv()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_transport_send()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_transport_sendv (<b
+              >acip_transport_t</b
+            >
+            * transport, const <b>socket_buffer_t</b> * buffers, size_t count)
+          </h2>
+          <p class="Pp">
+            Send data through transport. Convenience wrapper around
+            transport-&gt;methods-&gt;send().
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>data</i> Data to send
+            <br />
+            <i>len</i> Data length
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Definition at line <b>84</b> of file <b>send.c</b>.</p>
+          <pre>
+84                                                                                                                   {
 85 #ifndef __EMSCRIPTEN__
 86   if (transport &amp;&amp; transport-&gt;outbound) {
 87     acip_admission_t admission;
@@ -623,44 +850,59 @@ acip_transport_destroy(ws);</pre>
 95 #endif
 96   return transport_sendv_impl(transport, buffers, count);
 97 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_ADMISSION_ACCEPTED</b>,
-    <b>acip_outbound_submitv()</b>, <b>acip_transport_sendv()</b>,
-    <b>ASCIICHAT_OK</b>, <b>ERROR_BUFFER_FULL</b>,
-    <b>acip_transport::outbound</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_transport_send()</b>,
-    <b>acip_transport_sendv()</b>, and <b>packet_send_via_transportv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_webrtc_transport_create (struct
-  <b>webrtc_peer_connection</b> * peer_conn, struct <b>webrtc_data_channel</b> *
-  data_channel, <b>crypto_context_t</b> * crypto_ctx)</h2>
-<p class="Pp">Definition at line <b>910</b> of file
-  <b>webrtc/transport.c</b>.</p>
-<pre>911                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_ADMISSION_ACCEPTED</b>,
+            <b>acip_outbound_submitv()</b>, <b>acip_transport_sendv()</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_BUFFER_FULL</b>,
+            <b>acip_transport::outbound</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_transport_send()</b>,
+            <b>acip_transport_sendv()</b>, and
+            <b>packet_send_via_transportv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_webrtc_transport_create (struct
+            <b>webrtc_peer_connection</b> * peer_conn, struct
+            <b>webrtc_data_channel</b> * data_channel, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>910</b> of file <b>webrtc/transport.c</b>.
+          </p>
+          <pre>
+911                                                                              {
 912   return webrtc_transport_create(peer_conn, data_channel, crypto_ctx, NULL, NULL, NULL);
 913 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_transport_create()</b>.</p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_client_transport_create
-  (const char * name, const char * url, <b>crypto_context_t</b> *
-  crypto_ctx)</h2>
-<p class="Pp">Create WebSocket client transport.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>url</i> WebSocket URL (e.g.,
-  &quot;ws://localhost:27225&quot;)
-<br/>
-<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on failure</div>
-<p class="Pp">Definition at line <b>1538</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1539                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>acip_webrtc_transport_create()</b>.</p>
+          <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_websocket_client_transport_create
+            (const char * name, const char * url, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">Create WebSocket client transport.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot;)
+            <br />
+            <i>crypto_ctx</i> Optional encryption context (can be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on failure</div>
+          <p class="Pp">
+            Definition at line <b>1538</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1539                                                                                        {
 1540   if (!name) {
 1541     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
 1542     return NULL;
@@ -792,43 +1034,57 @@ acip_transport_destroy(ws);</pre>
 1668   }
 1669   return transport;
 1670 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>,
-    <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_client_transport_create()</b>, <b>acthread_create</b>,
-    <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>,
-    <b>websocket_transport_data_t::connection_failed</b>,
-    <b>websocket_transport_data_t::context</b>,
-    <b>acip_transport::crypto_ctx</b>, <b>ERROR_INTERNAL</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_NETWORK</b>, <b>websocket_endpoint_t::host</b>,
-    <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>acip_transport::methods</b>, <b>mutex_destroy()</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
-    <b>websocket_transport_data_t::owns_context</b>,
-    <b>websocket_endpoint_t::path</b>, <b>websocket_endpoint_t::port</b>,
-    <b>websocket_transport_data_t::recv_cond</b>,
-    <b>websocket_transport_data_t::recv_mutex</b>,
-    <b>websocket_transport_data_t::recv_queue</b>, <b>ringbuffer_destroy()</b>,
-    <b>SAFE_FREE</b>, <b>websocket_transport_data_t::send_queue</b>,
-    <b>websocket_transport_data_t::service_running</b>,
-    <b>websocket_transport_data_t::service_thread</b>, <b>SET_ERRNO</b>,
-    <b>websocket_transport_data_t::state_cond</b>,
-    <b>websocket_transport_data_t::state_mutex</b>,
-    <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_close()</b>,
-    <b>stats_runtime_peer_open()</b>, <b>websocket_endpoint_t::use_ssl</b>, and
-    <b>websocket_transport_data_t::wsi</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
-    <b>network_connection_open()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_websocket_runtime_create
-  (<b>acip_websocket_runtime_t</b> ** out)</h2>
-<p class="Pp">Definition at line <b>1408</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1408                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acthread_create</b>, <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>,
+            <b>websocket_transport_data_t::connection_failed</b>,
+            <b>websocket_transport_data_t::context</b>,
+            <b>acip_transport::crypto_ctx</b>, <b>ERROR_INTERNAL</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_NETWORK</b>, <b>websocket_endpoint_t::host</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>acip_transport::methods</b>,
+            <b>mutex_destroy()</b>, <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
+            <b>websocket_transport_data_t::owns_context</b>,
+            <b>websocket_endpoint_t::path</b>,
+            <b>websocket_endpoint_t::port</b>,
+            <b>websocket_transport_data_t::recv_cond</b>,
+            <b>websocket_transport_data_t::recv_mutex</b>,
+            <b>websocket_transport_data_t::recv_queue</b>,
+            <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>,
+            <b>websocket_transport_data_t::send_queue</b>,
+            <b>websocket_transport_data_t::service_running</b>,
+            <b>websocket_transport_data_t::service_thread</b>, <b>SET_ERRNO</b>,
+            <b>websocket_transport_data_t::state_cond</b>,
+            <b>websocket_transport_data_t::state_mutex</b>,
+            <b>acip_transport::stats_peer</b>,
+            <b>stats_runtime_peer_close()</b>, <b>stats_runtime_peer_open()</b>,
+            <b>websocket_endpoint_t::use_ssl</b>, and
+            <b>websocket_transport_data_t::wsi</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_client_transport_create()</b>, and
+            <b>network_connection_open()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_websocket_runtime_create (<b
+              >acip_websocket_runtime_t</b
+            >
+            ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1408</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1408                                                                                 {
 1409   if (!out || *out)
 1410     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;WebSocket runtime output must be empty&quot;);
 1411   acip_websocket_runtime_t *runtime = SAFE_CALLOC(1, sizeof(*runtime), acip_websocket_runtime_t *);
@@ -844,54 +1100,78 @@ acip_transport_destroy(ws);</pre>
 1421   *out = runtime;
 1422   return ASCIICHAT_OK;
 1423 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_websocket_runtime_create()</b>,
-    <b>ASCIICHAT_OK</b>, <b>acip_websocket_runtime::context</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_runtime_create()</b>, and
-    <b>discovery_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_websocket_runtime_destroy_("><a class="permalink" href="#void_acip_websocket_runtime_destroy_(">void
-  acip_websocket_runtime_destroy (<b>acip_websocket_runtime_t</b> **
-  runtime)</a></h2>
-<p class="Pp">Definition at line <b>1425</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1425                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_websocket_runtime_create()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_websocket_runtime::context</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_runtime_create()</b>, and
+            <b>discovery_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_websocket_runtime_destroy_(">
+            <a class="permalink" href="#void_acip_websocket_runtime_destroy_("
+              >void acip_websocket_runtime_destroy (<b
+                >acip_websocket_runtime_t</b
+              >
+              ** runtime)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1425</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1425                                                                         {
 1426   if (!runtime || !*runtime)
 1427     return;
 1428   lws_context_destroy((*runtime)-&gt;context);
 1429   SAFE_FREE(*runtime);
 1430   *runtime = NULL;
 1431 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_websocket_runtime_destroy()</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_runtime_destroy()</b>, and
-    <b>discovery_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_server_transport_create
-  (const char * name, struct lws * wsi, <b>crypto_context_t</b> *
-  crypto_ctx)</h2>
-<p class="Pp">Create WebSocket server transport from existing connection. Wraps
-    an already-established libwebsockets connection (from server accept). Used
-    by <b>websocket_server</b> module to create transports for incoming
-  clients.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>wsi</i> Established libwebsockets connection (not
-  owned by transport)
-<br/>
-<i>crypto_ctx</i> Optional crypto context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error</div>
-<p class="Pp">Definition at line <b>1792</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1793                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_websocket_runtime_destroy()</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_runtime_destroy()</b>, and
+            <b>discovery_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_websocket_server_transport_create
+            (const char * name, struct lws * wsi, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Create WebSocket server transport from existing connection. Wraps an
+            already-established libwebsockets connection (from server accept).
+            Used by <b>websocket_server</b> module to create transports for
+            incoming clients.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>wsi</i> Established libwebsockets connection (not owned by
+            transport)
+            <br />
+            <i>crypto_ctx</i> Optional crypto context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on error</div>
+          <p class="Pp">
+            Definition at line <b>1792</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1793                                                                                        {
 1794   if (!name) {
 1795     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
 1796     return NULL;
@@ -946,55 +1226,74 @@ acip_transport_destroy(ws);</pre>
 1845   }
 1846   return transport;
 1847 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_outbound_create()</b>,
-    <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_server_transport_create()</b>, <b>ASCIICHAT_OK</b>,
-    <b>websocket_transport_data_t::context</b>,
-    <b>acip_transport::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_debug_every</b>, <b>acip_transport::methods</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
-    <b>websocket_transport_data_t::owns_context</b>, <b>SET_ERRNO</b>,
-    <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
-    <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>acip_transport::stats_peer</b>,
-    <b>stats_runtime_peer_open()</b>, <b>US_PER_SEC_INT</b>, and
-    <b>websocket_transport_data_t::wsi</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_server_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_websocket_transport_flush
-  (<b>acip_transport_t</b> * transport, <b>uint64_t</b> timeout_ns)</h2>
-<p class="Pp">Create WebSocket client transport. Connects to a WebSocket server
-    at the specified URL and creates a transport for sending/receiving ACIP
-    packets over the WebSocket connection.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
-  (required, e.g., &quot;transport_websocket_client&quot;)
-<br/>
-<i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot; or
-  &quot;wss://example.com/path&quot;)
-<br/>
-<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The URL must include the protocol (ws:// or wss://)
-<p class="Pp"></p>
-<p class="Pp">Port defaults to 80 for ws:// and 443 for wss:// if not
-  specified</p>
-<p class="Pp"></p>
-<p class="Pp">Connection is established synchronously during creation Wait for
-    queued messages to reach their writable completion callback. Call from a
-    worker, never from the libwebsockets service thread.</p>
-</div>
-<p class="Pp">Definition at line <b>1086</b> of file
-    <b>websocket/transport.c</b>.</p>
-<pre>1086                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_server_transport_create()</b>,
+            <b>ASCIICHAT_OK</b>, <b>websocket_transport_data_t::context</b>,
+            <b>acip_transport::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_debug_every</b>, <b>acip_transport::methods</b>,
+            <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
+            <b>websocket_transport_data_t::owns_context</b>, <b>SET_ERRNO</b>,
+            <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
+            <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>acip_transport::stats_peer</b>,
+            <b>stats_runtime_peer_open()</b>, <b>US_PER_SEC_INT</b>, and
+            <b>websocket_transport_data_t::wsi</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_server_transport_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_websocket_transport_flush (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>uint64_t</b> timeout_ns)
+          </h2>
+          <p class="Pp">
+            Create WebSocket client transport. Connects to a WebSocket server at
+            the specified URL and creates a transport for sending/receiving ACIP
+            packets over the WebSocket connection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for tracking this transport (required, e.g.,
+            &quot;transport_websocket_client&quot;)
+            <br />
+            <i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot; or
+            &quot;wss://example.com/path&quot;)
+            <br />
+            <i>crypto_ctx</i> Optional encryption context (can be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on failure</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The URL must include the protocol (ws:// or wss://)
+            <p class="Pp"></p>
+            <p class="Pp">
+              Port defaults to 80 for ws:// and 443 for wss:// if not specified
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Connection is established synchronously during creation Wait for
+              queued messages to reach their writable completion callback. Call
+              from a worker, never from the libwebsockets service thread.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>1086</b> of file <b>websocket/transport.c</b>.
+          </p>
+          <pre>
+1086                                                                                                    {
 1087   if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET)
 1088     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Expected WebSocket transport&quot;);
 1089   websocket_transport_data_t *ws_data = transport-&gt;impl_data;
@@ -1011,30 +1310,37 @@ acip_transport_destroy(ws);</pre>
 1100   }
 1101   return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket closed before send queue drained&quot;);
 1102 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_TRANSPORT_WEBSOCKET</b>,
-    <b>acip_websocket_transport_flush()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
-    <b>ERROR_NETWORK_TIMEOUT</b>, <b>acip_transport::impl_data</b>,
-    <b>websocket_transport_data_t::inflight_buffer</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>platform_sleep_us()</b>,
-    <b>ringbuffer_is_empty()</b>, <b>websocket_transport_data_t::send_mutex</b>,
-    <b>websocket_transport_data_t::send_queue</b>, <b>SET_ERRNO</b>, and
-    <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_transport_flush()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_WEBSOCKET</b>,
+            <b>acip_websocket_transport_flush()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_TIMEOUT</b>, <b>acip_transport::impl_data</b>,
+            <b>websocket_transport_data_t::inflight_buffer</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>platform_sleep_us()</b>,
+            <b>ringbuffer_is_empty()</b>,
+            <b>websocket_transport_data_t::send_mutex</b>,
+            <b>websocket_transport_data_t::send_queue</b>, <b>SET_ERRNO</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_websocket_transport_flush()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

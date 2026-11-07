@@ -62,7 +62,9 @@
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
         <p class="Pp">#include &lt;src/discovery-service/server.h&gt;</p>
         <section class="Ss">
           <h2 class="Ss" id="Data_Fields">
@@ -78,13 +80,17 @@
             <br />
             Ed25519 secret key. sqlite3 * <b>db</b>
             <br />
-            SQLite database handle. struct <b>rate_limiter_s</b> * <b>rate_limiter</b>
+            SQLite database handle. struct <b>rate_limiter_s</b> *
+            <b>rate_limiter</b>
             <br />
-            SQLite-backed rate limiter. <b>migration_context_t</b> <b>active_migrations</b> [32]
+            SQLite-backed rate limiter. <b>migration_context_t</b>
+            <b>active_migrations</b> [32]
             <br />
-            Slots for up to 32 concurrent migrations. size_t <b>num_active_migrations</b>
+            Slots for up to 32 concurrent migrations. size_t
+            <b>num_active_migrations</b>
             <br />
-            Number of active migrations. <b>thread_pool_t</b> * <b>worker_pool</b>
+            Number of active migrations. <b>thread_pool_t</b> *
+            <b>worker_pool</b>
             <br />
             Thread pool for background workers. <b>atomic_t</b> <b>shutdown</b>
             <br />
@@ -97,53 +103,71 @@
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
         <p class="Pp">Discovery server state.</p>
         <p class="Pp">
-          Contains all runtime state for the discovery server including network sockets, identity
-          keys, and database. Sessions are stored directly in SQLite as the single source of truth.
+          Contains all runtime state for the discovery server including network
+          sockets, identity keys, and database. Sessions are stored directly in
+          SQLite as the single source of truth.
         </p>
         <p class="Pp">
-          Definition at line <b>95</b> of file <b>src/discovery-service/server.h</b>.
+          Definition at line <b>95</b> of file
+          <b>src/discovery-service/server.h</b>.
         </p>
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Field_Documentation">
-          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
         </h1>
         <section class="Ss">
-          <h2 class="Ss"><b>migration_context_t</b> acds_server_t::active_migrations[32]</h2>
+          <h2 class="Ss">
+            <b>migration_context_t</b> acds_server_t::active_migrations[32]
+          </h2>
           <p class="Pp">Slots for up to 32 concurrent migrations.</p>
           <p class="Pp">
-            Definition at line <b>109</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>109</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>acds_config_t</b> acds_server_t::config</h2>
           <p class="Pp">Runtime configuration.</p>
           <p class="Pp">
-            Definition at line <b>117</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>117</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
-          <p class="Pp">Referenced by <b>acds_server_init()</b>, and <b>acds_server_run()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_server_init()</b>, and
+            <b>acds_server_run()</b>.
+          </p>
         </section>
         <section class="Ss">
           <h2 class="Ss" id="sqlite3*_acds_server_t::db">
-            <a class="permalink" href="#sqlite3*_acds_server_t::db">sqlite3* acds_server_t::db</a>
+            <a class="permalink" href="#sqlite3*_acds_server_t::db"
+              >sqlite3* acds_server_t::db</a
+            >
           </h2>
           <p class="Pp">SQLite database handle.</p>
           <p class="Pp">
-            Definition at line <b>103</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>103</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">
-            Referenced by <b>acds_server_init()</b>, and <b>acds_server_shutdown()</b>.
+            Referenced by <b>acds_server_init()</b>, and
+            <b>acds_server_shutdown()</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>uint8_t</b> acds_server_t::identity_public[32]</h2>
           <p class="Pp">Ed25519 public key.</p>
           <p class="Pp">
-            Definition at line <b>99</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>99</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
         </section>
@@ -151,19 +175,23 @@
           <h2 class="Ss"><b>uint8_t</b> acds_server_t::identity_secret[64]</h2>
           <p class="Pp">Ed25519 secret key.</p>
           <p class="Pp">
-            Definition at line <b>100</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>100</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
         </section>
         <section class="Ss">
           <h2 class="Ss" id="size_t_acds_server_t::num_active_migrations">
-            <a class="permalink" href="#size_t_acds_server_t::num_active_migrations"
+            <a
+              class="permalink"
+              href="#size_t_acds_server_t::num_active_migrations"
               >size_t acds_server_t::num_active_migrations</a
             >
           </h2>
           <p class="Pp">Number of active migrations.</p>
           <p class="Pp">
-            Definition at line <b>110</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>110</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
         </section>
         <section class="Ss">
@@ -174,48 +202,61 @@
           </h2>
           <p class="Pp">SQLite-backed rate limiter.</p>
           <p class="Pp">
-            Definition at line <b>106</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>106</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">
-            Referenced by <b>acds_server_init()</b>, and <b>acds_server_shutdown()</b>.
+            Referenced by <b>acds_server_init()</b>, and
+            <b>acds_server_shutdown()</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>atomic_t</b> acds_server_t::shutdown</h2>
           <p class="Pp">Shutdown flag for worker threads.</p>
           <p class="Pp">
-            Definition at line <b>114</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>114</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">
-            Referenced by <b>acds_server_init()</b>, and <b>acds_server_shutdown()</b>.
+            Referenced by <b>acds_server_init()</b>, and
+            <b>acds_server_shutdown()</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>tcp_server_t</b> acds_server_t::tcp_server</h2>
           <p class="Pp">TCP server abstraction.</p>
           <p class="Pp">
-            Definition at line <b>96</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>96</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">
-            Referenced by <b>acds_client_handler()</b>, <b>acds_server_init()</b>,
-            <b>acds_server_run()</b>, and <b>acds_server_shutdown()</b>.
+            Referenced by <b>acds_client_handler()</b>,
+            <b>acds_server_init()</b>, <b>acds_server_run()</b>, and
+            <b>acds_server_shutdown()</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>thread_pool_t</b>* acds_server_t::worker_pool</h2>
           <p class="Pp">Thread pool for background workers.</p>
           <p class="Pp">
-            Definition at line <b>113</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>113</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">
-            Referenced by <b>acds_server_init()</b>, and <b>acds_server_shutdown()</b>.
+            Referenced by <b>acds_server_init()</b>, and
+            <b>acds_server_shutdown()</b>.
           </p>
           <p class="Pp"></p>
         </section>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">
+          Generated automatically by Doxygen for ascii-chat from the source
+          code.
+        </p>
       </section>
     </div>
     <table class="foot">

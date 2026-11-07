@@ -1,130 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>tui_input_events_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">tui_input_events_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">tui_input_events_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">tui_input_events_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/tui/input.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>pasting</b>
-  <br/>
-  <b>bool</b> <b>invalid</b>
-  <br/>
-  <b>bool</b> <b>ready</b>
-  <br/>
-  char <b>paste</b> [8192]
-  <br/>
-  size_t <b>length</b>
-  <br/>
-  size_t <b>head</b>
-  <br/>
-  size_t <b>count</b>
-  <br/>
-  <b>keyboard_key_t</b> <b>keys</b> [8192]
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Caller-serialized collection state; payloads never outlive this
-    object.</p>
-<p class="Pp">Definition at line <b>39</b> of file <b>tui/input.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_tui_input_events_t::count"><a class="permalink" href="#size_t_tui_input_events_t::count">size_t
-  tui_input_events_t::count</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_tui_input_events_t::head"><a class="permalink" href="#size_t_tui_input_events_t::head">size_t
-  tui_input_events_t::head</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> tui_input_events_t::invalid</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>keyboard_key_t</b> tui_input_events_t::keys[8192]</h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_tui_input_events_t::length"><a class="permalink" href="#size_t_tui_input_events_t::length">size_t
-  tui_input_events_t::length</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_tui_input_events_t::paste_8192_"><a class="permalink" href="#char_tui_input_events_t::paste_8192_">char
-  tui_input_events_t::paste[8192]</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> tui_input_events_t::pasting</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> tui_input_events_t::ready</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>tui/input.h</b>.</p>
-<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>tui_input_events_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">tui_input_events_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">tui_input_events_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">tui_input_events_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/tui/input.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>pasting</b>
+            <br />
+            <b>bool</b> <b>invalid</b>
+            <br />
+            <b>bool</b> <b>ready</b>
+            <br />
+            char <b>paste</b> [8192]
+            <br />
+            size_t <b>length</b>
+            <br />
+            size_t <b>head</b>
+            <br />
+            size_t <b>count</b>
+            <br />
+            <b>keyboard_key_t</b> <b>keys</b> [8192]
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Caller-serialized collection state; payloads never outlive this
+          object.
+        </p>
+        <p class="Pp">
+          Definition at line <b>39</b> of file <b>tui/input.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_tui_input_events_t::count">
+            <a class="permalink" href="#size_t_tui_input_events_t::count"
+              >size_t tui_input_events_t::count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_tui_input_events_t::head">
+            <a class="permalink" href="#size_t_tui_input_events_t::head"
+              >size_t tui_input_events_t::head</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> tui_input_events_t::invalid</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>keyboard_key_t</b> tui_input_events_t::keys[8192]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_tui_input_events_t::length">
+            <a class="permalink" href="#size_t_tui_input_events_t::length"
+              >size_t tui_input_events_t::length</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_tui_input_events_t::paste_8192_">
+            <a class="permalink" href="#char_tui_input_events_t::paste_8192_"
+              >char tui_input_events_t::paste[8192]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> tui_input_events_t::pasting</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> tui_input_events_t::ready</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>tui/input.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,248 +1,410 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>formatter.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">formatter.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">formatter.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">formatter.h - Groff/troff formatting utilities for man page
-    generation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>manpage_fmt_escape_groff</b> (const char *str)
-  <br/>
-  Escape special characters for groff output. void
-    <b>manpage_fmt_write_section</b> (FILE *f, const char *section_name)
-  <br/>
-  Write a section header directive. void <b>manpage_fmt_write_blank_line</b>
-    (FILE *f)
-  <br/>
-  Write a blank line (for spacing between sections). void
-    <b>manpage_fmt_write_bold</b> (FILE *f, const char *text)
-  <br/>
-  Write text in bold format. void <b>manpage_fmt_write_italic</b> (FILE *f,
-    const char *text)
-  <br/>
-  Write text in italic format. void <b>manpage_fmt_write_tagged_paragraph</b>
-    (FILE *f)
-  <br/>
-  Write a tagged paragraph header. void <b>manpage_fmt_write_text</b> (FILE *f,
-    const char *text)
-  <br/>
-  Write plain text line (without directive). void <b>manpage_fmt_write_title</b>
-    (FILE *f, const char *program_name, const char *mode_name, const char
-    *brief_description)
-  <br/>
-  Write groff title/header (.TH directive).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Groff/troff formatting utilities for man page generation.</p>
-<p class="Pp">This module provides utilities for generating properly formatted
-    groff/troff output for man pages. Handles:</p>
-<ul class="Bl-bullet">
-  <li>Section headers (.SH directive)</li>
-  <li>Text formatting (bold .B, italic .I, constant .C)</li>
-  <li>Paragraph and item formatting (.TP for tagged paragraphs)</li>
-  <li>Special character escaping</li>
-  <li>Section markers (AUTO/MANUAL/MERGE)</li>
-</ul>
-<p class="Pp">All functions write directly to FILE* for efficient streaming
-    output.</p>
-<p class="Pp">Definition in file <b>formatter.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_manpage_fmt_escape_groff_(const_char_*_str)"><a class="permalink" href="#const_char_*_manpage_fmt_escape_groff_(const_char_*_str)">const
-  char * manpage_fmt_escape_groff (const char * str)</a></h2>
-<p class="Pp">Escape special characters for groff output. Escapes characters
-    that have special meaning in groff format. Currently returns the string
-    as-is since most man page content doesn't contain problematic characters.
-    Can be extended for more robust escaping if needed.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to escape (can be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Escaped string (never NULL, returns &quot;&quot; for NULL
-  input)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is a simple implementation. For production use with
-  arbitrary content, consider a more robust escaping strategy.</div>
-<p class="Pp">Definition at line <b>25</b> of file <b>formatter.c</b>.</p>
-<pre>25                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>formatter.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">formatter.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">formatter.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          formatter.h - Groff/troff formatting utilities for man page
+          generation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>manpage_fmt_escape_groff</b> (const char *str)
+            <br />
+            Escape special characters for groff output. void
+            <b>manpage_fmt_write_section</b> (FILE *f, const char *section_name)
+            <br />
+            Write a section header directive. void
+            <b>manpage_fmt_write_blank_line</b>
+            (FILE *f)
+            <br />
+            Write a blank line (for spacing between sections). void
+            <b>manpage_fmt_write_bold</b> (FILE *f, const char *text)
+            <br />
+            Write text in bold format. void
+            <b>manpage_fmt_write_italic</b> (FILE *f, const char *text)
+            <br />
+            Write text in italic format. void
+            <b>manpage_fmt_write_tagged_paragraph</b>
+            (FILE *f)
+            <br />
+            Write a tagged paragraph header. void
+            <b>manpage_fmt_write_text</b> (FILE *f, const char *text)
+            <br />
+            Write plain text line (without directive). void
+            <b>manpage_fmt_write_title</b>
+            (FILE *f, const char *program_name, const char *mode_name, const
+            char *brief_description)
+            <br />
+            Write groff title/header (.TH directive).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Groff/troff formatting utilities for man page generation.
+        </p>
+        <p class="Pp">
+          This module provides utilities for generating properly formatted
+          groff/troff output for man pages. Handles:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Section headers (.SH directive)</li>
+          <li>Text formatting (bold .B, italic .I, constant .C)</li>
+          <li>Paragraph and item formatting (.TP for tagged paragraphs)</li>
+          <li>Special character escaping</li>
+          <li>Section markers (AUTO/MANUAL/MERGE)</li>
+        </ul>
+        <p class="Pp">
+          All functions write directly to FILE* for efficient streaming output.
+        </p>
+        <p class="Pp">Definition in file <b>formatter.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_manpage_fmt_escape_groff_(const_char_*_str)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_manpage_fmt_escape_groff_(const_char_*_str)"
+              >const char * manpage_fmt_escape_groff (const char * str)</a
+            >
+          </h2>
+          <p class="Pp">
+            Escape special characters for groff output. Escapes characters that
+            have special meaning in groff format. Currently returns the string
+            as-is since most man page content doesn't contain problematic
+            characters. Can be extended for more robust escaping if needed.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>str</i> String to escape (can be NULL)</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Escaped string (never NULL, returns &quot;&quot; for NULL input)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is a simple implementation. For production use with arbitrary
+            content, consider a more robust escaping strategy.
+          </div>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+25                                                       {
 26   // For simplicity, we'll just return the string as-is
 27   // In a more robust implementation, we'd escape special characters
 28   // But for man page content, most strings don't have problematic characters
 29   return str ? str : &quot;&quot;;
 30 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_escape_groff()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_escape_groff()</b>, and
-    <b>manpage_fmt_write_title()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_blank_line_(FILE_*_f)"><a class="permalink" href="#void_manpage_fmt_write_blank_line_(FILE_*_f)">void
-  manpage_fmt_write_blank_line (FILE * f)</a></h2>
-<p class="Pp">Write a blank line (for spacing between sections).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>39</b> of file <b>formatter.c</b>.</p>
-<pre>39                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>manpage_fmt_escape_groff()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>manpage_fmt_escape_groff()</b>, and
+            <b>manpage_fmt_write_title()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_manpage_fmt_write_blank_line_(FILE_*_f)">
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_blank_line_(FILE_*_f)"
+              >void manpage_fmt_write_blank_line (FILE * f)</a
+            >
+          </h2>
+          <p class="Pp">Write a blank line (for spacing between sections).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>39</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+39                                            {
 40   if (!f) {
 41     return;
 42   }
 43   fprintf(f, &quot;\n&quot;);
 44 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_write_blank_line()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_blank_line()</b>, and
-    <b>options_config_generate_manpage_template()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)">void
-  manpage_fmt_write_bold (FILE * f, const char * text)</a></h2>
-<p class="Pp">Write text in bold format. Writes text with bold formatting
-    directive. Example: manpage_fmt_write_bold(f, &quot;ascii-chat&quot;) writes
-    &quot;.B ascii-chat\n&quot;</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
-<br/>
-<i>text</i> Text to write in bold (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>46</b> of file <b>formatter.c</b>.</p>
-<pre>46                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>manpage_fmt_write_blank_line()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>manpage_fmt_write_blank_line()</b>, and
+            <b>options_config_generate_manpage_template()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)"
+              >void manpage_fmt_write_bold (FILE * f, const char * text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write text in bold format. Writes text with bold formatting
+            directive. Example: manpage_fmt_write_bold(f,
+            &quot;ascii-chat&quot;) writes &quot;.B ascii-chat\n&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+            <br />
+            <i>text</i> Text to write in bold (cannot be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+46                                                        {
 47   if (!f || !text) {
 48     return;
 49   }
 50   fprintf(f, &quot;.B %s\n&quot;, text);
 51 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_write_bold()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_bold()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)">void
-  manpage_fmt_write_italic (FILE * f, const char * text)</a></h2>
-<p class="Pp">Write text in italic format. Writes text with italic formatting
-    directive. Example: manpage_fmt_write_italic(f, &quot;options&quot;) writes
-    &quot;.I options\n&quot;</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
-<br/>
-<i>text</i> Text to write in italic (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>53</b> of file <b>formatter.c</b>.</p>
-<pre>53                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>manpage_fmt_write_bold()</b>.</p>
+          <p class="Pp">Referenced by <b>manpage_fmt_write_bold()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)"
+              >void manpage_fmt_write_italic (FILE * f, const char * text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write text in italic format. Writes text with italic formatting
+            directive. Example: manpage_fmt_write_italic(f, &quot;options&quot;)
+            writes &quot;.I options\n&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+            <br />
+            <i>text</i> Text to write in italic (cannot be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+53                                                          {
 54   if (!f || !text) {
 55     return;
 56   }
 57   fprintf(f, &quot;.I %s\n&quot;, text);
 58 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_write_italic()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_italic()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)"><a class="permalink" href="#void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)">void
-  manpage_fmt_write_section (FILE * f, const char * section_name)</a></h2>
-<p class="Pp">Write a section header directive. Writes &quot;.SH
-    SECTION_NAME&quot; directive to output. Example:
-    manpage_fmt_write_section(f, &quot;OPTIONS&quot;) writes &quot;.SH
-    OPTIONS\n&quot;</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
-<br/>
-<i>section_name</i> Section name to write (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>32</b> of file <b>formatter.c</b>.</p>
-<pre>32                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>manpage_fmt_write_italic()</b>.</p>
+          <p class="Pp">Referenced by <b>manpage_fmt_write_italic()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)"
+              >void manpage_fmt_write_section (FILE * f, const char *
+              section_name)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write a section header directive. Writes &quot;.SH
+            SECTION_NAME&quot; directive to output. Example:
+            manpage_fmt_write_section(f, &quot;OPTIONS&quot;) writes &quot;.SH
+            OPTIONS\n&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+            <br />
+            <i>section_name</i> Section name to write (cannot be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+32                                                                   {
 33   if (!f || !section_name) {
 34     return;
 35   }
 36   fprintf(f, &quot;.SH %s\n&quot;, section_name);
 37 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_write_section()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_section()</b>, and
-    <b>options_config_generate_manpage_template()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)"><a class="permalink" href="#void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)">void
-  manpage_fmt_write_tagged_paragraph (FILE * f)</a></h2>
-<p class="Pp">Write a tagged paragraph header. Writes &quot;.TP&quot; directive
-    to start a tagged paragraph (for option descriptions). Should be followed by
-    <b>manpage_fmt_write_bold()</b> for the tag and then regular text for the
-    description.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>60</b> of file <b>formatter.c</b>.</p>
-<pre>60                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>manpage_fmt_write_section()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>manpage_fmt_write_section()</b>, and
+            <b>options_config_generate_manpage_template()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)"
+              >void manpage_fmt_write_tagged_paragraph (FILE * f)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write a tagged paragraph header. Writes &quot;.TP&quot; directive to
+            start a tagged paragraph (for option descriptions). Should be
+            followed by
+            <b>manpage_fmt_write_bold()</b> for the tag and then regular text
+            for the description.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+60                                                  {
 61   if (!f) {
 62     return;
 63   }
 64   fprintf(f, &quot;.TP\n&quot;);
 65 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_write_tagged_paragraph()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_tagged_paragraph()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)">void
-  manpage_fmt_write_text (FILE * f, const char * text)</a></h2>
-<p class="Pp">Write plain text line (without directive). Writes text directly
-    without any formatting directive. Useful for description text and content
-    lines.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
-<br/>
-<i>text</i> Text to write (can be NULL, in which case only newline
-  written)</div>
-<p class="Pp">Definition at line <b>67</b> of file <b>formatter.c</b>.</p>
-<pre>67                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>manpage_fmt_write_tagged_paragraph()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>manpage_fmt_write_tagged_paragraph()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)"
+              >void manpage_fmt_write_text (FILE * f, const char * text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write plain text line (without directive). Writes text directly
+            without any formatting directive. Useful for description text and
+            content lines.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+            <br />
+            <i>text</i> Text to write (can be NULL, in which case only newline
+            written)
+          </div>
+          <p class="Pp">
+            Definition at line <b>67</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+67                                                        {
 68   if (!f) {
 69     return;
 70   }
@@ -253,30 +415,47 @@
 75     fprintf(f, &quot;\n&quot;);
 76   }
 77 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_write_text()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_text()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)"><a class="permalink" href="#void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)">void
-  manpage_fmt_write_title (FILE * f, const char * program_name, const char *
-  mode_name, const char * brief_description)</a></h2>
-<p class="Pp">Write groff title/header (.TH directive). Writes the full title
-    header for a man page with current date. Format: .TH NAME SECTION DATE
-    SOURCE MANUAL</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
-<br/>
-<i>program_name</i> Program name (e.g., &quot;ascii-chat&quot;) (cannot be NULL)
-<br/>
-<i>mode_name</i> Mode name or NULL (e.g., &quot;server&quot;,
-  &quot;client&quot;, or NULL for binary-level)
-<br/>
-<i>brief_description</i> One-line description (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>79</b> of file <b>formatter.c</b>.</p>
-<pre>79                                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>manpage_fmt_write_text()</b>.</p>
+          <p class="Pp">Referenced by <b>manpage_fmt_write_text()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)"
+          >
+            <a
+              class="permalink"
+              href="#void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)"
+              >void manpage_fmt_write_title (FILE * f, const char *
+              program_name, const char * mode_name, const char *
+              brief_description)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write groff title/header (.TH directive). Writes the full title
+            header for a man page with current date. Format: .TH NAME SECTION
+            DATE SOURCE MANUAL
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>f</i> Output file handle (cannot be NULL)
+            <br />
+            <i>program_name</i> Program name (e.g., &quot;ascii-chat&quot;)
+            (cannot be NULL)
+            <br />
+            <i>mode_name</i> Mode name or NULL (e.g., &quot;server&quot;,
+            &quot;client&quot;, or NULL for binary-level)
+            <br />
+            <i>brief_description</i> One-line description (cannot be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>79</b> of file <b>formatter.c</b>.
+          </p>
+          <pre>
+79                                                                                                                       {
 80   if (!f || !program_name || !brief_description) {
 81     return;
 82   }
@@ -303,27 +482,33 @@
 103   fprintf(f, &quot;\\- %s\n&quot;, manpage_fmt_escape_groff(brief_description));
 104   fprintf(f, &quot;\n&quot;);
 105 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>manpage_fmt_escape_groff()</b>,
-    <b>manpage_fmt_write_title()</b>,
-    <b>OPTIONS_MANPAGE_FORMATTER_DATE_BUFFER_SIZE</b>,
-    <b>OPTIONS_MANPAGE_FORMATTER_FULL_NAME_BUFFER_SIZE</b>,
-    <b>platform_localtime()</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_title()</b>, and
-    <b>options_config_generate_manpage_template()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>manpage_fmt_escape_groff()</b>,
+            <b>manpage_fmt_write_title()</b>,
+            <b>OPTIONS_MANPAGE_FORMATTER_DATE_BUFFER_SIZE</b>,
+            <b>OPTIONS_MANPAGE_FORMATTER_FULL_NAME_BUFFER_SIZE</b>,
+            <b>platform_localtime()</b>, and <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>manpage_fmt_write_title()</b>, and
+            <b>options_config_generate_manpage_template()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

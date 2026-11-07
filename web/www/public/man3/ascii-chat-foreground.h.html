@@ -1,158 +1,252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>foreground.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">foreground.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">foreground.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">foreground.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">char * <b>image_print</b> (const <b>image_t</b> *p, const char
-    *palette)
-  <br/>
-  char * <b>image_print_color</b> (const <b>image_t</b> *p, const char *palette)
-  <br/>
-  char * <b>image_print_256color</b> (const <b>image_t</b> *p, const char
-    *palette)
-  <br/>
-  char * <b>image_print_16color</b> (const <b>image_t</b> *p, const char
-    *palette)
-  <br/>
-  char * <b>image_print_color_utf8</b> (const <b>image_t</b> *p, const char
-    *palette)
-  <br/>
-  char * <b>image_print_16color_dithered</b> (const <b>image_t</b> *p, const
-    char *palette)
-  <br/>
-  char * <b>image_print_16color_dithered_with_background</b> (const
-    <b>image_t</b> *image, <b>bool</b> use_background, const char *palette)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_(const_"><a class="permalink" href="#char_*_image_print_(const_">char
-  * image_print (const <b>image_t</b> * p, const char * palette)</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>foreground.c</b>.</p>
-<pre>12                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>foreground.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">foreground.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">foreground.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">foreground.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char * <b>image_print</b> (const <b>image_t</b> *p, const char
+            *palette)
+            <br />
+            char * <b>image_print_color</b> (const <b>image_t</b> *p, const char
+            *palette)
+            <br />
+            char * <b>image_print_256color</b> (const <b>image_t</b> *p, const
+            char *palette)
+            <br />
+            char * <b>image_print_16color</b> (const <b>image_t</b> *p, const
+            char *palette)
+            <br />
+            char * <b>image_print_color_utf8</b> (const <b>image_t</b> *p, const
+            char *palette)
+            <br />
+            char * <b>image_print_16color_dithered</b> (const <b>image_t</b> *p,
+            const char *palette)
+            <br />
+            char * <b>image_print_16color_dithered_with_background</b> (const
+            <b>image_t</b> *image, <b>bool</b> use_background, const char
+            *palette)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_image_print_(const_">
+            <a class="permalink" href="#char_*_image_print_(const_"
+              >char * image_print (const <b>image_t</b> * p, const char *
+              palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+12                                                              {
 13   return ascii_render(image, palette, ASCII_COLOR_NONE, false, false, simd_cells_backend());
 14 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_16color_(const_"><a class="permalink" href="#char_*_image_print_16color_(const_">char
-  * image_print_16color (const <b>image_t</b> * p, const char *
-  palette)</a></h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>foreground.c</b>.</p>
-<pre>28                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_image_print_16color_(const_">
+            <a class="permalink" href="#char_*_image_print_16color_(const_"
+              >char * image_print_16color (const <b>image_t</b> * p, const char
+              * palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+28                                                                      {
 29   return ascii_render(image, palette, ASCII_COLOR_16, false, false, simd_cells_backend());
 30 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_16color_dithered_(const_"><a class="permalink" href="#char_*_image_print_16color_dithered_(const_">char
-  * image_print_16color_dithered (const <b>image_t</b> * p, const char *
-  palette)</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>foreground.c</b>.</p>
-<pre>32                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_image_print_16color_dithered_(const_">
+            <a
+              class="permalink"
+              href="#char_*_image_print_16color_dithered_(const_"
+              >char * image_print_16color_dithered (const <b>image_t</b> * p,
+              const char * palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+32                                                                               {
 33   return ascii_render(image, palette, ASCII_COLOR_16, false, true, simd_cells_backend());
 34 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_16color_dithered_with_background_(const_"><a class="permalink" href="#char_*_image_print_16color_dithered_with_background_(const_">char
-  * image_print_16color_dithered_with_background (const <b>image_t</b> * image,
-  <b>bool</b> use_background, const char * palette)</a></h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>foreground.c</b>.</p>
-<pre>36                                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_image_print_16color_dithered_with_background_(const_"
+          >
+            <a
+              class="permalink"
+              href="#char_*_image_print_16color_dithered_with_background_(const_"
+              >char * image_print_16color_dithered_with_background (const
+              <b>image_t</b> * image, <b>bool</b> use_background, const char *
+              palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+36                                                                                                                {
 37   return ascii_render(image, palette, ASCII_COLOR_16, background, true, simd_cells_backend());
 38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_256color_(const_"><a class="permalink" href="#char_*_image_print_256color_(const_">char
-  * image_print_256color (const <b>image_t</b> * p, const char *
-  palette)</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>foreground.c</b>.</p>
-<pre>24                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_image_print_256color_(const_">
+            <a class="permalink" href="#char_*_image_print_256color_(const_"
+              >char * image_print_256color (const <b>image_t</b> * p, const char
+              * palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+24                                                                       {
 25   return ascii_render(image, palette, ASCII_COLOR_256, false, false, simd_cells_backend());
 26 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_color_(const_"><a class="permalink" href="#char_*_image_print_color_(const_">char
-  * image_print_color (const <b>image_t</b> * p, const char * palette)</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>foreground.c</b>.</p>
-<pre>16                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_image_print_color_(const_">
+            <a class="permalink" href="#char_*_image_print_color_(const_"
+              >char * image_print_color (const <b>image_t</b> * p, const char *
+              palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+16                                                                    {
 17   return ascii_render(image, palette, ASCII_COLOR_TRUE, false, false, simd_cells_backend());
 18 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_color_utf8_(const_"><a class="permalink" href="#char_*_image_print_color_utf8_(const_">char
-  * image_print_color_utf8 (const <b>image_t</b> * p, const char *
-  palette)</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>foreground.c</b>.</p>
-<pre>20                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_image_print_color_utf8_(const_">
+            <a class="permalink" href="#char_*_image_print_color_utf8_(const_"
+              >char * image_print_color_utf8 (const <b>image_t</b> * p, const
+              char * palette)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>foreground.c</b>.
+          </p>
+          <pre>
+20                                                                         {
 21   return ascii_render(image, palette, ASCII_COLOR_TRUE, false, false, simd_cells_backend());
 22 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_COLOR_TRUE</b>, <b>ascii_render()</b>,
-    <b>image_print_color_utf8()</b>, and <b>simd_cells_backend()</b>.</p>
-<p class="Pp">Referenced by <b>image_print_color_utf8()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_COLOR_TRUE</b>, <b>ascii_render()</b>,
+            <b>image_print_color_utf8()</b>, and <b>simd_cells_backend()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>image_print_color_utf8()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

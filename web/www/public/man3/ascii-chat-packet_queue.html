@@ -1,153 +1,211 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>packet_queue(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">packet_queue(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">packet_queue(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">packet_queue</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>mutex_t</b> <b>mutex</b>
-  <br/>
-  <b>packet_node_t</b> * <b>head</b>
-  <br/>
-  <b>packet_node_t</b> * <b>tail</b>
-  <br/>
-  <b>buffer_domain_t</b> * <b>domain</b>
-  <br/>
-  <b>packet_queue_config_t</b> <b>config</b>
-  <br/>
-  size_t <b>count</b>
-  <br/>
-  size_t <b>bytes</b>
-  <br/>
-  <b>uint64_t</b> <b>enqueued</b>
-  <br/>
-  <b>uint64_t</b> <b>dequeued</b>
-  <br/>
-  <b>uint64_t</b> <b>dropped</b>
-  <br/>
-  <b>bool</b> <b>stopped</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>13</b> of file <b>queue.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_packet_queue::bytes"><a class="permalink" href="#size_t_packet_queue::bytes">size_t
-  packet_queue::bytes</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_is_full()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>packet_queue_config_t</b> packet_queue::config</h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_create_config()</b>,
-    <b>packet_queue_is_full()</b>, and <b>packet_queue_push_copy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_packet_queue::count"><a class="permalink" href="#size_t_packet_queue::count">size_t
-  packet_queue::count</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_is_full()</b>, and
-    <b>packet_queue_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> packet_queue::dequeued</h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_get_stats()</b>, and
-    <b>packet_queue_try_dequeue()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>buffer_domain_t</b>* packet_queue::domain</h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_create_config()</b>,
-    <b>packet_queue_destroy()</b>, and <b>packet_queue_push_copy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> packet_queue::dropped</h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_get_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> packet_queue::enqueued</h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_get_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>packet_node_t</b>* packet_queue::head</h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>queue.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> packet_queue::mutex</h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_clear()</b>,
-    <b>packet_queue_create_config()</b>, <b>packet_queue_destroy()</b>,
-    <b>packet_queue_get_stats()</b>, <b>packet_queue_is_full()</b>,
-    <b>packet_queue_size()</b>, <b>packet_queue_stop()</b>, and
-    <b>packet_queue_try_dequeue()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> packet_queue::stopped</h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>queue.c</b>.</p>
-<p class="Pp">Referenced by <b>packet_queue_stop()</b>, and
-    <b>packet_queue_try_dequeue()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>packet_node_t</b>* packet_queue::tail</h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>queue.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>packet_queue(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">packet_queue(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">packet_queue(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">packet_queue</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>mutex_t</b> <b>mutex</b>
+            <br />
+            <b>packet_node_t</b> * <b>head</b>
+            <br />
+            <b>packet_node_t</b> * <b>tail</b>
+            <br />
+            <b>buffer_domain_t</b> * <b>domain</b>
+            <br />
+            <b>packet_queue_config_t</b> <b>config</b>
+            <br />
+            size_t <b>count</b>
+            <br />
+            size_t <b>bytes</b>
+            <br />
+            <b>uint64_t</b> <b>enqueued</b>
+            <br />
+            <b>uint64_t</b> <b>dequeued</b>
+            <br />
+            <b>uint64_t</b> <b>dropped</b>
+            <br />
+            <b>bool</b> <b>stopped</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>13</b> of file <b>queue.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_packet_queue::bytes">
+            <a class="permalink" href="#size_t_packet_queue::bytes"
+              >size_t packet_queue::bytes</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>20</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">Referenced by <b>packet_queue_is_full()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>packet_queue_config_t</b> packet_queue::config</h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_queue_create_config()</b>,
+            <b>packet_queue_is_full()</b>, and <b>packet_queue_push_copy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_packet_queue::count">
+            <a class="permalink" href="#size_t_packet_queue::count"
+              >size_t packet_queue::count</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>19</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_queue_is_full()</b>, and
+            <b>packet_queue_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> packet_queue::dequeued</h2>
+          <p class="Pp">Definition at line <b>22</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_queue_get_stats()</b>, and
+            <b>packet_queue_try_dequeue()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>buffer_domain_t</b>* packet_queue::domain</h2>
+          <p class="Pp">Definition at line <b>17</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_queue_create_config()</b>,
+            <b>packet_queue_destroy()</b>, and <b>packet_queue_push_copy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> packet_queue::dropped</h2>
+          <p class="Pp">Definition at line <b>23</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">Referenced by <b>packet_queue_get_stats()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> packet_queue::enqueued</h2>
+          <p class="Pp">Definition at line <b>21</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">Referenced by <b>packet_queue_get_stats()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>packet_node_t</b>* packet_queue::head</h2>
+          <p class="Pp">Definition at line <b>15</b> of file <b>queue.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> packet_queue::mutex</h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_queue_clear()</b>,
+            <b>packet_queue_create_config()</b>, <b>packet_queue_destroy()</b>,
+            <b>packet_queue_get_stats()</b>, <b>packet_queue_is_full()</b>,
+            <b>packet_queue_size()</b>, <b>packet_queue_stop()</b>, and
+            <b>packet_queue_try_dequeue()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> packet_queue::stopped</h2>
+          <p class="Pp">Definition at line <b>24</b> of file <b>queue.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_queue_stop()</b>, and
+            <b>packet_queue_try_dequeue()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>packet_node_t</b>* packet_queue::tail</h2>
+          <p class="Pp">Definition at line <b>16</b> of file <b>queue.c</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

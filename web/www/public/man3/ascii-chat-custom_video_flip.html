@@ -1,131 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_video_flip(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_video_flip(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_video_flip(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_video_flip - Generic Video Flip Options Implementation
-  Plan</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Generic_Video_Flip_Options_Implementation_Plan"><a class="permalink" href="#Generic_Video_Flip_Options_Implementation_Plan">Generic
-  Video Flip Options Implementation Plan</a></h1>
-<div class="Bd-indent"><b>For Claude:</b> REQUIRED SUB-SKILL: Use
-  superpowers:executing-plans to implement this plan task-by-task.</div>
-<p class="Pp"><b>Goal:</b> Convert webcam-specific --webcam-flip to generic
-    display options --flip-x and --flip-y that work on all video sources
-    (webcam, yt-dlp, ffmpeg).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Architecture:</b> Replace single webcam_flip boolean with two
-    separate flip_x and flip_y booleans in the display options registry. Move
-    flip application from webcam capture stage to generic frame rendering stage
-    so it applies uniformly to all video sources. Persist settings across media
-    source changes and allow toggling via keyboard handler.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Tech Stack:</b> C, CMake, libsodium, FFmpeg, yt-dlp
-  integration</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Task_1:_Update_"><a class="permalink" href="#Task_1:_Update_">Task
-  1: Update <b>options_t</b> struct and defaults</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>include/ascii-chat/options/options.h</b>:1-100<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Remove webcam_flip field from struct</b></p>
-<p class="Pp"></p>
-<p class="Pp">In <b>options_t</b> struct<b>, find and remove:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool webcam_flip;                </pre>
-<p class="Pp"><b>Step 2: Add flip_x and flip_y fields to struct</b></p>
-<p class="Pp"></p>
-<p class="Pp">After removing webcam_flip, add:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool flip_x;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_video_flip(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_video_flip(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_video_flip(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_video_flip - Generic Video Flip Options Implementation Plan
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Generic_Video_Flip_Options_Implementation_Plan">
+          <a
+            class="permalink"
+            href="#Generic_Video_Flip_Options_Implementation_Plan"
+            >Generic Video Flip Options Implementation Plan</a
+          >
+        </h1>
+        <div class="Bd-indent">
+          <b>For Claude:</b> REQUIRED SUB-SKILL: Use superpowers:executing-plans
+          to implement this plan task-by-task.
+        </div>
+        <p class="Pp">
+          <b>Goal:</b> Convert webcam-specific --webcam-flip to generic display
+          options --flip-x and --flip-y that work on all video sources (webcam,
+          yt-dlp, ffmpeg).
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Architecture:</b> Replace single webcam_flip boolean with two
+          separate flip_x and flip_y booleans in the display options registry.
+          Move flip application from webcam capture stage to generic frame
+          rendering stage so it applies uniformly to all video sources. Persist
+          settings across media source changes and allow toggling via keyboard
+          handler.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Tech Stack:</b> C, CMake, libsodium, FFmpeg, yt-dlp integration
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_1:_Update_">
+            <a class="permalink" href="#Task_1:_Update_"
+              >Task 1: Update <b>options_t</b> struct and defaults</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Modify: <b>include/ascii-chat/options/options.h</b>:1-100<b></b>
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Remove webcam_flip field from struct</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">In <b>options_t</b> struct<b>, find and remove:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>bool webcam_flip;                </pre>
+          <p class="Pp">
+            <b>Step 2: Add flip_x and flip_y fields to struct</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">After removing webcam_flip, add:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+bool flip_x;
 bool flip_y;                     </pre>
-<p class="Pp"><b>Step 3: Remove old default constant</b></p>
-<p class="Pp"></p>
-<p class="Pp">Remove:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#define OPT_WEBCAM_FLIP_DEFAULT false</pre>
-<p class="Pp"><b>Step 4: Add new default constants</b></p>
-<p class="Pp"></p>
-<p class="Pp">Add:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#define OPT_FLIP_X_DEFAULT false
+          <p class="Pp"><b>Step 3: Remove old default constant</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Remove:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>#define OPT_WEBCAM_FLIP_DEFAULT false</pre>
+          <p class="Pp"><b>Step 4: Add new default constants</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Add:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+#define OPT_FLIP_X_DEFAULT false
 #define OPT_FLIP_Y_DEFAULT false</pre>
-<p class="Pp"><b>Step 5: Remove old default variable declaration</b></p>
-<p class="Pp"></p>
-<p class="Pp">Remove:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;</pre>
-<p class="Pp"><b>Step 6: Add new default variable declarations</b></p>
-<p class="Pp"></p>
-<p class="Pp">Add:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>static const bool default_flip_x_value = OPT_FLIP_X_DEFAULT;
+          <p class="Pp">
+            <b>Step 5: Remove old default variable declaration</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Remove:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;</pre>
+          <p class="Pp"><b>Step 6: Add new default variable declarations</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Add:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+static const bool default_flip_x_value = OPT_FLIP_X_DEFAULT;
 static const bool default_flip_y_value = OPT_FLIP_Y_DEFAULT;</pre>
-<p class="Pp"><b>Step 7: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add include/ascii-chat/options/options.h
+          <p class="Pp"><b>Step 7: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add include/ascii-chat/options/options.h
 git commit -m &quot;refactor(options): Replace webcam_flip with flip_x and flip_y fields&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_2:_Update_option_registry_from_webcam_to_display"><a class="permalink" href="#Task_2:_Update_option_registry_from_webcam_to_display">Task
-  2: Update option registry from webcam to display</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: <b>lib/options/registry/webcam.c</b>:1-50<b> (remove webcam-flip
-      entry)</b></li>
-  <li>Create: <b>lib/options/registry/display.c</b><b> (new file if doesn't
-      exist, add flip options)</b></li>
-</ul>
-<p class="Pp"><b>Step 1: Check if display.c exists</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ls -la <b>lib/options/registry/display.c</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: If display.c doesn't exist, create it</b></p>
-<p class="Pp"></p>
-<p class="Pp">Create new file <b>lib/options/registry/display.c</b><b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Task_2:_Update_option_registry_from_webcam_to_display"
+          >
+            <a
+              class="permalink"
+              href="#Task_2:_Update_option_registry_from_webcam_to_display"
+              >Task 2: Update option registry from webcam to display</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Modify: <b>lib/options/registry/webcam.c</b>:1-50<b>
+                (remove webcam-flip entry)</b
+              >
+            </li>
+            <li>
+              Create: <b>lib/options/registry/display.c</b
+              ><b> (new file if doesn't exist, add flip options)</b>
+            </li>
+          </ul>
+          <p class="Pp"><b>Step 1: Check if display.c exists</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ls -la <b>lib/options/registry/display.c</b><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: If display.c doesn't exist, create it</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Create new file <b>lib/options/registry/display.c</b><b>:</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 #include &lt;ascii-chat/options/registry/common.h&gt;
 const registry_entry_t g_display_entries[] = {
 <br/>
@@ -202,140 +275,191 @@ const registry_entry_t g_display_entries[] = {
      NULL},
 <br/>
     REGISTRY_TERMINATOR()};</pre>
-<p class="Pp"><b>Step 3: If display.c exists, add flip options to it</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find the <b>g_display_entries</b><b> array and add the two flip
-    entries above.</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Remove webcam-flip from webcam.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">In <b>lib/options/registry/webcam.c</b><b>, find and remove the
-    entire </b>{&quot;webcam-flip&quot;, ...}<b> entry (approximately 15
-    lines).</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 5: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/options/registry/webcam.c lib/options/registry/display.c
+          <p class="Pp">
+            <b>Step 3: If display.c exists, add flip options to it</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find the <b>g_display_entries</b
+            ><b> array and add the two flip entries above.</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Remove webcam-flip from webcam.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            In <b>lib/options/registry/webcam.c</b
+            ><b>, find and remove the entire </b>{&quot;webcam-flip&quot;,
+            ...}<b> entry (approximately 15 lines).</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 5: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/options/registry/webcam.c lib/options/registry/display.c
 git commit -m &quot;feat(options): Move flip options from webcam to display registry as flip-x and flip-y&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_3:_Update_options_initialization"><a class="permalink" href="#Task_3:_Update_options_initialization">Task
-  3: Update options initialization</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>lib/options/options.c</b>:1-100<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Update </b><b>options_t_new()</b><b>
-    initializer</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Find <b>options_t_new()</b><b> function and replace:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,</pre>
-<p class="Pp">With:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>.flip_x = OPT_FLIP_X_DEFAULT,
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_3:_Update_options_initialization">
+            <a class="permalink" href="#Task_3:_Update_options_initialization"
+              >Task 3: Update options initialization</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: <b>lib/options/options.c</b>:1-100<b></b></dd>
+          </dl>
+          <p class="Pp">
+            <b>Step 1: Update </b><b>options_t_new()</b><b> initializer</b
+            ><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find <b>options_t_new()</b><b> function and replace:</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,</pre>
+          <p class="Pp">With:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+.flip_x = OPT_FLIP_X_DEFAULT,
 .flip_y = OPT_FLIP_Y_DEFAULT,</pre>
-<p class="Pp"><b>Step 2: Update config file parsing preservation</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find references to saved_webcam_flip (there are multiple places
-    where webcam_flip is preserved during config parsing). Replace each
-    occurrence of webcam_flip with both flip_x and flip_y.</p>
-<p class="Pp"></p>
-<p class="Pp">For example, replace:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool saved_webcam_flip = opts.webcam_flip;
+          <p class="Pp">
+            <b>Step 2: Update config file parsing preservation</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find references to saved_webcam_flip (there are multiple places
+            where webcam_flip is preserved during config parsing). Replace each
+            occurrence of webcam_flip with both flip_x and flip_y.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">For example, replace:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+bool saved_webcam_flip = opts.webcam_flip;
 // ... code ...
 opts.webcam_flip = saved_webcam_flip;</pre>
-<p class="Pp">With:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool saved_flip_x = opts.flip_x;
+          <p class="Pp">With:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+bool saved_flip_x = opts.flip_x;
 bool saved_flip_y = opts.flip_y;
 // ... code ...
 opts.flip_x = saved_flip_x;
 opts.flip_y = saved_flip_y;</pre>
-<p class="Pp">Do this for all occurrences in config loading, defaults
-    application, and parsing stages.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/options/options.c
+          <p class="Pp">
+            Do this for all occurrences in config loading, defaults application,
+            and parsing stages.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/options/options.c
 git commit -m &quot;refactor(options): Update initialization to use flip_x and flip_y&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_4:_Update_RCU_(Runtime_Configuration_Update)_handling"><a class="permalink" href="#Task_4:_Update_RCU_(Runtime_Configuration_Update)_handling">Task
-  4: Update RCU (Runtime Configuration Update) handling</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>lib/options/rcu.c</b>:1-200<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Replace webcam_flip in default initializer</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find where options_rcu_defaults_t is initialized and replace:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,</pre>
-<p class="Pp">With:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>.flip_x = OPT_FLIP_X_DEFAULT,
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Task_4:_Update_RCU_(Runtime_Configuration_Update)_handling"
+          >
+            <a
+              class="permalink"
+              href="#Task_4:_Update_RCU_(Runtime_Configuration_Update)_handling"
+              >Task 4: Update RCU (Runtime Configuration Update) handling</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: <b>lib/options/rcu.c</b>:1-200<b></b></dd>
+          </dl>
+          <p class="Pp">
+            <b>Step 1: Replace webcam_flip in default initializer</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find where options_rcu_defaults_t is initialized and replace:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,</pre>
+          <p class="Pp">With:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+.flip_x = OPT_FLIP_X_DEFAULT,
 .flip_y = OPT_FLIP_Y_DEFAULT,</pre>
-<p class="Pp"><b>Step 2: Replace webcam_flip in field assignment</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find else if (strcmp(ctx-&gt;field_name, &quot;webcam_flip&quot;)
-    == 0) and replace with:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>else if (strcmp(ctx-&gt;field_name, &quot;flip_x&quot;) == 0)
+          <p class="Pp">
+            <b>Step 2: Replace webcam_flip in field assignment</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find else if (strcmp(ctx-&gt;field_name, &quot;webcam_flip&quot;) ==
+            0) and replace with:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>else if (strcmp(ctx-&gt;field_name, &quot;flip_x&quot;) == 0)
 <br/>
   opts-&gt;flip_x = ctx-&gt;value;
 else if (strcmp(ctx-&gt;field_name, &quot;flip_y&quot;) == 0)
 <br/>
   opts-&gt;flip_y = ctx-&gt;value;</pre>
-<p class="Pp"><b>Step 3: Replace webcam_flip in validation checks</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find the string validation that includes &quot;webcam_flip&quot;
-    and replace with &quot;flip_x&quot; and &quot;flip_y&quot; entries.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/options/rcu.c
+          <p class="Pp">
+            <b>Step 3: Replace webcam_flip in validation checks</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find the string validation that includes &quot;webcam_flip&quot; and
+            replace with &quot;flip_x&quot; and &quot;flip_y&quot; entries.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/options/rcu.c
 git commit -m &quot;refactor(rcu): Update field names from webcam_flip to flip_x and flip_y&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_5:_Update_test_helpers"><a class="permalink" href="#Task_5:_Update_test_helpers">Task
-  5: Update test helpers</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>include/ascii-chat/tests/common.h</b>:1-50<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Remove old test helper</b></p>
-<p class="Pp"></p>
-<p class="Pp">Remove:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>static inline void test_set_webcam_flip(bool value) {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_5:_Update_test_helpers">
+            <a class="permalink" href="#Task_5:_Update_test_helpers"
+              >Task 5: Update test helpers</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Modify: <b>include/ascii-chat/tests/common.h</b>:1-50<b></b>
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Remove old test helper</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Remove:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>static inline void test_set_webcam_flip(bool value) {
 <br/>
   options_set_bool(&quot;webcam_flip&quot;, value);
 }</pre>
-<p class="Pp"><b>Step 2: Add new test helpers</b></p>
-<p class="Pp"></p>
-<p class="Pp">Add:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>static inline void test_set_flip_x(bool value) {
+          <p class="Pp"><b>Step 2: Add new test helpers</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Add:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>static inline void test_set_flip_x(bool value) {
 <br/>
   options_set_bool(&quot;flip_x&quot;, value);
 }
@@ -343,67 +467,94 @@ static inline void test_set_flip_y(bool value) {
 <br/>
   options_set_bool(&quot;flip_y&quot;, value);
 }</pre>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add include/ascii-chat/tests/common.h
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add include/ascii-chat/tests/common.h
 git commit -m &quot;refactor(tests): Add test helpers for flip_x and flip_y&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_6:_Update_webcam_capture_code"><a class="permalink" href="#Task_6:_Update_webcam_capture_code">Task
-  6: Update webcam capture code</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>lib/video/webcam/webcam.c</b>:100-150<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Remove flip logic from webcam capture</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find the two locations where if
-    (<b>GET_OPTION(webcam_flip)</b>)<b> appears and remove both flip operations.
-    These are in the webcam initialization and frame capture paths.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Search for exact patterns:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>if (<b>GET_OPTION(webcam_flip)</b>) {<b> - remove entire if block</b></li>
-  <li>Line with if (<b>GET_OPTION(webcam_flip)</b> &amp;&amp; frame-&gt;w &gt;
-      1)<b> - remove entire if block</b></li>
-</ul>
-<p class="Pp"><b>Step 2: Verify no flip logic remains in webcam.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: grep -n &quot;flip&quot;
-    <b>lib/video/webcam/webcam.c</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Expected: Should return nothing or only comments.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/video/webcam/webcam.c
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_6:_Update_webcam_capture_code">
+            <a class="permalink" href="#Task_6:_Update_webcam_capture_code"
+              >Task 6: Update webcam capture code</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: <b>lib/video/webcam/webcam.c</b>:100-150<b></b></dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Remove flip logic from webcam capture</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find the two locations where if (<b>GET_OPTION(webcam_flip)</b>)<b>
+              appears and remove both flip operations. These are in the webcam
+              initialization and frame capture paths.</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Search for exact patterns:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              if (<b>GET_OPTION(webcam_flip)</b>) {<b>
+                - remove entire if block</b
+              >
+            </li>
+            <li>
+              Line with if (<b>GET_OPTION(webcam_flip)</b> &amp;&amp;
+              frame-&gt;w &gt; 1)<b> - remove entire if block</b>
+            </li>
+          </ul>
+          <p class="Pp">
+            <b>Step 2: Verify no flip logic remains in webcam.c</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: grep -n &quot;flip&quot; <b>lib/video/webcam/webcam.c</b
+            ><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Expected: Should return nothing or only comments.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/video/webcam/webcam.c
 git commit -m &quot;refactor(webcam): Remove flip logic from capture stage&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_7:_Add_flip_logic_to_frame_rendering"><a class="permalink" href="#Task_7:_Add_flip_logic_to_frame_rendering">Task
-  7: Add flip logic to frame rendering</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: lib/session/display.c:1-300</dd>
-</dl>
-<p class="Pp"><b>Step 1: Find frame rendering function</b></p>
-<p class="Pp"></p>
-<p class="Pp">Search for where frames are rendered to display. Look for function
-    that processes video frames before ASCII conversion.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: Add flip logic before rendering</b></p>
-<p class="Pp"></p>
-<p class="Pp">In the rendering path, add a function that applies flips:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_7:_Add_flip_logic_to_frame_rendering">
+            <a
+              class="permalink"
+              href="#Task_7:_Add_flip_logic_to_frame_rendering"
+              >Task 7: Add flip logic to frame rendering</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: lib/session/display.c:1-300</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Find frame rendering function</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Search for where frames are rendered to display. Look for function
+            that processes video frames before ASCII conversion.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: Add flip logic before rendering</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            In the rendering path, add a function that applies flips:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 static void apply_frame_flips(framebuffer_t *frame) {
 <br/>
   if (!frame || frame-&gt;w &lt;= 1 || frame-&gt;h &lt;= 1) {
@@ -472,121 +623,164 @@ static void apply_frame_flips(framebuffer_t *frame) {
 <br/>
   }
 }</pre>
-<p class="Pp"><b>Step 3: Call flip logic in rendering path</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find the main rendering function (likely display_render() or
-    similar) and call apply_frame_flips(frame) right before the frame is
-    converted to ASCII.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/session/display.c
+          <p class="Pp"><b>Step 3: Call flip logic in rendering path</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find the main rendering function (likely display_render() or
+            similar) and call apply_frame_flips(frame) right before the frame is
+            converted to ASCII.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/session/display.c
 git commit -m &quot;feat(display): Add flip_x and flip_y rendering to frame pipeline&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_8:_Update_keyboard_handler"><a class="permalink" href="#Task_8:_Update_keyboard_handler">Task
-  8: Update keyboard handler</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: lib/session/keyboard_handler.c:100-200</dd>
-</dl>
-<p class="Pp"><b>Step 1: Find flip toggle in keyboard handler</b></p>
-<p class="Pp"></p>
-<p class="Pp">Search for 'f' key handler that toggles webcam_flip.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: Replace with flip_x toggle</b></p>
-<p class="Pp"></p>
-<p class="Pp">Replace:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool current_flip = (bool)GET_OPTION(webcam_flip);
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_8:_Update_keyboard_handler">
+            <a class="permalink" href="#Task_8:_Update_keyboard_handler"
+              >Task 8: Update keyboard handler</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: lib/session/keyboard_handler.c:100-200</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Find flip toggle in keyboard handler</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Search for 'f' key handler that toggles webcam_flip.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: Replace with flip_x toggle</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Replace:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+bool current_flip = (bool)GET_OPTION(webcam_flip);
 options_set_bool(&quot;webcam_flip&quot;, !current_flip);</pre>
-<p class="Pp">With:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>bool current_flip_x = (bool)GET_OPTION(flip_x);
+          <p class="Pp">With:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+bool current_flip_x = (bool)GET_OPTION(flip_x);
 options_set_bool(&quot;flip_x&quot;, !current_flip_x);</pre>
-<p class="Pp"><b>Step 3: Add flip_y toggle (optional, use 'shift+f' or another
-    key)</b></p>
-<p class="Pp"></p>
-<p class="Pp">If you want keyboard toggle for flip_y, add another case. For now,
-    just support flip_x toggle with 'f' key.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/session/keyboard_handler.c
+          <p class="Pp">
+            <b
+              >Step 3: Add flip_y toggle (optional, use 'shift+f' or another
+              key)</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            If you want keyboard toggle for flip_y, add another case. For now,
+            just support flip_x toggle with 'f' key.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/session/keyboard_handler.c
 git commit -m &quot;refactor(keyboard): Update flip toggle to use flip_x option&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_9:_Update_help_screen_references"><a class="permalink" href="#Task_9:_Update_help_screen_references">Task
-  9: Update help screen references</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: lib/ui/help_screen.c:1-100</dd>
-</dl>
-<p class="Pp"><b>Step 1: Find help screen flip references</b></p>
-<p class="Pp"></p>
-<p class="Pp">Search: grep -n &quot;webcam_flip\|webcam flip&quot;
-    lib/ui/help_screen.c</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: Replace in help text</b></p>
-<p class="Pp"></p>
-<p class="Pp">Replace any references to &quot;webcam flip&quot; with appropriate
-    display flip descriptions. Update to mention both flip_x and flip_y if
-    referenced.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/ui/help_screen.c
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_9:_Update_help_screen_references">
+            <a class="permalink" href="#Task_9:_Update_help_screen_references"
+              >Task 9: Update help screen references</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: lib/ui/help_screen.c:1-100</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Find help screen flip references</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Search: grep -n &quot;webcam_flip\|webcam flip&quot;
+            lib/ui/help_screen.c
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: Replace in help text</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Replace any references to &quot;webcam flip&quot; with appropriate
+            display flip descriptions. Update to mention both flip_x and flip_y
+            if referenced.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/ui/help_screen.c
 git commit -m &quot;docs(help): Update flip option descriptions in help screen&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_10:_Update_config_file_documentation"><a class="permalink" href="#Task_10:_Update_config_file_documentation">Task
-  10: Update config file documentation</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>include/ascii-chat/options/config.h</b>:1-50<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Find config comments</b></p>
-<p class="Pp"></p>
-<p class="Pp">Search for comments mentioning webcam_flip in the [client] section
-    documentation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: Update to reflect display options</b></p>
-<p class="Pp"></p>
-<p class="Pp">Replace references to webcam_flip with flip_x and flip_y.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add include/ascii-chat/options/config.h
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_10:_Update_config_file_documentation">
+            <a
+              class="permalink"
+              href="#Task_10:_Update_config_file_documentation"
+              >Task 10: Update config file documentation</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Modify: <b>include/ascii-chat/options/config.h</b>:1-50<b></b>
+            </dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Find config comments</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Search for comments mentioning webcam_flip in the [client] section
+            documentation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: Update to reflect display options</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Replace references to webcam_flip with flip_x and flip_y.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add include/ascii-chat/options/config.h
 git commit -m &quot;docs(config): Update documentation for flip_x and flip_y options&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_11:_Update_web/WASM_mirror_bindings"><a class="permalink" href="#Task_11:_Update_web/WASM_mirror_bindings">Task
-  11: Update web/WASM mirror bindings</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Modify: <b>src/web/mirror.c</b>:1-50<b></b></dd>
-</dl>
-<p class="Pp"><b>Step 1: Find mirror_set_webcam_flip and
-    mirror_get_webcam_flip</b></p>
-<p class="Pp"></p>
-<p class="Pp">These are WASM binding functions. Replace:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>int mirror_set_webcam_flip(int enabled) {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_11:_Update_web/WASM_mirror_bindings">
+            <a
+              class="permalink"
+              href="#Task_11:_Update_web/WASM_mirror_bindings"
+              >Task 11: Update web/WASM mirror bindings</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Modify: <b>src/web/mirror.c</b>:1-50<b></b></dd>
+          </dl>
+          <p class="Pp">
+            <b
+              >Step 1: Find mirror_set_webcam_flip and mirror_get_webcam_flip</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">These are WASM binding functions. Replace:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>int mirror_set_webcam_flip(int enabled) {
 <br/>
   return options_set_bool(&quot;webcam_flip&quot;, enabled != 0) == ASCIICHAT_OK ? 0 : -1;
 }
@@ -594,10 +788,10 @@ int mirror_get_webcam_flip(void) {
 <br/>
   return GET_OPTION(webcam_flip) ? 1 : 0;
 }</pre>
-<p class="Pp">With:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>int mirror_set_flip_x(int enabled) {
+          <p class="Pp">With:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>int mirror_set_flip_x(int enabled) {
 <br/>
   return options_set_bool(&quot;flip_x&quot;, enabled != 0) == ASCIICHAT_OK ? 0 : -1;
 }
@@ -613,116 +807,157 @@ int mirror_get_flip_y(void) {
 <br/>
   return GET_OPTION(flip_y) ? 1 : 0;
 }</pre>
-<p class="Pp"><b>Step 2: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add src/web/mirror.c
+          <p class="Pp"><b>Step 2: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add src/web/mirror.c
 git commit -m &quot;refactor(wasm): Update mirror bindings to use flip_x and flip_y&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_12:_Build_and_test"><a class="permalink" href="#Task_12:_Build_and_test">Task
-  12: Build and test</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Test: All tests should pass</dd>
-</dl>
-<p class="Pp"><b>Step 1: Clean and configure build</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: rm -rf <b>Build System</b> &amp;&amp; cmake --preset default
-    -B <b>Build System</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Expected: Configuration succeeds</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: Build</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: cmake --<b>Build System</b> <b>Build System</b> 2&gt;&amp;1 |
-    tail -50<b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Expected: Build succeeds with no errors</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Run unit tests</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ctest --test-dir <b>Build System</b> --label-regex
-    &quot;^unit$&quot; --output-on-failure<b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Expected: All unit tests pass</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 4: Manually test in mirror mode</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ./build/bin/ascii-chat mirror --flip-x --help | grep flip</p>
-<p class="Pp"></p>
-<p class="Pp">Expected: Shows both --flip-x and --flip-y options in help</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 5: Test flip behavior</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: ./build/bin/ascii-chat mirror --flip-x --snapshot
-    --snapshot-delay 0 | head -10</p>
-<p class="Pp"></p>
-<p class="Pp">Expected: Webcam frame appears horizontally flipped</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 6: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add -A
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_12:_Build_and_test">
+            <a class="permalink" href="#Task_12:_Build_and_test"
+              >Task 12: Build and test</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Test: All tests should pass</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Clean and configure build</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: rm -rf <b>Build System</b> &amp;&amp; cmake --preset default -B
+            <b>Build System</b><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Expected: Configuration succeeds</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: Build</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: cmake --<b>Build System</b> <b>Build System</b> 2&gt;&amp;1 |
+            tail -50<b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Expected: Build succeeds with no errors</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Run unit tests</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ctest --test-dir <b>Build System</b> --label-regex
+            &quot;^unit$&quot; --output-on-failure<b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Expected: All unit tests pass</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 4: Manually test in mirror mode</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ./build/bin/ascii-chat mirror --flip-x --help | grep flip
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Expected: Shows both --flip-x and --flip-y options in help
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 5: Test flip behavior</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: ./build/bin/ascii-chat mirror --flip-x --snapshot
+            --snapshot-delay 0 | head -10
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Expected: Webcam frame appears horizontally flipped</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 6: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add -A
 git commit -m &quot;test: Verify flip_x and flip_y options work correctly&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_13:_Update_documentation"><a class="permalink" href="#Task_13:_Update_documentation">Task
-  13: Update documentation</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: CLAUDE.md (if flip is mentioned in debugging section)</li>
-  <li>Modify: docs/plans/2026-02-15-generic-stream-resolution.md (if needs
-      updates)</li>
-</ul>
-<p class="Pp"><b>Step 1: Search for webcam_flip in docs</b></p>
-<p class="Pp"></p>
-<p class="Pp">Run: grep -r &quot;webcam.flip\|webcam-flip&quot; docs/ CLAUDE.md
-    README.md 2&gt;/dev/null</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 2: Update any references</b></p>
-<p class="Pp"></p>
-<p class="Pp">Replace any documentation mentions with new option names.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add docs/ CLAUDE.md README.md
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_13:_Update_documentation">
+            <a class="permalink" href="#Task_13:_Update_documentation"
+              >Task 13: Update documentation</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Modify: CLAUDE.md (if flip is mentioned in debugging section)
+            </li>
+            <li>
+              Modify: docs/plans/2026-02-15-generic-stream-resolution.md (if
+              needs updates)
+            </li>
+          </ul>
+          <p class="Pp"><b>Step 1: Search for webcam_flip in docs</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Run: grep -r &quot;webcam.flip\|webcam-flip&quot; docs/ CLAUDE.md
+            README.md 2&gt;/dev/null
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 2: Update any references</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Replace any documentation mentions with new option names.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add docs/ CLAUDE.md README.md
 git commit -m &quot;docs: Update documentation for flip_x and flip_y options&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Summary"><a class="permalink" href="#Summary">Summary</a></h2>
-<p class="Pp">This plan converts the webcam-specific --webcam-flip option into
-    two generic display options (--flip-x and --flip-y) that work on all video
-    sources. Key changes:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Options struct:</b> Replace single webcam_flip with flip_x and
-    flip_y</dd>
-  <dt>2.</dt>
-  <dd><b>Registry:</b> Move from webcam to display options with new names</dd>
-  <dt>3.</dt>
-  <dd><b>Logic:</b> Remove flip from capture stage, add to rendering stage</dd>
-  <dt>4.</dt>
-  <dd><b>Keyboard:</b> Update 'f' key to toggle flip_x</dd>
-  <dt>5.</dt>
-  <dd><b>WASM:</b> Update web mirror bindings</dd>
-  <dt>6.</dt>
-  <dd><b>Tests:</b> Verify flips work on all media sources</dd>
-</dl>
-<p class="Pp">Total commits: 13 (one per logical chunk)</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Summary">
+            <a class="permalink" href="#Summary">Summary</a>
+          </h2>
+          <p class="Pp">
+            This plan converts the webcam-specific --webcam-flip option into two
+            generic display options (--flip-x and --flip-y) that work on all
+            video sources. Key changes:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Options struct:</b> Replace single webcam_flip with flip_x and
+              flip_y
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Registry:</b> Move from webcam to display options with new
+              names
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Logic:</b> Remove flip from capture stage, add to rendering
+              stage
+            </dd>
+            <dt>4.</dt>
+            <dd><b>Keyboard:</b> Update 'f' key to toggle flip_x</dd>
+            <dt>5.</dt>
+            <dd><b>WASM:</b> Update web mirror bindings</dd>
+            <dt>6.</dt>
+            <dd><b>Tests:</b> Verify flips work on all media sources</dd>
+          </dl>
+          <p class="Pp">Total commits: 13 (one per logical chunk)</p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

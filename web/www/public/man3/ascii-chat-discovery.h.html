@@ -1,157 +1,245 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>discovery.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">discovery.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">discovery.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">discovery.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>discovery_result_t</b>
-  <br/>
-  Result from session discovery. struct <b>discovery_config_t</b>
-  <br/>
-  Configuration for discovery session.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE</b>
-    256
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>discovery_config_init_defaults</b>
-    (<b>discovery_config_t</b> *config)
-  <br/>
-  Initialize discovery config with defaults. <b>asciichat_error_t</b>
-    <b>discover_session_parallel</b> (const char *session_string, const
-    <b>discovery_config_t</b> *config, <b>discovery_result_t</b> *result)
-  <br/>
-  Look up session in parallel on mDNS and ACDS. <b>ui_mdns_server_t</b> *
-    <b>discovery_mdns_query</b> (int timeout_ms, int max_servers, <b>bool</b>
-    quiet, int *out_count)
-  <br/>
-  Discover ascii-chat servers on local network via mDNS. void
-    <b>discovery_mdns_destroy</b> (<b>ui_mdns_server_t</b> *servers)
-  <br/>
-  Free memory from mDNS discovery results. void <b>pubkey_to_hex</b> (const
-    <b>uint8_t</b> pubkey[32], char hex_out[(32 *2+1)])
-  <br/>
-  Convert Ed25519 public key to hex string. <b>asciichat_error_t</b>
-    <b>hex_to_pubkey</b> (const char *hex_str, <b>uint8_t</b> pubkey_out[32])
-  <br/>
-  Convert hex string to Ed25519 public key.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE___256">#define
-  NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file <b>discovery.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discover_session_parallel (const char *
-  session_string, const <b>discovery_config_t</b> * config,
-  <b>discovery_result_t</b> * result)</h2>
-<p class="Pp">Look up session in parallel on mDNS and ACDS. Spawns two
-    concurrent threads to search both mDNS (local LAN) and ACDS (internet).
-    Returns immediately when either finds the session, cancelling the other
-    search.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Verification Logic:</b></p>
-<p class="Pp"></p>
-<p class="Pp">If config-&gt;expected_pubkey is set:</p>
-<ul class="Bl-bullet">
-  <li>mDNS result: Verify TXT record contains matching host_pubkey</li>
-  <li>ACDS result: Verify SESSION_LOOKUP response contains matching
-    host_pubkey</li>
-  <li>If both find result: Verify they have same pubkey (cross-check)</li>
-  <li>On mismatch: Return ERROR_CRYPTO_VERIFY_FAILED</li>
-</ul>
-<p class="Pp">If config-&gt;expected_pubkey is NULL but config-&gt;insecure_mode
-    is true:</p>
-<ul class="Bl-bullet">
-  <li>Skip all verification, accept first result found</li>
-  <li>WARNING: Vulnerable to MITM attacks!</li>
-</ul>
-<p class="Pp">If config-&gt;expected_pubkey is NULL and config-&gt;insecure_mode
-    is false:</p>
-<ul class="Bl-bullet">
-  <li>Search mDNS only (ACDS thread not started)</li>
-  <li>Use TOFU (Trust On First Use): accept first mDNS result found</li>
-</ul>
-<p class="Pp"><b>Thread Lifecycle:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Both threads start immediately</li>
-  <li>Whichever completes first signals success via condition variable</li>
-  <li>Other thread is joined (cleaned up)</li>
-  <li>Function returns with result</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session_string</i> Session string to find (e.g.,
-  &quot;swift-river-mountain&quot;)
-<br/>
-<i>config</i> Discovery configuration
-<br/>
-<i>result</i> Discovery result (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function BLOCKS until one discovery method succeeds
-  or both timeout
-<p class="Pp"></p>
-<p class="Pp">Not thread-safe for concurrent calls - use only one discovery at a
-    time</p>
-</div>
-<p class="Pp">Definition at line <b>536</b> of file <b>discovery.c</b>.</p>
-<pre>537                                                                         {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>discovery.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">discovery.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">discovery.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">discovery.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>discovery_result_t</b>
+            <br />
+            Result from session discovery. struct <b>discovery_config_t</b>
+            <br />
+            Configuration for discovery session.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE</b>
+            256
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>discovery_config_init_defaults</b> (<b
+              >discovery_config_t</b
+            >
+            *config)
+            <br />
+            Initialize discovery config with defaults. <b>asciichat_error_t</b>
+            <b>discover_session_parallel</b> (const char *session_string, const
+            <b>discovery_config_t</b> *config,
+            <b>discovery_result_t</b> *result)
+            <br />
+            Look up session in parallel on mDNS and ACDS.
+            <b>ui_mdns_server_t</b> * <b>discovery_mdns_query</b> (int
+            timeout_ms, int max_servers, <b>bool</b>
+            quiet, int *out_count)
+            <br />
+            Discover ascii-chat servers on local network via mDNS. void
+            <b>discovery_mdns_destroy</b> (<b>ui_mdns_server_t</b> *servers)
+            <br />
+            Free memory from mDNS discovery results. void
+            <b>pubkey_to_hex</b> (const <b>uint8_t</b> pubkey[32], char
+            hex_out[(32 *2+1)])
+            <br />
+            Convert Ed25519 public key to hex string. <b>asciichat_error_t</b>
+            <b>hex_to_pubkey</b> (const char *hex_str,
+            <b>uint8_t</b> pubkey_out[32])
+            <br />
+            Convert hex string to Ed25519 public key.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE___256"
+              >#define NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file <b>discovery.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discover_session_parallel (const char *
+            session_string, const <b>discovery_config_t</b> * config,
+            <b>discovery_result_t</b> * result)
+          </h2>
+          <p class="Pp">
+            Look up session in parallel on mDNS and ACDS. Spawns two concurrent
+            threads to search both mDNS (local LAN) and ACDS (internet). Returns
+            immediately when either finds the session, cancelling the other
+            search.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Verification Logic:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">If config-&gt;expected_pubkey is set:</p>
+          <ul class="Bl-bullet">
+            <li>
+              mDNS result: Verify TXT record contains matching host_pubkey
+            </li>
+            <li>
+              ACDS result: Verify SESSION_LOOKUP response contains matching
+              host_pubkey
+            </li>
+            <li>
+              If both find result: Verify they have same pubkey (cross-check)
+            </li>
+            <li>On mismatch: Return ERROR_CRYPTO_VERIFY_FAILED</li>
+          </ul>
+          <p class="Pp">
+            If config-&gt;expected_pubkey is NULL but config-&gt;insecure_mode
+            is true:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Skip all verification, accept first result found</li>
+            <li>WARNING: Vulnerable to MITM attacks!</li>
+          </ul>
+          <p class="Pp">
+            If config-&gt;expected_pubkey is NULL and config-&gt;insecure_mode
+            is false:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Search mDNS only (ACDS thread not started)</li>
+            <li>
+              Use TOFU (Trust On First Use): accept first mDNS result found
+            </li>
+          </ul>
+          <p class="Pp"><b>Thread Lifecycle:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Both threads start immediately</li>
+            <li>
+              Whichever completes first signals success via condition variable
+            </li>
+            <li>Other thread is joined (cleaned up)</li>
+            <li>Function returns with result</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session_string</i> Session string to find (e.g.,
+            &quot;swift-river-mountain&quot;)
+            <br />
+            <i>config</i> Discovery configuration
+            <br />
+            <i>result</i> Discovery result (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function BLOCKS until one discovery method succeeds or both
+            timeout
+            <p class="Pp"></p>
+            <p class="Pp">
+              Not thread-safe for concurrent calls - use only one discovery at a
+              time
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>536</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+537                                                                         {
 538   if (!session_string || !config || !result) {
 539     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 540     return ERROR_INVALID_PARAM;
@@ -279,47 +367,62 @@
 662
 663   return ASCIICHAT_OK;
 664 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_thread_state_t::acds_done</b>,
-    <b>discovery_config_t::acds_timeout_ms</b>, <b>acthread_create</b>,
-    <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>, <b>cond_init()</b>,
-    <b>cond_timedwait</b>, <b>acds_thread_context_t::config</b>,
-    <b>discover_session_parallel()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_NOT_FOUND</b>,
-    <b>discovery_config_t::expected_pubkey</b>,
-    <b>mdns_thread_context_t::expected_pubkey</b>,
-    <b>discovery_thread_state_t::found</b>,
-    <b>discovery_config_t::insecure_mode</b>, <b>is_session_string()</b>,
-    <b>discovery_thread_state_t::lock</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>discovery_thread_state_t::mdns_done</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NOTICE</b>, <b>NS_PER_MS_INT</b>,
-    <b>discovery_thread_state_t::result</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>acds_thread_context_t::session_string</b>,
-    <b>mdns_thread_context_t::session_string</b>, <b>SET_ERRNO</b>,
-    <b>discovery_thread_state_t::signal</b>, <b>discovery_result_t::source</b>,
-    <b>acds_thread_context_t::state</b>, <b>mdns_thread_context_t::state</b>,
-    <b>discovery_result_t::success</b>, <b>thread_init()</b>,
-    <b>thread_is_initialized()</b>, and <b>thread_join</b>.</p>
-<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_config_init_defaults_("><a class="permalink" href="#void_discovery_config_init_defaults_(">void
-  discovery_config_init_defaults (<b>discovery_config_t</b> * config)</a></h2>
-<p class="Pp">Initialize discovery config with defaults. Sets sensible
-  defaults:</p>
-<ul class="Bl-bullet">
-  <li>ACDS server: localhost:27225 (debug), discovery.ascii-chat.com
-    (release)</li>
-  <li>Timeouts: mdns=2000ms, acds=5000ms</li>
-  <li>Verification: None (expected_pubkey=NULL)</li>
-  <li>Insecure mode: false</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Configuration to initialize</div>
-<p class="Pp">Definition at line <b>514</b> of file <b>discovery.c</b>.</p>
-<pre>514                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_thread_state_t::acds_done</b>,
+            <b>discovery_config_t::acds_timeout_ms</b>, <b>acthread_create</b>,
+            <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>, <b>cond_init()</b>,
+            <b>cond_timedwait</b>, <b>acds_thread_context_t::config</b>,
+            <b>discover_session_parallel()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>discovery_config_t::expected_pubkey</b>,
+            <b>mdns_thread_context_t::expected_pubkey</b>,
+            <b>discovery_thread_state_t::found</b>,
+            <b>discovery_config_t::insecure_mode</b>,
+            <b>is_session_string()</b>, <b>discovery_thread_state_t::lock</b>,
+            <b>log_debug</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>discovery_thread_state_t::mdns_done</b>, <b>mutex_destroy()</b>,
+            <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>NOTICE</b>, <b>NS_PER_MS_INT</b>,
+            <b>discovery_thread_state_t::result</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>acds_thread_context_t::session_string</b>,
+            <b>mdns_thread_context_t::session_string</b>, <b>SET_ERRNO</b>,
+            <b>discovery_thread_state_t::signal</b>,
+            <b>discovery_result_t::source</b>,
+            <b>acds_thread_context_t::state</b>,
+            <b>mdns_thread_context_t::state</b>,
+            <b>discovery_result_t::success</b>, <b>thread_init()</b>,
+            <b>thread_is_initialized()</b>, and <b>thread_join</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_config_init_defaults_(">
+            <a class="permalink" href="#void_discovery_config_init_defaults_("
+              >void discovery_config_init_defaults (<b>discovery_config_t</b> *
+              config)</a
+            >
+          </h2>
+          <p class="Pp">
+            Initialize discovery config with defaults. Sets sensible defaults:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              ACDS server: localhost:27225 (debug), discovery.ascii-chat.com
+              (release)
+            </li>
+            <li>Timeouts: mdns=2000ms, acds=5000ms</li>
+            <li>Verification: None (expected_pubkey=NULL)</li>
+            <li>Insecure mode: false</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>config</i> Configuration to initialize</div>
+          <p class="Pp">
+            Definition at line <b>514</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+514                                                                 {
 515   if (!config)
 516     return;
 517
@@ -340,72 +443,104 @@
 532   config-&gt;insecure_mode = false;
 533   config-&gt;expected_pubkey = NULL;
 534 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_config_t::acds_port</b>,
-    <b>discovery_config_t::acds_server</b>,
-    <b>discovery_config_t::acds_timeout_ms</b>,
-    <b>discovery_config_init_defaults()</b>,
-    <b>discovery_config_t::expected_pubkey</b>,
-    <b>discovery_config_t::insecure_mode</b>,
-    <b>discovery_config_t::mdns_timeout_ms</b>, <b>MS_PER_SEC_INT</b>,
-    <b>OPT_ACDS_PORT_INT_DEFAULT</b>, and <b>SAFE_STRNCPY</b>.</p>
-<p class="Pp">Referenced by <b>discovery_config_init_defaults()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_mdns_destroy_("><a class="permalink" href="#void_discovery_mdns_destroy_(">void
-  discovery_mdns_destroy (<b>ui_mdns_server_t</b> * servers)</a></h2>
-<p class="Pp">Free memory from mDNS discovery results.</p>
-<p class="Pp">Definition at line <b>283</b> of file <b>discovery.c</b>.</p>
-<pre>283                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_config_t::acds_port</b>,
+            <b>discovery_config_t::acds_server</b>,
+            <b>discovery_config_t::acds_timeout_ms</b>,
+            <b>discovery_config_init_defaults()</b>,
+            <b>discovery_config_t::expected_pubkey</b>,
+            <b>discovery_config_t::insecure_mode</b>,
+            <b>discovery_config_t::mdns_timeout_ms</b>, <b>MS_PER_SEC_INT</b>,
+            <b>OPT_ACDS_PORT_INT_DEFAULT</b>, and <b>SAFE_STRNCPY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_config_init_defaults()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_mdns_destroy_(">
+            <a class="permalink" href="#void_discovery_mdns_destroy_("
+              >void discovery_mdns_destroy (<b>ui_mdns_server_t</b> *
+              servers)</a
+            >
+          </h2>
+          <p class="Pp">Free memory from mDNS discovery results.</p>
+          <p class="Pp">
+            Definition at line <b>283</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+283                                                        {
 284   SAFE_FREE(servers);
 285 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_mdns_destroy()</b>, and
-  <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>discovery_mdns_destroy()</b>, and
-    <b>ui_mdns_free_results()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_mdns_server_t</b> * discovery_mdns_query (int timeout_ms,
-  int max_servers, <b>bool</b> quiet, int * out_count)</h2>
-<p class="Pp">Discover ascii-chat servers on local network via mDNS. Public mDNS
-    query function used by both parallel discovery and TUI wrapper.</p>
-<p class="Pp"></p>
-<p class="Pp">Queries for mDNS _ascii-chat._tcp services and returns discovered
-    servers. This is the core discovery function used by both:</p>
-<ul class="Bl-bullet">
-  <li>Parallel discovery threads (discover_session_parallel)</li>
-  <li>TUI wrapper (lan_discovery_query)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>timeout_ms</i> Query timeout in milliseconds (default:
-  2000)
-<br/>
-<i>max_servers</i> Maximum servers to discover (default: 20)
-<br/>
-<i>quiet</i> If true, suppresses progress messages
-<br/>
-<i>out_count</i> Output: number of servers discovered</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Array of discovered servers, or NULL on error. Use
-  <b>discovery_mdns_destroy()</b> to free.</div>
-<p class="Pp">Discover ascii-chat servers on local network via mDNS.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>timeout_ms</i> Query timeout in milliseconds
-<br/>
-<i>max_servers</i> Maximum servers to discover
-<br/>
-<i>quiet</i> If true, suppresses progress messages
-<br/>
-<i>out_count</i> Output: number of servers discovered</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Array of discovered servers, or NULL on error. Use
-  <b>discovery_mdns_destroy()</b> to free.</div>
-<p class="Pp">Definition at line <b>187</b> of file <b>discovery.c</b>.</p>
-<pre>187                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_mdns_destroy()</b>, and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_mdns_destroy()</b>, and
+            <b>ui_mdns_free_results()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_mdns_server_t</b> * discovery_mdns_query (int timeout_ms, int
+            max_servers, <b>bool</b> quiet, int * out_count)
+          </h2>
+          <p class="Pp">
+            Discover ascii-chat servers on local network via mDNS. Public mDNS
+            query function used by both parallel discovery and TUI wrapper.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Queries for mDNS _ascii-chat._tcp services and returns discovered
+            servers. This is the core discovery function used by both:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Parallel discovery threads (discover_session_parallel)</li>
+            <li>TUI wrapper (lan_discovery_query)</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>timeout_ms</i> Query timeout in milliseconds (default: 2000)
+            <br />
+            <i>max_servers</i> Maximum servers to discover (default: 20)
+            <br />
+            <i>quiet</i> If true, suppresses progress messages
+            <br />
+            <i>out_count</i> Output: number of servers discovered
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Array of discovered servers, or NULL on error. Use
+            <b>discovery_mdns_destroy()</b> to free.
+          </div>
+          <p class="Pp">
+            Discover ascii-chat servers on local network via mDNS.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>timeout_ms</i> Query timeout in milliseconds
+            <br />
+            <i>max_servers</i> Maximum servers to discover
+            <br />
+            <i>quiet</i> If true, suppresses progress messages
+            <br />
+            <i>out_count</i> Output: number of servers discovered
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Array of discovered servers, or NULL on error. Use
+            <b>discovery_mdns_destroy()</b> to free.
+          </div>
+          <p class="Pp">
+            Definition at line <b>187</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+187                                                                                                     {
 188   if (!out_count) {
 189     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
 190     return NULL;
@@ -497,38 +632,52 @@
 276   *out_count = state.count;
 277   return state.servers;
 278 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_ERRNO_HANDLED</b>,
-    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
-    <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_update()</b>,
-    <b>ASCIICHAT_OK</b>, <b>mdns_query_state_t::capacity</b>,
-    <b>mdns_query_state_t::count</b>, <b>discovery_mdns_query()</b>,
-    <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
-    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>log_info</b>, <b>log_warn</b>, <b>MS_PER_SEC_INT</b>,
-    <b>mdns_query_state_t::query_complete</b>, <b>SAFE_MALLOC</b>,
-    <b>mdns_query_state_t::servers</b>, <b>SET_ERRNO</b>,
-    <b>mdns_query_state_t::start_time_ms</b>, <b>time_get_ns()</b>, and
-    <b>mdns_query_state_t::timeout_ms</b>.</p>
-<p class="Pp">Referenced by <b>discovery_mdns_query()</b>, and
-    <b>ui_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> hex_to_pubkey (const char * hex_str,
-  <b>uint8_t</b> pubkey_out[32])</h2>
-<p class="Pp">Convert hex string to Ed25519 public key. Converts 64-character
-    hex string to 32-byte binary pubkey.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>hex_str</i> Hex string (64 characters)
-<br/>
-<i>pubkey_out</i> Output binary pubkey (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
-  hex</div>
-<p class="Pp">Definition at line <b>62</b> of file <b>discovery.c</b>.</p>
-<pre>62                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_HANDLED</b>,
+            <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
+            <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_update()</b>,
+            <b>ASCIICHAT_OK</b>, <b>mdns_query_state_t::capacity</b>,
+            <b>mdns_query_state_t::count</b>, <b>discovery_mdns_query()</b>,
+            <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>MS_PER_SEC_INT</b>, <b>mdns_query_state_t::query_complete</b>,
+            <b>SAFE_MALLOC</b>, <b>mdns_query_state_t::servers</b>,
+            <b>SET_ERRNO</b>, <b>mdns_query_state_t::start_time_ms</b>,
+            <b>time_get_ns()</b>, and <b>mdns_query_state_t::timeout_ms</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_mdns_query()</b>, and
+            <b>ui_mdns_query()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> hex_to_pubkey (const char * hex_str,
+            <b>uint8_t</b> pubkey_out[32])
+          </h2>
+          <p class="Pp">
+            Convert hex string to Ed25519 public key. Converts 64-character hex
+            string to 32-byte binary pubkey.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>hex_str</i> Hex string (64 characters)
+            <br />
+            <i>pubkey_out</i> Output binary pubkey (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid hex
+          </div>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+62                                                                                                   {
 63   if (!hex_str || !pubkey_out) {
 64     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid hex_str or pubkey_out pointer&quot;);
 65     return ERROR_INVALID_PARAM;
@@ -555,26 +704,38 @@
 86
 87   return ASCIICHAT_OK;
 88 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>hex_to_pubkey()</b>, and
-  <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>hex_to_pubkey()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_pubkey_to_hex_(const_"><a class="permalink" href="#void_pubkey_to_hex_(const_">void
-  pubkey_to_hex (const <b>uint8_t</b> pubkey[32], char hex_out[(32
-  *2+1)])</a></h2>
-<p class="Pp">Convert Ed25519 public key to hex string. Converts 32-byte binary
-    pubkey to lowercase hex (64 characters).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pubkey</i> Binary public key (32 bytes)
-<br/>
-<i>hex_out</i> Output hex string buffer (must be at least 65 bytes)</div>
-<p class="Pp">Definition at line <b>53</b> of file <b>discovery.c</b>.</p>
-<pre>53                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>hex_to_pubkey()</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>hex_to_pubkey()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_pubkey_to_hex_(const_">
+            <a class="permalink" href="#void_pubkey_to_hex_(const_"
+              >void pubkey_to_hex (const <b>uint8_t</b> pubkey[32], char
+              hex_out[(32 *2+1)])</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert Ed25519 public key to hex string. Converts 32-byte binary
+            pubkey to lowercase hex (64 characters).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pubkey</i> Binary public key (32 bytes)
+            <br />
+            <i>hex_out</i> Output hex string buffer (must be at least 65 bytes)
+          </div>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+53                                                                                                     {
 54   if (!pubkey || !hex_out)
 55     return;
 56   for (int i = 0; i &lt; 32; i++) {
@@ -582,24 +743,28 @@
 58   }
 59   hex_out[64] = '\0';
 60 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>pubkey_to_hex()</b>, and
-    <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>pubkey_to_hex()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>HEX_STRING_SIZE_32</b>, <b>pubkey_to_hex()</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>pubkey_to_hex()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

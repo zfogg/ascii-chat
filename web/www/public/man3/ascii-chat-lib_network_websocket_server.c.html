@@ -1,173 +1,292 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server.c - WebSocket server implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>websocket_connection_data_t</b>
-  <br/>
-  Per-connection user data.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define
-    <b>NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE</b> 32
-  <br/>
-  #define <b>R_OK</b> 4
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>websocket_server_init</b>
-    (<b>websocket_server_t</b> *server, const <b>websocket_server_config_t</b>
-    *config)
-  <br/>
-  Initialize WebSocket server. <b>asciichat_error_t</b>
-    <b>websocket_server_run</b> (<b>websocket_server_t</b> *server)
-  <br/>
-  Run WebSocket server event loop. void <b>websocket_server_cancel_service</b>
-    (<b>websocket_server_t</b> *server)
-  <br/>
-  Wake the WebSocket server event loop immediately. void
-    <b>websocket_server_destroy</b> (<b>websocket_server_t</b> *server)
-  <br/>
-  Destroy WebSocket server and free resources.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WebSocket server implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Definition in file <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE___16"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE___16">#define
-  NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE___256">#define
-  NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE___32"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE___32">#define
-  NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE___64">#define
-  NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_R_OK___4"><a class="permalink" href="#_define_R_OK___4">#define
-  R_OK 4</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_server_cancel_service_("><a class="permalink" href="#void_websocket_server_cancel_service_(">void
-  websocket_server_cancel_service (<b>websocket_server_t</b> * server)</a></h2>
-<p class="Pp">Wake the WebSocket server event loop immediately. Thread-safe.
-    Wakes lws_service() from its timeout wait, allowing the event loop to check
-    the running flag without waiting for the full service timeout (50ms).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>server</i> Server instance (must have a valid
-  context)</div>
-<p class="Pp">Definition at line <b>907</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<pre>907                                                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server.c - WebSocket server implementation.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>websocket_connection_data_t</b>
+            <br />
+            Per-connection user data.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define
+            <b>NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>R_OK</b> 4
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>websocket_server_init</b> (<b
+              >websocket_server_t</b
+            >
+            *server, const <b>websocket_server_config_t</b>
+            *config)
+            <br />
+            Initialize WebSocket server. <b>asciichat_error_t</b>
+            <b>websocket_server_run</b> (<b>websocket_server_t</b>
+            *server)
+            <br />
+            Run WebSocket server event loop. void
+            <b>websocket_server_cancel_service</b> (<b>websocket_server_t</b>
+            *server)
+            <br />
+            Wake the WebSocket server event loop immediately. void
+            <b>websocket_server_destroy</b> (<b>websocket_server_t</b> *server)
+            <br />
+            Destroy WebSocket server and free resources.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WebSocket server implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">
+          Definition in file <b>lib/network/websocket/server.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE___16"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE___16"
+              >#define NETWORK_WEBSOCKET_SERVER_PROTO_VER_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE___256"
+              >#define NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE___32"
+              >#define NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE___64"
+              >#define NETWORK_WEBSOCKET_SERVER_WS_TRANSPORT_NAME_BUFFER_SIZE
+              64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_R_OK___4">
+            <a class="permalink" href="#_define_R_OK___4">#define R_OK 4</a>
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_websocket_server_cancel_service_(">
+            <a class="permalink" href="#void_websocket_server_cancel_service_("
+              >void websocket_server_cancel_service (<b>websocket_server_t</b> *
+              server)</a
+            >
+          </h2>
+          <p class="Pp">
+            Wake the WebSocket server event loop immediately. Thread-safe. Wakes
+            lws_service() from its timeout wait, allowing the event loop to
+            check the running flag without waiting for the full service timeout
+            (50ms).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>server</i> Server instance (must have a valid context)
+          </div>
+          <p class="Pp">
+            Definition at line <b>907</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <pre>
+907                                                                  {
 908   if (server &amp;&amp; server-&gt;context) {
 909     lws_cancel_service(server-&gt;context);
 910   }
 911 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>websocket_server::context</b>, and
-    <b>websocket_server_cancel_service()</b>.</p>
-<p class="Pp">Referenced by <b>network_server_stop()</b>, and
-    <b>websocket_server_cancel_service()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_websocket_server_destroy_("><a class="permalink" href="#void_websocket_server_destroy_(">void
-  websocket_server_destroy (<b>websocket_server_t</b> * server)</a></h2>
-<p class="Pp">Destroy WebSocket server and free resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>server</i> Server instance to destroy</div>
-<p class="Pp">Definition at line <b>913</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<pre>913                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>websocket_server::context</b>, and
+            <b>websocket_server_cancel_service()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_stop()</b>, and
+            <b>websocket_server_cancel_service()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_websocket_server_destroy_(">
+            <a class="permalink" href="#void_websocket_server_destroy_("
+              >void websocket_server_destroy (<b>websocket_server_t</b> *
+              server)</a
+            >
+          </h2>
+          <p class="Pp">Destroy WebSocket server and free resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>server</i> Server instance to destroy</div>
+          <p class="Pp">
+            Definition at line <b>913</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <pre>
+913                                                           {
 914   if (!server) {
 915     return;
 916   }
@@ -196,31 +315,48 @@
 939
 940   log_debug(&quot;WebSocket server destroyed&quot;);
 941 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>websocket_server::context</b>, <b>websocket_server::handler_pool</b>,
-    <b>log_debug</b>, <b>NAMED_UNREGISTER</b>, <b>websocket_server::running</b>,
-    <b>thread_pool_destroy()</b>, and <b>websocket_server_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>network_server_stop()</b>, and
-    <b>websocket_server_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> websocket_server_init
-  (<b>websocket_server_t</b> * server, const <b>websocket_server_config_t</b> *
-  config)</h2>
-<p class="Pp">Initialize WebSocket server. Creates libwebsockets context and
-    prepares for accepting connections.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>server</i> Server instance to initialize
-<br/>
-<i>config</i> Server configuration</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>743</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<pre>743                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>,
+            <b>websocket_server::context</b>,
+            <b>websocket_server::handler_pool</b>, <b>log_debug</b>,
+            <b>NAMED_UNREGISTER</b>, <b>websocket_server::running</b>,
+            <b>thread_pool_destroy()</b>, and <b>websocket_server_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_stop()</b>, and
+            <b>websocket_server_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> websocket_server_init (<b
+              >websocket_server_t</b
+            >
+            * server, const <b>websocket_server_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Initialize WebSocket server. Creates libwebsockets context and
+            prepares for accepting connections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>server</i> Server instance to initialize
+            <br />
+            <i>config</i> Server configuration
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>743</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <pre>
+743                                                                                                              {
 744   if (!server || !config || !config-&gt;client_handler) {
 745     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 746   }
@@ -346,45 +482,62 @@
 866   log_info(&quot;WebSocket server initialized on port %d with static file serving&quot;, config-&gt;port);
 867   return ASCIICHAT_OK;
 868 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>websocket_server_config_t::client_handler</b>,
-    <b>websocket_server::context</b>, <b>errno</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_BIND</b>, <b>ERROR_THREAD</b>,
-    <b>websocket_server::handler</b>, <b>websocket_server::handler_pool</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>lws_log_init_server()</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
-    <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NAMED_REGISTER_WEBSOCKET</b>,
-    <b>NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE</b>,
-    <b>NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE</b>, <b>NOTICE</b>,
-    <b>platform_access()</b>, <b>websocket_server::port</b>,
-    <b>websocket_server_config_t::port</b>, <b>R_OK</b>,
-    <b>websocket_server::running</b>, <b>SET_ERRNO</b>,
-    <b>thread_pool_create_with_workers()</b>,
-    <b>websocket_server_config_t::tls_cert_path</b>,
-    <b>websocket_server::tls_enabled</b>,
-    <b>websocket_server_config_t::tls_key_path</b>,
-    <b>websocket_server::user_data</b>,
-    <b>websocket_server_config_t::user_data</b>, and
-    <b>websocket_server_init()</b>.</p>
-<p class="Pp">Referenced by <b>network_server_create()</b>, and
-    <b>websocket_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> websocket_server_run
-  (<b>websocket_server_t</b> * server)</h2>
-<p class="Pp">Run WebSocket server event loop. Blocks until server is signaled
-    to stop via running flag.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>server</i> Server instance</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>870</b> of file
-    <b>lib/network/websocket/server.c</b>.</p>
-<pre>870                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>websocket_server_config_t::client_handler</b>,
+            <b>websocket_server::context</b>, <b>errno</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_BIND</b>,
+            <b>ERROR_THREAD</b>, <b>websocket_server::handler</b>,
+            <b>websocket_server::handler_pool</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>lws_log_init_server()</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+            <b>NAMED_REGISTER_WEBSOCKET</b>,
+            <b>NETWORK_WEBSOCKET_SERVER_SSL_ERR_BUFFER_SIZE</b>,
+            <b>NETWORK_WEBSOCKET_SERVER_WS_PORT_NAME_BUFFER_SIZE</b>,
+            <b>NOTICE</b>, <b>platform_access()</b>,
+            <b>websocket_server::port</b>,
+            <b>websocket_server_config_t::port</b>, <b>R_OK</b>,
+            <b>websocket_server::running</b>, <b>SET_ERRNO</b>,
+            <b>thread_pool_create_with_workers()</b>,
+            <b>websocket_server_config_t::tls_cert_path</b>,
+            <b>websocket_server::tls_enabled</b>,
+            <b>websocket_server_config_t::tls_key_path</b>,
+            <b>websocket_server::user_data</b>,
+            <b>websocket_server_config_t::user_data</b>, and
+            <b>websocket_server_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_create()</b>, and
+            <b>websocket_server_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> websocket_server_run (<b
+              >websocket_server_t</b
+            >
+            * server)
+          </h2>
+          <p class="Pp">
+            Run WebSocket server event loop. Blocks until server is signaled to
+            stop via running flag.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>server</i> Server instance</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>870</b> of file
+            <b>lib/network/websocket/server.c</b>.
+          </p>
+          <pre>
+870                                                                    {
 871   if (!server || !server-&gt;context) {
 872     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid server&quot;);
 873   }
@@ -420,28 +573,32 @@
 903       &quot;WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)&quot;);
 904   return ASCIICHAT_OK;
 905 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
-    <b>websocket_server::context</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_debug_every</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>NAMED_DESCRIBE</b>, <b>websocket_server::port</b>,
-    <b>websocket_server::running</b>, <b>SET_ERRNO</b>, <b>time_get_ns()</b>,
-    <b>US_PER_MS_INT</b>, <b>US_PER_SEC_INT</b>, and
-    <b>websocket_server_run()</b>.</p>
-<p class="Pp">Referenced by <b>websocket_server_run()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>websocket_server::context</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_debug_every</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>NAMED_DESCRIBE</b>, <b>websocket_server::port</b>,
+            <b>websocket_server::running</b>, <b>SET_ERRNO</b>,
+            <b>time_get_ns()</b>, <b>US_PER_MS_INT</b>, <b>US_PER_SEC_INT</b>,
+            and <b>websocket_server_run()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>websocket_server_run()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

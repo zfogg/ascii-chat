@@ -1,143 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>audio.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">audio.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">audio.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio.h - ascii-chat Client Audio Processing Management
-  Interface</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>audio_process_received_samples</b>
-    (<b>client_connection_t</b> *connection, const float *samples, int
-    num_samples)
-  <br/>
-  Process received audio samples from server. int <b>audio_client_init</b>
-    (void)
-  <br/>
-  Initialize audio subsystem. <b>asciichat_error_t</b> <b>audio_sender_init</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Initialize audio sender thread. void <b>audio_sender_cleanup</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Cleanup async audio sender. void <b>audio_sender_finalize</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  int <b>audio_start_thread</b> (<b>client_connection_t</b> *connection)
-  <br/>
-  Start audio capture thread. void <b>audio_stop_thread</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Stop audio capture thread. <b>bool</b> <b>audio_thread_exited</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Check if audio capture thread has exited. void <b>audio_cleanup</b> (void)
-  <br/>
-  Cleanup audio subsystem. <b>client_audio_pipeline_t</b> *
-    <b>audio_get_pipeline</b> (<b>client_connection_t</b> *connection)
-  <br/>
-  Get the audio pipeline (for advanced usage). int <b>audio_decode_opus</b>
-    (<b>client_connection_t</b> *connection, const <b>uint8_t</b> *opus_data,
-    size_t opus_len, float *output, int max_samples)
-  <br/>
-  Decode Opus packet using the audio pipeline. <b>audio_context_t</b> *
-    <b>audio_get_context</b> (void)
-  <br/>
-  Get the global audio context for use by other subsystems.
-    <b>asciichat_error_t</b> <b>audio_connection_init</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Client Audio Processing Management Interface</p>
-<p class="Pp">Defines the interface for audio system initialization, capture
-    thread management, and audio sample processing in the ascii-chat client.</p>
-<p class="Pp"></p>
-<p class="Pp">The audio subsystem handles bidirectional audio streaming using
-    Opus encoding and PortAudio for platform-independent audio capture and
-    playback.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Audio_Pipeline"><a class="permalink" href="#Audio_Pipeline">Audio
-  Pipeline</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Capture</b>: Microphone &#x2192; PortAudio &#x2192; Opus encoder
-      &#x2192; Send to server</li>
-  <li><b>Playback</b>: Server packet &#x2192; Opus decoder &#x2192; Ring buffer
-      &#x2192; PortAudio &#x2192; Speaker</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h2>
-<p class="Pp"><b>Options</b>:</p>
-<ul class="Bl-bullet">
-  <li>--<b>Audio</b><b>: Enable audio (disabled by default)</b></li>
-  <li>--audio-device &lt;index&gt;: Select audio input/output device</li>
-</ul>
-<p class="Pp"><b>Parameters</b>:</p>
-<ul class="Bl-bullet">
-  <li>Sample rate: 44100 Hz</li>
-  <li>Channels: 2 (interleaved stereo)</li>
-  <li>Format: 32-bit float samples</li>
-  <li>Opus bitrate: Variable (16-48 kbps)</li>
-  <li>Batch size: 256 samples (~5.8ms at 44.1kHz)</li>
-  <li>Ring buffer: 8192 samples (~185ms jitter buffer)</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">topic_client_audio &quot;Audio Architecture&quot;</div>
-<p class="Pp">Definition in file <b>src/client/audio.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_connection_init
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">Definition at line <b>952</b> of file
-  <b>src/client/audio.c</b>.</p>
-<pre>952                                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>audio.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">audio.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">audio.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          audio.h - ascii-chat Client Audio Processing Management Interface
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>audio_process_received_samples</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const float *samples, int num_samples)
+            <br />
+            Process received audio samples from server. int
+            <b>audio_client_init</b>
+            (void)
+            <br />
+            Initialize audio subsystem. <b>asciichat_error_t</b>
+            <b>audio_sender_init</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Initialize audio sender thread. void <b>audio_sender_cleanup</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Cleanup async audio sender. void <b>audio_sender_finalize</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            int <b>audio_start_thread</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Start audio capture thread. void <b>audio_stop_thread</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Stop audio capture thread. <b>bool</b>
+            <b>audio_thread_exited</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Check if audio capture thread has exited. void
+            <b>audio_cleanup</b> (void)
+            <br />
+            Cleanup audio subsystem. <b>client_audio_pipeline_t</b> *
+            <b>audio_get_pipeline</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Get the audio pipeline (for advanced usage). int
+            <b>audio_decode_opus</b> (<b>client_connection_t</b> *connection,
+            const <b>uint8_t</b> *opus_data, size_t opus_len, float *output, int
+            max_samples)
+            <br />
+            Decode Opus packet using the audio pipeline.
+            <b>audio_context_t</b> * <b>audio_get_context</b> (void)
+            <br />
+            Get the global audio context for use by other subsystems.
+            <b>asciichat_error_t</b> <b>audio_connection_init</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          ascii-chat Client Audio Processing Management Interface
+        </p>
+        <p class="Pp">
+          Defines the interface for audio system initialization, capture thread
+          management, and audio sample processing in the ascii-chat client.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The audio subsystem handles bidirectional audio streaming using Opus
+          encoding and PortAudio for platform-independent audio capture and
+          playback.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Audio_Pipeline">
+            <a class="permalink" href="#Audio_Pipeline">Audio Pipeline</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Capture</b>: Microphone &#x2192; PortAudio &#x2192; Opus
+              encoder &#x2192; Send to server
+            </li>
+            <li>
+              <b>Playback</b>: Server packet &#x2192; Opus decoder &#x2192; Ring
+              buffer &#x2192; PortAudio &#x2192; Speaker
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Configuration">
+            <a class="permalink" href="#Configuration">Configuration</a>
+          </h2>
+          <p class="Pp"><b>Options</b>:</p>
+          <ul class="Bl-bullet">
+            <li>--<b>Audio</b><b>: Enable audio (disabled by default)</b></li>
+            <li>
+              --audio-device &lt;index&gt;: Select audio input/output device
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Sample rate: 44100 Hz</li>
+            <li>Channels: 2 (interleaved stereo)</li>
+            <li>Format: 32-bit float samples</li>
+            <li>Opus bitrate: Variable (16-48 kbps)</li>
+            <li>Batch size: 256 samples (~5.8ms at 44.1kHz)</li>
+            <li>Ring buffer: 8192 samples (~185ms jitter buffer)</li>
+          </ul>
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">2025</div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            topic_client_audio &quot;Audio Architecture&quot;
+          </div>
+          <p class="Pp">Definition in file <b>src/client/audio.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_connection_init (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>952</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+952                                                                          {
 953   if (!connection-&gt;audio_context || !connection-&gt;audio_context-&gt;initialized)
 954     return ASCIICHAT_OK;
 955   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
@@ -180,43 +259,57 @@
 992
 993   return 0;
 994 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_flags_t::agc</b>,
-    <b>ASCIICHAT_OK</b>, <b>AUDIO_CHANNELS</b>, <b>audio_connection_init()</b>,
-    <b>client_connection::audio_context</b>,
-    <b>client_connection::audio_pipeline</b>,
-    <b>audio_ring_buffer_set_jitter_target()</b>, <b>audio_set_pipeline()</b>,
-    <b>client_connection::capture_context</b>,
-    <b>client_audio_pipeline_config_for_source()</b>,
-    <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_flags_t::compressor</b>,
-    <b>client_audio_pipeline_flags_t::echo_cancel</b>, <b>ERROR_AUDIO</b>,
-    <b>client_audio_pipeline_config_t::flags</b>,
-    <b>client_audio_pipeline_flags_t::highpass</b>,
-    <b>audio_context_t::initialized</b>,
-    <b>client_audio_pipeline_flags_t::jitter_buffer</b>,
-    <b>client_audio_pipeline_config_t::jitter_margin_ms</b>, <b>log_debug</b>,
-    <b>client_audio_pipeline_flags_t::lowpass</b>,
-    <b>media_source_has_audio()</b>,
-    <b>client_audio_pipeline_flags_t::noise_gate</b>,
-    <b>client_audio_pipeline_flags_t::noise_suppress</b>,
-    <b>client_audio_pipeline_config_t::opus_bitrate</b>,
-    <b>audio_context_t::playback_buffer</b>,
-    <b>client_audio_pipeline_config_t::sample_rate</b>,
-    <b>session_capture_get_media_source()</b>, <b>SET_ERRNO</b>, and
-    <b>client_audio_pipeline_flags_t::vad</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>, and
-    <b>client_protocol_start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_sender_cleanup_("><a class="permalink" href="#void_audio_sender_cleanup_(">void
-  audio_sender_cleanup (<b>client_connection_t</b> * connection)</a></h2>
-<p class="Pp">Cleanup async audio sender. Signal the asynchronous audio sender
-    to stop before worker threads are joined.</p>
-<p class="Pp">Definition at line <b>337</b> of file
-  <b>src/client/audio.c</b>.</p>
-<pre>337                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_flags_t::agc</b>,
+            <b>ASCIICHAT_OK</b>, <b>AUDIO_CHANNELS</b>,
+            <b>audio_connection_init()</b>,
+            <b>client_connection::audio_context</b>,
+            <b>client_connection::audio_pipeline</b>,
+            <b>audio_ring_buffer_set_jitter_target()</b>,
+            <b>audio_set_pipeline()</b>,
+            <b>client_connection::capture_context</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_flags_t::compressor</b>,
+            <b>client_audio_pipeline_flags_t::echo_cancel</b>,
+            <b>ERROR_AUDIO</b>, <b>client_audio_pipeline_config_t::flags</b>,
+            <b>client_audio_pipeline_flags_t::highpass</b>,
+            <b>audio_context_t::initialized</b>,
+            <b>client_audio_pipeline_flags_t::jitter_buffer</b>,
+            <b>client_audio_pipeline_config_t::jitter_margin_ms</b>,
+            <b>log_debug</b>, <b>client_audio_pipeline_flags_t::lowpass</b>,
+            <b>media_source_has_audio()</b>,
+            <b>client_audio_pipeline_flags_t::noise_gate</b>,
+            <b>client_audio_pipeline_flags_t::noise_suppress</b>,
+            <b>client_audio_pipeline_config_t::opus_bitrate</b>,
+            <b>audio_context_t::playback_buffer</b>,
+            <b>client_audio_pipeline_config_t::sample_rate</b>,
+            <b>session_capture_get_media_source()</b>, <b>SET_ERRNO</b>, and
+            <b>client_audio_pipeline_flags_t::vad</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_sender_cleanup_(">
+            <a class="permalink" href="#void_audio_sender_cleanup_("
+              >void audio_sender_cleanup (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">
+            Cleanup async audio sender. Signal the asynchronous audio sender to
+            stop before worker threads are joined.
+          </p>
+          <p class="Pp">
+            Definition at line <b>337</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+337                                                            {
 338   if (!connection)
 339     return;
 340   // Signal thread to exit
@@ -233,27 +326,38 @@
 351     log_debug(&quot;Audio sender thread will be joined by thread pool&quot;);
 352   }
 353 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>client_connection::audio_send_queue_cond</b>,
-    <b>client_connection::audio_send_queue_lc</b>,
-    <b>client_connection::audio_send_queue_mutex</b>,
-    <b>audio_sender_cleanup()</b>,
-    <b>client_connection::audio_sender_should_exit</b>,
-    <b>client_connection::audio_sender_thread_created</b>, <b>cond_signal()</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, and <b>THREAD_IS_CREATED</b>.</p>
-<p class="Pp">Referenced by <b>audio_sender_cleanup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_sender_finalize_("><a class="permalink" href="#void_audio_sender_finalize_(">void
-  audio_sender_finalize (<b>client_connection_t</b> * connection)</a></h2>
-<p class="Pp">Release asynchronous audio sender resources after its worker has
-    been joined.</p>
-<p class="Pp">Definition at line <b>355</b> of file
-  <b>src/client/audio.c</b>.</p>
-<pre>355                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>,
+            <b>client_connection::audio_send_queue_cond</b>,
+            <b>client_connection::audio_send_queue_lc</b>,
+            <b>client_connection::audio_send_queue_mutex</b>,
+            <b>audio_sender_cleanup()</b>,
+            <b>client_connection::audio_sender_should_exit</b>,
+            <b>client_connection::audio_sender_thread_created</b>,
+            <b>cond_signal()</b>, <b>lifecycle_is_initialized()</b>,
+            <b>log_debug</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+            <b>THREAD_IS_CREATED</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_sender_cleanup()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_sender_finalize_(">
+            <a class="permalink" href="#void_audio_sender_finalize_("
+              >void audio_sender_finalize (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">
+            Release asynchronous audio sender resources after its worker has
+            been joined.
+          </p>
+          <p class="Pp">
+            Definition at line <b>355</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+355                                                             {
 356   if (!connection)
 357     return;
 358   if (connection-&gt;audio_queue_cond_initialized) {
@@ -266,28 +370,32 @@
 365   }
 366   lifecycle_shutdown(&amp;connection-&gt;audio_send_queue_lc);
 367 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_connection::audio_queue_cond_initialized</b>,
-    <b>client_connection::audio_queue_mutex_initialized</b>,
-    <b>client_connection::audio_send_queue_cond</b>,
-    <b>client_connection::audio_send_queue_lc</b>,
-    <b>client_connection::audio_send_queue_mutex</b>,
-    <b>audio_sender_finalize()</b>, <b>cond_destroy()</b>,
-    <b>lifecycle_shutdown()</b>, and <b>mutex_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>audio_sender_finalize()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_connection::audio_queue_cond_initialized</b>,
+            <b>client_connection::audio_queue_mutex_initialized</b>,
+            <b>client_connection::audio_send_queue_cond</b>,
+            <b>client_connection::audio_send_queue_lc</b>,
+            <b>client_connection::audio_send_queue_mutex</b>,
+            <b>audio_sender_finalize()</b>, <b>cond_destroy()</b>,
+            <b>lifecycle_shutdown()</b>, and <b>mutex_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_sender_finalize()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

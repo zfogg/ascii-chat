@@ -1,205 +1,342 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>audio_processor(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">audio_processor(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">audio_processor(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio_processor</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>audio_processor_config_t</b> <b>config</b>
-  <br/>
-  <b>spectral_processor_t</b> * <b>spectral_left</b>
-  <br/>
-  <b>spectral_processor_t</b> * <b>spectral_right</b>
-  <br/>
-  <b>compressor_t</b> <b>compressor</b>
-  <br/>
-  <b>noise_gate_t</b> <b>gate</b>
-  <br/>
-  <b>highpass_filter_t</b> <b>highpass</b>
-  <br/>
-  <b>lowpass_filter_t</b> <b>lowpass</b>
-  <br/>
-  <b>highpass_filter_t</b> <b>highpass_right</b>
-  <br/>
-  <b>lowpass_filter_t</b> <b>lowpass_right</b>
-  <br/>
-  double <b>energy</b>
-  <br/>
-  size_t <b>level_samples</b>
-  <br/>
-  float <b>gain</b>
-  <br/>
-  float <b>target_gain</b>
-  <br/>
-  float <b>max_gain</b>
-  <br/>
-  float <b>gain_attack</b>
-  <br/>
-  float <b>gain_release</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>9</b> of file <b>processor.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>compressor_t</b> audio_processor::compressor</h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>audio_processor_config_t</b> audio_processor::config</h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>audio_processor_process()</b>, <b>audio_processor_reset()</b>, and
-    <b>audio_processor_set_flags()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_audio_processor::energy"><a class="permalink" href="#double_audio_processor::energy">double
-  audio_processor::energy</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_processor::gain"><a class="permalink" href="#float_audio_processor::gain">float
-  audio_processor::gain</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_processor::gain_attack"><a class="permalink" href="#float_audio_processor::gain_attack">float
-  audio_processor::gain_attack</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>, and
-    <b>audio_processor_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_processor::gain_release"><a class="permalink" href="#float_audio_processor::gain_release">float
-  audio_processor::gain_release</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>, and
-    <b>audio_processor_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>noise_gate_t</b> audio_processor::gate</h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>highpass_filter_t</b> audio_processor::highpass</h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>highpass_filter_t</b> audio_processor::highpass_right</h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_audio_processor::level_samples"><a class="permalink" href="#size_t_audio_processor::level_samples">size_t
-  audio_processor::level_samples</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>lowpass_filter_t</b> audio_processor::lowpass</h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>lowpass_filter_t</b> audio_processor::lowpass_right</h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_processor::max_gain"><a class="permalink" href="#float_audio_processor::max_gain">float
-  audio_processor::max_gain</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>, and
-    <b>audio_processor_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>spectral_processor_t</b>* audio_processor::spectral_left</h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>audio_processor_destroy()</b>, <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>spectral_processor_t</b>* audio_processor::spectral_right</h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_create()</b>,
-    <b>audio_processor_destroy()</b>, <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="float_audio_processor::target_gain"><a class="permalink" href="#float_audio_processor::target_gain">float
-  audio_processor::target_gain</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>processor.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_processor_process()</b>, and
-    <b>audio_processor_reset()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>audio_processor(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">audio_processor(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">audio_processor(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">audio_processor</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>audio_processor_config_t</b> <b>config</b>
+            <br />
+            <b>spectral_processor_t</b> * <b>spectral_left</b>
+            <br />
+            <b>spectral_processor_t</b> * <b>spectral_right</b>
+            <br />
+            <b>compressor_t</b> <b>compressor</b>
+            <br />
+            <b>noise_gate_t</b> <b>gate</b>
+            <br />
+            <b>highpass_filter_t</b> <b>highpass</b>
+            <br />
+            <b>lowpass_filter_t</b> <b>lowpass</b>
+            <br />
+            <b>highpass_filter_t</b> <b>highpass_right</b>
+            <br />
+            <b>lowpass_filter_t</b> <b>lowpass_right</b>
+            <br />
+            double <b>energy</b>
+            <br />
+            size_t <b>level_samples</b>
+            <br />
+            float <b>gain</b>
+            <br />
+            float <b>target_gain</b>
+            <br />
+            float <b>max_gain</b>
+            <br />
+            float <b>gain_attack</b>
+            <br />
+            float <b>gain_release</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>9</b> of file <b>processor.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>compressor_t</b> audio_processor::compressor</h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_processor_config_t</b> audio_processor::config
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_process()</b>, <b>audio_processor_reset()</b>,
+            and <b>audio_processor_set_flags()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_audio_processor::energy">
+            <a class="permalink" href="#double_audio_processor::energy"
+              >double audio_processor::energy</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor::gain">
+            <a class="permalink" href="#float_audio_processor::gain"
+              >float audio_processor::gain</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor::gain_attack">
+            <a class="permalink" href="#float_audio_processor::gain_attack"
+              >float audio_processor::gain_attack</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor::gain_release">
+            <a class="permalink" href="#float_audio_processor::gain_release"
+              >float audio_processor::gain_release</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>noise_gate_t</b> audio_processor::gate</h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>highpass_filter_t</b> audio_processor::highpass</h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>highpass_filter_t</b> audio_processor::highpass_right
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_audio_processor::level_samples">
+            <a class="permalink" href="#size_t_audio_processor::level_samples"
+              >size_t audio_processor::level_samples</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>lowpass_filter_t</b> audio_processor::lowpass</h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>lowpass_filter_t</b> audio_processor::lowpass_right
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor::max_gain">
+            <a class="permalink" href="#float_audio_processor::max_gain"
+              >float audio_processor::max_gain</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>, and
+            <b>audio_processor_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>spectral_processor_t</b>* audio_processor::spectral_left
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_destroy()</b>, <b>audio_processor_process()</b>,
+            and <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>spectral_processor_t</b>* audio_processor::spectral_right
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_create()</b>,
+            <b>audio_processor_destroy()</b>, <b>audio_processor_process()</b>,
+            and <b>audio_processor_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="float_audio_processor::target_gain">
+            <a class="permalink" href="#float_audio_processor::target_gain"
+              >float audio_processor::target_gain</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>processor.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_processor_process()</b>, and
+            <b>audio_processor_reset()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

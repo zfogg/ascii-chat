@@ -62,8 +62,12 @@
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-        <p class="Pp">#include &lt;include/ascii-chat/network/acip/acds_client.h&gt;</p>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/network/acip/acds_client.h&gt;
+        </p>
         <section class="Ss">
           <h2 class="Ss" id="Data_Fields">
             <a class="permalink" href="#Data_Fields">Data Fields</a>
@@ -96,80 +100,138 @@
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
         <p class="Pp">Session join result.</p>
         <p class="Pp">
-          Server connection information is ONLY included after successful authentication. This
-          prevents IP address leakage to unauthenticated clients.
+          Server connection information is ONLY included after successful
+          authentication. This prevents IP address leakage to unauthenticated
+          clients.
         </p>
-        <p class="Pp">Definition at line <b>245</b> of file <b>acds_client.h</b>.</p>
+        <p class="Pp">
+          Definition at line <b>245</b> of file <b>acds_client.h</b>.
+        </p>
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Field_Documentation">
-          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
         </h1>
         <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::error_code</h2>
+          <h2 class="Ss">
+            <b>uint8_t</b> acds_session_join_result_t::error_code
+          </h2>
           <p class="Pp">Error code (if !success).</p>
-          <p class="Pp">Definition at line <b>249</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">
+            Definition at line <b>249</b> of file <b>acds_client.h</b>.
+          </p>
           <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
         </section>
         <section class="Ss">
-          <h2 class="Ss" id="char_acds_session_join_result_t::error_message_129_">
-            <a class="permalink" href="#char_acds_session_join_result_t::error_message_129_"
+          <h2
+            class="Ss"
+            id="char_acds_session_join_result_t::error_message_129_"
+          >
+            <a
+              class="permalink"
+              href="#char_acds_session_join_result_t::error_message_129_"
               >char acds_session_join_result_t::error_message[129]</a
             >
           </h2>
           <p class="Pp">Error message (if !success, null-terminated).</p>
-          <p class="Pp">Definition at line <b>250</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>250</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::participant_id[16]</h2>
+          <h2 class="Ss">
+            <b>uint8_t</b> acds_session_join_result_t::participant_id[16]
+          </h2>
           <p class="Pp">Participant UUID (if success).</p>
-          <p class="Pp">Definition at line <b>247</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>247</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss" id="char_acds_session_join_result_t::server_address_65_">
-            <a class="permalink" href="#char_acds_session_join_result_t::server_address_65_"
+          <h2
+            class="Ss"
+            id="char_acds_session_join_result_t::server_address_65_"
+          >
+            <a
+              class="permalink"
+              href="#char_acds_session_join_result_t::server_address_65_"
               >char acds_session_join_result_t::server_address[65]</a
             >
           </h2>
           <p class="Pp">Server IP/hostname (if success, null-terminated).</p>
-          <p class="Pp">Definition at line <b>252</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">
+            Definition at line <b>252</b> of file <b>acds_client.h</b>.
+          </p>
           <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>uint16_t</b> acds_session_join_result_t::server_port</h2>
+          <h2 class="Ss">
+            <b>uint16_t</b> acds_session_join_result_t::server_port
+          </h2>
           <p class="Pp">Server port (if success).</p>
-          <p class="Pp">Definition at line <b>253</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">
+            Definition at line <b>253</b> of file <b>acds_client.h</b>.
+          </p>
           <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::session_id[16]</h2>
+          <h2 class="Ss">
+            <b>uint8_t</b> acds_session_join_result_t::session_id[16]
+          </h2>
           <p class="Pp">Session UUID (if success).</p>
-          <p class="Pp">Definition at line <b>248</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>248</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::session_type</h2>
-          <p class="Pp"><b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC (if success)</p>
-          <p class="Pp">Definition at line <b>251</b> of file <b>acds_client.h</b>.</p>
+          <h2 class="Ss">
+            <b>uint8_t</b> acds_session_join_result_t::session_type
+          </h2>
+          <p class="Pp">
+            <b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC (if success)
+          </p>
+          <p class="Pp">
+            Definition at line <b>251</b> of file <b>acds_client.h</b>.
+          </p>
           <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>bool</b> acds_session_join_result_t::success</h2>
           <p class="Pp">Join succeeded.</p>
-          <p class="Pp">Definition at line <b>246</b> of file <b>acds_client.h</b>.</p>
-          <p class="Pp">Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp">
+            Definition at line <b>246</b> of file <b>acds_client.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, and <b>server_main()</b>.
+          </p>
           <p class="Pp"></p>
         </section>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">
+          Generated automatically by Doxygen for ascii-chat from the source
+          code.
+        </p>
       </section>
     </div>
     <table class="foot">

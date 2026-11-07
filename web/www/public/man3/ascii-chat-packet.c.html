@@ -1,149 +1,215 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>packet.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">packet.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">packet.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">packet.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>packet_send_timeout_ns</b> (size_t packet_size)
-  <br/>
-  <b>asciichat_error_t</b> <b>packet_send</b> (<b>socket_t</b> sockfd,
-    <b>packet_type_t</b> type, const void *data, size_t len)
-  <br/>
-  Send a packet with proper header and CRC32. <b>asciichat_error_t</b>
-    <b>packet_receive</b> (<b>socket_t</b> sockfd, <b>packet_type_t</b> *type,
-    void **data, size_t *len)
-  <br/>
-  Receive a packet with proper header validation and CRC32 checking.
-    <b>asciichat_error_t</b> <b>send_packet_secure</b> (<b>socket_t</b> sockfd,
-    <b>packet_type_t</b> type, const void *data, size_t len,
-    <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Send a packet with encryption and compression support.
-    <b>packet_recv_result_t</b> <b>receive_packet_secure</b> (<b>socket_t</b>
-    sockfd, void *crypto_ctx, <b>bool</b> enforce_encryption,
-    <b>packet_envelope_t</b> *envelope)
-  <br/>
-  Receive a packet with decryption and decompression support.
-    <b>packet_recv_result_t</b> <b>receive_packet_secure_with_timeout</b>
-    (<b>socket_t</b> sockfd, void *crypto_ctx, <b>bool</b> enforce_encryption,
-    <b>packet_envelope_t</b> *envelope, <b>uint64_t</b> timeout_ns)
-  <br/>
-  int <b>send_packet</b> (<b>socket_t</b> sockfd, <b>packet_type_t</b> type,
-    const void *data, size_t len)
-  <br/>
-  Send a basic packet without encryption. int <b>receive_packet</b>
-    (<b>socket_t</b> sockfd, <b>packet_type_t</b> *type, void **data, size_t
-    *len)
-  <br/>
-  Receive a basic packet without encryption. int <b>send_ping_packet</b>
-    (<b>socket_t</b> sockfd)
-  <br/>
-  Send a ping packet. int <b>send_pong_packet</b> (<b>socket_t</b> sockfd)
-  <br/>
-  Send a pong packet. <b>asciichat_error_t</b> <b>packet_decrypt_envelope</b>
-    (<b>packet_envelope_t</b> *envelope, void *crypto_ctx)
-  <br/>
-  Send a clear console packet. size_t <b>packet_format_error_stack</b> (char
-    *buffer, size_t size)
-  <br/>
-  Format the current thread's error stack for transport to a peer.
-    <b>asciichat_error_t</b> <b>packet_send_error</b> (<b>socket_t</b> sockfd,
-    const <b>crypto_context_t</b> *crypto_ctx, <b>asciichat_error_t</b>
-    error_code, const char *message)
-  <br/>
-  Send an error packet with optional encryption context.
-    <b>asciichat_error_t</b> <b>packet_parse_error_message</b> (const void
-    *data, size_t len, <b>asciichat_error_t</b> *out_error_code, char
-    *message_buffer, size_t message_buffer_size, size_t *out_message_length)
-  <br/>
-  Parse an error packet payload into components. <b>asciichat_error_t</b>
-    <b>packet_send_remote_log</b> (<b>socket_t</b> sockfd, const
-    <b>crypto_context_t</b> *crypto_ctx, <b>log_level_t</b> level,
-    <b>remote_log_direction_t</b> direction, <b>uint16_t</b> flags, const char
-    *message)
-  <br/>
-  Send a remote log packet with optional encryption context.
-    <b>asciichat_error_t</b> <b>packet_parse_remote_log</b> (const void *data,
-    size_t len, <b>log_level_t</b> *out_level, <b>remote_log_direction_t</b>
-    *out_direction, <b>uint16_t</b> *out_flags, char *message_buffer, size_t
-    message_buffer_size, size_t *out_message_length)
-  <br/>
-  Parse a remote log packet payload into components. int
-    <b>send_protocol_version_packet</b> (<b>socket_t</b> sockfd, const
-    <b>protocol_version_packet_t</b> *version)
-  <br/>
-  Send protocol version packet. int <b>send_crypto_capabilities_packet</b>
-    (<b>socket_t</b> sockfd, const <b>crypto_capabilities_packet_t</b> *caps)
-  <br/>
-  Send crypto capabilities packet. int <b>send_crypto_parameters_packet</b>
-    (<b>socket_t</b> sockfd, const <b>crypto_parameters_packet_t</b> *params)
-  <br/>
-  Send crypto parameters packet. <b>asciichat_error_t</b>
-    <b>av_send_audio_opus_batch</b> (<b>socket_t</b> sockfd, const
-    <b>uint8_t</b> *opus_data, size_t opus_size, const <b>uint16_t</b>
-    *frame_sizes, int sample_rate, int frame_duration, int frame_count,
-    <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Send Opus-encoded audio batch packet with encryption support.
-    <b>asciichat_error_t</b> <b>send_image_frame_packet</b> (<b>socket_t</b>
-    sockfd, const void *image_data, <b>uint16_t</b> width, <b>uint16_t</b>
-    height, <b>uint8_t</b> format)
-  <br/>
-  Send image frame packet.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_packet_format_error_stack_(char_*_buffer,_size_t_size)"><a class="permalink" href="#size_t_packet_format_error_stack_(char_*_buffer,_size_t_size)">size_t
-  packet_format_error_stack (char * buffer, size_t size)</a></h2>
-<p class="Pp">Format the current thread's error stack for transport to a
-  peer.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buffer</i> Destination buffer
-<br/>
-<i>size</i> Destination buffer size</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of bytes written, excluding the null
-  terminator</div>
-<p class="Pp">Definition at line <b>916</b> of file <b>packet.c</b>.</p>
-<pre>916                                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>packet.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">packet.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">packet.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">packet.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>packet_send_timeout_ns</b> (size_t packet_size)
+            <br />
+            <b>asciichat_error_t</b> <b>packet_send</b> (<b>socket_t</b> sockfd,
+            <b>packet_type_t</b> type, const void *data, size_t len)
+            <br />
+            Send a packet with proper header and CRC32. <b>asciichat_error_t</b>
+            <b>packet_receive</b> (<b>socket_t</b> sockfd,
+            <b>packet_type_t</b> *type, void **data, size_t *len)
+            <br />
+            Receive a packet with proper header validation and CRC32 checking.
+            <b>asciichat_error_t</b> <b>send_packet_secure</b> (<b>socket_t</b>
+            sockfd, <b>packet_type_t</b> type, const void *data, size_t len,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Send a packet with encryption and compression support.
+            <b>packet_recv_result_t</b> <b>receive_packet_secure</b> (<b
+              >socket_t</b
+            >
+            sockfd, void *crypto_ctx, <b>bool</b> enforce_encryption,
+            <b>packet_envelope_t</b> *envelope)
+            <br />
+            Receive a packet with decryption and decompression support.
+            <b>packet_recv_result_t</b>
+            <b>receive_packet_secure_with_timeout</b> (<b>socket_t</b> sockfd,
+            void *crypto_ctx, <b>bool</b> enforce_encryption,
+            <b>packet_envelope_t</b> *envelope, <b>uint64_t</b> timeout_ns)
+            <br />
+            int <b>send_packet</b> (<b>socket_t</b> sockfd,
+            <b>packet_type_t</b> type, const void *data, size_t len)
+            <br />
+            Send a basic packet without encryption. int
+            <b>receive_packet</b> (<b>socket_t</b> sockfd,
+            <b>packet_type_t</b> *type, void **data, size_t *len)
+            <br />
+            Receive a basic packet without encryption. int
+            <b>send_ping_packet</b> (<b>socket_t</b>
+            sockfd)
+            <br />
+            Send a ping packet. int <b>send_pong_packet</b> (<b>socket_t</b>
+            sockfd)
+            <br />
+            Send a pong packet. <b>asciichat_error_t</b>
+            <b>packet_decrypt_envelope</b> (<b>packet_envelope_t</b>
+            *envelope, void *crypto_ctx)
+            <br />
+            Send a clear console packet. size_t
+            <b>packet_format_error_stack</b> (char *buffer, size_t size)
+            <br />
+            Format the current thread's error stack for transport to a peer.
+            <b>asciichat_error_t</b> <b>packet_send_error</b> (<b>socket_t</b>
+            sockfd, const <b>crypto_context_t</b> *crypto_ctx,
+            <b>asciichat_error_t</b>
+            error_code, const char *message)
+            <br />
+            Send an error packet with optional encryption context.
+            <b>asciichat_error_t</b> <b>packet_parse_error_message</b> (const
+            void *data, size_t len, <b>asciichat_error_t</b> *out_error_code,
+            char *message_buffer, size_t message_buffer_size, size_t
+            *out_message_length)
+            <br />
+            Parse an error packet payload into components.
+            <b>asciichat_error_t</b> <b>packet_send_remote_log</b> (<b
+              >socket_t</b
+            >
+            sockfd, const <b>crypto_context_t</b> *crypto_ctx,
+            <b>log_level_t</b> level, <b>remote_log_direction_t</b> direction,
+            <b>uint16_t</b> flags, const char *message)
+            <br />
+            Send a remote log packet with optional encryption context.
+            <b>asciichat_error_t</b> <b>packet_parse_remote_log</b> (const void
+            *data, size_t len, <b>log_level_t</b> *out_level,
+            <b>remote_log_direction_t</b> *out_direction,
+            <b>uint16_t</b> *out_flags, char *message_buffer, size_t
+            message_buffer_size, size_t *out_message_length)
+            <br />
+            Parse a remote log packet payload into components. int
+            <b>send_protocol_version_packet</b> (<b>socket_t</b> sockfd, const
+            <b>protocol_version_packet_t</b> *version)
+            <br />
+            Send protocol version packet. int
+            <b>send_crypto_capabilities_packet</b> (<b>socket_t</b> sockfd,
+            const <b>crypto_capabilities_packet_t</b> *caps)
+            <br />
+            Send crypto capabilities packet. int
+            <b>send_crypto_parameters_packet</b> (<b>socket_t</b> sockfd, const
+            <b>crypto_parameters_packet_t</b> *params)
+            <br />
+            Send crypto parameters packet. <b>asciichat_error_t</b>
+            <b>av_send_audio_opus_batch</b> (<b>socket_t</b> sockfd, const
+            <b>uint8_t</b> *opus_data, size_t opus_size, const <b>uint16_t</b>
+            *frame_sizes, int sample_rate, int frame_duration, int frame_count,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Send Opus-encoded audio batch packet with encryption support.
+            <b>asciichat_error_t</b> <b>send_image_frame_packet</b> (<b
+              >socket_t</b
+            >
+            sockfd, const void *image_data, <b>uint16_t</b> width,
+            <b>uint16_t</b> height, <b>uint8_t</b> format)
+            <br />
+            Send image frame packet.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_packet_format_error_stack_(char_*_buffer,_size_t_size)"
+          >
+            <a
+              class="permalink"
+              href="#size_t_packet_format_error_stack_(char_*_buffer,_size_t_size)"
+              >size_t packet_format_error_stack (char * buffer, size_t size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Format the current thread's error stack for transport to a peer.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buffer</i> Destination buffer
+            <br />
+            <i>size</i> Destination buffer size
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of bytes written, excluding the null terminator
+          </div>
+          <p class="Pp">
+            Definition at line <b>916</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+916                                                             {
 917   if (!buffer || size == 0)
 918     return 0;
 919   buffer[0] = '\0';
@@ -168,41 +234,55 @@
 938   }
 939   return offset;
 940 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_ERRNO_MAX_DEPTH</b>,
-    <b>asciichat_error_context_t::context_message</b>,
-    <b>asciichat_errno_snapshot_t::copied</b>, <b>errno_snapshot()</b>,
-    <b>extract_project_relative_path()</b>,
-    <b>asciichat_error_context_t::file</b>,
-    <b>asciichat_error_context_t::function</b>,
-    <b>asciichat_error_context_t::line</b>, <b>packet_format_error_stack()</b>,
-    and <b>thread_current_id()</b>.</p>
-<p class="Pp">Referenced by <b>packet_format_error_stack()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> packet_parse_error_message (const void *
-  data, size_t len, <b>asciichat_error_t</b> * out_error_code, char *
-  message_buffer, size_t message_buffer_size, size_t * out_message_length)</h2>
-<p class="Pp">Parse an error packet payload into components.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>data</i> Packet payload buffer
-<br/>
-<i>len</i> Payload length in bytes
-<br/>
-<i>out_error_code</i> Output pointer for <b>asciichat_error_t</b> value (must
-  not be NULL)
-<br/>
-<i>message_buffer</i> Destination buffer for message string (must not be NULL)
-<br/>
-<i>message_buffer_size</i> Size of destination buffer in bytes (must be &gt; 0)
-<br/>
-<i>out_message_length</i> Optional output for message length reported by
-  sender</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>991</b> of file <b>packet.c</b>.</p>
-<pre>993                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_MAX_DEPTH</b>,
+            <b>asciichat_error_context_t::context_message</b>,
+            <b>asciichat_errno_snapshot_t::copied</b>, <b>errno_snapshot()</b>,
+            <b>extract_project_relative_path()</b>,
+            <b>asciichat_error_context_t::file</b>,
+            <b>asciichat_error_context_t::function</b>,
+            <b>asciichat_error_context_t::line</b>,
+            <b>packet_format_error_stack()</b>, and <b>thread_current_id()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_format_error_stack()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> packet_parse_error_message (const void *
+            data, size_t len, <b>asciichat_error_t</b> * out_error_code, char *
+            message_buffer, size_t message_buffer_size, size_t *
+            out_message_length)
+          </h2>
+          <p class="Pp">Parse an error packet payload into components.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>data</i> Packet payload buffer
+            <br />
+            <i>len</i> Payload length in bytes
+            <br />
+            <i>out_error_code</i> Output pointer for
+            <b>asciichat_error_t</b> value (must not be NULL)
+            <br />
+            <i>message_buffer</i> Destination buffer for message string (must
+            not be NULL)
+            <br />
+            <i>message_buffer_size</i> Size of destination buffer in bytes (must
+            be &gt; 0)
+            <br />
+            <i>out_message_length</i> Optional output for message length
+            reported by sender
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>991</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+993                                                                          {
 994   if (!data || len &lt; sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
 995     return SET_ERRNO(ERROR_INVALID_PARAM,
 996                      &quot;Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu&quot;, data,
@@ -241,44 +321,59 @@
 1029   *out_error_code = (asciichat_error_t)raw_error_code;
 1030   return ASCIICHAT_OK;
 1031 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>error_packet_t::error_code</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>MAX_ERROR_MESSAGE_LENGTH</b>, <b>error_packet_t::message_length</b>,
-    <b>NET_TO_HOST_U32</b>, <b>packet_parse_error_message()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>network_error_decode()</b>, and
-    <b>packet_parse_error_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> packet_parse_remote_log (const void *
-  data, size_t len, <b>log_level_t</b> * out_level,
-  <b>remote_log_direction_t</b> * out_direction, <b>uint16_t</b> * out_flags,
-  char * message_buffer, size_t message_buffer_size, size_t *
-  out_message_length)</h2>
-<p class="Pp">Parse a remote log packet payload into components.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>data</i> Packet payload buffer
-<br/>
-<i>len</i> Payload length in bytes
-<br/>
-<i>out_level</i> Output pointer for log level (must not be NULL)
-<br/>
-<i>out_direction</i> Output pointer for direction (must not be NULL)
-<br/>
-<i>out_flags</i> Output pointer for flags (must not be NULL)
-<br/>
-<i>message_buffer</i> Destination buffer for message string (must not be NULL)
-<br/>
-<i>message_buffer_size</i> Size of destination buffer in bytes (must be &gt; 0)
-<br/>
-<i>out_message_length</i> Optional output for message length reported by
-  sender</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>1090</b> of file <b>packet.c</b>.</p>
-<pre>1093                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>error_packet_t::error_code</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>MAX_ERROR_MESSAGE_LENGTH</b>,
+            <b>error_packet_t::message_length</b>, <b>NET_TO_HOST_U32</b>,
+            <b>packet_parse_error_message()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_error_decode()</b>, and
+            <b>packet_parse_error_message()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> packet_parse_remote_log (const void * data,
+            size_t len, <b>log_level_t</b> * out_level,
+            <b>remote_log_direction_t</b> * out_direction, <b>uint16_t</b> *
+            out_flags, char * message_buffer, size_t message_buffer_size, size_t
+            * out_message_length)
+          </h2>
+          <p class="Pp">Parse a remote log packet payload into components.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>data</i> Packet payload buffer
+            <br />
+            <i>len</i> Payload length in bytes
+            <br />
+            <i>out_level</i> Output pointer for log level (must not be NULL)
+            <br />
+            <i>out_direction</i> Output pointer for direction (must not be NULL)
+            <br />
+            <i>out_flags</i> Output pointer for flags (must not be NULL)
+            <br />
+            <i>message_buffer</i> Destination buffer for message string (must
+            not be NULL)
+            <br />
+            <i>message_buffer_size</i> Size of destination buffer in bytes (must
+            be &gt; 0)
+            <br />
+            <i>out_message_length</i> Optional output for message length
+            reported by sender
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>1090</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+1093                                                                       {
 1094   if (!data || len &lt; sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
 1095       message_buffer_size == 0) {
 1096     return SET_ERRNO(
@@ -331,43 +426,61 @@
 1143
 1144   return ASCIICHAT_OK;
 1145 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>remote_log_packet_t::direction</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>remote_log_packet_t::flags</b>,
-    <b>LOG_FATAL</b>, <b>remote_log_packet_t::log_level</b>,
-    <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
-    <b>remote_log_packet_t::message_length</b>, <b>NET_TO_HOST_U16</b>,
-    <b>NET_TO_HOST_U32</b>, <b>packet_parse_remote_log()</b>,
-    <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b>,
-    <b>REMOTE_LOG_DIRECTION_UNKNOWN</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>handle_remote_log_packet_from_client()</b>, and
-    <b>packet_parse_remote_log()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> packet_send_error (<b>socket_t</b>
-  sockfd, const <b>crypto_context_t</b> * crypto_ctx, <b>asciichat_error_t</b>
-  error_code, const char * message)</h2>
-<p class="Pp">Send an error packet with optional encryption context.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sockfd</i> Socket file descriptor
-<br/>
-<i>crypto_ctx</i> Crypto context for encryption (NULL or not ready sends
-  plaintext)
-<br/>
-<i>error_code</i> Error code from <b>asciichat_error_t</b> enumeration
-<br/>
-<i>message</i> Legacy argument; fixed public text is sent for the allowlisted
-  error code</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">When the crypto context is ready, the packet is encrypted
-    automatically. During the handshake (or when encryption is disabled), the
-    packet is sent in plaintext so protocol errors can be delivered before
-    encryption is active.</p>
-<p class="Pp">Definition at line <b>942</b> of file <b>packet.c</b>.</p>
-<pre>943                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>remote_log_packet_t::direction</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>remote_log_packet_t::flags</b>,
+            <b>LOG_FATAL</b>, <b>remote_log_packet_t::log_level</b>,
+            <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
+            <b>remote_log_packet_t::message_length</b>, <b>NET_TO_HOST_U16</b>,
+            <b>NET_TO_HOST_U32</b>, <b>packet_parse_remote_log()</b>,
+            <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b>,
+            <b>REMOTE_LOG_DIRECTION_UNKNOWN</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_remote_log_packet_from_client()</b>, and
+            <b>packet_parse_remote_log()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> packet_send_error (<b>socket_t</b> sockfd,
+            const <b>crypto_context_t</b> * crypto_ctx,
+            <b>asciichat_error_t</b> error_code, const char * message)
+          </h2>
+          <p class="Pp">
+            Send an error packet with optional encryption context.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>sockfd</i> Socket file descriptor
+            <br />
+            <i>crypto_ctx</i> Crypto context for encryption (NULL or not ready
+            sends plaintext)
+            <br />
+            <i>error_code</i> Error code from
+            <b>asciichat_error_t</b> enumeration
+            <br />
+            <i>message</i> Legacy argument; fixed public text is sent for the
+            allowlisted error code
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            When the crypto context is ready, the packet is encrypted
+            automatically. During the handshake (or when encryption is
+            disabled), the packet is sent in plaintext so protocol errors can be
+            delivered before encryption is active.
+          </p>
+          <p class="Pp">
+            Definition at line <b>942</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+943                                                          {
 944   if (sockfd == INVALID_SOCKET_VALUE) {
 945     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
 946   }
@@ -414,42 +527,57 @@
 987
 988   return ASCIICHAT_OK;
 989 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>error_packet_t::error_code</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_warn</b>,
-    <b>MAX_ERROR_MESSAGE_LENGTH</b>, <b>error_packet_t::message_length</b>,
-    <b>network_error_public_code()</b>, <b>packet_send()</b>,
-    <b>packet_send_error()</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>packet_send_error()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> packet_send_remote_log (<b>socket_t</b>
-  sockfd, const <b>crypto_context_t</b> * crypto_ctx, <b>log_level_t</b> level,
-  <b>remote_log_direction_t</b> direction, <b>uint16_t</b> flags, const char *
-  message)</h2>
-<p class="Pp">Send a remote log packet with optional encryption context.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sockfd</i> Socket file descriptor
-<br/>
-<i>crypto_ctx</i> Crypto context for encryption (NULL or not ready sends
-  plaintext)
-<br/>
-<i>level</i> Log level to transmit
-<br/>
-<i>direction</i> Direction flag (REMOTE_LOG_DIRECTION_*)
-<br/>
-<i>flags</i> Additional flags (REMOTE_LOG_FLAG_*)
-<br/>
-<i>message</i> Log message text</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1033</b> of file <b>packet.c</b>.</p>
-<pre>1034                                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
+            <b>crypto_context_t::encrypt_data</b>,
+            <b>error_packet_t::error_code</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>, <b>HOST_TO_NET_U32</b>,
+            <b>INVALID_SOCKET_VALUE</b>, <b>log_warn</b>,
+            <b>MAX_ERROR_MESSAGE_LENGTH</b>,
+            <b>error_packet_t::message_length</b>,
+            <b>network_error_public_code()</b>, <b>packet_send()</b>,
+            <b>packet_send_error()</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_send_error()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> packet_send_remote_log (<b>socket_t</b>
+            sockfd, const <b>crypto_context_t</b> * crypto_ctx,
+            <b>log_level_t</b> level, <b>remote_log_direction_t</b> direction,
+            <b>uint16_t</b> flags, const char * message)
+          </h2>
+          <p class="Pp">
+            Send a remote log packet with optional encryption context.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>sockfd</i> Socket file descriptor
+            <br />
+            <i>crypto_ctx</i> Crypto context for encryption (NULL or not ready
+            sends plaintext)
+            <br />
+            <i>level</i> Log level to transmit
+            <br />
+            <i>direction</i> Direction flag (REMOTE_LOG_DIRECTION_*)
+            <br />
+            <i>flags</i> Additional flags (REMOTE_LOG_FLAG_*)
+            <br />
+            <i>message</i> Log message text
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1033</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+1034                                                                                                                 {
 1035   if (sockfd == INVALID_SOCKET_VALUE) {
 1036     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
 1037   }
@@ -504,32 +632,46 @@
 1086
 1087   return ASCIICHAT_OK;
 1088 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
-    <b>remote_log_packet_t::direction</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>remote_log_packet_t::flags</b>, <b>HOST_TO_NET_U16</b>,
-    <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>, <b>LOG_FATAL</b>,
-    <b>remote_log_packet_t::log_level</b>, <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
-    <b>remote_log_packet_t::message_length</b>, <b>packet_send()</b>,
-    <b>packet_send_remote_log()</b>, <b>PACKET_TYPE_REMOTE_LOG</b>,
-    <b>REMOTE_LOG_FLAG_TRUNCATED</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>send_packet_secure()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>packet_send_remote_log()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> packet_send_timeout_ns (size_t packet_size)</h2>
-<p class="Pp">Calculate timeout based on packet size Large packets need more
-    time to transmit reliably</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Returns timeout in nanoseconds for use with send/recv
-  APIs</div>
-<p class="Pp">Shared size-adjusted packet I/O budget, in nanoseconds.</p>
-<p class="Pp">Definition at line <b>48</b> of file <b>packet.c</b>.</p>
-<pre>48                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
+            <b>remote_log_packet_t::direction</b>,
+            <b>crypto_context_t::encrypt_data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+            <b>remote_log_packet_t::flags</b>, <b>HOST_TO_NET_U16</b>,
+            <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>,
+            <b>LOG_FATAL</b>, <b>remote_log_packet_t::log_level</b>,
+            <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
+            <b>remote_log_packet_t::message_length</b>, <b>packet_send()</b>,
+            <b>packet_send_remote_log()</b>, <b>PACKET_TYPE_REMOTE_LOG</b>,
+            <b>REMOTE_LOG_FLAG_TRUNCATED</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>packet_send_remote_log()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> packet_send_timeout_ns (size_t packet_size)
+          </h2>
+          <p class="Pp">
+            Calculate timeout based on packet size Large packets need more time
+            to transmit reliably
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Returns timeout in nanoseconds for use with send/recv APIs
+          </div>
+          <p class="Pp">
+            Shared size-adjusted packet I/O budget, in nanoseconds.
+          </p>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+48                                                     {
 49   uint64_t base_timeout = SEND_TIMEOUT * NS_PER_SEC_INT;
 50
 51   // For large packets, increase timeout proportionally
@@ -552,22 +694,34 @@
 68
 69   return base_timeout;
 70 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>LARGE_PACKET_EXTRA_TIMEOUT_PER_MB</b>,
-    <b>LARGE_PACKET_THRESHOLD</b>, <b>MAX_CLIENT_TIMEOUT</b>,
-    <b>MIN_CLIENT_TIMEOUT</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
-    <b>packet_send_timeout_ns()</b>, and <b>SEND_TIMEOUT</b>.</p>
-<p class="Pp">Referenced by <b>packet_receive()</b>, <b>packet_send()</b>,
-    <b>packet_send_timeout_ns()</b>, and
-    <b>receive_packet_secure_with_timeout()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>packet_recv_result_t</b> receive_packet_secure_with_timeout
-  (<b>socket_t</b> sockfd, void * crypto_ctx, <b>bool</b> enforce_encryption,
-  <b>packet_envelope_t</b> * envelope, <b>uint64_t</b> timeout_ns)</h2>
-<p class="Pp">Definition at line <b>570</b> of file <b>packet.c</b>.</p>
-<pre>571                                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>LARGE_PACKET_EXTRA_TIMEOUT_PER_MB</b>,
+            <b>LARGE_PACKET_THRESHOLD</b>, <b>MAX_CLIENT_TIMEOUT</b>,
+            <b>MIN_CLIENT_TIMEOUT</b>, <b>NS_PER_MS_INT</b>,
+            <b>NS_PER_SEC_INT</b>, <b>packet_send_timeout_ns()</b>, and
+            <b>SEND_TIMEOUT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>packet_receive()</b>, <b>packet_send()</b>,
+            <b>packet_send_timeout_ns()</b>, and
+            <b>receive_packet_secure_with_timeout()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>packet_recv_result_t</b> receive_packet_secure_with_timeout (<b
+              >socket_t</b
+            >
+            sockfd, void * crypto_ctx, <b>bool</b> enforce_encryption,
+            <b>packet_envelope_t</b> * envelope, <b>uint64_t</b> timeout_ns)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>570</b> of file <b>packet.c</b>.
+          </p>
+          <pre>
+571                                                                                                           {
 572
 573   if (!envelope) {
 574     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: envelope=%p&quot;, envelope);
@@ -757,41 +911,50 @@
 758
 759   return PACKET_RECV_SUCCESS;
 760 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>packet_envelope_t::allocated_buffer</b>,
-    <b>packet_envelope_t::allocated_size</b>, <b>asciichat_crc32</b>,
-    <b>buffer_alloc()</b>, <b>buffer_release</b>,
-    <b>packet_header_t::client_id</b>, <b>packet_header_t::crc32</b>,
-    <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
-    <b>packet_envelope_t::data</b>, <b>errno_checkpoint()</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>ERROR_NETWORK_TIMEOUT</b>, <b>GET_ERRNO</b>,
-    <b>HAS_ERRNO_CODE_SINCE</b>, <b>packet_envelope_t::len</b>,
-    <b>packet_header_t::length</b>, <b>log_debug_every</b>,
-    <b>packet_header_t::magic</b>, <b>MAX</b>, <b>MAX_PACKET_SIZE</b>,
-    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
-    <b>PACKET_MAGIC</b>, <b>PACKET_RECV_EOF</b>, <b>PACKET_RECV_ERROR</b>,
-    <b>PACKET_RECV_SUCCESS</b>, <b>packet_send_timeout_ns()</b>,
-    <b>PACKET_TYPE_ENCRYPTED</b>, <b>receive_packet_secure_with_timeout()</b>,
-    <b>recv_with_timeout()</b>, <b>SET_ERRNO</b>,
-    <b>packet_envelope_t::type</b>, <b>packet_header_t::type</b>, and
-    <b>US_PER_SEC_INT</b>.</p>
-<p class="Pp">Referenced by <b>receive_packet_secure()</b>, and
-    <b>receive_packet_secure_with_timeout()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>packet_envelope_t::allocated_buffer</b>,
+            <b>packet_envelope_t::allocated_size</b>, <b>asciichat_crc32</b>,
+            <b>buffer_alloc()</b>, <b>buffer_release</b>,
+            <b>packet_header_t::client_id</b>, <b>packet_header_t::crc32</b>,
+            <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>,
+            <b>crypto_result_to_string()</b>, <b>packet_envelope_t::data</b>,
+            <b>errno_checkpoint()</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>ERROR_NETWORK_SIZE</b>, <b>ERROR_NETWORK_TIMEOUT</b>,
+            <b>GET_ERRNO</b>, <b>HAS_ERRNO_CODE_SINCE</b>,
+            <b>packet_envelope_t::len</b>, <b>packet_header_t::length</b>,
+            <b>log_debug_every</b>, <b>packet_header_t::magic</b>, <b>MAX</b>,
+            <b>MAX_PACKET_SIZE</b>, <b>NET_TO_HOST_U16</b>,
+            <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>, <b>PACKET_MAGIC</b>,
+            <b>PACKET_RECV_EOF</b>, <b>PACKET_RECV_ERROR</b>,
+            <b>PACKET_RECV_SUCCESS</b>, <b>packet_send_timeout_ns()</b>,
+            <b>PACKET_TYPE_ENCRYPTED</b>,
+            <b>receive_packet_secure_with_timeout()</b>,
+            <b>recv_with_timeout()</b>, <b>SET_ERRNO</b>,
+            <b>packet_envelope_t::type</b>, <b>packet_header_t::type</b>, and
+            <b>US_PER_SEC_INT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>receive_packet_secure()</b>, and
+            <b>receive_packet_secure_with_timeout()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

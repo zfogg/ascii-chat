@@ -1,98 +1,167 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_log_format(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_log_format(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_log_format(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_log_format - Log Format Customization Implementation
-  Plan</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Log_Format_Customization_Implementation_Plan"><a class="permalink" href="#Log_Format_Customization_Implementation_Plan">Log
-  Format Customization Implementation Plan</a></h1>
-<div class="Bd-indent"><b>For Claude:</b> REQUIRED SUB-SKILL: Use
-  superpowers:executing-plans to implement this plan task-by-task.</div>
-<p class="Pp"><b>Goal:</b> Add user-customizable log formatting via --log-format
-    CLI option and environment variable, supporting time formats, log levels,
-    file/line/function info, thread IDs, and platform-aware coloring.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Architecture:</b> Create a format parsing system
-    (<b>lib/log/format.c</b>/h<b>) that tokenizes format strings into specifiers
-    (</b>time(fmt)<b>, </b>level<b>, </b>file<b>, etc.), evaluates each
-    specifier at log time, and integrates with the existing
-    </b>format_log_header()<b> function in logging.c. The format string is
-    parsed once during initialization and executed during each log call. Both
-    file and console output respect the format, with optional
-    </b>--log-format-console<b> to apply formatting only to console.</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>UTF-8 Support:</b> Full UTF-8 support for format strings, file
-    paths, and messages:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Format string validation using <b>utf8_is_valid()</b><b> during
-      parsing</b></li>
-  <li>Safe literal text extraction from UTF-8 format strings (byte-level copy,
-      UTF-8 already validated)</li>
-  <li>Existing message validation via validate_log_message_utf8() continues to
-      work</li>
-  <li>Safe buffer truncation using existing truncate_at_whole_line() to avoid
-      splitting UTF-8 sequences</li>
-  <li>Proper handling of UTF-8 in timestamps (locale-aware from strftime)</li>
-  <li>Terminal display width calculation available via
-      <b>utf8_display_width()</b><b> for future enhancements</b></li>
-</ul>
-<p class="Pp"><b>Tech Stack:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>C string parsing and formatting with snprintf</li>
-  <li>Platform abstraction layer for time/thread operations</li>
-  <li>Existing logging system (logging.c/h) with UTF-8 validation</li>
-  <li>UTF-8 utilities (<b>utf8.h</b><b>) for validation and character
-      handling</b></li>
-  <li>Options system for CLI parsing</li>
-</ul>
-<section class="Ss">
-<h2 class="Ss" id="Task_1:_Design_and_Implement_Format_Parser_("><a class="permalink" href="#Task_1:_Design_and_Implement_Format_Parser_(">Task
-  1: Design and Implement Format Parser (<b>lib/log/format.c</b>)</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Create: lib/log/format.h</li>
-  <li>Create: <b>lib/log/format.c</b><b></b></li>
-  <li>Modify: include/ascii-chat/log/logging.h (add new function
-    declarations)</li>
-  <li>Modify: lib/log/logging.c (integrate format parser)</li>
-</ul>
-<p class="Pp"><b>Step 1: Create format.h header with data structures</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// include/ascii-chat/log/format.h
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_log_format(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_log_format(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_log_format(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_log_format - Log Format Customization Implementation Plan
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Log_Format_Customization_Implementation_Plan">
+          <a
+            class="permalink"
+            href="#Log_Format_Customization_Implementation_Plan"
+            >Log Format Customization Implementation Plan</a
+          >
+        </h1>
+        <div class="Bd-indent">
+          <b>For Claude:</b> REQUIRED SUB-SKILL: Use superpowers:executing-plans
+          to implement this plan task-by-task.
+        </div>
+        <p class="Pp">
+          <b>Goal:</b> Add user-customizable log formatting via --log-format CLI
+          option and environment variable, supporting time formats, log levels,
+          file/line/function info, thread IDs, and platform-aware coloring.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Architecture:</b> Create a format parsing system
+          (<b>lib/log/format.c</b>/h<b
+            >) that tokenizes format strings into specifiers (</b
+          >time(fmt)<b>, </b>level<b>, </b>file<b
+            >, etc.), evaluates each specifier at log time, and integrates with
+            the existing </b
+          >format_log_header()<b>
+            function in logging.c. The format string is parsed once during
+            initialization and executed during each log call. Both file and
+            console output respect the format, with optional </b
+          >--log-format-console<b> to apply formatting only to console.</b>
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>UTF-8 Support:</b> Full UTF-8 support for format strings, file
+          paths, and messages:
+        </p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            Format string validation using <b>utf8_is_valid()</b
+            ><b> during parsing</b>
+          </li>
+          <li>
+            Safe literal text extraction from UTF-8 format strings (byte-level
+            copy, UTF-8 already validated)
+          </li>
+          <li>
+            Existing message validation via validate_log_message_utf8()
+            continues to work
+          </li>
+          <li>
+            Safe buffer truncation using existing truncate_at_whole_line() to
+            avoid splitting UTF-8 sequences
+          </li>
+          <li>
+            Proper handling of UTF-8 in timestamps (locale-aware from strftime)
+          </li>
+          <li>
+            Terminal display width calculation available via
+            <b>utf8_display_width()</b><b> for future enhancements</b>
+          </li>
+        </ul>
+        <p class="Pp"><b>Tech Stack:</b></p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>C string parsing and formatting with snprintf</li>
+          <li>Platform abstraction layer for time/thread operations</li>
+          <li>Existing logging system (logging.c/h) with UTF-8 validation</li>
+          <li>
+            UTF-8 utilities (<b>utf8.h</b
+            ><b>) for validation and character handling</b>
+          </li>
+          <li>Options system for CLI parsing</li>
+        </ul>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_1:_Design_and_Implement_Format_Parser_(">
+            <a
+              class="permalink"
+              href="#Task_1:_Design_and_Implement_Format_Parser_("
+              >Task 1: Design and Implement Format Parser
+              (<b>lib/log/format.c</b>)</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Create: lib/log/format.h</li>
+            <li>Create: <b>lib/log/format.c</b><b></b></li>
+            <li>
+              Modify: include/ascii-chat/log/logging.h (add new function
+              declarations)
+            </li>
+            <li>Modify: lib/log/logging.c (integrate format parser)</li>
+          </ul>
+          <p class="Pp">
+            <b>Step 1: Create format.h header with data structures</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// include/ascii-chat/log/format.h
 #pragma once
 #include &lt;stdint.h&gt;
 #include &lt;stddef.h&gt;
@@ -161,10 +230,10 @@ const char *log_format_default(void);
 #ifdef __cplusplus
 }
 #endif</pre>
-<p class="Pp"><b>Step 2: Run tests to verify header compiles</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Check that header compiles with all dependencies including utf8.h
+          <p class="Pp"><b>Step 2: Run tests to verify header compiles</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre># Check that header compiles with all dependencies including utf8.h
 gcc -I/Users/zfogg/src/github.com/zfogg/ascii-chat/include \
 <br/>
     -c /Users/zfogg/src/github.com/zfogg/ascii-chat/lib/log/format.c \
@@ -172,10 +241,10 @@ gcc -I/Users/zfogg/src/github.com/zfogg/ascii-chat/include \
     -o /tmp/format_test.o 2&gt;&amp;1 | head -20
 # Expected: error for undefined reference (we haven't implemented format.c yet)
 # Should NOT have errors about missing utf8.h or other includes</pre>
-<p class="Pp"><b>Step 3: Implement format.c parser</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// lib/log/format.c
+          <p class="Pp"><b>Step 3: Implement format.c parser</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// lib/log/format.c
 #include &lt;ascii-chat/log/format.h&gt;
 #include &lt;ascii-chat/util/string.h&gt;
 #include &lt;ascii-chat/util/utf8.h&gt;  /* For UTF-8 validation */
@@ -658,16 +727,18 @@ const char *log_format_default(void) {
 <br/>
   return &quot;[%time(%H:%M:%S)] [%level_aligned] %message&quot;;
 }</pre>
-<p class="Pp"><b>Step 4: Compile and verify format parser</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cd /Users/zfogg/src/github.com/zfogg/ascii-chat
+          <p class="Pp"><b>Step 4: Compile and verify format parser</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cd /Users/zfogg/src/github.com/zfogg/ascii-chat
 cmake --preset default -B build 2&gt;&amp;1 | tail -20
 # Expected: Compilation proceeds without format.c errors</pre>
-<p class="Pp"><b>Step 5: Commit format parser</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/log/format.c include/ascii-chat/log/format.h
+          <p class="Pp"><b>Step 5: Commit format parser</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/log/format.c include/ascii-chat/log/format.h
 git commit -m &quot;feat: Implement log format parser
 - Add format.h with data structures for parsed format specifications
 - Implement log_format_parse() to tokenize format strings
@@ -675,64 +746,93 @@ git commit -m &quot;feat: Implement log format parser
 - Support specifiers: %time(fmt), %level, %level_aligned, %file, %line, %func, %tid, %message
 - Platform-aware newlines via \n
 - Includes cleanup and error handling&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_1"><a class="permalink" href="#Task_1">Task 1.5:
-  Implement Time Format Validator and Custom Formatter</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: <b>include/ascii-chat/util/time.h</b><b> (add function
-      declarations)</b></li>
-  <li>Modify: <b>lib/util/time.c</b><b> (add implementations)</b></li>
-  <li>Modify: <b>lib/log/format.c</b><b> (use time formatter in LOG_FORMAT_TIME
-      handler)</b></li>
-</ul>
-<p class="Pp"><b>Context:</b> The standard C strftime() function doesn't
-    validate format strings upfront - it just returns 0 on error. Additionally,
-    it doesn't support nanoseconds (only seconds via S). We need:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Safe validation of strftime format strings against a whitelist of known
-      specifiers</dd>
-  <dt>2.</dt>
-  <dd>A custom time formatter that handles standard strftime + nanosecond
-      extensions</dd>
-  <dt>3.</dt>
-  <dd>Safe error handling (don't crash, return error)</dd>
-</dl>
-<p class="Pp"><b>Infrastructure Already Available:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Project uses <b>time_get_realtime_ns()</b><b> for nanosecond-precision
-      timestamps</b></li>
-  <li><b>get_current_time_formatted()</b><b> in logging.c already demonstrates
-      extracting nanoseconds manually</b></li>
-  <li>Support for both standard specifiers and custom extensions is the
-    pattern</li>
-</ul>
-<p class="Pp"><b>Step 1: Add declarations to </b><b>time.h</b><b>
-    header</b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to <b>include/ascii-chat/util/time.h</b><b> (before final
-    </b>/** @} */<b>):</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Add to include/ascii-chat/util/time.h
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_1">
+            <a class="permalink" href="#Task_1"
+              >Task 1.5: Implement Time Format Validator and Custom Formatter</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Modify: <b>include/ascii-chat/util/time.h</b
+              ><b> (add function declarations)</b>
+            </li>
+            <li>Modify: <b>lib/util/time.c</b><b> (add implementations)</b></li>
+            <li>
+              Modify: <b>lib/log/format.c</b
+              ><b> (use time formatter in LOG_FORMAT_TIME handler)</b>
+            </li>
+          </ul>
+          <p class="Pp">
+            <b>Context:</b> The standard C strftime() function doesn't validate
+            format strings upfront - it just returns 0 on error. Additionally,
+            it doesn't support nanoseconds (only seconds via S). We need:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Safe validation of strftime format strings against a whitelist of
+              known specifiers
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              A custom time formatter that handles standard strftime +
+              nanosecond extensions
+            </dd>
+            <dt>3.</dt>
+            <dd>Safe error handling (don't crash, return error)</dd>
+          </dl>
+          <p class="Pp"><b>Infrastructure Already Available:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Project uses <b>time_get_realtime_ns()</b
+              ><b> for nanosecond-precision timestamps</b>
+            </li>
+            <li>
+              <b>get_current_time_formatted()</b
+              ><b>
+                in logging.c already demonstrates extracting nanoseconds
+                manually</b
+              >
+            </li>
+            <li>
+              Support for both standard specifiers and custom extensions is the
+              pattern
+            </li>
+          </ul>
+          <p class="Pp">
+            <b>Step 1: Add declarations to </b><b>time.h</b><b> header</b
+            ><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Append to <b>include/ascii-chat/util/time.h</b
+            ><b> (before final </b>/** @} */<b>):</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Add to include/ascii-chat/util/time.h
 #pragma once
 #include &lt;stdint.h&gt;
 #include &lt;stddef.h&gt;
 bool time_format_is_valid_strftime(const char *format_str);
 int time_format_now(const char *format_str, char *buf, size_t buf_size);
 asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf_size);</pre>
-<p class="Pp"><b>Step 2: Add implementations to time.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">Append to <b>lib/util/time.c</b><b> (after
-    </b><b>adaptive_sleep_do()</b><b> function):</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// Add to lib/util/time.c
+          <p class="Pp"><b>Step 2: Add implementations to time.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Append to <b>lib/util/time.c</b><b> (after </b
+            ><b>adaptive_sleep_do()</b><b> function):</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// Add to lib/util/time.c
 #include &lt;ctype.h&gt;  // Add if not present
 #include &lt;ascii-chat/util/time.h&gt;
 #include &lt;ascii-chat/platform/abstraction.h&gt;
@@ -953,12 +1053,14 @@ asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf
 <br/>
   return ASCIICHAT_OK;
 }</pre>
-<p class="Pp"><b>Step 3: Integrate into format.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">Modify the LOG_FORMAT_TIME handler in log_format_apply():</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>case LOG_FORMAT_TIME:
+          <p class="Pp"><b>Step 3: Integrate into format.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Modify the LOG_FORMAT_TIME handler in log_format_apply():
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>case LOG_FORMAT_TIME:
 <br/>
   /* Format time using custom time formatter with validation */
 <br/>
@@ -979,19 +1081,22 @@ asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf
   }
 <br/>
   break;</pre>
-<p class="Pp"><b>Step 3: Add header inclusion to format.c</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#include &lt;ascii-chat/util/time.h&gt;  // For time_format_now, time_format_is_valid_strftime</pre>
-<p class="Pp"><b>Step 4: Run tests</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build 2&gt;&amp;1 | tail -20
+          <p class="Pp"><b>Step 3: Add header inclusion to format.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+#include &lt;ascii-chat/util/time.h&gt;  // For time_format_now, time_format_is_valid_strftime</pre>
+          <p class="Pp"><b>Step 4: Run tests</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake --build build 2&gt;&amp;1 | tail -20
 # Expected: No compilation errors - time.c.o should compile successfully</pre>
-<p class="Pp"><b>Step 5: Commit time formatter functions</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add include/ascii-chat/util/time.h lib/util/time.c
+          <p class="Pp"><b>Step 5: Commit time formatter functions</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add include/ascii-chat/util/time.h lib/util/time.c
 git commit -m &quot;feat: Add strftime format validation to time utilities
 - Add time_format_is_valid_strftime() to validate strftime specifiers against whitelist
 - Implement time_format_now() with strftime + nanosecond support (microseconds appended to %S)
@@ -1001,32 +1106,39 @@ git commit -m &quot;feat: Add strftime format validation to time utilities
 - Reusable across codebase (logging, status screens, displays)
 - Full UTF-8 safe (output from strftime is locale-aware)
 - Consolidated into time.{c,h} for better organization&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_2:_Add_CLI_Options_for_Log_Format"><a class="permalink" href="#Task_2:_Add_CLI_Options_for_Log_Format">Task
-  2: Add CLI Options for Log Format</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: <b>include/ascii-chat/options/options.h</b><b> (add LOG_FORMAT
-      option)</b></li>
-  <li>Modify: lib/options/registry.c (register new options)</li>
-  <li>Modify: lib/log/logging.h (add API for format configuration)</li>
-</ul>
-<p class="Pp"><b>Step 1: Add option to options.h</b></p>
-<p class="Pp"></p>
-<p class="Pp">Search for where STRING options are defined and add:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
-#define LOG_FORMAT_OPTION &quot;log_format&quot;</pre>
-<p class="Pp"><b>Step 2: Register option in
-  </b><b>registry.c</b><b></b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp">Find where options are registered and add:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_2:_Add_CLI_Options_for_Log_Format">
+            <a class="permalink" href="#Task_2:_Add_CLI_Options_for_Log_Format"
+              >Task 2: Add CLI Options for Log Format</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Modify: <b>include/ascii-chat/options/options.h</b
+              ><b> (add LOG_FORMAT option)</b>
+            </li>
+            <li>Modify: lib/options/registry.c (register new options)</li>
+            <li>
+              Modify: lib/log/logging.h (add API for format configuration)
+            </li>
+          </ul>
+          <p class="Pp"><b>Step 1: Add option to options.h</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">Search for where STRING options are defined and add:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>#define LOG_FORMAT_OPTION &quot;log_format&quot;</pre>
+          <p class="Pp">
+            <b>Step 2: Register option in </b><b>registry.c</b><b></b><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Find where options are registered and add:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   .long_name = &quot;log-format&quot;,
 <br/>
@@ -1058,48 +1170,63 @@ git commit -m &quot;feat: Add strftime format validation to time utilities
 <br/>
   .env_name = &quot;ASCII_CHAT_LOG_FORMAT_CONSOLE&quot;,
 }</pre>
-<p class="Pp"><b>Step 3: Compile and verify options register</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build 2&gt;&amp;1 | grep -E &quot;error|warning&quot; | head -10
+          <p class="Pp"><b>Step 3: Compile and verify options register</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake --build build 2&gt;&amp;1 | grep -E &quot;error|warning&quot; | head -10
 # Expected: No errors related to new options</pre>
-<p class="Pp"><b>Step 4: Commit options</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add include/ascii-chat/options/options.h lib/options/registry.c
+          <p class="Pp"><b>Step 4: Commit options</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add include/ascii-chat/options/options.h lib/options/registry.c
 git commit -m &quot;feat: Add --log-format and --log-format-console CLI options
 - Add LOG_FORMAT_OPTION for custom format strings
 - Add LOG_FORMAT_CONSOLE_OPTION for console-only formatting
 - Support environment variables: ASCII_CHAT_LOG_FORMAT, ASCII_CHAT_LOG_FORMAT_CONSOLE
 - Binary-level options available in all modes&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_3:_Integrate_Format_Parser_into_Logging_System"><a class="permalink" href="#Task_3:_Integrate_Format_Parser_into_Logging_System">Task
-  3: Integrate Format Parser into Logging System</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: lib/log/logging.c (integrate format parser)</li>
-  <li>Modify: include/ascii-chat/log/logging.h (add API functions)</li>
-</ul>
-<p class="Pp"><b>Step 1: Add format state to logging.c</b></p>
-<p class="Pp"></p>
-<p class="Pp">In logging.c, add to the log_context_t struct:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>log_format_t *format;                /* Compiled log format (NULL = use default) */
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Task_3:_Integrate_Format_Parser_into_Logging_System"
+          >
+            <a
+              class="permalink"
+              href="#Task_3:_Integrate_Format_Parser_into_Logging_System"
+              >Task 3: Integrate Format Parser into Logging System</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Modify: lib/log/logging.c (integrate format parser)</li>
+            <li>
+              Modify: include/ascii-chat/log/logging.h (add API functions)
+            </li>
+          </ul>
+          <p class="Pp"><b>Step 1: Add format state to logging.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">In logging.c, add to the log_context_t struct:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+log_format_t *format;                /* Compiled log format (NULL = use default) */
 log_format_t *format_console_only;   /* Console-only format variant */
 _Atomic bool has_custom_format;      /* True if format was customized */</pre>
-<p class="Pp"><b>Step 2: Add format initialization function to
-    </b><b>logging.h</b><b></b><b></b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>
+          <p class="Pp">
+            <b>Step 2: Add format initialization function to </b><b>logging.h</b
+            ><b></b><b></b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
 asciichat_error_t log_set_format(const char *format_str, bool console_only);</pre>
-<p class="Pp"><b>Step 3: Implement log_set_format in logging.c</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>asciichat_error_t log_set_format(const char *format_str, bool console_only) {
+          <p class="Pp"><b>Step 3: Implement log_set_format in logging.c</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>asciichat_error_t log_set_format(const char *format_str, bool console_only) {
 <br/>
   if (!format_str) {
 <br/>
@@ -1129,13 +1256,17 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only);</pr
 <br/>
   return ASCIICHAT_OK;
 }</pre>
-<p class="Pp"><b>Step 4: Modify format_log_header to use custom format</b></p>
-<p class="Pp"></p>
-<p class="Pp">Replace the existing hardcoded formatting in format_log_header()
-    to call log_format_apply() when custom format is active:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
+          <p class="Pp">
+            <b>Step 4: Modify format_log_header to use custom format</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Replace the existing hardcoded formatting in format_log_header() to
+            call log_format_apply() when custom format is active:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
 <br/>
                              const char *file, int line, const char *func, bool use_colors, bool is_file) {
 <br/>
@@ -1151,10 +1282,10 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only);</pr
 <br/>
   /* ... existing code ... */
 }</pre>
-<p class="Pp"><b>Step 5: Update log_destroy to clean up format</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>void log_destroy(void) {
+          <p class="Pp"><b>Step 5: Update log_destroy to clean up format</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>void log_destroy(void) {
 <br/>
   /* ... existing cleanup ... */
 <br/>
@@ -1166,41 +1297,58 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only);</pr
 <br/>
   }
 }</pre>
-<p class="Pp"><b>Step 6: Compile and verify logging integration</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build 2&gt;&amp;1 | tail -20
+          <p class="Pp">
+            <b>Step 6: Compile and verify logging integration</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake --build build 2&gt;&amp;1 | tail -20
 # Expected: No errors, warnings acceptable</pre>
-<p class="Pp"><b>Step 7: Commit logging integration</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add lib/log/logging.c include/ascii-chat/log/logging.h
+          <p class="Pp"><b>Step 7: Commit logging integration</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add lib/log/logging.c include/ascii-chat/log/logging.h
 git commit -m &quot;feat: Integrate format parser into logging system
 - Add format state to log_context_t
 - Implement log_set_format() to configure custom formats
 - Modify format_log_header() to use custom format when set
 - Clean up format on log_destroy()
 - Maintain backward compatibility with default format&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_4:_Wire_Format_Options_to_Logging_Initialization"><a class="permalink" href="#Task_4:_Wire_Format_Options_to_Logging_Initialization">Task
-  4: Wire Format Options to Logging Initialization</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: <b>src/main.c</b><b> or logging initialization code</b></li>
-  <li>Reference: Look for <b>log_init()</b><b> call in main</b></li>
-</ul>
-<p class="Pp"><b>Step 1: Find logging initialization</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>grep -n &quot;log_init\|logging_init&quot; /Users/zfogg/src/github.com/zfogg/ascii-chat/src/main.c | head -5</pre>
-<p class="Pp"><b>Step 2: Add format configuration after log_init</b></p>
-<p class="Pp"></p>
-<p class="Pp">After <b>log_init()</b><b> is called, add:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>/* Apply custom log format if specified */
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Task_4:_Wire_Format_Options_to_Logging_Initialization"
+          >
+            <a
+              class="permalink"
+              href="#Task_4:_Wire_Format_Options_to_Logging_Initialization"
+              >Task 4: Wire Format Options to Logging Initialization</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Modify: <b>src/main.c</b><b> or logging initialization code</b>
+            </li>
+            <li>Reference: Look for <b>log_init()</b><b> call in main</b></li>
+          </ul>
+          <p class="Pp"><b>Step 1: Find logging initialization</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+grep -n &quot;log_init\|logging_init&quot; /Users/zfogg/src/github.com/zfogg/ascii-chat/src/main.c | head -5</pre>
+          <p class="Pp">
+            <b>Step 2: Add format configuration after log_init</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">After <b>log_init()</b><b> is called, add:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>/* Apply custom log format if specified */
 const char *format_str = GET_OPTION(log_format);
 bool format_console_only = GET_OPTION(log_format_console);
 if (format_str) {
@@ -1213,34 +1361,39 @@ if (format_str) {
 <br/>
   }
 }</pre>
-<p class="Pp"><b>Step 3: Compile and test</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build
+          <p class="Pp"><b>Step 3: Compile and test</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake --build build
 ./build/bin/ascii-chat --help | grep log-format
 # Expected: Shows new --log-format and --log-format-console options</pre>
-<p class="Pp"><b>Step 4: Commit wiring</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add src/main.c
+          <p class="Pp"><b>Step 4: Commit wiring</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add src/main.c
 git commit -m &quot;feat: Wire log format options to logging initialization
 - Read --log-format and --log-format-console from options
 - Apply format during log system setup
 - Log errors if format parsing fails&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_5:_Write_Tests_for_Format_Parser"><a class="permalink" href="#Task_5:_Write_Tests_for_Format_Parser">Task
-  5: Write Tests for Format Parser</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: tests/unit/test_log_format.c</dd>
-</dl>
-<p class="Pp"><b>Step 1: Write format parser tests</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// tests/unit/test_log_format.c
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_5:_Write_Tests_for_Format_Parser">
+            <a class="permalink" href="#Task_5:_Write_Tests_for_Format_Parser"
+              >Task 5: Write Tests for Format Parser</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: tests/unit/test_log_format.c</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Write format parser tests</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// tests/unit/test_log_format.c
 #include &lt;criterion/criterion.h&gt;
 #include &lt;ascii-chat/log/format.h&gt;
 #include &lt;string.h&gt;
@@ -1400,21 +1553,25 @@ Test(log_format, reject_invalid_utf8_format_string) {
 <br/>
   cr_assert(fmt == NULL);
 }</pre>
-<p class="Pp"><b>Step 2: Add tests to CMakeLists.txt</b></p>
-<p class="Pp"></p>
-<p class="Pp">Find the tests section and add test_log_format to the criterion
-    test suite.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Step 3: Run tests</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build --target tests
+          <p class="Pp"><b>Step 2: Add tests to CMakeLists.txt</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Find the tests section and add test_log_format to the criterion test
+            suite.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Step 3: Run tests</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake --build build --target tests
 ctest --test-dir build -R &quot;log_format&quot; --output-on-failure
 # Expected: All tests pass</pre>
-<p class="Pp"><b>Step 4: Commit tests</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add tests/unit/test_log_format.c cmake/CMakeLists.txt
+          <p class="Pp"><b>Step 4: Commit tests</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add tests/unit/test_log_format.c cmake/CMakeLists.txt
 git commit -m &quot;test: Add comprehensive tests for log format parser
 - Test literal text parsing
 - Test time specifier parsing
@@ -1423,20 +1580,29 @@ git commit -m &quot;test: Add comprehensive tests for log format parser
 - Test format application with various log levels
 - Test console_only flag
 - All tests passing&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_6:_Integration_Test_-_Verify_Logs_Match_Expected_Format"><a class="permalink" href="#Task_6:_Integration_Test_-_Verify_Logs_Match_Expected_Format">Task
-  6: Integration Test - Verify Logs Match Expected Format</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Create: tests/manual/test_log_format_e2e.sh</dd>
-</dl>
-<p class="Pp"><b>Step 1: Create manual test script</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>#!/bin/bash
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Task_6:_Integration_Test_-_Verify_Logs_Match_Expected_Format"
+          >
+            <a
+              class="permalink"
+              href="#Task_6:_Integration_Test_-_Verify_Logs_Match_Expected_Format"
+              >Task 6: Integration Test - Verify Logs Match Expected Format</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Create: tests/manual/test_log_format_e2e.sh</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Create manual test script</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+#!/bin/bash
 # tests/manual/test_log_format_e2e.sh
 set -e
 BUILD_DIR=&quot;/Users/zfogg/src/github.com/zfogg/ascii-chat/build&quot;
@@ -1461,44 +1627,53 @@ ASCII_CHAT_LOG_FORMAT=&quot;[%time(%H:%M:%S)] %message&quot; \
 $BIN mirror --snapshot --snapshot-delay 0 --log-format-console 2&gt;&amp;1 | head -5
 echo &quot;&quot;
 echo &quot;All manual tests completed. Verify output formats above.&quot;</pre>
-<p class="Pp"><b>Step 2: Run manual test</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>chmod +x /Users/zfogg/src/github.com/zfogg/ascii-chat/tests/manual/test_log_format_e2e.sh
+          <p class="Pp"><b>Step 2: Run manual test</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+chmod +x /Users/zfogg/src/github.com/zfogg/ascii-chat/tests/manual/test_log_format_e2e.sh
 cd /Users/zfogg/src/github.com/zfogg/ascii-chat
 ./tests/manual/test_log_format_e2e.sh 2&gt;&amp;1 | head -50
 # Expected: Logs appear with custom format applied</pre>
-<p class="Pp"><b>Step 3: Verify old logs still look correct</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>./build/bin/ascii-chat mirror --snapshot --snapshot-delay 0 --log-level dev 2&gt;&amp;1 | head -10
+          <p class="Pp"><b>Step 3: Verify old logs still look correct</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+./build/bin/ascii-chat mirror --snapshot --snapshot-delay 0 --log-level dev 2&gt;&amp;1 | head -10
 # Expected: Logs use default format from log_format_default()</pre>
-<p class="Pp"><b>Step 4: Commit test script</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add tests/manual/test_log_format_e2e.sh
+          <p class="Pp"><b>Step 4: Commit test script</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add tests/manual/test_log_format_e2e.sh
 git commit -m &quot;test: Add end-to-end log format testing script
 - Test default format (no custom format specified)
 - Test custom format with time and level
 - Test format with file:line info
 - Test console-only formatting
 - Manual verification steps for format application&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_7:_Documentation_and_Cleanup"><a class="permalink" href="#Task_7:_Documentation_and_Cleanup">Task
-  7: Documentation and Cleanup</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Modify: docs/crypto.md or add docs/logging.md</li>
-  <li>Modify: CLAUDE.md</li>
-</ul>
-<p class="Pp"><b>Step 1: Document log format feature in CLAUDE.md</b></p>
-<p class="Pp"></p>
-<p class="Pp">Add to debugging section:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>### Custom Log Format with --log-format
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_7:_Documentation_and_Cleanup">
+            <a class="permalink" href="#Task_7:_Documentation_and_Cleanup"
+              >Task 7: Documentation and Cleanup</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Modify: docs/crypto.md or add docs/logging.md</li>
+            <li>Modify: CLAUDE.md</li>
+          </ul>
+          <p class="Pp">
+            <b>Step 1: Document log format feature in CLAUDE.md</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Add to debugging section:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+### Custom Log Format with --log-format
 The `--log-format` option allows customizing how log messages are formatted:
 ```bash
 # Default format
@@ -1512,198 +1687,280 @@ The `--log-format` option allows customizing how log messages are formatted:
 # Console-only formatting (file logs unformatted)
 ./build/bin/ascii-chat server --log-format &quot;[%time(%H:%M:%S)] %message&quot; --log-format-console
 ```</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Format_Specifiers"><a class="permalink" href="#Format_Specifiers">Format
-  Specifiers</a></h2>
-<ul class="Bl-bullet">
-  <li>time(format) - Custom time format (strftime-compatible)</li>
-  <li>level - Log level as uppercase string (DEV, DEBUG, INFO, WARN, ERROR,
-      FATAL)</li>
-  <li>level_aligned - Log level padded to 5 characters for alignment</li>
-  <li>file - Source filename relative to repository root</li>
-  <li>line - Source line number</li>
-  <li>func - Function name</li>
-  <li>tid - Thread ID</li>
-  <li>message - The log message itself</li>
-  <li>\n - Platform-aware newline (CRLF on Windows, LF on Unix)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Environment_Variables"><a class="permalink" href="#Environment_Variables">Environment
-  Variables</a></h2>
-<ul class="Bl-bullet">
-  <li>ASCII_CHAT_LOG_FORMAT - Set format via environment variable</li>
-  <li>ASCII_CHAT_LOG_FORMAT_CONSOLE - Set to <b>true</b><b> to apply format only
-      to console</b></li>
-</ul>
-<p class="Pp"></p>
-<pre>**Step 2: Verify build and tests pass**
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Format_Specifiers">
+            <a class="permalink" href="#Format_Specifiers">Format Specifiers</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>time(format) - Custom time format (strftime-compatible)</li>
+            <li>
+              level - Log level as uppercase string (DEV, DEBUG, INFO, WARN,
+              ERROR, FATAL)
+            </li>
+            <li>
+              level_aligned - Log level padded to 5 characters for alignment
+            </li>
+            <li>file - Source filename relative to repository root</li>
+            <li>line - Source line number</li>
+            <li>func - Function name</li>
+            <li>tid - Thread ID</li>
+            <li>message - The log message itself</li>
+            <li>\n - Platform-aware newline (CRLF on Windows, LF on Unix)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Environment_Variables">
+            <a class="permalink" href="#Environment_Variables"
+              >Environment Variables</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>ASCII_CHAT_LOG_FORMAT - Set format via environment variable</li>
+            <li>
+              ASCII_CHAT_LOG_FORMAT_CONSOLE - Set to <b>true</b
+              ><b> to apply format only to console</b>
+            </li>
+          </ul>
+          <p class="Pp"></p>
+          <pre>
+**Step 2: Verify build and tests pass**
 ```bash
 cmake --build build --target all
 ctest --test-dir build -R &quot;log_format|logging&quot; --output-on-failure
 # Expected: All tests pass</pre>
-<p class="Pp"><b>Step 3: Run full test suite</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build --target tests
+          <p class="Pp"><b>Step 3: Run full test suite</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake --build build --target tests
 ctest --test-dir build --output-on-failure --parallel 0
 # Expected: All tests pass, including new format tests</pre>
-<p class="Pp"><b>Step 4: Commit documentation</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git add CLAUDE.md
+          <p class="Pp"><b>Step 4: Commit documentation</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git add CLAUDE.md
 git commit -m &quot;docs: Add --log-format documentation
 - Document custom log format feature
 - List all format specifiers
 - Show usage examples
 - Explain console-only formatting
 - Document environment variables&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Task_8:_Verification_and_Final_Integration"><a class="permalink" href="#Task_8:_Verification_and_Final_Integration">Task
-  8: Verification and Final Integration</a></h2>
-<p class="Pp"><b>Files:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Test: Run full suite and verify backward compatibility</dd>
-</dl>
-<p class="Pp"><b>Step 1: Save old binary for format comparison</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cp /Users/zfogg/src/github.com/zfogg/ascii-chat/build/bin/ascii-chat /tmp/ascii-chat-old</pre>
-<p class="Pp"><b>Step 2: Build new version</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>cmake --build build</pre>
-<p class="Pp"><b>Step 3: Compare log output (no custom format = should match
-    old)</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Old binary output
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Task_8:_Verification_and_Final_Integration">
+            <a
+              class="permalink"
+              href="#Task_8:_Verification_and_Final_Integration"
+              >Task 8: Verification and Final Integration</a
+            >
+          </h2>
+          <p class="Pp"><b>Files:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Test: Run full suite and verify backward compatibility</dd>
+          </dl>
+          <p class="Pp"><b>Step 1: Save old binary for format comparison</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cp /Users/zfogg/src/github.com/zfogg/ascii-chat/build/bin/ascii-chat /tmp/ascii-chat-old</pre>
+          <p class="Pp"><b>Step 2: Build new version</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>cmake --build build</pre>
+          <p class="Pp">
+            <b
+              >Step 3: Compare log output (no custom format = should match
+              old)</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Old binary output
 /tmp/ascii-chat-old mirror --snapshot --snapshot-delay 0 2&gt;&amp;1 | head -5 &gt; /tmp/old-logs.txt
 # New binary output (using default format)
 ./build/bin/ascii-chat mirror --snapshot --snapshot-delay 0 2&gt;&amp;1 | head -5 &gt; /tmp/new-logs.txt
 diff /tmp/old-logs.txt /tmp/new-logs.txt
 # Expected: No differences (or only minor timing differences)</pre>
-<p class="Pp"><b>Step 4: Test various formats end-to-end</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Test format with all specifiers
+          <p class="Pp"><b>Step 4: Test various formats end-to-end</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre># Test format with all specifiers
 ./build/bin/ascii-chat mirror --snapshot --snapshot-delay 0 \
 <br/>
   --log-format &quot;[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file:%line %func() - %message&quot; \
 <br/>
   2&gt;&amp;1 | head -5
 # Verify output contains all expected components</pre>
-<p class="Pp"><b>Step 5: Final commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git status
+          <p class="Pp"><b>Step 5: Final commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git status
 # Should show: nothing to commit, working tree clean (or only CLAUDE.md changes)</pre>
-<p class="Pp"><b>Step 6: Create summary commit</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>git log --oneline -8
+          <p class="Pp"><b>Step 6: Create summary commit</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+git log --oneline -8
 # Should show 8 commits from this feature implementation</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Notes"><a class="permalink" href="#Implementation_Notes">Implementation
-  Notes</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Design_Decisions"><a class="permalink" href="#Design_Decisions">Design
-  Decisions</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Parser Simplicity</b>: Format string parsed once at initialization, not
-      per-log-call, for performance</dd>
-  <dt>2.</dt>
-  <dd><b>Backward Compatibility</b>: Default format matches existing hardcoded
-      format</dd>
-  <dt>3.</dt>
-  <dd><b>Console-Only Format</b>: Separate flag allows different formatting for
-      console vs file</dd>
-  <dt>4.</dt>
-  <dd><b>No Color Logic in Format</b>: Color handling remains in
-      <b>colorize.c</b>, format parser just applies colors</dd>
-  <dt>5.</dt>
-  <dd><b>Safe Buffer Handling</b>: All snprintf calls use safe_snprintf wrapper
-      and check bounds</dd>
-  <dt>6.</dt>
-  <dd><b>UTF-8 Safety</b>: Format strings validated with
-      <b>utf8_is_valid()</b><b> at parse time; literal text extraction is
-      byte-safe because source is already validated</b></dd>
-  <dt>7.</dt>
-  <dd><b>strftime Validation</b>: Format strings for time() validated against
-      whitelist of safe specifiers; prevents crashes from invalid formats</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="UTF-8_Support"><a class="permalink" href="#UTF-8_Support">UTF-8
-  Support</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Format String Validation</b>: Format strings validated as valid UTF-8
-      during parsing (via <b>utf8_is_valid()</b><b>)</b></li>
-  <li><b>Literal Text Handling</b>: UTF-8 literals in format strings safely
-      extracted via byte-level copy (safe because source already validated)</li>
-  <li><b>Message Content</b>: Existing message validation in logging.c continues
-      to work; logs with invalid UTF-8 trigger warnings</li>
-  <li><b>Terminal Output</b>: Terminal display width calculations available via
-      <b>utf8_display_width()</b><b> for future column-aware formatting</b></li>
-  <li><b>Safe Truncation</b>: Existing truncate_at_whole_line() function in
-      logging.c ensures truncation doesn't split UTF-8 sequences</li>
-  <li><b>File Paths</b>: UTF-8 file paths handled naturally by byte-level
-      storage (paths are opaque byte sequences to format system)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Testing_Strategy"><a class="permalink" href="#Testing_Strategy">Testing
-  Strategy</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>UTF-8 Tests</b> (Task 5):</dd>
-  <dt> &#x2022;</dt>
-  <dd>Parse format strings containing UTF-8 literals (Chinese characters,
-      accents)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Apply format to messages containing UTF-8 text</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reject format strings with invalid UTF-8</dd>
-  <dt> &#x2022;</dt>
-  <dd>Verify proper byte handling in literal extraction</dd>
-  <dt>2.</dt>
-  <dd><b>Unit Tests</b>: Test format parser independently</dd>
-  <dt>3.</dt>
-  <dd><b>Integration Tests</b>: Test with actual log calls (task 6)</dd>
-  <dt>4.</dt>
-  <dd><b>Backward Compatibility</b>: Verify old logs match new default format
-      (task 8)</dd>
-  <dt>5.</dt>
-  <dd><b>End-to-End</b>: Test with real modes (mirror, server, client)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Known_Limitations_&amp;_Future_Work"><a class="permalink" href="#Known_Limitations_&amp;_Future_Work">Known
-  Limitations &amp; Future Work</a></h2>
-<ul class="Bl-bullet">
-  <li>Color format specifier colorlog_level_string_to_color is a
-    placeholder</li>
-  <li>Custom nanosecond formatting like %6s(n(0)) deferred to Phase 2 (requires
-      custom time formatter)</li>
-  <li>Column-aware formatting for wide characters (CJK, emoji) deferred to
-      future work (infrastructure available via
-      <b>utf8_display_width()</b><b>)</b></li>
-</ul>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date"><b>Version 0.14.7</b></td>
-    <td class="foot-os"><b>ascii-chat</b></td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Notes">
+            <a class="permalink" href="#Implementation_Notes"
+              >Implementation Notes</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Design_Decisions">
+            <a class="permalink" href="#Design_Decisions">Design Decisions</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Parser Simplicity</b>: Format string parsed once at
+              initialization, not per-log-call, for performance
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Backward Compatibility</b>: Default format matches existing
+              hardcoded format
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Console-Only Format</b>: Separate flag allows different
+              formatting for console vs file
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>No Color Logic in Format</b>: Color handling remains in
+              <b>colorize.c</b>, format parser just applies colors
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>Safe Buffer Handling</b>: All snprintf calls use safe_snprintf
+              wrapper and check bounds
+            </dd>
+            <dt>6.</dt>
+            <dd>
+              <b>UTF-8 Safety</b>: Format strings validated with
+              <b>utf8_is_valid()</b
+              ><b>
+                at parse time; literal text extraction is byte-safe because
+                source is already validated</b
+              >
+            </dd>
+            <dt>7.</dt>
+            <dd>
+              <b>strftime Validation</b>: Format strings for time() validated
+              against whitelist of safe specifiers; prevents crashes from
+              invalid formats
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="UTF-8_Support">
+            <a class="permalink" href="#UTF-8_Support">UTF-8 Support</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Format String Validation</b>: Format strings validated as valid
+              UTF-8 during parsing (via <b>utf8_is_valid()</b><b>)</b>
+            </li>
+            <li>
+              <b>Literal Text Handling</b>: UTF-8 literals in format strings
+              safely extracted via byte-level copy (safe because source already
+              validated)
+            </li>
+            <li>
+              <b>Message Content</b>: Existing message validation in logging.c
+              continues to work; logs with invalid UTF-8 trigger warnings
+            </li>
+            <li>
+              <b>Terminal Output</b>: Terminal display width calculations
+              available via <b>utf8_display_width()</b
+              ><b> for future column-aware formatting</b>
+            </li>
+            <li>
+              <b>Safe Truncation</b>: Existing truncate_at_whole_line() function
+              in logging.c ensures truncation doesn't split UTF-8 sequences
+            </li>
+            <li>
+              <b>File Paths</b>: UTF-8 file paths handled naturally by
+              byte-level storage (paths are opaque byte sequences to format
+              system)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Testing_Strategy">
+            <a class="permalink" href="#Testing_Strategy">Testing Strategy</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>UTF-8 Tests</b> (Task 5):</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Parse format strings containing UTF-8 literals (Chinese
+              characters, accents)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Apply format to messages containing UTF-8 text</dd>
+            <dt>&#x2022;</dt>
+            <dd>Reject format strings with invalid UTF-8</dd>
+            <dt>&#x2022;</dt>
+            <dd>Verify proper byte handling in literal extraction</dd>
+            <dt>2.</dt>
+            <dd><b>Unit Tests</b>: Test format parser independently</dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Integration Tests</b>: Test with actual log calls (task 6)
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Backward Compatibility</b>: Verify old logs match new default
+              format (task 8)
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>End-to-End</b>: Test with real modes (mirror, server, client)
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Known_Limitations_&amp;_Future_Work">
+            <a class="permalink" href="#Known_Limitations_&amp;_Future_Work"
+              >Known Limitations &amp; Future Work</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              Color format specifier colorlog_level_string_to_color is a
+              placeholder
+            </li>
+            <li>
+              Custom nanosecond formatting like %6s(n(0)) deferred to Phase 2
+              (requires custom time formatter)
+            </li>
+            <li>
+              Column-aware formatting for wide characters (CJK, emoji) deferred
+              to future work (infrastructure available via
+              <b>utf8_display_width()</b><b>)</b>
+            </li>
+          </ul>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date"><b>Version 0.14.7</b></td>
+        <td class="foot-os"><b>ascii-chat</b></td>
+      </tr>
+    </table>
+  </body>
 </html>

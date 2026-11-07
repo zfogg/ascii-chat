@@ -1,69 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_query_api(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_query_api(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_query_api(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_query_api - Query Tool HTTP API Reference</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Query_Tool_HTTP_API_Reference"><a class="permalink" href="#Query_Tool_HTTP_API_Reference">Query
-  Tool HTTP API Reference</a></h1>
-<p class="Pp">This document describes all HTTP endpoints provided by the
-    ascii-query-server controller.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Base_URL"><a class="permalink" href="#Base_URL">Base
-  URL</a></h2>
-<pre>http://localhost:{port}/</pre>
-<p class="Pp">Default port is 9999, configurable via --port flag.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Endpoints"><a class="permalink" href="#Endpoints">Endpoints</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss">GET / - Status Page</h2>
-<p class="Pp">Returns an HTML status page with process info and interactive
-    query form.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>: text/html</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">GET /process - Process Information</h2>
-<p class="Pp">Returns information about the attached target process.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_query_api(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_query_api(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_query_api(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">custom_query_api - Query Tool HTTP API Reference</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Query_Tool_HTTP_API_Reference">
+          <a class="permalink" href="#Query_Tool_HTTP_API_Reference"
+            >Query Tool HTTP API Reference</a
+          >
+        </h1>
+        <p class="Pp">
+          This document describes all HTTP endpoints provided by the
+          ascii-query-server controller.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Base_URL">
+            <a class="permalink" href="#Base_URL">Base URL</a>
+          </h2>
+          <pre>http://localhost:{port}/</pre>
+          <p class="Pp">Default port is 9999, configurable via --port flag.</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Endpoints">
+            <a class="permalink" href="#Endpoints">Endpoints</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">GET / - Status Page</h2>
+          <p class="Pp">
+            Returns an HTML status page with process info and interactive query
+            form.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>: text/html</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">GET /process - Process Information</h2>
+          <p class="Pp">
+            Returns information about the attached target process.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;pid&quot;: 12345,
 <br/>
@@ -75,20 +115,22 @@
 <br/>
   &quot;num_threads&quot;: 4
 }</pre>
-<p class="Pp">Field Type Description pid integer Process ID name string
-    Executable name state string &quot;running&quot;, &quot;stopped&quot;, or
-    &quot;exited&quot; triple string Target architecture triple num_threads
-    integer Number of threads</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">GET /threads - List Threads</h2>
-<p class="Pp">Returns all threads in the target process.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp">
+            Field Type Description pid integer Process ID name string Executable
+            name state string &quot;running&quot;, &quot;stopped&quot;, or
+            &quot;exited&quot; triple string Target architecture triple
+            num_threads integer Number of threads
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">GET /threads - List Threads</h2>
+          <p class="Pp">Returns all threads in the target process.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;threads&quot;: [
 <br/>
@@ -118,15 +160,17 @@
 <br/>
   ]
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">GET /frames - Stack Frames</h2>
-<p class="Pp">Returns the call stack for the current thread (when stopped).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">GET /frames - Stack Frames</h2>
+          <p class="Pp">
+            Returns the call stack for the current thread (when stopped).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;frames&quot;: [
 <br/>
@@ -160,10 +204,10 @@
 <br/>
   ]
 }</pre>
-<p class="Pp"><b>Error</b> (target not stopped):</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp"><b>Error</b> (target not stopped):</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;error&quot;,
 <br/>
@@ -171,27 +215,33 @@
 <br/>
   &quot;message&quot;: &quot;Target must be stopped to get stack frames&quot;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">GET /query - Query Variable</h2>
-<p class="Pp">Read a variable's value. Behavior depends on target state and
-    parameters.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">Parameter Required Default Description file When running - Source
-    file path (relative to project root) line When running - Line number name
-    Yes - Variable name (supports dot/arrow notation) break No - If present,
-    stop at breakpoint and stay stopped timeout No 5000 Timeout in ms waiting
-    for breakpoint expand No <b>false</b><b> Expand struct members recursively
-    </b>depth<b> No </b>3<b> Max recursion depth for expansion </b>frame<b> No
-    </b>0<b> Stack frame index or function name </b>thread<b> No current Thread
-    ID to query</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Examples</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Query variable at specific location (immediate mode)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">GET /query - Query Variable</h2>
+          <p class="Pp">
+            Read a variable's value. Behavior depends on target state and
+            parameters.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Parameter Required Default Description file When running - Source
+            file path (relative to project root) line When running - Line number
+            name Yes - Variable name (supports dot/arrow notation) break No - If
+            present, stop at breakpoint and stay stopped timeout No 5000 Timeout
+            in ms waiting for breakpoint expand No <b>false</b
+            ><b> Expand struct members recursively </b>depth<b> No </b>3<b>
+              Max recursion depth for expansion </b
+            >frame<b> No </b>0<b> Stack frame index or function name </b
+            >thread<b> No current Thread ID to query</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Examples</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Query variable at specific location (immediate mode)
 curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count'
 # Query with breakpoint (interactive mode)
 curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count&amp;break'
@@ -201,10 +251,10 @@ curl 'localhost:9999/query?name=client.socket.fd'
 curl 'localhost:9999/query?name=client&amp;expand&amp;depth=2'
 # Query from parent frame
 curl 'localhost:9999/query?name=argc&amp;frame=1'</pre>
-<p class="Pp"><b>Response</b> (immediate mode):</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp"><b>Response</b> (immediate mode):</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;ok&quot;,
 <br/>
@@ -222,10 +272,10 @@ curl 'localhost:9999/query?name=argc&amp;frame=1'</pre>
 <br/>
   }
 }</pre>
-<p class="Pp"><b>Response</b> (breakpoint mode):</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp"><b>Response</b> (breakpoint mode):</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;ok&quot;,
 <br/>
@@ -251,10 +301,10 @@ curl 'localhost:9999/query?name=argc&amp;frame=1'</pre>
 <br/>
   }
 }</pre>
-<p class="Pp"><b>Response</b> (struct expansion):</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp"><b>Response</b> (struct expansion):</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;ok&quot;,
 <br/>
@@ -290,51 +340,54 @@ curl 'localhost:9999/query?name=argc&amp;frame=1'</pre>
 <br/>
   }
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">POST /stop - Stop Target</h2>
-<p class="Pp">Stops (pauses) the target process.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">POST /stop - Stop Target</h2>
+          <p class="Pp">Stops (pauses) the target process.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;stopped&quot;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">POST /continue - Continue Execution</h2>
-<p class="Pp">Resumes target execution if stopped.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">POST /continue - Continue Execution</h2>
+          <p class="Pp">Resumes target execution if stopped.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;running&quot;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">POST /step - Single Step</h2>
-<p class="Pp">Execute one source line (when stopped).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">Parameter Default Description over <b>false</b><b> Step over
-    (don't enter functions) </b>out<b> </b><b>false</b><b> Step out (run until
-    function returns)</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Examples</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>curl -X POST 'localhost:9999/step'           # Step into
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">POST /step - Single Step</h2>
+          <p class="Pp">Execute one source line (when stopped).</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Parameter Default Description over <b>false</b
+            ><b> Step over (don't enter functions) </b>out<b> </b><b>false</b
+            ><b> Step out (run until function returns)</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Examples</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+curl -X POST 'localhost:9999/step'           # Step into
 curl -X POST 'localhost:9999/step?over=true' # Step over
 curl -X POST 'localhost:9999/step?out=true'  # Step out</pre>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;stopped&quot;,
 <br/>
@@ -348,15 +401,15 @@ curl -X POST 'localhost:9999/step?out=true'  # Step out</pre>
 <br/>
   }
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">GET /breakpoints - List Breakpoints</h2>
-<p class="Pp">Returns all set breakpoints.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">GET /breakpoints - List Breakpoints</h2>
+          <p class="Pp">Returns all set breakpoints.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;breakpoints&quot;: [
 <br/>
@@ -378,24 +431,27 @@ curl -X POST 'localhost:9999/step?out=true'  # Step out</pre>
 <br/>
   ]
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">POST /breakpoints - Set Breakpoint</h2>
-<p class="Pp">Set a persistent breakpoint.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">Parameter Required Description file Yes Source file path line Yes
-    Line number condition No Conditional expression</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Example</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>curl -X POST 'localhost:9999/breakpoints?file=src/server.c&amp;line=100&amp;condition=client_count&gt;5'</pre>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">POST /breakpoints - Set Breakpoint</h2>
+          <p class="Pp">Set a persistent breakpoint.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Parameter Required Description file Yes Source file path line Yes
+            Line number condition No Conditional expression
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Example</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+curl -X POST 'localhost:9999/breakpoints?file=src/server.c&amp;line=100&amp;condition=client_count&gt;5'</pre>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;id&quot;: 1,
 <br/>
@@ -405,49 +461,55 @@ curl -X POST 'localhost:9999/step?out=true'  # Step out</pre>
 <br/>
   &quot;enabled&quot;: true
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">DELETE /breakpoints - Remove Breakpoint</h2>
-<p class="Pp">Remove a breakpoint by ID.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">Parameter Required Description id Yes Breakpoint ID</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Example</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>curl -X DELETE 'localhost:9999/breakpoints?id=1'</pre>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">DELETE /breakpoints - Remove Breakpoint</h2>
+          <p class="Pp">Remove a breakpoint by ID.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp">Parameter Required Description id Yes Breakpoint ID</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Example</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>curl -X DELETE 'localhost:9999/breakpoints?id=1'</pre>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;ok&quot;,
 <br/>
   &quot;removed&quot;: 1
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">POST /detach - Detach from Target</h2>
-<p class="Pp">Cleanly detach LLDB from target. Target continues running.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Response</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">POST /detach - Detach from Target</h2>
+          <p class="Pp">
+            Cleanly detach LLDB from target. Target continues running.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Response</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;detached&quot;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Error_Responses"><a class="permalink" href="#Error_Responses">Error
-  Responses</a></h2>
-<p class="Pp">All errors return JSON with status:
-    &quot;<b>Errors</b>&quot;<b>:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>{
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Error_Responses">
+            <a class="permalink" href="#Error_Responses">Error Responses</a>
+          </h2>
+          <p class="Pp">
+            All errors return JSON with status: &quot;<b>Errors</b>&quot;<b
+              >:</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>{
 <br/>
   &quot;status&quot;: &quot;error&quot;,
 <br/>
@@ -455,45 +517,54 @@ curl -X POST 'localhost:9999/step?out=true'  # Step out</pre>
 <br/>
   &quot;message&quot;: &quot;Human-readable description&quot;
 }</pre>
-<p class="Pp"><b>Error Codes</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">Code Description not_stopped Operation requires target to be
-    stopped not_running Operation requires target to be running timeout
-    Breakpoint not hit within timeout variable_not_found Variable not found in
-    scope invalid_parameter Missing or invalid parameter no_debug_info File/line
-    has no debug symbols attach_failed Could not attach to process</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="HTTP_Headers"><a class="permalink" href="#HTTP_Headers">HTTP
-  Headers</a></h2>
-<p class="Pp"><b>Request Headers</b> (optional):</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Accept: application/json - Request JSON response</dd>
-</dl>
-<p class="Pp"><b>Response Headers</b>:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Content-Type: application/json - JSON responses</li>
-  <li>Access-Control-Allow-Origin: * - CORS enabled for browser access</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Status_Codes"><a class="permalink" href="#Status_Codes">Status
-  Codes</a></h2>
-<p class="Pp">Code Meaning 200 Success 400 Bad request (missing/invalid
-    parameters) 404 Endpoint not found 500 Internal error 503 Target not
-    attached</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <p class="Pp"><b>Error Codes</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Code Description not_stopped Operation requires target to be stopped
+            not_running Operation requires target to be running timeout
+            Breakpoint not hit within timeout variable_not_found Variable not
+            found in scope invalid_parameter Missing or invalid parameter
+            no_debug_info File/line has no debug symbols attach_failed Could not
+            attach to process
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="HTTP_Headers">
+            <a class="permalink" href="#HTTP_Headers">HTTP Headers</a>
+          </h2>
+          <p class="Pp"><b>Request Headers</b> (optional):</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Accept: application/json - Request JSON response</dd>
+          </dl>
+          <p class="Pp"><b>Response Headers</b>:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Content-Type: application/json - JSON responses</li>
+            <li>
+              Access-Control-Allow-Origin: * - CORS enabled for browser access
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Status_Codes">
+            <a class="permalink" href="#Status_Codes">Status Codes</a>
+          </h2>
+          <p class="Pp">
+            Code Meaning 200 Success 400 Bad request (missing/invalid
+            parameters) 404 Endpoint not found 500 Internal error 503 Target not
+            attached
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,141 +1,213 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>utf8.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">utf8.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">utf8.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">utf8.c - &#x1F524; UTF-8 encoding and decoding with multi-byte
-    character support</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>utf8_output_enabled</b> (void)
-  <br/>
-  Return whether terminal output should use UTF-8 according to --utf8. int
-    <b>utf8_decode</b> (const <b>uint8_t</b> *s, <b>uint32_t</b> *codepoint)
-  <br/>
-  Decode a UTF-8 sequence to a Unicode codepoint. size_t
-    <b>utf8_prefix_bytes_for_width</b> (const char *str, size_t max_bytes, int
-    max_width)
-  <br/>
-  Return the byte length of a prefix fitting a terminal column limit. int
-    <b>utf8_display_width</b> (const char *str)
-  <br/>
-  Calculate terminal display width of a UTF-8 string. int
-    <b>utf8_display_width_n</b> (const char *str, size_t max_bytes)
-  <br/>
-  Calculate terminal display width of a UTF-8 string up to byte limit. size_t
-    <b>utf8_char_count</b> (const char *str)
-  <br/>
-  Count UTF-8 characters (not bytes). <b>bool</b> <b>utf8_is_valid</b> (const
-    char *str)
-  <br/>
-  Check if a string is valid UTF-8. <b>bool</b> <b>utf8_is_ascii_only</b> (const
-    char *str)
-  <br/>
-  Check if a string contains only ASCII characters. size_t
-    <b>utf8_to_codepoints</b> (const char *str, <b>uint32_t</b> *out_codepoints,
-    size_t max_codepoints)
-  <br/>
-  Convert UTF-8 string to array of Unicode codepoints. int
-    <b>utf8_next_char_bytes</b> (const char *str, size_t max_bytes)
-  <br/>
-  Get byte length of next UTF-8 character. const char * <b>utf8_strcasestr</b>
-    (const char *haystack, const char *needle)
-  <br/>
-  Case-insensitive substring search with full Unicode support. void
-    <b>utf8_write_lowercase</b> (FILE *output, const char *text)
-  <br/>
-  Write UTF-8 string to file with ASCII lowercase conversion.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F524; UTF-8 encoding and decoding with multi-byte character
-    support</p>
-<p class="Pp">Uses utf8proc Unicode library for accurate character-width
-    computation and UTF-8 handling.</p>
-<p class="Pp">Definition in file <b>utf8.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_utf8_prefix_bytes_for_width_(const_char_*_str,_size_t_max_bytes,_int_max_width)"><a class="permalink" href="#size_t_utf8_prefix_bytes_for_width_(const_char_*_str,_size_t_max_bytes,_int_max_width)">size_t
-  utf8_prefix_bytes_for_width (const char * str, size_t max_bytes, int
-  max_width)</a></h2>
-<p class="Pp">Return the byte length of a prefix fitting a terminal column
-    limit.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Input string or bounded slice (may be NULL)
-<br/>
-<i>max_bytes</i> Maximum readable bytes
-<br/>
-<i>max_width</i> Maximum terminal columns; negative values return zero</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Prefix length in bytes, without modifying the input</div>
-<p class="Pp">Stops at NUL, invalid/incomplete UTF-8, or an
-    incomplete/unsupported escape. Complete ANSI CSI sequences consume zero
-    columns. Codepoints are never split; combining marks and trailing CSI
-    sequences are included even at the width limit. Widths follow
-    utf8proc_charwidth(), not grapheme-cluster or terminal-specific emoji
-    shaping. A zero-column limit may include leading zero-width tokens.</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>utf8.c</b>.</p>
-<pre>93                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>utf8.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">utf8.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">utf8.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          utf8.c - &#x1F524; UTF-8 encoding and decoding with multi-byte
+          character support
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>utf8_output_enabled</b> (void)
+            <br />
+            Return whether terminal output should use UTF-8 according to --utf8.
+            int
+            <b>utf8_decode</b> (const <b>uint8_t</b> *s,
+            <b>uint32_t</b> *codepoint)
+            <br />
+            Decode a UTF-8 sequence to a Unicode codepoint. size_t
+            <b>utf8_prefix_bytes_for_width</b> (const char *str, size_t
+            max_bytes, int max_width)
+            <br />
+            Return the byte length of a prefix fitting a terminal column limit.
+            int
+            <b>utf8_display_width</b> (const char *str)
+            <br />
+            Calculate terminal display width of a UTF-8 string. int
+            <b>utf8_display_width_n</b> (const char *str, size_t max_bytes)
+            <br />
+            Calculate terminal display width of a UTF-8 string up to byte limit.
+            size_t
+            <b>utf8_char_count</b> (const char *str)
+            <br />
+            Count UTF-8 characters (not bytes). <b>bool</b>
+            <b>utf8_is_valid</b> (const char *str)
+            <br />
+            Check if a string is valid UTF-8. <b>bool</b>
+            <b>utf8_is_ascii_only</b> (const char *str)
+            <br />
+            Check if a string contains only ASCII characters. size_t
+            <b>utf8_to_codepoints</b> (const char *str,
+            <b>uint32_t</b> *out_codepoints, size_t max_codepoints)
+            <br />
+            Convert UTF-8 string to array of Unicode codepoints. int
+            <b>utf8_next_char_bytes</b> (const char *str, size_t max_bytes)
+            <br />
+            Get byte length of next UTF-8 character. const char *
+            <b>utf8_strcasestr</b>
+            (const char *haystack, const char *needle)
+            <br />
+            Case-insensitive substring search with full Unicode support. void
+            <b>utf8_write_lowercase</b> (FILE *output, const char *text)
+            <br />
+            Write UTF-8 string to file with ASCII lowercase conversion.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F524; UTF-8 encoding and decoding with multi-byte character
+          support
+        </p>
+        <p class="Pp">
+          Uses utf8proc Unicode library for accurate character-width computation
+          and UTF-8 handling.
+        </p>
+        <p class="Pp">Definition in file <b>utf8.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_utf8_prefix_bytes_for_width_(const_char_*_str,_size_t_max_bytes,_int_max_width)"
+          >
+            <a
+              class="permalink"
+              href="#size_t_utf8_prefix_bytes_for_width_(const_char_*_str,_size_t_max_bytes,_int_max_width)"
+              >size_t utf8_prefix_bytes_for_width (const char * str, size_t
+              max_bytes, int max_width)</a
+            >
+          </h2>
+          <p class="Pp">
+            Return the byte length of a prefix fitting a terminal column limit.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Input string or bounded slice (may be NULL)
+            <br />
+            <i>max_bytes</i> Maximum readable bytes
+            <br />
+            <i>max_width</i> Maximum terminal columns; negative values return
+            zero
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Prefix length in bytes, without modifying the input
+          </div>
+          <p class="Pp">
+            Stops at NUL, invalid/incomplete UTF-8, or an incomplete/unsupported
+            escape. Complete ANSI CSI sequences consume zero columns. Codepoints
+            are never split; combining marks and trailing CSI sequences are
+            included even at the width limit. Widths follow
+            utf8proc_charwidth(), not grapheme-cluster or terminal-specific
+            emoji shaping. A zero-column limit may include leading zero-width
+            tokens.
+          </p>
+          <p class="Pp">Definition at line <b>93</b> of file <b>utf8.c</b>.</p>
+          <pre>
+93                                                                                      {
 94   int width;
 95   return utf8_prefix_scan(str, max_bytes, max_width, &amp;width);
 96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>utf8_prefix_bytes_for_width()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
-    <b>truncate_with_ellipsis_mode()</b>, and
-    <b>utf8_prefix_bytes_for_width()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>utf8_prefix_bytes_for_width()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ascii_create_grid()</b>,
+            <b>truncate_with_ellipsis_mode()</b>, and
+            <b>utf8_prefix_bytes_for_width()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

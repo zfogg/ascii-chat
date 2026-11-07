@@ -1,170 +1,317 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>help_menu.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">help_menu.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">help_menu.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">help_menu.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>UI_HELP_MENU_KEY_BUFFER_SIZE</b> 96
-  <br/>
-  #define <b>UI_HELP_MENU_TEXT_COUNT</b> 64
-  <br/>
-  #define <b>UI_HELP_MENU_LHS_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>UI_HELP_MENU_RHS_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>UI_HELP_MENU_PADDED_BUFFER_SIZE</b> 2048
-  <br/>
-  #define <b>UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE</b> 768
-  <br/>
-  #define <b>UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>UI_HELP_MENU_BINDING_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>UI_HELP_MENU_STYLED_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>UI_HELP_MENU_VALUES_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>HELP_MENU_TEXT_LINE_BUFFER_SIZE</b> 2048
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>ui_help_keys</b> (char *out, size_t cap, const char *keys)
-  <br/>
-  <b>terminal_size_t</b> <b>ui_help_menu_measure</b> (const
-    <b>ui_help_menu_t</b> *m)
-  <br/>
-  <b>bool</b> <b>ui_help_menu_render</b> (<b>frame_buffer_t</b> *out,
-    <b>terminal_size_t</b> size, const <b>ui_help_menu_t</b> *m)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_HELP_MENU_TEXT_LINE_BUFFER_SIZE___2048"><a class="permalink" href="#_define_HELP_MENU_TEXT_LINE_BUFFER_SIZE___2048">#define
-  HELP_MENU_TEXT_LINE_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_BINDING_BUFFER_SIZE___64"><a class="permalink" href="#_define_UI_HELP_MENU_BINDING_BUFFER_SIZE___64">#define
-  UI_HELP_MENU_BINDING_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE___768"><a class="permalink" href="#_define_UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE___768">#define
-  UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE 768</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_KEY_BUFFER_SIZE___96"><a class="permalink" href="#_define_UI_HELP_MENU_KEY_BUFFER_SIZE___96">#define
-  UI_HELP_MENU_KEY_BUFFER_SIZE 96</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_keys()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE___256"><a class="permalink" href="#_define_UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE___256">#define
-  UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_LHS_BUFFER_SIZE___1024"><a class="permalink" href="#_define_UI_HELP_MENU_LHS_BUFFER_SIZE___1024">#define
-  UI_HELP_MENU_LHS_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_PADDED_BUFFER_SIZE___2048"><a class="permalink" href="#_define_UI_HELP_MENU_PADDED_BUFFER_SIZE___2048">#define
-  UI_HELP_MENU_PADDED_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_RHS_BUFFER_SIZE___1024"><a class="permalink" href="#_define_UI_HELP_MENU_RHS_BUFFER_SIZE___1024">#define
-  UI_HELP_MENU_RHS_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_STYLED_BUFFER_SIZE___512"><a class="permalink" href="#_define_UI_HELP_MENU_STYLED_BUFFER_SIZE___512">#define
-  UI_HELP_MENU_STYLED_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE___512"><a class="permalink" href="#_define_UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE___512">#define
-  UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_TEXT_COUNT___64"><a class="permalink" href="#_define_UI_HELP_MENU_TEXT_COUNT___64">#define
-  UI_HELP_MENU_TEXT_COUNT 64</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_HELP_MENU_VALUES_BUFFER_SIZE___512"><a class="permalink" href="#_define_UI_HELP_MENU_VALUES_BUFFER_SIZE___512">#define
-  UI_HELP_MENU_VALUES_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>help_menu.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_help_keys_(char_*_output,_size_t_capacity,_const_char_*_keys)"><a class="permalink" href="#void_ui_help_keys_(char_*_output,_size_t_capacity,_const_char_*_keys)">void
-  ui_help_keys (char * output, size_t capacity, const char * keys)</a></h2>
-<p class="Pp">Key tokens are yellow; spaces, slashes, parentheses and pipes stay
-    uncolored.</p>
-<p class="Pp">Definition at line <b>25</b> of file <b>help_menu.c</b>.</p>
-<pre>25                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>help_menu.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">help_menu.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">help_menu.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">help_menu.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>UI_HELP_MENU_KEY_BUFFER_SIZE</b> 96
+            <br />
+            #define <b>UI_HELP_MENU_TEXT_COUNT</b> 64
+            <br />
+            #define <b>UI_HELP_MENU_LHS_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>UI_HELP_MENU_RHS_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>UI_HELP_MENU_PADDED_BUFFER_SIZE</b> 2048
+            <br />
+            #define <b>UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE</b> 768
+            <br />
+            #define <b>UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>UI_HELP_MENU_BINDING_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>UI_HELP_MENU_STYLED_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>UI_HELP_MENU_VALUES_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>HELP_MENU_TEXT_LINE_BUFFER_SIZE</b> 2048
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_help_keys</b> (char *out, size_t cap, const char *keys)
+            <br />
+            <b>terminal_size_t</b> <b>ui_help_menu_measure</b> (const
+            <b>ui_help_menu_t</b> *m)
+            <br />
+            <b>bool</b> <b>ui_help_menu_render</b> (<b>frame_buffer_t</b> *out,
+            <b>terminal_size_t</b> size, const <b>ui_help_menu_t</b> *m)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HELP_MENU_TEXT_LINE_BUFFER_SIZE___2048">
+            <a
+              class="permalink"
+              href="#_define_HELP_MENU_TEXT_LINE_BUFFER_SIZE___2048"
+              >#define HELP_MENU_TEXT_LINE_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_BINDING_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_BINDING_BUFFER_SIZE___64"
+              >#define UI_HELP_MENU_BINDING_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE___768"
+          >
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE___768"
+              >#define UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE 768</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_KEY_BUFFER_SIZE___96">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_KEY_BUFFER_SIZE___96"
+              >#define UI_HELP_MENU_KEY_BUFFER_SIZE 96</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_keys()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE___256"
+              >#define UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_LHS_BUFFER_SIZE___1024">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_LHS_BUFFER_SIZE___1024"
+              >#define UI_HELP_MENU_LHS_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_PADDED_BUFFER_SIZE___2048">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_PADDED_BUFFER_SIZE___2048"
+              >#define UI_HELP_MENU_PADDED_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_RHS_BUFFER_SIZE___1024">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_RHS_BUFFER_SIZE___1024"
+              >#define UI_HELP_MENU_RHS_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_STYLED_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_STYLED_BUFFER_SIZE___512"
+              >#define UI_HELP_MENU_STYLED_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE___512"
+              >#define UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_TEXT_COUNT___64">
+            <a class="permalink" href="#_define_UI_HELP_MENU_TEXT_COUNT___64"
+              >#define UI_HELP_MENU_TEXT_COUNT 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_HELP_MENU_VALUES_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_UI_HELP_MENU_VALUES_BUFFER_SIZE___512"
+              >#define UI_HELP_MENU_VALUES_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>help_menu.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_help_menu_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ui_help_keys_(char_*_output,_size_t_capacity,_const_char_*_keys)"
+          >
+            <a
+              class="permalink"
+              href="#void_ui_help_keys_(char_*_output,_size_t_capacity,_const_char_*_keys)"
+              >void ui_help_keys (char * output, size_t capacity, const char *
+              keys)</a
+            >
+          </h2>
+          <p class="Pp">
+            Key tokens are yellow; spaces, slashes, parentheses and pipes stay
+            uncolored.
+          </p>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>help_menu.c</b>.
+          </p>
+          <pre>
+25                                                            {
 26   if (!out || !cap) {
 27     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help keys require output storage&quot;);
 28     return;
@@ -202,19 +349,28 @@
 60     }
 61   }
 62 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>LOG_COLOR_WARN</b>, <b>SET_ERRNO</b>,
-    <b>ui_help_keys()</b>, and <b>UI_HELP_MENU_KEY_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_logs_render_help()</b>,
-    <b>ui_help_keys()</b>, and <b>ui_help_menu_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>terminal_size_t</b> ui_help_menu_measure (const
-  <b>ui_help_menu_t</b> * m)</h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>help_menu.c</b>.</p>
-<pre>85                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>LOG_COLOR_WARN</b>, <b>SET_ERRNO</b>,
+            <b>ui_help_keys()</b>, and <b>UI_HELP_MENU_KEY_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_logs_render_help()</b>,
+            <b>ui_help_keys()</b>, and <b>ui_help_menu_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> ui_help_menu_measure (const
+            <b>ui_help_menu_t</b> * m)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>help_menu.c</b>.
+          </p>
+          <pre>
+85                                                               {
 86   if (!m || (m-&gt;count &amp;&amp; !m-&gt;entries) || (m-&gt;settings_count &amp;&amp; !m-&gt;settings)) {
 87     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid help menu entries or settings&quot;);
 88     return (terminal_size_t){0};
@@ -229,23 +385,33 @@
 97   size_t rows = m-&gt;count &gt; m-&gt;settings_count ? m-&gt;count : m-&gt;settings_count;
 98   return (terminal_size_t){.cols = width + 6, .rows = (int)rows + 8 + m-&gt;top_margin};
 99 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_help_menu_t::count</b>, <b>display_width()</b>,
-    <b>ui_help_menu_t::entries</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ui_help_menu_t::footer</b>, <b>SET_ERRNO</b>,
-    <b>ui_help_menu_t::settings</b>, <b>ui_help_menu_t::settings_count</b>,
-    <b>ui_help_menu_t::title</b>, <b>ui_help_menu_t::top_margin</b>, and
-    <b>ui_help_menu_measure()</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_measure()</b>,
-    <b>ui_session_context_help_render()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_help_menu_render (<b>frame_buffer_t</b> * out,
-  <b>terminal_size_t</b> size, const <b>ui_help_menu_t</b> * m)</h2>
-<p class="Pp">Definition at line <b>101</b> of file <b>help_menu.c</b>.</p>
-<pre>101                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_help_menu_t::count</b>, <b>display_width()</b>,
+            <b>ui_help_menu_t::entries</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ui_help_menu_t::footer</b>, <b>SET_ERRNO</b>,
+            <b>ui_help_menu_t::settings</b>,
+            <b>ui_help_menu_t::settings_count</b>, <b>ui_help_menu_t::title</b>,
+            <b>ui_help_menu_t::top_margin</b>, and
+            <b>ui_help_menu_measure()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_help_menu_measure()</b>,
+            <b>ui_session_context_help_render()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_help_menu_render (<b>frame_buffer_t</b> * out,
+            <b>terminal_size_t</b> size, const <b>ui_help_menu_t</b> * m)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>101</b> of file <b>help_menu.c</b>.
+          </p>
+          <pre>
+101                                                                                              {
 102   if (!out || !m || (m-&gt;count &amp;&amp; !m-&gt;entries) || (m-&gt;settings_count &amp;&amp; !m-&gt;settings) || m-&gt;count &gt; 62 ||
 103       m-&gt;settings_count &gt; 62) {
 104     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid help output or entry counts&quot;);
@@ -294,39 +460,49 @@
 147       .title = m-&gt;title, .lines = lines, .line_count = rows + 1, .footer = m-&gt;footer, .top_margin = m-&gt;top_margin};
 148   return ui_popup_render(out, size, &amp;box);
 149 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_help_menu_t::count</b>,
-    <b>ui_help_entry_t::description</b>, <b>ui_help_menu_t::entries</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ui_help_menu_t::footer</b>,
-    <b>HELP_MENU_TEXT_LINE_BUFFER_SIZE</b>, <b>ui_help_entry_t::keys</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>SET_ERRNO</b>, <b>ui_help_menu_t::settings</b>,
-    <b>ui_help_menu_t::settings_count</b>, <b>ui_help_menu_t::title</b>,
-    <b>ui_help_menu_t::top_margin</b>, <b>UI_ALIGN_LEFT</b>,
-    <b>ui_help_keys()</b>, <b>UI_HELP_MENU_BINDING_BUFFER_SIZE</b>,
-    <b>UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE</b>,
-    <b>UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE</b>,
-    <b>UI_HELP_MENU_LHS_BUFFER_SIZE</b>, <b>UI_HELP_MENU_PADDED_BUFFER_SIZE</b>,
-    <b>ui_help_menu_render()</b>, <b>UI_HELP_MENU_RHS_BUFFER_SIZE</b>,
-    <b>UI_HELP_MENU_STYLED_BUFFER_SIZE</b>,
-    <b>UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE</b>, <b>UI_HELP_MENU_TEXT_COUNT</b>,
-    <b>UI_HELP_MENU_VALUES_BUFFER_SIZE</b>, <b>ui_popup_render()</b>,
-    <b>ui_text_cell()</b>, and <b>ui_text_values_style()</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_logs_render_help()</b>,
-    <b>ui_help_menu_render()</b>, <b>ui_session_context_help_render()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_help_menu_t::count</b>,
+            <b>ui_help_entry_t::description</b>, <b>ui_help_menu_t::entries</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ui_help_menu_t::footer</b>,
+            <b>HELP_MENU_TEXT_LINE_BUFFER_SIZE</b>,
+            <b>ui_help_entry_t::keys</b>, <b>LOG_COLOR_FATAL</b>,
+            <b>SET_ERRNO</b>, <b>ui_help_menu_t::settings</b>,
+            <b>ui_help_menu_t::settings_count</b>, <b>ui_help_menu_t::title</b>,
+            <b>ui_help_menu_t::top_margin</b>, <b>UI_ALIGN_LEFT</b>,
+            <b>ui_help_keys()</b>, <b>UI_HELP_MENU_BINDING_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_LHS_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_PADDED_BUFFER_SIZE</b>,
+            <b>ui_help_menu_render()</b>, <b>UI_HELP_MENU_RHS_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_STYLED_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE</b>,
+            <b>UI_HELP_MENU_TEXT_COUNT</b>,
+            <b>UI_HELP_MENU_VALUES_BUFFER_SIZE</b>, <b>ui_popup_render()</b>,
+            <b>ui_text_cell()</b>, and <b>ui_text_values_style()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>terminal_screen_logs_render_help()</b>,
+            <b>ui_help_menu_render()</b>,
+            <b>ui_session_context_help_render()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

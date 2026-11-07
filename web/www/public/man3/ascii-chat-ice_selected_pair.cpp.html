@@ -1,108 +1,189 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ice_selected_pair.cpp(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ice_selected_pair.cpp(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ice_selected_pair.cpp(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ice_selected_pair.cpp - C++ implementation for retrieving selected
-    ICE candidate pair.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE</b>
-    512
-  <br/>
-  #define <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE</b> 512
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>ice_get_selected_pair_impl</b>
-    (<b>webrtc_peer_connection_t</b> *pc, <b>ice_candidate_t</b>
-    *local_candidate, <b>ice_candidate_t</b> *remote_candidate)
-  <br/>
-  Get selected ICE candidate pair (C++ implementation).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">C++ implementation for retrieving selected ICE candidate pair.</p>
-<p class="Pp">Uses libdatachannel's C++ API to access selected candidate pair
-    information which is not exposed in the C API.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>ice_selected_pair.cpp</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE___512">#define
-  NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file
-  <b>ice_selected_pair.cpp</b>.</p>
-<p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE___512">#define
-  NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file
-  <b>ice_selected_pair.cpp</b>.</p>
-<p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> ice_get_selected_pair_impl
-  (<b>webrtc_peer_connection_t</b> * pc, <b>ice_candidate_t</b> *
-  local_candidate, <b>ice_candidate_t</b> * remote_candidate)</h2>
-<p class="Pp">Get selected ICE candidate pair (C++ implementation). This
-    function uses libdatachannel's C++ API to retrieve the selected candidate
-    pair, which is not available in the C API.</p>
-<p class="Pp">Definition at line <b>62</b> of file
-  <b>ice_selected_pair.cpp</b>.</p>
-<pre>63                                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ice_selected_pair.cpp(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ice_selected_pair.cpp(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ice_selected_pair.cpp(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          ice_selected_pair.cpp - C++ implementation for retrieving selected ICE
+          candidate pair.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE</b>
+            512
+            <br />
+            #define
+            <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>ice_get_selected_pair_impl</b> (<b
+              >webrtc_peer_connection_t</b
+            >
+            *pc, <b>ice_candidate_t</b> *local_candidate,
+            <b>ice_candidate_t</b> *remote_candidate)
+            <br />
+            Get selected ICE candidate pair (C++ implementation).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          C++ implementation for retrieving selected ICE candidate pair.
+        </p>
+        <p class="Pp">
+          Uses libdatachannel's C++ API to access selected candidate pair
+          information which is not exposed in the C API.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>ice_selected_pair.cpp</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE___512"
+              >#define NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>ice_selected_pair.cpp</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE___512"
+              >#define NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE
+              512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>ice_selected_pair.cpp</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ice_get_selected_pair_impl (<b
+              >webrtc_peer_connection_t</b
+            >
+            * pc, <b>ice_candidate_t</b> * local_candidate,
+            <b>ice_candidate_t</b> * remote_candidate)
+          </h2>
+          <p class="Pp">
+            Get selected ICE candidate pair (C++ implementation). This function
+            uses libdatachannel's C++ API to retrieve the selected candidate
+            pair, which is not available in the C API.
+          </p>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>ice_selected_pair.cpp</b>.
+          </p>
+          <pre>
+63                                                                                 {
 64   if (!pc) {
 65     return ERROR_INVALID_PARAM;
 66   }
@@ -151,28 +232,34 @@
 109     return ERROR_NETWORK;
 110   }
 111 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>ice_get_selected_pair_impl()</b>,
-    <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE</b>,
-    <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE</b>, and
-    <b>webrtc_get_rtc_id()</b>.</p>
-<p class="Pp">Referenced by <b>ice_get_selected_pair()</b>, and
-    <b>ice_get_selected_pair_impl()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+            <b>ice_get_selected_pair_impl()</b>,
+            <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE</b>,
+            <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE</b>, and
+            <b>webrtc_get_rtc_id()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ice_get_selected_pair()</b>, and
+            <b>ice_get_selected_pair_impl()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

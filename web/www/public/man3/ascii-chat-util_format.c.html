@@ -1,77 +1,128 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>format.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">format.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">format.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">format.c - &#x1F4CA; Byte size formatting utilities for
-    human-readable output (B, KB, MB, GB, TB, PB, EB)</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>format_bytes_pretty</b> (size_t bytes, char *out, size_t
-    out_capacity)
-  <br/>
-  Format byte count into human-readable string. void
-    <b>format_number_compact</b> (<b>uint64_t</b> value, char *out, size_t
-    out_capacity)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4CA; Byte size formatting utilities for human-readable output
-    (B, KB, MB, GB, TB, PB, EB)</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>util/format.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_format_number_compact_("><a class="permalink" href="#void_format_number_compact_(">void
-  format_number_compact (<b>uint64_t</b> value, char * out, size_t
-  out_capacity)</a></h2>
-<p class="Pp">Format a decimal count with lowercase k/m/b/t/p/e suffixes. Uses
-    at most one rounded decimal place, omitting a trailing .0. Values below
-    1,000 stay exact; rounded 1,000-unit values promote a tier. Output is
-    NUL-terminated when capacity is nonzero; NULL output is ignored.</p>
-<p class="Pp">Definition at line <b>46</b> of file <b>util/format.c</b>.</p>
-<pre>46                                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>format.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">format.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">format.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          format.c - &#x1F4CA; Byte size formatting utilities for human-readable
+          output (B, KB, MB, GB, TB, PB, EB)
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>format_bytes_pretty</b> (size_t bytes, char *out, size_t
+            out_capacity)
+            <br />
+            Format byte count into human-readable string. void
+            <b>format_number_compact</b> (<b>uint64_t</b> value, char *out,
+            size_t out_capacity)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4CA; Byte size formatting utilities for human-readable output (B,
+          KB, MB, GB, TB, PB, EB)
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>util/format.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_format_number_compact_(">
+            <a class="permalink" href="#void_format_number_compact_("
+              >void format_number_compact (<b>uint64_t</b> value, char * out,
+              size_t out_capacity)</a
+            >
+          </h2>
+          <p class="Pp">
+            Format a decimal count with lowercase k/m/b/t/p/e suffixes. Uses at
+            most one rounded decimal place, omitting a trailing .0. Values below
+            1,000 stay exact; rounded 1,000-unit values promote a tier. Output
+            is NUL-terminated when capacity is nonzero; NULL output is ignored.
+          </p>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>util/format.c</b>.
+          </p>
+          <pre>
+46                                                                            {
 47   if (!out || !out_capacity)
 48     return;
 49   static const char suffixes[] = &quot;kmbtpe&quot;;
@@ -102,24 +153,30 @@
 74   else
 75     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%&quot; PRIu64 &quot;%c&quot;, whole, suffixes[unit]));
 76 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>format_number_compact()</b>,
-    <b>SAFE_IGNORE_PRINTF_RESULT</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>format_number_compact()</b>, and
-    <b>ui_sync_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>format_number_compact()</b>,
+            <b>SAFE_IGNORE_PRINTF_RESULT</b>, and <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>format_number_compact()</b>, and
+            <b>ui_sync_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

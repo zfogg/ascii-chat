@@ -1,208 +1,328 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>coordinator.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">coordinator.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">coordinator.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">coordinator.c - Ring consensus coordinator implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>consensus_coordinator</b>
-  <br/>
-  Internal coordinator structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define
-    <b>NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>CONSENSUS_ROUND_INTERVAL_NS</b> (5ULL * 60 * <b>NS_PER_SEC_INT</b>)
-  <br/>
-  #define <b>CONSENSUS_COLLECTION_DEADLINE_NS</b> (30ULL *
-    <b>NS_PER_SEC_INT</b>)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>consensus_coordinator</b>
-    <b>consensus_coordinator_t</b>
-  <br/>
-  Internal coordinator structure.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>consensus_coordinator_create</b>
-    (const <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>], const
-    <b>consensus_topology_t</b> *topology, <b>consensus_election_func_t</b>
-    election_func, void *election_context, <b>consensus_coordinator_t</b>
-    **out_coordinator)
-  <br/>
-  Initialize coordinator with given parameters. void
-    <b>consensus_coordinator_destroy</b> (<b>consensus_coordinator_t</b>
-    *coordinator)
-  <br/>
-  Clean up coordinator resources. <b>asciichat_error_t</b>
-    <b>consensus_coordinator_process</b> (<b>consensus_coordinator_t</b>
-    *coordinator, <b>uint32_t</b> timeout_ms)
-  <br/>
-  Main orchestration loop. <b>asciichat_error_t</b>
-    <b>consensus_coordinator_on_ring_members</b> (<b>consensus_coordinator_t</b>
-    *coordinator, const <b>consensus_topology_t</b> *new_topology)
-  <br/>
-  Update ring topology when participants change. <b>asciichat_error_t</b>
-    <b>consensus_coordinator_on_collection_start</b>
-    (<b>consensus_coordinator_t</b> *coordinator, <b>uint32_t</b> round_id,
-    <b>uint64_t</b> deadline_ns)
-  <br/>
-  Handle STATS_COLLECTION_START packet. <b>asciichat_error_t</b>
-    <b>consensus_coordinator_on_stats_update</b> (<b>consensus_coordinator_t</b>
-    *coordinator, const <b>uint8_t</b> sender_id[<b>SESSION_ID_SIZE</b>], const
-    participant_metrics_t *metrics, <b>uint8_t</b> num_metrics)
-  <br/>
-  Handle STATS_UPDATE packet. <b>asciichat_error_t</b>
-    <b>consensus_coordinator_on_election_result</b>
-    (<b>consensus_coordinator_t</b> *coordinator, const <b>uint8_t</b>
-    host_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    backup_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Handle ELECTION_RESULT packet. <b>asciichat_error_t</b>
-    <b>consensus_coordinator_get_current_host</b> (const
-    <b>consensus_coordinator_t</b> *coordinator, <b>uint8_t</b>
-    out_host_id[<b>SESSION_ID_SIZE</b>], <b>uint8_t</b>
-    out_backup_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Get currently elected host. <b>consensus_state_machine_t</b>
-    <b>consensus_coordinator_get_state</b> (const <b>consensus_coordinator_t</b>
-    *coordinator)
-  <br/>
-  Get current coordinator state. <b>uint64_t</b>
-    <b>consensus_coordinator_time_until_next_round</b> (const
-    <b>consensus_coordinator_t</b> *coordinator)
-  <br/>
-  Get time until next round. int <b>consensus_coordinator_get_metrics_count</b>
-    (const <b>consensus_coordinator_t</b> *coordinator)
-  <br/>
-  Get count of metrics in current round. void
-    <b>consensus_coordinator_set_metrics_provider</b>
-    (<b>consensus_coordinator_t</b> *coordinator,
-    <b>consensus_metrics_provider_fn</b> provider, void *context)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Ring consensus coordinator implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>coordinator.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONSENSUS_COLLECTION_DEADLINE_NS___(30ULL_*_"><a class="permalink" href="#_define_CONSENSUS_COLLECTION_DEADLINE_NS___(30ULL_*_">#define
-  CONSENSUS_COLLECTION_DEADLINE_NS (30ULL * <b>NS_PER_SEC_INT</b>)</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>coordinator.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONSENSUS_ROUND_INTERVAL_NS___(5ULL_*_60_*_"><a class="permalink" href="#_define_CONSENSUS_ROUND_INTERVAL_NS___(5ULL_*_60_*_">#define
-  CONSENSUS_ROUND_INTERVAL_NS (5ULL * 60 * <b>NS_PER_SEC_INT</b>)</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>coordinator.c</b>.</p>
-<p class="Pp">Referenced by
-    <b>consensus_coordinator_time_until_next_round()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE___64">#define
-  NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>coordinator.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>consensus_coordinator</b> <b>consensus_coordinator_t</b></a></h2>
-<p class="Pp">Internal coordinator structure. Opaque consensus coordinator
-    handle.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_coordinator_create (const
-  <b>uint8_t</b> my_id[SESSION_ID_SIZE], const <b>consensus_topology_t</b> *
-  topology, <b>consensus_election_func_t</b> election_func, void *
-  election_context, <b>consensus_coordinator_t</b> ** out_coordinator)</h2>
-<p class="Pp">Initialize coordinator with given parameters. Initialize ring
-    consensus coordinator.</p>
-<p class="Pp"></p>
-<p class="Pp">Initialize coordinator with given parameters.</p>
-<p class="Pp"></p>
-<p class="Pp">Creates a new coordinator for managing consensus rounds. The
-    coordinator will automatically schedule rounds every 5 minutes.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>my_id</i> My 16-byte UUID
-<br/>
-<i>topology</i> Topology handle (not owned, must remain valid during coordinator
-  lifetime)
-<br/>
-<i>election_func</i> Callback to run election algorithm (leader only)
-<br/>
-<i>election_context</i> Application context passed to election_func
-<br/>
-<i>out_coordinator</i> Output coordinator handle (caller must destroy)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>50</b> of file <b>coordinator.c</b>.</p>
-<pre>53                                                                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>coordinator.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">coordinator.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">coordinator.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          coordinator.c - Ring consensus coordinator implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>consensus_coordinator</b>
+            <br />
+            Internal coordinator structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define
+            <b>NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>CONSENSUS_ROUND_INTERVAL_NS</b> (5ULL * 60 *
+            <b>NS_PER_SEC_INT</b>)
+            <br />
+            #define <b>CONSENSUS_COLLECTION_DEADLINE_NS</b> (30ULL *
+            <b>NS_PER_SEC_INT</b>)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>consensus_coordinator</b>
+            <b>consensus_coordinator_t</b>
+            <br />
+            Internal coordinator structure.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>consensus_coordinator_create</b> (const
+            <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>], const
+            <b>consensus_topology_t</b> *topology,
+            <b>consensus_election_func_t</b> election_func, void
+            *election_context, <b>consensus_coordinator_t</b>
+            **out_coordinator)
+            <br />
+            Initialize coordinator with given parameters. void
+            <b>consensus_coordinator_destroy</b> (<b>consensus_coordinator_t</b>
+            *coordinator)
+            <br />
+            Clean up coordinator resources. <b>asciichat_error_t</b>
+            <b>consensus_coordinator_process</b> (<b>consensus_coordinator_t</b>
+            *coordinator, <b>uint32_t</b> timeout_ms)
+            <br />
+            Main orchestration loop. <b>asciichat_error_t</b>
+            <b>consensus_coordinator_on_ring_members</b> (<b
+              >consensus_coordinator_t</b
+            >
+            *coordinator, const <b>consensus_topology_t</b> *new_topology)
+            <br />
+            Update ring topology when participants change.
+            <b>asciichat_error_t</b>
+            <b>consensus_coordinator_on_collection_start</b>
+            (<b>consensus_coordinator_t</b> *coordinator,
+            <b>uint32_t</b> round_id, <b>uint64_t</b> deadline_ns)
+            <br />
+            Handle STATS_COLLECTION_START packet. <b>asciichat_error_t</b>
+            <b>consensus_coordinator_on_stats_update</b> (<b
+              >consensus_coordinator_t</b
+            >
+            *coordinator, const
+            <b>uint8_t</b> sender_id[<b>SESSION_ID_SIZE</b>], const
+            participant_metrics_t *metrics, <b>uint8_t</b> num_metrics)
+            <br />
+            Handle STATS_UPDATE packet. <b>asciichat_error_t</b>
+            <b>consensus_coordinator_on_election_result</b>
+            (<b>consensus_coordinator_t</b> *coordinator, const
+            <b>uint8_t</b> host_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
+            backup_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Handle ELECTION_RESULT packet. <b>asciichat_error_t</b>
+            <b>consensus_coordinator_get_current_host</b> (const
+            <b>consensus_coordinator_t</b> *coordinator,
+            <b>uint8_t</b> out_host_id[<b>SESSION_ID_SIZE</b>], <b>uint8_t</b>
+            out_backup_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Get currently elected host. <b>consensus_state_machine_t</b>
+            <b>consensus_coordinator_get_state</b> (const
+            <b>consensus_coordinator_t</b>
+            *coordinator)
+            <br />
+            Get current coordinator state. <b>uint64_t</b>
+            <b>consensus_coordinator_time_until_next_round</b> (const
+            <b>consensus_coordinator_t</b> *coordinator)
+            <br />
+            Get time until next round. int
+            <b>consensus_coordinator_get_metrics_count</b> (const
+            <b>consensus_coordinator_t</b> *coordinator)
+            <br />
+            Get count of metrics in current round. void
+            <b>consensus_coordinator_set_metrics_provider</b>
+            (<b>consensus_coordinator_t</b> *coordinator,
+            <b>consensus_metrics_provider_fn</b> provider, void *context)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Ring consensus coordinator implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>coordinator.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CONSENSUS_COLLECTION_DEADLINE_NS___(30ULL_*_"
+          >
+            <a
+              class="permalink"
+              href="#_define_CONSENSUS_COLLECTION_DEADLINE_NS___(30ULL_*_"
+              >#define CONSENSUS_COLLECTION_DEADLINE_NS (30ULL *
+              <b>NS_PER_SEC_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>coordinator.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CONSENSUS_ROUND_INTERVAL_NS___(5ULL_*_60_*_"
+          >
+            <a
+              class="permalink"
+              href="#_define_CONSENSUS_ROUND_INTERVAL_NS___(5ULL_*_60_*_"
+              >#define CONSENSUS_ROUND_INTERVAL_NS (5ULL * 60 *
+              <b>NS_PER_SEC_INT</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>coordinator.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_time_until_next_round()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE___64"
+              >#define
+              NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>coordinator.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_coordinator_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>consensus_coordinator</b>
+              <b>consensus_coordinator_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Internal coordinator structure. Opaque consensus coordinator handle.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_create (const
+            <b>uint8_t</b> my_id[SESSION_ID_SIZE], const
+            <b>consensus_topology_t</b> * topology,
+            <b>consensus_election_func_t</b> election_func, void *
+            election_context, <b>consensus_coordinator_t</b> ** out_coordinator)
+          </h2>
+          <p class="Pp">
+            Initialize coordinator with given parameters. Initialize ring
+            consensus coordinator.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Initialize coordinator with given parameters.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Creates a new coordinator for managing consensus rounds. The
+            coordinator will automatically schedule rounds every 5 minutes.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>my_id</i> My 16-byte UUID
+            <br />
+            <i>topology</i> Topology handle (not owned, must remain valid during
+            coordinator lifetime)
+            <br />
+            <i>election_func</i> Callback to run election algorithm (leader
+            only)
+            <br />
+            <i>election_context</i> Application context passed to election_func
+            <br />
+            <i>out_coordinator</i> Output coordinator handle (caller must
+            destroy)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+53                                                                                           {
 54   if (!my_id || !topology || !election_func || !out_coordinator) {
 55     return SET_ERRNO(
 56         ERROR_INVALID_PARAM, &quot;Invalid parameter: my_id=%p, topology=%p, election_func=%p, out_coordinator=%p&quot;,
@@ -245,70 +365,104 @@
 93   *out_coordinator = coordinator;
 94   return ASCIICHAT_OK;
 95 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_create()</b>, <b>consensus_state_create()</b>,
-    <b>consensus_coordinator::election_context</b>,
-    <b>consensus_coordinator::election_func</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>consensus_coordinator::has_stored_result</b>,
-    <b>consensus_coordinator::last_round_start_ns</b>, <b>log_debug</b>,
-    <b>consensus_coordinator::my_id</b>, <b>NAMED_REGISTER</b>,
-    <b>NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE</b>,
-    <b>consensus_coordinator::next_round_id</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
-    <b>consensus_coordinator::state</b>, <b>time_get_ns()</b>, and
-    <b>consensus_coordinator::topology</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>, and
-    <b>session_consensus_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_consensus_coordinator_destroy_("><a class="permalink" href="#void_consensus_coordinator_destroy_(">void
-  consensus_coordinator_destroy (<b>consensus_coordinator_t</b> *
-  coordinator)</a></h2>
-<p class="Pp">Clean up coordinator resources. Destroy coordinator and free
-    resources.</p>
-<p class="Pp"></p>
-<p class="Pp">Clean up coordinator resources.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle (safe to pass
-  NULL)</div>
-<p class="Pp">Definition at line <b>100</b> of file <b>coordinator.c</b>.</p>
-<pre>100                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator_create()</b>,
+            <b>consensus_state_create()</b>,
+            <b>consensus_coordinator::election_context</b>,
+            <b>consensus_coordinator::election_func</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>consensus_coordinator::has_stored_result</b>,
+            <b>consensus_coordinator::last_round_start_ns</b>, <b>log_debug</b>,
+            <b>consensus_coordinator::my_id</b>, <b>NAMED_REGISTER</b>,
+            <b>NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE</b>,
+            <b>consensus_coordinator::next_round_id</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
+            <b>consensus_coordinator::state</b>, <b>time_get_ns()</b>, and
+            <b>consensus_coordinator::topology</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_create()</b>, and
+            <b>session_consensus_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_consensus_coordinator_destroy_(">
+            <a class="permalink" href="#void_consensus_coordinator_destroy_("
+              >void consensus_coordinator_destroy (<b
+                >consensus_coordinator_t</b
+              >
+              * coordinator)</a
+            >
+          </h2>
+          <p class="Pp">
+            Clean up coordinator resources. Destroy coordinator and free
+            resources.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Clean up coordinator resources.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle (safe to pass NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>100</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+100                                                                          {
 101   if (!coordinator) {
 102     return;
 103   }
 104   consensus_state_destroy(coordinator-&gt;state);
 105   SAFE_FREE(coordinator);
 106 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_destroy()</b>,
-    <b>consensus_state_destroy()</b>, <b>SAFE_FREE</b>, and
-    <b>consensus_coordinator::state</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_destroy()</b>, and
-    <b>session_consensus_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_coordinator_get_current_host
-  (const <b>consensus_coordinator_t</b> * coordinator, <b>uint8_t</b>
-  out_host_id[SESSION_ID_SIZE], <b>uint8_t</b>
-  out_backup_id[SESSION_ID_SIZE])</h2>
-<p class="Pp">Get currently elected host. Retrieves the host and backup elected
-    in the most recent successful round. If no round has completed yet, returns
-    stored previous result if available, or an error if no result exists.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle
-<br/>
-<i>out_host_id</i> Output 16-byte host UUID (caller provides buffer)
-<br/>
-<i>out_backup_id</i> Output 16-byte backup UUID (caller provides buffer)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>386</b> of file <b>coordinator.c</b>.</p>
-<pre>388                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_coordinator_destroy()</b>,
+            <b>consensus_state_destroy()</b>, <b>SAFE_FREE</b>, and
+            <b>consensus_coordinator::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_destroy()</b>, and
+            <b>session_consensus_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_get_current_host
+            (const <b>consensus_coordinator_t</b> * coordinator,
+            <b>uint8_t</b> out_host_id[SESSION_ID_SIZE],
+            <b>uint8_t</b> out_backup_id[SESSION_ID_SIZE])
+          </h2>
+          <p class="Pp">
+            Get currently elected host. Retrieves the host and backup elected in
+            the most recent successful round. If no round has completed yet,
+            returns stored previous result if available, or an error if no
+            result exists.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle
+            <br />
+            <i>out_host_id</i> Output 16-byte host UUID (caller provides buffer)
+            <br />
+            <i>out_backup_id</i> Output 16-byte backup UUID (caller provides
+            buffer)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>386</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+388                                                                                                  {
 389   if (!coordinator || !out_host_id || !out_backup_id) {
 390     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameter&quot;);
 391   }
@@ -334,95 +488,142 @@
 411
 412   return SET_ERRNO(ERROR_INVALID_STATE, &quot;No election result available&quot;);
 413 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_get_current_host()</b>,
-    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
-    <b>consensus_state_get_current_state()</b>,
-    <b>consensus_state_get_elected_backup()</b>,
-    <b>consensus_state_get_elected_host()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>consensus_coordinator::has_stored_result</b>,
-    <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
-    <b>consensus_coordinator::state</b>,
-    <b>consensus_coordinator::stored_backup_id</b>, and
-    <b>consensus_coordinator::stored_host_id</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>,
-    <b>session_consensus_get_elected_host()</b>, and
-    <b>session_consensus_is_ready()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_consensus_coordinator_get_metrics_count_(const_"><a class="permalink" href="#int_consensus_coordinator_get_metrics_count_(const_">int
-  consensus_coordinator_get_metrics_count (const <b>consensus_coordinator_t</b>
-  * coordinator)</a></h2>
-<p class="Pp">Get count of metrics in current round. Get count of metrics
-    collected in current round.</p>
-<p class="Pp"></p>
-<p class="Pp">Get count of metrics in current round.</p>
-<p class="Pp"></p>
-<p class="Pp">Used for testing and monitoring. Returns the number of metrics
-    currently collected in the state machine.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of metrics collected, or -1 if invalid</div>
-<p class="Pp">Definition at line <b>446</b> of file <b>coordinator.c</b>.</p>
-<pre>446                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator_get_current_host()</b>,
+            <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
+            <b>consensus_state_get_current_state()</b>,
+            <b>consensus_state_get_elected_backup()</b>,
+            <b>consensus_state_get_elected_host()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>consensus_coordinator::has_stored_result</b>,
+            <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
+            <b>consensus_coordinator::state</b>,
+            <b>consensus_coordinator::stored_backup_id</b>, and
+            <b>consensus_coordinator::stored_host_id</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_get_current_host()</b>,
+            <b>session_consensus_get_elected_host()</b>, and
+            <b>session_consensus_is_ready()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_consensus_coordinator_get_metrics_count_(const_"
+          >
+            <a
+              class="permalink"
+              href="#int_consensus_coordinator_get_metrics_count_(const_"
+              >int consensus_coordinator_get_metrics_count (const
+              <b>consensus_coordinator_t</b> * coordinator)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get count of metrics in current round. Get count of metrics
+            collected in current round.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Get count of metrics in current round.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Used for testing and monitoring. Returns the number of metrics
+            currently collected in the state machine.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>coordinator</i> Coordinator handle</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of metrics collected, or -1 if invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>446</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+446                                                                                         {
 447   if (!coordinator || !coordinator-&gt;state) {
 448     return -1;
 449   }
 450   return consensus_state_get_metrics_count(coordinator-&gt;state);
 451 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_metrics_count()</b>,
-    <b>consensus_state_get_metrics_count()</b>, and
-    <b>consensus_coordinator::state</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_get_metrics_count()</b>,
-    and <b>session_consensus_get_metrics_count()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>consensus_state_machine_t</b> consensus_coordinator_get_state
-  (const <b>consensus_coordinator_t</b> * coordinator)</h2>
-<p class="Pp">Get current coordinator state.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current state from internal state machine</div>
-<p class="Pp">Definition at line <b>418</b> of file <b>coordinator.c</b>.</p>
-<pre>418                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_coordinator_get_metrics_count()</b>,
+            <b>consensus_state_get_metrics_count()</b>, and
+            <b>consensus_coordinator::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_get_metrics_count()</b>, and
+            <b>session_consensus_get_metrics_count()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>consensus_state_machine_t</b> consensus_coordinator_get_state
+            (const <b>consensus_coordinator_t</b> * coordinator)
+          </h2>
+          <p class="Pp">Get current coordinator state.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>coordinator</i> Coordinator handle</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Current state from internal state machine</div>
+          <p class="Pp">
+            Definition at line <b>418</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+418                                                                                                       {
 419   if (!coordinator || !coordinator-&gt;state) {
 420     return CONSENSUS_STATE_FAILED;
 421   }
 422   return consensus_state_get_current_state(coordinator-&gt;state);
 423 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_state()</b>,
-    <b>CONSENSUS_STATE_FAILED</b>, <b>consensus_state_get_current_state()</b>,
-    and <b>consensus_coordinator::state</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_get_state()</b>, and
-    <b>session_consensus_get_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>
-  consensus_coordinator_on_collection_start (<b>consensus_coordinator_t</b> *
-  coordinator, <b>uint32_t</b> round_id, <b>uint64_t</b> deadline_ns)</h2>
-<p class="Pp">Handle STATS_COLLECTION_START packet. Called when receiving a
-    collection start message from the previous ring member. Prepares to collect
-    metrics and transitions state machine.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle
-<br/>
-<i>round_id</i> Collection round ID
-<br/>
-<i>deadline_ns</i> Unix nanosecond deadline for this round</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>293</b> of file <b>coordinator.c</b>.</p>
-<pre>294                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_coordinator_get_state()</b>,
+            <b>CONSENSUS_STATE_FAILED</b>,
+            <b>consensus_state_get_current_state()</b>, and
+            <b>consensus_coordinator::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_get_state()</b>, and
+            <b>session_consensus_get_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_on_collection_start
+            (<b>consensus_coordinator_t</b> * coordinator,
+            <b>uint32_t</b> round_id, <b>uint64_t</b> deadline_ns)
+          </h2>
+          <p class="Pp">
+            Handle STATS_COLLECTION_START packet. Called when receiving a
+            collection start message from the previous ring member. Prepares to
+            collect metrics and transitions state machine.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle
+            <br />
+            <i>round_id</i> Collection round ID
+            <br />
+            <i>deadline_ns</i> Unix nanosecond deadline for this round
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>293</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+294                                                                                   {
 295   if (!coordinator) {
 296     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Coordinator is NULL&quot;);
 297   }
@@ -453,39 +654,56 @@
 322
 323   return ASCIICHAT_OK;
 324 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator::collection_deadline_ns</b>,
-    <b>consensus_coordinator_on_collection_start()</b>,
-    <b>consensus_state_get_current_state()</b>, <b>CONSENSUS_STATE_IDLE</b>,
-    <b>consensus_state_start_collection()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>log_dev</b>, <b>log_warn</b>,
-    <b>consensus_coordinator::next_round_id</b>, <b>NS_PER_SEC_INT</b>,
-    <b>SET_ERRNO</b>, <b>consensus_coordinator::state</b>, and
-    <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_on_collection_start()</b>,
-    and <b>session_consensus_on_collection_start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_coordinator_on_election_result
-  (<b>consensus_coordinator_t</b> * coordinator, const <b>uint8_t</b>
-  host_id[SESSION_ID_SIZE], const <b>uint8_t</b>
-  backup_id[SESSION_ID_SIZE])</h2>
-<p class="Pp">Handle ELECTION_RESULT packet. Called when election result is
-    received from leader. Verifies the election, stores the elected host/backup,
-    and stores for fallback.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle
-<br/>
-<i>host_id</i> Elected host UUID
-<br/>
-<i>backup_id</i> Elected backup UUID</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>357</b> of file <b>coordinator.c</b>.</p>
-<pre>359                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator::collection_deadline_ns</b>,
+            <b>consensus_coordinator_on_collection_start()</b>,
+            <b>consensus_state_get_current_state()</b>,
+            <b>CONSENSUS_STATE_IDLE</b>,
+            <b>consensus_state_start_collection()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_dev</b>, <b>log_warn</b>,
+            <b>consensus_coordinator::next_round_id</b>, <b>NS_PER_SEC_INT</b>,
+            <b>SET_ERRNO</b>, <b>consensus_coordinator::state</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_on_collection_start()</b>,
+            and <b>session_consensus_on_collection_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_on_election_result
+            (<b>consensus_coordinator_t</b> * coordinator, const
+            <b>uint8_t</b> host_id[SESSION_ID_SIZE], const
+            <b>uint8_t</b> backup_id[SESSION_ID_SIZE])
+          </h2>
+          <p class="Pp">
+            Handle ELECTION_RESULT packet. Called when election result is
+            received from leader. Verifies the election, stores the elected
+            host/backup, and stores for fallback.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle
+            <br />
+            <i>host_id</i> Elected host UUID
+            <br />
+            <i>backup_id</i> Elected backup UUID
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>357</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+359                                                                                                      {
 360   if (!coordinator || !host_id || !backup_id) {
 361     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameter&quot;);
 362   }
@@ -508,37 +726,54 @@
 379
 380   return ASCIICHAT_OK;
 381 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_on_election_result()</b>,
-    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
-    <b>consensus_state_get_current_state()</b>,
-    <b>consensus_state_reset_to_idle()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>consensus_coordinator::has_stored_result</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
-    <b>consensus_coordinator::state</b>,
-    <b>consensus_coordinator::stored_backup_id</b>, and
-    <b>consensus_coordinator::stored_host_id</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_on_election_result()</b>,
-    and <b>session_consensus_on_election_result()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_coordinator_on_ring_members
-  (<b>consensus_coordinator_t</b> * coordinator, const
-  <b>consensus_topology_t</b> * new_topology)</h2>
-<p class="Pp">Update ring topology when participants change. Called when the
-    ring topology changes (participants join/leave). Updates internal topology
-    reference and resets any in-progress round.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle
-<br/>
-<i>new_topology</i> New topology handle (not owned, must remain valid)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>267</b> of file <b>coordinator.c</b>.</p>
-<pre>268                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator_on_election_result()</b>,
+            <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
+            <b>consensus_state_get_current_state()</b>,
+            <b>consensus_state_reset_to_idle()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>consensus_coordinator::has_stored_result</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
+            <b>consensus_coordinator::state</b>,
+            <b>consensus_coordinator::stored_backup_id</b>, and
+            <b>consensus_coordinator::stored_host_id</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_on_election_result()</b>, and
+            <b>session_consensus_on_election_result()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_on_ring_members (<b
+              >consensus_coordinator_t</b
+            >
+            * coordinator, const <b>consensus_topology_t</b> * new_topology)
+          </h2>
+          <p class="Pp">
+            Update ring topology when participants change. Called when the ring
+            topology changes (participants join/leave). Updates internal
+            topology reference and resets any in-progress round.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle
+            <br />
+            <i>new_topology</i> New topology handle (not owned, must remain
+            valid)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>267</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+268                                                                                                   {
 269   if (!coordinator || !new_topology) {
 270     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameter&quot;);
 271   }
@@ -559,44 +794,64 @@
 286   log_info(&quot;Ring topology updated&quot;);
 287   return ASCIICHAT_OK;
 288 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_on_ring_members()</b>,
-    <b>consensus_state_create()</b>, <b>consensus_state_destroy()</b>,
-    <b>consensus_state_get_current_state()</b>, <b>CONSENSUS_STATE_IDLE</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>consensus_coordinator::my_id</b>, <b>SET_ERRNO</b>,
-    <b>consensus_coordinator::state</b>, and
-    <b>consensus_coordinator::topology</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_on_ring_members()</b>, and
-    <b>session_consensus_set_topology()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_coordinator_on_stats_update
-  (<b>consensus_coordinator_t</b> * coordinator, const <b>uint8_t</b>
-  sender_id[SESSION_ID_SIZE], const participant_metrics_t * metrics,
-  <b>uint8_t</b> num_metrics)</h2>
-<p class="Pp">Handle STATS_UPDATE packet. Handle STATS_UPDATE packet (metrics
-    relayed from another participant).</p>
-<p class="Pp"></p>
-<p class="Pp">Handle STATS_UPDATE packet.</p>
-<p class="Pp"></p>
-<p class="Pp">Called when receiving metrics from previous ring member. Adds
-    metrics to state machine and forwards to next member.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle
-<br/>
-<i>sender_id</i> Who is sending this metrics update
-<br/>
-<i>metrics</i> Metrics to relay
-<br/>
-<i>num_metrics</i> Count of metrics in packet</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>329</b> of file <b>coordinator.c</b>.</p>
-<pre>331                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator_on_ring_members()</b>,
+            <b>consensus_state_create()</b>, <b>consensus_state_destroy()</b>,
+            <b>consensus_state_get_current_state()</b>,
+            <b>CONSENSUS_STATE_IDLE</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_info</b>, <b>log_warn</b>,
+            <b>consensus_coordinator::my_id</b>, <b>SET_ERRNO</b>,
+            <b>consensus_coordinator::state</b>, and
+            <b>consensus_coordinator::topology</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_on_ring_members()</b>, and
+            <b>session_consensus_set_topology()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_on_stats_update (<b
+              >consensus_coordinator_t</b
+            >
+            * coordinator, const <b>uint8_t</b>
+            sender_id[SESSION_ID_SIZE], const participant_metrics_t * metrics,
+            <b>uint8_t</b> num_metrics)
+          </h2>
+          <p class="Pp">
+            Handle STATS_UPDATE packet. Handle STATS_UPDATE packet (metrics
+            relayed from another participant).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Handle STATS_UPDATE packet.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called when receiving metrics from previous ring member. Adds
+            metrics to state machine and forwards to next member.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle
+            <br />
+            <i>sender_id</i> Who is sending this metrics update
+            <br />
+            <i>metrics</i> Metrics to relay
+            <br />
+            <i>num_metrics</i> Count of metrics in packet
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>329</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+331                                                                                                                    {
 332   if (!coordinator || !sender_id || !metrics) {
 333     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameter&quot;);
 334   }
@@ -618,47 +873,66 @@
 350
 351   return ASCIICHAT_OK;
 352 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_on_stats_update()</b>,
-    <b>consensus_state_add_metrics()</b>, <b>CONSENSUS_STATE_COLLECTING</b>,
-    <b>consensus_state_get_current_state()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>, and
-    <b>consensus_coordinator::state</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_on_stats_update()</b>, and
-    <b>session_consensus_on_stats_update()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_coordinator_process
-  (<b>consensus_coordinator_t</b> * coordinator, <b>uint32_t</b>
-  timeout_ms)</h2>
-<p class="Pp">Main orchestration loop. Main orchestration loop - call
-    periodically.</p>
-<p class="Pp"></p>
-<p class="Pp">Main orchestration loop.</p>
-<p class="Pp"></p>
-<p class="Pp">Checks if a new collection round should start and processes the
-    current state. Should be called regularly (at least once per second) to
-    ensure timely round scheduling.</p>
-<p class="Pp"></p>
-<p class="Pp">Handles:</p>
-<ul class="Bl-bullet">
-  <li>Round scheduling (triggers every 5 minutes)</li>
-  <li>Collection deadline enforcement (30 second deadline)</li>
-  <li>Metrics measurement and relay</li>
-  <li>Election computation (leader only)</li>
-  <li>Result storage and broadcasting</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle
-<br/>
-<i>timeout_ms</i> Timeout for operation in milliseconds</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>229</b> of file <b>coordinator.c</b>.</p>
-<pre>229                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator_on_stats_update()</b>,
+            <b>consensus_state_add_metrics()</b>,
+            <b>CONSENSUS_STATE_COLLECTING</b>,
+            <b>consensus_state_get_current_state()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_debug</b>, <b>log_warn</b>, <b>SESSION_ID_SIZE</b>,
+            <b>SET_ERRNO</b>, and <b>consensus_coordinator::state</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_on_stats_update()</b>, and
+            <b>session_consensus_on_stats_update()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_coordinator_process (<b
+              >consensus_coordinator_t</b
+            >
+            * coordinator, <b>uint32_t</b> timeout_ms)
+          </h2>
+          <p class="Pp">
+            Main orchestration loop. Main orchestration loop - call
+            periodically.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Main orchestration loop.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Checks if a new collection round should start and processes the
+            current state. Should be called regularly (at least once per second)
+            to ensure timely round scheduling.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Handles:</p>
+          <ul class="Bl-bullet">
+            <li>Round scheduling (triggers every 5 minutes)</li>
+            <li>Collection deadline enforcement (30 second deadline)</li>
+            <li>Metrics measurement and relay</li>
+            <li>Election computation (leader only)</li>
+            <li>Result storage and broadcasting</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>coordinator</i> Coordinator handle
+            <br />
+            <i>timeout_ms</i> Timeout for operation in milliseconds
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>229</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+229                                                                                                            {
 230   (void)timeout_ms; /* Currently unused, but kept for future use */
 231
 232   if (!coordinator) {
@@ -692,55 +966,84 @@
 260
 261   return ASCIICHAT_OK;
 262 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_process()</b>, <b>CONSENSUS_STATE_COLLECTING</b>,
-    <b>consensus_state_get_current_state()</b>,
-    <b>consensus_topology_am_leader()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_error</b>, <b>log_warn</b>, <b>SET_ERRNO</b>,
-    <b>consensus_coordinator::state</b>, <b>time_get_ns()</b>, and
-    <b>consensus_coordinator::topology</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_process()</b>, and
-    <b>session_consensus_process()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_consensus_coordinator_set_metrics_provider_("><a class="permalink" href="#void_consensus_coordinator_set_metrics_provider_(">void
-  consensus_coordinator_set_metrics_provider (<b>consensus_coordinator_t</b> *
-  coordinator, <b>consensus_metrics_provider_fn</b> provider, void *
-  context)</a></h2>
-<p class="Pp">Definition at line <b>453</b> of file <b>coordinator.c</b>.</p>
-<pre>454                                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_coordinator_process()</b>,
+            <b>CONSENSUS_STATE_COLLECTING</b>,
+            <b>consensus_state_get_current_state()</b>,
+            <b>consensus_topology_am_leader()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_error</b>, <b>log_warn</b>, <b>SET_ERRNO</b>,
+            <b>consensus_coordinator::state</b>, <b>time_get_ns()</b>, and
+            <b>consensus_coordinator::topology</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_process()</b>, and
+            <b>session_consensus_process()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_consensus_coordinator_set_metrics_provider_(">
+            <a
+              class="permalink"
+              href="#void_consensus_coordinator_set_metrics_provider_("
+              >void consensus_coordinator_set_metrics_provider (<b
+                >consensus_coordinator_t</b
+              >
+              * coordinator, <b>consensus_metrics_provider_fn</b> provider, void
+              * context)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>453</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+454                                                                                                        {
 455   if (!coordinator)
 456     return;
 457   coordinator-&gt;metrics_provider = provider;
 458   coordinator-&gt;metrics_context = context;
 459 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_set_metrics_provider()</b>,
-    <b>consensus_coordinator::metrics_context</b>, and
-    <b>consensus_coordinator::metrics_provider</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_set_metrics_provider()</b>,
-    and <b>session_consensus_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> consensus_coordinator_time_until_next_round
-  (const <b>consensus_coordinator_t</b> * coordinator)</h2>
-<p class="Pp">Get time until next round. Get time until next round is due.</p>
-<p class="Pp"></p>
-<p class="Pp">Get time until next round.</p>
-<p class="Pp"></p>
-<p class="Pp">Returns the number of nanoseconds until the next collection round
-    is scheduled.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>coordinator</i> Coordinator handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Nanoseconds until next round, or 0 if round is due
-  now</div>
-<p class="Pp">Definition at line <b>428</b> of file <b>coordinator.c</b>.</p>
-<pre>428                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_coordinator_set_metrics_provider()</b>,
+            <b>consensus_coordinator::metrics_context</b>, and
+            <b>consensus_coordinator::metrics_provider</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_set_metrics_provider()</b>,
+            and <b>session_consensus_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> consensus_coordinator_time_until_next_round (const
+            <b>consensus_coordinator_t</b> * coordinator)
+          </h2>
+          <p class="Pp">
+            Get time until next round. Get time until next round is due.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Get time until next round.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Returns the number of nanoseconds until the next collection round is
+            scheduled.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>coordinator</i> Coordinator handle</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Nanoseconds until next round, or 0 if round is due now
+          </div>
+          <p class="Pp">
+            Definition at line <b>428</b> of file <b>coordinator.c</b>.
+          </p>
+          <pre>
+428                                                                                                  {
 429   if (!coordinator) {
 430     return 0;
 431   }
@@ -754,27 +1057,32 @@
 439
 440   return next_round_ns - now_ns;
 441 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_time_until_next_round()</b>,
-    <b>CONSENSUS_ROUND_INTERVAL_NS</b>,
-    <b>consensus_coordinator::last_round_start_ns</b>, and
-  <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by
-    <b>consensus_coordinator_time_until_next_round()</b>, and
-    <b>session_consensus_time_until_next_round()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_coordinator_time_until_next_round()</b>,
+            <b>CONSENSUS_ROUND_INTERVAL_NS</b>,
+            <b>consensus_coordinator::last_round_start_ns</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_time_until_next_round()</b>,
+            and <b>session_consensus_time_until_next_round()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

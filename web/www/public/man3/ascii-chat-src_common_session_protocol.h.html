@@ -1,104 +1,172 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>protocol.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">protocol.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">protocol.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">protocol.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_protocol_media_t</b>
-  <br/>
-  struct <b>session_protocol_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>asciichat_error_t</b>(*)
-    <b>session_protocol_send_settings_fn</b>(const <b>options_t</b> *values,
-    <b>uint32_t</b> request, void *context)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>session_protocol_init</b> (<b>session_protocol_t</b>
-    *protocol, <b>acip_transport_t</b> *transport,
-    <b>session_protocol_media_t</b> media, <b>acip_client_callbacks_t</b>
-    control)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_protocol_dispatch</b>
-    (<b>session_protocol_t</b> *protocol, <b>packet_type_t</b> type, const void
-    *payload, size_t length)
-  <br/>
-  void <b>session_protocol_build_capabilities</b> (unsigned short width,
-    unsigned short height, <b>terminal_capabilities_packet_t</b> *packet)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_protocol_update_settings</b>
-    (<b>terminal_size_t</b> *advertised, <b>uint64_t</b> *advertised_revision,
-    <b>session_protocol_send_settings_fn</b> send, void *context)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>asciichat_error_t</b>(*) session_protocol_send_settings_fn(const
-  <b>options_t</b> *values, <b>uint32_t</b> request, void *context)</a></h2>
-<p class="Pp">Definition at line <b>48</b> of file
-    <b>src/common/session/protocol.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_session_protocol_build_capabilities_(unsigned_short_width,_unsigned_short_height,_"><a class="permalink" href="#void_session_protocol_build_capabilities_(unsigned_short_width,_unsigned_short_height,_">void
-  session_protocol_build_capabilities (unsigned short width, unsigned short
-  height, <b>terminal_capabilities_packet_t</b> * packet)</a></h2>
-<p class="Pp">Definition at line <b>272</b> of file
-    <b>common/session/protocol.c</b>.</p>
-<pre>273                                                                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>protocol.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">protocol.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">protocol.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">protocol.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_protocol_media_t</b>
+            <br />
+            struct <b>session_protocol_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>asciichat_error_t</b>(*)
+            <b>session_protocol_send_settings_fn</b>(const
+            <b>options_t</b> *values, <b>uint32_t</b> request, void *context)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>session_protocol_init</b> (<b>session_protocol_t</b>
+            *protocol, <b>acip_transport_t</b> *transport,
+            <b>session_protocol_media_t</b> media,
+            <b>acip_client_callbacks_t</b>
+            control)
+            <br />
+            <b>asciichat_error_t</b> <b>session_protocol_dispatch</b> (<b
+              >session_protocol_t</b
+            >
+            *protocol, <b>packet_type_t</b> type, const void *payload, size_t
+            length)
+            <br />
+            void <b>session_protocol_build_capabilities</b> (unsigned short
+            width, unsigned short height,
+            <b>terminal_capabilities_packet_t</b> *packet)
+            <br />
+            <b>asciichat_error_t</b> <b>session_protocol_update_settings</b> (<b
+              >terminal_size_t</b
+            >
+            *advertised, <b>uint64_t</b> *advertised_revision,
+            <b>session_protocol_send_settings_fn</b> send, void *context)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_">
+            <a class="permalink" href="#typedef_"
+              >typedef <b>asciichat_error_t</b>(*)
+              session_protocol_send_settings_fn(const <b>options_t</b> *values,
+              <b>uint32_t</b> request, void *context)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>48</b> of file
+            <b>src/common/session/protocol.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_session_protocol_build_capabilities_(unsigned_short_width,_unsigned_short_height,_"
+          >
+            <a
+              class="permalink"
+              href="#void_session_protocol_build_capabilities_(unsigned_short_width,_unsigned_short_height,_"
+              >void session_protocol_build_capabilities (unsigned short width,
+              unsigned short height, <b>terminal_capabilities_packet_t</b> *
+              packet)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>272</b> of file
+            <b>common/session/protocol.c</b>.
+          </p>
+          <pre>
+273                                                                                  {
 274   const options_t *opts = options_get();
 275   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
 276   log_debug(&quot;Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)&quot;, width, height, opts-&gt;auto_width,
@@ -194,61 +262,76 @@
 366
 367   *packet = net_packet;
 368 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>apply_color_mode_override()</b>,
-    <b>AUDIO_CODEC_CAP_ALL</b>, <b>options_state::auto_height</b>,
-    <b>options_state::auto_width</b>,
-    <b>terminal_capabilities_packet_t::capabilities</b>,
-    <b>terminal_capabilities_t::capabilities</b>,
-    <b>terminal_capabilities_packet_t::codec_capabilities_audio</b>,
-    <b>terminal_capabilities_packet_t::codec_capabilities_video</b>,
-    <b>terminal_capabilities_packet_t::color_count</b>,
-    <b>terminal_capabilities_t::color_count</b>,
-    <b>options_state::color_filter</b>,
-    <b>terminal_capabilities_packet_t::color_filter</b>,
-    <b>terminal_capabilities_packet_t::color_level</b>,
-    <b>terminal_capabilities_t::color_level</b>,
-    <b>options_state::color_mode</b>, <b>COLOR_MODE_AUTO</b>,
-    <b>terminal_capabilities_packet_t::colorterm</b>,
-    <b>terminal_capabilities_t::colorterm</b>, <b>DEFAULT_MAX_FPS</b>,
-    <b>terminal_capabilities_packet_t::desired_fps</b>,
-    <b>terminal_capabilities_t::desired_fps</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>terminal_capabilities_packet_t::detection_reliable</b>,
-    <b>terminal_capabilities_t::detection_reliable</b>,
-    <b>options_state::force_utf8</b>, <b>options_state::fps</b>,
-    <b>terminal_capabilities_packet_t::height</b>, <b>HOST_TO_NET_U16</b>,
-    <b>HOST_TO_NET_U32</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>options_state::matrix_rain</b>, <b>options_get()</b>,
-    <b>PALETTE_CUSTOM</b>, <b>options_state::palette_custom</b>,
-    <b>terminal_capabilities_packet_t::palette_custom</b>,
-    <b>options_state::palette_custom_set</b>,
-    <b>options_state::palette_type</b>,
-    <b>terminal_capabilities_packet_t::palette_type</b>,
-    <b>options_state::render_mode</b>,
-    <b>terminal_capabilities_packet_t::render_mode</b>, <b>SAFE_MEMSET</b>,
-    <b>SAFE_STRNCPY</b>, <b>session_protocol_build_capabilities()</b>,
-    <b>options_state::snapshot_mode</b>, <b>TERM_CAP_MATRIX_RAIN</b>,
-    <b>TERM_COLOR_NONE</b>, <b>terminal_capabilities_packet_t::term_type</b>,
-    <b>terminal_capabilities_t::term_type</b>, <b>terminal_is_interactive()</b>,
-    <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
-    <b>UTF8_SETTING_FALSE</b>,
-    <b>terminal_capabilities_packet_t::utf8_support</b>,
-    <b>terminal_capabilities_t::utf8_support</b>, <b>VIDEO_CODEC_CAP_ALL</b>,
-    <b>terminal_capabilities_packet_t::wants_padding</b>,
-    <b>terminal_capabilities_t::wants_padding</b>, and
-    <b>terminal_capabilities_packet_t::width</b>.</p>
-<p class="Pp">Referenced by <b>session_protocol_build_capabilities()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_protocol_dispatch
-  (<b>session_protocol_t</b> * protocol, <b>packet_type_t</b> type, const void *
-  payload, size_t length)</h2>
-<p class="Pp">Definition at line <b>208</b> of file
-    <b>common/session/protocol.c</b>.</p>
-<pre>209                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>apply_color_mode_override()</b>,
+            <b>AUDIO_CODEC_CAP_ALL</b>, <b>options_state::auto_height</b>,
+            <b>options_state::auto_width</b>,
+            <b>terminal_capabilities_packet_t::capabilities</b>,
+            <b>terminal_capabilities_t::capabilities</b>,
+            <b>terminal_capabilities_packet_t::codec_capabilities_audio</b>,
+            <b>terminal_capabilities_packet_t::codec_capabilities_video</b>,
+            <b>terminal_capabilities_packet_t::color_count</b>,
+            <b>terminal_capabilities_t::color_count</b>,
+            <b>options_state::color_filter</b>,
+            <b>terminal_capabilities_packet_t::color_filter</b>,
+            <b>terminal_capabilities_packet_t::color_level</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>options_state::color_mode</b>, <b>COLOR_MODE_AUTO</b>,
+            <b>terminal_capabilities_packet_t::colorterm</b>,
+            <b>terminal_capabilities_t::colorterm</b>, <b>DEFAULT_MAX_FPS</b>,
+            <b>terminal_capabilities_packet_t::desired_fps</b>,
+            <b>terminal_capabilities_t::desired_fps</b>,
+            <b>detect_terminal_capabilities()</b>,
+            <b>terminal_capabilities_packet_t::detection_reliable</b>,
+            <b>terminal_capabilities_t::detection_reliable</b>,
+            <b>options_state::force_utf8</b>, <b>options_state::fps</b>,
+            <b>terminal_capabilities_packet_t::height</b>,
+            <b>HOST_TO_NET_U16</b>, <b>HOST_TO_NET_U32</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>options_state::matrix_rain</b>,
+            <b>options_get()</b>, <b>PALETTE_CUSTOM</b>,
+            <b>options_state::palette_custom</b>,
+            <b>terminal_capabilities_packet_t::palette_custom</b>,
+            <b>options_state::palette_custom_set</b>,
+            <b>options_state::palette_type</b>,
+            <b>terminal_capabilities_packet_t::palette_type</b>,
+            <b>options_state::render_mode</b>,
+            <b>terminal_capabilities_packet_t::render_mode</b>,
+            <b>SAFE_MEMSET</b>, <b>SAFE_STRNCPY</b>,
+            <b>session_protocol_build_capabilities()</b>,
+            <b>options_state::snapshot_mode</b>, <b>TERM_CAP_MATRIX_RAIN</b>,
+            <b>TERM_COLOR_NONE</b>,
+            <b>terminal_capabilities_packet_t::term_type</b>,
+            <b>terminal_capabilities_t::term_type</b>,
+            <b>terminal_is_interactive()</b>, <b>terminal_is_stdin_tty()</b>,
+            <b>terminal_is_stdout_tty()</b>, <b>UTF8_SETTING_FALSE</b>,
+            <b>terminal_capabilities_packet_t::utf8_support</b>,
+            <b>terminal_capabilities_t::utf8_support</b>,
+            <b>VIDEO_CODEC_CAP_ALL</b>,
+            <b>terminal_capabilities_packet_t::wants_padding</b>,
+            <b>terminal_capabilities_t::wants_padding</b>, and
+            <b>terminal_capabilities_packet_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_protocol_build_capabilities()</b>, and
+            <b>threaded_send_terminal_size_with_auto_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_protocol_dispatch (<b
+              >session_protocol_t</b
+            >
+            * protocol, <b>packet_type_t</b> type, const void * payload, size_t
+            length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>208</b> of file
+            <b>common/session/protocol.c</b>.
+          </p>
+          <pre>
+209                                                            {
 210   if (!protocol || (!payload &amp;&amp; length))
 211     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid participant protocol packet&quot;);
 212   protocol-&gt;callback_result = ASCIICHAT_OK;
@@ -310,64 +393,86 @@
 268   }
 269   return result;
 270 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_handle_client_packet()</b>,
-    <b>acip_render_settings_options()</b>,
-    <b>acip_render_settings_prepare()</b>, <b>acip_send_pong()</b>,
-    <b>acip_settings_decode()</b>, <b>ASCIICHAT_OK</b>,
-    <b>session_protocol_t::audio_packets_received</b>,
-    <b>session_protocol_t::callback_result</b>,
-    <b>session_protocol_media_t::context</b>,
-    <b>session_protocol_t::control</b>,
-    <b>session_protocol_t::effective_render_settings</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>session_protocol_t::media</b>,
-    <b>session_protocol_media_t::on_audio_packet</b>,
-    <b>acip_client_callbacks_t::on_ping</b>, <b>options_prepare_json()</b>,
-    <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>, <b>PACKET_TYPE_ASCII_FRAME</b>,
-    <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
-    <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>PACKET_TYPE_PING</b>,
-    <b>PACKET_TYPE_SERVER_STATE</b>,
-    <b>session_protocol_t::packets_received</b>,
-    <b>acip_settings_header_t::request</b>,
-    <b>acip_render_settings_t::revision</b>,
-    <b>acip_settings_header_t::revision</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>session_protocol_dispatch()</b>, <b>SET_ERRNO</b>,
-    <b>session_protocol_t::settings_request</b>,
-    <b>session_protocol_t::settings_revision</b>,
-    <b>session_protocol_t::settings_status</b>,
-    <b>acip_settings_header_t::status</b>, and
-    <b>session_protocol_t::transport</b>.</p>
-<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_protocol_init_("><a class="permalink" href="#void_session_protocol_init_(">void
-  session_protocol_init (<b>session_protocol_t</b> * protocol,
-  <b>acip_transport_t</b> * transport, <b>session_protocol_media_t</b> media,
-  <b>acip_client_callbacks_t</b> control)</a></h2>
-<p class="Pp">Definition at line <b>202</b> of file
-    <b>common/session/protocol.c</b>.</p>
-<pre>203                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_client_packet()</b>,
+            <b>acip_render_settings_options()</b>,
+            <b>acip_render_settings_prepare()</b>, <b>acip_send_pong()</b>,
+            <b>acip_settings_decode()</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_protocol_t::audio_packets_received</b>,
+            <b>session_protocol_t::callback_result</b>,
+            <b>session_protocol_media_t::context</b>,
+            <b>session_protocol_t::control</b>,
+            <b>session_protocol_t::effective_render_settings</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>session_protocol_t::media</b>,
+            <b>session_protocol_media_t::on_audio_packet</b>,
+            <b>acip_client_callbacks_t::on_ping</b>,
+            <b>options_prepare_json()</b>, <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>,
+            <b>PACKET_TYPE_ASCII_FRAME</b>, <b>PACKET_TYPE_AUDIO_BATCH</b>,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+            <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>PACKET_TYPE_PING</b>,
+            <b>PACKET_TYPE_SERVER_STATE</b>,
+            <b>session_protocol_t::packets_received</b>,
+            <b>acip_settings_header_t::request</b>,
+            <b>acip_render_settings_t::revision</b>,
+            <b>acip_settings_header_t::revision</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>session_protocol_dispatch()</b>,
+            <b>SET_ERRNO</b>, <b>session_protocol_t::settings_request</b>,
+            <b>session_protocol_t::settings_revision</b>,
+            <b>session_protocol_t::settings_status</b>,
+            <b>acip_settings_header_t::status</b>, and
+            <b>session_protocol_t::transport</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_protocol_init_(">
+            <a class="permalink" href="#void_session_protocol_init_("
+              >void session_protocol_init (<b>session_protocol_t</b> * protocol,
+              <b>acip_transport_t</b> * transport,
+              <b>session_protocol_media_t</b> media,
+              <b>acip_client_callbacks_t</b> control)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>202</b> of file
+            <b>common/session/protocol.c</b>.
+          </p>
+          <pre>
+203                                                             {
 204   *protocol = (session_protocol_t){.transport = transport, .media = media, .control = control};
 205   protocol-&gt;effective_render_settings.caps.utf8_support = GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
 206 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_render_settings_t::caps</b>,
-    <b>session_protocol_t::effective_render_settings</b>, <b>GET_OPTION</b>,
-    <b>session_protocol_init()</b>, <b>UTF8_SETTING_FALSE</b>, and
-    <b>terminal_capabilities_t::utf8_support</b>.</p>
-<p class="Pp">Referenced by <b>client_protocol_start()</b>, and
-    <b>session_protocol_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_protocol_update_settings
-  (<b>terminal_size_t</b> * advertised, <b>uint64_t</b> * advertised_revision,
-  <b>session_protocol_send_settings_fn</b> send, void * context)</h2>
-<p class="Pp">Definition at line <b>370</b> of file
-    <b>common/session/protocol.c</b>.</p>
-<pre>371                                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_t::caps</b>,
+            <b>session_protocol_t::effective_render_settings</b>,
+            <b>GET_OPTION</b>, <b>session_protocol_init()</b>,
+            <b>UTF8_SETTING_FALSE</b>, and
+            <b>terminal_capabilities_t::utf8_support</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_start()</b>, and
+            <b>session_protocol_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_protocol_update_settings (<b
+              >terminal_size_t</b
+            >
+            * advertised, <b>uint64_t</b> * advertised_revision,
+            <b>session_protocol_send_settings_fn</b> send, void * context)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>370</b> of file
+            <b>common/session/protocol.c</b>.
+          </p>
+          <pre>
+371                                                                                                           {
 372   if (!advertised || !advertised_revision || !send)
 373     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Settings update requires state and a send callback&quot;);
 374   if (advertised-&gt;cols &gt; 0 &amp;&amp; advertised-&gt;rows &gt; 0 &amp;&amp; *advertised_revision == options_revision())
@@ -395,33 +500,39 @@
 396   SAFE_FREE(snapshot);
 397   return result;
 398 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>terminal_capabilities_t::color_level</b>,
-    <b>options_state::color_mode</b>, <b>terminal_size_t::cols</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>terminal_capabilities_t::detection_reliable</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>options_state::height</b>,
-    <b>options_read_snapshot()</b>, <b>options_revision()</b>,
-    <b>options_snapshot_t::revision</b>, <b>terminal_size_t::rows</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>session_protocol_update_settings()</b>, <b>SET_ERRNO</b>,
-    <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
-    <b>options_snapshot_t::values</b>, and <b>options_state::width</b>.</p>
-<p class="Pp">Referenced by <b>session_protocol_update_settings()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>options_state::color_mode</b>, <b>terminal_size_t::cols</b>,
+            <b>detect_terminal_capabilities()</b>,
+            <b>terminal_capabilities_t::detection_reliable</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>options_state::height</b>,
+            <b>options_read_snapshot()</b>, <b>options_revision()</b>,
+            <b>options_snapshot_t::revision</b>, <b>terminal_size_t::rows</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>session_protocol_update_settings()</b>, <b>SET_ERRNO</b>,
+            <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
+            <b>options_snapshot_t::values</b>, and <b>options_state::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_protocol_update_settings()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

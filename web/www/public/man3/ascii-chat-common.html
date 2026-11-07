@@ -1,351 +1,481 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>common(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">common(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">common(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">common - Common Definitions</p>
-<p class="Pp">
-  <br/>
-   - &#x2699;&#xFE0F; Code shared throughout the library</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>common.c</b>
-  <br/>
-  &#x1F527; Core utilities: memory management, safe macros, and cross-platform
-    helpers file <b>fps.c</b>
-  <br/>
-  &#x23F1;&#xFE0F; FPS tracking utility implementation (nanosecond-precision)
-    file <b>common.h</b>
-  <br/>
-  &#x2699;&#xFE0F; Common definitions, error codes, macros, and types shared
-    throughout the application file <b>embedded_resources.h</b>
-  <br/>
-  Embedded resource management for production builds. file <b>fps.h</b>
-  <br/>
-  &#x23F1;&#xFE0F; FPS tracking utility for monitoring frame throughput across
-    all threads
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>fps_t</b>
-  <br/>
-  FPS tracking state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>ASCII_CHAT_APP_NAME</b> 'ascii-chat'
-  <br/>
-  Application name for key comments (<i>ascii-chat&quot;).</i> #define
-    <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
-  <br/>
-  #define <b>NONSTRING</b>
-  <br/>
-  #define <b>FATAL</b>(code, ...)
-  <br/>
-  Exit with error code and custom message, with stack trace in debug builds.
-    #define <b>RUN_BURST_AND_THROTTLE</b>(burst_ns, throttle_ns, code_block)
-  <br/>
-  Return the minimum of two values. #define <b>ALLOC_MALLOC</b>(size)
-  <br/>
-  #define <b>ALLOC_CALLOC</b>(count, size)
-  <br/>
-  #define <b>ALLOC_REALLOC</b>(ptr, size)
-  <br/>
-  #define <b>ALLOC_FREE</b>(ptr)
-  <br/>
-  #define <b>ASCIICHAT_CHECK_AND_LOG</b>(expr, ok_value, msg, ...)
-  <br/>
-  Check result and log error if operation failed.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef unsigned char <b>uint8_t</b>
-  <br/>
-  typedef unsigned short <b>uint16_t</b>
-  <br/>
-  typedef unsigned int <b>uint32_t</b>
-  <br/>
-  typedef unsigned long long <b>uint64_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>asciichat_fatal_with_context</b> (<b>asciichat_error_t</b>
-    code, const char *file, int line, const char *function, const char
-    *format,...)
-  <br/>
-  <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char *log_file,
-    <b>bool</b> is_client, <b>bool</b> quiet_startup)
-  <br/>
-  Initialize common subsystems shared by client and server. void
-    <b>asciichat_shared_destroy</b> (void)
-  <br/>
-  Clean up shared library subsystems. void <b>fps_init</b> (<b>fps_t</b>
-    *tracker, int expected_fps, const char *name)
-  <br/>
-  Initialize FPS tracker. void <b>fps_init_with_interval</b> (<b>fps_t</b>
-    *tracker, int expected_fps, const char *name, <b>uint64_t</b>
-    report_interval_ns)
-  <br/>
-  Initialize FPS tracker with custom report interval. void <b>fps_frame_ns</b>
-    (<b>fps_t</b> *tracker, <b>uint64_t</b> current_time_ns, const char
-    *context)
-  <br/>
-  Track a frame and detect lag conditions (nanosecond version - PRIMARY).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">int <b>g_argc</b>
-  <br/>
-  Global argc for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution. char ** <b>g_argv</b>
-  <br/>
-  Global argv for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution. <b>bool</b> <b>g_color_flag_passed</b>
-  <br/>
-  Was --color explicitly passed in command-line arguments? Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>. <b>bool</b> <b>g_color_flag_value</b>
-  <br/>
-  Value of --color flag (true if --color was in argv) Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Memory_Debugging_Macros"><a class="permalink" href="#Memory_Debugging_Macros">Memory
-  Debugging Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SAFE_MALLOC</b>(size, cast)
-  <br/>
-  #define <b>SAFE_CALLOC</b>(count, size, cast)
-  <br/>
-  #define <b>SAFE_REALLOC</b>(ptr, size, cast)
-  <br/>
-  #define <b>TRACK_ALIGNED_ALLOC</b>(ptr, size, file, line)
-  <br/>
-  #define <b>SAFE_MALLOC_ALIGNED</b>(size, alignment, cast)
-  <br/>
-  #define <b>SAFE_MALLOC_SIMD</b>(size, cast)
-  <br/>
-  #define <b>SAFE_CALLOC_SIMD</b>(count, size, cast)
-  <br/>
-  #define <b>SAFE_FREE</b>(ptr)
-  <br/>
-  #define <b>SAFE_FCLOSE</b>(fp)
-  <br/>
-  #define <b>UNTRACKED_MALLOC</b>(size, cast)
-  <br/>
-  #define <b>UNTRACKED_FREE</b>(ptr)
-  <br/>
-  #define <b>SAFE_STRNCPY</b>(dst, src, size)
-  <br/>
-  #define <b>SAFE_STRDUP</b>(dst, src)
-  <br/>
-  #define <b>SAFE_GETENV</b>(name)
-  <br/>
-  #define <b>SAFE_SSCANF</b>(str, format, ...)
-  <br/>
-  #define <b>SAFE_STRERROR</b>(errnum)
-  <br/>
-  #define <b>SAFE_MEMCPY</b>(dest, dest_size, src, count)
-  <br/>
-  #define <b>SAFE_MEMSET</b>(dest, dest_size, ch, count)
-  <br/>
-  #define <b>SAFE_MEMMOVE</b>(dest, dest_size, src, count)
-  <br/>
-  #define <b>SAFE_STRCPY</b>(dest, dest_size, src)
-  <br/>
-  #define <b>read_u16_unaligned</b> bytes_read_u16_unaligned
-  <br/>
-  #define <b>read_u32_unaligned</b> bytes_read_u32_unaligned
-  <br/>
-  #define <b>write_u16_unaligned</b> bytes_write_u16_unaligned
-  <br/>
-  #define <b>write_u32_unaligned</b> bytes_write_u32_unaligned
-  <br/>
-  #define <b>safe_size_mul</b> bytes_safe_size_mul
-  <br/>
-  #define <b>SAFE_SNPRINTF</b>(buffer, <b>buffer_size</b>, ...)
-  <br/>
-  #define <b>SAFE_BUFFER_SIZE</b>(<b>buffer_size</b>, offset)
-  <br/>
-  Safe buffer size calculation for snprintf. #define
-    <b>THREAD_CREATE_OR_RETURN</b>(thread, func, arg)
-  <br/>
-  Create a thread or log error and return. #define
-    <b>MUTEX_INIT_OR_RETURN</b>(m)
-  <br/>
-  Initialize a mutex or log error and return.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x2699;&#xFE0F; Code shared throughout the library</p>
-<p class="Pp">This header provides core functionality used throughout
-    ascii-chat:</p>
-<ul class="Bl-bullet">
-  <li>Error codes (via <b>common/error_codes.h</b>)</li>
-  <li>Protocol constants (via <b>common/protocol_constants.h</b>)</li>
-  <li>Application limits (via <b>common/limits.h</b>)</li>
-  <li>Buffer sizes (via <b>common/buffer_sizes.h</b>)</li>
-  <li>Memory allocation macros (with mimalloc support)</li>
-  <li>Thread and synchronization macros</li>
-  <li>Utility macros (MIN, MAX, ARRAY_SIZE)</li>
-  <li>Shutdown detection system</li>
-  <li>Shared initialization function</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This header should be included early in other headers as
-  it provides fundamental types and macros that many other modules depend
-  on.</div>
-<p class="Pp">Provides a reusable FPS tracking mechanism for monitoring
-    real-time frame delivery rates across all client threads (data reception,
-    webcam capture, audio capture, keepalive). Tracks frame intervals, detects
-    lag conditions, and generates periodic FPS reports every 7-15 seconds.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="USAGE:"><a class="permalink" href="#USAGE:">USAGE: </a></h2>
-<pre>fps_t tracker;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>common(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">common(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">common(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">common - Common Definitions</p>
+        <p class="Pp">
+          <br />
+          - &#x2699;&#xFE0F; Code shared throughout the library
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>common.c</b>
+            <br />
+            &#x1F527; Core utilities: memory management, safe macros, and
+            cross-platform helpers file <b>fps.c</b>
+            <br />
+            &#x23F1;&#xFE0F; FPS tracking utility implementation
+            (nanosecond-precision) file
+            <b>common.h</b>
+            <br />
+            &#x2699;&#xFE0F; Common definitions, error codes, macros, and types
+            shared throughout the application file <b>embedded_resources.h</b>
+            <br />
+            Embedded resource management for production builds. file
+            <b>fps.h</b>
+            <br />
+            &#x23F1;&#xFE0F; FPS tracking utility for monitoring frame
+            throughput across all threads
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>fps_t</b>
+            <br />
+            FPS tracking state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ASCII_CHAT_APP_NAME</b> 'ascii-chat'
+            <br />
+            Application name for key comments (<i>ascii-chat&quot;).</i> #define
+            <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
+            <br />
+            #define <b>NONSTRING</b>
+            <br />
+            #define <b>FATAL</b>(code, ...)
+            <br />
+            Exit with error code and custom message, with stack trace in debug
+            builds. #define
+            <b>RUN_BURST_AND_THROTTLE</b>(burst_ns, throttle_ns, code_block)
+            <br />
+            Return the minimum of two values. #define <b>ALLOC_MALLOC</b>(size)
+            <br />
+            #define <b>ALLOC_CALLOC</b>(count, size)
+            <br />
+            #define <b>ALLOC_REALLOC</b>(ptr, size)
+            <br />
+            #define <b>ALLOC_FREE</b>(ptr)
+            <br />
+            #define <b>ASCIICHAT_CHECK_AND_LOG</b>(expr, ok_value, msg, ...)
+            <br />
+            Check result and log error if operation failed.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef unsigned char <b>uint8_t</b>
+            <br />
+            typedef unsigned short <b>uint16_t</b>
+            <br />
+            typedef unsigned int <b>uint32_t</b>
+            <br />
+            typedef unsigned long long <b>uint64_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>asciichat_fatal_with_context</b> (<b>asciichat_error_t</b>
+            code, const char *file, int line, const char *function, const char
+            *format,...)
+            <br />
+            <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char
+            *log_file, <b>bool</b> is_client, <b>bool</b> quiet_startup)
+            <br />
+            Initialize common subsystems shared by client and server. void
+            <b>asciichat_shared_destroy</b> (void)
+            <br />
+            Clean up shared library subsystems. void <b>fps_init</b> (<b
+              >fps_t</b
+            >
+            *tracker, int expected_fps, const char *name)
+            <br />
+            Initialize FPS tracker. void <b>fps_init_with_interval</b> (<b
+              >fps_t</b
+            >
+            *tracker, int expected_fps, const char *name, <b>uint64_t</b>
+            report_interval_ns)
+            <br />
+            Initialize FPS tracker with custom report interval. void
+            <b>fps_frame_ns</b> (<b>fps_t</b> *tracker,
+            <b>uint64_t</b> current_time_ns, const char *context)
+            <br />
+            Track a frame and detect lag conditions (nanosecond version -
+            PRIMARY).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>g_argc</b>
+            <br />
+            Global argc for early argument inspection (e.g., --color flag
+            detection) Set by
+            <b>main()</b> for access from <b>lib/platform/terminal.c</b> during
+            early execution. char ** <b>g_argv</b>
+            <br />
+            Global argv for early argument inspection (e.g., --color flag
+            detection) Set by
+            <b>main()</b> for access from <b>lib/platform/terminal.c</b> during
+            early execution. <b>bool</b> <b>g_color_flag_passed</b>
+            <br />
+            Was --color explicitly passed in command-line arguments? Set by
+            <b>options_init()</b> before RCU is initialized, used by
+            <b>terminal_should_color_output()</b>. <b>bool</b>
+            <b>g_color_flag_value</b>
+            <br />
+            Value of --color flag (true if --color was in argv) Set by
+            <b>options_init()</b> before RCU is initialized, used by
+            <b>terminal_should_color_output()</b>.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Memory_Debugging_Macros">
+            <a class="permalink" href="#Memory_Debugging_Macros"
+              >Memory Debugging Macros</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SAFE_MALLOC</b>(size, cast)
+            <br />
+            #define <b>SAFE_CALLOC</b>(count, size, cast)
+            <br />
+            #define <b>SAFE_REALLOC</b>(ptr, size, cast)
+            <br />
+            #define <b>TRACK_ALIGNED_ALLOC</b>(ptr, size, file, line)
+            <br />
+            #define <b>SAFE_MALLOC_ALIGNED</b>(size, alignment, cast)
+            <br />
+            #define <b>SAFE_MALLOC_SIMD</b>(size, cast)
+            <br />
+            #define <b>SAFE_CALLOC_SIMD</b>(count, size, cast)
+            <br />
+            #define <b>SAFE_FREE</b>(ptr)
+            <br />
+            #define <b>SAFE_FCLOSE</b>(fp)
+            <br />
+            #define <b>UNTRACKED_MALLOC</b>(size, cast)
+            <br />
+            #define <b>UNTRACKED_FREE</b>(ptr)
+            <br />
+            #define <b>SAFE_STRNCPY</b>(dst, src, size)
+            <br />
+            #define <b>SAFE_STRDUP</b>(dst, src)
+            <br />
+            #define <b>SAFE_GETENV</b>(name)
+            <br />
+            #define <b>SAFE_SSCANF</b>(str, format, ...)
+            <br />
+            #define <b>SAFE_STRERROR</b>(errnum)
+            <br />
+            #define <b>SAFE_MEMCPY</b>(dest, dest_size, src, count)
+            <br />
+            #define <b>SAFE_MEMSET</b>(dest, dest_size, ch, count)
+            <br />
+            #define <b>SAFE_MEMMOVE</b>(dest, dest_size, src, count)
+            <br />
+            #define <b>SAFE_STRCPY</b>(dest, dest_size, src)
+            <br />
+            #define <b>read_u16_unaligned</b> bytes_read_u16_unaligned
+            <br />
+            #define <b>read_u32_unaligned</b> bytes_read_u32_unaligned
+            <br />
+            #define <b>write_u16_unaligned</b> bytes_write_u16_unaligned
+            <br />
+            #define <b>write_u32_unaligned</b> bytes_write_u32_unaligned
+            <br />
+            #define <b>safe_size_mul</b> bytes_safe_size_mul
+            <br />
+            #define <b>SAFE_SNPRINTF</b>(buffer, <b>buffer_size</b>, ...)
+            <br />
+            #define <b>SAFE_BUFFER_SIZE</b>(<b>buffer_size</b>, offset)
+            <br />
+            Safe buffer size calculation for snprintf. #define
+            <b>THREAD_CREATE_OR_RETURN</b>(thread, func, arg)
+            <br />
+            Create a thread or log error and return. #define
+            <b>MUTEX_INIT_OR_RETURN</b>(m)
+            <br />
+            Initialize a mutex or log error and return.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x2699;&#xFE0F; Code shared throughout the library</p>
+        <p class="Pp">
+          This header provides core functionality used throughout ascii-chat:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Error codes (via <b>common/error_codes.h</b>)</li>
+          <li>Protocol constants (via <b>common/protocol_constants.h</b>)</li>
+          <li>Application limits (via <b>common/limits.h</b>)</li>
+          <li>Buffer sizes (via <b>common/buffer_sizes.h</b>)</li>
+          <li>Memory allocation macros (with mimalloc support)</li>
+          <li>Thread and synchronization macros</li>
+          <li>Utility macros (MIN, MAX, ARRAY_SIZE)</li>
+          <li>Shutdown detection system</li>
+          <li>Shared initialization function</li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          This header should be included early in other headers as it provides
+          fundamental types and macros that many other modules depend on.
+        </div>
+        <p class="Pp">
+          Provides a reusable FPS tracking mechanism for monitoring real-time
+          frame delivery rates across all client threads (data reception, webcam
+          capture, audio capture, keepalive). Tracks frame intervals, detects
+          lag conditions, and generates periodic FPS reports every 7-15 seconds.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="USAGE:">
+            <a class="permalink" href="#USAGE:">USAGE: </a>
+          </h2>
+          <pre>
+fps_t tracker;
 fps_init(&amp;tracker, 60, &quot;WEBCAM&quot;);  // 60 FPS expected
 // In your frame processing loop
 struct timespec now;
 clock_gettime(CLOCK_MONOTONIC, &amp;now);
 fps_frame(&amp;tracker, &amp;now, &quot;frame received&quot;);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="FEATURES:"><a class="permalink" href="#FEATURES:">FEATURES:
-  </a></h2>
-<ul class="Bl-bullet">
-  <li>Automatic frame counting and interval measurement</li>
-  <li>Lag detection (when frames arrive late)</li>
-  <li>Periodic FPS report generation (configurable, default 10 seconds)</li>
-  <li>Configurable expected FPS and reporting interval</li>
-  <li>Thread-safe (caller must synchronize if needed)</li>
-  <li>Integrated across all major threads (data reception, webcam, audio,
-      keepalive)</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">December 2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0 (Refactored with unified thread tracking)</div>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ALLOC_CALLOC(_count,__size)"><a class="permalink" href="#_define_ALLOC_CALLOC(_count,__size)">#define
-  ALLOC_CALLOC( count, size)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>calloc((count), (size))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>252</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_domain_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ALLOC_FREE(_ptr)"><a class="permalink" href="#_define_ALLOC_FREE(_ptr)">#define
-  ALLOC_FREE( ptr)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>free(ptr)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>254</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ALLOC_MALLOC(_size)"><a class="permalink" href="#_define_ALLOC_MALLOC(_size)">#define
-  ALLOC_MALLOC( size)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>malloc(size)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>251</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ALLOC_REALLOC(_ptr,__size)"><a class="permalink" href="#_define_ALLOC_REALLOC(_ptr,__size)">#define
-  ALLOC_REALLOC( ptr, size)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>realloc((ptr), (size))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>253</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCII_CHAT_APP_NAME___'ascii"><a class="permalink" href="#_define_ASCII_CHAT_APP_NAME___'ascii">#define
-  ASCII_CHAT_APP_NAME 'ascii-chat'</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Application name for key comments (&quot;ascii-chat&quot;).</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>add_known_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ASCIICHAT_CHECK_AND_LOG(_expr,__ok_value,__msg,__"><a class="permalink" href="#_define_ASCIICHAT_CHECK_AND_LOG(_expr,__ok_value,__msg,__">#define
-  ASCIICHAT_CHECK_AND_LOG( expr, ok_value, msg, ...)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="FEATURES:">
+            <a class="permalink" href="#FEATURES:">FEATURES: </a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Automatic frame counting and interval measurement</li>
+            <li>Lag detection (when frames arrive late)</li>
+            <li>
+              Periodic FPS report generation (configurable, default 10 seconds)
+            </li>
+            <li>Configurable expected FPS and reporting interval</li>
+            <li>Thread-safe (caller must synchronize if needed)</li>
+            <li>
+              Integrated across all major threads (data reception, webcam,
+              audio, keepalive)
+            </li>
+          </ul>
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">December 2025</div>
+          <p class="Pp"><b>Version</b></p>
+          <div class="Bd-indent">
+            2.0 (Refactored with unified thread tracking)
+          </div>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ALLOC_CALLOC(_count,__size)">
+            <a class="permalink" href="#_define_ALLOC_CALLOC(_count,__size)"
+              >#define ALLOC_CALLOC( count, size)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>calloc((count), (size))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>252</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_domain_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ALLOC_FREE(_ptr)">
+            <a class="permalink" href="#_define_ALLOC_FREE(_ptr)"
+              >#define ALLOC_FREE( ptr)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>free(ptr)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>254</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ALLOC_MALLOC(_size)">
+            <a class="permalink" href="#_define_ALLOC_MALLOC(_size)"
+              >#define ALLOC_MALLOC( size)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>malloc(size)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>251</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ALLOC_REALLOC(_ptr,__size)">
+            <a class="permalink" href="#_define_ALLOC_REALLOC(_ptr,__size)"
+              >#define ALLOC_REALLOC( ptr, size)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>realloc((ptr), (size))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>253</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_CHAT_APP_NAME___'ascii">
+            <a class="permalink" href="#_define_ASCII_CHAT_APP_NAME___'ascii"
+              >#define ASCII_CHAT_APP_NAME 'ascii-chat'</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Application name for key comments (&quot;ascii-chat&quot;).
+          </p>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>add_known_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCIICHAT_CHECK_AND_LOG(_expr,__ok_value,__msg,__"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCIICHAT_CHECK_AND_LOG(_expr,__ok_value,__msg,__"
+              >#define ASCIICHAT_CHECK_AND_LOG( expr, ok_value, msg, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if ((expr) != (ok_value)) {                                                                                        \
 <br/>
@@ -355,12 +485,14 @@ fps_frame(&amp;tracker, &amp;now, &quot;frame received&quot;);</pre>
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Check result and log error if operation failed. Consolidates the
-    pattern:</p>
-<p class="Pp"></p>
-<pre>operation_result_t result = operation();
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Check result and log error if operation failed. Consolidates the
+            pattern:
+          </p>
+          <p class="Pp"></p>
+          <pre>operation_result_t result = operation();
 if (result != OK) {
 <br/>
     log_error(&quot;Operation failed: %d&quot;, result);
@@ -368,56 +500,83 @@ if (result != OK) {
     return result;
 }
 </pre>
-<p class="Pp">Usage:</p>
-<p class="Pp"></p>
-<pre>ASCIICHAT_CHECK_AND_LOG(crypto_result = crypto_operation(args),
+          <p class="Pp">Usage:</p>
+          <p class="Pp"></p>
+          <pre>ASCIICHAT_CHECK_AND_LOG(crypto_result = crypto_operation(args),
 <br/>
                         ASCIICHAT_OK, &quot;Crypto operation failed: %d&quot;,
 <br/>
                         crypto_result);
 </pre>
-<p class="Pp">Definition at line <b>629</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FATAL(_code,__"><a class="permalink" href="#_define_FATAL(_code,__">#define
-  FATAL( code, ...)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Exit with error code and custom message, with stack trace in debug
-    builds.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>code</i> Error code (<b>asciichat_error_t</b>)
-<br/>
-<i>...</i> Custom message format string and arguments (printf-style)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">In debug builds, includes file, line, and function
-  information. In release builds, file/line/function are omitted to reduce
-  binary size.</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">This macro terminates the program. Use only for
-  unrecoverable errors.</div>
-<p class="Pp"><b>Example:</b></p>
-<div class="Bd-indent">
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>FATAL(ERROR_NETWORK_BIND, &quot;Cannot bind to port %d&quot;, port_number);
+          <p class="Pp">
+            Definition at line <b>629</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FATAL(_code,__">
+            <a class="permalink" href="#_define_FATAL(_code,__"
+              >#define FATAL( code, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>
+asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Exit with error code and custom message, with stack trace in debug
+            builds.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>code</i> Error code (<b>asciichat_error_t</b>)
+            <br />
+            <i>...</i> Custom message format string and arguments (printf-style)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            In debug builds, includes file, line, and function information. In
+            release builds, file/line/function are omitted to reduce binary
+            size.
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            This macro terminates the program. Use only for unrecoverable
+            errors.
+          </div>
+          <p class="Pp"><b>Example:</b></p>
+          <div class="Bd-indent">
+            <p class="Pp"></p>
+            <p class="Pp"></p>
+            <pre>
+FATAL(ERROR_NETWORK_BIND, &quot;Cannot bind to port %d&quot;, port_number);
 </pre>
-</div>
-<p class="Pp">Definition at line <b>158</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
-    <b>asciichat_shared_init()</b>, <b>debug_errno_cleanup_thread()</b>,
-    <b>debug_stats_cleanup_thread()</b>, <b>debug_sync_cleanup_thread()</b>,
-    <b>main()</b>, <b>ob_reserve()</b>, and <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MUTEX_INIT_OR_RETURN(_m)"><a class="permalink" href="#_define_MUTEX_INIT_OR_RETURN(_m)">#define
-  MUTEX_INIT_OR_RETURN( m)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          </div>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_fatal_with_context()</b>,
+            <b>asciichat_shared_init()</b>, <b>debug_errno_cleanup_thread()</b>,
+            <b>debug_stats_cleanup_thread()</b>,
+            <b>debug_sync_cleanup_thread()</b>, <b>main()</b>,
+            <b>ob_reserve()</b>, and <b>server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MUTEX_INIT_OR_RETURN(_m)">
+            <a class="permalink" href="#_define_MUTEX_INIT_OR_RETURN(_m)"
+              >#define MUTEX_INIT_OR_RETURN( m)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if (mutex_init(&amp;(m)) != 0) {                                                                                       \
 <br/>
@@ -427,48 +586,103 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Initialize a mutex or log error and return.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>m</i> Pointer to <b>mutex_t</b> variable</div>
-<p class="Pp">Handles common pattern: init mutex, log error if failed, then
-    return -1. Example usage:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>MUTEX_INIT_OR_RETURN(mutex)</b>; // Mutex initialized
-    successfully, continue</p>
-<p class="Pp">Definition at line <b>542</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_NONSTRING"><a class="permalink" href="#_define_NONSTRING">#define
-  NONSTRING</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>98</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_MAX_PATH_LENGTH___4096"><a class="permalink" href="#_define_PLATFORM_MAX_PATH_LENGTH___4096">#define
-  PLATFORM_MAX_PATH_LENGTH 4096</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>91</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_read_u16_unaligned___bytes_read_u16_unaligned"><a class="permalink" href="#_define_read_u16_unaligned___bytes_read_u16_unaligned">#define
-  read_u16_unaligned bytes_read_u16_unaligned</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>484</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_read_u32_unaligned___bytes_read_u32_unaligned"><a class="permalink" href="#_define_read_u32_unaligned___bytes_read_u32_unaligned">#define
-  read_u32_unaligned bytes_read_u32_unaligned</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>485</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)"><a class="permalink" href="#_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)">#define
-  RUN_BURST_AND_THROTTLE( burst_ns, throttle_ns, code_block)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Initialize a mutex or log error and return.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>m</i> Pointer to <b>mutex_t</b> variable
+          </div>
+          <p class="Pp">
+            Handles common pattern: init mutex, log error if failed, then return
+            -1. Example usage:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>MUTEX_INIT_OR_RETURN(mutex)</b>; // Mutex initialized
+            successfully, continue
+          </p>
+          <p class="Pp">
+            Definition at line <b>542</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NONSTRING">
+            <a class="permalink" href="#_define_NONSTRING">#define NONSTRING</a>
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_MAX_PATH_LENGTH___4096">
+            <a class="permalink" href="#_define_PLATFORM_MAX_PATH_LENGTH___4096"
+              >#define PLATFORM_MAX_PATH_LENGTH 4096</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>91</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_read_u16_unaligned___bytes_read_u16_unaligned"
+          >
+            <a
+              class="permalink"
+              href="#_define_read_u16_unaligned___bytes_read_u16_unaligned"
+              >#define read_u16_unaligned bytes_read_u16_unaligned</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>484</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_read_u32_unaligned___bytes_read_u32_unaligned"
+          >
+            <a
+              class="permalink"
+              href="#_define_read_u32_unaligned___bytes_read_u32_unaligned"
+              >#define read_u32_unaligned bytes_read_u32_unaligned</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>485</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)"
+          >
+            <a
+              class="permalink"
+              href="#_define_RUN_BURST_AND_THROTTLE(_burst_ns,__throttle_ns,__code_block)"
+              >#define RUN_BURST_AND_THROTTLE( burst_ns, throttle_ns,
+              code_block)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   static uint64_t burst_start = 0;                                                                                   \
 <br/>
@@ -510,33 +724,54 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Return the minimum of two values. Return the maximum of two
-  values</p>
-<p class="Pp"></p>
-<p class="Pp">Calculate the number of elements in an array</p>
-<p class="Pp">Definition at line <b>206</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_BUFFER_SIZE(_"><a class="permalink" href="#_define_SAFE_BUFFER_SIZE(_">#define
-  SAFE_BUFFER_SIZE( <b>buffer_size</b>, offset)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>((offset) &lt; 0 || (size_t)(offset) &gt;= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Safe buffer size calculation for snprintf. Casts offset to size_t
-    to avoid sign conversion warnings when subtracting from buffer_size. Returns
-    0 if offset is negative or &gt;= buffer_size (prevents underflow).</p>
-<p class="Pp">Definition at line <b>501</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_CALLOC(_count,__size,__cast)"><a class="permalink" href="#_define_SAFE_CALLOC(_count,__size,__cast)">#define
-  SAFE_CALLOC( count, size, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Return the minimum of two values. Return the maximum of two values
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Calculate the number of elements in an array</p>
+          <p class="Pp">
+            Definition at line <b>206</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_BUFFER_SIZE(_">
+            <a class="permalink" href="#_define_SAFE_BUFFER_SIZE(_"
+              >#define SAFE_BUFFER_SIZE( <b>buffer_size</b>, offset)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>
+((offset) &lt; 0 || (size_t)(offset) &gt;= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Safe buffer size calculation for snprintf. Casts offset to size_t to
+            avoid sign conversion warnings when subtracting from buffer_size.
+            Returns 0 if offset is negative or &gt;= buffer_size (prevents
+            underflow).
+          </p>
+          <p class="Pp">
+            Definition at line <b>501</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_CALLOC(_count,__size,__cast)">
+            <a
+              class="permalink"
+              href="#_define_SAFE_CALLOC(_count,__size,__cast)"
+              >#define SAFE_CALLOC( count, size, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>({                                                                                                                   \
 <br/>
   cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                   \
 <br/>
@@ -548,54 +783,72 @@ if (result != OK) {
 <br/>
   _ptr;                                                                                                              \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>274</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_transport_create()</b>,
-    <b>acip_outbound_create()</b>, <b>acip_security_init_options()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_websocket_runtime_create()</b>,
-    <b>ascii_create_grid()</b>, <b>ascii_render()</b>,
-    <b>ascii_stabilizer_prepare()</b>, <b>asciichat_instr_runtime_get()</b>,
-    <b>audio_processor_create()</b>, <b>audio_recording_create_channels()</b>,
-    <b>browser_discovery_new()</b>, <b>client_audio_pipeline_create()</b>,
-    <b>client_connection_create()</b>, <b>digital_rain_init()</b>,
-    <b>discovery_session_create()</b>, <b>face_follow_image_process()</b>,
-    <b>ffmpeg_encoder_create_scaled()</b>, <b>fps_counter_create()</b>,
-    <b>framebuffer_create()</b>, <b>framebuffer_create_multi()</b>,
-    <b>h265_client_context_create()</b>, <b>h265_decoder_create()</b>,
-    <b>h265_server_context_create()</b>, <b>levenshtein()</b>,
-    <b>levenshtein_n()</b>, <b>mcp_render_execute()</b>,
-    <b>mcp_request_parse()</b>, <b>mcp_server_main()</b>,
-    <b>mixer_add_source()</b>, <b>mutex_stack_get_all_threads()</b>,
-    <b>nat_upnp_open_protocol()</b>, <b>network_server_create()</b>,
-    <b>options_get_enum_entries()</b>, <b>options_json_parse_value()</b>,
-    <b>packet_queue_create_config()</b>, <b>peer_crypto_create()</b>,
-    <b>platform_event_listen()</b>, <b>platform_event_loop_create()</b>,
-    <b>platform_event_loop_work()</b>, <b>platform_event_stream_work()</b>,
-    <b>platform_process_title_init()</b>, <b>render_file_create()</b>,
-    <b>render_progress_create()</b>, <b>render_progress_frame()</b>,
-    <b>ringbuffer_create()</b>, <b>session_audio_create()</b>,
-    <b>session_av_state_create()</b>, <b>session_capture_create()</b>,
-    <b>session_consensus_create()</b>, <b>session_display_create()</b>,
-    <b>session_host_create()</b>, <b>session_log_buffer_create()</b>,
-    <b>session_network_capture_create()</b>,
-    <b>session_participant_create()</b>, <b>session_pipeline_create()</b>,
-    <b>simple_frame_swap_create()</b>, <b>spectral_create()</b>,
-    <b>stats_runtime_peer_open()</b>, <b>stats_sampler_create()</b>,
-    <b>stats_scope_create()</b>, <b>symbol_cache_resolve_batch()</b>,
-    <b>term_renderer_create()</b>, <b>terminal_fd_reader_create()</b>,
-    <b>terminal_fd_writer_create()</b>, <b>test_pattern_create()</b>,
-    <b>ui_password_prompt_present()</b>, <b>ui_session_create()</b>,
-    <b>video_encoder_create()</b>, <b>video_frame_buffer_create()</b>,
-    <b>webrtc_create_datachannel()</b>, and
-    <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_CALLOC_SIMD(_count,__size,__cast)"><a class="permalink" href="#_define_SAFE_CALLOC_SIMD(_count,__size,__cast)">#define
-  SAFE_CALLOC_SIMD( count, size, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>274</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_outbound_create()</b>, <b>acip_security_init_options()</b>,
+            <b>acip_tcp_transport_create()</b>,
+            <b>acip_websocket_runtime_create()</b>, <b>ascii_create_grid()</b>,
+            <b>ascii_render()</b>, <b>ascii_stabilizer_prepare()</b>,
+            <b>asciichat_instr_runtime_get()</b>,
+            <b>audio_processor_create()</b>,
+            <b>audio_recording_create_channels()</b>,
+            <b>browser_discovery_new()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_connection_create()</b>, <b>digital_rain_init()</b>,
+            <b>discovery_session_create()</b>,
+            <b>face_follow_image_process()</b>,
+            <b>ffmpeg_encoder_create_scaled()</b>, <b>fps_counter_create()</b>,
+            <b>framebuffer_create()</b>, <b>framebuffer_create_multi()</b>,
+            <b>h265_client_context_create()</b>, <b>h265_decoder_create()</b>,
+            <b>h265_server_context_create()</b>, <b>levenshtein()</b>,
+            <b>levenshtein_n()</b>, <b>mcp_render_execute()</b>,
+            <b>mcp_request_parse()</b>, <b>mcp_server_main()</b>,
+            <b>mixer_add_source()</b>, <b>mutex_stack_get_all_threads()</b>,
+            <b>nat_upnp_open_protocol()</b>, <b>network_server_create()</b>,
+            <b>options_get_enum_entries()</b>,
+            <b>options_json_parse_value()</b>,
+            <b>packet_queue_create_config()</b>, <b>peer_crypto_create()</b>,
+            <b>platform_event_listen()</b>, <b>platform_event_loop_create()</b>,
+            <b>platform_event_loop_work()</b>,
+            <b>platform_event_stream_work()</b>,
+            <b>platform_process_title_init()</b>, <b>render_file_create()</b>,
+            <b>render_progress_create()</b>, <b>render_progress_frame()</b>,
+            <b>ringbuffer_create()</b>, <b>session_audio_create()</b>,
+            <b>session_av_state_create()</b>, <b>session_capture_create()</b>,
+            <b>session_consensus_create()</b>, <b>session_display_create()</b>,
+            <b>session_host_create()</b>, <b>session_log_buffer_create()</b>,
+            <b>session_network_capture_create()</b>,
+            <b>session_participant_create()</b>,
+            <b>session_pipeline_create()</b>, <b>simple_frame_swap_create()</b>,
+            <b>spectral_create()</b>, <b>stats_runtime_peer_open()</b>,
+            <b>stats_sampler_create()</b>, <b>stats_scope_create()</b>,
+            <b>symbol_cache_resolve_batch()</b>, <b>term_renderer_create()</b>,
+            <b>terminal_fd_reader_create()</b>,
+            <b>terminal_fd_writer_create()</b>, <b>test_pattern_create()</b>,
+            <b>ui_password_prompt_present()</b>, <b>ui_session_create()</b>,
+            <b>video_encoder_create()</b>, <b>video_frame_buffer_create()</b>,
+            <b>webrtc_create_datachannel()</b>, and
+            <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_CALLOC_SIMD(_count,__size,__cast)">
+            <a
+              class="permalink"
+              href="#_define_SAFE_CALLOC_SIMD(_count,__size,__cast)"
+              >#define SAFE_CALLOC_SIMD( count, size, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>({                                                                                                                   \
 <br/>
   size_t total_size = (count) * (size);                                                                              \
 <br/>
@@ -605,16 +858,23 @@ if (result != OK) {
 <br/>
   _ptr;                                                                                                              \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>367</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_FCLOSE(_fp)"><a class="permalink" href="#_define_SAFE_FCLOSE(_fp)">#define
-  SAFE_FCLOSE( fp)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>367</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_FCLOSE(_fp)">
+            <a class="permalink" href="#_define_SAFE_FCLOSE(_fp)"
+              >#define SAFE_FCLOSE( fp)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if ((fp) != NULL) {                                                                                                \
 <br/>
@@ -624,19 +884,28 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>386</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>add_known_host()</b>,
-    <b>check_known_host_no_identity()</b>, <b>config_create_default()</b>, and
-    <b>remove_known_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_FREE(_ptr)"><a class="permalink" href="#_define_SAFE_FREE(_ptr)">#define
-  SAFE_FREE( ptr)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>386</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_known_host()</b>,
+            <b>check_known_host_no_identity()</b>,
+            <b>config_create_default()</b>, and <b>remove_known_host()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_FREE(_ptr)">
+            <a class="permalink" href="#_define_SAFE_FREE(_ptr)"
+              >#define SAFE_FREE( ptr)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if ((ptr) != NULL) {                                                                                               \
 <br/>
@@ -646,222 +915,283 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>376</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_default_path()</b>,
-    <b>acds_server_shutdown()</b>, <b>acds_strings_destroy()</b>,
-    <b>acip_async_tcp_transport_create()</b>, <b>acip_outbound_create()</b>,
-    <b>acip_outbound_destroy()</b>, <b>acip_outbound_submitv()</b>,
-    <b>acip_render_settings_capabilities()</b>, <b>acip_security_cleanup()</b>,
-    <b>acip_settings_request()</b>, <b>acip_settings_send()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_runtime_create()</b>,
-    <b>acip_websocket_runtime_destroy()</b>, <b>add_known_host()</b>,
-    <b>ascii_convert()</b>, <b>ascii_convert_with_buffers_stabilized()</b>,
-    <b>ascii_create_grid()</b>, <b>ascii_frame_finish()</b>,
-    <b>ascii_render()</b>, <b>ascii_stabilizer_prepare()</b>,
-    <b>ascii_stabilizer_reset()</b>, <b>ascii_write()</b>,
-    <b>asciichat_instr_runtime_destroy()</b>,
-    <b>asciichat_instr_runtime_get()</b>, <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_free()</b>, <b>audio_destroy()</b>,
-    <b>audio_free_device_list()</b>, <b>audio_init()</b>,
-    <b>audio_processor_create()</b>, <b>audio_processor_destroy()</b>,
-    <b>audio_recording_destroy()</b>, <b>audio_visualization_render_fft()</b>,
-    <b>audio_visualization_render_waveform()</b>,
-    <b>browser_discovery_destroy()</b>, <b>buffer_domain_create()</b>,
-    <b>check_known_host_no_identity()</b>, <b>check_known_host_with_key()</b>,
-    <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_destroy()</b>, <b>client_audio_render_thread()</b>,
-    <b>client_connection_destroy()</b>, <b>client_free_string()</b>,
-    <b>client_settings_receive()</b>, <b>client_settings_values()</b>,
-    <b>client_video_render_thread()</b>, <b>colorscheme_cleanup_compiled()</b>,
-    <b>completions_collect_all_modes_unique()</b>,
-    <b>completions_generate_fish()</b>,
-    <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
-    <b>config_create_default()</b>, <b>config_load_and_apply()</b>,
-    <b>config_schema_build_from_configs()</b>, <b>config_schema_destroy()</b>,
-    <b>consensus_coordinator_create()</b>,
-    <b>consensus_coordinator_destroy()</b>,
-    <b>consensus_election_choose_hosts()</b>,
-    <b>consensus_metrics_collection_add()</b>,
-    <b>consensus_metrics_collection_destroy()</b>,
-    <b>consensus_state_destroy()</b>, <b>consensus_topology_create()</b>,
-    <b>consensus_topology_destroy()</b>,
-    <b>create_mixed_ascii_frame_for_client()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>crypto_regex_match_known_hosts()</b>,
-    <b>crypto_regex_match_public_key()</b>, <b>debug_sync_print_state()</b>,
-    <b>detect_client_utf8_support()</b>, <b>detect_default_ssh_key()</b>,
-    <b>digital_rain_destroy()</b>, <b>digital_rain_init()</b>,
-    <b>digital_rain_render_at()</b>, <b>discover_session_parallel()</b>,
-    <b>discovery_keys_get_cache_path()</b>, <b>discovery_mdns_destroy()</b>,
-    <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
-    <b>display_height()</b>, <b>display_width()</b>, <b>ducking_destroy()</b>,
-    <b>ducking_init()</b>, <b>face_follow_image_destroy()</b>,
-    <b>fetch_github_gpg_keys()</b>, <b>fetch_github_ssh_keys()</b>,
-    <b>fetch_gitlab_gpg_keys()</b>, <b>fetch_gitlab_ssh_keys()</b>,
-    <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_decoder_create_with_request_options()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_encoder_create_scaled()</b>,
-    <b>format_message()</b>, <b>fps_counter_destroy()</b>,
-    <b>frame_buffer_append()</b>, <b>frame_buffer_create()</b>,
-    <b>frame_buffer_destroy()</b>, <b>frame_buffer_flush()</b>,
-    <b>frame_buffer_printf()</b>, <b>framebuffer_create()</b>,
-    <b>framebuffer_create_multi()</b>, <b>framebuffer_destroy()</b>,
-    <b>get_discovery_database_dir()</b>, <b>get_known_hosts_path()</b>,
-    <b>get_log_dir()</b>, <b>gpg_get_public_key()</b>,
-    <b>gpg_homedir_create()</b>, <b>gpg_homedir_destroy()</b>,
-    <b>grep_destroy()</b>, <b>grep_init()</b>, <b>grep_restore_patterns()</b>,
-    <b>grep_save_patterns()</b>, <b>grep_should_output()</b>,
-    <b>h265_client_context_create()</b>, <b>h265_client_context_destroy()</b>,
-    <b>h265_client_init_media_source()</b>, <b>h265_decoder_create()</b>,
-    <b>h265_decoder_destroy()</b>, <b>h265_encoder_destroy()</b>,
-    <b>h265_server_context_destroy()</b>, <b>handle_audio_batch_packet()</b>,
-    <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_packet()</b>,
-    <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
-    <b>https_get()</b>, <b>keyboard_help_toggle_terminal()</b>,
-    <b>known_hosts_destroy()</b>, <b>layout_print_two_column_row()</b>,
-    <b>levenshtein()</b>, <b>levenshtein_n()</b>, <b>log_mmap_write()</b>,
-    <b>log_net_message()</b>, <b>log_search_render_input_line()</b>,
-    <b>manpage_content_free_environment()</b>,
-    <b>manpage_content_free_examples()</b>,
-    <b>manpage_content_free_options()</b>,
-    <b>manpage_content_free_positional()</b>,
-    <b>manpage_content_free_usage()</b>,
-    <b>manpage_content_generate_environment_with_manual()</b>,
-    <b>manpage_content_generate_examples()</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>manpage_merger_free_content()</b>, <b>manpage_parser_free_sections()</b>,
-    <b>manpage_resources_destroy()</b>, <b>mcp_render_execute()</b>,
-    <b>mcp_request_destroy()</b>, <b>mcp_server_main()</b>,
-    <b>mcp_stdio_run()</b>, <b>media_source_create_interruptible()</b>,
-    <b>media_source_destroy()</b>, <b>memory_backend_create()</b>,
-    <b>mirror_convert_frame()</b>, <b>mirror_free_string()</b>,
-    <b>mirror_render_audio_visualization()</b>, <b>mixer_add_source()</b>,
-    <b>mixer_create_channels()</b>, <b>mixer_destroy()</b>,
-    <b>mixer_remove_source()</b>, <b>mutex_stack_free_all_threads()</b>,
-    <b>mutex_stack_get_all_threads()</b>, <b>nat_upnp_close()</b>,
-    <b>nat_upnp_open_protocol()</b>, <b>network_server_create()</b>,
-    <b>network_server_destroy()</b>, <b>openpgp_base64_decode()</b>,
-    <b>openpgp_parse_armored_pubkey()</b>,
-    <b>openpgp_parse_armored_seckey()</b>, <b>options_apply_patch()</b>,
-    <b>options_builder_build()</b>, <b>options_builder_create()</b>,
-    <b>options_builder_destroy()</b>, <b>options_config_destroy()</b>,
-    <b>options_config_parse_positional()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>, <b>options_config_set_defaults()</b>,
-    <b>options_init()</b>, <b>options_json_parse_value()</b>,
-    <b>options_state_destroy()</b>, <b>options_struct_destroy()</b>,
-    <b>opus_codec_create_decoder_channels()</b>,
-    <b>opus_codec_create_encoder_channels()</b>, <b>opus_codec_destroy()</b>,
-    <b>packet_queue_create_config()</b>, <b>packet_queue_destroy()</b>,
-    <b>packet_send_error()</b>, <b>packet_send_remote_log()</b>,
-    <b>parse_gpg_key_binary()</b>, <b>parse_gpg_keys_from_response()</b>,
-    <b>parse_keys_from_file()</b>, <b>parse_log_file()</b>,
-    <b>parse_private_key()</b>, <b>parse_public_key()</b>,
-    <b>parse_public_keys()</b>, <b>parse_ssh_ed25519_line()</b>,
-    <b>parse_ssh_keys_from_response()</b>, <b>parse_ssh_private_key()</b>,
-    <b>path_validate_user_path()</b>, <b>peer_crypto_destroy()</b>,
-    <b>peer_crypto_output_pop()</b>, <b>platform_directory_list_destroy()</b>,
-    <b>platform_event_listen()</b>, <b>platform_event_loop_create()</b>,
-    <b>platform_event_loop_destroy()</b>, <b>platform_event_loop_work()</b>,
-    <b>platform_event_stream_close()</b>, <b>platform_event_stream_work()</b>,
-    <b>platform_event_stream_write()</b>, <b>platform_is_binary_in_path()</b>,
-    <b>platform_process_title_destroy()</b>,
-    <b>platform_process_title_set_args()</b>, <b>platform_wakeup_destroy()</b>,
-    <b>read_password_from_stdin()</b>, <b>remove_known_host()</b>,
-    <b>render_file_create()</b>, <b>render_file_destroy()</b>,
-    <b>render_progress_create()</b>, <b>render_progress_destroy()</b>,
-    <b>render_progress_frame()</b>, <b>ringbuffer_destroy()</b>,
-    <b>sdp_session_destroy()</b>, <b>session_audio_create()</b>,
-    <b>session_audio_destroy()</b>, <b>session_av_state_destroy()</b>,
-    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
-    <b>session_consensus_create()</b>, <b>session_consensus_destroy()</b>,
-    <b>session_display_destroy()</b>, <b>session_display_encode_frame()</b>,
-    <b>session_display_release_ascii()</b>,
-    <b>session_display_render_frame()</b>,
-    <b>session_display_write_ascii_frame()</b>, <b>session_entry_destroy()</b>,
-    <b>session_host_create()</b>, <b>session_host_destroy()</b>,
-    <b>session_log_buffer_destroy()</b>,
-    <b>session_network_capture_create()</b>,
-    <b>session_participant_create()</b>, <b>session_participant_destroy()</b>,
-    <b>session_participant_receive_settings()</b>,
-    <b>session_participant_request_settings()</b>,
-    <b>session_pipeline_create()</b>, <b>session_pipeline_destroy()</b>,
-    <b>session_protocol_dispatch()</b>,
-    <b>session_protocol_update_settings()</b>, <b>session_render_loop()</b>,
-    <b>session_settings_from_options()</b>, <b>simd_caches_destroy_all()</b>,
-    <b>simple_frame_swap_destroy()</b>, <b>spectral_destroy()</b>,
-    <b>ssh_agent_sign()</b>, <b>stats_runtime_peer_close()</b>,
-    <b>stats_runtime_peer_open()</b>, <b>stats_sampler_create()</b>,
-    <b>stats_sampler_destroy()</b>, <b>stats_scope_create()</b>,
-    <b>stats_scope_destroy()</b>, <b>symbol_cache_destroy()</b>,
-    <b>symbol_cache_free_symbols()</b>, <b>symbol_cache_insert()</b>,
-    <b>symbol_cache_resolve_batch()</b>, <b>term_renderer_create()</b>,
-    <b>term_renderer_destroy()</b>, <b>term_renderer_feed()</b>,
-    <b>terminal_fd_reader_destroy()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>terminal_fd_writer_destroy()</b>, <b>terminal_screen_compose()</b>,
-    <b>terminal_screen_render()</b>, <b>test_pattern_destroy()</b>,
-    <b>test_pattern_resize()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_destroy()</b>,
-    <b>thread_pool_spawn()</b>, <b>thread_pool_stop_all()</b>,
-    <b>timer_start()</b>, <b>timer_stop()</b>, <b>timer_system_destroy()</b>,
-    <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
-    <b>ui_password_prompt_present()</b>, <b>ui_prompt_present_kind()</b>,
-    <b>ui_session_destroy()</b>, <b>ui_session_help_free()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>update_check_save_cache()</b>, <b>url_parse()</b>,
-    <b>url_parts_destroy()</b>, <b>utf8_palette_create()</b>,
-    <b>utf8_palette_destroy()</b>, <b>validate_options_and_report()</b>,
-    <b>validate_ssh_key_file()</b>, <b>video_encoder_create()</b>,
-    <b>video_frame_buffer_create()</b>, <b>video_frame_buffer_destroy()</b>,
-    <b>wasm_options_release()</b>, <b>wasm_options_values()</b>,
-    <b>wav_writer_close()</b>, <b>wav_writer_open()</b>,
-    <b>webrtc_close_peer_connection()</b>,
-    <b>webrtc_create_peer_connection()</b>, <b>webrtc_datachannel_destroy()</b>,
-    <b>webrtc_peer_connection_destroy()</b>,
-    <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
-    <b>webrtc_peer_manager_handle_sdp()</b>, and <b>zalgo_apply()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_GETENV(_name)"><a class="permalink" href="#_define_SAFE_GETENV(_name)">#define
-  SAFE_GETENV( name)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_getenv(name)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>434</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_otel_init()</b>,
-    <b>asciichat_instr_log_line()</b>, <b>asciichat_instr_runtime_get()</b>,
-    <b>asciichat_pcre2_singleton_get_code()</b>,
-    <b>client_connection_checkpoint()</b>, <b>detect_client_utf8_support()</b>,
-    <b>detect_terminal_background()</b>, <b>env_has_prompt_response()</b>,
-    <b>env_pop_prompt_response()</b>,
-    <b>env_validate_prompt_response_format()</b>, <b>log_init()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>,
-    <b>options_config_print_usage_section()</b>,
-    <b>options_config_set_defaults()</b>, <b>options_print_help_for_mode()</b>,
-    <b>render_file_create()</b>, <b>sdp_detect_terminal_capabilities()</b>,
-    <b>session_client_like_run()</b>, <b>terminal_can_prompt_user()</b>,
-    <b>terminal_should_color_output()</b>,
-    <b>terminal_should_force_stderr()</b>,
-    <b>terminal_should_use_control_sequences()</b>,
-    <b>test_get_binary_path()</b>, <b>update_banner_install_update()</b>,
-    <b>update_check_perform()</b>, and <b>wav_dump_enabled()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MALLOC(_size,__cast)"><a class="permalink" href="#_define_SAFE_MALLOC(_size,__cast)">#define
-  SAFE_MALLOC( size, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>376</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_default_path()</b>,
+            <b>acds_server_shutdown()</b>, <b>acds_strings_destroy()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_outbound_create()</b>, <b>acip_outbound_destroy()</b>,
+            <b>acip_outbound_submitv()</b>,
+            <b>acip_render_settings_capabilities()</b>,
+            <b>acip_security_cleanup()</b>, <b>acip_settings_request()</b>,
+            <b>acip_settings_send()</b>, <b>acip_tcp_transport_create()</b>,
+            <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acip_websocket_runtime_create()</b>,
+            <b>acip_websocket_runtime_destroy()</b>, <b>add_known_host()</b>,
+            <b>ascii_convert()</b>,
+            <b>ascii_convert_with_buffers_stabilized()</b>,
+            <b>ascii_create_grid()</b>, <b>ascii_frame_finish()</b>,
+            <b>ascii_render()</b>, <b>ascii_stabilizer_prepare()</b>,
+            <b>ascii_stabilizer_reset()</b>, <b>ascii_write()</b>,
+            <b>asciichat_instr_runtime_destroy()</b>,
+            <b>asciichat_instr_runtime_get()</b>,
+            <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
+            <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_free()</b>, <b>audio_destroy()</b>,
+            <b>audio_free_device_list()</b>, <b>audio_init()</b>,
+            <b>audio_processor_create()</b>, <b>audio_processor_destroy()</b>,
+            <b>audio_recording_destroy()</b>,
+            <b>audio_visualization_render_fft()</b>,
+            <b>audio_visualization_render_waveform()</b>,
+            <b>browser_discovery_destroy()</b>, <b>buffer_domain_create()</b>,
+            <b>check_known_host_no_identity()</b>,
+            <b>check_known_host_with_key()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_destroy()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>client_connection_destroy()</b>, <b>client_free_string()</b>,
+            <b>client_settings_receive()</b>, <b>client_settings_values()</b>,
+            <b>client_video_render_thread()</b>,
+            <b>colorscheme_cleanup_compiled()</b>,
+            <b>completions_collect_all_modes_unique()</b>,
+            <b>completions_generate_fish()</b>,
+            <b>completions_generate_powershell()</b>,
+            <b>completions_generate_zsh()</b>, <b>config_create_default()</b>,
+            <b>config_load_and_apply()</b>,
+            <b>config_schema_build_from_configs()</b>,
+            <b>config_schema_destroy()</b>,
+            <b>consensus_coordinator_create()</b>,
+            <b>consensus_coordinator_destroy()</b>,
+            <b>consensus_election_choose_hosts()</b>,
+            <b>consensus_metrics_collection_add()</b>,
+            <b>consensus_metrics_collection_destroy()</b>,
+            <b>consensus_state_destroy()</b>,
+            <b>consensus_topology_create()</b>,
+            <b>consensus_topology_destroy()</b>,
+            <b>create_mixed_ascii_frame_for_client()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>crypto_regex_match_known_hosts()</b>,
+            <b>crypto_regex_match_public_key()</b>,
+            <b>debug_sync_print_state()</b>,
+            <b>detect_client_utf8_support()</b>,
+            <b>detect_default_ssh_key()</b>, <b>digital_rain_destroy()</b>,
+            <b>digital_rain_init()</b>, <b>digital_rain_render_at()</b>,
+            <b>discover_session_parallel()</b>,
+            <b>discovery_keys_get_cache_path()</b>,
+            <b>discovery_mdns_destroy()</b>, <b>discovery_session_create()</b>,
+            <b>discovery_session_destroy()</b>, <b>display_height()</b>,
+            <b>display_width()</b>, <b>ducking_destroy()</b>,
+            <b>ducking_init()</b>, <b>face_follow_image_destroy()</b>,
+            <b>fetch_github_gpg_keys()</b>, <b>fetch_github_ssh_keys()</b>,
+            <b>fetch_gitlab_gpg_keys()</b>, <b>fetch_gitlab_ssh_keys()</b>,
+            <b>ffmpeg_decoder_create_stdin()</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>,
+            <b>ffmpeg_decoder_destroy()</b>,
+            <b>ffmpeg_encoder_create_scaled()</b>, <b>format_message()</b>,
+            <b>fps_counter_destroy()</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+            <b>frame_buffer_flush()</b>, <b>frame_buffer_printf()</b>,
+            <b>framebuffer_create()</b>, <b>framebuffer_create_multi()</b>,
+            <b>framebuffer_destroy()</b>, <b>get_discovery_database_dir()</b>,
+            <b>get_known_hosts_path()</b>, <b>get_log_dir()</b>,
+            <b>gpg_get_public_key()</b>, <b>gpg_homedir_create()</b>,
+            <b>gpg_homedir_destroy()</b>, <b>grep_destroy()</b>,
+            <b>grep_init()</b>, <b>grep_restore_patterns()</b>,
+            <b>grep_save_patterns()</b>, <b>grep_should_output()</b>,
+            <b>h265_client_context_create()</b>,
+            <b>h265_client_context_destroy()</b>,
+            <b>h265_client_init_media_source()</b>,
+            <b>h265_decoder_create()</b>, <b>h265_decoder_destroy()</b>,
+            <b>h265_encoder_destroy()</b>, <b>h265_server_context_destroy()</b>,
+            <b>handle_audio_batch_packet()</b>,
+            <b>handle_audio_opus_batch_packet()</b>,
+            <b>handle_audio_packet()</b>,
+            <b>handle_image_frame_h265_packet()</b>,
+            <b>handle_image_frame_packet()</b>, <b>https_get()</b>,
+            <b>keyboard_help_toggle_terminal()</b>,
+            <b>known_hosts_destroy()</b>, <b>layout_print_two_column_row()</b>,
+            <b>levenshtein()</b>, <b>levenshtein_n()</b>,
+            <b>log_mmap_write()</b>, <b>log_net_message()</b>,
+            <b>log_search_render_input_line()</b>,
+            <b>manpage_content_free_environment()</b>,
+            <b>manpage_content_free_examples()</b>,
+            <b>manpage_content_free_options()</b>,
+            <b>manpage_content_free_positional()</b>,
+            <b>manpage_content_free_usage()</b>,
+            <b>manpage_content_generate_environment_with_manual()</b>,
+            <b>manpage_content_generate_examples()</b>,
+            <b>manpage_content_generate_options()</b>,
+            <b>manpage_merger_free_content()</b>,
+            <b>manpage_parser_free_sections()</b>,
+            <b>manpage_resources_destroy()</b>, <b>mcp_render_execute()</b>,
+            <b>mcp_request_destroy()</b>, <b>mcp_server_main()</b>,
+            <b>mcp_stdio_run()</b>, <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>memory_backend_create()</b>,
+            <b>mirror_convert_frame()</b>, <b>mirror_free_string()</b>,
+            <b>mirror_render_audio_visualization()</b>,
+            <b>mixer_add_source()</b>, <b>mixer_create_channels()</b>,
+            <b>mixer_destroy()</b>, <b>mixer_remove_source()</b>,
+            <b>mutex_stack_free_all_threads()</b>,
+            <b>mutex_stack_get_all_threads()</b>, <b>nat_upnp_close()</b>,
+            <b>nat_upnp_open_protocol()</b>, <b>network_server_create()</b>,
+            <b>network_server_destroy()</b>, <b>openpgp_base64_decode()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>,
+            <b>openpgp_parse_armored_seckey()</b>, <b>options_apply_patch()</b>,
+            <b>options_builder_build()</b>, <b>options_builder_create()</b>,
+            <b>options_builder_destroy()</b>, <b>options_config_destroy()</b>,
+            <b>options_config_parse_positional()</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>options_config_print_usage()</b>,
+            <b>options_config_set_defaults()</b>, <b>options_init()</b>,
+            <b>options_json_parse_value()</b>, <b>options_state_destroy()</b>,
+            <b>options_struct_destroy()</b>,
+            <b>opus_codec_create_decoder_channels()</b>,
+            <b>opus_codec_create_encoder_channels()</b>,
+            <b>opus_codec_destroy()</b>, <b>packet_queue_create_config()</b>,
+            <b>packet_queue_destroy()</b>, <b>packet_send_error()</b>,
+            <b>packet_send_remote_log()</b>, <b>parse_gpg_key_binary()</b>,
+            <b>parse_gpg_keys_from_response()</b>,
+            <b>parse_keys_from_file()</b>, <b>parse_log_file()</b>,
+            <b>parse_private_key()</b>, <b>parse_public_key()</b>,
+            <b>parse_public_keys()</b>, <b>parse_ssh_ed25519_line()</b>,
+            <b>parse_ssh_keys_from_response()</b>,
+            <b>parse_ssh_private_key()</b>, <b>path_validate_user_path()</b>,
+            <b>peer_crypto_destroy()</b>, <b>peer_crypto_output_pop()</b>,
+            <b>platform_directory_list_destroy()</b>,
+            <b>platform_event_listen()</b>, <b>platform_event_loop_create()</b>,
+            <b>platform_event_loop_destroy()</b>,
+            <b>platform_event_loop_work()</b>,
+            <b>platform_event_stream_close()</b>,
+            <b>platform_event_stream_work()</b>,
+            <b>platform_event_stream_write()</b>,
+            <b>platform_is_binary_in_path()</b>,
+            <b>platform_process_title_destroy()</b>,
+            <b>platform_process_title_set_args()</b>,
+            <b>platform_wakeup_destroy()</b>, <b>read_password_from_stdin()</b>,
+            <b>remove_known_host()</b>, <b>render_file_create()</b>,
+            <b>render_file_destroy()</b>, <b>render_progress_create()</b>,
+            <b>render_progress_destroy()</b>, <b>render_progress_frame()</b>,
+            <b>ringbuffer_destroy()</b>, <b>sdp_session_destroy()</b>,
+            <b>session_audio_create()</b>, <b>session_audio_destroy()</b>,
+            <b>session_av_state_destroy()</b>, <b>session_capture_create()</b>,
+            <b>session_capture_destroy()</b>, <b>session_consensus_create()</b>,
+            <b>session_consensus_destroy()</b>,
+            <b>session_display_destroy()</b>,
+            <b>session_display_encode_frame()</b>,
+            <b>session_display_release_ascii()</b>,
+            <b>session_display_render_frame()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_entry_destroy()</b>, <b>session_host_create()</b>,
+            <b>session_host_destroy()</b>, <b>session_log_buffer_destroy()</b>,
+            <b>session_network_capture_create()</b>,
+            <b>session_participant_create()</b>,
+            <b>session_participant_destroy()</b>,
+            <b>session_participant_receive_settings()</b>,
+            <b>session_participant_request_settings()</b>,
+            <b>session_pipeline_create()</b>, <b>session_pipeline_destroy()</b>,
+            <b>session_protocol_dispatch()</b>,
+            <b>session_protocol_update_settings()</b>,
+            <b>session_render_loop()</b>,
+            <b>session_settings_from_options()</b>,
+            <b>simd_caches_destroy_all()</b>,
+            <b>simple_frame_swap_destroy()</b>, <b>spectral_destroy()</b>,
+            <b>ssh_agent_sign()</b>, <b>stats_runtime_peer_close()</b>,
+            <b>stats_runtime_peer_open()</b>, <b>stats_sampler_create()</b>,
+            <b>stats_sampler_destroy()</b>, <b>stats_scope_create()</b>,
+            <b>stats_scope_destroy()</b>, <b>symbol_cache_destroy()</b>,
+            <b>symbol_cache_free_symbols()</b>, <b>symbol_cache_insert()</b>,
+            <b>symbol_cache_resolve_batch()</b>, <b>term_renderer_create()</b>,
+            <b>term_renderer_destroy()</b>, <b>term_renderer_feed()</b>,
+            <b>terminal_fd_reader_destroy()</b>,
+            <b>terminal_fd_reader_next()</b>,
+            <b>terminal_fd_writer_destroy()</b>,
+            <b>terminal_screen_compose()</b>, <b>terminal_screen_render()</b>,
+            <b>test_pattern_destroy()</b>, <b>test_pattern_resize()</b>,
+            <b>thread_pool_create()</b>,
+            <b>thread_pool_create_with_workers()</b>,
+            <b>thread_pool_destroy()</b>, <b>thread_pool_spawn()</b>,
+            <b>thread_pool_stop_all()</b>, <b>timer_start()</b>,
+            <b>timer_stop()</b>, <b>timer_system_destroy()</b>,
+            <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
+            <b>ui_password_prompt_present()</b>,
+            <b>ui_prompt_present_kind()</b>, <b>ui_session_destroy()</b>,
+            <b>ui_session_help_free()</b>, <b>update_check_load_cache()</b>,
+            <b>update_check_perform()</b>, <b>update_check_save_cache()</b>,
+            <b>url_parse()</b>, <b>url_parts_destroy()</b>,
+            <b>utf8_palette_create()</b>, <b>utf8_palette_destroy()</b>,
+            <b>validate_options_and_report()</b>,
+            <b>validate_ssh_key_file()</b>, <b>video_encoder_create()</b>,
+            <b>video_frame_buffer_create()</b>,
+            <b>video_frame_buffer_destroy()</b>, <b>wasm_options_release()</b>,
+            <b>wasm_options_values()</b>, <b>wav_writer_close()</b>,
+            <b>wav_writer_open()</b>, <b>webrtc_close_peer_connection()</b>,
+            <b>webrtc_create_peer_connection()</b>,
+            <b>webrtc_datachannel_destroy()</b>,
+            <b>webrtc_peer_connection_destroy()</b>,
+            <b>webrtc_peer_manager_create()</b>,
+            <b>webrtc_peer_manager_destroy()</b>,
+            <b>webrtc_peer_manager_handle_sdp()</b>, and <b>zalgo_apply()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_GETENV(_name)">
+            <a class="permalink" href="#_define_SAFE_GETENV(_name)"
+              >#define SAFE_GETENV( name)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_getenv(name)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>434</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_init()</b>,
+            <b>asciichat_instr_log_line()</b>,
+            <b>asciichat_instr_runtime_get()</b>,
+            <b>asciichat_pcre2_singleton_get_code()</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>detect_client_utf8_support()</b>,
+            <b>detect_terminal_background()</b>,
+            <b>env_has_prompt_response()</b>, <b>env_pop_prompt_response()</b>,
+            <b>env_validate_prompt_response_format()</b>, <b>log_init()</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>options_config_print_usage()</b>,
+            <b>options_config_print_usage_section()</b>,
+            <b>options_config_set_defaults()</b>,
+            <b>options_print_help_for_mode()</b>, <b>render_file_create()</b>,
+            <b>sdp_detect_terminal_capabilities()</b>,
+            <b>session_client_like_run()</b>, <b>terminal_can_prompt_user()</b>,
+            <b>terminal_should_color_output()</b>,
+            <b>terminal_should_force_stderr()</b>,
+            <b>terminal_should_use_control_sequences()</b>,
+            <b>test_get_binary_path()</b>,
+            <b>update_banner_install_update()</b>,
+            <b>update_check_perform()</b>, and <b>wav_dump_enabled()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_MALLOC(_size,__cast)">
+            <a class="permalink" href="#_define_SAFE_MALLOC(_size,__cast)"
+              >#define SAFE_MALLOC( size, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>({                                                                                                                   \
 <br/>
   cast _ptr = (cast)ALLOC_MALLOC(size);                                                                              \
 <br/>
@@ -873,112 +1203,142 @@ if (result != OK) {
 <br/>
   _ptr;                                                                                                              \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>264</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>,
-    <b>acip_render_settings_capabilities()</b>, <b>acip_settings_request()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>add_known_host()</b>,
-    <b>ansi_strip_escapes()</b>, <b>ascii_create_grid()</b>,
-    <b>ascii_frame_init()</b>, <b>ascii_half_frame_init()</b>,
-    <b>ascii_pad_frame_height()</b>, <b>ascii_pad_frame_width()</b>,
-    <b>ascii_write()</b>, <b>asciichat_mdns_init()</b>,
-    <b>asciichat_pcre2_extract_group()</b>,
-    <b>asciichat_pcre2_extract_named_group()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>, <b>audio_init()</b>,
-    <b>audio_visualization_render_fft()</b>,
-    <b>audio_visualization_render_waveform()</b>,
-    <b>client_audio_render_thread()</b>, <b>client_get_public_key_hex()</b>,
-    <b>client_parse_packet()</b>, <b>client_settings_receive()</b>,
-    <b>client_settings_values()</b>, <b>colorscheme_compile_scheme()</b>,
-    <b>config_create_default()</b>, <b>config_load_and_apply()</b>,
-    <b>config_schema_build_from_configs()</b>,
-    <b>consensus_coordinator_create()</b>,
-    <b>consensus_election_choose_hosts()</b>,
-    <b>consensus_metrics_collection_add()</b>,
-    <b>consensus_metrics_collection_create()</b>,
-    <b>consensus_state_create()</b>, <b>consensus_topology_create()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_start()</b>, <b>debug_sync_print_state()</b>,
-    <b>digital_rain_render_at()</b>, <b>discover_session_parallel()</b>,
-    <b>discovery_mdns_query()</b>, <b>ducking_init()</b>, <b>expand_path()</b>,
-    <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_decoder_create_with_request_options()</b>,
-    <b>format_message()</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer_create()</b>, <b>frame_buffer_flush()</b>,
-    <b>frame_buffer_printf()</b>, <b>get_known_hosts_path()</b>,
-    <b>get_log_dir()</b>, <b>get_modes_by_group()</b>,
-    <b>get_utf8_palette_cache()</b>, <b>gpg_homedir_create()</b>,
-    <b>grep_highlight_colored_copy()</b>, <b>grep_init()</b>,
-    <b>grep_restore_patterns()</b>, <b>grep_save_patterns()</b>,
-    <b>grep_should_output()</b>, <b>h265_client_context_create()</b>,
-    <b>h265_client_init_media_source()</b>, <b>handle_audio_batch_packet()</b>,
-    <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_packet()</b>,
-    <b>handle_image_frame_h265_packet()</b>, <b>https_get()</b>,
-    <b>levenshtein()</b>, <b>manpage_content_generate_environment()</b>,
-    <b>manpage_content_generate_environment_with_manual()</b>,
-    <b>manpage_content_generate_examples()</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>manpage_content_generate_positional()</b>,
-    <b>manpage_content_generate_usage()</b>,
-    <b>manpage_merger_generate_synopsis()</b>,
-    <b>manpage_merger_generate_usage()</b>,
-    <b>manpage_merger_merge_environment()</b>,
-    <b>manpage_merger_merge_options()</b>,
-    <b>manpage_merger_merge_positional()</b>, <b>mcp_render_execute()</b>,
-    <b>mcp_stdio_run()</b>, <b>media_source_create_interruptible()</b>,
-    <b>memory_backend_create()</b>, <b>mirror_convert_frame()</b>,
-    <b>mixer_add_source()</b>, <b>mixer_create_channels()</b>,
-    <b>mutex_stack_get_all_threads()</b>, <b>openpgp_base64_decode()</b>,
-    <b>options_apply_patch()</b>, <b>options_builder_build()</b>,
-    <b>options_builder_create()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>, <b>options_get_enum_values()</b>,
-    <b>options_registry_get_binary_options()</b>,
-    <b>options_registry_get_for_display()</b>,
-    <b>options_registry_get_for_mode()</b>, <b>options_state_init()</b>,
-    <b>options_state_set()</b>, <b>opus_codec_create_decoder_channels()</b>,
-    <b>opus_codec_create_encoder_channels()</b>, <b>packet_send_error()</b>,
-    <b>packet_send_remote_log()</b>, <b>parse_gpg_key_binary()</b>,
-    <b>parse_gpg_keys_from_response()</b>, <b>parse_keys_from_file()</b>,
-    <b>parse_private_key()</b>, <b>parse_public_key()</b>,
-    <b>parse_public_keys()</b>, <b>parse_ssh_keys_from_response()</b>,
-    <b>path_validate_user_path()</b>, <b>platform_event_stream_write()</b>,
-    <b>platform_is_binary_in_path()</b>, <b>platform_process_title_init()</b>,
-    <b>platform_process_title_set_args()</b>, <b>platform_wakeup_create()</b>,
-    <b>rainbow_render_ansi_at()</b>, <b>read_password_from_stdin()</b>,
-    <b>render_file_create()</b>, <b>sdp_generate_answer()</b>,
-    <b>sdp_generate_offer()</b>, <b>sdp_parse()</b>,
-    <b>session_capture_create()</b>, <b>session_display_write_ascii_frame()</b>,
-    <b>session_network_capture_create()</b>,
-    <b>session_participant_receive_settings()</b>,
-    <b>session_participant_request_settings()</b>,
-    <b>session_protocol_dispatch()</b>,
-    <b>session_protocol_update_settings()</b>,
-    <b>session_settings_from_options()</b>, <b>simple_frame_swap_create()</b>,
-    <b>ssh_agent_sign()</b>, <b>symbol_cache_resolve_batch()</b>,
-    <b>term_renderer_create()</b>, <b>term_renderer_feed()</b>,
-    <b>terminal_fd_reader_create()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>terminal_screen_compose()</b>, <b>terminal_screen_render()</b>,
-    <b>test_pattern_rgba()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_queue_work()</b>,
-    <b>thread_pool_spawn()</b>, <b>timer_start()</b>,
-    <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
-    <b>ui_prompt_present_kind()</b>, <b>ui_session_context_help_render()</b>,
-    <b>ui_session_help_render()</b>, <b>utf8_palette_create()</b>,
-    <b>video_encoder_create()</b>, <b>video_frame_buffer_create()</b>,
-    <b>visualization_encode()</b>, <b>wasm_options_values()</b>,
-    <b>wav_writer_open()</b>, <b>webrtc_create_peer_connection()</b>,
-    <b>webrtc_peer_manager_create()</b>,
-    <b>webrtc_peer_manager_handle_sdp()</b>, and <b>zalgo_apply()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MALLOC_ALIGNED(_size,__alignment,__cast)"><a class="permalink" href="#_define_SAFE_MALLOC_ALIGNED(_size,__alignment,__cast)">#define
-  SAFE_MALLOC_ALIGNED( size, alignment, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>264</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>acip_render_settings_capabilities()</b>,
+            <b>acip_settings_request()</b>, <b>acip_tcp_transport_create()</b>,
+            <b>add_known_host()</b>, <b>ansi_strip_escapes()</b>,
+            <b>ascii_create_grid()</b>, <b>ascii_frame_init()</b>,
+            <b>ascii_half_frame_init()</b>, <b>ascii_pad_frame_height()</b>,
+            <b>ascii_pad_frame_width()</b>, <b>ascii_write()</b>,
+            <b>asciichat_mdns_init()</b>,
+            <b>asciichat_pcre2_extract_group()</b>,
+            <b>asciichat_pcre2_extract_named_group()</b>,
+            <b>asciichat_pcre2_singleton_compile()</b>, <b>audio_init()</b>,
+            <b>audio_visualization_render_fft()</b>,
+            <b>audio_visualization_render_waveform()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>client_get_public_key_hex()</b>, <b>client_parse_packet()</b>,
+            <b>client_settings_receive()</b>, <b>client_settings_values()</b>,
+            <b>colorscheme_compile_scheme()</b>, <b>config_create_default()</b>,
+            <b>config_load_and_apply()</b>,
+            <b>config_schema_build_from_configs()</b>,
+            <b>consensus_coordinator_create()</b>,
+            <b>consensus_election_choose_hosts()</b>,
+            <b>consensus_metrics_collection_add()</b>,
+            <b>consensus_metrics_collection_create()</b>,
+            <b>consensus_state_create()</b>, <b>consensus_topology_create()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>debug_sync_print_state()</b>, <b>digital_rain_render_at()</b>,
+            <b>discover_session_parallel()</b>, <b>discovery_mdns_query()</b>,
+            <b>ducking_init()</b>, <b>expand_path()</b>,
+            <b>ffmpeg_decoder_create_stdin()</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>,
+            <b>format_message()</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_flush()</b>,
+            <b>frame_buffer_printf()</b>, <b>get_known_hosts_path()</b>,
+            <b>get_log_dir()</b>, <b>get_modes_by_group()</b>,
+            <b>get_utf8_palette_cache()</b>, <b>gpg_homedir_create()</b>,
+            <b>grep_highlight_colored_copy()</b>, <b>grep_init()</b>,
+            <b>grep_restore_patterns()</b>, <b>grep_save_patterns()</b>,
+            <b>grep_should_output()</b>, <b>h265_client_context_create()</b>,
+            <b>h265_client_init_media_source()</b>,
+            <b>handle_audio_batch_packet()</b>,
+            <b>handle_audio_opus_batch_packet()</b>,
+            <b>handle_audio_packet()</b>,
+            <b>handle_image_frame_h265_packet()</b>, <b>https_get()</b>,
+            <b>levenshtein()</b>, <b>manpage_content_generate_environment()</b>,
+            <b>manpage_content_generate_environment_with_manual()</b>,
+            <b>manpage_content_generate_examples()</b>,
+            <b>manpage_content_generate_options()</b>,
+            <b>manpage_content_generate_positional()</b>,
+            <b>manpage_content_generate_usage()</b>,
+            <b>manpage_merger_generate_synopsis()</b>,
+            <b>manpage_merger_generate_usage()</b>,
+            <b>manpage_merger_merge_environment()</b>,
+            <b>manpage_merger_merge_options()</b>,
+            <b>manpage_merger_merge_positional()</b>,
+            <b>mcp_render_execute()</b>, <b>mcp_stdio_run()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>memory_backend_create()</b>, <b>mirror_convert_frame()</b>,
+            <b>mixer_add_source()</b>, <b>mixer_create_channels()</b>,
+            <b>mutex_stack_get_all_threads()</b>,
+            <b>openpgp_base64_decode()</b>, <b>options_apply_patch()</b>,
+            <b>options_builder_build()</b>, <b>options_builder_create()</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>options_config_print_usage()</b>,
+            <b>options_get_enum_values()</b>,
+            <b>options_registry_get_binary_options()</b>,
+            <b>options_registry_get_for_display()</b>,
+            <b>options_registry_get_for_mode()</b>, <b>options_state_init()</b>,
+            <b>options_state_set()</b>,
+            <b>opus_codec_create_decoder_channels()</b>,
+            <b>opus_codec_create_encoder_channels()</b>,
+            <b>packet_send_error()</b>, <b>packet_send_remote_log()</b>,
+            <b>parse_gpg_key_binary()</b>,
+            <b>parse_gpg_keys_from_response()</b>,
+            <b>parse_keys_from_file()</b>, <b>parse_private_key()</b>,
+            <b>parse_public_key()</b>, <b>parse_public_keys()</b>,
+            <b>parse_ssh_keys_from_response()</b>,
+            <b>path_validate_user_path()</b>,
+            <b>platform_event_stream_write()</b>,
+            <b>platform_is_binary_in_path()</b>,
+            <b>platform_process_title_init()</b>,
+            <b>platform_process_title_set_args()</b>,
+            <b>platform_wakeup_create()</b>, <b>rainbow_render_ansi_at()</b>,
+            <b>read_password_from_stdin()</b>, <b>render_file_create()</b>,
+            <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>,
+            <b>sdp_parse()</b>, <b>session_capture_create()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_network_capture_create()</b>,
+            <b>session_participant_receive_settings()</b>,
+            <b>session_participant_request_settings()</b>,
+            <b>session_protocol_dispatch()</b>,
+            <b>session_protocol_update_settings()</b>,
+            <b>session_settings_from_options()</b>,
+            <b>simple_frame_swap_create()</b>, <b>ssh_agent_sign()</b>,
+            <b>symbol_cache_resolve_batch()</b>, <b>term_renderer_create()</b>,
+            <b>term_renderer_feed()</b>, <b>terminal_fd_reader_create()</b>,
+            <b>terminal_fd_reader_next()</b>, <b>terminal_screen_compose()</b>,
+            <b>terminal_screen_render()</b>, <b>test_pattern_rgba()</b>,
+            <b>thread_pool_create()</b>,
+            <b>thread_pool_create_with_workers()</b>,
+            <b>thread_pool_queue_work()</b>, <b>thread_pool_spawn()</b>,
+            <b>timer_start()</b>, <b>ui_notice_present()</b>,
+            <b>ui_notice_present_first_use()</b>,
+            <b>ui_prompt_present_kind()</b>,
+            <b>ui_session_context_help_render()</b>,
+            <b>ui_session_help_render()</b>, <b>utf8_palette_create()</b>,
+            <b>video_encoder_create()</b>, <b>video_frame_buffer_create()</b>,
+            <b>visualization_encode()</b>, <b>wasm_options_values()</b>,
+            <b>wav_writer_open()</b>, <b>webrtc_create_peer_connection()</b>,
+            <b>webrtc_peer_manager_create()</b>,
+            <b>webrtc_peer_manager_handle_sdp()</b>, and <b>zalgo_apply()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SAFE_MALLOC_ALIGNED(_size,__alignment,__cast)"
+          >
+            <a
+              class="permalink"
+              href="#_define_SAFE_MALLOC_ALIGNED(_size,__alignment,__cast)"
+              >#define SAFE_MALLOC_ALIGNED( size, alignment, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>({                                                                                                                   \
 <br/>
   size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
 <br/>
@@ -996,84 +1356,144 @@ if (result != OK) {
 <br/>
   _ptr;                                                                                                              \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>349</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MALLOC_SIMD(_size,__cast)"><a class="permalink" href="#_define_SAFE_MALLOC_SIMD(_size,__cast)">#define
-  SAFE_MALLOC_SIMD( size, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>SAFE_MALLOC_ALIGNED(size, 16, cast)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>364</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MEMCPY(_dest,__dest_size,__src,__count)"><a class="permalink" href="#_define_SAFE_MEMCPY(_dest,__dest_size,__src,__count)">#define
-  SAFE_MEMCPY( dest, dest_size, src, count)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_memcpy((dest), (dest_size), (src), (count))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>468</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>ansi_expand_rle()</b>, <b>ansi_rle_finish()</b>,
-    <b>ascii_create_grid()</b>, <b>ascii_pad_frame_height()</b>,
-    <b>ascii_pad_frame_width()</b>, <b>audio_ring_buffer_peek()</b>,
-    <b>audio_ring_buffer_read()</b>, <b>audio_ring_buffer_write()</b>,
-    <b>backtrace_format_styled()</b>, <b>client_audio_render_thread()</b>,
-    <b>crypto_create_auth_challenge()</b>,
-    <b>crypto_create_encrypted_packet()</b>,
-    <b>crypto_create_public_key_packet()</b>, <b>crypto_encrypt()</b>,
-    <b>crypto_get_public_key()</b>, <b>crypto_process_auth_challenge()</b>,
-    <b>crypto_process_auth_response()</b>,
-    <b>crypto_process_encrypted_packet()</b>,
-    <b>crypto_process_public_key_packet()</b>, <b>crypto_rekey_commit()</b>,
-    <b>crypto_set_peer_public_key()</b>,
-    <b>framebuffer_peek_latest_multi_frame()</b>,
-    <b>framebuffer_write_frame()</b>, <b>framebuffer_write_multi_frame()</b>,
-    <b>initialize_client_palette()</b>, <b>ob_write()</b>,
-    <b>ringbuffer_peek()</b>, <b>ringbuffer_read()</b>,
-    <b>ringbuffer_write()</b>, <b>simple_frame_swap_update()</b>, and
-    <b>utf8_palette_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MEMMOVE(_dest,__dest_size,__src,__count)"><a class="permalink" href="#_define_SAFE_MEMMOVE(_dest,__dest_size,__src,__count)">#define
-  SAFE_MEMMOVE( dest, dest_size, src, count)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_memmove((dest), (dest_size), (src), (count))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>470</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)"><a class="permalink" href="#_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)">#define
-  SAFE_MEMSET( dest, dest_size, ch, count)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_memset((dest), (dest_size), (ch), (count))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>469</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_pad_frame_width()</b>,
-    <b>audio_analysis_init()</b>, <b>audio_init()</b>,
-    <b>audio_ring_buffer_clear()</b>, <b>detect_client_utf8_support()</b>,
-    <b>ducking_init()</b>, <b>framebuffer_clear()</b>, <b>image_clear()</b>,
-    <b>mixer_create_channels()</b>, <b>mixer_process()</b>,
-    <b>mixer_process_excluding_source()</b>, <b>resample_linear()</b>,
-    <b>session_protocol_build_capabilities()</b>,
-    <b>threaded_send_client_join_packet()</b>, and
-  <b>utf8_palette_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_REALLOC(_ptr,__size,__cast)"><a class="permalink" href="#_define_SAFE_REALLOC(_ptr,__size,__cast)">#define
-  SAFE_REALLOC( ptr, size, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>349</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_MALLOC_SIMD(_size,__cast)">
+            <a class="permalink" href="#_define_SAFE_MALLOC_SIMD(_size,__cast)"
+              >#define SAFE_MALLOC_SIMD( size, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>SAFE_MALLOC_ALIGNED(size, 16, cast)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>364</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SAFE_MEMCPY(_dest,__dest_size,__src,__count)"
+          >
+            <a
+              class="permalink"
+              href="#_define_SAFE_MEMCPY(_dest,__dest_size,__src,__count)"
+              >#define SAFE_MEMCPY( dest, dest_size, src, count)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_memcpy((dest), (dest_size), (src), (count))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>468</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ansi_expand_rle()</b>, <b>ansi_rle_finish()</b>,
+            <b>ascii_create_grid()</b>, <b>ascii_pad_frame_height()</b>,
+            <b>ascii_pad_frame_width()</b>, <b>audio_ring_buffer_peek()</b>,
+            <b>audio_ring_buffer_read()</b>, <b>audio_ring_buffer_write()</b>,
+            <b>backtrace_format_styled()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>crypto_create_auth_challenge()</b>,
+            <b>crypto_create_encrypted_packet()</b>,
+            <b>crypto_create_public_key_packet()</b>, <b>crypto_encrypt()</b>,
+            <b>crypto_get_public_key()</b>,
+            <b>crypto_process_auth_challenge()</b>,
+            <b>crypto_process_auth_response()</b>,
+            <b>crypto_process_encrypted_packet()</b>,
+            <b>crypto_process_public_key_packet()</b>,
+            <b>crypto_rekey_commit()</b>, <b>crypto_set_peer_public_key()</b>,
+            <b>framebuffer_peek_latest_multi_frame()</b>,
+            <b>framebuffer_write_frame()</b>,
+            <b>framebuffer_write_multi_frame()</b>,
+            <b>initialize_client_palette()</b>, <b>ob_write()</b>,
+            <b>ringbuffer_peek()</b>, <b>ringbuffer_read()</b>,
+            <b>ringbuffer_write()</b>, <b>simple_frame_swap_update()</b>, and
+            <b>utf8_palette_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SAFE_MEMMOVE(_dest,__dest_size,__src,__count)"
+          >
+            <a
+              class="permalink"
+              href="#_define_SAFE_MEMMOVE(_dest,__dest_size,__src,__count)"
+              >#define SAFE_MEMMOVE( dest, dest_size, src, count)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_memmove((dest), (dest_size), (src), (count))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>470</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)"
+          >
+            <a
+              class="permalink"
+              href="#_define_SAFE_MEMSET(_dest,__dest_size,__ch,__count)"
+              >#define SAFE_MEMSET( dest, dest_size, ch, count)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_memset((dest), (dest_size), (ch), (count))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>469</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_pad_frame_width()</b>,
+            <b>audio_analysis_init()</b>, <b>audio_init()</b>,
+            <b>audio_ring_buffer_clear()</b>,
+            <b>detect_client_utf8_support()</b>, <b>ducking_init()</b>,
+            <b>framebuffer_clear()</b>, <b>image_clear()</b>,
+            <b>mixer_create_channels()</b>, <b>mixer_process()</b>,
+            <b>mixer_process_excluding_source()</b>, <b>resample_linear()</b>,
+            <b>session_protocol_build_capabilities()</b>,
+            <b>threaded_send_client_join_packet()</b>, and
+            <b>utf8_palette_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_REALLOC(_ptr,__size,__cast)">
+            <a
+              class="permalink"
+              href="#_define_SAFE_REALLOC(_ptr,__size,__cast)"
+              >#define SAFE_REALLOC( ptr, size, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>({                                                                                                                   \
 <br/>
   void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                      \
 <br/>
@@ -1085,91 +1505,141 @@ if (result != OK) {
 <br/>
   (cast)(tmp_ptr);                                                                                                   \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>284</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>completions_collect_all_modes_unique()</b>,
-    <b>consensus_state_add_metrics()</b>, <b>ensure_dependency_capacity()</b>,
-    <b>ensure_descriptor_capacity()</b>,
-    <b>ensure_positional_arg_capacity()</b>, <b>grep_init()</b>,
-    <b>grep_restore_patterns()</b>, <b>https_get()</b>,
-    <b>manpage_content_generate_environment()</b>,
-    <b>manpage_content_generate_environment_with_manual()</b>,
-    <b>manpage_content_generate_examples()</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>manpage_content_generate_positional()</b>,
-    <b>manpage_content_generate_usage()</b>,
-    <b>manpage_merger_generate_usage()</b>, <b>ob_reserve()</b>,
-    <b>remove_known_host()</b>, and
-  <b>session_display_write_ascii_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_safe_size_mul___bytes_safe_size_mul"><a class="permalink" href="#_define_safe_size_mul___bytes_safe_size_mul">#define
-  safe_size_mul bytes_safe_size_mul</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>488</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>, and
-    <b>packet_validate_frame_dimensions()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_SNPRINTF(_buffer,__"><a class="permalink" href="#_define_SAFE_SNPRINTF(_buffer,__">#define
-  SAFE_SNPRINTF( buffer, <b>buffer_size</b>, ...)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>(size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>492</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_otel_init()</b>,
-    <b>client_crypto_init()</b>, <b>crypto_get_status()</b>,
-    <b>detect_default_ssh_key()</b>, <b>expand_ipv6()</b>,
-    <b>format_available_modes()</b>, <b>format_ip_with_port()</b>,
-    <b>ipv4_to_ipv6_mapped()</b>, <b>mcp_http_run()</b>,
-    <b>mcp_render_execute()</b>, <b>mcp_request_parse()</b>,
-    <b>options_json_parse_value()</b>, <b>parse_client_address()</b>,
-    <b>parse_mirror_media()</b>, <b>parse_server_bind_address()</b>,
-    <b>parse_volume()</b>, <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
-    <b>strip_equals_prefix()</b>, <b>symbol_cache_resolve_batch()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_spawn()</b>,
-    <b>threaded_send_client_join_packet()</b>, <b>validate_opt_color_mode()</b>,
-    <b>validate_opt_device_index()</b>,
-    <b>validate_opt_float_non_negative()</b>, <b>validate_opt_ip_address()</b>,
-    <b>validate_opt_log_level()</b>, <b>validate_opt_palette()</b>,
-    <b>validate_opt_password()</b>, <b>validate_opt_port()</b>,
-    <b>validate_opt_reconnect()</b>, <b>validate_opt_render_mode()</b>,
-    <b>validate_opt_volume()</b>, and
-  <b>webrtc_create_peer_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_SSCANF(_str,__format,__"><a class="permalink" href="#_define_SAFE_SSCANF(_str,__format,__">#define
-  SAFE_SSCANF( str, format, ...)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>sscanf(str, format, __VA_ARGS__)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>440</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_hex_color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_STRCPY(_dest,__dest_size,__src)"><a class="permalink" href="#_define_SAFE_STRCPY(_dest,__dest_size,__src)">#define
-  SAFE_STRCPY( dest, dest_size, src)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_strcpy((dest), (dest_size), (src))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>471</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_init_media_source()</b>,
-    <b>log_named_format_or_original()</b>, <b>main()</b>,
-    <b>mixer_add_source()</b>, and <b>video_frame_buffer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_STRDUP(_dst,__src)"><a class="permalink" href="#_define_SAFE_STRDUP(_dst,__src)">#define
-  SAFE_STRDUP( dst, src)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>284</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>completions_collect_all_modes_unique()</b>,
+            <b>consensus_state_add_metrics()</b>,
+            <b>ensure_dependency_capacity()</b>,
+            <b>ensure_descriptor_capacity()</b>,
+            <b>ensure_positional_arg_capacity()</b>, <b>grep_init()</b>,
+            <b>grep_restore_patterns()</b>, <b>https_get()</b>,
+            <b>manpage_content_generate_environment()</b>,
+            <b>manpage_content_generate_environment_with_manual()</b>,
+            <b>manpage_content_generate_examples()</b>,
+            <b>manpage_content_generate_options()</b>,
+            <b>manpage_content_generate_positional()</b>,
+            <b>manpage_content_generate_usage()</b>,
+            <b>manpage_merger_generate_usage()</b>, <b>ob_reserve()</b>,
+            <b>remove_known_host()</b>, and
+            <b>session_display_write_ascii_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_safe_size_mul___bytes_safe_size_mul">
+            <a
+              class="permalink"
+              href="#_define_safe_size_mul___bytes_safe_size_mul"
+              >#define safe_size_mul bytes_safe_size_mul</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>488</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_audio_batch_packet()</b>, and
+            <b>packet_validate_frame_dimensions()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_SNPRINTF(_buffer,__">
+            <a class="permalink" href="#_define_SAFE_SNPRINTF(_buffer,__"
+              >#define SAFE_SNPRINTF( buffer, <b>buffer_size</b>, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>(size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>492</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_init()</b>, <b>client_crypto_init()</b>,
+            <b>crypto_get_status()</b>, <b>detect_default_ssh_key()</b>,
+            <b>expand_ipv6()</b>, <b>format_available_modes()</b>,
+            <b>format_ip_with_port()</b>, <b>ipv4_to_ipv6_mapped()</b>,
+            <b>mcp_http_run()</b>, <b>mcp_render_execute()</b>,
+            <b>mcp_request_parse()</b>, <b>options_json_parse_value()</b>,
+            <b>parse_client_address()</b>, <b>parse_mirror_media()</b>,
+            <b>parse_server_bind_address()</b>, <b>parse_volume()</b>,
+            <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
+            <b>strip_equals_prefix()</b>, <b>symbol_cache_resolve_batch()</b>,
+            <b>thread_pool_create_with_workers()</b>,
+            <b>thread_pool_spawn()</b>,
+            <b>threaded_send_client_join_packet()</b>,
+            <b>validate_opt_color_mode()</b>,
+            <b>validate_opt_device_index()</b>,
+            <b>validate_opt_float_non_negative()</b>,
+            <b>validate_opt_ip_address()</b>, <b>validate_opt_log_level()</b>,
+            <b>validate_opt_palette()</b>, <b>validate_opt_password()</b>,
+            <b>validate_opt_port()</b>, <b>validate_opt_reconnect()</b>,
+            <b>validate_opt_render_mode()</b>, <b>validate_opt_volume()</b>, and
+            <b>webrtc_create_peer_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_SSCANF(_str,__format,__">
+            <a class="permalink" href="#_define_SAFE_SSCANF(_str,__format,__"
+              >#define SAFE_SSCANF( str, format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>sscanf(str, format, __VA_ARGS__)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>440</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_hex_color()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_STRCPY(_dest,__dest_size,__src)">
+            <a
+              class="permalink"
+              href="#_define_SAFE_STRCPY(_dest,__dest_size,__src)"
+              >#define SAFE_STRCPY( dest, dest_size, src)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_strcpy((dest), (dest_size), (src))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>471</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>h265_client_init_media_source()</b>,
+            <b>log_named_format_or_original()</b>, <b>main()</b>,
+            <b>mixer_add_source()</b>, and <b>video_frame_buffer_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_STRDUP(_dst,__src)">
+            <a class="permalink" href="#_define_SAFE_STRDUP(_dst,__src)"
+              >#define SAFE_STRDUP( dst, src)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if (src) {                                                                                                         \
 <br/>
@@ -1193,96 +1663,140 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>418</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>detect_client_utf8_support()</b>, and
-    <b>url_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_STRERROR(_errnum)"><a class="permalink" href="#_define_SAFE_STRERROR(_errnum)">#define
-  SAFE_STRERROR( errnum)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_strerror(errnum)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>465</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>,
-    <b>gpg_sign_with_key()</b>, <b>gpg_verify_signature_with_binary()</b>,
-    <b>packet_send()</b>, and <b>platform_get_executable_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_STRNCPY(_dst,__src,__size)"><a class="permalink" href="#_define_SAFE_STRNCPY(_dst,__src,__size)">#define
-  SAFE_STRNCPY( dst, src, size)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>platform_strlcpy((dst), (src), (size))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>414</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
-    <b>acds_identity_save()</b>, <b>acds_protocol_create()</b>,
-    <b>acds_protocol_enter()</b>, <b>acds_protocol_join()</b>,
-    <b>acds_protocol_lookup()</b>, <b>acds_protocol_receive()</b>,
-    <b>acds_session_create()</b>, <b>acds_session_join()</b>,
-    <b>acip_render_settings_capabilities()</b>,
-    <b>acip_render_settings_options()</b>,
-    <b>acip_render_settings_prepare()</b>, <b>acip_security_init_options()</b>,
-    <b>asciichat_instr_log_line()</b>, <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_query()</b>, <b>backtrace_format_styled()</b>,
-    <b>build_github_gpg_url()</b>, <b>build_gitlab_gpg_url()</b>,
-    <b>client_audio_render_thread()</b>,
-    <b>client_configure_crypto_options()</b>, <b>client_crypto_init()</b>,
-    <b>client_main()</b>, <b>client_set_server_address()</b>,
-    <b>client_video_render_thread()</b>, <b>colorscheme_compile_scheme()</b>,
-    <b>colorscheme_load_from_file()</b>, <b>config_create_default()</b>,
-    <b>config_schema_build_from_configs()</b>,
-    <b>crypto_handshake_init_with_password()</b>,
-    <b>database_session_join()</b>, <b>database_session_leave()</b>,
-    <b>detect_client_utf8_support()</b>,
-    <b>disconnect_client_for_bad_data()</b>,
-    <b>discovery_config_init_defaults()</b>, <b>discovery_main()</b>,
-    <b>discovery_session_create()</b>, <b>env_pop_prompt_response()</b>,
-    <b>escape_path_for_shell()</b>, <b>extract_gpg_key_comment()</b>,
-    <b>extract_ip_from_address()</b>, <b>format_gpg_key_display()</b>,
-    <b>format_ip_with_port()</b>, <b>get_utf8_palette_cache()</b>,
-    <b>gpg_get_public_key()</b>, <b>grep_highlight_colored()</b>,
-    <b>handle_client_join_packet()</b>, <b>is_valid_ipv4()</b>,
-    <b>is_valid_ipv6()</b>, <b>layout_print_wrapped_description()</b>,
-    <b>log_init()</b>, <b>log_mmap_init()</b>, <b>log_recolor_plain_entry()</b>,
-    <b>log_search_init()</b>, <b>main()</b>, <b>mcp_dispatch()</b>,
-    <b>mcp_render_execute()</b>, <b>mirror_convert_frame()</b>,
-    <b>nat_upnp_get_endpoint()</b>, <b>nat_upnp_open_protocol()</b>,
-    <b>negotiate_determine_result()</b>,
-    <b>network_connection_prepare_security()</b>,
-    <b>options_collect_identity_keys()</b>, <b>options_json_parse_value()</b>,
-    <b>options_t_new()</b>, <b>parse_address_with_optional_port()</b>,
-    <b>parse_gpg_keys_from_response()</b>, <b>parse_ip_with_port()</b>,
-    <b>parse_log_file()</b>, <b>parse_palette_chars()</b>,
-    <b>parse_palette_chars_option()</b>, <b>path_validate_user_path()</b>,
-    <b>render_file_create()</b>, <b>sdp_generate_answer()</b>,
-    <b>sdp_parse()</b>, <b>send_error_packet_message()</b>,
-    <b>server_connection_set_ip()</b>, <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, <b>session_host_create()</b>,
-    <b>session_host_find_client()</b>, <b>session_participant_connect()</b>,
-    <b>session_participant_create()</b>,
-    <b>session_protocol_build_capabilities()</b>,
-    <b>session_settings_from_values()</b>, <b>session_settings_to_options()</b>,
-    <b>splash_set_discovery_session()</b>,
-    <b>splash_set_update_notification()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_spawn()</b>,
-    <b>time_pretty()</b>, <b>timer_start()</b>, <b>ui_session_loading()</b>,
-    <b>ui_status_gather()</b>, <b>ui_status_render_header()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>utf8_palette_create()</b>, and <b>wasm_renderer_config_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_THREAD_CREATE_OR_RETURN(_thread,__func,__arg)"><a class="permalink" href="#_define_THREAD_CREATE_OR_RETURN(_thread,__func,__arg)">#define
-  THREAD_CREATE_OR_RETURN( thread, func, arg)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>418</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>detect_client_utf8_support()</b>, and
+            <b>url_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_STRERROR(_errnum)">
+            <a class="permalink" href="#_define_SAFE_STRERROR(_errnum)"
+              >#define SAFE_STRERROR( errnum)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_strerror(errnum)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>465</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create()</b>,
+            <b>gpg_sign_with_key()</b>,
+            <b>gpg_verify_signature_with_binary()</b>, <b>packet_send()</b>, and
+            <b>platform_get_executable_path()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SAFE_STRNCPY(_dst,__src,__size)">
+            <a class="permalink" href="#_define_SAFE_STRNCPY(_dst,__src,__size)"
+              >#define SAFE_STRNCPY( dst, src, size)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>platform_strlcpy((dst), (src), (size))</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>414</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_client_config_init_defaults()</b>,
+            <b>acds_identity_save()</b>, <b>acds_protocol_create()</b>,
+            <b>acds_protocol_enter()</b>, <b>acds_protocol_join()</b>,
+            <b>acds_protocol_lookup()</b>, <b>acds_protocol_receive()</b>,
+            <b>acds_session_create()</b>, <b>acds_session_join()</b>,
+            <b>acip_render_settings_capabilities()</b>,
+            <b>acip_render_settings_options()</b>,
+            <b>acip_render_settings_prepare()</b>,
+            <b>acip_security_init_options()</b>,
+            <b>asciichat_instr_log_line()</b>,
+            <b>asciichat_mdns_advertise()</b>, <b>asciichat_mdns_query()</b>,
+            <b>backtrace_format_styled()</b>, <b>build_github_gpg_url()</b>,
+            <b>build_gitlab_gpg_url()</b>, <b>client_audio_render_thread()</b>,
+            <b>client_configure_crypto_options()</b>,
+            <b>client_crypto_init()</b>, <b>client_main()</b>,
+            <b>client_set_server_address()</b>,
+            <b>client_video_render_thread()</b>,
+            <b>colorscheme_compile_scheme()</b>,
+            <b>colorscheme_load_from_file()</b>, <b>config_create_default()</b>,
+            <b>config_schema_build_from_configs()</b>,
+            <b>crypto_handshake_init_with_password()</b>,
+            <b>database_session_join()</b>, <b>database_session_leave()</b>,
+            <b>detect_client_utf8_support()</b>,
+            <b>disconnect_client_for_bad_data()</b>,
+            <b>discovery_config_init_defaults()</b>, <b>discovery_main()</b>,
+            <b>discovery_session_create()</b>, <b>env_pop_prompt_response()</b>,
+            <b>escape_path_for_shell()</b>, <b>extract_gpg_key_comment()</b>,
+            <b>extract_ip_from_address()</b>, <b>format_gpg_key_display()</b>,
+            <b>format_ip_with_port()</b>, <b>get_utf8_palette_cache()</b>,
+            <b>gpg_get_public_key()</b>, <b>grep_highlight_colored()</b>,
+            <b>handle_client_join_packet()</b>, <b>is_valid_ipv4()</b>,
+            <b>is_valid_ipv6()</b>, <b>layout_print_wrapped_description()</b>,
+            <b>log_init()</b>, <b>log_mmap_init()</b>,
+            <b>log_recolor_plain_entry()</b>, <b>log_search_init()</b>,
+            <b>main()</b>, <b>mcp_dispatch()</b>, <b>mcp_render_execute()</b>,
+            <b>mirror_convert_frame()</b>, <b>nat_upnp_get_endpoint()</b>,
+            <b>nat_upnp_open_protocol()</b>,
+            <b>negotiate_determine_result()</b>,
+            <b>network_connection_prepare_security()</b>,
+            <b>options_collect_identity_keys()</b>,
+            <b>options_json_parse_value()</b>, <b>options_t_new()</b>,
+            <b>parse_address_with_optional_port()</b>,
+            <b>parse_gpg_keys_from_response()</b>, <b>parse_ip_with_port()</b>,
+            <b>parse_log_file()</b>, <b>parse_palette_chars()</b>,
+            <b>parse_palette_chars_option()</b>,
+            <b>path_validate_user_path()</b>, <b>render_file_create()</b>,
+            <b>sdp_generate_answer()</b>, <b>sdp_parse()</b>,
+            <b>send_error_packet_message()</b>,
+            <b>server_connection_set_ip()</b>, <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_create()</b>, <b>session_host_find_client()</b>,
+            <b>session_participant_connect()</b>,
+            <b>session_participant_create()</b>,
+            <b>session_protocol_build_capabilities()</b>,
+            <b>session_settings_from_values()</b>,
+            <b>session_settings_to_options()</b>,
+            <b>splash_set_discovery_session()</b>,
+            <b>splash_set_update_notification()</b>,
+            <b>thread_pool_create()</b>,
+            <b>thread_pool_create_with_workers()</b>,
+            <b>thread_pool_spawn()</b>, <b>time_pretty()</b>,
+            <b>timer_start()</b>, <b>ui_session_loading()</b>,
+            <b>ui_status_gather()</b>, <b>ui_status_render_header()</b>,
+            <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
+            <b>utf8_palette_create()</b>, and
+            <b>wasm_renderer_config_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_THREAD_CREATE_OR_RETURN(_thread,__func,__arg)"
+          >
+            <a
+              class="permalink"
+              href="#_define_THREAD_CREATE_OR_RETURN(_thread,__func,__arg)"
+              >#define THREAD_CREATE_OR_RETURN( thread, func, arg)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if (acthread_create(&amp;(thread), (func), (arg)) != 0) {                                                              \
 <br/>
@@ -1292,38 +1806,64 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Create a thread or log error and return.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>thread</i> Pointer to thread_t variable
-<br/>
-<i>func</i> Thread function (should match void* (*)(void*) signature)
-<br/>
-<i>arg</i> Thread argument</div>
-<p class="Pp">Handles common pattern: create thread, log error if failed, then
-    return -1. Example usage:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>THREAD_CREATE_OR_RETURN(thread, thread_func, arg)</b>; //
-    Thread created successfully, continue</p>
-<p class="Pp">Definition at line <b>522</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TRACK_ALIGNED_ALLOC(_ptr,__size,__file,__line)"><a class="permalink" href="#_define_TRACK_ALIGNED_ALLOC(_ptr,__size,__file,__line)">#define
-  TRACK_ALIGNED_ALLOC( ptr, size, file, line)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>((void)0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>303</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UNTRACKED_FREE(_ptr)"><a class="permalink" href="#_define_UNTRACKED_FREE(_ptr)">#define
-  UNTRACKED_FREE( ptr)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Create a thread or log error and return.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>thread</i> Pointer to thread_t variable
+            <br />
+            <i>func</i> Thread function (should match void* (*)(void*)
+            signature)
+            <br />
+            <i>arg</i> Thread argument
+          </div>
+          <p class="Pp">
+            Handles common pattern: create thread, log error if failed, then
+            return -1. Example usage:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>THREAD_CREATE_OR_RETURN(thread, thread_func, arg)</b>; // Thread
+            created successfully, continue
+          </p>
+          <p class="Pp">
+            Definition at line <b>522</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TRACK_ALIGNED_ALLOC(_ptr,__size,__file,__line)"
+          >
+            <a
+              class="permalink"
+              href="#_define_TRACK_ALIGNED_ALLOC(_ptr,__size,__file,__line)"
+              >#define TRACK_ALIGNED_ALLOC( ptr, size, file, line)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>((void)0)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>303</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UNTRACKED_FREE(_ptr)">
+            <a class="permalink" href="#_define_UNTRACKED_FREE(_ptr)"
+              >#define UNTRACKED_FREE( ptr)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>do {                                                                                                                 \
 <br/>
   if ((ptr) != NULL) {                                                                                               \
 <br/>
@@ -1333,19 +1873,28 @@ if (result != OK) {
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>405</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>,
-    <b>named_registry_for_each()</b>, <b>named_update_name()</b>, and
-    <b>ui_sync_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UNTRACKED_MALLOC(_size,__cast)"><a class="permalink" href="#_define_UNTRACKED_MALLOC(_size,__cast)">#define
-  UNTRACKED_MALLOC( size, cast)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>({                                                                                                                   \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>405</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_check_cond_deadlocks()</b>,
+            <b>named_registry_for_each()</b>, <b>named_update_name()</b>, and
+            <b>ui_sync_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UNTRACKED_MALLOC(_size,__cast)">
+            <a class="permalink" href="#_define_UNTRACKED_MALLOC(_size,__cast)"
+              >#define UNTRACKED_MALLOC( size, cast)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b
+            ><b>Value:</b><b></b>
+          </p>
+          <pre>({                                                                                                                   \
 <br/>
   cast _ptr = (cast)malloc(size);                                                                                    \
 <br/>
@@ -1357,64 +1906,134 @@ if (result != OK) {
 <br/>
   _ptr;                                                                                                              \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>396</b> of file <b>common.h</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>, and
-    <b>named_registry_for_each()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_write_u16_unaligned___bytes_write_u16_unaligned"><a class="permalink" href="#_define_write_u16_unaligned___bytes_write_u16_unaligned">#define
-  write_u16_unaligned bytes_write_u16_unaligned</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>486</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_write_u32_unaligned___bytes_write_u32_unaligned"><a class="permalink" href="#_define_write_u32_unaligned___bytes_write_u32_unaligned">#define
-  write_u32_unaligned bytes_write_u32_unaligned</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>487</b> of file <b>common.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_unsigned_short_"><a class="permalink" href="#typedef_unsigned_short_">typedef
-  unsigned short <b>uint16_t</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>57</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_unsigned_int_"><a class="permalink" href="#typedef_unsigned_int_">typedef
-  unsigned int <b>uint32_t</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>58</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_unsigned_long_long_"><a class="permalink" href="#typedef_unsigned_long_long_">typedef
-  unsigned long long <b>uint64_t</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>59</b> of file <b>common.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_unsigned_char_"><a class="permalink" href="#typedef_unsigned_char_">typedef
-  unsigned char <b>uint8_t</b></a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>56</b> of file <b>common.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_asciichat_fatal_with_context_("><a class="permalink" href="#void_asciichat_fatal_with_context_(">void
-  asciichat_fatal_with_context (<b>asciichat_error_t</b> code, const char *
-  file, int line, const char * function, const char * format, ...)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>873</b> of file
-  <b>asciichat_errno.c</b>.</p>
-<pre>874                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>396</b> of file <b>common.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_check_cond_deadlocks()</b>, and
+            <b>named_registry_for_each()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_write_u16_unaligned___bytes_write_u16_unaligned"
+          >
+            <a
+              class="permalink"
+              href="#_define_write_u16_unaligned___bytes_write_u16_unaligned"
+              >#define write_u16_unaligned bytes_write_u16_unaligned</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>486</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_write_u32_unaligned___bytes_write_u32_unaligned"
+          >
+            <a
+              class="permalink"
+              href="#_define_write_u32_unaligned___bytes_write_u32_unaligned"
+              >#define write_u32_unaligned bytes_write_u32_unaligned</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>487</b> of file <b>common.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_unsigned_short_">
+            <a class="permalink" href="#typedef_unsigned_short_"
+              >typedef unsigned short <b>uint16_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_unsigned_int_">
+            <a class="permalink" href="#typedef_unsigned_int_"
+              >typedef unsigned int <b>uint32_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_unsigned_long_long_">
+            <a class="permalink" href="#typedef_unsigned_long_long_"
+              >typedef unsigned long long <b>uint64_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>common.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_unsigned_char_">
+            <a class="permalink" href="#typedef_unsigned_char_"
+              >typedef unsigned char <b>uint8_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>56</b> of file <b>common.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_asciichat_fatal_with_context_(">
+            <a class="permalink" href="#void_asciichat_fatal_with_context_("
+              >void asciichat_fatal_with_context (<b>asciichat_error_t</b> code,
+              const char * file, int line, const char * function, const char *
+              format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Definition at line <b>873</b> of file <b>asciichat_errno.c</b>.
+          </p>
+          <pre>
+874                                                            {
 875   // This path must also work when an allocator or a diagnostic itself failed.
 876   bool previous = g_recording;
 877   g_recording = true;
@@ -1434,57 +2053,83 @@ if (result != OK) {
 891   exit(code);
 892 #endif
 893 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_ERRNO_MESSAGE_MAX</b>,
-    <b>asciichat_error_format()</b>, <b>asciichat_fatal_with_context()</b>,
-    <b>errno_print_stacks()</b>, <b>FATAL</b>, <b>log_error</b>, <b>NOTICE</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_asciichat_shared_destroy_(void_)"><a class="permalink" href="#void_asciichat_shared_destroy_(void_)">void
-  asciichat_shared_destroy (void )</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Clean up shared library subsystems. Clean up all shared library
-    subsystems.</p>
-<p class="Pp"></p>
-<p class="Pp">Performs cleanup of all subsystems initialized by
-    <b>asciichat_shared_init()</b>. All cleanup functions are idempotent and
-    safe to call multiple times.</p>
-<p class="Pp"></p>
-<p class="Pp">Applications should typically register this with atexit():
-    asciichat_shared_init(log_file, is_client);
-    atexit(asciichat_shared_destroy);</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function is safe to call even if init failed or
-  wasn't called.
-<p class="Pp"></p>
-<p class="Pp">Cleanup order is the reverse of initialization order.</p>
-<p class="Pp"></p>
-<p class="Pp">Library code never calls atexit() - only application code
-  should.</p>
-</div>
-<p class="Pp">Clean up shared library subsystems.</p>
-<p class="Pp"></p>
-<p class="Pp">Performs comprehensive cleanup of all subsystems initialized by
-    <b>asciichat_shared_init()</b>. All cleanup functions are idempotent (safe
-    to call multiple times), so this can be called explicitly and also via
-    atexit() without issues.</p>
-<p class="Pp"></p>
-<p class="Pp">Cleanup order is carefully chosen to be the reverse of
-    initialization, ensuring dependencies are respected (e.g., timer cleanup
-    before memory reporting, memory reporting before errno cleanup).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function is safe to call even if init failed or
-  wasn't called.
-<p class="Pp"></p>
-<p class="Pp">All subsystem cleanup functions must remain idempotent.</p>
-</div>
-<p class="Pp">Definition at line <b>212</b> of file <b>common.c</b>.</p>
-<pre>212                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_MESSAGE_MAX</b>,
+            <b>asciichat_error_format()</b>,
+            <b>asciichat_fatal_with_context()</b>, <b>errno_print_stacks()</b>,
+            <b>FATAL</b>, <b>log_error</b>, <b>NOTICE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_asciichat_shared_destroy_(void_)">
+            <a class="permalink" href="#void_asciichat_shared_destroy_(void_)"
+              >void asciichat_shared_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Clean up shared library subsystems. Clean up all shared library
+            subsystems.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Performs cleanup of all subsystems initialized by
+            <b>asciichat_shared_init()</b>. All cleanup functions are idempotent
+            and safe to call multiple times.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Applications should typically register this with atexit():
+            asciichat_shared_init(log_file, is_client);
+            atexit(asciichat_shared_destroy);
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function is safe to call even if init failed or wasn't called.
+            <p class="Pp"></p>
+            <p class="Pp">
+              Cleanup order is the reverse of initialization order.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Library code never calls atexit() - only application code should.
+            </p>
+          </div>
+          <p class="Pp">Clean up shared library subsystems.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Performs comprehensive cleanup of all subsystems initialized by
+            <b>asciichat_shared_init()</b>. All cleanup functions are idempotent
+            (safe to call multiple times), so this can be called explicitly and
+            also via atexit() without issues.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Cleanup order is carefully chosen to be the reverse of
+            initialization, ensuring dependencies are respected (e.g., timer
+            cleanup before memory reporting, memory reporting before errno
+            cleanup).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function is safe to call even if init failed or wasn't called.
+            <p class="Pp"></p>
+            <p class="Pp">
+              All subsystem cleanup functions must remain idempotent.
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>212</b> of file <b>common.c</b>.
+          </p>
+          <pre>
+212                                     {
 213   // Guard against double cleanup (can be called explicitly + via atexit)
 214   static bool shutdown_done = false;
 215   if (shutdown_done) {
@@ -1640,65 +2285,90 @@ if (result != OK) {
 365   // No more shutdown diagnostics may scroll pending terminal errors away.
 366   ui_error_popup_flush();
 367 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_strings_destroy()</b>,
-    <b>asciichat_pcre2_cleanup_all()</b>, <b>asciichat_shared_destroy()</b>,
-    <b>buffer_system_cleanup()</b>, <b>colorscheme_destroy()</b>,
-    <b>debug_atomic_shutdown()</b>, <b>debug_errno_cleanup_thread()</b>,
-    <b>debug_errno_destroy()</b>, <b>debug_memory_report()</b>,
-    <b>debug_memory_thread_cleanup()</b>, <b>debug_stats_cleanup_thread()</b>,
-    <b>debug_stats_destroy()</b>, <b>debug_sync_cleanup_thread()</b>,
-    <b>debug_sync_destroy()</b>, <b>debug_sync_final_cleanup()</b>,
-    <b>errno_destroy()</b>, <b>errno_shutdown()</b>, <b>keyboard_destroy()</b>,
-    <b>known_hosts_destroy()</b>, <b>log_cleanup_colors()</b>,
-    <b>log_destroy()</b>, <b>log_shutdown_begin()</b>,
-    <b>log_shutdown_end()</b>, <b>log_system_destroy()</b>,
-    <b>mutex_stack_cleanup()</b>, <b>named_destroy()</b>,
-    <b>options_state_destroy()</b>, <b>platform_cleanup_binary_path_cache()</b>,
-    <b>platform_destroy()</b>, <b>platform_process_title_destroy()</b>,
-    <b>platform_restore_timer_resolution()</b>,
-    <b>simd_caches_destroy_all()</b>, <b>stats_runtime_stop()</b>,
-    <b>symbol_cache_destroy()</b>, <b>terminal_screen_cleanup()</b>,
-    <b>terminal_stop_resize_detection()</b>, <b>timer_system_destroy()</b>,
-    <b>ui_controller_shutdown()</b>, <b>ui_error_popup_flush()</b>, and
-    <b>ui_input_shutdown()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>client_main()</b>, and <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_shared_init (const char *
-  log_file, <b>bool</b> is_client, <b>bool</b> quiet_startup)</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Initialize common subsystems shared by client and server. This
-    function performs initialization that is common to both client and server
-    modes:</p>
-<ul class="Bl-bullet">
-  <li>Platform initialization (Winsock, etc.)</li>
-  <li>Logging setup with default filename</li>
-  <li>Palette configuration</li>
-  <li>buffer domain initialization</li>
-  <li>Cleanup registration (errno, known_hosts, platform, buffer domain)</li>
-  <li>Mimalloc debug registration (if enabled)</li>
-</ul>
-<p class="Pp">Note: Memory debugging setup is handled separately by each mode
-    due to different requirements (client has snapshot mode, server
-  doesn't).</p>
-<p class="Pp"></p>
-<p class="Pp">Call this BEFORE <b>options_init()</b> so that options parsing can
-    use properly configured logging with colors. This initializes timer system,
-    logging, and platform subsystems.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>log_file</i> Log filename to use (e.g.,
-  &quot;client.log&quot; or &quot;ascii-chat.log&quot;)
-<br/>
-<i>is_client</i> true for client mode (routes all logs to stderr), false for
-  server mode</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>130</b> of file <b>common.c</b>.</p>
-<pre>130                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_strings_destroy()</b>,
+            <b>asciichat_pcre2_cleanup_all()</b>,
+            <b>asciichat_shared_destroy()</b>, <b>buffer_system_cleanup()</b>,
+            <b>colorscheme_destroy()</b>, <b>debug_atomic_shutdown()</b>,
+            <b>debug_errno_cleanup_thread()</b>, <b>debug_errno_destroy()</b>,
+            <b>debug_memory_report()</b>, <b>debug_memory_thread_cleanup()</b>,
+            <b>debug_stats_cleanup_thread()</b>, <b>debug_stats_destroy()</b>,
+            <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>,
+            <b>debug_sync_final_cleanup()</b>, <b>errno_destroy()</b>,
+            <b>errno_shutdown()</b>, <b>keyboard_destroy()</b>,
+            <b>known_hosts_destroy()</b>, <b>log_cleanup_colors()</b>,
+            <b>log_destroy()</b>, <b>log_shutdown_begin()</b>,
+            <b>log_shutdown_end()</b>, <b>log_system_destroy()</b>,
+            <b>mutex_stack_cleanup()</b>, <b>named_destroy()</b>,
+            <b>options_state_destroy()</b>,
+            <b>platform_cleanup_binary_path_cache()</b>,
+            <b>platform_destroy()</b>, <b>platform_process_title_destroy()</b>,
+            <b>platform_restore_timer_resolution()</b>,
+            <b>simd_caches_destroy_all()</b>, <b>stats_runtime_stop()</b>,
+            <b>symbol_cache_destroy()</b>, <b>terminal_screen_cleanup()</b>,
+            <b>terminal_stop_resize_detection()</b>,
+            <b>timer_system_destroy()</b>, <b>ui_controller_shutdown()</b>,
+            <b>ui_error_popup_flush()</b>, and <b>ui_input_shutdown()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>client_main()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> asciichat_shared_init (const char *
+            log_file, <b>bool</b> is_client, <b>bool</b> quiet_startup)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Initialize common subsystems shared by client and server. This
+            function performs initialization that is common to both client and
+            server modes:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Platform initialization (Winsock, etc.)</li>
+            <li>Logging setup with default filename</li>
+            <li>Palette configuration</li>
+            <li>buffer domain initialization</li>
+            <li>
+              Cleanup registration (errno, known_hosts, platform, buffer domain)
+            </li>
+            <li>Mimalloc debug registration (if enabled)</li>
+          </ul>
+          <p class="Pp">
+            Note: Memory debugging setup is handled separately by each mode due
+            to different requirements (client has snapshot mode, server
+            doesn't).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Call this BEFORE <b>options_init()</b> so that options parsing can
+            use properly configured logging with colors. This initializes timer
+            system, logging, and platform subsystems.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>log_file</i> Log filename to use (e.g., &quot;client.log&quot; or
+            &quot;ascii-chat.log&quot;)
+            <br />
+            <i>is_client</i> true for client mode (routes all logs to stderr),
+            false for server mode
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>common.c</b>.
+          </p>
+          <pre>
+130                                                                                                   {
 131   // Initialize shared subsystems BEFORE options_init()
 132   // This allows options_init() to use properly configured logging with colors
 133   //
@@ -1764,48 +2434,62 @@ if (result != OK) {
 193
 194   return ASCIICHAT_OK;
 195 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_shared_init()</b>,
-    <b>buffer_system_init()</b>, <b>debug_memory_ensure_init()</b>,
-    <b>ERROR_PLATFORM_INIT</b>, <b>FATAL</b>, <b>keyboard_init()</b>,
-    <b>LOG_DEBUG</b>, <b>log_file</b>, <b>log_init()</b>,
-    <b>log_set_terminal_output()</b>, <b>log_system_init()</b>,
-    <b>named_init()</b>, <b>platform_init()</b>, <b>SET_ERRNO</b>,
-    <b>symbol_cache_init()</b>, <b>terminal_is_piped_output()</b>,
-    <b>terminal_is_stdin_tty()</b>, and <b>timer_system_init()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_init()</b>, and
-  <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_fps_frame_ns_("><a class="permalink" href="#void_fps_frame_ns_(">void
-  fps_frame_ns (<b>fps_t</b> * tracker, <b>uint64_t</b> current_time_ns, const
-  char * context)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/util/fps.h</b>&gt;<b></b></p>
-<p class="Pp">Track a frame and detect lag conditions (nanosecond version -
-    PRIMARY). Call this function when a frame is processed. Automatically
-    detects when frames arrive late and generates periodic FPS reports every
-    report_interval_ns. This is the primary API that all code should use going
-    forward.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>tracker</i> FPS tracker state
-<br/>
-<i>current_time_ns</i> Timestamp of this frame in nanoseconds (from
-  <b>time_get_ns()</b>)
-<br/>
-<i>context</i> Optional context string for lag logging (e.g., &quot;ASCII frame
-  received&quot;)</div>
-<p class="Pp">Example usage:</p>
-<p class="Pp"></p>
-<pre>fps_t tracker;
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>asciichat_shared_init()</b>,
+            <b>buffer_system_init()</b>, <b>debug_memory_ensure_init()</b>,
+            <b>ERROR_PLATFORM_INIT</b>, <b>FATAL</b>, <b>keyboard_init()</b>,
+            <b>LOG_DEBUG</b>, <b>log_file</b>, <b>log_init()</b>,
+            <b>log_set_terminal_output()</b>, <b>log_system_init()</b>,
+            <b>named_init()</b>, <b>platform_init()</b>, <b>SET_ERRNO</b>,
+            <b>symbol_cache_init()</b>, <b>terminal_is_piped_output()</b>,
+            <b>terminal_is_stdin_tty()</b>, and <b>timer_system_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_init()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_fps_frame_ns_(">
+            <a class="permalink" href="#void_fps_frame_ns_("
+              >void fps_frame_ns (<b>fps_t</b> * tracker,
+              <b>uint64_t</b> current_time_ns, const char * context)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/util/fps.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Track a frame and detect lag conditions (nanosecond version -
+            PRIMARY). Call this function when a frame is processed.
+            Automatically detects when frames arrive late and generates periodic
+            FPS reports every report_interval_ns. This is the primary API that
+            all code should use going forward.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>tracker</i> FPS tracker state
+            <br />
+            <i>current_time_ns</i> Timestamp of this frame in nanoseconds (from
+            <b>time_get_ns()</b>)
+            <br />
+            <i>context</i> Optional context string for lag logging (e.g.,
+            &quot;ASCII frame received&quot;)
+          </div>
+          <p class="Pp">Example usage:</p>
+          <p class="Pp"></p>
+          <pre>
+fps_t tracker;
 fps_init(&amp;tracker, 60, &quot;RENDER&quot;);
 // In your frame loop
 uint64_t now = time_get_ns();
 fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
 </pre>
-<p class="Pp">Definition at line <b>52</b> of file <b>fps.c</b>.</p>
-<pre>52                                                                                  {
+          <p class="Pp">Definition at line <b>52</b> of file <b>fps.c</b>.</p>
+          <pre>
+52                                                                                  {
 53   if (!tracker) {
 54     return;
 55   }
@@ -1853,69 +2537,98 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
 97     tracker-&gt;last_fps_report_ns = current_time_ns;
 98   }
 99 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>fps_t::expected_fps</b>, <b>fps_frame_ns()</b>,
-    <b>fps_t::frame_count</b>, <b>fps_t::last_fps_report_ns</b>,
-    <b>fps_t::last_frame_time_ns</b>, <b>NS_PER_SEC_INT</b>,
-    <b>fps_t::report_interval_ns</b>, <b>time_elapsed_ns()</b>, and
-    <b>fps_t::tracker_name</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, and <b>fps_frame_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_fps_init_("><a class="permalink" href="#void_fps_init_(">void
-  fps_init (<b>fps_t</b> * tracker, int expected_fps, const char *
-  name)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/util/fps.h</b>&gt;<b></b></p>
-<p class="Pp">Initialize FPS tracker. Sets up the tracker with expected FPS and
-    default reporting interval (10 seconds). Should be called once before using
-    the tracker.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>tracker</i> Pointer to uninitialized <b>fps_t</b>
-  (should be zero-initialized)
-<br/>
-<i>expected_fps</i> Expected frame rate in FPS (e.g., 60, 30, 20)
-<br/>
-<i>name</i> Display name for logging (e.g., &quot;CLIENT&quot;,
-  &quot;WEBCAM&quot;, &quot;AUDIO&quot;, &quot;KEEPALIVE&quot;)</div>
-<p class="Pp">Definition at line <b>32</b> of file <b>fps.c</b>.</p>
-<pre>32                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>fps_t::expected_fps</b>, <b>fps_frame_ns()</b>,
+            <b>fps_t::frame_count</b>, <b>fps_t::last_fps_report_ns</b>,
+            <b>fps_t::last_frame_time_ns</b>, <b>NS_PER_SEC_INT</b>,
+            <b>fps_t::report_interval_ns</b>, <b>time_elapsed_ns()</b>, and
+            <b>fps_t::tracker_name</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_render_thread()</b>,
+            <b>client_video_render_thread()</b>, and <b>fps_frame_ns()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_fps_init_(">
+            <a class="permalink" href="#void_fps_init_("
+              >void fps_init (<b>fps_t</b> * tracker, int expected_fps, const
+              char * name)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/util/fps.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Initialize FPS tracker. Sets up the tracker with expected FPS and
+            default reporting interval (10 seconds). Should be called once
+            before using the tracker.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>tracker</i> Pointer to uninitialized <b>fps_t</b>
+            (should be zero-initialized)
+            <br />
+            <i>expected_fps</i> Expected frame rate in FPS (e.g., 60, 30, 20)
+            <br />
+            <i>name</i> Display name for logging (e.g., &quot;CLIENT&quot;,
+            &quot;WEBCAM&quot;, &quot;AUDIO&quot;, &quot;KEEPALIVE&quot;)
+          </div>
+          <p class="Pp">Definition at line <b>32</b> of file <b>fps.c</b>.</p>
+          <pre>
+32                                                                   {
 33   // Default report interval: 1 second
 34   fps_init_with_interval(tracker, expected_fps, name, 1 * NS_PER_SEC_INT);
 35 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>fps_init()</b>, <b>fps_init_with_interval()</b>, and
-    <b>NS_PER_SEC_INT</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, <b>fps_init()</b>,
-    <b>session_capture_create()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_fps_init_with_interval_("><a class="permalink" href="#void_fps_init_with_interval_(">void
-  fps_init_with_interval (<b>fps_t</b> * tracker, int expected_fps, const char *
-  name, <b>uint64_t</b> report_interval_ns)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/util/fps.h</b>&gt;<b></b></p>
-<p class="Pp">Initialize FPS tracker with custom report interval. Sets up the
-    tracker with expected FPS and custom reporting interval in nanoseconds.
-    Useful for different threads that may need different reporting
-  frequencies.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>tracker</i> Pointer to uninitialized <b>fps_t</b>
-  (should be zero-initialized)
-<br/>
-<i>expected_fps</i> Expected frame rate in FPS
-<br/>
-<i>name</i> Display name for logging
-<br/>
-<i>report_interval_ns</i> Custom report interval in nanoseconds (e.g.,
-  10000000000 = 10 seconds)</div>
-<p class="Pp">Definition at line <b>37</b> of file <b>fps.c</b>.</p>
-<pre>37                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>fps_init()</b>, <b>fps_init_with_interval()</b>, and
+            <b>NS_PER_SEC_INT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_render_thread()</b>,
+            <b>client_video_render_thread()</b>, <b>fps_init()</b>,
+            <b>session_capture_create()</b>, and
+            <b>session_network_capture_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_fps_init_with_interval_(">
+            <a class="permalink" href="#void_fps_init_with_interval_("
+              >void fps_init_with_interval (<b>fps_t</b> * tracker, int
+              expected_fps, const char * name,
+              <b>uint64_t</b> report_interval_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/util/fps.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Initialize FPS tracker with custom report interval. Sets up the
+            tracker with expected FPS and custom reporting interval in
+            nanoseconds. Useful for different threads that may need different
+            reporting frequencies.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>tracker</i> Pointer to uninitialized <b>fps_t</b>
+            (should be zero-initialized)
+            <br />
+            <i>expected_fps</i> Expected frame rate in FPS
+            <br />
+            <i>name</i> Display name for logging
+            <br />
+            <i>report_interval_ns</i> Custom report interval in nanoseconds
+            (e.g., 10000000000 = 10 seconds)
+          </div>
+          <p class="Pp">Definition at line <b>37</b> of file <b>fps.c</b>.</p>
+          <pre>
+37                                                                                                              {
 38   if (!tracker) {
 39     return;
 40   }
@@ -1929,71 +2642,118 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
 48   tracker-&gt;last_fps_report_ns = 0;
 49   tracker-&gt;last_frame_time_ns = 0;
 50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>fps_t::expected_fps</b>,
-    <b>fps_init_with_interval()</b>, <b>fps_t::frame_count</b>,
-    <b>fps_t::last_fps_report_ns</b>, <b>fps_t::last_frame_time_ns</b>,
-    <b>fps_t::report_interval_ns</b>, and <b>fps_t::tracker_name</b>.</p>
-<p class="Pp">Referenced by <b>fps_init()</b>, and
-    <b>fps_init_with_interval()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_g_argc"><a class="permalink" href="#int_g_argc">int
-  g_argc [extern]</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Global argc for early argument inspection (e.g., --color flag
-    detection) Set by <b>main()</b> for access from
-    <b>lib/platform/terminal.c</b> during early execution.</p>
-<p class="Pp">Definition at line <b>60</b> of file <b>common.c</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, and
-    <b>terminal_should_color_output()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char**_g_argv"><a class="permalink" href="#char**_g_argv">char**
-  g_argv [extern]</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Global argv for early argument inspection (e.g., --color flag
-    detection) Set by <b>main()</b> for access from
-    <b>lib/platform/terminal.c</b> during early execution.</p>
-<p class="Pp">Definition at line <b>61</b> of file <b>common.c</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>,
-    <b>platform_process_title_destroy()</b>, and
-    <b>terminal_should_color_output()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> g_color_flag_passed [extern]</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Was --color explicitly passed in command-line arguments? Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp">Definition at line <b>64</b> of file <b>common.c</b>.</p>
-<p class="Pp">Referenced by <b>colored_string()</b>, and <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> g_color_flag_value [extern]</h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Value of --color flag (true if --color was in argv) Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp">Definition at line <b>65</b> of file <b>common.c</b>.</p>
-<p class="Pp">Referenced by <b>colored_string()</b>, and <b>main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>fps_t::expected_fps</b>,
+            <b>fps_init_with_interval()</b>, <b>fps_t::frame_count</b>,
+            <b>fps_t::last_fps_report_ns</b>, <b>fps_t::last_frame_time_ns</b>,
+            <b>fps_t::report_interval_ns</b>, and <b>fps_t::tracker_name</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>fps_init()</b>, and
+            <b>fps_init_with_interval()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_g_argc">
+            <a class="permalink" href="#int_g_argc">int g_argc [extern]</a>
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Global argc for early argument inspection (e.g., --color flag
+            detection) Set by
+            <b>main()</b> for access from <b>lib/platform/terminal.c</b> during
+            early execution.
+          </p>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>common.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, and
+            <b>terminal_should_color_output()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char**_g_argv">
+            <a class="permalink" href="#char**_g_argv"
+              >char** g_argv [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Global argv for early argument inspection (e.g., --color flag
+            detection) Set by
+            <b>main()</b> for access from <b>lib/platform/terminal.c</b> during
+            early execution.
+          </p>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>common.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>,
+            <b>platform_process_title_destroy()</b>, and
+            <b>terminal_should_color_output()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> g_color_flag_passed [extern]</h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Was --color explicitly passed in command-line arguments? Set by
+            <b>options_init()</b> before RCU is initialized, used by
+            <b>terminal_should_color_output()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>common.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>colored_string()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> g_color_flag_value [extern]</h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Value of --color flag (true if --color was in argv) Set by
+            <b>options_init()</b> before RCU is initialized, used by
+            <b>terminal_should_color_output()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>common.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>colored_string()</b>, and <b>main()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

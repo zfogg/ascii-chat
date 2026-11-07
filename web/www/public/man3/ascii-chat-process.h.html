@@ -1,132 +1,189 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>process.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">process.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">process.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">process.h - Cross-platform process types and execution
-  utilities.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>platform_process_stats_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct platform_process <b>platform_process_t</b>
-  <br/>
-  Opaque process handle.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>platform_process_stats</b>
-    (<b>platform_process_stats_t</b> *out)
-  <br/>
-  <b>asciichat_error_t</b> <b>process_utf8_arguments</b> (int *argc, char
-    ***argv)
-  <br/>
-  pid_t <b>platform_get_pid</b> (void)
-  <br/>
-  Get the current process ID. <b>asciichat_error_t</b>
-    <b>platform_process_title_init</b> (int argc, char ***argv)
-  <br/>
-  Reserve process-title storage before option parsing or environment use.
-    <b>asciichat_error_t</b> <b>platform_process_title_set</b> (const char
-    *title)
-  <br/>
-  Update the OS process naming surfaces through one platform API.
-    <b>asciichat_error_t</b> <b>platform_process_title_set_args</b> (const char
-    *mode, int argc, char **argv, int mode_arg_index)
-  <br/>
-  Set
-    <i>ascii-chat:</i>&lt;mode&gt;<i>mode</i>-<i>&lt;arguments&gt;&quot;</i>with<i>secret</i>values<i>redacted.</i>
-    void <b>platform_process_title_destroy</b> (void)
-  <br/>
-  Restore Unix argument storage and release title allocations.
-    <b>asciichat_error_t</b> <b>platform_popen</b> (const char *name, const char
-    *command, const char *mode, FILE **out_stream)
-  <br/>
-  Execute a command and return a file stream for reading/writing.
-    <b>asciichat_error_t</b> <b>platform_pclose</b> (FILE **stream_ptr)
-  <br/>
-  Close a process stream opened with <b>platform_popen()</b>.
-    <b>asciichat_error_t</b> <b>platform_process_spawn</b>
-    (<b>platform_process_t</b> **process_out, const char *path, const char
-    *const *argv, int stdin_fd, int stdout_fd, int stderr_fd)
-  <br/>
-  Spawn a child process. <b>asciichat_error_t</b> <b>platform_process_wait</b>
-    (<b>platform_process_t</b> *process, int timeout_ms, int *exit_code_out)
-  <br/>
-  Wait for process to terminate with timeout. <b>bool</b>
-    <b>platform_process_is_alive</b> (<b>platform_process_t</b> *process)
-  <br/>
-  Check if process is still running. <b>asciichat_error_t</b>
-    <b>platform_process_kill</b> (<b>platform_process_t</b> *process)
-  <br/>
-  Terminate a process. void <b>platform_process_destroy</b>
-    (<b>platform_process_t</b> *process)
-  <br/>
-  Free process handle.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Cross-platform process types and execution utilities.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>process.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>process.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">process.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">process.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          process.h - Cross-platform process types and execution utilities.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>platform_process_stats_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct platform_process <b>platform_process_t</b>
+            <br />
+            Opaque process handle.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>platform_process_stats</b> (<b
+              >platform_process_stats_t</b
+            >
+            *out)
+            <br />
+            <b>asciichat_error_t</b> <b>process_utf8_arguments</b> (int *argc,
+            char ***argv)
+            <br />
+            pid_t <b>platform_get_pid</b> (void)
+            <br />
+            Get the current process ID. <b>asciichat_error_t</b>
+            <b>platform_process_title_init</b> (int argc, char ***argv)
+            <br />
+            Reserve process-title storage before option parsing or environment
+            use.
+            <b>asciichat_error_t</b> <b>platform_process_title_set</b> (const
+            char *title)
+            <br />
+            Update the OS process naming surfaces through one platform API.
+            <b>asciichat_error_t</b>
+            <b>platform_process_title_set_args</b> (const char *mode, int argc,
+            char **argv, int mode_arg_index)
+            <br />
+            Set
+            <i>ascii-chat:</i
+            >&lt;mode&gt;<i>mode</i>-<i>&lt;arguments&gt;&quot;</i>with<i>secret</i>values<i
+              >redacted.</i
+            >
+            void <b>platform_process_title_destroy</b> (void)
+            <br />
+            Restore Unix argument storage and release title allocations.
+            <b>asciichat_error_t</b> <b>platform_popen</b> (const char *name,
+            const char *command, const char *mode, FILE **out_stream)
+            <br />
+            Execute a command and return a file stream for reading/writing.
+            <b>asciichat_error_t</b> <b>platform_pclose</b> (FILE **stream_ptr)
+            <br />
+            Close a process stream opened with <b>platform_popen()</b>.
+            <b>asciichat_error_t</b> <b>platform_process_spawn</b> (<b
+              >platform_process_t</b
+            >
+            **process_out, const char *path, const char *const *argv, int
+            stdin_fd, int stdout_fd, int stderr_fd)
+            <br />
+            Spawn a child process. <b>asciichat_error_t</b>
+            <b>platform_process_wait</b> (<b>platform_process_t</b>
+            *process, int timeout_ms, int *exit_code_out)
+            <br />
+            Wait for process to terminate with timeout. <b>bool</b>
+            <b>platform_process_is_alive</b> (<b>platform_process_t</b>
+            *process)
+            <br />
+            Check if process is still running. <b>asciichat_error_t</b>
+            <b>platform_process_kill</b> (<b>platform_process_t</b> *process)
+            <br />
+            Terminate a process. void <b>platform_process_destroy</b> (<b
+              >platform_process_t</b
+            >
+            *process)
+            <br />
+            Free process handle.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Cross-platform process types and execution utilities.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>process.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

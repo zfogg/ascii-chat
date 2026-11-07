@@ -1,132 +1,203 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>encoder.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">encoder.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">encoder.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">encoder.c - FFmpeg HEVC encoder for ASCII art frames.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>h265_encoder</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>h265_encoder</b> <b>h265_encoder_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>h265_encoder_t</b> * <b>h265_encoder_create</b>
-    (<b>uint16_t</b> initial_width, <b>uint16_t</b> initial_height)
-  <br/>
-  <b>h265_encoder_t</b> * <b>video_encoder_create</b> (<b>video_codec_t</b>
-    codec_type, <b>uint16_t</b> initial_width, <b>uint16_t</b> initial_height)
-  <br/>
-  void <b>h265_encoder_destroy</b> (<b>h265_encoder_t</b> *encoder)
-  <br/>
-  <b>asciichat_error_t</b> <b>h265_encode</b> (<b>h265_encoder_t</b> *encoder,
-    <b>uint16_t</b> width, <b>uint16_t</b> height, const <b>uint8_t</b>
-    *ascii_data, <b>uint8_t</b> *output_buf, size_t *output_size)
-  <br/>
-  void <b>h265_encoder_request_keyframe</b> (<b>h265_encoder_t</b> *encoder)
-  <br/>
-  <b>asciichat_error_t</b> <b>h265_encoder_flush</b> (<b>h265_encoder_t</b>
-    *encoder, <b>uint8_t</b> *output_buf, size_t *output_size)
-  <br/>
-  void <b>h265_encoder_get_stats</b> (<b>h265_encoder_t</b> *encoder,
-    <b>uint64_t</b> *total_frames, <b>uint64_t</b> *keyframes, <b>uint32_t</b>
-    *avg_bitrate)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">FFmpeg HEVC encoder for ASCII art frames.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>encoder.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>h265_encoder</b> <b>h265_encoder_t</b></a></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> h265_encode (<b>h265_encoder_t</b> *
-  encoder, <b>uint16_t</b> width, <b>uint16_t</b> height, const <b>uint8_t</b> *
-  ascii_data, <b>uint8_t</b> * output_buf, size_t * output_size)</h2>
-<p class="Pp">Encode an RGB24 upload frame</p>
-<p class="Pp"></p>
-<p class="Pp">The encoder automatically detects size changes and reinitializes
-    when needed. The output packet includes frame dimensions so decoder can
-    reconfigure.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>encoder</i> Encoder handle
-<br/>
-<i>width</i> Current frame width in pixels
-<br/>
-<i>height</i> Current frame height in pixels
-<br/>
-<i>ascii_data</i> RGB24 pixel data (width &#x00D7; height &#x00D7; 3 bytes)
-<br/>
-<i>output_buf</i> Buffer for encoded output
-<br/>
-<i>output_size</i> Input: buffer size, Output: actual encoded size</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
-<p class="Pp">OUTPUT PACKET FORMAT: [flags: u8][width: u16][height:
-    u16][x265_data...]</p>
-<p class="Pp">Definition at line <b>301</b> of file <b>encoder.c</b>.</p>
-<pre>302                                                                         {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>encoder.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">encoder.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">encoder.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">encoder.c - FFmpeg HEVC encoder for ASCII art frames.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>h265_encoder</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>h265_encoder</b> <b>h265_encoder_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>h265_encoder_t</b> * <b>h265_encoder_create</b> (<b>uint16_t</b>
+            initial_width, <b>uint16_t</b> initial_height)
+            <br />
+            <b>h265_encoder_t</b> * <b>video_encoder_create</b> (<b
+              >video_codec_t</b
+            >
+            codec_type, <b>uint16_t</b> initial_width,
+            <b>uint16_t</b> initial_height)
+            <br />
+            void <b>h265_encoder_destroy</b> (<b>h265_encoder_t</b> *encoder)
+            <br />
+            <b>asciichat_error_t</b> <b>h265_encode</b> (<b>h265_encoder_t</b>
+            *encoder, <b>uint16_t</b> width, <b>uint16_t</b> height, const
+            <b>uint8_t</b> *ascii_data, <b>uint8_t</b> *output_buf, size_t
+            *output_size)
+            <br />
+            void <b>h265_encoder_request_keyframe</b> (<b>h265_encoder_t</b>
+            *encoder)
+            <br />
+            <b>asciichat_error_t</b> <b>h265_encoder_flush</b> (<b
+              >h265_encoder_t</b
+            >
+            *encoder, <b>uint8_t</b> *output_buf, size_t *output_size)
+            <br />
+            void <b>h265_encoder_get_stats</b> (<b>h265_encoder_t</b> *encoder,
+            <b>uint64_t</b> *total_frames, <b>uint64_t</b> *keyframes,
+            <b>uint32_t</b>
+            *avg_bitrate)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">FFmpeg HEVC encoder for ASCII art frames.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>encoder.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>h265_encoder</b> <b>h265_encoder_t</b></a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> h265_encode (<b>h265_encoder_t</b> *
+            encoder, <b>uint16_t</b> width, <b>uint16_t</b> height, const
+            <b>uint8_t</b> * ascii_data, <b>uint8_t</b> * output_buf, size_t *
+            output_size)
+          </h2>
+          <p class="Pp">Encode an RGB24 upload frame</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The encoder automatically detects size changes and reinitializes
+            when needed. The output packet includes frame dimensions so decoder
+            can reconfigure.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>encoder</i> Encoder handle
+            <br />
+            <i>width</i> Current frame width in pixels
+            <br />
+            <i>height</i> Current frame height in pixels
+            <br />
+            <i>ascii_data</i> RGB24 pixel data (width &#x00D7; height &#x00D7; 3
+            bytes)
+            <br />
+            <i>output_buf</i> Buffer for encoded output
+            <br />
+            <i>output_size</i> Input: buffer size, Output: actual encoded size
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
+          <p class="Pp">
+            OUTPUT PACKET FORMAT: [flags: u8][width: u16][height:
+            u16][x265_data...]
+          </p>
+          <p class="Pp">
+            Definition at line <b>301</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+302                                                                         {
 303   ASCII_OTEL_SCOPE(H265_ENCODE);
 304   ASCII_OTEL_ATTR_INT(&quot;video.frame.width&quot;, width);
 305   ASCII_OTEL_ATTR_INT(&quot;video.frame.height&quot;, height);
@@ -246,50 +317,70 @@
 419
 420   return ASCIICHAT_OK;
 421 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_ATTR_INT</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_metric()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
-    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_MEDIA_INIT</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>h265_encode()</b>,
-    <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>H265_ENCODER_FLAG_SIZE_CHANGE</b>,
-    <b>log_debug_every</b>, <b>log_dev</b>, <b>log_error</b>, <b>SET_ERRNO</b>,
-    <b>stats_counter_add()</b>, <b>STATS_COUNTER_FRAMES_ENCODED</b>,
-    <b>STATS_DURATION_ENCODE</b>, <b>stats_duration_record()</b>,
-    <b>stats_runtime_scope()</b>, <b>time_get_ns()</b>, and
-    <b>US_PER_SEC_INT</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>h265_encoder_t</b> * h265_encoder_create (<b>uint16_t</b>
-  initial_width, <b>uint16_t</b> initial_height)</h2>
-<p class="Pp">Create a new x265 encoder for ASCII frames</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>initial_width</i> Initial frame width (characters)
-<br/>
-<i>initial_height</i> Initial frame height (characters)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Encoder handle, or NULL on error</div>
-<p class="Pp">Definition at line <b>59</b> of file <b>encoder.c</b>.</p>
-<pre>59                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_metric()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
+            <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
+            <b>ERROR_MEDIA_INIT</b>, <b>ERROR_NETWORK_SIZE</b>,
+            <b>h265_encode()</b>, <b>H265_ENCODER_FLAG_KEYFRAME</b>,
+            <b>H265_ENCODER_FLAG_SIZE_CHANGE</b>, <b>log_debug_every</b>,
+            <b>log_dev</b>, <b>log_error</b>, <b>SET_ERRNO</b>,
+            <b>stats_counter_add()</b>, <b>STATS_COUNTER_FRAMES_ENCODED</b>,
+            <b>STATS_DURATION_ENCODE</b>, <b>stats_duration_record()</b>,
+            <b>stats_runtime_scope()</b>, <b>time_get_ns()</b>, and
+            <b>US_PER_SEC_INT</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>h265_encoder_t</b> * h265_encoder_create (<b>uint16_t</b>
+            initial_width, <b>uint16_t</b> initial_height)
+          </h2>
+          <p class="Pp">Create a new x265 encoder for ASCII frames</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>initial_width</i> Initial frame width (characters)
+            <br />
+            <i>initial_height</i> Initial frame height (characters)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Encoder handle, or NULL on error</div>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+59                                                                                      {
 60   ASCII_OTEL_SCOPE(H265_ENCODER_CREATE);
 61   return video_encoder_create(VIDEO_CODEC_H265, initial_width, initial_height);
 62 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>h265_encoder_create()</b>,
-    <b>VIDEO_CODEC_H265</b>, and <b>video_encoder_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_h265_encoder_destroy_("><a class="permalink" href="#void_h265_encoder_destroy_(">void
-  h265_encoder_destroy (<b>h265_encoder_t</b> * encoder)</a></h2>
-<p class="Pp">Destroy an x265 encoder</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>encoder</i> Encoder to destroy (may be NULL)</div>
-<p class="Pp">Definition at line <b>163</b> of file <b>encoder.c</b>.</p>
-<pre>163                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>h265_encoder_create()</b>,
+            <b>VIDEO_CODEC_H265</b>, and <b>video_encoder_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_h265_encoder_destroy_(">
+            <a class="permalink" href="#void_h265_encoder_destroy_("
+              >void h265_encoder_destroy (<b>h265_encoder_t</b> * encoder)</a
+            >
+          </h2>
+          <p class="Pp">Destroy an x265 encoder</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>encoder</i> Encoder to destroy (may be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>163</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+163                                                    {
 164   if (!encoder)
 165     return;
 166
@@ -307,35 +398,50 @@
 178   }
 179   SAFE_FREE(encoder);
 180 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder_destroy()</b>, <b>LOG_IO</b>, and
-    <b>SAFE_FREE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> h265_encoder_flush
-  (<b>h265_encoder_t</b> * encoder, <b>uint8_t</b> * output_buf, size_t *
-  output_size)</h2>
-<p class="Pp">Flush remaining buffered frames from encoder</p>
-<p class="Pp"></p>
-<p class="Pp">Sends a NULL frame to the encoder to flush all buffered frames.
-    This should be called before destroying the encoder or when you need to
-    ensure all encoded data is retrieved.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>encoder</i> Encoder handle
-<br/>
-<i>output_buf</i> Buffer for encoded output
-<br/>
-<i>output_size</i> Input: buffer size, Output: actual encoded size</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Error code (ASCIICHAT_OK on success, ASCIICHAT_OK with
-  size=0 when no more data)</div>
-<p class="Pp">USAGE: // After final <b>h265_encode()</b> call, flush remaining
-    frames while (size &gt; 0) { size = max_size; h265_encoder_flush(encoder,
-    buf, &amp;size); if (size &gt; 0) { // Send the flushed frame... } }</p>
-<p class="Pp">Definition at line <b>429</b> of file <b>encoder.c</b>.</p>
-<pre>429                                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>h265_encoder_destroy()</b>, <b>LOG_IO</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> h265_encoder_flush (<b>h265_encoder_t</b> *
+            encoder, <b>uint8_t</b> * output_buf, size_t * output_size)
+          </h2>
+          <p class="Pp">Flush remaining buffered frames from encoder</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sends a NULL frame to the encoder to flush all buffered frames. This
+            should be called before destroying the encoder or when you need to
+            ensure all encoded data is retrieved.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>encoder</i> Encoder handle
+            <br />
+            <i>output_buf</i> Buffer for encoded output
+            <br />
+            <i>output_size</i> Input: buffer size, Output: actual encoded size
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Error code (ASCIICHAT_OK on success, ASCIICHAT_OK with size=0 when
+            no more data)
+          </div>
+          <p class="Pp">
+            USAGE: // After final <b>h265_encode()</b> call, flush remaining
+            frames while (size &gt; 0) { size = max_size;
+            h265_encoder_flush(encoder, buf, &amp;size); if (size &gt; 0) { //
+            Send the flushed frame... } }
+          </p>
+          <p class="Pp">
+            Definition at line <b>429</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+429                                                                                                         {
 430   ASCII_OTEL_SCOPE(H265_ENCODER_FLUSH);
 431   if (!encoder || !output_buf || !output_size) {
 432     return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid encoder or output parameters for flush&quot;);
@@ -422,35 +528,46 @@
 513
 514   return ASCIICHAT_OK;
 515 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_ATTR_INT</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_metric()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
-    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_NETWORK_SIZE</b>,
-    <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>h265_encoder_flush()</b>,
-    <b>log_debug</b>, <b>log_dev</b>, <b>log_error</b>, <b>SET_ERRNO</b>,
-    <b>stats_counter_add()</b>, <b>STATS_COUNTER_FRAMES_ENCODED</b>,
-    <b>STATS_DURATION_ENCODE</b>, <b>stats_duration_record()</b>,
-    <b>stats_runtime_scope()</b>, and <b>time_get_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_h265_encoder_get_stats_("><a class="permalink" href="#void_h265_encoder_get_stats_(">void
-  h265_encoder_get_stats (<b>h265_encoder_t</b> * encoder, <b>uint64_t</b> *
-  total_frames, <b>uint64_t</b> * keyframes, <b>uint32_t</b> *
-  avg_bitrate)</a></h2>
-<p class="Pp">Get encoder statistics</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>encoder</i> Encoder handle
-<br/>
-<i>total_frames</i> Output: total frames encoded
-<br/>
-<i>keyframes</i> Output: total keyframes encoded
-<br/>
-<i>avg_bitrate</i> Output: average bitrate in bits per second</div>
-<p class="Pp">Definition at line <b>517</b> of file <b>encoder.c</b>.</p>
-<pre>518                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_metric()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
+            <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
+            <b>ERROR_NETWORK_SIZE</b>, <b>H265_ENCODER_FLAG_KEYFRAME</b>,
+            <b>h265_encoder_flush()</b>, <b>log_debug</b>, <b>log_dev</b>,
+            <b>log_error</b>, <b>SET_ERRNO</b>, <b>stats_counter_add()</b>,
+            <b>STATS_COUNTER_FRAMES_ENCODED</b>, <b>STATS_DURATION_ENCODE</b>,
+            <b>stats_duration_record()</b>, <b>stats_runtime_scope()</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_h265_encoder_get_stats_(">
+            <a class="permalink" href="#void_h265_encoder_get_stats_("
+              >void h265_encoder_get_stats (<b>h265_encoder_t</b> * encoder,
+              <b>uint64_t</b> * total_frames, <b>uint64_t</b> * keyframes,
+              <b>uint32_t</b> * avg_bitrate)</a
+            >
+          </h2>
+          <p class="Pp">Get encoder statistics</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>encoder</i> Encoder handle
+            <br />
+            <i>total_frames</i> Output: total frames encoded
+            <br />
+            <i>keyframes</i> Output: total keyframes encoded
+            <br />
+            <i>avg_bitrate</i> Output: average bitrate in bits per second
+          </div>
+          <p class="Pp">
+            Definition at line <b>517</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+518                                                    {
 519   if (!encoder)
 520     return;
 521
@@ -461,42 +578,60 @@
 526   if (avg_bitrate)
 527     *avg_bitrate = encoder-&gt;avg_bitrate;
 528 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder_get_stats()</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_get_stats()</b>, and
-    <b>h265_encoder_get_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_h265_encoder_request_keyframe_("><a class="permalink" href="#void_h265_encoder_request_keyframe_(">void
-  h265_encoder_request_keyframe (<b>h265_encoder_t</b> * encoder)</a></h2>
-<p class="Pp">Request a keyframe on the next encode</p>
-<p class="Pp"></p>
-<p class="Pp">Forces the encoder to produce an I-frame (keyframe) on the next
-    call to h265_encoder_encode(). Useful for error recovery or stream
-    synchronization.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>encoder</i> Encoder handle</div>
-<p class="Pp">Definition at line <b>423</b> of file <b>encoder.c</b>.</p>
-<pre>423                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>h265_encoder_get_stats()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>h265_client_get_stats()</b>, and
+            <b>h265_encoder_get_stats()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_h265_encoder_request_keyframe_(">
+            <a class="permalink" href="#void_h265_encoder_request_keyframe_("
+              >void h265_encoder_request_keyframe (<b>h265_encoder_t</b> *
+              encoder)</a
+            >
+          </h2>
+          <p class="Pp">Request a keyframe on the next encode</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Forces the encoder to produce an I-frame (keyframe) on the next call
+            to h265_encoder_encode(). Useful for error recovery or stream
+            synchronization.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>encoder</i> Encoder handle</div>
+          <p class="Pp">
+            Definition at line <b>423</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+423                                                             {
 424   if (encoder) {
 425     encoder-&gt;request_keyframe = true;
 426   }
 427 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder_request_keyframe()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>h265_encoder_t</b> * video_encoder_create
-  (<b>video_codec_t</b> codec, <b>uint16_t</b> initial_width, <b>uint16_t</b>
-  initial_height)</h2>
-<p class="Pp">Create an HEVC or H.264 RGB24 upload encoder with the shared frame
-    envelope. The legacy h265 encode/destroy functions also operate on H.264
-    instances.</p>
-<p class="Pp">Definition at line <b>64</b> of file <b>encoder.c</b>.</p>
-<pre>64                                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>h265_encoder_request_keyframe()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>h265_encoder_t</b> * video_encoder_create (<b>video_codec_t</b>
+            codec, <b>uint16_t</b> initial_width,
+            <b>uint16_t</b> initial_height)
+          </h2>
+          <p class="Pp">
+            Create an HEVC or H.264 RGB24 upload encoder with the shared frame
+            envelope. The legacy h265 encode/destroy functions also operate on
+            H.264 instances.
+          </p>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>encoder.c</b>.
+          </p>
+          <pre>
+64                                                                                                                 {
 65   ASCII_OTEL_SCOPE(VIDEO_ENCODER_CREATE);
 66   ASCII_OTEL_ATTR_STRING(&quot;video.codec&quot;, codec_type == VIDEO_CODEC_H264 ? &quot;h264&quot; : &quot;h265&quot;);
 67   ASCII_OTEL_ATTR_INT(&quot;video.frame.width&quot;, initial_width);
@@ -594,30 +729,37 @@
 159
 160   return enc;
 161 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_ATTR_INT</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>,
-    <b>log_info</b>, <b>log_warn</b>, <b>NAMED_REGISTER_H265_ENCODER</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
-    <b>VIDEO_CODEC_H264</b>, <b>VIDEO_CODEC_H265</b>, and
-    <b>video_encoder_create()</b>.</p>
-<p class="Pp">Referenced by <b>h265_encoder_create()</b>,
-    <b>threaded_send_image_frame_encoded()</b>, and
-    <b>video_encoder_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEDIA_INIT</b>,
+            <b>ERROR_MEMORY</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>NAMED_REGISTER_H265_ENCODER</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>VIDEO_CODEC_H264</b>, <b>VIDEO_CODEC_H265</b>, and
+            <b>video_encoder_create()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>h265_encoder_create()</b>,
+            <b>threaded_send_image_frame_encoded()</b>, and
+            <b>video_encoder_create()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

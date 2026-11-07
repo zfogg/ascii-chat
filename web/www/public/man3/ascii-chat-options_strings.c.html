@@ -1,135 +1,219 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>strings.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">strings.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">strings.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">strings.c - Centralized enum and mode string conversion - single
-    source of truth.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>mode_string_mapping_t</b>
-  <br/>
-  Mode name mapping for string conversion.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MODE_NAME_CAPACITY</b> 32
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>asciichat_mode_to_string</b>
-    (<b>asciichat_mode_t</b> mode)
-  <br/>
-  Convert mode enum to string. <b>asciichat_mode_t</b>
-    <b>asciichat_string_to_mode</b> (const char *str)
-  <br/>
-  Convert string to mode enum. <b>bool</b> <b>asciichat_is_valid_mode_string</b>
-    (const char *str)
-  <br/>
-  Check if string is a valid mode name. size_t
-    <b>asciichat_get_all_mode_strings</b> (const char ***out_names)
-  <br/>
-  Get all mode strings. const char * <b>asciichat_suggest_mode</b> (const char
-    *input)
-  <br/>
-  Suggest closest matching mode using fuzzy matching. const char *
-    <b>color_mode_to_string</b> (<b>terminal_color_mode_t</b> mode)
-  <br/>
-  Convert color mode enum to string. const char * <b>render_mode_to_string</b>
-    (<b>render_mode_t</b> mode)
-  <br/>
-  const char * <b>palette_type_to_string</b> (<b>palette_type_t</b> type)
-  <br/>
-  Convert palette type enum to string. const char *
-    <b>asciichat_suggest_enum_value</b> (const char *option_name, const char
-    *input)
-  <br/>
-  Suggest closest matching enum value using fuzzy matching.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Centralized enum and mode string conversion - single source of
-    truth.</p>
-<p class="Pp">This module provides bidirectional conversion between enums and
-    strings:</p>
-<ul class="Bl-bullet">
-  <li>Mode enum &#x2194; mode string (&quot;server&quot;, &quot;client&quot;,
-      &quot;mirror&quot;, etc.)</li>
-  <li>Option enum values &#x2194; string values (&quot;auto&quot;,
-      &quot;none&quot;, &quot;16&quot;, etc.)</li>
-  <li>Fuzzy matching suggestions via levenshtein distance</li>
-</ul>
-<p class="Pp">All mode and enum string conversions should use this module.</p>
-<p class="Pp">Definition in file <b>options/strings.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_MODE_NAME_CAPACITY___32"><a class="permalink" href="#_define_MODE_NAME_CAPACITY___32">#define
-  MODE_NAME_CAPACITY 32</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>options/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_get_all_mode_strings()</b>, and
-    <b>asciichat_suggest_mode()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_asciichat_get_all_mode_strings_(const_char_***_out_names)"><a class="permalink" href="#size_t_asciichat_get_all_mode_strings_(const_char_***_out_names)">size_t
-  asciichat_get_all_mode_strings (const char *** out_names)</a></h2>
-<p class="Pp">Get all mode strings.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>out_names</i> Output array of mode name pointers</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of mode names</div>
-<p class="Pp">Definition at line <b>89</b> of file <b>options/strings.c</b>.</p>
-<pre>89                                                                {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>strings.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">strings.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">strings.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          strings.c - Centralized enum and mode string conversion - single
+          source of truth.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>mode_string_mapping_t</b>
+            <br />
+            Mode name mapping for string conversion.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MODE_NAME_CAPACITY</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>asciichat_mode_to_string</b> (<b
+              >asciichat_mode_t</b
+            >
+            mode)
+            <br />
+            Convert mode enum to string. <b>asciichat_mode_t</b>
+            <b>asciichat_string_to_mode</b> (const char *str)
+            <br />
+            Convert string to mode enum. <b>bool</b>
+            <b>asciichat_is_valid_mode_string</b>
+            (const char *str)
+            <br />
+            Check if string is a valid mode name. size_t
+            <b>asciichat_get_all_mode_strings</b> (const char ***out_names)
+            <br />
+            Get all mode strings. const char *
+            <b>asciichat_suggest_mode</b> (const char *input)
+            <br />
+            Suggest closest matching mode using fuzzy matching. const char *
+            <b>color_mode_to_string</b> (<b>terminal_color_mode_t</b> mode)
+            <br />
+            Convert color mode enum to string. const char *
+            <b>render_mode_to_string</b> (<b>render_mode_t</b>
+            mode)
+            <br />
+            const char * <b>palette_type_to_string</b> (<b>palette_type_t</b>
+            type)
+            <br />
+            Convert palette type enum to string. const char *
+            <b>asciichat_suggest_enum_value</b> (const char *option_name, const
+            char *input)
+            <br />
+            Suggest closest matching enum value using fuzzy matching.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Centralized enum and mode string conversion - single source of truth.
+        </p>
+        <p class="Pp">
+          This module provides bidirectional conversion between enums and
+          strings:
+        </p>
+        <ul class="Bl-bullet">
+          <li>
+            Mode enum &#x2194; mode string (&quot;server&quot;,
+            &quot;client&quot;, &quot;mirror&quot;, etc.)
+          </li>
+          <li>
+            Option enum values &#x2194; string values (&quot;auto&quot;,
+            &quot;none&quot;, &quot;16&quot;, etc.)
+          </li>
+          <li>Fuzzy matching suggestions via levenshtein distance</li>
+        </ul>
+        <p class="Pp">
+          All mode and enum string conversions should use this module.
+        </p>
+        <p class="Pp">Definition in file <b>options/strings.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MODE_NAME_CAPACITY___32">
+            <a class="permalink" href="#_define_MODE_NAME_CAPACITY___32"
+              >#define MODE_NAME_CAPACITY 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>options/strings.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_get_all_mode_strings()</b>, and
+            <b>asciichat_suggest_mode()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_asciichat_get_all_mode_strings_(const_char_***_out_names)"
+          >
+            <a
+              class="permalink"
+              href="#size_t_asciichat_get_all_mode_strings_(const_char_***_out_names)"
+              >size_t asciichat_get_all_mode_strings (const char ***
+              out_names)</a
+            >
+          </h2>
+          <p class="Pp">Get all mode strings.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>out_names</i> Output array of mode name pointers
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of mode names</div>
+          <p class="Pp">
+            Definition at line <b>89</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+89                                                                {
 90   static const char *names[MODE_NAME_CAPACITY]; // Max 32 modes
 91   size_t count = 0;
 92
@@ -152,42 +236,63 @@
 109   }
 110   return count;
 111 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_get_all_mode_strings()</b>, and
-    <b>MODE_NAME_CAPACITY</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_get_all_mode_strings()</b>, and
-    <b>asciichat_suggest_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_is_valid_mode_string (const char *
-  str)</h2>
-<p class="Pp">Check if string is a valid mode name.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if valid mode name, false otherwise</div>
-<p class="Pp">Definition at line <b>85</b> of file <b>options/strings.c</b>.</p>
-<pre>85                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_get_all_mode_strings()</b>, and
+            <b>MODE_NAME_CAPACITY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_get_all_mode_strings()</b>, and
+            <b>asciichat_suggest_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> asciichat_is_valid_mode_string (const char * str)
+          </h2>
+          <p class="Pp">Check if string is a valid mode name.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>str</i> String to check</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if valid mode name, false otherwise</div>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+85                                                      {
 86   return asciichat_string_to_mode(str) != MODE_INVALID;
 87 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_is_valid_mode_string()</b>,
-    <b>asciichat_string_to_mode()</b>, and <b>MODE_INVALID</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_is_valid_mode_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_asciichat_mode_to_string_("><a class="permalink" href="#const_char_*_asciichat_mode_to_string_(">const
-  char * asciichat_mode_to_string (<b>asciichat_mode_t</b> mode)</a></h2>
-<p class="Pp">Convert mode enum to string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mode</i> Mode enum value</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Mode name string (e.g., &quot;server&quot;,
-  &quot;client&quot;, &quot;mirror&quot;)</div>
-<p class="Pp">Definition at line <b>57</b> of file <b>options/strings.c</b>.</p>
-<pre>57                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_is_valid_mode_string()</b>,
+            <b>asciichat_string_to_mode()</b>, and <b>MODE_INVALID</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_is_valid_mode_string()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_asciichat_mode_to_string_(">
+            <a class="permalink" href="#const_char_*_asciichat_mode_to_string_("
+              >const char * asciichat_mode_to_string (<b>asciichat_mode_t</b>
+              mode)</a
+            >
+          </h2>
+          <p class="Pp">Convert mode enum to string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>mode</i> Mode enum value</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Mode name string (e.g., &quot;server&quot;, &quot;client&quot;,
+            &quot;mirror&quot;)
+          </div>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+57                                                             {
 58   // Special case: MODE_DISCOVERY is the default mode, show as &quot;default&quot; to users
 59   if (mode == MODE_DISCOVERY) {
 60     return &quot;default&quot;;
@@ -200,22 +305,30 @@
 67   }
 68   return &quot;unknown&quot;;
 69 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mode_to_string()</b>, and
-    <b>MODE_DISCOVERY</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_mode_to_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_mode_t</b> asciichat_string_to_mode (const char *
-  str)</h2>
-<p class="Pp">Convert string to mode enum.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Mode name string</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Mode enum value, or MODE_UNKNOWN if invalid</div>
-<p class="Pp">Definition at line <b>71</b> of file <b>options/strings.c</b>.</p>
-<pre>71                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mode_to_string()</b>, and
+            <b>MODE_DISCOVERY</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mode_to_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_mode_t</b> asciichat_string_to_mode (const char * str)
+          </h2>
+          <p class="Pp">Convert string to mode enum.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>str</i> Mode name string</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Mode enum value, or MODE_UNKNOWN if invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>71</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+71                                                            {
 72   if (!str) {
 73     return MODE_INVALID;
 74   }
@@ -228,28 +341,48 @@
 81
 82   return MODE_INVALID;
 83 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_string_to_mode()</b>, and
-    <b>MODE_INVALID</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_is_valid_mode_string()</b>, and
-    <b>asciichat_string_to_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)"><a class="permalink" href="#const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)">const
-  char * asciichat_suggest_enum_value (const char * option_name, const char *
-  input)</a></h2>
-<p class="Pp">Suggest closest matching enum value using fuzzy matching.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>option_name</i> Option name (e.g.,
-  &quot;color-mode&quot;, &quot;palette&quot;)
-<br/>
-<i>input</i> Invalid enum value string</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Suggested enum value, or NULL if no close match</div>
-<p class="Pp">Definition at line <b>196</b> of file
-  <b>options/strings.c</b>.</p>
-<pre>196                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_string_to_mode()</b>, and
+            <b>MODE_INVALID</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_is_valid_mode_string()</b>, and
+            <b>asciichat_string_to_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)"
+              >const char * asciichat_suggest_enum_value (const char *
+              option_name, const char * input)</a
+            >
+          </h2>
+          <p class="Pp">
+            Suggest closest matching enum value using fuzzy matching.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>option_name</i> Option name (e.g., &quot;color-mode&quot;,
+            &quot;palette&quot;)
+            <br />
+            <i>input</i> Invalid enum value string
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Suggested enum value, or NULL if no close match
+          </div>
+          <p class="Pp">
+            Definition at line <b>196</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+196                                                                                      {
 197   if (!option_name || !input) {
 198     return NULL;
 199   }
@@ -258,26 +391,42 @@
 202   const char **values = options_registry_get_enum_values(option_name, NULL, &amp;value_count);
 203   return values ? levenshtein_find_similar(input, values) : NULL;
 204 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>levenshtein_find_similar()</b>, and
-    <b>options_registry_get_enum_values()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>,
-    <b>parse_color_mode()</b>, <b>parse_palette_type()</b>, and
-    <b>parse_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_asciichat_suggest_mode_(const_char_*_input)"><a class="permalink" href="#const_char_*_asciichat_suggest_mode_(const_char_*_input)">const
-  char * asciichat_suggest_mode (const char * input)</a></h2>
-<p class="Pp">Suggest closest matching mode using fuzzy matching.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>input</i> Invalid mode string</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Suggested mode name, or NULL if no close match</div>
-<p class="Pp">Definition at line <b>113</b> of file
-  <b>options/strings.c</b>.</p>
-<pre>113                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_suggest_enum_value()</b>,
+            <b>levenshtein_find_similar()</b>, and
+            <b>options_registry_get_enum_values()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_suggest_enum_value()</b>,
+            <b>parse_color_mode()</b>, <b>parse_palette_type()</b>, and
+            <b>parse_render_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_asciichat_suggest_mode_(const_char_*_input)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_asciichat_suggest_mode_(const_char_*_input)"
+              >const char * asciichat_suggest_mode (const char * input)</a
+            >
+          </h2>
+          <p class="Pp">Suggest closest matching mode using fuzzy matching.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>input</i> Invalid mode string</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Suggested mode name, or NULL if no close match
+          </div>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+113                                                       {
 114   if (!input) {
 115     return NULL;
 116   }
@@ -294,25 +443,35 @@
 127
 128   return levenshtein_find_similar(input, null_terminated);
 129 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_get_all_mode_strings()</b>,
-    <b>asciichat_suggest_mode()</b>, <b>levenshtein_find_similar()</b>, and
-    <b>MODE_NAME_CAPACITY</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_suggest_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_color_mode_to_string_("><a class="permalink" href="#const_char_*_color_mode_to_string_(">const
-  char * color_mode_to_string (<b>terminal_color_mode_t</b> mode)</a></h2>
-<p class="Pp">Convert color mode enum to string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mode</i> Color mode value</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Color mode string (e.g., &quot;auto&quot;,
-  &quot;256&quot;, &quot;truecolor&quot;)</div>
-<p class="Pp">Definition at line <b>135</b> of file
-  <b>options/strings.c</b>.</p>
-<pre>135                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_get_all_mode_strings()</b>,
+            <b>asciichat_suggest_mode()</b>, <b>levenshtein_find_similar()</b>,
+            and <b>MODE_NAME_CAPACITY</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_suggest_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_color_mode_to_string_(">
+            <a class="permalink" href="#const_char_*_color_mode_to_string_("
+              >const char * color_mode_to_string (<b>terminal_color_mode_t</b>
+              mode)</a
+            >
+          </h2>
+          <p class="Pp">Convert color mode enum to string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>mode</i> Color mode value</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Color mode string (e.g., &quot;auto&quot;, &quot;256&quot;,
+            &quot;truecolor&quot;)
+          </div>
+          <p class="Pp">
+            Definition at line <b>135</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+135                                                              {
 136   switch (mode) {
 137   case TERM_COLOR_AUTO:
 138     return OPT_COLOR_MODE_AUTO;
@@ -328,29 +487,40 @@
 148     return &quot;unknown&quot;;
 149   }
 150 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_mode_to_string()</b>,
-    <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
-    <b>OPT_COLOR_MODE_AUTO</b>, <b>OPT_COLOR_MODE_NONE</b>,
-    <b>OPT_COLOR_MODE_TRUECOLOR</b>, <b>TERM_COLOR_16</b>,
-    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, and
-    <b>TERM_COLOR_TRUECOLOR</b>.</p>
-<p class="Pp">Referenced by <b>color_mode_to_string()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_palette_type_to_string_("><a class="permalink" href="#const_char_*_palette_type_to_string_(">const
-  char * palette_type_to_string (<b>palette_type_t</b> type)</a></h2>
-<p class="Pp">Convert palette type enum to string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>type</i> Palette type value</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Palette type string (e.g., &quot;standard&quot;,
-  &quot;blocks&quot;, &quot;cool&quot;)</div>
-<p class="Pp">Definition at line <b>173</b> of file
-  <b>options/strings.c</b>.</p>
-<pre>173                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_mode_to_string()</b>, <b>OPT_COLOR_MODE_16</b>,
+            <b>OPT_COLOR_MODE_256</b>, <b>OPT_COLOR_MODE_AUTO</b>,
+            <b>OPT_COLOR_MODE_NONE</b>, <b>OPT_COLOR_MODE_TRUECOLOR</b>,
+            <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, and <b>TERM_COLOR_TRUECOLOR</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>color_mode_to_string()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_palette_type_to_string_(">
+            <a class="permalink" href="#const_char_*_palette_type_to_string_("
+              >const char * palette_type_to_string (<b>palette_type_t</b>
+              type)</a
+            >
+          </h2>
+          <p class="Pp">Convert palette type enum to string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>type</i> Palette type value</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Palette type string (e.g., &quot;standard&quot;, &quot;blocks&quot;,
+            &quot;cool&quot;)
+          </div>
+          <p class="Pp">
+            Definition at line <b>173</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+173                                                         {
 174   switch (type) {
 175   case PALETTE_STANDARD:
 176     return OPT_PALETTE_STANDARD;
@@ -368,22 +538,29 @@
 188     return &quot;unknown&quot;;
 189   }
 190 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
-    <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
-    <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
-    <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
-    <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>, and
-    <b>palette_type_to_string()</b>.</p>
-<p class="Pp">Referenced by <b>palette_type_to_string()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_render_mode_to_string_("><a class="permalink" href="#const_char_*_render_mode_to_string_(">const
-  char * render_mode_to_string (<b>render_mode_t</b> mode)</a></h2>
-<p class="Pp">Definition at line <b>156</b> of file
-  <b>options/strings.c</b>.</p>
-<pre>156                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
+            <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
+            <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
+            <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
+            <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>,
+            <b>PALETTE_STANDARD</b>, and <b>palette_type_to_string()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>palette_type_to_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_render_mode_to_string_(">
+            <a class="permalink" href="#const_char_*_render_mode_to_string_("
+              >const char * render_mode_to_string (<b>render_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>156</b> of file <b>options/strings.c</b>.
+          </p>
+          <pre>
+156                                                       {
 157   switch (mode) {
 158   case RENDER_MODE_FOREGROUND:
 159     return OPT_RENDER_MODE_FOREGROUND;
@@ -395,26 +572,33 @@
 165     return &quot;unknown&quot;;
 166   }
 167 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>OPT_RENDER_MODE_BACKGROUND</b>,
-    <b>OPT_RENDER_MODE_FOREGROUND</b>, <b>OPT_RENDER_MODE_HALF_BLOCK</b>,
-    <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_FOREGROUND</b>,
-    <b>RENDER_MODE_HALF_BLOCK</b>, and <b>render_mode_to_string()</b>.</p>
-<p class="Pp">Referenced by <b>render_mode_to_string()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>OPT_RENDER_MODE_BACKGROUND</b>,
+            <b>OPT_RENDER_MODE_FOREGROUND</b>,
+            <b>OPT_RENDER_MODE_HALF_BLOCK</b>, <b>RENDER_MODE_BACKGROUND</b>,
+            <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>, and
+            <b>render_mode_to_string()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_mode_to_string()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

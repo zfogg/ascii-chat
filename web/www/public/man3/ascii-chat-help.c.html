@@ -1,183 +1,316 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>help.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">help.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">help.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">help.c - Help text generation and formatting for options.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE</b> 2048
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>options_config_calculate_max_col_width</b> (const
-    <b>options_config_t</b> *config)
-  <br/>
-  Calculate global max column width across all help sections. void
-    <b>options_config_print_usage</b> (const <b>options_config_t</b> *config,
-    FILE *stream)
-  <br/>
-  Print usage/help text. void <b>options_config_print_usage_section</b> (const
-    <b>options_config_t</b> *config, FILE *stream)
-  <br/>
-  Print only the USAGE section. void
-    <b>options_config_print_options_sections_with_width</b> (const
-    <b>options_config_t</b> *config, FILE *stream, int max_col_width,
-    <b>asciichat_mode_t</b> mode)
-  <br/>
-  Print everything except the USAGE section. void
-    <b>options_config_print_options_sections</b> (const <b>options_config_t</b>
-    *config, FILE *stream, <b>asciichat_mode_t</b> mode)
-  <br/>
-  Print everything except the USAGE section (backward compatibility wrapper).
-    void <b>options_print_help_for_mode</b> (const <b>options_config_t</b>
-    *config, <b>asciichat_mode_t</b> mode, const char *program_name, const char
-    *description, FILE *desc)
-  <br/>
-  Print help for a specific mode or binary level. void
-    <b>options_struct_destroy</b> (const <b>options_config_t</b> *config, void
-    *options_struct)
-  <br/>
-  Clean up memory owned by options struct.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Help text generation and formatting for options.</p>
-<p class="Pp">Implements all help/usage text generation functions including
-    programmatic section printers and unified help output.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>help.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE___256">#define
-  OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>help.c</b>.</p>
-<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE___2048"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE___2048">#define
-  OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>help.c</b>.</p>
-<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE___512"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE___512">#define
-  OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>help.c</b>.</p>
-<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE___256">#define
-  OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>help.c</b>.</p>
-<p class="Pp">Referenced by
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE___1024"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE___1024">#define
-  OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>help.c</b>.</p>
-<p class="Pp">Referenced by
-    <b>options_config_print_options_sections_with_width()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE___16"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE___16">#define
-  OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>help.c</b>.</p>
-<p class="Pp">Referenced by <b>options_config_calculate_max_col_width()</b>,
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE___512"><a class="permalink" href="#_define_OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE___512">#define
-  OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>help.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_options_config_calculate_max_col_width_(const_"><a class="permalink" href="#int_options_config_calculate_max_col_width_(const_">int
-  options_config_calculate_max_col_width (const <b>options_config_t</b> *
-  config)</a></h2>
-<p class="Pp">Calculate global max column width across all help sections.
-    Calculate global max column width for help output alignment.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculates the maximum width needed for proper alignment across
-    USAGE, EXAMPLES, OPTIONS, and MODES sections.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculate global max column width across all help sections.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculates the maximum width needed for proper alignment across
-    all help sections (USAGE, EXAMPLES, OPTIONS, MODES).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Maximum column width needed for alignment</div>
-<p class="Pp">Definition at line <b>90</b> of file <b>help.c</b>.</p>
-<pre>90                                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>help.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">help.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">help.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          help.c - Help text generation and formatting for options.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE</b> 1024
+            <br />
+            #define
+            <b>OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE</b> 2048
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>options_config_calculate_max_col_width</b> (const
+            <b>options_config_t</b> *config)
+            <br />
+            Calculate global max column width across all help sections. void
+            <b>options_config_print_usage</b> (const
+            <b>options_config_t</b> *config, FILE *stream)
+            <br />
+            Print usage/help text. void
+            <b>options_config_print_usage_section</b> (const
+            <b>options_config_t</b> *config, FILE *stream)
+            <br />
+            Print only the USAGE section. void
+            <b>options_config_print_options_sections_with_width</b> (const
+            <b>options_config_t</b> *config, FILE *stream, int max_col_width,
+            <b>asciichat_mode_t</b> mode)
+            <br />
+            Print everything except the USAGE section. void
+            <b>options_config_print_options_sections</b> (const
+            <b>options_config_t</b> *config, FILE *stream,
+            <b>asciichat_mode_t</b> mode)
+            <br />
+            Print everything except the USAGE section (backward compatibility
+            wrapper). void
+            <b>options_print_help_for_mode</b> (const
+            <b>options_config_t</b> *config, <b>asciichat_mode_t</b> mode, const
+            char *program_name, const char *description, FILE *desc)
+            <br />
+            Print help for a specific mode or binary level. void
+            <b>options_struct_destroy</b> (const
+            <b>options_config_t</b> *config, void *options_struct)
+            <br />
+            Clean up memory owned by options struct.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Help text generation and formatting for options.</p>
+        <p class="Pp">
+          Implements all help/usage text generation functions including
+          programmatic section printers and unified help output.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>help.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE___256"
+              >#define OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE
+              256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>help.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE___2048"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE___2048"
+              >#define OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>20</b> of file <b>help.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE___512"
+              >#define OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>19</b> of file <b>help.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE___256"
+              >#define OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>16</b> of file <b>help.c</b>.</p>
+          <p class="Pp">
+            Referenced by
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE___1024"
+              >#define OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>17</b> of file <b>help.c</b>.</p>
+          <p class="Pp">
+            Referenced by
+            <b>options_config_print_options_sections_with_width()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE___16"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE___16"
+              >#define OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>help.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE___512"
+              >#define OPTIONS_BUILDER_HELP_USAGE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>15</b> of file <b>help.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_options_config_calculate_max_col_width_(const_"
+          >
+            <a
+              class="permalink"
+              href="#int_options_config_calculate_max_col_width_(const_"
+              >int options_config_calculate_max_col_width (const
+              <b>options_config_t</b> * config)</a
+            >
+          </h2>
+          <p class="Pp">
+            Calculate global max column width across all help sections.
+            Calculate global max column width for help output alignment.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calculates the maximum width needed for proper alignment across
+            USAGE, EXAMPLES, OPTIONS, and MODES sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calculate global max column width across all help sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calculates the maximum width needed for proper alignment across all
+            help sections (USAGE, EXAMPLES, OPTIONS, MODES).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>config</i> Options configuration</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Maximum column width needed for alignment</div>
+          <p class="Pp">Definition at line <b>90</b> of file <b>help.c</b>.</p>
+          <pre>
+90                                                                            {
 91   if (!config)
 92     return 0;
 93
@@ -296,91 +429,142 @@
 206
 207   return max_col_width;
 208 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>example_descriptor_t::args</b>,
-    <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>colored_string()</b>, <b>options_config_t::descriptors</b>,
-    <b>options_config_t::examples</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::hide_from_binary_help</b>,
-    <b>option_descriptor_t::hide_from_mode_help</b>,
-    <b>example_descriptor_t::is_utility_command</b>, <b>LAYOUT_COLUMN_WIDTH</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
-    <b>option_descriptor_t::long_name</b>,
-    <b>example_descriptor_t::mode_bitmask</b>, <b>options_config_t::modes</b>,
-    <b>help_mode_descriptor_t::name</b>,
-    <b>options_config_t::num_descriptors</b>,
-    <b>options_config_t::num_examples</b>, <b>options_config_t::num_modes</b>,
-    <b>options_config_t::num_usage_lines</b>,
-    <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
-    <b>options_config_calculate_max_col_width()</b>,
-    <b>PLATFORM_BINARY_NAME</b>, <b>safe_snprintf()</b>,
-    <b>option_descriptor_t::short_name</b>, <b>usage()</b>,
-    <b>options_config_t::usage_lines</b>, and <b>utf8_display_width()</b>.</p>
-<p class="Pp">Referenced by <b>options_config_calculate_max_col_width()</b>,
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_config_print_usage_section()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_options_sections_(const_"><a class="permalink" href="#void_options_config_print_options_sections_(const_">void
-  options_config_print_options_sections (const <b>options_config_t</b> * config,
-  FILE * stream, <b>asciichat_mode_t</b> mode)</a></h2>
-<p class="Pp">Print everything except the USAGE section (backward compatibility
-    wrapper). Print everything except the USAGE section (backward
-    compatibility).</p>
-<p class="Pp"></p>
-<p class="Pp">Calls options_config_print_options_sections_with_width with
-    auto-calculation.</p>
-<p class="Pp"></p>
-<p class="Pp">Print everything except the USAGE section (backward compatibility
-    wrapper).</p>
-<p class="Pp"></p>
-<p class="Pp">Wrapper for options_config_print_options_sections_with_width with
-    auto-calculation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration
-<br/>
-<i>stream</i> Output stream (stdout or stderr)
-<br/>
-<i>mode</i> Optional mode to filter by (if provided, filters by
-  mode_bitmask)</div>
-<p class="Pp">Definition at line <b>1103</b> of file <b>help.c</b>.</p>
-<pre>1103                                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>example_descriptor_t::args</b>,
+            <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
+            <b>colored_string()</b>, <b>options_config_t::descriptors</b>,
+            <b>options_config_t::examples</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::hide_from_binary_help</b>,
+            <b>option_descriptor_t::hide_from_mode_help</b>,
+            <b>example_descriptor_t::is_utility_command</b>,
+            <b>LAYOUT_COLUMN_WIDTH</b>, <b>LOG_COLOR_FATAL</b>,
+            <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
+            <b>option_descriptor_t::long_name</b>,
+            <b>example_descriptor_t::mode_bitmask</b>,
+            <b>options_config_t::modes</b>, <b>help_mode_descriptor_t::name</b>,
+            <b>options_config_t::num_descriptors</b>,
+            <b>options_config_t::num_examples</b>,
+            <b>options_config_t::num_modes</b>,
+            <b>options_config_t::num_usage_lines</b>,
+            <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
+            <b>options_config_calculate_max_col_width()</b>,
+            <b>PLATFORM_BINARY_NAME</b>, <b>safe_snprintf()</b>,
+            <b>option_descriptor_t::short_name</b>, <b>usage()</b>,
+            <b>options_config_t::usage_lines</b>, and
+            <b>utf8_display_width()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_config_print_usage_section()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_options_config_print_options_sections_(const_"
+          >
+            <a
+              class="permalink"
+              href="#void_options_config_print_options_sections_(const_"
+              >void options_config_print_options_sections (const
+              <b>options_config_t</b> * config, FILE * stream,
+              <b>asciichat_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print everything except the USAGE section (backward compatibility
+            wrapper). Print everything except the USAGE section (backward
+            compatibility).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calls options_config_print_options_sections_with_width with
+            auto-calculation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Print everything except the USAGE section (backward compatibility
+            wrapper).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Wrapper for options_config_print_options_sections_with_width with
+            auto-calculation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+            <br />
+            <i>mode</i> Optional mode to filter by (if provided, filters by
+            mode_bitmask)
+          </div>
+          <p class="Pp">
+            Definition at line <b>1103</b> of file <b>help.c</b>.
+          </p>
+          <pre>
+1103                                                                                                                 {
 1104   options_config_print_options_sections_with_width(config, stream, 0, mode);
 1105 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_config_print_options_sections()</b>, and
-    <b>options_config_print_options_sections_with_width()</b>.</p>
-<p class="Pp">Referenced by <b>options_config_print_options_sections()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_options_sections_with_width_(const_"><a class="permalink" href="#void_options_config_print_options_sections_with_width_(const_">void
-  options_config_print_options_sections_with_width (const
-  <b>options_config_t</b> * config, FILE * stream, int max_col_width,
-  <b>asciichat_mode_t</b> mode)</a></h2>
-<p class="Pp">Print everything except the USAGE section. Prints MODES,
-    MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
-    options_config_print_usage_section to allow custom content in between.</p>
-<p class="Pp"></p>
-<p class="Pp">Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used
-    with options_config_print_usage_section to allow custom content in
-  between.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration (should be unified
-  preset with all options)
-<br/>
-<i>stream</i> Output stream (stdout or stderr)
-<br/>
-<i>max_col_width</i> Optional pre-calculated column width (0 = auto-calculate)
-<br/>
-<i>mode</i> Optional mode to filter by (if MODE_SERVER, MODE_CLIENT, etc.,
-  filters by mode_bitmask) If NULL or invalid, shows all options (for
-  binary-level help)</div>
-<p class="Pp">Definition at line <b>906</b> of file <b>help.c</b>.</p>
-<pre>907                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_config_print_options_sections()</b>, and
+            <b>options_config_print_options_sections_with_width()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_print_options_sections()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_options_config_print_options_sections_with_width_(const_"
+          >
+            <a
+              class="permalink"
+              href="#void_options_config_print_options_sections_with_width_(const_"
+              >void options_config_print_options_sections_with_width (const
+              <b>options_config_t</b> * config, FILE * stream, int
+              max_col_width, <b>asciichat_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print everything except the USAGE section. Prints MODES,
+            MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
+            options_config_print_usage_section to allow custom content in
+            between.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used
+            with options_config_print_usage_section to allow custom content in
+            between.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration (should be unified preset with
+            all options)
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+            <br />
+            <i>max_col_width</i> Optional pre-calculated column width (0 =
+            auto-calculate)
+            <br />
+            <i>mode</i> Optional mode to filter by (if MODE_SERVER, MODE_CLIENT,
+            etc., filters by mode_bitmask) If NULL or invalid, shows all options
+            (for binary-level help)
+          </div>
+          <p class="Pp">Definition at line <b>906</b> of file <b>help.c</b>.</p>
+          <pre>
+907                                                                              {
 908   if (!config || !stream) {
 909     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or stream is NULL&quot;);
 910     return;
@@ -570,46 +754,63 @@
 1094   // Cleanup
 1095   SAFE_FREE(unique_groups);
 1096 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
-    <b>BUFFER_SIZE_SMALL</b>, <b>colored_string()</b>,
-    <b>terminal_size_t::cols</b>, <b>option_descriptor_t::default_value</b>,
-    <b>options_config_t::descriptors</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>format_option_default_value_str()</b>,
-    <b>get_option_help_placeholder_str()</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::help_text</b>, <b>layout_print_two_column_row()</b>,
-    <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
-    <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
-    <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
-    <b>MODE_MCP_SERVER</b>, <b>options_config_t::num_descriptors</b>,
-    <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
-    <b>OPTION_TYPE_BOOL</b>, <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b>,
-    <b>OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE</b>,
-    <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
-    <b>options_config_calculate_max_col_width()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
-    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
-    <b>option_descriptor_t::short_name</b>, <b>terminal_get_size()</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>options_config_print_options_sections()</b>,
-    <b>options_config_print_options_sections_with_width()</b>, and
-    <b>options_print_help_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_usage_(const_"><a class="permalink" href="#void_options_config_print_usage_(const_">void
-  options_config_print_usage (const <b>options_config_t</b> * config, FILE *
-  stream)</a></h2>
-<p class="Pp">Print usage/help text. Generates formatted help with grouped
-    options.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration
-<br/>
-<i>stream</i> Output stream (stdout or stderr)</div>
-<p class="Pp">Definition at line <b>722</b> of file <b>help.c</b>.</p>
-<pre>722                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+            <b>BUFFER_SIZE_SMALL</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>,
+            <b>option_descriptor_t::default_value</b>,
+            <b>options_config_t::descriptors</b>, <b>errno</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>format_option_default_value_str()</b>,
+            <b>get_option_help_placeholder_str()</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::help_text</b>,
+            <b>layout_print_two_column_row()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+            <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
+            <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
+            <b>MODE_MCP_SERVER</b>, <b>options_config_t::num_descriptors</b>,
+            <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
+            <b>OPTION_TYPE_BOOL</b>,
+            <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_DESC_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
+            <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+            <b>SET_ERRNO</b>, <b>option_descriptor_t::short_name</b>,
+            <b>terminal_get_size()</b>, and <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_print_options_sections()</b>,
+            <b>options_config_print_options_sections_with_width()</b>, and
+            <b>options_print_help_for_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_config_print_usage_(const_">
+            <a class="permalink" href="#void_options_config_print_usage_(const_"
+              >void options_config_print_usage (const <b>options_config_t</b> *
+              config, FILE * stream)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print usage/help text. Generates formatted help with grouped
+            options.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+          </div>
+          <p class="Pp">Definition at line <b>722</b> of file <b>help.c</b>.</p>
+          <pre>
+722                                                                               {
 723   if (!config || !stream)
 724     return;
 725
@@ -756,44 +957,63 @@
 866
 867   fprintf(stream, &quot;\n&quot;);
 868 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>colored_string()</b>, <b>option_descriptor_t::default_value</b>,
-    <b>options_config_t::descriptors</b>, <b>errno</b>,
-    <b>format_option_default_value_str()</b>,
-    <b>get_option_help_placeholder_str()</b>, <b>option_descriptor_t::group</b>,
-    <b>option_descriptor_t::help_text</b>, <b>layout_print_two_column_row()</b>,
-    <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
-    <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
-    <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
-    <b>MODE_SERVER</b>, <b>options_config_t::num_descriptors</b>,
-    <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
-    <b>OPTION_TYPE_BOOL</b>, <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b>,
-    <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
-    <b>options_config_print_usage()</b>, <b>option_descriptor_t::required</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>,
-    <b>safe_snprintf()</b>, <b>option_descriptor_t::short_name</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>options_config_print_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_config_print_usage_section_(const_"><a class="permalink" href="#void_options_config_print_usage_section_(const_">void
-  options_config_print_usage_section (const <b>options_config_t</b> * config,
-  FILE * stream)</a></h2>
-<p class="Pp">Print only the USAGE section. Splits usage printing from other
-    sections to allow custom content (like positional argument examples) to be
-    inserted between USAGE and other sections.</p>
-<p class="Pp"></p>
-<p class="Pp">Prints just the USAGE section. Useful for inserting other content
-    (like positional argument examples) between USAGE and other sections.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration
-<br/>
-<i>stream</i> Output stream (stdout or stderr)</div>
-<p class="Pp">Definition at line <b>876</b> of file <b>help.c</b>.</p>
-<pre>876                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_SMALL</b>,
+            <b>colored_string()</b>, <b>option_descriptor_t::default_value</b>,
+            <b>options_config_t::descriptors</b>, <b>errno</b>,
+            <b>format_option_default_value_str()</b>,
+            <b>get_option_help_placeholder_str()</b>,
+            <b>option_descriptor_t::group</b>,
+            <b>option_descriptor_t::help_text</b>,
+            <b>layout_print_two_column_row()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+            <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
+            <b>option_descriptor_t::long_name</b>, <b>MODE_DISCOVERY</b>,
+            <b>MODE_SERVER</b>, <b>options_config_t::num_descriptors</b>,
+            <b>option_applies_to_mode()</b>, <b>OPTION_TYPE_ACTION</b>,
+            <b>OPTION_TYPE_BOOL</b>,
+            <b>OPTIONS_BUILDER_HELP_DEFAULT_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE</b>,
+            <b>options_config_print_usage()</b>,
+            <b>option_descriptor_t::required</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_GETENV</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+            <b>option_descriptor_t::short_name</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_config_print_usage()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_config_print_usage_section_(const_">
+            <a
+              class="permalink"
+              href="#void_options_config_print_usage_section_(const_"
+              >void options_config_print_usage_section (const
+              <b>options_config_t</b> * config, FILE * stream)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print only the USAGE section. Splits usage printing from other
+            sections to allow custom content (like positional argument examples)
+            to be inserted between USAGE and other sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Prints just the USAGE section. Useful for inserting other content
+            (like positional argument examples) between USAGE and other
+            sections.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>stream</i> Output stream (stdout or stderr)
+          </div>
+          <p class="Pp">Definition at line <b>876</b> of file <b>help.c</b>.</p>
+          <pre>
+876                                                                                       {
 877   if (!config || !stream)
 878     return;
 879
@@ -816,55 +1036,77 @@
 896   // Print only USAGE section
 897   print_usage_section(config, stream, term_width, max_col_width);
 898 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>errno</b>, <b>log_error</b>,
-    <b>options_config_calculate_max_col_width()</b>,
-    <b>options_config_print_usage_section()</b>, and <b>SAFE_GETENV</b>.</p>
-<p class="Pp">Referenced by <b>options_config_print_usage_section()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_print_help_for_mode_(const_"><a class="permalink" href="#void_options_print_help_for_mode_(const_">void
-  options_print_help_for_mode (const <b>options_config_t</b> * config,
-  <b>asciichat_mode_t</b> mode, const char * program_name, const char *
-  description, FILE * desc)</a></h2>
-<p class="Pp">Print help for a specific mode or binary level. Print help for a
-    specific mode or binary level (unified function).</p>
-<p class="Pp"></p>
-<p class="Pp">This is the single unified function for all help output (binary
-    level and all modes). It handles common layout logic, terminal detection,
-    and section printing.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options config with all options (binary +
-  all modes)
-<br/>
-<i>mode</i> Mode to show help for (use -1 for binary-level help)
-<br/>
-<i>program_name</i> Full program name with mode (e.g., &quot;ascii-chat
-  server&quot;)
-<br/>
-<i>description</i> Brief description of the mode/binary
-<br/>
-<i>desc</i> Output file stream (usually stdout)</div>
-<p class="Pp">Print help for a specific mode or binary level.</p>
-<p class="Pp"></p>
-<p class="Pp">This is the single unified function for all help output (binary
-    level and all modes). It handles all layout logic, terminal detection, and
-    section printing.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options config with all options
-<br/>
-<i>mode</i> Mode to show help for (-1 for binary-level help)
-<br/>
-<i>program_name</i> Full program name (e.g., &quot;ascii-chat server&quot;)
-<br/>
-<i>description</i> Brief description
-<br/>
-<i>desc</i> Output file stream</div>
-<p class="Pp">Definition at line <b>1123</b> of file <b>help.c</b>.</p>
-<pre>1124                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>errno</b>, <b>log_error</b>,
+            <b>options_config_calculate_max_col_width()</b>,
+            <b>options_config_print_usage_section()</b>, and <b>SAFE_GETENV</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_config_print_usage_section()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_print_help_for_mode_(const_">
+            <a
+              class="permalink"
+              href="#void_options_print_help_for_mode_(const_"
+              >void options_print_help_for_mode (const <b>options_config_t</b> *
+              config, <b>asciichat_mode_t</b> mode, const char * program_name,
+              const char * description, FILE * desc)</a
+            >
+          </h2>
+          <p class="Pp">
+            Print help for a specific mode or binary level. Print help for a
+            specific mode or binary level (unified function).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This is the single unified function for all help output (binary
+            level and all modes). It handles common layout logic, terminal
+            detection, and section printing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options config with all options (binary + all modes)
+            <br />
+            <i>mode</i> Mode to show help for (use -1 for binary-level help)
+            <br />
+            <i>program_name</i> Full program name with mode (e.g.,
+            &quot;ascii-chat server&quot;)
+            <br />
+            <i>description</i> Brief description of the mode/binary
+            <br />
+            <i>desc</i> Output file stream (usually stdout)
+          </div>
+          <p class="Pp">Print help for a specific mode or binary level.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This is the single unified function for all help output (binary
+            level and all modes). It handles all layout logic, terminal
+            detection, and section printing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options config with all options
+            <br />
+            <i>mode</i> Mode to show help for (-1 for binary-level help)
+            <br />
+            <i>program_name</i> Full program name (e.g., &quot;ascii-chat
+            server&quot;)
+            <br />
+            <i>description</i> Brief description
+            <br />
+            <i>desc</i> Output file stream
+          </div>
+          <p class="Pp">
+            Definition at line <b>1123</b> of file <b>help.c</b>.
+          </p>
+          <pre>
+1124                                                                       {
 1125   if (!config || !desc) {
 1126     if (desc) {
 1127       fprintf(desc, &quot;Error: Failed to create options config\n&quot;);
@@ -1217,53 +1459,71 @@
 1474   int options_max_col_width = calculate_section_max_col_width(config, &quot;options&quot;, mode, for_binary_help);
 1475   options_config_print_options_sections_with_width(config, desc, options_max_col_width, mode);
 1476 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
-    <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
-    <b>custom_section_descriptor_t::content</b>,
-    <b>options_config_t::custom_sections</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>positional_arg_descriptor_t::examples</b>,
-    <b>custom_section_descriptor_t::heading</b>,
-    <b>layout_print_two_column_row()</b>,
-    <b>layout_print_wrapped_description()</b>, <b>LOG_COLOR_DEBUG</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
-    <b>log_error</b>, <b>custom_section_descriptor_t::mode_bitmask</b>,
-    <b>positional_arg_descriptor_t::mode_bitmask</b>, <b>MODE_CLIENT</b>,
-    <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>,
-    <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
-    <b>options_config_t::num_custom_sections</b>,
-    <b>positional_arg_descriptor_t::num_examples</b>,
-    <b>options_config_t::num_modes</b>,
-    <b>options_config_t::num_positional_args</b>,
-    <b>options_config_t::num_usage_lines</b>,
-    <b>OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE</b>,
-    <b>OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE</b>,
-    <b>OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_print_help_for_mode()</b>,
-    <b>options_config_t::positional_args</b>, <b>print_project_links()</b>,
-    <b>SAFE_GETENV</b>, <b>safe_snprintf()</b>,
-    <b>positional_arg_descriptor_t::section_heading</b>, <b>SET_ERRNO</b>,
-    <b>terminal_get_size()</b>, <b>usage()</b>, and
-    <b>options_config_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>, and
-    <b>usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_options_struct_destroy_(const_"><a class="permalink" href="#void_options_struct_destroy_(const_">void
-  options_struct_destroy (const <b>options_config_t</b> * config, void *
-  options_struct)</a></h2>
-<p class="Pp">Clean up memory owned by options struct. Frees all auto-duplicated
-    strings and sets pointers to NULL. Call this before freeing the options
-    struct.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Options configuration
-<br/>
-<i>options_struct</i> Options struct to clean up</div>
-<p class="Pp">Definition at line <b>1478</b> of file <b>help.c</b>.</p>
-<pre>1478                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+            <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>custom_section_descriptor_t::content</b>,
+            <b>options_config_t::custom_sections</b>, <b>errno</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>positional_arg_descriptor_t::examples</b>,
+            <b>custom_section_descriptor_t::heading</b>,
+            <b>layout_print_two_column_row()</b>,
+            <b>layout_print_wrapped_description()</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+            <b>LOG_COLOR_WARN</b>, <b>log_error</b>,
+            <b>custom_section_descriptor_t::mode_bitmask</b>,
+            <b>positional_arg_descriptor_t::mode_bitmask</b>,
+            <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
+            <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MCP_SERVER</b>,
+            <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
+            <b>options_config_t::num_custom_sections</b>,
+            <b>positional_arg_descriptor_t::num_examples</b>,
+            <b>options_config_t::num_modes</b>,
+            <b>options_config_t::num_positional_args</b>,
+            <b>options_config_t::num_usage_lines</b>,
+            <b>OPTIONS_BUILDER_HELP_COLORED_FIRST_PART_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_COLORED_OUTPUT_BUFFER_SIZE</b>,
+            <b>OPTIONS_BUILDER_HELP_COLORED_RESULT_BUFFER_SIZE</b>,
+            <b>options_config_print_options_sections_with_width()</b>,
+            <b>options_print_help_for_mode()</b>,
+            <b>options_config_t::positional_args</b>,
+            <b>print_project_links()</b>, <b>SAFE_GETENV</b>,
+            <b>safe_snprintf()</b>,
+            <b>positional_arg_descriptor_t::section_heading</b>,
+            <b>SET_ERRNO</b>, <b>terminal_get_size()</b>, <b>usage()</b>, and
+            <b>options_config_t::usage_lines</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_print_help_for_mode()</b>, and
+            <b>usage()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_options_struct_destroy_(const_">
+            <a class="permalink" href="#void_options_struct_destroy_(const_"
+              >void options_struct_destroy (const <b>options_config_t</b> *
+              config, void * options_struct)</a
+            >
+          </h2>
+          <p class="Pp">
+            Clean up memory owned by options struct. Frees all auto-duplicated
+            strings and sets pointers to NULL. Call this before freeing the
+            options struct.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Options configuration
+            <br />
+            <i>options_struct</i> Options struct to clean up
+          </div>
+          <p class="Pp">
+            Definition at line <b>1478</b> of file <b>help.c</b>.
+          </p>
+          <pre>
+1478                                                                                   {
 1479   if (!config || !options_struct)
 1480     return;
 1481
@@ -1285,28 +1545,33 @@
 1497     }
 1498   }
 1499 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_config_t::descriptors</b>,
-    <b>options_config_t::num_descriptors</b>,
-    <b>options_config_t::num_owned_strings</b>,
-    <b>option_descriptor_t::offset</b>, <b>OPTION_TYPE_STRING</b>,
-    <b>options_struct_destroy()</b>, <b>options_config_t::owned_strings</b>,
-    <b>option_descriptor_t::owns_memory</b>, <b>SAFE_FREE</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>options_struct_destroy()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>options_config_t::descriptors</b>,
+            <b>options_config_t::num_descriptors</b>,
+            <b>options_config_t::num_owned_strings</b>,
+            <b>option_descriptor_t::offset</b>, <b>OPTION_TYPE_STRING</b>,
+            <b>options_struct_destroy()</b>,
+            <b>options_config_t::owned_strings</b>,
+            <b>option_descriptor_t::owns_memory</b>, <b>SAFE_FREE</b>, and
+            <b>option_descriptor_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>options_struct_destroy()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

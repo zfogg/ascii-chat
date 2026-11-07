@@ -1,193 +1,292 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>buffer.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">buffer.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">buffer.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">buffer.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>buffer_header</b>
-  <br/>
-  struct <b>buffer_domain</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>BUFFER_POISON</b>(p, n)
-  <br/>
-  #define <b>BUFFER_UNPOISON</b>(p, n)
-  <br/>
-  #define <b>BUFFER_BINS</b> 17
-  <br/>
-  #define <b>BUFFER_MIN_CAPACITY</b> 64u
-  <br/>
-  #define <b>BUFFER_MAX_CACHED</b> ((size_t)4 * 1024 * 1024)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>buffer_header</b> <b>buffer_header_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">size_t <b>buffer_process_reserved</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>buffer_budget_reserve</b> (<b>buffer_budget_t</b>
-    *budget, size_t bytes)
-  <br/>
-  void <b>buffer_budget_release</b> (<b>buffer_budget_t</b> *budget)
-  <br/>
-  <b>asciichat_error_t</b> <b>buffer_domain_create</b> (const
-    <b>buffer_domain_config_t</b> *config, <b>buffer_domain_t</b> **out)
-  <br/>
-  void <b>buffer_domain_close</b> (<b>buffer_domain_t</b> **slot)
-  <br/>
-  void <b>buffer_domain_trim</b> (<b>buffer_domain_t</b> *domain)
-  <br/>
-  <b>asciichat_error_t</b> <b>buffer_acquire</b> (<b>buffer_domain_t</b>
-    *domain, size_t size, size_t alignment, void **out)
-  <br/>
-  void * <b>buffer_alloc</b> (<b>buffer_domain_t</b> *domain, size_t size)
-  <br/>
-  size_t <b>buffer_capacity</b> (const void *data)
-  <br/>
-  size_t <b>buffer_size</b> (const void *data)
-  <br/>
-  <b>asciichat_error_t</b> <b>buffer_set_size</b> (void *data, size_t size)
-  <br/>
-  const void * <b>buffer_share</b> (const void *data)
-  <br/>
-  <b>bool</b> <b>buffer_is_unique</b> (const void *data)
-  <br/>
-  void <b>buffer_unref</b> (const void *data)
-  <br/>
-  <b>asciichat_error_t</b> <b>buffer_workspace_reserve</b>
-    (<b>buffer_workspace_t</b> *workspace, <b>buffer_domain_t</b> *domain,
-    size_t capacity)
-  <br/>
-  void <b>buffer_workspace_destroy</b> (<b>buffer_workspace_t</b> *workspace)
-  <br/>
-  void <b>buffer_domain_stats</b> (<b>buffer_domain_t</b> *domain,
-    <b>buffer_stats_t</b> *out)
-  <br/>
-  void <b>buffer_domain_log_stats</b> (<b>buffer_domain_t</b> *domain, const
-    char *name)
-  <br/>
-  void <b>buffer_system_init</b> (void)
-  <br/>
-  <b>buffer_domain_t</b> * <b>buffer_default_domain</b> (void)
-  <br/>
-  void <b>buffer_system_cleanup</b> (void)
-  <br/>
-  <b>buffer_domain_t</b> * <b>buffer_control_domain</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_BUFFER_BINS___17"><a class="permalink" href="#_define_BUFFER_BINS___17">#define
-  BUFFER_BINS 17</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>buffer.c</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_BUFFER_MAX_CACHED___((size_t)4_*_1024_*_1024)"><a class="permalink" href="#_define_BUFFER_MAX_CACHED___((size_t)4_*_1024_*_1024)">#define
-  BUFFER_MAX_CACHED ((size_t)4 * 1024 * 1024)</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>buffer.c</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
-  <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_BUFFER_MIN_CAPACITY___64u"><a class="permalink" href="#_define_BUFFER_MIN_CAPACITY___64u">#define
-  BUFFER_MIN_CAPACITY 64u</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>buffer.c</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_BUFFER_POISON(_p,__n)"><a class="permalink" href="#_define_BUFFER_POISON(_p,__n)">#define
-  BUFFER_POISON( p, n)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((void)0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>19</b> of file <b>buffer.c</b>.</p>
-<p class="Pp">Referenced by <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_BUFFER_UNPOISON(_p,__n)"><a class="permalink" href="#_define_BUFFER_UNPOISON(_p,__n)">#define
-  BUFFER_UNPOISON( p, n)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((void)0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>20</b> of file <b>buffer.c</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>buffer_header</b> <b>buffer_header_t</b></a></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> buffer_acquire (<b>buffer_domain_t</b> *
-  domain, size_t size, size_t alignment, void ** out)</h2>
-<p class="Pp">NULL domain selects the default process domain. Failure leaves
-    *out NULL.</p>
-<p class="Pp">Definition at line <b>168</b> of file <b>buffer.c</b>.</p>
-<pre>168                                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>buffer.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">buffer.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">buffer.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">buffer.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>buffer_header</b>
+            <br />
+            struct <b>buffer_domain</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>BUFFER_POISON</b>(p, n)
+            <br />
+            #define <b>BUFFER_UNPOISON</b>(p, n)
+            <br />
+            #define <b>BUFFER_BINS</b> 17
+            <br />
+            #define <b>BUFFER_MIN_CAPACITY</b> 64u
+            <br />
+            #define <b>BUFFER_MAX_CACHED</b> ((size_t)4 * 1024 * 1024)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>buffer_header</b> <b>buffer_header_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>buffer_process_reserved</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>buffer_budget_reserve</b> (<b
+              >buffer_budget_t</b
+            >
+            *budget, size_t bytes)
+            <br />
+            void <b>buffer_budget_release</b> (<b>buffer_budget_t</b> *budget)
+            <br />
+            <b>asciichat_error_t</b> <b>buffer_domain_create</b> (const
+            <b>buffer_domain_config_t</b> *config, <b>buffer_domain_t</b> **out)
+            <br />
+            void <b>buffer_domain_close</b> (<b>buffer_domain_t</b> **slot)
+            <br />
+            void <b>buffer_domain_trim</b> (<b>buffer_domain_t</b> *domain)
+            <br />
+            <b>asciichat_error_t</b> <b>buffer_acquire</b> (<b
+              >buffer_domain_t</b
+            >
+            *domain, size_t size, size_t alignment, void **out)
+            <br />
+            void * <b>buffer_alloc</b> (<b>buffer_domain_t</b> *domain, size_t
+            size)
+            <br />
+            size_t <b>buffer_capacity</b> (const void *data)
+            <br />
+            size_t <b>buffer_size</b> (const void *data)
+            <br />
+            <b>asciichat_error_t</b> <b>buffer_set_size</b> (void *data, size_t
+            size)
+            <br />
+            const void * <b>buffer_share</b> (const void *data)
+            <br />
+            <b>bool</b> <b>buffer_is_unique</b> (const void *data)
+            <br />
+            void <b>buffer_unref</b> (const void *data)
+            <br />
+            <b>asciichat_error_t</b> <b>buffer_workspace_reserve</b> (<b
+              >buffer_workspace_t</b
+            >
+            *workspace, <b>buffer_domain_t</b> *domain, size_t capacity)
+            <br />
+            void <b>buffer_workspace_destroy</b> (<b>buffer_workspace_t</b>
+            *workspace)
+            <br />
+            void <b>buffer_domain_stats</b> (<b>buffer_domain_t</b> *domain,
+            <b>buffer_stats_t</b> *out)
+            <br />
+            void <b>buffer_domain_log_stats</b> (<b>buffer_domain_t</b> *domain,
+            const char *name)
+            <br />
+            void <b>buffer_system_init</b> (void)
+            <br />
+            <b>buffer_domain_t</b> * <b>buffer_default_domain</b> (void)
+            <br />
+            void <b>buffer_system_cleanup</b> (void)
+            <br />
+            <b>buffer_domain_t</b> * <b>buffer_control_domain</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BUFFER_BINS___17">
+            <a class="permalink" href="#_define_BUFFER_BINS___17"
+              >#define BUFFER_BINS 17</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>buffer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_BUFFER_MAX_CACHED___((size_t)4_*_1024_*_1024)"
+          >
+            <a
+              class="permalink"
+              href="#_define_BUFFER_MAX_CACHED___((size_t)4_*_1024_*_1024)"
+              >#define BUFFER_MAX_CACHED ((size_t)4 * 1024 * 1024)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>buffer.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, and <b>buffer_unref()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BUFFER_MIN_CAPACITY___64u">
+            <a class="permalink" href="#_define_BUFFER_MIN_CAPACITY___64u"
+              >#define BUFFER_MIN_CAPACITY 64u</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>buffer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BUFFER_POISON(_p,__n)">
+            <a class="permalink" href="#_define_BUFFER_POISON(_p,__n)"
+              >#define BUFFER_POISON( p, n)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((void)0)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>buffer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_unref()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BUFFER_UNPOISON(_p,__n)">
+            <a class="permalink" href="#_define_BUFFER_UNPOISON(_p,__n)"
+              >#define BUFFER_UNPOISON( p, n)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((void)0)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>buffer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>buffer_header</b> <b>buffer_header_t</b></a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> buffer_acquire (<b>buffer_domain_t</b> *
+            domain, size_t size, size_t alignment, void ** out)
+          </h2>
+          <p class="Pp">
+            NULL domain selects the default process domain. Failure leaves *out
+            NULL.
+          </p>
+          <p class="Pp">
+            Definition at line <b>168</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+168                                                                                                      {
 169   if (!out)
 170     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer output is NULL&quot;);
 171   *out = NULL;
@@ -282,93 +381,133 @@
 260   mutex_unlock(&amp;domain-&gt;mutex);
 261   return ASCIICHAT_OK;
 262 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_header::alignment</b>, <b>ALLOC_MALLOC</b>,
-    <b>buffer_header::allocation</b>, <b>buffer_stats_t::allocations</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_fetch_sub_u64()</b>,
-    <b>buffer_domain::bins</b>, <b>buffer_acquire()</b>, <b>BUFFER_BINS</b>,
-    <b>BUFFER_DEFAULT_ALIGNMENT</b>, <b>buffer_default_domain()</b>,
-    <b>BUFFER_MAX_CACHED</b>, <b>BUFFER_MIN_CAPACITY</b>,
-    <b>BUFFER_UNPOISON</b>, <b>buffer_stats_t::cached_bytes</b>,
-    <b>buffer_header::capacity</b>, <b>buffer_header::charge</b>,
-    <b>buffer_domain::closing</b>, <b>buffer_domain::config</b>,
-    <b>buffer_domain_config_t::control</b>, <b>buffer_header::data</b>,
-    <b>buffer_header::domain</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>buffer_stats_t::failures</b>, <b>buffer_stats_t::hits</b>,
-    <b>buffer_header::length</b>, <b>buffer_domain_config_t::limit_bytes</b>,
-    <b>buffer_stats_t::live_bytes</b>, <b>buffer_domain::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>buffer_header::next</b>,
-    <b>buffer_stats_t::outstanding</b>, <b>buffer_stats_t::peak_bytes</b>,
-    <b>buffer_stats_t::requested_bytes</b>,
-    <b>buffer_stats_t::reserved_bytes</b>, <b>SET_ERRNO</b>, and
-    <b>buffer_domain::stats</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>, <b>buffer_alloc()</b>, and
-    <b>buffer_workspace_reserve()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_buffer_alloc_("><a class="permalink" href="#void_*_buffer_alloc_(">void
-  * buffer_alloc (<b>buffer_domain_t</b> * domain, size_t size)</a></h2>
-<p class="Pp">Convenience for typed C callers; failures set asciichat_errno and
-    return NULL.</p>
-<p class="Pp">Definition at line <b>264</b> of file <b>buffer.c</b>.</p>
-<pre>264                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_header::alignment</b>, <b>ALLOC_MALLOC</b>,
+            <b>buffer_header::allocation</b>,
+            <b>buffer_stats_t::allocations</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_fetch_sub_u64()</b>, <b>buffer_domain::bins</b>,
+            <b>buffer_acquire()</b>, <b>BUFFER_BINS</b>,
+            <b>BUFFER_DEFAULT_ALIGNMENT</b>, <b>buffer_default_domain()</b>,
+            <b>BUFFER_MAX_CACHED</b>, <b>BUFFER_MIN_CAPACITY</b>,
+            <b>BUFFER_UNPOISON</b>, <b>buffer_stats_t::cached_bytes</b>,
+            <b>buffer_header::capacity</b>, <b>buffer_header::charge</b>,
+            <b>buffer_domain::closing</b>, <b>buffer_domain::config</b>,
+            <b>buffer_domain_config_t::control</b>, <b>buffer_header::data</b>,
+            <b>buffer_header::domain</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+            <b>buffer_stats_t::failures</b>, <b>buffer_stats_t::hits</b>,
+            <b>buffer_header::length</b>,
+            <b>buffer_domain_config_t::limit_bytes</b>,
+            <b>buffer_stats_t::live_bytes</b>, <b>buffer_domain::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>buffer_header::next</b>,
+            <b>buffer_stats_t::outstanding</b>,
+            <b>buffer_stats_t::peak_bytes</b>,
+            <b>buffer_stats_t::requested_bytes</b>,
+            <b>buffer_stats_t::reserved_bytes</b>, <b>SET_ERRNO</b>, and
+            <b>buffer_domain::stats</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>, <b>buffer_alloc()</b>, and
+            <b>buffer_workspace_reserve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_*_buffer_alloc_(">
+            <a class="permalink" href="#void_*_buffer_alloc_("
+              >void * buffer_alloc (<b>buffer_domain_t</b> * domain, size_t
+              size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Convenience for typed C callers; failures set asciichat_errno and
+            return NULL.
+          </p>
+          <p class="Pp">
+            Definition at line <b>264</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+264                                                          {
 265   void *data = NULL;
 266   (void)buffer_acquire(domain, size, BUFFER_DEFAULT_ALIGNMENT, &amp;data);
 267   return data;
 268 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_acquire()</b>, <b>buffer_alloc()</b>, and
-    <b>BUFFER_DEFAULT_ALIGNMENT</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>,
-    <b>acip_packet_encrypt()</b>, <b>acip_send_audio_batch()</b>,
-    <b>acip_send_audio_opus_batch()</b>, <b>acip_send_error()</b>,
-    <b>acip_send_image_frame_h265()</b>, <b>acip_send_remote_log()</b>,
-    <b>acip_server_receive_and_dispatch()</b>,
-    <b>av_send_audio_opus_batch()</b>, <b>buffer_alloc()</b>,
-    <b>client_handle_auth_challenge()</b>,
-    <b>client_handle_crypto_parameters()</b>,
-    <b>client_handle_handshake_complete()</b>,
-    <b>client_handle_key_exchange_init()</b>, <b>compress_data()</b>,
-    <b>framebuffer_peek_latest_multi_frame()</b>,
-    <b>framebuffer_write_frame()</b>, <b>framebuffer_write_multi_frame()</b>,
-    <b>image_new()</b>, <b>mixer_create_channels()</b>,
-    <b>packet_decrypt_envelope()</b>, <b>packet_queue_push_copy()</b>,
-    <b>packet_receive()</b>, <b>peer_crypto_receive()</b>,
-    <b>platform_event_stream_write()</b>,
-    <b>receive_packet_secure_with_timeout()</b>,
-    <b>send_image_frame_packet()</b>, <b>send_packet_secure()</b>,
-    <b>socket_send_buffer_alloc()</b>, and
-  <b>video_frame_buffer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_budget_release_("><a class="permalink" href="#void_buffer_budget_release_(">void
-  buffer_budget_release (<b>buffer_budget_t</b> * budget)</a></h2>
-<p class="Pp">Definition at line <b>78</b> of file <b>buffer.c</b>.</p>
-<pre>78                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_acquire()</b>, <b>buffer_alloc()</b>, and
+            <b>BUFFER_DEFAULT_ALIGNMENT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>acip_packet_encrypt()</b>, <b>acip_send_audio_batch()</b>,
+            <b>acip_send_audio_opus_batch()</b>, <b>acip_send_error()</b>,
+            <b>acip_send_image_frame_h265()</b>, <b>acip_send_remote_log()</b>,
+            <b>acip_server_receive_and_dispatch()</b>,
+            <b>av_send_audio_opus_batch()</b>, <b>buffer_alloc()</b>,
+            <b>client_handle_auth_challenge()</b>,
+            <b>client_handle_crypto_parameters()</b>,
+            <b>client_handle_handshake_complete()</b>,
+            <b>client_handle_key_exchange_init()</b>, <b>compress_data()</b>,
+            <b>framebuffer_peek_latest_multi_frame()</b>,
+            <b>framebuffer_write_frame()</b>,
+            <b>framebuffer_write_multi_frame()</b>, <b>image_new()</b>,
+            <b>mixer_create_channels()</b>, <b>packet_decrypt_envelope()</b>,
+            <b>packet_queue_push_copy()</b>, <b>packet_receive()</b>,
+            <b>peer_crypto_receive()</b>, <b>platform_event_stream_write()</b>,
+            <b>receive_packet_secure_with_timeout()</b>,
+            <b>send_image_frame_packet()</b>, <b>send_packet_secure()</b>,
+            <b>socket_send_buffer_alloc()</b>, and
+            <b>video_frame_buffer_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_budget_release_(">
+            <a class="permalink" href="#void_buffer_budget_release_("
+              >void buffer_budget_release (<b>buffer_budget_t</b> * budget)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>78</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+78                                                     {
 79   if (budget &amp;&amp; budget-&gt;bytes) {
 80     atomic_fetch_sub_u64(&amp;process_bytes, budget-&gt;bytes);
 81     budget-&gt;bytes = 0;
 82   }
 83 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_sub_u64()</b>,
-    <b>buffer_budget_release()</b>, and <b>buffer_budget_t::bytes</b>.</p>
-<p class="Pp">Referenced by <b>buffer_budget_release()</b>,
-    <b>socket_send_buffer_alloc()</b>, and <b>socket_send_buffer_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> buffer_budget_reserve
-  (<b>buffer_budget_t</b> * budget, size_t bytes)</h2>
-<p class="Pp">Budget lease for platform storage that cannot be recycled (e.g.
-    pinned mappings). Zero-initialize, reserve before allocation, release only
-    after disposing storage. A failed reservation preserves the lease. Never
-    copy a live lease.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>buffer.c</b>.</p>
-<pre>69                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_fetch_sub_u64()</b>,
+            <b>buffer_budget_release()</b>, and <b>buffer_budget_t::bytes</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_budget_release()</b>,
+            <b>socket_send_buffer_alloc()</b>, and
+            <b>socket_send_buffer_free()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> buffer_budget_reserve (<b
+              >buffer_budget_t</b
+            >
+            * budget, size_t bytes)
+          </h2>
+          <p class="Pp">
+            Budget lease for platform storage that cannot be recycled (e.g.
+            pinned mappings). Zero-initialize, reserve before allocation,
+            release only after disposing storage. A failed reservation preserves
+            the lease. Never copy a live lease.
+          </p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+69                                                                                {
 70   if (!budget || budget-&gt;bytes || !bytes)
 71     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Expected an empty buffer budget lease&quot;);
 72   if (!process_reserve(bytes, false))
@@ -376,80 +515,127 @@
 74   budget-&gt;bytes = bytes;
 75   return ASCIICHAT_OK;
 76 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_budget_reserve()</b>,
-    <b>buffer_budget_t::bytes</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>buffer_budget_reserve()</b>, and
-    <b>socket_send_buffer_alloc()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_capacity_(const_void_*_data)"><a class="permalink" href="#size_t_buffer_capacity_(const_void_*_data)">size_t
-  buffer_capacity (const void * data)</a></h2>
-<p class="Pp">Query only a live owning payload pointer (NULL returns zero).</p>
-<p class="Pp">Definition at line <b>270</b> of file <b>buffer.c</b>.</p>
-<pre>270                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>buffer_budget_reserve()</b>,
+            <b>buffer_budget_t::bytes</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_budget_reserve()</b>, and
+            <b>socket_send_buffer_alloc()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_capacity_(const_void_*_data)">
+            <a
+              class="permalink"
+              href="#size_t_buffer_capacity_(const_void_*_data)"
+              >size_t buffer_capacity (const void * data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Query only a live owning payload pointer (NULL returns zero).
+          </p>
+          <p class="Pp">
+            Definition at line <b>270</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+270                                          {
 271   return data ? header(data)-&gt;capacity : 0;
 272 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_capacity()</b>, and
-    <b>buffer_header::capacity</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>,
-    <b>buffer_capacity()</b>, <b>buffer_set_size()</b>,
-    <b>buffer_workspace_reserve()</b>, <b>compress_workspace()</b>,
-    <b>manpage_content_generate_environment()</b>,
-    <b>manpage_content_generate_environment_with_manual()</b>,
-    <b>manpage_content_generate_examples()</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>manpage_content_generate_positional()</b>,
-    <b>manpage_content_generate_usage()</b>,
-    <b>manpage_merger_generate_usage()</b>,
-    <b>packet_decode_frame_data_workspace()</b>,
-    <b>packet_queue_push_shared()</b>, and <b>packet_queue_push_take()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>buffer_domain_t</b> * buffer_control_domain (void )</h2>
-<p class="Pp">Small, bounded control messages may use the reserved process
-    allowance.</p>
-<p class="Pp">Definition at line <b>426</b> of file <b>buffer.c</b>.</p>
-<pre>426                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_capacity()</b>, and
+            <b>buffer_header::capacity</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>buffer_capacity()</b>, <b>buffer_set_size()</b>,
+            <b>buffer_workspace_reserve()</b>, <b>compress_workspace()</b>,
+            <b>manpage_content_generate_environment()</b>,
+            <b>manpage_content_generate_environment_with_manual()</b>,
+            <b>manpage_content_generate_examples()</b>,
+            <b>manpage_content_generate_options()</b>,
+            <b>manpage_content_generate_positional()</b>,
+            <b>manpage_content_generate_usage()</b>,
+            <b>manpage_merger_generate_usage()</b>,
+            <b>packet_decode_frame_data_workspace()</b>,
+            <b>packet_queue_push_shared()</b>, and
+            <b>packet_queue_push_take()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>buffer_domain_t</b> * buffer_control_domain (void )
+          </h2>
+          <p class="Pp">
+            Small, bounded control messages may use the reserved process
+            allowance.
+          </p>
+          <p class="Pp">
+            Definition at line <b>426</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+426                                              {
 427   buffer_system_init();
 428   return control_domain;
 429 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_control_domain()</b>, and
-    <b>buffer_system_init()</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>,
-    <b>acip_packet_plan()</b>, <b>acip_send_error()</b>,
-    <b>buffer_control_domain()</b>, <b>packet_receive()</b>,
-    <b>stats_logger_thread()</b>, and <b>websocket_transport_send()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>buffer_domain_t</b> * buffer_default_domain (void )</h2>
-<p class="Pp">Definition at line <b>413</b> of file <b>buffer.c</b>.</p>
-<pre>413                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_control_domain()</b>, and
+            <b>buffer_system_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>acip_packet_plan()</b>, <b>acip_send_error()</b>,
+            <b>buffer_control_domain()</b>, <b>packet_receive()</b>,
+            <b>stats_logger_thread()</b>, and <b>websocket_transport_send()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>buffer_domain_t</b> * buffer_default_domain (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>413</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+413                                              {
 414   buffer_system_init();
 415   return default_domain;
 416 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_default_domain()</b>, and
-    <b>buffer_system_init()</b>.</p>
-<p class="Pp">Referenced by <b>buffer_acquire()</b>,
-    <b>buffer_default_domain()</b>, and <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_domain_close_("><a class="permalink" href="#void_buffer_domain_close_(">void
-  buffer_domain_close (<b>buffer_domain_t</b> ** domain)</a></h2>
-<p class="Pp">Stop admissions and trim cached storage. Outstanding buffers keep
-    the domain alive. Join users of the domain pointer before closing;
-    outstanding payloads may be released afterwards, from any thread. Clears the
-    caller's domain pointer.</p>
-<p class="Pp">Definition at line <b>146</b> of file <b>buffer.c</b>.</p>
-<pre>146                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_default_domain()</b>, and
+            <b>buffer_system_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_acquire()</b>,
+            <b>buffer_default_domain()</b>, and <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_domain_close_(">
+            <a class="permalink" href="#void_buffer_domain_close_("
+              >void buffer_domain_close (<b>buffer_domain_t</b> ** domain)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stop admissions and trim cached storage. Outstanding buffers keep
+            the domain alive. Join users of the domain pointer before closing;
+            outstanding payloads may be released afterwards, from any thread.
+            Clears the caller's domain pointer.
+          </p>
+          <p class="Pp">
+            Definition at line <b>146</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+146                                                  {
 147   if (!slot || !*slot)
 148     return;
 149   buffer_domain_t *domain = *slot;
@@ -462,22 +648,32 @@
 156   if (done)
 157     domain_dispose(domain);
 158 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_domain_close()</b>,
-    <b>buffer_domain::closing</b>, <b>buffer_domain::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>buffer_stats_t::outstanding</b>,
-    and <b>buffer_domain::stats</b>.</p>
-<p class="Pp">Referenced by <b>buffer_domain_close()</b>,
-    <b>buffer_system_cleanup()</b>, <b>buffer_system_init()</b>, and
-    <b>packet_queue_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> buffer_domain_create (const
-  <b>buffer_domain_config_t</b> * config, <b>buffer_domain_t</b> ** out)</h2>
-<p class="Pp">Create a domain under the shared process budget.</p>
-<p class="Pp">Definition at line <b>115</b> of file <b>buffer.c</b>.</p>
-<pre>115                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_domain_close()</b>,
+            <b>buffer_domain::closing</b>, <b>buffer_domain::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>buffer_stats_t::outstanding</b>, and <b>buffer_domain::stats</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_domain_close()</b>,
+            <b>buffer_system_cleanup()</b>, <b>buffer_system_init()</b>, and
+            <b>packet_queue_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> buffer_domain_create (const
+            <b>buffer_domain_config_t</b> * config, <b>buffer_domain_t</b> **
+            out)
+          </h2>
+          <p class="Pp">Create a domain under the shared process budget.</p>
+          <p class="Pp">
+            Definition at line <b>115</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+115                                                                                                     {
 116   if (!out)
 117     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer domain output is NULL&quot;);
 118   *out = NULL;
@@ -501,47 +697,70 @@
 136   *out = domain;
 137   return ASCIICHAT_OK;
 138 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ALLOC_CALLOC</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_fetch_sub_u64()</b>, <b>buffer_domain_create()</b>,
-    <b>BUFFER_DOMAIN_LIMIT</b>, <b>buffer_domain::config</b>,
-    <b>buffer_domain_config_t::control</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
-    <b>buffer_domain_config_t::limit_bytes</b>, <b>buffer_domain::mutex</b>,
-    <b>mutex_init()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>buffer_domain_create()</b>,
-    <b>buffer_system_init()</b>, and <b>packet_queue_create_config()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_domain_log_stats_("><a class="permalink" href="#void_buffer_domain_log_stats_(">void
-  buffer_domain_log_stats (<b>buffer_domain_t</b> * domain, const char *
-  name)</a></h2>
-<p class="Pp">Definition at line <b>382</b> of file <b>buffer.c</b>.</p>
-<pre>382                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ALLOC_CALLOC</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_fetch_sub_u64()</b>, <b>buffer_domain_create()</b>,
+            <b>BUFFER_DOMAIN_LIMIT</b>, <b>buffer_domain::config</b>,
+            <b>buffer_domain_config_t::control</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+            <b>buffer_domain_config_t::limit_bytes</b>,
+            <b>buffer_domain::mutex</b>, <b>mutex_init()</b>, <b>SAFE_FREE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_domain_create()</b>,
+            <b>buffer_system_init()</b>, and
+            <b>packet_queue_create_config()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_domain_log_stats_(">
+            <a class="permalink" href="#void_buffer_domain_log_stats_("
+              >void buffer_domain_log_stats (<b>buffer_domain_t</b> * domain,
+              const char * name)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>382</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+382                                                                         {
 383   buffer_stats_t stats;
 384   buffer_domain_stats(domain, &amp;stats);
 385   log_debug(&quot;Buffers %s: reserved=%zu live=%zu requested=%zu cached=%zu outstanding=%zu hits=%llu failures=%llu&quot;,
 386             name ? name : &quot;default&quot;, stats.reserved_bytes, stats.live_bytes, stats.requested_bytes, stats.cached_bytes,
 387             stats.outstanding, (unsigned long long)stats.hits, (unsigned long long)stats.failures);
 388 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_domain_log_stats()</b>,
-    <b>buffer_domain_stats()</b>, <b>buffer_stats_t::cached_bytes</b>,
-    <b>buffer_stats_t::failures</b>, <b>buffer_stats_t::hits</b>,
-    <b>buffer_stats_t::live_bytes</b>, <b>log_debug</b>,
-    <b>buffer_stats_t::outstanding</b>, <b>buffer_stats_t::requested_bytes</b>,
-    and <b>buffer_stats_t::reserved_bytes</b>.</p>
-<p class="Pp">Referenced by <b>buffer_domain_log_stats()</b>, and
-    <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_domain_stats_("><a class="permalink" href="#void_buffer_domain_stats_(">void
-  buffer_domain_stats (<b>buffer_domain_t</b> * domain, <b>buffer_stats_t</b> *
-  out)</a></h2>
-<p class="Pp">Definition at line <b>371</b> of file <b>buffer.c</b>.</p>
-<pre>371                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_domain_log_stats()</b>,
+            <b>buffer_domain_stats()</b>, <b>buffer_stats_t::cached_bytes</b>,
+            <b>buffer_stats_t::failures</b>, <b>buffer_stats_t::hits</b>,
+            <b>buffer_stats_t::live_bytes</b>, <b>log_debug</b>,
+            <b>buffer_stats_t::outstanding</b>,
+            <b>buffer_stats_t::requested_bytes</b>, and
+            <b>buffer_stats_t::reserved_bytes</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_domain_log_stats()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_domain_stats_(">
+            <a class="permalink" href="#void_buffer_domain_stats_("
+              >void buffer_domain_stats (<b>buffer_domain_t</b> * domain,
+              <b>buffer_stats_t</b> * out)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>371</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+371                                                                        {
 372   if (!out)
 373     return;
 374   memset(out, 0, sizeof(*out));
@@ -551,69 +770,105 @@
 378   *out = domain-&gt;stats;
 379   mutex_unlock(&amp;domain-&gt;mutex);
 380 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_domain_stats()</b>,
-    <b>buffer_domain::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
-    <b>buffer_domain::stats</b>.</p>
-<p class="Pp">Referenced by <b>buffer_domain_log_stats()</b>, and
-    <b>buffer_domain_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_domain_trim_("><a class="permalink" href="#void_buffer_domain_trim_(">void
-  buffer_domain_trim (<b>buffer_domain_t</b> * domain)</a></h2>
-<p class="Pp">Maintenance operation; never called implicitly from the
-    steady-state release path.</p>
-<p class="Pp">Definition at line <b>160</b> of file <b>buffer.c</b>.</p>
-<pre>160                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_domain_stats()</b>,
+            <b>buffer_domain::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            and <b>buffer_domain::stats</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_domain_log_stats()</b>, and
+            <b>buffer_domain_stats()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_domain_trim_(">
+            <a class="permalink" href="#void_buffer_domain_trim_("
+              >void buffer_domain_trim (<b>buffer_domain_t</b> * domain)</a
+            >
+          </h2>
+          <p class="Pp">
+            Maintenance operation; never called implicitly from the steady-state
+            release path.
+          </p>
+          <p class="Pp">
+            Definition at line <b>160</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+160                                                  {
 161   if (!domain)
 162     return;
 163   mutex_lock(&amp;domain-&gt;mutex);
 164   trim_locked(domain, false);
 165   mutex_unlock(&amp;domain-&gt;mutex);
 166 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_domain_trim()</b>,
-    <b>buffer_domain::mutex</b>, <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
-<p class="Pp">Referenced by <b>buffer_domain_trim()</b>, and
-    <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> buffer_is_unique (const void * data)</h2>
-<p class="Pp">Test exclusive ownership while retaining a reference. Only the
-    owner may publish new references while using this result to modify/recycle
-    storage.</p>
-<p class="Pp">Definition at line <b>307</b> of file <b>buffer.c</b>.</p>
-<pre>307                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_domain_trim()</b>, <b>buffer_domain::mutex</b>,
+            <b>mutex_lock</b>, and <b>mutex_unlock</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_domain_trim()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> buffer_is_unique (const void * data)</h2>
+          <p class="Pp">
+            Test exclusive ownership while retaining a reference. Only the owner
+            may publish new references while using this result to modify/recycle
+            storage.
+          </p>
+          <p class="Pp">
+            Definition at line <b>307</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+307                                         {
 308   return data &amp;&amp; atomic_load(&amp;header(data)-&gt;references) == 1;
 309 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_is_unique()</b>.</p>
-<p class="Pp">Referenced by <b>buffer_is_unique()</b>, and
-    <b>packet_decrypt_envelope()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_process_reserved_(void_)"><a class="permalink" href="#size_t_buffer_process_reserved_(void_)">size_t
-  buffer_process_reserved (void )</a></h2>
-<p class="Pp">Definition at line <b>65</b> of file <b>buffer.c</b>.</p>
-<pre>65                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>buffer_is_unique()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>buffer_is_unique()</b>, and
+            <b>packet_decrypt_envelope()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_process_reserved_(void_)">
+            <a class="permalink" href="#size_t_buffer_process_reserved_(void_)"
+              >size_t buffer_process_reserved (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+65                                      {
 66   return (size_t)atomic_load_u64(&amp;process_bytes);
 67 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, and
-    <b>buffer_process_reserved()</b>.</p>
-<p class="Pp">Referenced by <b>buffer_process_reserved()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> buffer_set_size (void * data, size_t
-  size)</h2>
-<p class="Pp">Change logical length within capacity. Requires exclusive
-    ownership.</p>
-<p class="Pp">Definition at line <b>277</b> of file <b>buffer.c</b>.</p>
-<pre>277                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, and
+            <b>buffer_process_reserved()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_process_reserved()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> buffer_set_size (void * data, size_t size)
+          </h2>
+          <p class="Pp">
+            Change logical length within capacity. Requires exclusive ownership.
+          </p>
+          <p class="Pp">
+            Definition at line <b>277</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+277                                                            {
 278   if (!data || size &gt; buffer_capacity(data))
 279     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer length exceeds capacity&quot;);
 280   buffer_header_t *node = header(data);
@@ -629,25 +884,39 @@
 290   mutex_unlock(&amp;domain-&gt;mutex);
 291   return ASCIICHAT_OK;
 292 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_capacity()</b>,
-    <b>buffer_set_size()</b>, <b>buffer_header::domain</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>buffer_header::length</b>, <b>buffer_domain::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>buffer_stats_t::requested_bytes</b>, <b>SET_ERRNO</b>, and
-    <b>buffer_domain::stats</b>.</p>
-<p class="Pp">Referenced by <b>buffer_set_size()</b>, and
-    <b>compress_workspace()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_void_*_buffer_share_(const_void_*_data)"><a class="permalink" href="#const_void_*_buffer_share_(const_void_*_data)">const
-  void * buffer_share (const void * data)</a></h2>
-<p class="Pp">Acquire another immutable reference while an existing reference is
-    held.</p>
-<p class="Pp">Definition at line <b>294</b> of file <b>buffer.c</b>.</p>
-<pre>294                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>buffer_capacity()</b>,
+            <b>buffer_set_size()</b>, <b>buffer_header::domain</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>buffer_header::length</b>, <b>buffer_domain::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>buffer_stats_t::requested_bytes</b>, <b>SET_ERRNO</b>, and
+            <b>buffer_domain::stats</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_set_size()</b>, and
+            <b>compress_workspace()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_void_*_buffer_share_(const_void_*_data)">
+            <a
+              class="permalink"
+              href="#const_void_*_buffer_share_(const_void_*_data)"
+              >const void * buffer_share (const void * data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Acquire another immutable reference while an existing reference is
+            held.
+          </p>
+          <p class="Pp">
+            Definition at line <b>294</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+294                                            {
 295   if (!data)
 296     return NULL;
 297   buffer_header_t *node = header(data);
@@ -659,62 +928,95 @@
 303   SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid buffer reference count&quot;);
 304   return NULL;
 305 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_share()</b>, <b>ERROR_INVALID_STATE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>buffer_share()</b>, and
-    <b>packet_queue_push_shared()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_buffer_size_(const_void_*_data)"><a class="permalink" href="#size_t_buffer_size_(const_void_*_data)">size_t
-  buffer_size (const void * data)</a></h2>
-<p class="Pp">Definition at line <b>273</b> of file <b>buffer.c</b>.</p>
-<pre>273                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_share()</b>, <b>ERROR_INVALID_STATE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_share()</b>, and
+            <b>packet_queue_push_shared()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_buffer_size_(const_void_*_data)">
+            <a class="permalink" href="#size_t_buffer_size_(const_void_*_data)"
+              >size_t buffer_size (const void * data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>273</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+273                                      {
 274   return data ? header(data)-&gt;length : 0;
 275 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_size()</b>, and
-  <b>buffer_header::length</b>.</p>
-<p class="Pp">Referenced by <b>buffer_size()</b>,
-    <b>crypto_get_rekey_status()</b>, <b>crypto_get_status()</b>,
-    <b>format_uptime_hms()</b>, <b>framebuffer_clear()</b>,
-    <b>generate_client_id()</b>, <b>generate_client_name()</b>,
-    <b>get_required_argument()</b>, <b>manpage_merger_generate_synopsis()</b>,
-    <b>platform_stdio_redirect_to_null_permanent()</b>, <b>safe_snprintf()</b>,
-    <b>safe_vsnprintf()</b>, <b>strip_equals_prefix()</b>,
-    <b>time_human_readable()</b>, <b>time_human_readable_now()</b>,
-    <b>time_human_readable_unsigned()</b>, <b>time_pretty()</b>,
-    <b>time_pretty_now()</b>, <b>update_check_format_notification()</b>, and
-    <b>update_check_get_upgrade_suggestion()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_system_cleanup_(void_)"><a class="permalink" href="#void_buffer_system_cleanup_(void_)">void
-  buffer_system_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>418</b> of file <b>buffer.c</b>.</p>
-<pre>418                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_size()</b>, and <b>buffer_header::length</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_size()</b>,
+            <b>crypto_get_rekey_status()</b>, <b>crypto_get_status()</b>,
+            <b>format_uptime_hms()</b>, <b>framebuffer_clear()</b>,
+            <b>generate_client_id()</b>, <b>generate_client_name()</b>,
+            <b>get_required_argument()</b>,
+            <b>manpage_merger_generate_synopsis()</b>,
+            <b>platform_stdio_redirect_to_null_permanent()</b>,
+            <b>safe_snprintf()</b>, <b>safe_vsnprintf()</b>,
+            <b>strip_equals_prefix()</b>, <b>time_human_readable()</b>,
+            <b>time_human_readable_now()</b>,
+            <b>time_human_readable_unsigned()</b>, <b>time_pretty()</b>,
+            <b>time_pretty_now()</b>, <b>update_check_format_notification()</b>,
+            and <b>update_check_get_upgrade_suggestion()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_system_cleanup_(void_)">
+            <a class="permalink" href="#void_buffer_system_cleanup_(void_)"
+              >void buffer_system_cleanup (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>418</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+418                                  {
 419   if (lifecycle_shutdown(&amp;default_lifecycle)) {
 420     NAMED_UNREGISTER(&amp;process_bytes);
 421     buffer_domain_close(&amp;default_domain);
 422     buffer_domain_close(&amp;control_domain);
 423   }
 424 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_domain_close()</b>,
-    <b>buffer_system_cleanup()</b>, <b>lifecycle_shutdown()</b>, and
-    <b>NAMED_UNREGISTER</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>buffer_system_cleanup()</b>, and <b>mirror_cleanup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_system_init_(void_)"><a class="permalink" href="#void_buffer_system_init_(void_)">void
-  buffer_system_init (void )</a></h2>
-<p class="Pp">Application startup/shutdown, serialized against starting/stopping
-    workers.</p>
-<p class="Pp">Definition at line <b>390</b> of file <b>buffer.c</b>.</p>
-<pre>390                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_domain_close()</b>,
+            <b>buffer_system_cleanup()</b>, <b>lifecycle_shutdown()</b>, and
+            <b>NAMED_UNREGISTER</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>,
+            <b>buffer_system_cleanup()</b>, and <b>mirror_cleanup()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_system_init_(void_)">
+            <a class="permalink" href="#void_buffer_system_init_(void_)"
+              >void buffer_system_init (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Application startup/shutdown, serialized against starting/stopping
+            workers.
+          </p>
+          <p class="Pp">
+            Definition at line <b>390</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+390                               {
 391   for (;;) {
 392     if (lifecycle_init_once(&amp;default_lifecycle))
 393       break;
@@ -736,25 +1038,37 @@
 409   NAMED_REGISTER_ATOMIC(&amp;process_bytes, &quot;buffer.process_reserved_bytes&quot;, NULL);
 410   lifecycle_init_commit(&amp;default_lifecycle);
 411 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_CONTROL_RESERVE</b>,
-    <b>buffer_domain_close()</b>, <b>buffer_domain_create()</b>,
-    <b>buffer_system_init()</b>, <b>lifecycle_init_abort()</b>,
-    <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>,
-    <b>lifecycle_is_dead()</b>, <b>lifecycle_is_initialized()</b>,
-    <b>NAMED_REGISTER_ATOMIC</b>, and <b>platform_sleep_us()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
-    <b>buffer_control_domain()</b>, <b>buffer_default_domain()</b>, and
-    <b>buffer_system_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_unref_(const_void_*_data)"><a class="permalink" href="#void_buffer_unref_(const_void_*_data)">void
-  buffer_unref (const void * data)</a></h2>
-<p class="Pp">Low-level release for ownership passed by value. Prefer
-    <b>buffer_release()</b>.</p>
-<p class="Pp">Definition at line <b>311</b> of file <b>buffer.c</b>.</p>
-<pre>311                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>BUFFER_CONTROL_RESERVE</b>,
+            <b>buffer_domain_close()</b>, <b>buffer_domain_create()</b>,
+            <b>buffer_system_init()</b>, <b>lifecycle_init_abort()</b>,
+            <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>,
+            <b>lifecycle_is_dead()</b>, <b>lifecycle_is_initialized()</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, and <b>platform_sleep_us()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_init()</b>,
+            <b>buffer_control_domain()</b>, <b>buffer_default_domain()</b>, and
+            <b>buffer_system_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_unref_(const_void_*_data)">
+            <a class="permalink" href="#void_buffer_unref_(const_void_*_data)"
+              >void buffer_unref (const void * data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Low-level release for ownership passed by value. Prefer
+            <b>buffer_release()</b>.
+          </p>
+          <p class="Pp">
+            Definition at line <b>311</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+311                                     {
 312   if (!data)
 313     return;
 314   buffer_header_t *node = header(data);
@@ -788,48 +1102,69 @@
 342   if (done)
 343     domain_dispose(domain);
 344 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_domain::bins</b>, <b>BUFFER_MAX_CACHED</b>,
-    <b>BUFFER_POISON</b>, <b>buffer_unref()</b>,
-    <b>buffer_domain_config_t::cache_bytes</b>,
-    <b>buffer_stats_t::cached_bytes</b>, <b>buffer_header::capacity</b>,
-    <b>buffer_header::charge</b>, <b>buffer_domain::closing</b>,
-    <b>buffer_domain::config</b>, <b>buffer_header::data</b>,
-    <b>buffer_header::domain</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>buffer_header::length</b>, <b>buffer_stats_t::live_bytes</b>,
-    <b>buffer_domain::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>buffer_header::next</b>, <b>buffer_stats_t::outstanding</b>,
-    <b>buffer_stats_t::requested_bytes</b>, <b>SET_ERRNO</b>,
-    <b>buffer_domain::stats</b>, and <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>buffer_unref()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_buffer_workspace_destroy_("><a class="permalink" href="#void_buffer_workspace_destroy_(">void
-  buffer_workspace_destroy (<b>buffer_workspace_t</b> * workspace)</a></h2>
-<p class="Pp">Definition at line <b>364</b> of file <b>buffer.c</b>.</p>
-<pre>364                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_domain::bins</b>, <b>BUFFER_MAX_CACHED</b>,
+            <b>BUFFER_POISON</b>, <b>buffer_unref()</b>,
+            <b>buffer_domain_config_t::cache_bytes</b>,
+            <b>buffer_stats_t::cached_bytes</b>, <b>buffer_header::capacity</b>,
+            <b>buffer_header::charge</b>, <b>buffer_domain::closing</b>,
+            <b>buffer_domain::config</b>, <b>buffer_header::data</b>,
+            <b>buffer_header::domain</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>buffer_header::length</b>, <b>buffer_stats_t::live_bytes</b>,
+            <b>buffer_domain::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>buffer_header::next</b>, <b>buffer_stats_t::outstanding</b>,
+            <b>buffer_stats_t::requested_bytes</b>, <b>SET_ERRNO</b>,
+            <b>buffer_domain::stats</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>buffer_unref()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_buffer_workspace_destroy_(">
+            <a class="permalink" href="#void_buffer_workspace_destroy_("
+              >void buffer_workspace_destroy (<b>buffer_workspace_t</b> *
+              workspace)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>364</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+364                                                              {
 365   if (workspace) {
 366     buffer_release(workspace-&gt;data);
 367     workspace-&gt;length = 0;
 368   }
 369 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_release</b>,
-    <b>buffer_workspace_destroy()</b>, <b>buffer_workspace_t::data</b>, and
-    <b>buffer_workspace_t::length</b>.</p>
-<p class="Pp">Referenced by <b>buffer_workspace_destroy()</b>, and
-    <b>compression_workspace_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> buffer_workspace_reserve
-  (<b>buffer_workspace_t</b> * workspace, <b>buffer_domain_t</b> * domain,
-  size_t capacity)</h2>
-<p class="Pp">Preserves the previous workspace on failure; retains capacity
-    between frames.</p>
-<p class="Pp">Definition at line <b>346</b> of file <b>buffer.c</b>.</p>
-<pre>346                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>buffer_release</b>, <b>buffer_workspace_destroy()</b>,
+            <b>buffer_workspace_t::data</b>, and
+            <b>buffer_workspace_t::length</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_workspace_destroy()</b>, and
+            <b>compression_workspace_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> buffer_workspace_reserve (<b
+              >buffer_workspace_t</b
+            >
+            * workspace, <b>buffer_domain_t</b> * domain, size_t capacity)
+          </h2>
+          <p class="Pp">
+            Preserves the previous workspace on failure; retains capacity
+            between frames.
+          </p>
+          <p class="Pp">
+            Definition at line <b>346</b> of file <b>buffer.c</b>.
+          </p>
+          <pre>
+346                                                                                                                     {
 347   if (!workspace)
 348     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Workspace is NULL&quot;);
 349   if (workspace-&gt;length &gt; buffer_capacity(workspace-&gt;data))
@@ -846,30 +1181,37 @@
 360   workspace-&gt;data = next;
 361   return ASCIICHAT_OK;
 362 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_acquire()</b>,
-    <b>buffer_capacity()</b>, <b>BUFFER_DEFAULT_ALIGNMENT</b>,
-    <b>buffer_release</b>, <b>buffer_workspace_reserve()</b>,
-    <b>buffer_workspace_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>buffer_workspace_t::length</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>buffer_workspace_reserve()</b>,
-    <b>compress_workspace()</b>, <b>packet_decode_frame_data_workspace()</b>,
-    <b>packet_decoder_feed()</b>, and
-    <b>threaded_send_image_frame_encoded()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>buffer_acquire()</b>,
+            <b>buffer_capacity()</b>, <b>BUFFER_DEFAULT_ALIGNMENT</b>,
+            <b>buffer_release</b>, <b>buffer_workspace_reserve()</b>,
+            <b>buffer_workspace_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>buffer_workspace_t::length</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>buffer_workspace_reserve()</b>,
+            <b>compress_workspace()</b>,
+            <b>packet_decode_frame_data_workspace()</b>,
+            <b>packet_decoder_feed()</b>, and
+            <b>threaded_send_image_frame_encoded()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

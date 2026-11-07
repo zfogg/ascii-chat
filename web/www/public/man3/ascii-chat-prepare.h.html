@@ -1,80 +1,131 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>prepare.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">prepare.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">prepare.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">prepare.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acip_packet_plan_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_packet_plan</b>
-    (<b>crypto_context_t</b> *crypto, const <b>socket_buffer_t</b> *buffers,
-    size_t count, <b>acip_packet_plan_t</b> *plan)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_packet_encrypt</b> (<b>crypto_context_t</b>
-    *crypto, const <b>acip_packet_plan_t</b> *plan, <b>buffer_domain_t</b>
-    *domain, void *ciphertext, size_t capacity, <b>packet_header_t</b> *header,
-    size_t *length)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_packet_encrypt
-  (<b>crypto_context_t</b> * crypto, const <b>acip_packet_plan_t</b> * plan,
-  <b>buffer_domain_t</b> * domain, void * ciphertext, size_t capacity,
-  <b>packet_header_t</b> * header, size_t * length)</h2>
-<p class="Pp">Encrypt a successful encrypted plan into caller-owned ciphertext
-    storage and construct its wire header. The caller chooses contiguous or
-    vectored delivery, and must release storage only after delivery has
-    consumed/copied it. This helper owns and releases only its temporary gather
-    buffer, allocated from domain. Output length is zero on failure; no output
-    may be sent on failure.</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>prepare.c</b>.</p>
-<pre>44                                                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>prepare.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">prepare.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">prepare.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">prepare.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acip_packet_plan_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_packet_plan</b> (<b
+              >crypto_context_t</b
+            >
+            *crypto, const <b>socket_buffer_t</b> *buffers, size_t count,
+            <b>acip_packet_plan_t</b> *plan)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_packet_encrypt</b> (<b
+              >crypto_context_t</b
+            >
+            *crypto, const <b>acip_packet_plan_t</b> *plan,
+            <b>buffer_domain_t</b> *domain, void *ciphertext, size_t capacity,
+            <b>packet_header_t</b> *header, size_t *length)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_packet_encrypt (<b
+              >crypto_context_t</b
+            >
+            * crypto, const <b>acip_packet_plan_t</b> * plan,
+            <b>buffer_domain_t</b> * domain, void * ciphertext, size_t capacity,
+            <b>packet_header_t</b> * header, size_t * length)
+          </h2>
+          <p class="Pp">
+            Encrypt a successful encrypted plan into caller-owned ciphertext
+            storage and construct its wire header. The caller chooses contiguous
+            or vectored delivery, and must release storage only after delivery
+            has consumed/copied it. This helper owns and releases only its
+            temporary gather buffer, allocated from domain. Output length is
+            zero on failure; no output may be sent on failure.
+          </p>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>prepare.c</b>.
+          </p>
+          <pre>
+44                                                                                                                   {
 45   if (length)
 46     *length = 0;
 47   if (!crypto || !plan || !plan-&gt;encrypt || !plan-&gt;buffers || !plan-&gt;count || !ciphertext || !header || !length)
@@ -109,28 +160,39 @@
 76   *length = encrypted_length;
 77   return ASCIICHAT_OK;
 78 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_packet_encrypt()</b>, <b>asciichat_crc32</b>,
-    <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>, <b>buffer_release</b>,
-    <b>acip_packet_plan_t::buffers</b>, <b>acip_packet_plan_t::count</b>,
-    <b>crypto_encrypt()</b>, <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
-    <b>socket_buffer_t::data</b>, <b>acip_packet_plan_t::encrypt</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>HOST_TO_NET_U16</b>, <b>HOST_TO_NET_U32</b>,
-    <b>HOST_TO_NET_U64</b>, <b>socket_buffer_t::len</b>, <b>PACKET_MAGIC</b>,
-    <b>PACKET_TYPE_ENCRYPTED</b>, <b>acip_packet_plan_t::plaintext_size</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_packet_encrypt()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_packet_plan
-  (<b>crypto_context_t</b> * crypto, const <b>socket_buffer_t</b> * buffers,
-  size_t count, <b>acip_packet_plan_t</b> * plan)</h2>
-<p class="Pp">Validate sizes and decide eligibility without allocating or
-    advancing crypto state.</p>
-<p class="Pp">Definition at line <b>6</b> of file <b>prepare.c</b>.</p>
-<pre>7                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_packet_encrypt()</b>, <b>asciichat_crc32</b>,
+            <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>, <b>buffer_release</b>,
+            <b>acip_packet_plan_t::buffers</b>,
+            <b>acip_packet_plan_t::count</b>, <b>crypto_encrypt()</b>,
+            <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
+            <b>socket_buffer_t::data</b>, <b>acip_packet_plan_t::encrypt</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK_SIZE</b>,
+            <b>HOST_TO_NET_U16</b>, <b>HOST_TO_NET_U32</b>,
+            <b>HOST_TO_NET_U64</b>, <b>socket_buffer_t::len</b>,
+            <b>PACKET_MAGIC</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
+            <b>acip_packet_plan_t::plaintext_size</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_packet_encrypt()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_packet_plan (<b>crypto_context_t</b> *
+            crypto, const <b>socket_buffer_t</b> * buffers, size_t count,
+            <b>acip_packet_plan_t</b> * plan)
+          </h2>
+          <p class="Pp">
+            Validate sizes and decide eligibility without allocating or
+            advancing crypto state.
+          </p>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>prepare.c</b>.
+          </p>
+          <pre>
+7                                                              {
 8   if (!plan)
 9     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing ACIP packet plan&quot;);
 10   *plan = (acip_packet_plan_t){0};
@@ -165,29 +227,34 @@
 39   *plan = (acip_packet_plan_t){buffers, count, size, capacity, encrypt, domain};
 40   return ASCIICHAT_OK;
 41 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_packet_plan()</b>, <b>ASCIICHAT_OK</b>,
-    <b>buffer_control_domain()</b>, <b>crypto_is_ready()</b>,
-    <b>CRYPTO_MAC_SIZE</b>, <b>CRYPTO_MAX_PLAINTEXT_SIZE</b>,
-    <b>CRYPTO_NONCE_SIZE</b>, <b>crypto_context_t::encrypt_data</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_SIZE</b>,
-    <b>socket_buffer_t::len</b>, <b>NET_TO_HOST_U16</b>,
-    <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>, <b>SOCKET_IOV_MAX</b>,
-    <b>SOCKET_SEND_BUFFER_MAX</b>, and <b>packet_header_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acip_packet_plan()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_packet_plan()</b>, <b>ASCIICHAT_OK</b>,
+            <b>buffer_control_domain()</b>, <b>crypto_is_ready()</b>,
+            <b>CRYPTO_MAC_SIZE</b>, <b>CRYPTO_MAX_PLAINTEXT_SIZE</b>,
+            <b>CRYPTO_NONCE_SIZE</b>, <b>crypto_context_t::encrypt_data</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_SIZE</b>,
+            <b>socket_buffer_t::len</b>, <b>NET_TO_HOST_U16</b>,
+            <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>,
+            <b>SOCKET_IOV_MAX</b>, <b>SOCKET_SEND_BUFFER_MAX</b>, and
+            <b>packet_header_t::type</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_packet_plan()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

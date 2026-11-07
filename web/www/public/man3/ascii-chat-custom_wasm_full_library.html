@@ -1,121 +1,189 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_wasm_full_library(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_wasm_full_library(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_wasm_full_library(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_wasm_full_library - Web Mirror Mode: Full Library WASM
-    Build with Settings Panel</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Web_Mirror_Mode:_Full_Library_WASM_Build_with_Settings_Panel"><a class="permalink" href="#Web_Mirror_Mode:_Full_Library_WASM_Build_with_Settings_Panel">Web
-  Mirror Mode: Full Library WASM Build with Settings Panel</a></h1>
-<p class="Pp"><b>Date:</b> 2026-02-06 <b>Status:</b> Design Phase <b>Goal:</b>
-    Enable web.ascii-chat.com/mirror to use the full ascii-chat library via WASM
-    with interactive settings panel for render-mode, color-filter, color-mode,
-    width, and height.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Table_of_Contents"><a class="permalink" href="#Table_of_Contents">Table
-  of Contents</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Overview</b></dd>
-  <dt>2.</dt>
-  <dd><b>Architecture</b></dd>
-  <dt>3.</dt>
-  <dd><b>Module Dependencies</b></dd>
-  <dt>4.</dt>
-  <dd><b>Platform Layer: WASM Implementation</b></dd>
-  <dt>5.</dt>
-  <dd><b>Exported WASM API</b></dd>
-  <dt>6.</dt>
-  <dd><b>Build Configuration</b></dd>
-  <dt>7.</dt>
-  <dd><b>TypeScript Integration</b></dd>
-  <dt>8.</dt>
-  <dd><b>UI Implementation</b></dd>
-  <dt>9.</dt>
-  <dd><b>Implementation Plan</b></dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Current_State"><a class="permalink" href="#Current_State">Current
-  State</a></h2>
-<p class="Pp">The web mirror (web.ascii-chat.com/mirror) currently uses a
-    minimal standalone WASM implementation:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>File:</b> web/web.ascii-chat.com/wasm/mirror_standalone.c (71
-    lines)</li>
-  <li><b>Features:</b> Basic luminance-to-ASCII conversion only</li>
-  <li><b>Palette:</b> Fixed &quot; ...',;:clodxkO0KXNWM&quot;</li>
-  <li><b>No settings:</b> No render modes, color filters, or color modes</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Target_State"><a class="permalink" href="#Target_State">Target
-  State</a></h2>
-<p class="Pp">Build the full ascii-chat library as WASM with:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>&#x2705; Complete options system (RCU-based, thread-safe)</li>
-  <li>&#x2705; Full video rendering pipeline (color filters, render modes, ANSI
-      output)</li>
-  <li>&#x2705; Runtime-configurable settings via
-    <b>options_set_int()</b><b></b></li>
-  <li>&#x2705; Interactive settings panel in web UI</li>
-  <li>&#x2705; Auto-calculated dimensions from terminal viewport + webcam aspect
-      ratio</li>
-  <li>&#x2705; Manual dimension override available</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Design_Philosophy"><a class="permalink" href="#Design_Philosophy">Design
-  Philosophy</a></h2>
-<p class="Pp"><b>Full library integration from the start</b> - Build with
-    threading support (Emscripten pthreads) to enable proper
-    <b>options_set_int()</b><b> integration, even though we'll start in
-    single-threaded mode (pthreads as no-ops). This gives us a clear upgrade
-    path to true multithreading later if needed.</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="High-Level_Structure"><a class="permalink" href="#High-Level_Structure">High-Level
-  Structure</a></h2>
-<pre>web/web.ascii-chat.com/wasm/
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_wasm_full_library(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_wasm_full_library(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_wasm_full_library(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_wasm_full_library - Web Mirror Mode: Full Library WASM Build
+          with Settings Panel
+        </p>
+      </section>
+      <section class="Sh">
+        <h1
+          class="Sh"
+          id="Web_Mirror_Mode:_Full_Library_WASM_Build_with_Settings_Panel"
+        >
+          <a
+            class="permalink"
+            href="#Web_Mirror_Mode:_Full_Library_WASM_Build_with_Settings_Panel"
+            >Web Mirror Mode: Full Library WASM Build with Settings Panel</a
+          >
+        </h1>
+        <p class="Pp">
+          <b>Date:</b> 2026-02-06 <b>Status:</b> Design Phase
+          <b>Goal:</b> Enable web.ascii-chat.com/mirror to use the full
+          ascii-chat library via WASM with interactive settings panel for
+          render-mode, color-filter, color-mode, width, and height.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Table_of_Contents">
+            <a class="permalink" href="#Table_of_Contents">Table of Contents</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Overview</b></dd>
+            <dt>2.</dt>
+            <dd><b>Architecture</b></dd>
+            <dt>3.</dt>
+            <dd><b>Module Dependencies</b></dd>
+            <dt>4.</dt>
+            <dd><b>Platform Layer: WASM Implementation</b></dd>
+            <dt>5.</dt>
+            <dd><b>Exported WASM API</b></dd>
+            <dt>6.</dt>
+            <dd><b>Build Configuration</b></dd>
+            <dt>7.</dt>
+            <dd><b>TypeScript Integration</b></dd>
+            <dt>8.</dt>
+            <dd><b>UI Implementation</b></dd>
+            <dt>9.</dt>
+            <dd><b>Implementation Plan</b></dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Current_State">
+            <a class="permalink" href="#Current_State">Current State</a>
+          </h2>
+          <p class="Pp">
+            The web mirror (web.ascii-chat.com/mirror) currently uses a minimal
+            standalone WASM implementation:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>File:</b> web/web.ascii-chat.com/wasm/mirror_standalone.c (71
+              lines)
+            </li>
+            <li><b>Features:</b> Basic luminance-to-ASCII conversion only</li>
+            <li><b>Palette:</b> Fixed &quot; ...',;:clodxkO0KXNWM&quot;</li>
+            <li>
+              <b>No settings:</b> No render modes, color filters, or color modes
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Target_State">
+            <a class="permalink" href="#Target_State">Target State</a>
+          </h2>
+          <p class="Pp">Build the full ascii-chat library as WASM with:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>&#x2705; Complete options system (RCU-based, thread-safe)</li>
+            <li>
+              &#x2705; Full video rendering pipeline (color filters, render
+              modes, ANSI output)
+            </li>
+            <li>
+              &#x2705; Runtime-configurable settings via <b>options_set_int()</b
+              ><b></b>
+            </li>
+            <li>&#x2705; Interactive settings panel in web UI</li>
+            <li>
+              &#x2705; Auto-calculated dimensions from terminal viewport +
+              webcam aspect ratio
+            </li>
+            <li>&#x2705; Manual dimension override available</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Design_Philosophy">
+            <a class="permalink" href="#Design_Philosophy">Design Philosophy</a>
+          </h2>
+          <p class="Pp">
+            <b>Full library integration from the start</b> - Build with
+            threading support (Emscripten pthreads) to enable proper
+            <b>options_set_int()</b
+            ><b>
+              integration, even though we'll start in single-threaded mode
+              (pthreads as no-ops). This gives us a clear upgrade path to true
+              multithreading later if needed.</b
+            >
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="High-Level_Structure">
+            <a class="permalink" href="#High-Level_Structure"
+              >High-Level Structure</a
+            >
+          </h2>
+          <pre>web/web.ascii-chat.com/wasm/
 &#x251C;&#x2500;&#x2500; CMakeLists.txt          # New WASM build config (Emscripten)
 &#x251C;&#x2500;&#x2500; mirror_wasm.c           # WASM entry point (replaces mirror_standalone.c)
 &#x251C;&#x2500;&#x2500; build.sh                # Build script (emcmake + emmake)
@@ -130,95 +198,118 @@
     &#x251C;&#x2500;&#x2500; mirror.js           # Generated glue code (~200-300KB)
 <br/>
     &#x2514;&#x2500;&#x2500; mirror.wasm         # Compiled library (~150-250KB)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Module_Selection"><a class="permalink" href="#Module_Selection">Module
-  Selection</a></h2>
-<p class="Pp">Build these ascii-chat modules for WASM:</p>
-<p class="Pp"></p>
-<p class="Pp">Module Status Notes ascii-chat-core &#x2705; Full Error handling,
-    logging, memory tracking ascii-chat-util &#x26A0;&#xFE0F; Partial Exclude
-    PCRE2-dependent files (<b>url.c</b>) ascii-chat-platform-wasm &#x2705; New
-    WASM-specific platform implementations ascii-chat-video &#x26A0;&#xFE0F;
-    Partial ASCII conversion, color filters, render modes (no FFmpeg/V4L2)
-    ascii-chat-options &#x2705; Full Complete options system with RCU
-  threading</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Excluded modules:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>&#x274C; ascii-chat-network - No networking in mirror mode</li>
-  <li>&#x274C; ascii-chat-crypto - No encryption needed</li>
-  <li>&#x274C; ascii-chat-audio - Mirror is video-only</li>
-  <li>&#x274C; ascii-chat-discovery - No session discovery</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Thread_Model"><a class="permalink" href="#Thread_Model">Thread
-  Model</a></h2>
-<p class="Pp"><b>Phase 1 (Initial):</b> Single-threaded WASM</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Emscripten pthreads disabled: -s USE_PTHREADS=0</li>
-  <li>Mutexes compile as no-ops</li>
-  <li>No SharedArrayBuffer required (simpler deployment)</li>
-  <li>No COOP/COEP headers needed on web server</li>
-</ul>
-<p class="Pp"><b>Phase 2 (Future):</b> Multi-threaded WASM (optional
-  upgrade)</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Enable: -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2</li>
-  <li>Requires SharedArrayBuffer (COOP/COEP headers)</li>
-  <li>True RCU read-copy-update semantics</li>
-  <li>Web Worker pool for background processing</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Module_Dependencies"><a class="permalink" href="#Module_Dependencies">Module
-  Dependencies</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Dependency_Matrix"><a class="permalink" href="#Dependency_Matrix">Dependency
-  Matrix</a></h2>
-<p class="Pp">Dependency Native Build WASM Build Strategy <b>libsodium</b>
-    Required &#x274C; Excluded -DNO_CRYPTO=1 <b>PCRE2</b> Required &#x274C;
-    Excluded -DNO_PCRE2=1 (start without, add later if needed) <b>pthread</b>
-    Required &#x2705; Emscripten -s USE_PTHREADS=0 (no-op mutexes in
-    single-threaded) <b>FFmpeg</b> Optional &#x274C; Excluded -DNO_FFMPEG=1
-    <b>PortAudio</b> Required &#x274C; Excluded -DNO_AUDIO=1 <b>Opus</b>
-    Required &#x274C; Excluded -DNO_AUDIO=1 <b>V4L2/AVFoundation</b> Platform
-    &#x274C; Excluded -DNO_WEBCAM_CAPTURE=1 <b>BearSSL</b> Optional &#x274C;
-    Excluded -DNO_CRYPTO=1 <b>WebRTC AEC</b> Optional &#x274C; Excluded
-    -DNO_AUDIO=1</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="PCRE2_Strategy"><a class="permalink" href="#PCRE2_Strategy">PCRE2
-  Strategy</a></h2>
-<p class="Pp"><b>Start WITHOUT PCRE2:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Options parsing doesn't need it (uses simple string comparisons)</li>
-  <li>URL validation not needed for mirror mode</li>
-  <li>YouTube video ID extraction not needed</li>
-  <li>Saves ~150KB in WASM binary</li>
-</ul>
-<p class="Pp"><b>Add PCRE2 later if needed:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Emscripten port: embuilder <b>Build System</b> pcre2<b></b></dd>
-  <dt>2.</dt>
-  <dd>Or build from source with Emscripten toolchain</dd>
-  <dt>3.</dt>
-  <dd>Useful for future features (URL streaming, regex validation)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Conditional_Compilation_Flags"><a class="permalink" href="#Conditional_Compilation_Flags">Conditional
-  Compilation Flags</a></h2>
-<pre>// Defined in CMakeLists.txt, used in source code
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Module_Selection">
+            <a class="permalink" href="#Module_Selection">Module Selection</a>
+          </h2>
+          <p class="Pp">Build these ascii-chat modules for WASM:</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Module Status Notes ascii-chat-core &#x2705; Full Error handling,
+            logging, memory tracking ascii-chat-util &#x26A0;&#xFE0F; Partial
+            Exclude PCRE2-dependent files (<b>url.c</b>)
+            ascii-chat-platform-wasm &#x2705; New WASM-specific platform
+            implementations ascii-chat-video &#x26A0;&#xFE0F; Partial ASCII
+            conversion, color filters, render modes (no FFmpeg/V4L2)
+            ascii-chat-options &#x2705; Full Complete options system with RCU
+            threading
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Excluded modules:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>&#x274C; ascii-chat-network - No networking in mirror mode</li>
+            <li>&#x274C; ascii-chat-crypto - No encryption needed</li>
+            <li>&#x274C; ascii-chat-audio - Mirror is video-only</li>
+            <li>&#x274C; ascii-chat-discovery - No session discovery</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Thread_Model">
+            <a class="permalink" href="#Thread_Model">Thread Model</a>
+          </h2>
+          <p class="Pp"><b>Phase 1 (Initial):</b> Single-threaded WASM</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Emscripten pthreads disabled: -s USE_PTHREADS=0</li>
+            <li>Mutexes compile as no-ops</li>
+            <li>No SharedArrayBuffer required (simpler deployment)</li>
+            <li>No COOP/COEP headers needed on web server</li>
+          </ul>
+          <p class="Pp">
+            <b>Phase 2 (Future):</b> Multi-threaded WASM (optional upgrade)
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Enable: -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2</li>
+            <li>Requires SharedArrayBuffer (COOP/COEP headers)</li>
+            <li>True RCU read-copy-update semantics</li>
+            <li>Web Worker pool for background processing</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Module_Dependencies">
+            <a class="permalink" href="#Module_Dependencies"
+              >Module Dependencies</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Dependency_Matrix">
+            <a class="permalink" href="#Dependency_Matrix">Dependency Matrix</a>
+          </h2>
+          <p class="Pp">
+            Dependency Native Build WASM Build Strategy
+            <b>libsodium</b> Required &#x274C; Excluded -DNO_CRYPTO=1
+            <b>PCRE2</b> Required &#x274C; Excluded -DNO_PCRE2=1 (start without,
+            add later if needed) <b>pthread</b> Required &#x2705; Emscripten -s
+            USE_PTHREADS=0 (no-op mutexes in single-threaded)
+            <b>FFmpeg</b> Optional &#x274C; Excluded -DNO_FFMPEG=1
+            <b>PortAudio</b> Required &#x274C; Excluded -DNO_AUDIO=1
+            <b>Opus</b> Required &#x274C; Excluded -DNO_AUDIO=1
+            <b>V4L2/AVFoundation</b> Platform &#x274C; Excluded
+            -DNO_WEBCAM_CAPTURE=1 <b>BearSSL</b> Optional &#x274C; Excluded
+            -DNO_CRYPTO=1 <b>WebRTC AEC</b> Optional &#x274C; Excluded
+            -DNO_AUDIO=1
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="PCRE2_Strategy">
+            <a class="permalink" href="#PCRE2_Strategy">PCRE2 Strategy</a>
+          </h2>
+          <p class="Pp"><b>Start WITHOUT PCRE2:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Options parsing doesn't need it (uses simple string comparisons)
+            </li>
+            <li>URL validation not needed for mirror mode</li>
+            <li>YouTube video ID extraction not needed</li>
+            <li>Saves ~150KB in WASM binary</li>
+          </ul>
+          <p class="Pp"><b>Add PCRE2 later if needed:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Emscripten port: embuilder <b>Build System</b> pcre2<b></b></dd>
+            <dt>2.</dt>
+            <dd>Or build from source with Emscripten toolchain</dd>
+            <dt>3.</dt>
+            <dd>
+              Useful for future features (URL streaming, regex validation)
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Conditional_Compilation_Flags">
+            <a class="permalink" href="#Conditional_Compilation_Flags"
+              >Conditional Compilation Flags</a
+            >
+          </h2>
+          <pre>
+// Defined in CMakeLists.txt, used in source code
 #define EMSCRIPTEN_BUILD 1
 #define WASM_MIRROR_MODE 1
 #define NO_NETWORK 1
@@ -228,11 +319,14 @@
 #define NO_WEBCAM_CAPTURE 1
 #define NO_PCRE2 1
 #define PCRE2_CODE_UNIT_WIDTH 8  // Keep for header compatibility</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Source_Files_Compiled"><a class="permalink" href="#Source_Files_Compiled">Source
-  Files Compiled</a></h2>
-<pre>set(WASM_SOURCES
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Source_Files_Compiled">
+            <a class="permalink" href="#Source_Files_Compiled"
+              >Source Files Compiled</a
+            >
+          </h2>
+          <pre>set(WASM_SOURCES
 <br/>
     # Entry point
 <br/>
@@ -314,26 +408,38 @@
 <br/>
     ${REPO_ROOT}/lib/options/config/config.c
 )</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Platform_Layer:_WASM_Implementation"><a class="permalink" href="#Platform_Layer:_WASM_Implementation">Platform
-  Layer: WASM Implementation</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Overview~2"><a class="permalink" href="#Overview~2">Overview</a></h2>
-<p class="Pp">Create lib/platform/wasm/ directory with WASM-specific
-    implementations of the platform abstraction API defined in
-    <b>include/ascii-chat/platform/abstraction.h</b><b>.</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key principle:</b> Library code remains unchanged - it just
-    calls platform_*() functions, and the WASM platform provides the
-    implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Directory_Structure"><a class="permalink" href="#Directory_Structure">Directory
-  Structure</a></h2>
-<pre>lib/platform/
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform_Layer:_WASM_Implementation">
+            <a class="permalink" href="#Platform_Layer:_WASM_Implementation"
+              >Platform Layer: WASM Implementation</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview~2">
+            <a class="permalink" href="#Overview~2">Overview</a>
+          </h2>
+          <p class="Pp">
+            Create lib/platform/wasm/ directory with WASM-specific
+            implementations of the platform abstraction API defined in
+            <b>include/ascii-chat/platform/abstraction.h</b><b>.</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Key principle:</b> Library code remains unchanged - it just calls
+            platform_*() functions, and the WASM platform provides the
+            implementation.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Directory_Structure">
+            <a class="permalink" href="#Directory_Structure"
+              >Directory Structure</a
+            >
+          </h2>
+          <pre>lib/platform/
 &#x251C;&#x2500;&#x2500; posix/          # Existing (Linux/macOS)
 &#x251C;&#x2500;&#x2500; windows/        # Existing (Windows)
 &#x2514;&#x2500;&#x2500; wasm/           # NEW - WASM/Emscripten implementations
@@ -347,14 +453,19 @@
     &#x251C;&#x2500;&#x2500; time.c      # Emscripten time functions
 <br/>
     &#x2514;&#x2500;&#x2500; init.c      # Platform initialization</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Terminal_Integration_(Bidirectional_Bridge)"><a class="permalink" href="#Terminal_Integration_(Bidirectional_Bridge)">Terminal
-  Integration (Bidirectional Bridge)</a></h2>
-<p class="Pp"><b>WASM &#x2192; JavaScript (via EM_JS):</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// lib/platform/wasm/terminal.c
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Terminal_Integration_(Bidirectional_Bridge)">
+            <a
+              class="permalink"
+              href="#Terminal_Integration_(Bidirectional_Bridge)"
+              >Terminal Integration (Bidirectional Bridge)</a
+            >
+          </h2>
+          <p class="Pp"><b>WASM &#x2192; JavaScript (via EM_JS):</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// lib/platform/wasm/terminal.c
 #include &lt;emscripten.h&gt;
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;ascii-chat/platform/terminal.h&gt;
@@ -425,10 +536,12 @@ int platform_read_keyboard(char *buffer, size_t len) {
 <br/>
     return -1; // Not supported: use JavaScript event listeners
 }</pre>
-<p class="Pp"><b>JavaScript &#x2192; WASM (Module initialization):</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// src/wasm/mirror.ts
+          <p class="Pp">
+            <b>JavaScript &#x2192; WASM (Module initialization):</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// src/wasm/mirror.ts
 export async function initMirrorWasm(xtermInstance: Terminal): Promise&lt;MirrorWasmModule&gt; {
 <br/>
   const module = await MirrorWasmModuleFactory();
@@ -441,21 +554,33 @@ export async function initMirrorWasm(xtermInstance: Terminal): Promise&lt;Mirror
 <br/>
   return module;
 }</pre>
-<p class="Pp"><b>Benefits:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>&#x2705; Real terminal capability detection (query xterm.js
-    configuration)</li>
-  <li>&#x2705; Dynamic dimension updates (WASM sees xterm.js resize events)</li>
-  <li>&#x2705; Direct ANSI output (WASM writes directly to xterm.js)</li>
-  <li>&#x2705; Color mode synchronization (xterm.js theme &#x2194; WASM
-      color_mode)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Threading_Implementation"><a class="permalink" href="#Threading_Implementation">Threading
-  Implementation</a></h2>
-<pre>// lib/platform/wasm/thread.c
+          <p class="Pp"><b>Benefits:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              &#x2705; Real terminal capability detection (query xterm.js
+              configuration)
+            </li>
+            <li>
+              &#x2705; Dynamic dimension updates (WASM sees xterm.js resize
+              events)
+            </li>
+            <li>
+              &#x2705; Direct ANSI output (WASM writes directly to xterm.js)
+            </li>
+            <li>
+              &#x2705; Color mode synchronization (xterm.js theme &#x2194; WASM
+              color_mode)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Threading_Implementation">
+            <a class="permalink" href="#Threading_Implementation"
+              >Threading Implementation</a
+            >
+          </h2>
+          <pre>// lib/platform/wasm/thread.c
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;pthread.h&gt;
 // Emscripten provides pthread.h
@@ -486,11 +611,14 @@ int thread_join(asciichat_thread_t thread, void **retval) {
 <br/>
     return pthread_join(thread, retval);
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Environment_and_Utilities"><a class="permalink" href="#Environment_and_Utilities">Environment
-  and Utilities</a></h2>
-<pre>// lib/platform/wasm/environment.c
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Environment_and_Utilities">
+            <a class="permalink" href="#Environment_and_Utilities"
+              >Environment and Utilities</a
+            >
+          </h2>
+          <pre>// lib/platform/wasm/environment.c
 #include &lt;ascii-chat/platform/abstraction.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;string.h&gt;
@@ -536,15 +664,17 @@ void platform_cleanup(void) {
 <br/>
     // No cleanup needed
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Exported_WASM_API"><a class="permalink" href="#Exported_WASM_API">Exported
-  WASM API</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="C_Entry_Point"><a class="permalink" href="#C_Entry_Point">C
-  Entry Point</a></h2>
-<pre>// src/wasm/mirror_wasm.c (NEW - replaces mirror_standalone.c)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Exported_WASM_API">
+            <a class="permalink" href="#Exported_WASM_API">Exported WASM API</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="C_Entry_Point">
+            <a class="permalink" href="#C_Entry_Point">C Entry Point</a>
+          </h2>
+          <pre>// src/wasm/mirror_wasm.c (NEW - replaces mirror_standalone.c)
 #include &lt;emscripten.h&gt;
 #include &lt;ascii-chat/options/options.h&gt;
 #include &lt;ascii-chat/video/ascii.h&gt;
@@ -820,11 +950,15 @@ void mirror_free_string(char *ptr) {
 <br/>
     SAFE_FREE(ptr);
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Exported_Functions_List"><a class="permalink" href="#Exported_Functions_List">Exported
-  Functions List</a></h2>
-<pre>// Exported to JavaScript via EXPORTED_FUNCTIONS
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Exported_Functions_List">
+            <a class="permalink" href="#Exported_Functions_List"
+              >Exported Functions List</a
+            >
+          </h2>
+          <pre>
+// Exported to JavaScript via EXPORTED_FUNCTIONS
 _mirror_init; // Initialize WASM module and options system
 _mirror_cleanup; // Cleanup resources
 _mirror_set_width; // Set terminal width
@@ -841,14 +975,19 @@ _mirror_convert_frame; // Convert RGBA frame to ASCII with current settings
 _mirror_free_string; // Free string returned by convert_frame
 _malloc; // Allocate WASM memory
 _free; // Free WASM memory</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Build_Configuration"><a class="permalink" href="#Build_Configuration">Build
-  Configuration</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="CMakeLists"><a class="permalink" href="#CMakeLists">CMakeLists.txt</a></h2>
-<pre># web/web.ascii-chat.com/wasm/CMakeLists.txt
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Configuration">
+            <a class="permalink" href="#Build_Configuration"
+              >Build Configuration</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="CMakeLists">
+            <a class="permalink" href="#CMakeLists">CMakeLists.txt</a>
+          </h2>
+          <pre># web/web.ascii-chat.com/wasm/CMakeLists.txt
 cmake_minimum_required(VERSION 3.18)
 project(ascii-chat-mirror-wasm C)
 # Verify we're using Emscripten
@@ -1102,11 +1241,12 @@ add_custom_command(TARGET mirror POST_BUILD
 <br/>
     COMMENT &quot;Copying WASM files to src/wasm/dist/&quot;
 )</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Build_Script"><a class="permalink" href="#Build_Script">Build
-  Script</a></h2>
-<pre>#!/bin/bash
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Script">
+            <a class="permalink" href="#Build_Script">Build Script</a>
+          </h2>
+          <pre>#!/bin/bash
 # web/web.ascii-chat.com/wasm/build.sh
 set -e
 echo &quot;Building ascii-chat Mirror WASM with full library...&quot;
@@ -1125,24 +1265,32 @@ emmake make -j$(nproc)
 echo &quot;&#x2705; WASM build complete!&quot;
 echo &quot;   Output: src/wasm/dist/mirror.{js,wasm}&quot;
 ls -lh ../src/wasm/dist/</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Expected_Output"><a class="permalink" href="#Expected_Output">Expected
-  Output</a></h2>
-<pre>src/wasm/dist/
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Expected_Output">
+            <a class="permalink" href="#Expected_Output">Expected Output</a>
+          </h2>
+          <pre>
+src/wasm/dist/
 &#x251C;&#x2500;&#x2500; mirror.js      (~200-300KB - Emscripten glue code)
 &#x2514;&#x2500;&#x2500; mirror.wasm    (~150-250KB - Compiled C library)</pre>
-<p class="Pp">Total size: **~350-550KB** (compressed with gzip: ~100-150KB)</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="TypeScript_Integration"><a class="permalink" href="#TypeScript_Integration">TypeScript
-  Integration</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Type_Definitions"><a class="permalink" href="#Type_Definitions">Type
-  Definitions</a></h2>
-<pre>// src/wasm/mirror-types.ts
+          <p class="Pp">
+            Total size: **~350-550KB** (compressed with gzip: ~100-150KB)
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="TypeScript_Integration">
+            <a class="permalink" href="#TypeScript_Integration"
+              >TypeScript Integration</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Type_Definitions">
+            <a class="permalink" href="#Type_Definitions">Type Definitions</a>
+          </h2>
+          <pre>// src/wasm/mirror-types.ts
 export enum RenderMode {
 <br/>
   Foreground = 0,
@@ -1237,11 +1385,14 @@ export interface MirrorWasmModule extends EmscriptenModule {
 <br/>
   xterm: Terminal | null;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="WASM_Wrapper_Class"><a class="permalink" href="#WASM_Wrapper_Class">WASM
-  Wrapper Class</a></h2>
-<pre>// src/wasm/mirror.ts
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="WASM_Wrapper_Class">
+            <a class="permalink" href="#WASM_Wrapper_Class"
+              >WASM Wrapper Class</a
+            >
+          </h2>
+          <pre>// src/wasm/mirror.ts
 import { Terminal } from &quot;xterm&quot;;
 import MirrorWasmModuleFactory from &quot;./dist/mirror.js&quot;;
 import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from &quot;./mirror-types&quot;;
@@ -1483,59 +1634,66 @@ export function isWasmReady(): boolean {
 <br/>
   return wasmInstance !== null;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="UI_Implementation"><a class="permalink" href="#UI_Implementation">UI
-  Implementation</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Settings_Panel_Design"><a class="permalink" href="#Settings_Panel_Design">Settings
-  Panel Design</a></h2>
-<p class="Pp"><b>Layout:</b> Floating overlay panel (right side of screen)</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Collapsible via button</li>
-  <li>Overlays the xterm.js terminal</li>
-  <li>Semi-transparent background</li>
-  <li>Auto-hides when webcam not running</li>
-</ul>
-<p class="Pp"><b>Controls:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Dimensions</b> (auto-calculated, editable)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Width input (number, live update)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Height input (number, live update)</dd>
-  <dt> &#x2022;</dt>
-  <dd>&quot;Reset to Auto&quot; button</dd>
-  <dt>2.</dt>
-  <dd><b>Render Mode</b> (dropdown)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Foreground (default)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Background</dd>
-  <dt> &#x2022;</dt>
-  <dd>Half-block</dd>
-  <dt>3.</dt>
-  <dd><b>Color Filter</b> (dropdown)</dd>
-  <dt> &#x2022;</dt>
-  <dd>None (default)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Green, Cyan, Magenta, etc.</dd>
-  <dt>4.</dt>
-  <dd><b>Color Mode</b> (dropdown)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Auto (default)</dd>
-  <dt> &#x2022;</dt>
-  <dd>None, 16-color, 256-color, Truecolor</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="React_Component"><a class="permalink" href="#React_Component">React
-  Component</a></h2>
-<pre>// src/components/MirrorSettings.tsx
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="UI_Implementation">
+            <a class="permalink" href="#UI_Implementation">UI Implementation</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Settings_Panel_Design">
+            <a class="permalink" href="#Settings_Panel_Design"
+              >Settings Panel Design</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Layout:</b> Floating overlay panel (right side of screen)
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Collapsible via button</li>
+            <li>Overlays the xterm.js terminal</li>
+            <li>Semi-transparent background</li>
+            <li>Auto-hides when webcam not running</li>
+          </ul>
+          <p class="Pp"><b>Controls:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Dimensions</b> (auto-calculated, editable)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Width input (number, live update)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Height input (number, live update)</dd>
+            <dt>&#x2022;</dt>
+            <dd>&quot;Reset to Auto&quot; button</dd>
+            <dt>2.</dt>
+            <dd><b>Render Mode</b> (dropdown)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Foreground (default)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Background</dd>
+            <dt>&#x2022;</dt>
+            <dd>Half-block</dd>
+            <dt>3.</dt>
+            <dd><b>Color Filter</b> (dropdown)</dd>
+            <dt>&#x2022;</dt>
+            <dd>None (default)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Green, Cyan, Magenta, etc.</dd>
+            <dt>4.</dt>
+            <dd><b>Color Mode</b> (dropdown)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Auto (default)</dd>
+            <dt>&#x2022;</dt>
+            <dd>None, 16-color, 256-color, Truecolor</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="React_Component">
+            <a class="permalink" href="#React_Component">React Component</a>
+          </h2>
+          <pre>// src/components/MirrorSettings.tsx
 import { useState, useEffect } from 'react';
 import { MirrorWasm } from '../wasm/mirror';
 import { RenderMode, ColorMode, ColorFilter } from '../wasm/mirror-types';
@@ -1811,11 +1969,14 @@ export function MirrorSettings({ wasm, isRunning, onDimensionsChange }: MirrorSe
 <br/>
     );
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Updated_Mirror_Page"><a class="permalink" href="#Updated_Mirror_Page">Updated
-  Mirror Page</a></h2>
-<pre>// src/pages/Mirror.tsx (updated)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Updated_Mirror_Page">
+            <a class="permalink" href="#Updated_Mirror_Page"
+              >Updated Mirror Page</a
+            >
+          </h2>
+          <pre>// src/pages/Mirror.tsx (updated)
 import { useEffect, useRef, useState } from 'react'
 import { Terminal } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -2076,244 +2237,303 @@ export function MirrorPage() {
 <br/>
     )
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Plan"><a class="permalink" href="#Implementation_Plan">Implementation
-  Plan</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_1:_Platform_Layer_(1-2_days)"><a class="permalink" href="#Phase_1:_Platform_Layer_(1-2_days)">Phase
-  1: Platform Layer (1-2 days)</a></h2>
-<p class="Pp"><b>Tasks:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Create lib/platform/wasm/ directory</dd>
-  <dt>2.</dt>
-  <dd>Implement:</dd>
-  <dt> &#x2022;</dt>
-  <dd>terminal.c - EM_JS bridge to xterm.js</dd>
-  <dt> &#x2022;</dt>
-  <dd>threading.c - Emscripten pthread wrappers</dd>
-  <dt> &#x2022;</dt>
-  <dd><b>environment.c</b><b> - getenv/strerror stubs</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>time.c - Time functions</dd>
-  <dt> &#x2022;</dt>
-  <dd>init.c - Platform initialization</dd>
-  <dt>3.</dt>
-  <dd>Add conditional compilation guards to existing platform code</dd>
-</dl>
-<p class="Pp"><b>Validation:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Compiles without errors with Emscripten</li>
-  <li>EM_JS functions can call JavaScript (test with simple console.log)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_2:_WASM_Build_System_(1_day)"><a class="permalink" href="#Phase_2:_WASM_Build_System_(1_day)">Phase
-  2: WASM Build System (1 day)</a></h2>
-<p class="Pp"><b>Tasks:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Create web/web.ascii-chat.com/wasm/CMakeLists.txt</dd>
-  <dt>2.</dt>
-  <dd>Create mirror_wasm.c entry point</dd>
-  <dt>3.</dt>
-  <dd>Write build.sh script</dd>
-  <dt>4.</dt>
-  <dd>Configure Emscripten linker flags</dd>
-  <dt>5.</dt>
-  <dd>Test basic WASM build</dd>
-</dl>
-<p class="Pp"><b>Validation:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>./build.sh produces mirror.wasm and mirror.js</li>
-  <li>WASM module loads in browser (basic test)</li>
-  <li>Exported functions are accessible from JavaScript</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_3:_TypeScript_Integration_(1_day)"><a class="permalink" href="#Phase_3:_TypeScript_Integration_(1_day)">Phase
-  3: TypeScript Integration (1 day)</a></h2>
-<p class="Pp"><b>Tasks:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Create TypeScript type definitions</dd>
-  <dt>2.</dt>
-  <dd>Implement MirrorWasm wrapper class</dd>
-  <dt>3.</dt>
-  <dd>Update Mirror.tsx to use new WASM module</dd>
-  <dt>4.</dt>
-  <dd>Test basic frame conversion</dd>
-</dl>
-<p class="Pp"><b>Validation:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>WASM module initializes successfully</li>
-  <li>Frame conversion works (basic ASCII output)</li>
-  <li>No memory leaks (check with Chrome DevTools)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_4:_Settings_Panel_UI_(1_day)"><a class="permalink" href="#Phase_4:_Settings_Panel_UI_(1_day)">Phase
-  4: Settings Panel UI (1 day)</a></h2>
-<p class="Pp"><b>Tasks:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Create MirrorSettings.tsx component</dd>
-  <dt>2.</dt>
-  <dd>Implement controls for all settings</dd>
-  <dt>3.</dt>
-  <dd>Wire up event handlers to WASM setters</dd>
-  <dt>4.</dt>
-  <dd>Add auto-dimension calculation from viewport</dd>
-  <dt>5.</dt>
-  <dd>Style with Tailwind CSS</dd>
-</dl>
-<p class="Pp"><b>Validation:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Settings panel opens/closes correctly</li>
-  <li>All controls update WASM options</li>
-  <li>Live updates reflect in ASCII output</li>
-  <li>Dimensions auto-calculate on terminal resize</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_5:_Testing_&amp;_Optimization_(1_day)"><a class="permalink" href="#Phase_5:_Testing_&amp;_Optimization_(1_day)">Phase
-  5: Testing &amp; Optimization (1 day)</a></h2>
-<p class="Pp"><b>Tasks:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Test all render modes (foreground, background, half-block)</dd>
-  <dt>2.</dt>
-  <dd>Test all color filters (green, cyan, magenta, etc.)</dd>
-  <dt>3.</dt>
-  <dd>Test all color modes (16, 256, truecolor)</dd>
-  <dt>4.</dt>
-  <dd>Performance profiling (Chrome DevTools)</dd>
-  <dt>5.</dt>
-  <dd>Memory leak detection</dd>
-  <dt>6.</dt>
-  <dd>Cross-browser testing (Chrome, Firefox, Safari)</dd>
-</dl>
-<p class="Pp"><b>Validation:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>All settings work correctly</li>
-  <li>Frame rate maintains 30-60 FPS</li>
-  <li>No memory growth over time</li>
-  <li>Works on major browsers</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_6:_Documentation_&amp;_Cleanup_(0"><a class="permalink" href="#Phase_6:_Documentation_&amp;_Cleanup_(0">Phase
-  6: Documentation &amp; Cleanup (0.5 days)</a></h2>
-<p class="Pp"><b>Tasks:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Update README with WASM build instructions</dd>
-  <dt>2.</dt>
-  <dd>Add comments to complex WASM code</dd>
-  <dt>3.</dt>
-  <dd>Clean up debug logging</dd>
-  <dt>4.</dt>
-  <dd>Update deployment documentation</dd>
-</dl>
-<p class="Pp"><b>Total Estimated Time:</b> 5-6 days</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Success_Criteria"><a class="permalink" href="#Success_Criteria">Success
-  Criteria</a></h2>
-<p class="Pp">&#x2705; <b>Functional Requirements:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Full library options system working in WASM</li>
-  <li>All settings configurable via UI (render-mode, color-filter, color-mode,
-      width, height)</li>
-  <li>Settings update in real-time (no page refresh)</li>
-  <li>Auto-calculated dimensions from terminal viewport + webcam aspect
-    ratio</li>
-  <li>Manual dimension override available</li>
-</ul>
-<p class="Pp">&#x2705; <b>Performance Requirements:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Frame rate: 30-60 FPS on modern hardware</li>
-  <li>WASM binary size: &lt; 500KB uncompressed (&lt; 150KB gzipped)</li>
-  <li>Memory usage: Stable (no leaks over time)</li>
-  <li>Startup time: &lt; 2 seconds to initialize WASM</li>
-</ul>
-<p class="Pp">&#x2705; <b>Quality Requirements:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>No regressions from current mirror mode behavior</li>
-  <li>Cross-browser compatibility (Chrome, Firefox, Safari)</li>
-  <li>Mobile responsive (settings panel collapses on small screens)</li>
-  <li>Error handling for WASM initialization failures</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Future_Enhancements"><a class="permalink" href="#Future_Enhancements">Future
-  Enhancements</a></h2>
-<p class="Pp"><b>Phase 2 Features (Post-MVP):</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>PCRE2 Support</b> - Add URL streaming (--url flag)</dd>
-  <dt>2.</dt>
-  <dd><b>Multi-threading</b> - Enable USE_PTHREADS=1 for true concurrency</dd>
-  <dt>3.</dt>
-  <dd><b>SIMD Optimization</b> - Enable WASM SIMD for faster ASCII
-    conversion</dd>
-  <dt>4.</dt>
-  <dd><b>Palette Customization</b> - Expose --palette-custom setting</dd>
-  <dt>5.</dt>
-  <dd><b>FPS Control</b> - Add FPS slider (currently hardcoded to 60)</dd>
-  <dt>6.</dt>
-  <dd><b>Export ASCII</b> - Download ASCII frames as text files</dd>
-  <dt>7.</dt>
-  <dd><b>Record Session</b> - Save ASCII video to file</dd>
-</dl>
-<p class="Pp"><b>Performance Optimizations:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Use OffscreenCanvas for video processing</dd>
-  <dt>2.</dt>
-  <dd>Web Worker for WASM execution (offload from main thread)</dd>
-  <dt>3.</dt>
-  <dd>WebGL-accelerated color filtering</dd>
-  <dt>4.</dt>
-  <dd>Lazy loading of WASM module</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Appendix"><a class="permalink" href="#Appendix">Appendix</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="References"><a class="permalink" href="#References">References</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Emscripten Documentation:</b> https://emscripten.org/docs/</li>
-  <li><b>xterm.js API:</b> https://xtermjs.org/docs/api/</li>
-  <li><b>ascii-chat CLAUDE.md:</b> Full build system documentation</li>
-  <li><b>Platform Abstraction:</b>
-      <b>include/ascii-chat/platform/abstraction.h</b><b></b></li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="File_Locations"><a class="permalink" href="#File_Locations">File
-  Locations</a></h2>
-<pre>New files:
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Plan">
+            <a class="permalink" href="#Implementation_Plan"
+              >Implementation Plan</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_1:_Platform_Layer_(1-2_days)">
+            <a class="permalink" href="#Phase_1:_Platform_Layer_(1-2_days)"
+              >Phase 1: Platform Layer (1-2 days)</a
+            >
+          </h2>
+          <p class="Pp"><b>Tasks:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Create lib/platform/wasm/ directory</dd>
+            <dt>2.</dt>
+            <dd>Implement:</dd>
+            <dt>&#x2022;</dt>
+            <dd>terminal.c - EM_JS bridge to xterm.js</dd>
+            <dt>&#x2022;</dt>
+            <dd>threading.c - Emscripten pthread wrappers</dd>
+            <dt>&#x2022;</dt>
+            <dd><b>environment.c</b><b> - getenv/strerror stubs</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>time.c - Time functions</dd>
+            <dt>&#x2022;</dt>
+            <dd>init.c - Platform initialization</dd>
+            <dt>3.</dt>
+            <dd>
+              Add conditional compilation guards to existing platform code
+            </dd>
+          </dl>
+          <p class="Pp"><b>Validation:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Compiles without errors with Emscripten</li>
+            <li>
+              EM_JS functions can call JavaScript (test with simple console.log)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_2:_WASM_Build_System_(1_day)">
+            <a class="permalink" href="#Phase_2:_WASM_Build_System_(1_day)"
+              >Phase 2: WASM Build System (1 day)</a
+            >
+          </h2>
+          <p class="Pp"><b>Tasks:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Create web/web.ascii-chat.com/wasm/CMakeLists.txt</dd>
+            <dt>2.</dt>
+            <dd>Create mirror_wasm.c entry point</dd>
+            <dt>3.</dt>
+            <dd>Write build.sh script</dd>
+            <dt>4.</dt>
+            <dd>Configure Emscripten linker flags</dd>
+            <dt>5.</dt>
+            <dd>Test basic WASM build</dd>
+          </dl>
+          <p class="Pp"><b>Validation:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>./build.sh produces mirror.wasm and mirror.js</li>
+            <li>WASM module loads in browser (basic test)</li>
+            <li>Exported functions are accessible from JavaScript</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_3:_TypeScript_Integration_(1_day)">
+            <a class="permalink" href="#Phase_3:_TypeScript_Integration_(1_day)"
+              >Phase 3: TypeScript Integration (1 day)</a
+            >
+          </h2>
+          <p class="Pp"><b>Tasks:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Create TypeScript type definitions</dd>
+            <dt>2.</dt>
+            <dd>Implement MirrorWasm wrapper class</dd>
+            <dt>3.</dt>
+            <dd>Update Mirror.tsx to use new WASM module</dd>
+            <dt>4.</dt>
+            <dd>Test basic frame conversion</dd>
+          </dl>
+          <p class="Pp"><b>Validation:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>WASM module initializes successfully</li>
+            <li>Frame conversion works (basic ASCII output)</li>
+            <li>No memory leaks (check with Chrome DevTools)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_4:_Settings_Panel_UI_(1_day)">
+            <a class="permalink" href="#Phase_4:_Settings_Panel_UI_(1_day)"
+              >Phase 4: Settings Panel UI (1 day)</a
+            >
+          </h2>
+          <p class="Pp"><b>Tasks:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Create MirrorSettings.tsx component</dd>
+            <dt>2.</dt>
+            <dd>Implement controls for all settings</dd>
+            <dt>3.</dt>
+            <dd>Wire up event handlers to WASM setters</dd>
+            <dt>4.</dt>
+            <dd>Add auto-dimension calculation from viewport</dd>
+            <dt>5.</dt>
+            <dd>Style with Tailwind CSS</dd>
+          </dl>
+          <p class="Pp"><b>Validation:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Settings panel opens/closes correctly</li>
+            <li>All controls update WASM options</li>
+            <li>Live updates reflect in ASCII output</li>
+            <li>Dimensions auto-calculate on terminal resize</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_5:_Testing_&amp;_Optimization_(1_day)">
+            <a
+              class="permalink"
+              href="#Phase_5:_Testing_&amp;_Optimization_(1_day)"
+              >Phase 5: Testing &amp; Optimization (1 day)</a
+            >
+          </h2>
+          <p class="Pp"><b>Tasks:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Test all render modes (foreground, background, half-block)</dd>
+            <dt>2.</dt>
+            <dd>Test all color filters (green, cyan, magenta, etc.)</dd>
+            <dt>3.</dt>
+            <dd>Test all color modes (16, 256, truecolor)</dd>
+            <dt>4.</dt>
+            <dd>Performance profiling (Chrome DevTools)</dd>
+            <dt>5.</dt>
+            <dd>Memory leak detection</dd>
+            <dt>6.</dt>
+            <dd>Cross-browser testing (Chrome, Firefox, Safari)</dd>
+          </dl>
+          <p class="Pp"><b>Validation:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>All settings work correctly</li>
+            <li>Frame rate maintains 30-60 FPS</li>
+            <li>No memory growth over time</li>
+            <li>Works on major browsers</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_6:_Documentation_&amp;_Cleanup_(0">
+            <a class="permalink" href="#Phase_6:_Documentation_&amp;_Cleanup_(0"
+              >Phase 6: Documentation &amp; Cleanup (0.5 days)</a
+            >
+          </h2>
+          <p class="Pp"><b>Tasks:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Update README with WASM build instructions</dd>
+            <dt>2.</dt>
+            <dd>Add comments to complex WASM code</dd>
+            <dt>3.</dt>
+            <dd>Clean up debug logging</dd>
+            <dt>4.</dt>
+            <dd>Update deployment documentation</dd>
+          </dl>
+          <p class="Pp"><b>Total Estimated Time:</b> 5-6 days</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Success_Criteria">
+            <a class="permalink" href="#Success_Criteria">Success Criteria</a>
+          </h2>
+          <p class="Pp">&#x2705; <b>Functional Requirements:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Full library options system working in WASM</li>
+            <li>
+              All settings configurable via UI (render-mode, color-filter,
+              color-mode, width, height)
+            </li>
+            <li>Settings update in real-time (no page refresh)</li>
+            <li>
+              Auto-calculated dimensions from terminal viewport + webcam aspect
+              ratio
+            </li>
+            <li>Manual dimension override available</li>
+          </ul>
+          <p class="Pp">&#x2705; <b>Performance Requirements:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Frame rate: 30-60 FPS on modern hardware</li>
+            <li>
+              WASM binary size: &lt; 500KB uncompressed (&lt; 150KB gzipped)
+            </li>
+            <li>Memory usage: Stable (no leaks over time)</li>
+            <li>Startup time: &lt; 2 seconds to initialize WASM</li>
+          </ul>
+          <p class="Pp">&#x2705; <b>Quality Requirements:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>No regressions from current mirror mode behavior</li>
+            <li>Cross-browser compatibility (Chrome, Firefox, Safari)</li>
+            <li>
+              Mobile responsive (settings panel collapses on small screens)
+            </li>
+            <li>Error handling for WASM initialization failures</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Enhancements">
+            <a class="permalink" href="#Future_Enhancements"
+              >Future Enhancements</a
+            >
+          </h2>
+          <p class="Pp"><b>Phase 2 Features (Post-MVP):</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>PCRE2 Support</b> - Add URL streaming (--url flag)</dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Multi-threading</b> - Enable USE_PTHREADS=1 for true
+              concurrency
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>SIMD Optimization</b> - Enable WASM SIMD for faster ASCII
+              conversion
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Palette Customization</b> - Expose --palette-custom setting
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>FPS Control</b> - Add FPS slider (currently hardcoded to 60)
+            </dd>
+            <dt>6.</dt>
+            <dd><b>Export ASCII</b> - Download ASCII frames as text files</dd>
+            <dt>7.</dt>
+            <dd><b>Record Session</b> - Save ASCII video to file</dd>
+          </dl>
+          <p class="Pp"><b>Performance Optimizations:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Use OffscreenCanvas for video processing</dd>
+            <dt>2.</dt>
+            <dd>Web Worker for WASM execution (offload from main thread)</dd>
+            <dt>3.</dt>
+            <dd>WebGL-accelerated color filtering</dd>
+            <dt>4.</dt>
+            <dd>Lazy loading of WASM module</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Appendix">
+            <a class="permalink" href="#Appendix">Appendix</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="References">
+            <a class="permalink" href="#References">References</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Emscripten Documentation:</b> https://emscripten.org/docs/
+            </li>
+            <li><b>xterm.js API:</b> https://xtermjs.org/docs/api/</li>
+            <li>
+              <b>ascii-chat CLAUDE.md:</b> Full build system documentation
+            </li>
+            <li>
+              <b>Platform Abstraction:</b>
+              <b>include/ascii-chat/platform/abstraction.h</b><b></b>
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="File_Locations">
+            <a class="permalink" href="#File_Locations">File Locations</a>
+          </h2>
+          <pre>New files:
 &#x251C;&#x2500;&#x2500; lib/platform/wasm/             (5 files)
 &#x251C;&#x2500;&#x2500; web/web.ascii-chat.com/wasm/
 &#x2502;   &#x251C;&#x2500;&#x2500; CMakeLists.txt
@@ -2328,20 +2548,24 @@ export function MirrorPage() {
 Modified files:
 &#x251C;&#x2500;&#x2500; web/web.ascii-chat.com/src/pages/Mirror.tsx
 &#x2514;&#x2500;&#x2500; docs/plans/2026-02-06-web-mirror-full-library-wasm.md (this file)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Sign-off"><a class="permalink" href="#Sign-off">Sign-off</a></h2>
-<p class="Pp"><b>Design Status:</b> &#x2705; Complete and validated <b>Ready for
-    Implementation:</b> Yes <b>Estimated Timeline:</b> 5-6 days <b>Next
-    Step:</b> Begin Phase 1 (Platform Layer implementation)</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Sign-off">
+            <a class="permalink" href="#Sign-off">Sign-off</a>
+          </h2>
+          <p class="Pp">
+            <b>Design Status:</b> &#x2705; Complete and validated
+            <b>Ready for Implementation:</b> Yes <b>Estimated Timeline:</b> 5-6
+            days <b>Next Step:</b> Begin Phase 1 (Platform Layer implementation)
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

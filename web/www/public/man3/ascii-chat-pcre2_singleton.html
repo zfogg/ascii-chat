@@ -1,155 +1,237 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>pcre2_singleton(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">pcre2_singleton(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">pcre2_singleton(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">pcre2_singleton - Represents a thread-safe compiled PCRE2 regex
-    singleton.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>lifecycle_t</b> <b>lc</b>
-  <br/>
-  Per-object compilation lifecycle (UNINITIALIZED &#x00E2;&#x2020;&#x2019;
-    INITIALIZED). <b>atomic_t</b> <b>code</b>
-  <br/>
-  Compiled regex (lazy init, atomic pointer as <b>uint64_t</b>). pcre2_jit_stack
-    * <b>jit_stack</b>
-  <br/>
-  JIT stack for performance. char * <b>pattern</b>
-  <br/>
-  Pattern string (owned by singleton, dynamically allocated). <b>uint32_t</b>
-    <b>flags</b>
-  <br/>
-  PCRE2 compile flags. struct <b>pcre2_singleton</b> ** <b>owner</b>
-  <br/>
-  Optional persistent owner slot. struct <b>pcre2_singleton</b> * <b>next</b>
-  <br/>
-  Next singleton in global registry.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Represents a thread-safe compiled PCRE2 regex singleton.</p>
-<p class="Pp">Uses <b>lifecycle_t</b> for thread-safe lazy initialization
-    without mutexes. The compilation flag is set only once, and the compiled
-    code is read-only after that, enabling concurrent access from multiple
-    threads.</p>
-<p class="Pp">Definition at line <b>25</b> of file <b>pcre2.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> pcre2_singleton::code</h2>
-<p class="Pp">Compiled regex (lazy init, atomic pointer as <b>uint64_t</b>).</p>
-<p class="Pp">Definition at line <b>27</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_match()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_free()</b>,
-    <b>asciichat_pcre2_singleton_get_code()</b>, and
-    <b>asciichat_pcre2_singleton_is_initialized()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> pcre2_singleton::flags</h2>
-<p class="Pp">PCRE2 compile flags.</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile_owned()</b>, and
-    <b>asciichat_pcre2_singleton_get_code()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="pcre2_jit_stack*_pcre2_singleton::jit_stack"><a class="permalink" href="#pcre2_jit_stack*_pcre2_singleton::jit_stack">pcre2_jit_stack*
-  pcre2_singleton::jit_stack</a></h2>
-<p class="Pp">JIT stack for performance.</p>
-<p class="Pp">Definition at line <b>28</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_free()</b>, and
-    <b>asciichat_pcre2_singleton_get_code()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>lifecycle_t</b> pcre2_singleton::lc</h2>
-<p class="Pp">Per-object compilation lifecycle (UNINITIALIZED
-    &#x00E2;&#x2020;&#x2019; INITIALIZED).</p>
-<p class="Pp">Definition at line <b>26</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_compile()</b>, and
-    <b>asciichat_pcre2_singleton_get_code()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">struct <b>pcre2_singleton</b>* pcre2_singleton::next</h2>
-<p class="Pp">Next singleton in global registry.</p>
-<p class="Pp">Definition at line <b>32</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_cleanup_all()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>, and
-    <b>asciichat_pcre2_singleton_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">struct <b>pcre2_singleton</b>** pcre2_singleton::owner</h2>
-<p class="Pp">Optional persistent owner slot.</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile_owned()</b>, and
-    <b>asciichat_pcre2_singleton_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_pcre2_singleton::pattern"><a class="permalink" href="#char*_pcre2_singleton::pattern">char*
-  pcre2_singleton::pattern</a></h2>
-<p class="Pp">Pattern string (owned by singleton, dynamically allocated).</p>
-<p class="Pp">Definition at line <b>29</b> of file <b>pcre2.c</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_pcre2_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_compile_owned()</b>,
-    <b>asciichat_pcre2_singleton_free()</b>, and
-    <b>asciichat_pcre2_singleton_get_code()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pcre2_singleton(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pcre2_singleton(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pcre2_singleton(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          pcre2_singleton - Represents a thread-safe compiled PCRE2 regex
+          singleton.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>lifecycle_t</b> <b>lc</b>
+            <br />
+            Per-object compilation lifecycle (UNINITIALIZED
+            &#x00E2;&#x2020;&#x2019; INITIALIZED).
+            <b>atomic_t</b> <b>code</b>
+            <br />
+            Compiled regex (lazy init, atomic pointer as <b>uint64_t</b>).
+            pcre2_jit_stack *
+            <b>jit_stack</b>
+            <br />
+            JIT stack for performance. char * <b>pattern</b>
+            <br />
+            Pattern string (owned by singleton, dynamically allocated).
+            <b>uint32_t</b>
+            <b>flags</b>
+            <br />
+            PCRE2 compile flags. struct <b>pcre2_singleton</b> ** <b>owner</b>
+            <br />
+            Optional persistent owner slot. struct <b>pcre2_singleton</b> *
+            <b>next</b>
+            <br />
+            Next singleton in global registry.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Represents a thread-safe compiled PCRE2 regex singleton.
+        </p>
+        <p class="Pp">
+          Uses <b>lifecycle_t</b> for thread-safe lazy initialization without
+          mutexes. The compilation flag is set only once, and the compiled code
+          is read-only after that, enabling concurrent access from multiple
+          threads.
+        </p>
+        <p class="Pp">Definition at line <b>25</b> of file <b>pcre2.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> pcre2_singleton::code</h2>
+          <p class="Pp">
+            Compiled regex (lazy init, atomic pointer as <b>uint64_t</b>).
+          </p>
+          <p class="Pp">Definition at line <b>27</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_match()</b>,
+            <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_free()</b>,
+            <b>asciichat_pcre2_singleton_get_code()</b>, and
+            <b>asciichat_pcre2_singleton_is_initialized()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> pcre2_singleton::flags</h2>
+          <p class="Pp">PCRE2 compile flags.</p>
+          <p class="Pp">Definition at line <b>30</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile_owned()</b>, and
+            <b>asciichat_pcre2_singleton_get_code()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="pcre2_jit_stack*_pcre2_singleton::jit_stack">
+            <a
+              class="permalink"
+              href="#pcre2_jit_stack*_pcre2_singleton::jit_stack"
+              >pcre2_jit_stack* pcre2_singleton::jit_stack</a
+            >
+          </h2>
+          <p class="Pp">JIT stack for performance.</p>
+          <p class="Pp">Definition at line <b>28</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_free()</b>, and
+            <b>asciichat_pcre2_singleton_get_code()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>lifecycle_t</b> pcre2_singleton::lc</h2>
+          <p class="Pp">
+            Per-object compilation lifecycle (UNINITIALIZED
+            &#x00E2;&#x2020;&#x2019; INITIALIZED).
+          </p>
+          <p class="Pp">Definition at line <b>26</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_compile()</b>, and
+            <b>asciichat_pcre2_singleton_get_code()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            struct <b>pcre2_singleton</b>* pcre2_singleton::next
+          </h2>
+          <p class="Pp">Next singleton in global registry.</p>
+          <p class="Pp">Definition at line <b>32</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_cleanup_all()</b>,
+            <b>asciichat_pcre2_singleton_compile()</b>, and
+            <b>asciichat_pcre2_singleton_free()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            struct <b>pcre2_singleton</b>** pcre2_singleton::owner
+          </h2>
+          <p class="Pp">Optional persistent owner slot.</p>
+          <p class="Pp">Definition at line <b>31</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile_owned()</b>, and
+            <b>asciichat_pcre2_singleton_free()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_pcre2_singleton::pattern">
+            <a class="permalink" href="#char*_pcre2_singleton::pattern"
+              >char* pcre2_singleton::pattern</a
+            >
+          </h2>
+          <p class="Pp">
+            Pattern string (owned by singleton, dynamically allocated).
+          </p>
+          <p class="Pp">Definition at line <b>29</b> of file <b>pcre2.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>asciichat_pcre2_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile()</b>,
+            <b>asciichat_pcre2_singleton_compile_owned()</b>,
+            <b>asciichat_pcre2_singleton_free()</b>, and
+            <b>asciichat_pcre2_singleton_get_code()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

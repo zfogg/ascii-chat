@@ -1,94 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>table.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">table.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">table.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">table.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ui_table_column_t</b>
-  <br/>
-  struct <b>ui_table_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef void(*) <b>ui_table_cells_fn</b>(size_t row, const char
-    **cells, size_t columns, void *data)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">size_t <b>ui_table_row</b> (char *out, size_t capacity, const
-    <b>ui_table_column_t</b> *columns, const char *const *cells, size_t count,
-    int width, <b>bool</b> selectable, <b>bool</b> selected)
-  <br/>
-  void <b>ui_table_render</b> (<b>frame_buffer_t</b> *out, <b>ui_table_t</b>
-    *table, int row, int column, int width, int height)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_ui_table_cells_fn(size_t_row,_const_char_**cells,_size_t_columns,_void_*data)"><a class="permalink" href="#typedef_void(*)_ui_table_cells_fn(size_t_row,_const_char_**cells,_size_t_columns,_void_*data)">typedef
-  void(*) ui_table_cells_fn(size_t row, const char **cells, size_t columns, void
-  *data)</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>table.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_table_render_("><a class="permalink" href="#void_ui_table_render_(">void
-  ui_table_render (<b>frame_buffer_t</b> * out, <b>ui_table_t</b> * table, int
-  row, int column, int width, int height)</a></h2>
-<p class="Pp">Rectangular table with a fixed header and independent page/scroll
-    state.</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>table.c</b>.</p>
-<pre>74                                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>table.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">table.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">table.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">table.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_table_column_t</b>
+            <br />
+            struct <b>ui_table_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef void(*) <b>ui_table_cells_fn</b>(size_t row, const char
+            **cells, size_t columns, void *data)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>ui_table_row</b> (char *out, size_t capacity, const
+            <b>ui_table_column_t</b> *columns, const char *const *cells, size_t
+            count, int width, <b>bool</b> selectable, <b>bool</b> selected)
+            <br />
+            void <b>ui_table_render</b> (<b>frame_buffer_t</b> *out,
+            <b>ui_table_t</b>
+            *table, int row, int column, int width, int height)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_ui_table_cells_fn(size_t_row,_const_char_**cells,_size_t_columns,_void_*data)"
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_ui_table_cells_fn(size_t_row,_const_char_**cells,_size_t_columns,_void_*data)"
+              >typedef void(*) ui_table_cells_fn(size_t row, const char **cells,
+              size_t columns, void *data)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>15</b> of file <b>table.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_table_render_(">
+            <a class="permalink" href="#void_ui_table_render_("
+              >void ui_table_render (<b>frame_buffer_t</b> * out,
+              <b>ui_table_t</b> * table, int row, int column, int width, int
+              height)</a
+            >
+          </h2>
+          <p class="Pp">
+            Rectangular table with a fixed header and independent page/scroll
+            state.
+          </p>
+          <p class="Pp">Definition at line <b>74</b> of file <b>table.c</b>.</p>
+          <pre>
+74                                                                                                   {
 75   if (!out || !t || !t-&gt;columns || !t-&gt;column_count || t-&gt;column_count &gt; 32 || !t-&gt;cells || width &lt; 2 || height &lt; 1 ||
 76       row &lt; 1 || col &lt; 1) {
 77     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid table output, data source or geometry&quot;);
@@ -118,33 +178,50 @@
 101   }
 102   ui_scrollbar_render(out, row, col + width - 1, height, range.page_count, (size_t)height, t-&gt;viewport.first_visible);
 103 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_table_t::cells</b>,
-    <b>ui_table_t::column_count</b>, <b>ui_table_t::columns</b>,
-    <b>ui_viewport_range_t::count</b>, <b>ui_table_t::data</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ui_viewport_range_t::first</b>,
-    <b>ui_viewport_t::first_visible</b>, <b>frame_buffer_printf()</b>,
-    <b>ui_table_t::header</b>, <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_RESET</b>,
-    <b>ui_viewport_range_t::page_count</b>, <b>ui_table_t::row_count</b>,
-    <b>ui_table_t::selectable</b>, <b>ui_viewport_t::selected</b>,
-    <b>SET_ERRNO</b>, <b>ui_scrollbar_render()</b>,
-    <b>UI_TABLE_CELL_CAPACITY</b>, <b>UI_TABLE_LINE_BUFFER_SIZE</b>,
-    <b>ui_table_render()</b>, <b>ui_table_row()</b>,
-    <b>ui_text_color_prefix()</b>, <b>ui_viewport_update()</b>, and
-    <b>ui_table_t::viewport</b>.</p>
-<p class="Pp">Referenced by <b>tui_stats_render()</b>, and
-    <b>ui_table_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ui_table_row_(char_*_out,_size_t_capacity,_const_"><a class="permalink" href="#size_t_ui_table_row_(char_*_out,_size_t_capacity,_const_">size_t
-  ui_table_row (char * out, size_t capacity, const <b>ui_table_column_t</b> *
-  columns, const char *const * cells, size_t count, int width, <b>bool</b>
-  selectable, <b>bool</b> selected)</a></h2>
-<p class="Pp">Format a complete row without allocation. Styled cells are clipped
-    by terminal columns, never by bytes. The caller owns data and sorting.</p>
-<p class="Pp">Definition at line <b>17</b> of file <b>table.c</b>.</p>
-<pre>18                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_table_t::cells</b>,
+            <b>ui_table_t::column_count</b>, <b>ui_table_t::columns</b>,
+            <b>ui_viewport_range_t::count</b>, <b>ui_table_t::data</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ui_viewport_range_t::first</b>,
+            <b>ui_viewport_t::first_visible</b>, <b>frame_buffer_printf()</b>,
+            <b>ui_table_t::header</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_RESET</b>, <b>ui_viewport_range_t::page_count</b>,
+            <b>ui_table_t::row_count</b>, <b>ui_table_t::selectable</b>,
+            <b>ui_viewport_t::selected</b>, <b>SET_ERRNO</b>,
+            <b>ui_scrollbar_render()</b>, <b>UI_TABLE_CELL_CAPACITY</b>,
+            <b>UI_TABLE_LINE_BUFFER_SIZE</b>, <b>ui_table_render()</b>,
+            <b>ui_table_row()</b>, <b>ui_text_color_prefix()</b>,
+            <b>ui_viewport_update()</b>, and <b>ui_table_t::viewport</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>tui_stats_render()</b>, and
+            <b>ui_table_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_ui_table_row_(char_*_out,_size_t_capacity,_const_"
+          >
+            <a
+              class="permalink"
+              href="#size_t_ui_table_row_(char_*_out,_size_t_capacity,_const_"
+              >size_t ui_table_row (char * out, size_t capacity, const
+              <b>ui_table_column_t</b> * columns, const char *const * cells,
+              size_t count, int width, <b>bool</b> selectable,
+              <b>bool</b> selected)</a
+            >
+          </h2>
+          <p class="Pp">
+            Format a complete row without allocation. Styled cells are clipped
+            by terminal columns, never by bytes. The caller owns data and
+            sorting.
+          </p>
+          <p class="Pp">Definition at line <b>17</b> of file <b>table.c</b>.</p>
+          <pre>
+18                                                                {
 19   if (!out || !cap) {
 20     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Table row requires output storage&quot;);
 21     return 0;
@@ -199,27 +276,34 @@
 70   }
 71   return used;
 72 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>display_width()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ui_table_column_t::heading</b>, <b>SET_ERRNO</b>,
-    <b>terminal_should_use_utf8()</b>, <b>truncate_with_ellipsis_mode()</b>,
-    <b>UI_TABLE_CLIPPED_BUFFER_SIZE</b>, <b>ui_table_row()</b>,
-    <b>ui_text_cell()</b>, and <b>ui_table_column_t::width</b>.</p>
-<p class="Pp">Referenced by <b>ui_sync_render()</b>, <b>ui_table_render()</b>,
-    and <b>ui_table_row()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>display_width()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ui_table_column_t::heading</b>, <b>SET_ERRNO</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>truncate_with_ellipsis_mode()</b>,
+            <b>UI_TABLE_CLIPPED_BUFFER_SIZE</b>, <b>ui_table_row()</b>,
+            <b>ui_text_cell()</b>, and <b>ui_table_column_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_sync_render()</b>, <b>ui_table_render()</b>, and
+            <b>ui_table_row()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

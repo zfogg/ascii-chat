@@ -1,119 +1,206 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>request.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">request.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">request.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">request.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b> 4097
-  <br/>
-  #define <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>MCP_REQUEST_ARGV_CAPACITY</b> 256
-  <br/>
-  #define <b>MCP_REQUEST_RESERVED_ARGS</b> 6
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">yyjson_mut_val * <b>mcp_tools_schema</b> (yyjson_mut_doc *d, const
-    <b>mcp_policy_t</b> *p)
-  <br/>
-  <b>asciichat_error_t</b> <b>mcp_request_parse</b> (const <b>mcp_policy_t</b>
-    *p, <b>mcp_tool_t</b> tool, yyjson_val *a, <b>mcp_render_request_t</b> *r)
-  <br/>
-  void <b>mcp_request_destroy</b> (<b>mcp_render_request_t</b> *r)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_REQUEST_ARGV_CAPACITY___256"><a class="permalink" href="#_define_MCP_REQUEST_ARGV_CAPACITY___256">#define
-  MCP_REQUEST_ARGV_CAPACITY 256</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>request.c</b>.</p>
-<p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_REQUEST_RESERVED_ARGS___6"><a class="permalink" href="#_define_MCP_REQUEST_RESERVED_ARGS___6">#define
-  MCP_REQUEST_RESERVED_ARGS 6</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>request.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_REQUEST_B_BUFFER_SIZE___16"><a class="permalink" href="#_define_MCP_SERVER_REQUEST_B_BUFFER_SIZE___16">#define
-  MCP_SERVER_REQUEST_B_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>request.c</b>.</p>
-<p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_REQUEST_BUF_BUFFER_SIZE___4097"><a class="permalink" href="#_define_MCP_SERVER_REQUEST_BUF_BUFFER_SIZE___4097">#define
-  MCP_SERVER_REQUEST_BUF_BUFFER_SIZE 4097</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>request.c</b>.</p>
-<p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE___16"><a class="permalink" href="#_define_MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE___16">#define
-  MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>request.c</b>.</p>
-<p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE___64"><a class="permalink" href="#_define_MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE___64">#define
-  MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>request.c</b>.</p>
-<p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_request_destroy_("><a class="permalink" href="#void_mcp_request_destroy_(">void
-  mcp_request_destroy (<b>mcp_render_request_t</b> * r)</a></h2>
-<p class="Pp">Definition at line <b>564</b> of file <b>request.c</b>.</p>
-<pre>564                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>request.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">request.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">request.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">request.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b> 4097
+            <br />
+            #define <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>MCP_REQUEST_ARGV_CAPACITY</b> 256
+            <br />
+            #define <b>MCP_REQUEST_RESERVED_ARGS</b> 6
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            yyjson_mut_val * <b>mcp_tools_schema</b> (yyjson_mut_doc *d, const
+            <b>mcp_policy_t</b> *p)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_request_parse</b> (const
+            <b>mcp_policy_t</b> *p, <b>mcp_tool_t</b> tool, yyjson_val *a,
+            <b>mcp_render_request_t</b> *r)
+            <br />
+            void <b>mcp_request_destroy</b> (<b>mcp_render_request_t</b> *r)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_REQUEST_ARGV_CAPACITY___256">
+            <a class="permalink" href="#_define_MCP_REQUEST_ARGV_CAPACITY___256"
+              >#define MCP_REQUEST_ARGV_CAPACITY 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_REQUEST_RESERVED_ARGS___6">
+            <a class="permalink" href="#_define_MCP_REQUEST_RESERVED_ARGS___6"
+              >#define MCP_REQUEST_RESERVED_ARGS 6</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>request.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_B_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_B_BUFFER_SIZE___16"
+              >#define MCP_SERVER_REQUEST_B_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_BUF_BUFFER_SIZE___4097">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_BUF_BUFFER_SIZE___4097"
+              >#define MCP_SERVER_REQUEST_BUF_BUFFER_SIZE 4097</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE___16"
+              >#define MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE___64"
+              >#define MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>request.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_request_parse()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_request_destroy_(">
+            <a class="permalink" href="#void_mcp_request_destroy_("
+              >void mcp_request_destroy (<b>mcp_render_request_t</b> * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>564</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+564                                                   {
 565   for (size_t i = 0; i &lt; r-&gt;argc; ++i)
 566     SAFE_FREE(r-&gt;argv[i]);
 567   SAFE_FREE(r-&gt;argv);
@@ -127,22 +214,31 @@
 575   }
 576   memset(r, 0, sizeof(*r));
 577 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_render_request_t::argc</b>,
-    <b>mcp_render_request_t::argv</b>, <b>mcp_request_destroy()</b>,
-    <b>platform_rmdir_recursive()</b>, <b>SAFE_FREE</b>,
-    <b>mcp_render_request_t::stage_dir</b>, and
-    <b>mcp_render_request_t::upload_dir</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-    <b>mcp_request_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> mcp_request_parse (const
-  <b>mcp_policy_t</b> * p, <b>mcp_tool_t</b> tool, yyjson_val * a,
-  <b>mcp_render_request_t</b> * r)</h2>
-<p class="Pp">Definition at line <b>367</b> of file <b>request.c</b>.</p>
-<pre>367                                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argc</b>,
+            <b>mcp_render_request_t::argv</b>, <b>mcp_request_destroy()</b>,
+            <b>platform_rmdir_recursive()</b>, <b>SAFE_FREE</b>,
+            <b>mcp_render_request_t::stage_dir</b>, and
+            <b>mcp_render_request_t::upload_dir</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and
+            <b>mcp_request_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> mcp_request_parse (const
+            <b>mcp_policy_t</b> * p, <b>mcp_tool_t</b> tool, yyjson_val * a,
+            <b>mcp_render_request_t</b> * r)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>367</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+367                                                                                                                     {
 368   memset(r, 0, sizeof(*r));
 369   r-&gt;timeout_ms = 45000;
 370   r-&gt;argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
@@ -339,30 +435,45 @@
 561   }
 562   return ASCIICHAT_OK;
 563 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_render_request_t::argv</b>, <b>ASCIICHAT_OK</b>,
-    <b>mcp_render_request_t::capture_webcam</b>, <b>ERROR_FILE_OPERATION</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>MCP_FILE</b>,
-    <b>MCP_REQUEST_ARGV_CAPACITY</b>, <b>mcp_request_parse()</b>,
-    <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b>,
-    <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b>,
-    <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b>,
-    <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b>, <b>MCP_URL</b>,
-    <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
-    <b>options_json_parse_value()</b>, <b>platform_get_executable_path()</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>mcp_policy_t::restricted</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>, and
-    <b>mcp_render_request_t::timeout_ms</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-    <b>mcp_request_parse()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_d,_const_"><a class="permalink" href="#yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_d,_const_">yyjson_mut_val
-  * mcp_tools_schema (yyjson_mut_doc * d, const <b>mcp_policy_t</b> *
-  p)</a></h2>
-<p class="Pp">Definition at line <b>130</b> of file <b>request.c</b>.</p>
-<pre>130                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argv</b>, <b>ASCIICHAT_OK</b>,
+            <b>mcp_render_request_t::capture_webcam</b>,
+            <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>MCP_FILE</b>, <b>MCP_REQUEST_ARGV_CAPACITY</b>,
+            <b>mcp_request_parse()</b>, <b>MCP_SERVER_REQUEST_B_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_BUF_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE</b>,
+            <b>MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE</b>, <b>MCP_URL</b>,
+            <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
+            <b>options_json_parse_value()</b>,
+            <b>platform_get_executable_path()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>mcp_policy_t::restricted</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>, and
+            <b>mcp_render_request_t::timeout_ms</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_request_parse()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_d,_const_"
+          >
+            <a
+              class="permalink"
+              href="#yyjson_mut_val_*_mcp_tools_schema_(yyjson_mut_doc_*_d,_const_"
+              >yyjson_mut_val * mcp_tools_schema (yyjson_mut_doc * d, const
+              <b>mcp_policy_t</b> * p)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>request.c</b>.
+          </p>
+          <pre>
+130                                                                            {
 131   const char *names[] = {&quot;render_file&quot;, &quot;render_url&quot;, &quot;render_webcam&quot;, &quot;render_visualization&quot;};
 132   const char *descs[] = {
 133       &quot;Convert uploaded media or a local file into ASCII art. Source can be omitted for test-pattern/test-audio.&quot;,
@@ -457,26 +568,31 @@
 222   }
 223   return tools;
 224 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>MCP_FILE</b>, <b>mcp_tools_schema()</b>,
-    <b>MCP_URL</b>, <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
-    <b>options_json_schema_for_option()</b>, and
-    <b>mcp_policy_t::restricted</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
-    <b>mcp_tools_schema()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>MCP_FILE</b>, <b>mcp_tools_schema()</b>,
+            <b>MCP_URL</b>, <b>MCP_VISUALIZATION</b>, <b>MCP_WEBCAM</b>,
+            <b>options_json_schema_for_option()</b>, and
+            <b>mcp_policy_t::restricted</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, and <b>mcp_tools_schema()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

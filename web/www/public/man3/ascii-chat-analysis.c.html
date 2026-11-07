@@ -1,155 +1,250 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>analysis.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">analysis.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">analysis.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">analysis.c - Audio Analysis Implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>FRAME_SIZE</b> 960
-  <br/>
-  #define <b>MAX_GAP_SAMPLES</b> 100
-  <br/>
-  #define <b>MAX_PACKET_SAMPLES</b> 200
-  <br/>
-  #define <b>ECHO_BUFFER_SIZE</b> 48000
-  <br/>
-  #define <b>ECHO_DELAY_COUNT</b> 5
-  <br/>
-  #define <b>BEEP_WINDOW_SIZE</b> 480
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>audio_analysis_init</b> (void)
-  <br/>
-  Initialize audio analysis. void <b>audio_analysis_track_sent_sample</b> (float
-    sample)
-  <br/>
-  Track sent audio sample. void <b>audio_analysis_track_sent_packet</b> (size_t
-    size)
-  <br/>
-  Track sent packet. void <b>audio_analysis_track_received_sample</b> (float
-    sample)
-  <br/>
-  Track received audio sample. void <b>audio_analysis_track_received_packet</b>
-    (size_t size)
-  <br/>
-  Track received packet. const <b>audio_analysis_stats_t</b> *
-    <b>audio_analysis_get_sent_stats</b> (void)
-  <br/>
-  Get sent audio statistics. const <b>audio_analysis_stats_t</b> *
-    <b>audio_analysis_get_received_stats</b> (void)
-  <br/>
-  Get received audio statistics. void <b>audio_analysis_set_aec3_metrics</b>
-    (double echo_return_loss, double echo_return_loss_enhancement,
-    <b>uint64_t</b> delay_ns)
-  <br/>
-  Set AEC3 echo cancellation metrics. void <b>audio_analysis_print_report</b>
-    (void)
-  <br/>
-  Print audio analysis report. void <b>audio_analysis_destroy</b> (void)
-  <br/>
-  Cleanup audio analysis.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Audio Analysis Implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>analysis.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_BEEP_WINDOW_SIZE___480"><a class="permalink" href="#_define_BEEP_WINDOW_SIZE___480">#define
-  BEEP_WINDOW_SIZE 480</a></h2>
-<p class="Pp">Definition at line <b>104</b> of file <b>analysis.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_received_sample()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ECHO_BUFFER_SIZE___48000"><a class="permalink" href="#_define_ECHO_BUFFER_SIZE___48000">#define
-  ECHO_BUFFER_SIZE 48000</a></h2>
-<p class="Pp">Definition at line <b>81</b> of file <b>analysis.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_received_sample()</b>, and
-    <b>audio_analysis_track_sent_sample()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ECHO_DELAY_COUNT___5"><a class="permalink" href="#_define_ECHO_DELAY_COUNT___5">#define
-  ECHO_DELAY_COUNT 5</a></h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>analysis.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_init()</b>,
-    <b>audio_analysis_print_report()</b>, and
-    <b>audio_analysis_track_received_sample()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_FRAME_SIZE___960"><a class="permalink" href="#_define_FRAME_SIZE___960">#define
-  FRAME_SIZE 960</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file <b>analysis.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_GAP_SAMPLES___100"><a class="permalink" href="#_define_MAX_GAP_SAMPLES___100">#define
-  MAX_GAP_SAMPLES 100</a></h2>
-<p class="Pp">Definition at line <b>68</b> of file <b>analysis.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_received_sample()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_PACKET_SAMPLES___200"><a class="permalink" href="#_define_MAX_PACKET_SAMPLES___200">#define
-  MAX_PACKET_SAMPLES 200</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>analysis.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_print_report()</b>, and
-    <b>audio_analysis_track_received_packet()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_destroy_(void_)"><a class="permalink" href="#void_audio_analysis_destroy_(void_)">void
-  audio_analysis_destroy (void )</a></h2>
-<p class="Pp">Cleanup audio analysis.</p>
-<p class="Pp">Definition at line <b>884</b> of file <b>analysis.c</b>.</p>
-<pre>884                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>analysis.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">analysis.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">analysis.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">analysis.c - Audio Analysis Implementation.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>FRAME_SIZE</b> 960
+            <br />
+            #define <b>MAX_GAP_SAMPLES</b> 100
+            <br />
+            #define <b>MAX_PACKET_SAMPLES</b> 200
+            <br />
+            #define <b>ECHO_BUFFER_SIZE</b> 48000
+            <br />
+            #define <b>ECHO_DELAY_COUNT</b> 5
+            <br />
+            #define <b>BEEP_WINDOW_SIZE</b> 480
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>audio_analysis_init</b> (void)
+            <br />
+            Initialize audio analysis. void
+            <b>audio_analysis_track_sent_sample</b> (float sample)
+            <br />
+            Track sent audio sample. void
+            <b>audio_analysis_track_sent_packet</b> (size_t size)
+            <br />
+            Track sent packet. void
+            <b>audio_analysis_track_received_sample</b> (float sample)
+            <br />
+            Track received audio sample. void
+            <b>audio_analysis_track_received_packet</b>
+            (size_t size)
+            <br />
+            Track received packet. const <b>audio_analysis_stats_t</b> *
+            <b>audio_analysis_get_sent_stats</b> (void)
+            <br />
+            Get sent audio statistics. const <b>audio_analysis_stats_t</b> *
+            <b>audio_analysis_get_received_stats</b> (void)
+            <br />
+            Get received audio statistics. void
+            <b>audio_analysis_set_aec3_metrics</b>
+            (double echo_return_loss, double echo_return_loss_enhancement,
+            <b>uint64_t</b> delay_ns)
+            <br />
+            Set AEC3 echo cancellation metrics. void
+            <b>audio_analysis_print_report</b>
+            (void)
+            <br />
+            Print audio analysis report. void
+            <b>audio_analysis_destroy</b> (void)
+            <br />
+            Cleanup audio analysis.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Audio Analysis Implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>analysis.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BEEP_WINDOW_SIZE___480">
+            <a class="permalink" href="#_define_BEEP_WINDOW_SIZE___480"
+              >#define BEEP_WINDOW_SIZE 480</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>104</b> of file <b>analysis.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_received_sample()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ECHO_BUFFER_SIZE___48000">
+            <a class="permalink" href="#_define_ECHO_BUFFER_SIZE___48000"
+              >#define ECHO_BUFFER_SIZE 48000</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file <b>analysis.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_received_sample()</b>, and
+            <b>audio_analysis_track_sent_sample()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ECHO_DELAY_COUNT___5">
+            <a class="permalink" href="#_define_ECHO_DELAY_COUNT___5"
+              >#define ECHO_DELAY_COUNT 5</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>analysis.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_init()</b>,
+            <b>audio_analysis_print_report()</b>, and
+            <b>audio_analysis_track_received_sample()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_FRAME_SIZE___960">
+            <a class="permalink" href="#_define_FRAME_SIZE___960"
+              >#define FRAME_SIZE 960</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>analysis.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_GAP_SAMPLES___100">
+            <a class="permalink" href="#_define_MAX_GAP_SAMPLES___100"
+              >#define MAX_GAP_SAMPLES 100</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>analysis.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_received_sample()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_PACKET_SAMPLES___200">
+            <a class="permalink" href="#_define_MAX_PACKET_SAMPLES___200"
+              >#define MAX_PACKET_SAMPLES 200</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>75</b> of file <b>analysis.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_print_report()</b>, and
+            <b>audio_analysis_track_received_packet()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_analysis_destroy_(void_)">
+            <a class="permalink" href="#void_audio_analysis_destroy_(void_)"
+              >void audio_analysis_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">Cleanup audio analysis.</p>
+          <p class="Pp">
+            Definition at line <b>884</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+884                                   {
 885   g_analysis_enabled = false;
 886
 887   // Close WAV files if they were open
@@ -164,60 +259,86 @@
 896     log_info(&quot;Closed received audio WAV file&quot;);
 897   }
 898 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_destroy()</b>, <b>log_info</b>, and
-    <b>wav_writer_close()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>audio_analysis_stats_t</b> *
-  audio_analysis_get_received_stats (void )</h2>
-<p class="Pp">Get received audio statistics.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to analysis stats (do not free)</div>
-<p class="Pp">Definition at line <b>508</b> of file <b>analysis.c</b>.</p>
-<pre>508                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_destroy()</b>, <b>log_info</b>, and
+            <b>wav_writer_close()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_analysis_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>audio_analysis_stats_t</b> *
+            audio_analysis_get_received_stats (void )
+          </h2>
+          <p class="Pp">Get received audio statistics.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to analysis stats (do not free)</div>
+          <p class="Pp">
+            Definition at line <b>508</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+508                                                                       {
 509   g_received_stats.dc_offset =
 510       g_received_stats.total_samples ? (float)(g_received_mean / g_received_stats.total_samples) : 0.0f;
 511   g_received_stats.rms_level =
 512       g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / g_received_rms_sample_count) : 0.0f;
 513   return &amp;g_received_stats;
 514 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_get_received_stats()</b>, and
-    <b>audio_analysis_stats_t::dc_offset</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_get_received_stats()</b>, and
-    <b>audio_analysis_print_report()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>audio_analysis_stats_t</b> *
-  audio_analysis_get_sent_stats (void )</h2>
-<p class="Pp">Get sent audio statistics.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to analysis stats (do not free)</div>
-<p class="Pp">Definition at line <b>502</b> of file <b>analysis.c</b>.</p>
-<pre>502                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_get_received_stats()</b>, and
+            <b>audio_analysis_stats_t::dc_offset</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_get_received_stats()</b>, and
+            <b>audio_analysis_print_report()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>audio_analysis_stats_t</b> * audio_analysis_get_sent_stats
+            (void )
+          </h2>
+          <p class="Pp">Get sent audio statistics.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to analysis stats (do not free)</div>
+          <p class="Pp">
+            Definition at line <b>502</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+502                                                                   {
 503   g_sent_stats.dc_offset = g_sent_stats.total_samples ? (float)(g_sent_mean / g_sent_stats.total_samples) : 0.0f;
 504   g_sent_stats.rms_level = g_sent_rms_sample_count ? sqrtf(g_sent_rms_accumulator / g_sent_rms_sample_count) : 0.0f;
 505   return &amp;g_sent_stats;
 506 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_get_sent_stats()</b>, and
-    <b>audio_analysis_stats_t::dc_offset</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_get_sent_stats()</b>, and
-    <b>audio_analysis_print_report()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_audio_analysis_init_(void_)"><a class="permalink" href="#int_audio_analysis_init_(void_)">int
-  audio_analysis_init (void )</a></h2>
-<p class="Pp">Initialize audio analysis.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, negative on error</div>
-<p class="Pp">Definition at line <b>112</b> of file <b>analysis.c</b>.</p>
-<pre>112                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_get_sent_stats()</b>, and
+            <b>audio_analysis_stats_t::dc_offset</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_get_sent_stats()</b>, and
+            <b>audio_analysis_print_report()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_analysis_init_(void_)">
+            <a class="permalink" href="#int_audio_analysis_init_(void_)"
+              >int audio_analysis_init (void )</a
+            >
+          </h2>
+          <p class="Pp">Initialize audio analysis.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, negative on error</div>
+          <p class="Pp">
+            Definition at line <b>112</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+112                               {
 113   SAFE_MEMSET(&amp;g_sent_stats, sizeof(g_sent_stats), 0, sizeof(g_sent_stats));
 114   SAFE_MEMSET(&amp;g_received_stats, sizeof(g_received_stats), 0, sizeof(g_received_stats));
 115
@@ -284,21 +405,31 @@
 176   log_info(&quot;Audio analysis enabled&quot;);
 177   return 0;
 178 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_init()</b>, <b>ECHO_DELAY_COUNT</b>,
-    <b>log_info</b>, <b>platform_get_temp_dir()</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>SAFE_MEMSET</b>, <b>safe_snprintf()</b>,
-    <b>time_get_ns()</b>, <b>wav_dump_enabled()</b>, and
-    <b>wav_writer_open()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_print_report_(void_)"><a class="permalink" href="#void_audio_analysis_print_report_(void_)">void
-  audio_analysis_print_report (void )</a></h2>
-<p class="Pp">Print audio analysis report.</p>
-<p class="Pp">Definition at line <b>525</b> of file <b>analysis.c</b>.</p>
-<pre>525                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_init()</b>, <b>ECHO_DELAY_COUNT</b>,
+            <b>log_info</b>, <b>platform_get_temp_dir()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>SAFE_MEMSET</b>,
+            <b>safe_snprintf()</b>, <b>time_get_ns()</b>,
+            <b>wav_dump_enabled()</b>, and <b>wav_writer_open()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_analysis_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_analysis_print_report_(void_)">
+            <a
+              class="permalink"
+              href="#void_audio_analysis_print_report_(void_)"
+              >void audio_analysis_print_report (void )</a
+            >
+          </h2>
+          <p class="Pp">Print audio analysis report.</p>
+          <p class="Pp">
+            Definition at line <b>525</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+525                                        {
 526   if (!g_analysis_enabled) {
 527     return;
 528   }
@@ -656,31 +787,46 @@
 880
 881   log_plain(&quot;================================================================================&quot;);
 882 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_get_received_stats()</b>,
-    <b>audio_analysis_get_sent_stats()</b>,
-    <b>audio_analysis_print_report()</b>,
-    <b>audio_analysis_stats_t::dc_offset</b>, <b>ECHO_DELAY_COUNT</b>,
-    <b>log_plain</b>, <b>MAX_PACKET_SAMPLES</b>, <b>NS_PER_MS_INT</b>,
-    <b>audio_analysis_stats_t::rms_level</b>, <b>time_elapsed_ns()</b>, and
-    <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_print_report()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_set_aec3_metrics_(double_echo_return_loss,_double_echo_return_loss_enhancement,_"><a class="permalink" href="#void_audio_analysis_set_aec3_metrics_(double_echo_return_loss,_double_echo_return_loss_enhancement,_">void
-  audio_analysis_set_aec3_metrics (double echo_return_loss, double
-  echo_return_loss_enhancement, <b>uint64_t</b> delay_ns)</a></h2>
-<p class="Pp">Set AEC3 echo cancellation metrics.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>echo_return_loss</i> Echo return loss (dB) - how much
-  echo is attenuated
-<br/>
-<i>echo_return_loss_enhancement</i> Additional echo suppression (dB)
-<br/>
-<i>delay_ns</i> Estimated echo delay in nanoseconds</div>
-<p class="Pp">Definition at line <b>516</b> of file <b>analysis.c</b>.</p>
-<pre>516                                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_get_received_stats()</b>,
+            <b>audio_analysis_get_sent_stats()</b>,
+            <b>audio_analysis_print_report()</b>,
+            <b>audio_analysis_stats_t::dc_offset</b>, <b>ECHO_DELAY_COUNT</b>,
+            <b>log_plain</b>, <b>MAX_PACKET_SAMPLES</b>, <b>NS_PER_MS_INT</b>,
+            <b>audio_analysis_stats_t::rms_level</b>, <b>time_elapsed_ns()</b>,
+            and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_analysis_print_report()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_audio_analysis_set_aec3_metrics_(double_echo_return_loss,_double_echo_return_loss_enhancement,_"
+          >
+            <a
+              class="permalink"
+              href="#void_audio_analysis_set_aec3_metrics_(double_echo_return_loss,_double_echo_return_loss_enhancement,_"
+              >void audio_analysis_set_aec3_metrics (double echo_return_loss,
+              double echo_return_loss_enhancement, <b>uint64_t</b> delay_ns)</a
+            >
+          </h2>
+          <p class="Pp">Set AEC3 echo cancellation metrics.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>echo_return_loss</i> Echo return loss (dB) - how much echo is
+            attenuated
+            <br />
+            <i>echo_return_loss_enhancement</i> Additional echo suppression (dB)
+            <br />
+            <i>delay_ns</i> Estimated echo delay in nanoseconds
+          </div>
+          <p class="Pp">
+            Definition at line <b>516</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+516                                                                                                                       {
 517   // Store AEC3 metrics for reporting
 518   // These come from WebRTC EchoControl::GetMetrics() call
 519   g_aec3_echo_return_loss = echo_return_loss;
@@ -688,20 +834,33 @@
 521   g_aec3_delay_ns = delay_ns;
 522   g_aec3_metrics_available = true;
 523 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_set_aec3_metrics()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_set_aec3_metrics()</b>, and
-    <b>client_audio_pipeline_process_duplex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_track_received_packet_(size_t_size)"><a class="permalink" href="#void_audio_analysis_track_received_packet_(size_t_size)">void
-  audio_analysis_track_received_packet (size_t size)</a></h2>
-<p class="Pp">Track received packet.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>size</i> Packet size in bytes</div>
-<p class="Pp">Definition at line <b>469</b> of file <b>analysis.c</b>.</p>
-<pre>469                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>audio_analysis_set_aec3_metrics()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_set_aec3_metrics()</b>, and
+            <b>client_audio_pipeline_process_duplex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_audio_analysis_track_received_packet_(size_t_size)"
+          >
+            <a
+              class="permalink"
+              href="#void_audio_analysis_track_received_packet_(size_t_size)"
+              >void audio_analysis_track_received_packet (size_t size)</a
+            >
+          </h2>
+          <p class="Pp">Track received packet.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>size</i> Packet size in bytes</div>
+          <p class="Pp">
+            Definition at line <b>469</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+469                                                        {
 470   (void)size; // Unused parameter - reserved for future per-packet analysis
 471   if (!g_analysis_enabled)
 472     return;
@@ -733,21 +892,36 @@
 498   g_received_last_packet_time_us = now_us;
 499   g_received_stats.packets_count++;
 500 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_track_received_packet()</b>,
-    <b>MAX_PACKET_SAMPLES</b>, and <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_received_packet()</b>, and
-    <b>audio_analysis_track_received_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_track_received_sample_(float_sample)"><a class="permalink" href="#void_audio_analysis_track_received_sample_(float_sample)">void
-  audio_analysis_track_received_sample (float sample)</a></h2>
-<p class="Pp">Track received audio sample.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sample</i> Audio sample value</div>
-<p class="Pp">Definition at line <b>279</b> of file <b>analysis.c</b>.</p>
-<pre>279                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_track_received_packet()</b>,
+            <b>MAX_PACKET_SAMPLES</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_received_packet()</b>, and
+            <b>audio_analysis_track_received_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_audio_analysis_track_received_sample_(float_sample)"
+          >
+            <a
+              class="permalink"
+              href="#void_audio_analysis_track_received_sample_(float_sample)"
+              >void audio_analysis_track_received_sample (float sample)</a
+            >
+          </h2>
+          <p class="Pp">Track received audio sample.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>sample</i> Audio sample value</div>
+          <p class="Pp">
+            Definition at line <b>279</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+279                                                         {
 280   if (!g_analysis_enabled)
 281     return;
 282
@@ -936,22 +1110,38 @@
 465     wav_writer_write(g_received_wav, &amp;sample, 1);
 466   }
 467 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_track_received_sample()</b>,
-    <b>BEEP_WINDOW_SIZE</b>, <b>ECHO_BUFFER_SIZE</b>, <b>ECHO_DELAY_COUNT</b>,
-    <b>MAX_GAP_SAMPLES</b>, and <b>wav_writer_write()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_received_sample()</b>, and
-    <b>audio_process_received_samples()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_track_sent_packet_(size_t_size)"><a class="permalink" href="#void_audio_analysis_track_sent_packet_(size_t_size)">void
-  audio_analysis_track_sent_packet (size_t size)</a></h2>
-<p class="Pp">Track sent packet.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>size</i> Packet size in bytes</div>
-<p class="Pp">Definition at line <b>252</b> of file <b>analysis.c</b>.</p>
-<pre>252                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_track_received_sample()</b>,
+            <b>BEEP_WINDOW_SIZE</b>, <b>ECHO_BUFFER_SIZE</b>,
+            <b>ECHO_DELAY_COUNT</b>, <b>MAX_GAP_SAMPLES</b>, and
+            <b>wav_writer_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_received_sample()</b>, and
+            <b>audio_process_received_samples()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_audio_analysis_track_sent_packet_(size_t_size)"
+          >
+            <a
+              class="permalink"
+              href="#void_audio_analysis_track_sent_packet_(size_t_size)"
+              >void audio_analysis_track_sent_packet (size_t size)</a
+            >
+          </h2>
+          <p class="Pp">Track sent packet.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>size</i> Packet size in bytes</div>
+          <p class="Pp">
+            Definition at line <b>252</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+252                                                    {
 253   (void)size; // Unused parameter - reserved for future per-packet analysis
 254   if (!g_analysis_enabled)
 255     return;
@@ -977,21 +1167,36 @@
 275   g_sent_last_packet_time_us = now_us;
 276   g_sent_stats.packets_count++;
 277 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_track_sent_packet()</b>, and
-    <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_sent_packet()</b>, and
-    <b>audio_analysis_track_sent_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_analysis_track_sent_sample_(float_sample)"><a class="permalink" href="#void_audio_analysis_track_sent_sample_(float_sample)">void
-  audio_analysis_track_sent_sample (float sample)</a></h2>
-<p class="Pp">Track sent audio sample.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sample</i> Audio sample value</div>
-<p class="Pp">Definition at line <b>180</b> of file <b>analysis.c</b>.</p>
-<pre>180                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_track_sent_packet()</b>, and
+            <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_sent_packet()</b>, and
+            <b>audio_analysis_track_sent_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_audio_analysis_track_sent_sample_(float_sample)"
+          >
+            <a
+              class="permalink"
+              href="#void_audio_analysis_track_sent_sample_(float_sample)"
+              >void audio_analysis_track_sent_sample (float sample)</a
+            >
+          </h2>
+          <p class="Pp">Track sent audio sample.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>sample</i> Audio sample value</div>
+          <p class="Pp">
+            Definition at line <b>180</b> of file <b>analysis.c</b>.
+          </p>
+          <pre>
+180                                                     {
 181   if (!g_analysis_enabled)
 182     return;
 183
@@ -1062,23 +1267,29 @@
 248   g_echo_buffer[g_echo_buffer_pos] = sample;
 249   g_echo_buffer_pos = (g_echo_buffer_pos + 1) % ECHO_BUFFER_SIZE;
 250 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_analysis_track_sent_sample()</b>,
-    <b>ECHO_BUFFER_SIZE</b>, and <b>wav_writer_write()</b>.</p>
-<p class="Pp">Referenced by <b>audio_analysis_track_sent_sample()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_track_sent_sample()</b>,
+            <b>ECHO_BUFFER_SIZE</b>, and <b>wav_writer_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_analysis_track_sent_sample()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

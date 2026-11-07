@@ -1,159 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ui_session</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_SESSION_DETAIL_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE</b> 32
-  <br/>
-  #define <b>PRESENTATION_TIME_HISTORY_COUNT</b> 120
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>ui_session_t</b> * <b>ui_session_create</b> (void)
-  <br/>
-  void <b>ui_session_destroy</b> (<b>ui_session_t</b> *s)
-  <br/>
-  void <b>ui_session_resize</b> (<b>ui_session_t</b> *s, int cols, int rows)
-  <br/>
-  void <b>ui_session_loading</b> (<b>ui_session_t</b> *s, <b>bool</b> loading,
-    const char *message)
-  <br/>
-  void <b>ui_session_log</b> (<b>ui_session_t</b> *s, const char *message)
-  <br/>
-  <b>asciichat_error_t</b> <b>ui_session_media</b> (<b>ui_session_t</b> *s,
-    const char *data, size_t length)
-  <br/>
-  <b>ui_session_action_t</b> <b>ui_session_input</b> (<b>ui_session_t</b> *s,
-    <b>keyboard_key_t</b> key)
-  <br/>
-  int <b>ui_session_select_screen</b> (<b>uint32_t</b> visible_screens)
-  <br/>
-  <b>bool</b> <b>ui_session_is_covered</b> (const <b>ui_session_t</b> *s)
-  <br/>
-  size_t <b>ui_session_frame_length</b> (const <b>ui_session_t</b> *s)
-  <br/>
-  <b>uint64_t</b> <b>ui_session_next_frame_ns</b> (const <b>ui_session_t</b> *s)
-  <br/>
-  const char * <b>ui_session_render</b> (<b>ui_session_t</b> *s, const
-    <b>ui_session_view_t</b> *view, <b>uint64_t</b> now_ns)
-  <br/>
-  void <b>ui_session_logs_render</b> (<b>frame_buffer_t</b> *output,
-    <b>terminal_size_t</b> size, <b>ui_session_t</b> *s)
-  <br/>
-  <b>bool</b> <b>ui_session_logs_key</b> (<b>keyboard_key_t</b> key)
-  <br/>
-  const char * <b>ui_session_tick</b> (<b>ui_session_t</b> *s, <b>uint64_t</b>
-    now_ns)
-  <br/>
-  void <b>ui_session_clear</b> (<b>ui_session_t</b> *s)
-  <br/>
-  <b>terminal_size_t</b> <b>ui_session_size</b> (const <b>ui_session_t</b> *s)
-  <br/>
-  void <b>ui_session_redraw</b> (<b>ui_session_t</b> *s)
-  <br/>
-  void <b>ui_session_capture_logs</b> (<b>ui_session_t</b> *s)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_PRESENTATION_TIME_HISTORY_COUNT___120"><a class="permalink" href="#_define_PRESENTATION_TIME_HISTORY_COUNT___120">#define
-  PRESENTATION_TIME_HISTORY_COUNT 120</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>lib/tui/session.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_DETAIL_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_SESSION_DETAIL_BUFFER_SIZE___256">#define
-  TUI_SESSION_DETAIL_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>lib/tui/session.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE___32"><a class="permalink" href="#_define_TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE___32">#define
-  TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>lib/tui/session.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_capture_logs_("><a class="permalink" href="#void_ui_session_capture_logs_(">void
-  ui_session_capture_logs (<b>ui_session_t</b> * session)</a></h2>
-<p class="Pp">Attach this instance to the module's existing C logger. Detaches
-    on destruction.</p>
-<p class="Pp">Definition at line <b>370</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>370                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_session</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_SESSION_DETAIL_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>PRESENTATION_TIME_HISTORY_COUNT</b> 120
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ui_session_t</b> * <b>ui_session_create</b> (void)
+            <br />
+            void <b>ui_session_destroy</b> (<b>ui_session_t</b> *s)
+            <br />
+            void <b>ui_session_resize</b> (<b>ui_session_t</b> *s, int cols, int
+            rows)
+            <br />
+            void <b>ui_session_loading</b> (<b>ui_session_t</b> *s,
+            <b>bool</b> loading, const char *message)
+            <br />
+            void <b>ui_session_log</b> (<b>ui_session_t</b> *s, const char
+            *message)
+            <br />
+            <b>asciichat_error_t</b> <b>ui_session_media</b> (<b
+              >ui_session_t</b
+            >
+            *s, const char *data, size_t length)
+            <br />
+            <b>ui_session_action_t</b> <b>ui_session_input</b> (<b
+              >ui_session_t</b
+            >
+            *s, <b>keyboard_key_t</b> key)
+            <br />
+            int <b>ui_session_select_screen</b> (<b>uint32_t</b>
+            visible_screens)
+            <br />
+            <b>bool</b> <b>ui_session_is_covered</b> (const
+            <b>ui_session_t</b> *s)
+            <br />
+            size_t <b>ui_session_frame_length</b> (const <b>ui_session_t</b> *s)
+            <br />
+            <b>uint64_t</b> <b>ui_session_next_frame_ns</b> (const
+            <b>ui_session_t</b> *s)
+            <br />
+            const char * <b>ui_session_render</b> (<b>ui_session_t</b> *s, const
+            <b>ui_session_view_t</b> *view, <b>uint64_t</b> now_ns)
+            <br />
+            void <b>ui_session_logs_render</b> (<b>frame_buffer_t</b> *output,
+            <b>terminal_size_t</b> size, <b>ui_session_t</b> *s)
+            <br />
+            <b>bool</b> <b>ui_session_logs_key</b> (<b>keyboard_key_t</b> key)
+            <br />
+            const char * <b>ui_session_tick</b> (<b>ui_session_t</b> *s,
+            <b>uint64_t</b>
+            now_ns)
+            <br />
+            void <b>ui_session_clear</b> (<b>ui_session_t</b> *s)
+            <br />
+            <b>terminal_size_t</b> <b>ui_session_size</b> (const
+            <b>ui_session_t</b> *s)
+            <br />
+            void <b>ui_session_redraw</b> (<b>ui_session_t</b> *s)
+            <br />
+            void <b>ui_session_capture_logs</b> (<b>ui_session_t</b> *s)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PRESENTATION_TIME_HISTORY_COUNT___120">
+            <a
+              class="permalink"
+              href="#_define_PRESENTATION_TIME_HISTORY_COUNT___120"
+              >#define PRESENTATION_TIME_HISTORY_COUNT 120</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>lib/tui/session.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_SESSION_DETAIL_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_DETAIL_BUFFER_SIZE___256"
+              >#define TUI_SESSION_DETAIL_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE___32">
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE___32"
+              >#define TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_capture_logs_(">
+            <a class="permalink" href="#void_ui_session_capture_logs_("
+              >void ui_session_capture_logs (<b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Attach this instance to the module's existing C logger. Detaches on
+            destruction.
+          </p>
+          <p class="Pp">
+            Definition at line <b>370</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+370                                               {
 371   if (s)
 372     log_set_session_log_buffer(s-&gt;logs);
 373 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_set_session_log_buffer()</b>,
-    <b>ui_session::logs</b>, and <b>ui_session_capture_logs()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_capture_logs()</b>, and
-    <b>wasm_ui_capture_logs()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_clear_("><a class="permalink" href="#void_ui_session_clear_(">void
-  ui_session_clear (<b>ui_session_t</b> * s)</a></h2>
-<p class="Pp">Definition at line <b>352</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>352                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_set_session_log_buffer()</b>,
+            <b>ui_session::logs</b>, and <b>ui_session_capture_logs()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_capture_logs()</b>, and
+            <b>wasm_ui_capture_logs()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_clear_(">
+            <a class="permalink" href="#void_ui_session_clear_("
+              >void ui_session_clear (<b>ui_session_t</b> * s)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>352</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+352                                        {
 353   if (s) {
 354     frame_buffer_reset(s-&gt;media);
 355     s-&gt;help = false;
@@ -161,18 +253,24 @@
 357     s-&gt;dirty = true;
 358   }
 359 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::dirty</b>, <b>frame_buffer_reset()</b>,
-    <b>ui_session::help</b>, <b>ui_session::media</b>,
-    <b>ui_session::show_logs</b>, and <b>ui_session_clear()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_clear()</b>, and
-    <b>wasm_ui_clear()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_session_t</b> * ui_session_create (void )</h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>lib/tui/session.c</b>.</p>
-<pre>41                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, <b>frame_buffer_reset()</b>,
+            <b>ui_session::help</b>, <b>ui_session::media</b>,
+            <b>ui_session::show_logs</b>, and <b>ui_session_clear()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_clear()</b>, and <b>wasm_ui_clear()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_session_t</b> * ui_session_create (void )</h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+41                                       {
 42   ui_session_t *s = SAFE_CALLOC(1, sizeof(*s), ui_session_t *);
 43   if (!s)
 44     return NULL;
@@ -198,26 +296,37 @@
 64                      .type = ANIMATION_SPLASH_RAINBOW, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
 65   return s;
 66 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::active</b>,
-    <b>ui_session::animation</b>, <b>animation_init()</b>,
-    <b>ui_session::dirty</b>, <b>ui_session::frame</b>,
-    <b>frame_buffer_create()</b>, <b>log_get_history_buffer()</b>,
-    <b>log_search_init()</b>, <b>ui_session::logs</b>, <b>ui_session::media</b>,
-    <b>ui_session::owns_logs</b>, <b>SAFE_CALLOC</b>,
-    <b>ui_session::saved_volume</b>, <b>session_log_buffer_create()</b>,
-    <b>ui_session::size</b>, <b>ui_session::splash</b>,
-    <b>ui_session::started</b>, <b>ui_session_create()</b>,
-    <b>ui_session_destroy()</b>, and <b>ui_splash_view_t::use_colors</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_create()</b>, and
-    <b>wasm_ui_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_destroy_("><a class="permalink" href="#void_ui_session_destroy_(">void
-  ui_session_destroy (<b>ui_session_t</b> * s)</a></h2>
-<p class="Pp">Definition at line <b>68</b> of file <b>lib/tui/session.c</b>.</p>
-<pre>68                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::active</b>, <b>ui_session::animation</b>,
+            <b>animation_init()</b>, <b>ui_session::dirty</b>,
+            <b>ui_session::frame</b>, <b>frame_buffer_create()</b>,
+            <b>log_get_history_buffer()</b>, <b>log_search_init()</b>,
+            <b>ui_session::logs</b>, <b>ui_session::media</b>,
+            <b>ui_session::owns_logs</b>, <b>SAFE_CALLOC</b>,
+            <b>ui_session::saved_volume</b>, <b>session_log_buffer_create()</b>,
+            <b>ui_session::size</b>, <b>ui_session::splash</b>,
+            <b>ui_session::started</b>, <b>ui_session_create()</b>,
+            <b>ui_session_destroy()</b>, and
+            <b>ui_splash_view_t::use_colors</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>, and
+            <b>wasm_ui_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_destroy_(">
+            <a class="permalink" href="#void_ui_session_destroy_("
+              >void ui_session_destroy (<b>ui_session_t</b> * s)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+68                                          {
 69   if (!s)
 70     return;
 71   if (log_get_session_log_buffer() == s-&gt;logs)
@@ -229,39 +338,56 @@
 77     session_log_buffer_destroy(s-&gt;logs);
 78   SAFE_FREE(s);
 79 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::animation</b>,
-    <b>animation_destroy()</b>, <b>ui_session::frame</b>,
-    <b>frame_buffer_destroy()</b>, <b>log_clear_session_log_buffer()</b>,
-    <b>log_get_session_log_buffer()</b>, <b>ui_session::logs</b>,
-    <b>ui_session::media</b>, <b>ui_session::owns_logs</b>, <b>SAFE_FREE</b>,
-    <b>session_log_buffer_destroy()</b>, and <b>ui_session_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_shutdown()</b>,
-    <b>ui_session_create()</b>, <b>ui_session_destroy()</b>, and
-    <b>wasm_ui_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ui_session_frame_length_(const_"><a class="permalink" href="#size_t_ui_session_frame_length_(const_">size_t
-  ui_session_frame_length (const <b>ui_session_t</b> * s)</a></h2>
-<p class="Pp">Definition at line <b>158</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>158                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::animation</b>, <b>animation_destroy()</b>,
+            <b>ui_session::frame</b>, <b>frame_buffer_destroy()</b>,
+            <b>log_clear_session_log_buffer()</b>,
+            <b>log_get_session_log_buffer()</b>, <b>ui_session::logs</b>,
+            <b>ui_session::media</b>, <b>ui_session::owns_logs</b>,
+            <b>SAFE_FREE</b>, <b>session_log_buffer_destroy()</b>, and
+            <b>ui_session_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>,
+            <b>ui_session_create()</b>, <b>ui_session_destroy()</b>, and
+            <b>wasm_ui_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ui_session_frame_length_(const_">
+            <a class="permalink" href="#size_t_ui_session_frame_length_(const_"
+              >size_t ui_session_frame_length (const <b>ui_session_t</b> * s)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+158                                                       {
 159   size_t length = s ? frame_buffer_get_length(s-&gt;frame) : 0;
 160   return length ? length - 1 : 0;
 161 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::frame</b>,
-    <b>frame_buffer_get_length()</b>, and <b>ui_session_frame_length()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_frame_length()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_session_action_t</b> ui_session_input (<b>ui_session_t</b>
-  * s, <b>keyboard_key_t</b> key)</h2>
-<p class="Pp">Definition at line <b>122</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>122                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::frame</b>,
+            <b>frame_buffer_get_length()</b>, and
+            <b>ui_session_frame_length()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_frame_length()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_session_action_t</b> ui_session_input (<b>ui_session_t</b> *
+            s, <b>keyboard_key_t</b> key)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>122</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+122                                                                           {
 123   if (!s)
 124     return UI_ACTION_NONE;
 125   if (s-&gt;show_logs &amp;&amp; ui_session_logs_key(key)) {
@@ -285,36 +411,51 @@
 143   s-&gt;dirty |= action != UI_ACTION_NONE;
 144   return action;
 145 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::dirty</b>, <b>ui_session::help</b>,
-    <b>ui_session::saved_volume</b>, <b>ui_session::show_logs</b>,
-    <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_HELP</b>, <b>UI_ACTION_LOGS</b>,
-    <b>UI_ACTION_NONE</b>, <b>ui_session_input()</b>, <b>ui_session_key()</b>,
-    and <b>ui_session_logs_key()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_input()</b>, and
-  <b>wasm_ui_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_session_is_covered (const <b>ui_session_t</b> *
-  s)</h2>
-<p class="Pp">Definition at line <b>154</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>154                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, <b>ui_session::help</b>,
+            <b>ui_session::saved_volume</b>, <b>ui_session::show_logs</b>,
+            <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_HELP</b>,
+            <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_NONE</b>,
+            <b>ui_session_input()</b>, <b>ui_session_key()</b>, and
+            <b>ui_session_logs_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_input()</b>, and <b>wasm_ui_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_session_is_covered (const <b>ui_session_t</b> * s)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>154</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+154                                                   {
 155   return s &amp;&amp; s-&gt;covered;
 156 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::covered</b>, and
-    <b>ui_session_is_covered()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_is_covered()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_loading_("><a class="permalink" href="#void_ui_session_loading_(">void
-  ui_session_loading (<b>ui_session_t</b> * s, <b>bool</b> loading, const char *
-  message)</a></h2>
-<p class="Pp">Definition at line <b>92</b> of file <b>lib/tui/session.c</b>.</p>
-<pre>92                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::covered</b>, and
+            <b>ui_session_is_covered()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_is_covered()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_loading_(">
+            <a class="permalink" href="#void_ui_session_loading_("
+              >void ui_session_loading (<b>ui_session_t</b> * s,
+              <b>bool</b> loading, const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+92                                                                             {
 93   if (!s)
 94     return;
 95   if (loading != s-&gt;loading) {
@@ -327,39 +468,59 @@
 102     s-&gt;dirty = true;
 103   }
 104 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::animation</b>, <b>animation_reset()</b>,
-    <b>ui_splash_view_t::connection_target</b>, <b>ui_session::dirty</b>,
-    <b>ui_session::loading</b>, <b>SAFE_STRNCPY</b>, <b>ui_session::splash</b>,
-    and <b>ui_session_loading()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_loading()</b>, and
-    <b>wasm_ui_loading()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_log_("><a class="permalink" href="#void_ui_session_log_(">void
-  ui_session_log (<b>ui_session_t</b> * s, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>106</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>106                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::animation</b>, <b>animation_reset()</b>,
+            <b>ui_splash_view_t::connection_target</b>,
+            <b>ui_session::dirty</b>, <b>ui_session::loading</b>,
+            <b>SAFE_STRNCPY</b>, <b>ui_session::splash</b>, and
+            <b>ui_session_loading()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_loading()</b>, and
+            <b>wasm_ui_loading()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_log_(">
+            <a class="permalink" href="#void_ui_session_log_("
+              >void ui_session_log (<b>ui_session_t</b> * s, const char *
+              message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>106</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+106                                                           {
 107   if (s &amp;&amp; message) {
 108     session_log_buffer_append(s-&gt;logs, message);
 109     s-&gt;dirty = true;
 110   }
 111 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::dirty</b>, <b>ui_session::logs</b>,
-    <b>session_log_buffer_append()</b>, and <b>ui_session_log()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_log()</b>, and
-  <b>wasm_ui_log()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_session_logs_key (<b>keyboard_key_t</b> key)</h2>
-<p class="Pp">Existing server log-search controls; true when consumed.</p>
-<p class="Pp">Definition at line <b>256</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>256                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, <b>ui_session::logs</b>,
+            <b>session_log_buffer_append()</b>, and <b>ui_session_log()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_log()</b>, and <b>wasm_ui_log()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_session_logs_key (<b>keyboard_key_t</b> key)
+          </h2>
+          <p class="Pp">
+            Existing server log-search controls; true when consumed.
+          </p>
+          <p class="Pp">
+            Definition at line <b>256</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+256                                              {
 257   if (key == KEY_ESCAPE &amp;&amp; log_search_is_active()) {
 258     log_search_exit_mode(false);
 259     return true;
@@ -397,24 +558,36 @@
 291   }
 292   return false;
 293 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>KEY_ESCAPE</b>, <b>log_search_exit_mode()</b>,
-    <b>log_search_handle_key()</b>, <b>log_search_is_active()</b>,
-    <b>log_search_should_handle()</b>, <b>terminal_screen_logs_handle_key()</b>,
-    and <b>ui_session_logs_key()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_input()</b>, and
-    <b>ui_session_logs_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_logs_render_("><a class="permalink" href="#void_ui_session_logs_render_(">void
-  ui_session_logs_render (<b>frame_buffer_t</b> * output, <b>terminal_size_t</b>
-  size, <b>ui_session_t</b> * session)</a></h2>
-<p class="Pp">Shared live log view, used by the native adapter and browser
-    compositor.</p>
-<p class="Pp">Definition at line <b>236</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>236                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>KEY_ESCAPE</b>, <b>log_search_exit_mode()</b>,
+            <b>log_search_handle_key()</b>, <b>log_search_is_active()</b>,
+            <b>log_search_should_handle()</b>,
+            <b>terminal_screen_logs_handle_key()</b>, and
+            <b>ui_session_logs_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_input()</b>, and
+            <b>ui_session_logs_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_logs_render_(">
+            <a class="permalink" href="#void_ui_session_logs_render_("
+              >void ui_session_logs_render (<b>frame_buffer_t</b> * output,
+              <b>terminal_size_t</b> size, <b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared live log view, used by the native adapter and browser
+            compositor.
+          </p>
+          <p class="Pp">
+            Definition at line <b>236</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+236                                                                                            {
 237   const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? &quot;MCP Server&quot;
 238                      : GET_OPTION(detected_mode) == MODE_MIRROR   ? &quot;Mirror&quot;
 239                                                                   : &quot;Client&quot;;
@@ -433,23 +606,31 @@
 252       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &amp;status, .show_logs = true};
 253   terminal_screen_compose(output, size, &amp;config, s-&gt;logs);
 254 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>GET_OPTION</b>,
-    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_WARN</b>, <b>ui_session::logs</b>,
-    <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>, <b>ui_session::started</b>,
-    <b>terminal_screen_compose()</b>, <b>terminal_screen_logs_offset()</b>,
-    <b>TUI_SESSION_DETAIL_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE</b>, <b>ui_session_logs_render()</b>,
-    and <b>ui_status_render_header()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> ui_session_media (<b>ui_session_t</b> *
-  s, const char * data, size_t length)</h2>
-<p class="Pp">Definition at line <b>113</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>113                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_WARN</b>,
+            <b>ui_session::logs</b>, <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>,
+            <b>ui_session::started</b>, <b>terminal_screen_compose()</b>,
+            <b>terminal_screen_logs_offset()</b>,
+            <b>TUI_SESSION_DETAIL_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE</b>,
+            <b>ui_session_logs_render()</b>, and
+            <b>ui_status_render_header()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ui_session_media (<b>ui_session_t</b> * s,
+            const char * data, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+113                                                                                      {
 114   if (!s || !data || length &gt; UI_CONTROLLER_MAX_FRAME_BYTES)
 115     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session media frame&quot;);
 116   frame_buffer_reset(s-&gt;media);
@@ -457,59 +638,86 @@
 118   s-&gt;dirty = true;
 119   return ASCIICHAT_OK;
 120 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ui_session::dirty</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer_reset()</b>, <b>ui_session::media</b>, <b>SET_ERRNO</b>,
-    <b>UI_CONTROLLER_MAX_FRAME_BYTES</b>, and <b>ui_session_media()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_media()</b>, and
-    <b>wasm_ui_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> ui_session_next_frame_ns (const
-  <b>ui_session_t</b> * session)</h2>
-<p class="Pp">Next visible animation deadline, or UINT64_MAX while animation is
-    paused/hidden.</p>
-<p class="Pp">Definition at line <b>163</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>163                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ui_session::dirty</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_reset()</b>, <b>ui_session::media</b>,
+            <b>SET_ERRNO</b>, <b>UI_CONTROLLER_MAX_FRAME_BYTES</b>, and
+            <b>ui_session_media()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_media()</b>, and <b>wasm_ui_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> ui_session_next_frame_ns (const
+            <b>ui_session_t</b> * session)
+          </h2>
+          <p class="Pp">
+            Next visible animation deadline, or UINT64_MAX while animation is
+            paused/hidden.
+          </p>
+          <p class="Pp">
+            Definition at line <b>163</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+163                                                          {
 164   return s &amp;&amp; s-&gt;animation.started ? s-&gt;splash.animation.next_frame_ns : UINT64_MAX;
 165 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::animation</b>,
-    <b>ui_splash_view_t::animation</b>,
-    <b>animation_sample_t::next_frame_ns</b>, <b>ui_session::splash</b>,
-    <b>animation_t::started</b>, and <b>ui_session_next_frame_ns()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_next_frame_ns()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_redraw_("><a class="permalink" href="#void_ui_session_redraw_(">void
-  ui_session_redraw (<b>ui_session_t</b> * s)</a></h2>
-<p class="Pp">Definition at line <b>365</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>365                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::animation</b>,
+            <b>ui_splash_view_t::animation</b>,
+            <b>animation_sample_t::next_frame_ns</b>, <b>ui_session::splash</b>,
+            <b>animation_t::started</b>, and <b>ui_session_next_frame_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_next_frame_ns()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_redraw_(">
+            <a class="permalink" href="#void_ui_session_redraw_("
+              >void ui_session_redraw (<b>ui_session_t</b> * s)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>365</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+365                                         {
 366   if (s)
 367     s-&gt;dirty = true;
 368 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::dirty</b>, and
-    <b>ui_session_redraw()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_redraw()</b>,
-    <b>ui_session_redraw()</b>, and <b>wasm_ui_redraw()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_ui_session_render_("><a class="permalink" href="#const_char_*_ui_session_render_(">const
-  char * ui_session_render (<b>ui_session_t</b> * session, const
-  <b>ui_session_view_t</b> * view, <b>uint64_t</b> now_ns)</a></h2>
-<p class="Pp">Present a host view through the same compositor used by
-    <b>ui_session_tick()</b>. A screen of -1 hides presentation. NULL means no
-    redraw is required.</p>
-<p class="Pp">Definition at line <b>167</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>167                                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, and <b>ui_session_redraw()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_redraw()</b>,
+            <b>ui_session_redraw()</b>, and <b>wasm_ui_redraw()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ui_session_render_(">
+            <a class="permalink" href="#const_char_*_ui_session_render_("
+              >const char * ui_session_render (<b>ui_session_t</b> * session,
+              const <b>ui_session_view_t</b> * view, <b>uint64_t</b> now_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Present a host view through the same compositor used by
+            <b>ui_session_tick()</b>. A screen of -1 hides presentation. NULL
+            means no redraw is required.
+          </p>
+          <p class="Pp">
+            Definition at line <b>167</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+167                                                                                                {
 168   if (!s || !view)
 169     return NULL;
 170   bool changed = s-&gt;active != view-&gt;screen;
@@ -562,38 +770,51 @@
 217   frame_buffer_append(s-&gt;frame, &quot;\0&quot;, 1);
 218   return frame_buffer_get_content(s-&gt;frame);
 219 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::active</b>,
-    <b>ui_session::animation</b>, <b>ui_splash_view_t::animation</b>,
-    <b>animation_set_visible()</b>, <b>animation_update()</b>,
-    <b>ASCIICHAT_OK</b>, <b>animation_sample_t::changed</b>,
-    <b>ui_session_view_t::clear</b>,
-    <b>terminal_capabilities_t::color_level</b>, <b>COLOR_SETTING_FALSE</b>,
-    <b>terminal_size_t::cols</b>, <b>ui_session_view_t::context</b>,
-    <b>ui_session::covered</b>, <b>detect_terminal_capabilities()</b>,
-    <b>ui_session::dirty</b>, <b>ui_session_view_t::dirty</b>,
-    <b>ui_session_view_t::draw</b>, <b>ui_session::frame</b>,
-    <b>frame_buffer_append()</b>, <b>frame_buffer_clear_screen()</b>,
-    <b>frame_buffer_get_content()</b>, <b>frame_buffer_printf()</b>,
-    <b>frame_buffer_reset()</b>, <b>GET_OPTION</b>,
-    <b>invitation_render_logo()</b>, <b>ui_session::last_render_ns</b>,
-    <b>ui_session::minimum</b>, <b>ui_session_view_t::minimum</b>,
-    <b>ui_session::presented_size</b>, <b>ui_session_view_t::refresh_ns</b>,
-    <b>terminal_size_t::rows</b>, <b>ui_session_view_t::screen</b>,
-    <b>animation_sample_t::seconds</b>, <b>ui_session::size</b>,
-    <b>ui_session::splash</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
-    <b>UI_SCREEN_HELP</b>, <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_SPLASH</b>,
-    <b>ui_session_render()</b>, <b>ui_too_small()</b>,
-    <b>ui_too_small_render()</b>, and <b>animation_t::visible</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_render()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_resize_("><a class="permalink" href="#void_ui_session_resize_(">void
-  ui_session_resize (<b>ui_session_t</b> * s, int cols, int rows)</a></h2>
-<p class="Pp">Definition at line <b>81</b> of file <b>lib/tui/session.c</b>.</p>
-<pre>81                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::active</b>, <b>ui_session::animation</b>,
+            <b>ui_splash_view_t::animation</b>, <b>animation_set_visible()</b>,
+            <b>animation_update()</b>, <b>ASCIICHAT_OK</b>,
+            <b>animation_sample_t::changed</b>, <b>ui_session_view_t::clear</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>COLOR_SETTING_FALSE</b>, <b>terminal_size_t::cols</b>,
+            <b>ui_session_view_t::context</b>, <b>ui_session::covered</b>,
+            <b>detect_terminal_capabilities()</b>, <b>ui_session::dirty</b>,
+            <b>ui_session_view_t::dirty</b>, <b>ui_session_view_t::draw</b>,
+            <b>ui_session::frame</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_clear_screen()</b>,
+            <b>frame_buffer_get_content()</b>, <b>frame_buffer_printf()</b>,
+            <b>frame_buffer_reset()</b>, <b>GET_OPTION</b>,
+            <b>invitation_render_logo()</b>, <b>ui_session::last_render_ns</b>,
+            <b>ui_session::minimum</b>, <b>ui_session_view_t::minimum</b>,
+            <b>ui_session::presented_size</b>,
+            <b>ui_session_view_t::refresh_ns</b>, <b>terminal_size_t::rows</b>,
+            <b>ui_session_view_t::screen</b>,
+            <b>animation_sample_t::seconds</b>, <b>ui_session::size</b>,
+            <b>ui_session::splash</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, <b>UI_SCREEN_HELP</b>,
+            <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_SPLASH</b>,
+            <b>ui_session_render()</b>, <b>ui_too_small()</b>,
+            <b>ui_too_small_render()</b>, and <b>animation_t::visible</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_resize_(">
+            <a class="permalink" href="#void_ui_session_resize_("
+              >void ui_session_resize (<b>ui_session_t</b> * s, int cols, int
+              rows)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+81                                                             {
 82   if (!s || cols &lt; 1 || rows &lt; 1 || cols &gt; 4096 || rows &gt; 4096) {
 83     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid TUI session or terminal dimensions&quot;);
 84     return;
@@ -603,57 +824,87 @@
 88     s-&gt;dirty = true;
 89   }
 90 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_size_t::cols</b>, <b>ui_session::dirty</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>terminal_size_t::rows</b>, <b>SET_ERRNO</b>,
-    <b>ui_session::size</b>, and <b>ui_session_resize()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_resize()</b>, and
-    <b>wasm_ui_resize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_session_select_screen_("><a class="permalink" href="#int_ui_session_select_screen_(">int
-  ui_session_select_screen (<b>uint32_t</b> visible_screens)</a></h2>
-<p class="Pp">Highest visible screen from the common priority order, or -1.</p>
-<p class="Pp">Definition at line <b>147</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>147                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>, <b>ui_session::dirty</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>terminal_size_t::rows</b>,
+            <b>SET_ERRNO</b>, <b>ui_session::size</b>, and
+            <b>ui_session_resize()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_resize()</b>, and
+            <b>wasm_ui_resize()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_session_select_screen_(">
+            <a class="permalink" href="#int_ui_session_select_screen_("
+              >int ui_session_select_screen (<b>uint32_t</b> visible_screens)</a
+            >
+          </h2>
+          <p class="Pp">
+            Highest visible screen from the common priority order, or -1.
+          </p>
+          <p class="Pp">
+            Definition at line <b>147</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+147                                                        {
 148   for (int screen = UI_SCREEN_COUNT - 1; screen &gt;= 0; --screen)
 149     if (visible_screens &amp; (1u &lt;&lt; screen))
 150       return screen;
 151   return -1;
 152 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>UI_SCREEN_COUNT</b>, and
-    <b>ui_session_select_screen()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_select_screen()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>terminal_size_t</b> ui_session_size (const <b>ui_session_t</b>
-  * s)</h2>
-<p class="Pp">Definition at line <b>361</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>361                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>UI_SCREEN_COUNT</b>, and
+            <b>ui_session_select_screen()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_select_screen()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> ui_session_size (const <b>ui_session_t</b> *
+            s)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>361</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+361                                                        {
 362   return s ? s-&gt;size : (terminal_size_t){.cols = 80, .rows = 24};
 363 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::size</b>, and
-  <b>ui_session_size()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_size()</b>, and
-    <b>ui_session_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_ui_session_tick_("><a class="permalink" href="#const_char_*_ui_session_tick_(">const
-  char * ui_session_tick (<b>ui_session_t</b> * session, <b>uint64_t</b>
-  now_ns)</a></h2>
-<p class="Pp">No sleeps or I/O. Returned frame remains valid until the next
-    call. NULL means unchanged.</p>
-<p class="Pp">Definition at line <b>314</b> of file
-  <b>lib/tui/session.c</b>.</p>
-<pre>314                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::size</b>, and <b>ui_session_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_size()</b>, and
+            <b>ui_session_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ui_session_tick_(">
+            <a class="permalink" href="#const_char_*_ui_session_tick_("
+              >const char * ui_session_tick (<b>ui_session_t</b> * session,
+              <b>uint64_t</b> now_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            No sleeps or I/O. Returned frame remains valid until the next call.
+            NULL means unchanged.
+          </p>
+          <p class="Pp">
+            Definition at line <b>314</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+314                                                               {
 315   if (!s)
 316     return NULL;
 317   if (!s-&gt;dirty &amp;&amp; !s-&gt;show_logs &amp;&amp; !s-&gt;help &amp;&amp; !s-&gt;loading &amp;&amp; s-&gt;active == UI_SCREEN_MEDIA)
@@ -690,35 +941,41 @@
 348   ui_session_help_free(help);
 349   return frame;
 350 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_session::active</b>,
-    <b>ui_session_view_t::context</b>, <b>ui_session::dirty</b>,
-    <b>ui_session_view_t::draw</b>, <b>frame_buffer_get_length()</b>,
-    <b>ui_session::help</b>, <b>ui_session::loading</b>,
-    <b>ui_session::media</b>, <b>ui_session_view_t::minimum</b>,
-    <b>ui_session::presentation_index</b>,
-    <b>ui_session::presentation_times</b>, <b>ui_session_view_t::refresh_ns</b>,
-    <b>ui_session_view_t::screen</b>, <b>ui_session::show_logs</b>,
-    <b>ui_session::size</b>, <b>UI_SCREEN_HELP</b>, <b>UI_SCREEN_LOGS</b>,
-    <b>UI_SCREEN_MEDIA</b>, <b>UI_SCREEN_SPLASH</b>,
-    <b>ui_session_help_free()</b>, <b>ui_session_help_render()</b>,
-    <b>ui_session_render()</b>, <b>ui_session_select_screen()</b>, and
-    <b>ui_session_tick()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_tick()</b>, and
-  <b>wasm_ui_tick()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::active</b>,
+            <b>ui_session_view_t::context</b>, <b>ui_session::dirty</b>,
+            <b>ui_session_view_t::draw</b>, <b>frame_buffer_get_length()</b>,
+            <b>ui_session::help</b>, <b>ui_session::loading</b>,
+            <b>ui_session::media</b>, <b>ui_session_view_t::minimum</b>,
+            <b>ui_session::presentation_index</b>,
+            <b>ui_session::presentation_times</b>,
+            <b>ui_session_view_t::refresh_ns</b>,
+            <b>ui_session_view_t::screen</b>, <b>ui_session::show_logs</b>,
+            <b>ui_session::size</b>, <b>UI_SCREEN_HELP</b>,
+            <b>UI_SCREEN_LOGS</b>, <b>UI_SCREEN_MEDIA</b>,
+            <b>UI_SCREEN_SPLASH</b>, <b>ui_session_help_free()</b>,
+            <b>ui_session_help_render()</b>, <b>ui_session_render()</b>,
+            <b>ui_session_select_screen()</b>, and <b>ui_session_tick()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_tick()</b>, and <b>wasm_ui_tick()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

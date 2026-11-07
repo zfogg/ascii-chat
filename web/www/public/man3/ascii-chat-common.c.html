@@ -1,124 +1,184 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>common.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">common.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">common.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">common.c - &#x1F527; Core utilities: memory management, safe
-    macros, and cross-platform helpers</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>shutdown_register_callback</b> (<b>shutdown_check_fn</b>
-    callback)
-  <br/>
-  Register application's shutdown check function. void <b>shutdown_request</b>
-    (void)
-  <br/>
-  <b>bool</b> <b>shutdown_is_requested</b> (void)
-  <br/>
-  Check if shutdown has been requested. <b>__attribute__</b> ((constructor))
-  <br/>
-  Register fork handlers for common module. <b>asciichat_error_t</b>
-    <b>asciichat_shared_init</b> (const char *log_file, <b>bool</b> is_client,
-    <b>bool</b> quiet_startup)
-  <br/>
-  Initialize common subsystems shared by client and server. void
-    <b>asciichat_shared_destroy</b> (void)
-  <br/>
-  Clean up all shared library subsystems.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">int <b>g_argc</b> = 0
-  <br/>
-  Global argc for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution. char ** <b>g_argv</b> = NULL
-  <br/>
-  Global argv for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution. <b>bool</b> <b>g_color_flag_passed</b> = <b>false</b>
-  <br/>
-  Was --color explicitly passed in command-line arguments? Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>. <b>bool</b> <b>g_color_flag_value</b>
-    = <b>false</b>
-  <br/>
-  Value of --color flag (true if --color was in argv) Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F527; Core utilities: memory management, safe macros, and
-    cross-platform helpers</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>common.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="__attribute___((constructor)_)"><a class="permalink" href="#__attribute___((constructor)_)">__attribute__
-  ((constructor) )</a></h2>
-<p class="Pp">Register fork handlers for common module.</p>
-<p class="Pp">Definition at line <b>125</b> of file <b>common.c</b>.</p>
-<pre>125                                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>common.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">common.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">common.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          common.c - &#x1F527; Core utilities: memory management, safe macros,
+          and cross-platform helpers
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>shutdown_register_callback</b> (<b>shutdown_check_fn</b>
+            callback)
+            <br />
+            Register application's shutdown check function. void
+            <b>shutdown_request</b>
+            (void)
+            <br />
+            <b>bool</b> <b>shutdown_is_requested</b> (void)
+            <br />
+            Check if shutdown has been requested.
+            <b>__attribute__</b> ((constructor))
+            <br />
+            Register fork handlers for common module. <b>asciichat_error_t</b>
+            <b>asciichat_shared_init</b> (const char *log_file,
+            <b>bool</b> is_client, <b>bool</b> quiet_startup)
+            <br />
+            Initialize common subsystems shared by client and server. void
+            <b>asciichat_shared_destroy</b> (void)
+            <br />
+            Clean up all shared library subsystems.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>g_argc</b> = 0
+            <br />
+            Global argc for early argument inspection (e.g., --color flag
+            detection) Set by
+            <b>main()</b> for access from <b>lib/platform/terminal.c</b> during
+            early execution. char ** <b>g_argv</b> = NULL
+            <br />
+            Global argv for early argument inspection (e.g., --color flag
+            detection) Set by
+            <b>main()</b> for access from <b>lib/platform/terminal.c</b> during
+            early execution. <b>bool</b> <b>g_color_flag_passed</b> =
+            <b>false</b>
+            <br />
+            Was --color explicitly passed in command-line arguments? Set by
+            <b>options_init()</b> before RCU is initialized, used by
+            <b>terminal_should_color_output()</b>. <b>bool</b>
+            <b>g_color_flag_value</b> =
+            <b>false</b>
+            <br />
+            Value of --color flag (true if --color was in argv) Set by
+            <b>options_init()</b> before RCU is initialized, used by
+            <b>terminal_should_color_output()</b>.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F527; Core utilities: memory management, safe macros, and
+          cross-platform helpers
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>common.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="__attribute___((constructor)_)">
+            <a class="permalink" href="#__attribute___((constructor)_)"
+              >__attribute__ ((constructor) )</a
+            >
+          </h2>
+          <p class="Pp">Register fork handlers for common module.</p>
+          <p class="Pp">
+            Definition at line <b>125</b> of file <b>common.c</b>.
+          </p>
+          <pre>
+125                                                                              {
 126   pthread_atfork(NULL, NULL, asciichat_common_atfork_child);
 127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

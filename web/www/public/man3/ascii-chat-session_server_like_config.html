@@ -1,226 +1,379 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_server_like_config(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_server_like_config(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_server_like_config(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_server_like_config</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;src/common/session/server_like.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>[struct].mdns</b>
-  <br/>
-  struct <b>[struct].upnp</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>session_server_like_init_fn</b> <b>init_fn</b>
-  <br/>
-  void * <b>init_user_data</b>
-  <br/>
-  <b>session_server_like_interrupt_fn</b> <b>interrupt_fn</b>
-  <br/>
-  void(*) <b>tick_fn</b> (void *user_data)
-  <br/>
-  void * <b>tick_user_data</b>
-  <br/>
-  <b>session_server_like_cleanup_fn</b> <b>cleanup_fn</b>
-  <br/>
-  void * <b>cleanup_user_data</b>
-  <br/>
-  <b>session_server_like_status_fn</b> <b>status_fn</b>
-  <br/>
-  void * <b>status_user_data</b>
-  <br/>
-  <b>network_connection_callbacks_t</b> <b>connections</b>
-  <br/>
-  void * <b>connection_user_data</b>
-  <br/>
-  <b>bool</b> <b>websocket_enabled</b>
-  <br/>
-  size_t <b>max_payload</b>
-  <br/>
-  <b>uint64_t</b> <b>partial_timeout_ms</b>
-  <br/>
-  <b>uint64_t</b> <b>idle_timeout_ms</b>
-  <br/>
-  <b>struct </b> <b>mdns</b>
-  <br/>
-  <b>struct </b> <b>upnp</b>
-  <br/>
-  <b>bool</b> <b>raise_fd_limit</b>
-  <br/>
-  int <b>fd_limit_target</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>27</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>session_server_like_cleanup_fn</b>
-  session_server_like_config::cleanup_fn</h2>
-<p class="Pp">Definition at line <b>37</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_server_like_config::cleanup_user_data"><a class="permalink" href="#void*_session_server_like_config::cleanup_user_data">void*
-  session_server_like_config::cleanup_user_data</a></h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_server_like_config::connection_user_data"><a class="permalink" href="#void*_session_server_like_config::connection_user_data">void*
-  session_server_like_config::connection_user_data</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>network_connection_callbacks_t</b>
-  session_server_like_config::connections</h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_session_server_like_config::fd_limit_target"><a class="permalink" href="#int_session_server_like_config::fd_limit_target">int
-  session_server_like_config::fd_limit_target</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> session_server_like_config::idle_timeout_ms</h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_server_like_init_fn</b>
-  session_server_like_config::init_fn</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_server_like_config::init_user_data"><a class="permalink" href="#void*_session_server_like_config::init_user_data">void*
-  session_server_like_config::init_user_data</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_server_like_interrupt_fn</b>
-  session_server_like_config::interrupt_fn</h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_session_server_like_config::max_payload"><a class="permalink" href="#size_t_session_server_like_config::max_payload">size_t
-  session_server_like_config::max_payload</a></h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">struct <b>session_server_like_config::[struct].mdns</b>
-  session_server_like_config::mdns</h2>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  session_server_like_config::partial_timeout_ms</h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_server_like_config::raise_fd_limit</h2>
-<p class="Pp">Definition at line <b>65</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_server_like_status_fn</b>
-  session_server_like_config::status_fn</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_server_like_config::status_user_data"><a class="permalink" href="#void*_session_server_like_config::status_user_data">void*
-  session_server_like_config::status_user_data</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*)_session_server_like_config::tick_fn(void_*user_data)"><a class="permalink" href="#void(*)_session_server_like_config::tick_fn(void_*user_data)">void(*)
-  session_server_like_config::tick_fn(void *user_data)</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_session_server_like_config::tick_user_data"><a class="permalink" href="#void*_session_server_like_config::tick_user_data">void*
-  session_server_like_config::tick_user_data</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">struct <b>session_server_like_config::[struct].upnp</b>
-  session_server_like_config::upnp</h2>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_server_like_config::websocket_enabled</h2>
-<p class="Pp">Definition at line <b>45</b> of file <b>server_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_server_like_config(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_server_like_config(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_server_like_config(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_server_like_config</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;src/common/session/server_like.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>[struct].mdns</b>
+            <br />
+            struct <b>[struct].upnp</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_server_like_init_fn</b> <b>init_fn</b>
+            <br />
+            void * <b>init_user_data</b>
+            <br />
+            <b>session_server_like_interrupt_fn</b> <b>interrupt_fn</b>
+            <br />
+            void(*) <b>tick_fn</b> (void *user_data)
+            <br />
+            void * <b>tick_user_data</b>
+            <br />
+            <b>session_server_like_cleanup_fn</b> <b>cleanup_fn</b>
+            <br />
+            void * <b>cleanup_user_data</b>
+            <br />
+            <b>session_server_like_status_fn</b> <b>status_fn</b>
+            <br />
+            void * <b>status_user_data</b>
+            <br />
+            <b>network_connection_callbacks_t</b> <b>connections</b>
+            <br />
+            void * <b>connection_user_data</b>
+            <br />
+            <b>bool</b> <b>websocket_enabled</b>
+            <br />
+            size_t <b>max_payload</b>
+            <br />
+            <b>uint64_t</b> <b>partial_timeout_ms</b>
+            <br />
+            <b>uint64_t</b> <b>idle_timeout_ms</b>
+            <br />
+            <b>struct </b> <b>mdns</b>
+            <br />
+            <b>struct </b> <b>upnp</b>
+            <br />
+            <b>bool</b> <b>raise_fd_limit</b>
+            <br />
+            int <b>fd_limit_target</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>27</b> of file <b>server_like.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_server_like_cleanup_fn</b>
+            session_server_like_config::cleanup_fn
+          </h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void*_session_server_like_config::cleanup_user_data"
+          >
+            <a
+              class="permalink"
+              href="#void*_session_server_like_config::cleanup_user_data"
+              >void* session_server_like_config::cleanup_user_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void*_session_server_like_config::connection_user_data"
+          >
+            <a
+              class="permalink"
+              href="#void*_session_server_like_config::connection_user_data"
+              >void* session_server_like_config::connection_user_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_callbacks_t</b>
+            session_server_like_config::connections
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_session_server_like_config::fd_limit_target">
+            <a
+              class="permalink"
+              href="#int_session_server_like_config::fd_limit_target"
+              >int session_server_like_config::fd_limit_target</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_server_like_config::idle_timeout_ms
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_server_like_init_fn</b>
+            session_server_like_config::init_fn
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_session_server_like_config::init_user_data">
+            <a
+              class="permalink"
+              href="#void*_session_server_like_config::init_user_data"
+              >void* session_server_like_config::init_user_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_server_like_interrupt_fn</b>
+            session_server_like_config::interrupt_fn
+          </h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_session_server_like_config::max_payload">
+            <a
+              class="permalink"
+              href="#size_t_session_server_like_config::max_payload"
+              >size_t session_server_like_config::max_payload</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            struct
+            <b>session_server_like_config::[struct].mdns</b>
+            session_server_like_config::mdns
+          </h2>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_server_like_config::partial_timeout_ms
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_server_like_config::raise_fd_limit
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_server_like_status_fn</b>
+            session_server_like_config::status_fn
+          </h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void*_session_server_like_config::status_user_data"
+          >
+            <a
+              class="permalink"
+              href="#void*_session_server_like_config::status_user_data"
+              >void* session_server_like_config::status_user_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void(*)_session_server_like_config::tick_fn(void_*user_data)"
+          >
+            <a
+              class="permalink"
+              href="#void(*)_session_server_like_config::tick_fn(void_*user_data)"
+              >void(*) session_server_like_config::tick_fn(void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_session_server_like_config::tick_user_data">
+            <a
+              class="permalink"
+              href="#void*_session_server_like_config::tick_user_data"
+              >void* session_server_like_config::tick_user_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            struct
+            <b>session_server_like_config::[struct].upnp</b>
+            session_server_like_config::upnp
+          </h2>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_server_like_config::websocket_enabled
+          </h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>server_like.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

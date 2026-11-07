@@ -1,157 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mixer.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mixer.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mixer.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mixer.c - &#x1F39A;&#xFE0F; Real-time audio mixer with ducking,
-    gain control, and multi-stream blending</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>mixer_listener_buffer</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MIXER_LISTENER_SAMPLES</b> 8192
-  <br/>
-  #define <b>M_PI</b> 3.14159265358979323846
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>mixer_listener_buffer</b>
-    <b>mixer_listener_buffer_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>ducking_init</b> (<b>ducking_t</b> *duck, int num_sources,
-    float sample_rate)
-  <br/>
-  Initialize ducking system. void <b>ducking_destroy</b> (<b>ducking_t</b>
-    *duck)
-  <br/>
-  Free ducking system resources. void <b>ducking_set_params</b>
-    (<b>ducking_t</b> *duck, float threshold_dB, float leader_margin_dB, float
-    atten_dB, <b>uint64_t</b> attack_ns, <b>uint64_t</b> release_ns)
-  <br/>
-  Set ducking parameters. void <b>ducking_process_frame</b> (<b>ducking_t</b>
-    *duck, float *envelopes, float *gains, int num_sources)
-  <br/>
-  Process a frame of audio through ducking system. <b>mixer_t</b> *
-    <b>mixer_create</b> (int max_sources, int sample_rate)
-  <br/>
-  Create a new audio mixer. <b>mixer_t</b> * <b>mixer_create_channels</b> (int
-    max_sources, int sample_rate, unsigned channels)
-  <br/>
-  void <b>mixer_destroy</b> (<b>mixer_t</b> *mixer)
-  <br/>
-  Destroy a mixer and free all resources. int <b>mixer_add_source</b>
-    (<b>mixer_t</b> *mixer, const char *client_id, <b>audio_ring_buffer_t</b>
-    *buffer)
-  <br/>
-  Add an audio source to the mixer. void <b>mixer_remove_source</b>
-    (<b>mixer_t</b> *mixer, const char *client_id)
-  <br/>
-  Remove an audio source from the mixer. void <b>mixer_set_source_active</b>
-    (<b>mixer_t</b> *mixer, const char *client_id, <b>bool</b> active)
-  <br/>
-  Set whether a source is active (receiving audio). int <b>mixer_process</b>
-    (<b>mixer_t</b> *mixer, float *output, int num_samples)
-  <br/>
-  Process audio from all active sources. int
-    <b>mixer_process_excluding_source</b> (<b>mixer_t</b> *mixer, float *output,
-    int num_samples, <b>uint32_t</b> exclude_client_id)
-  <br/>
-  Process audio from all sources except one (for per-client output).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F39A;&#xFE0F; Real-time audio mixer with ducking, gain
-    control, and multi-stream blending</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>mixer.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_M_PI___3"><a class="permalink" href="#_define_M_PI___3">#define
-  M_PI 3.14159265358979323846</a></h2>
-<p class="Pp">Definition at line <b>63</b> of file <b>mixer.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MIXER_LISTENER_SAMPLES___8192"><a class="permalink" href="#_define_MIXER_LISTENER_SAMPLES___8192">#define
-  MIXER_LISTENER_SAMPLES 8192</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>mixer.c</b>.</p>
-<p class="Pp">Referenced by <b>mixer_process_excluding_source()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>mixer_listener_buffer</b> <b>mixer_listener_buffer_t</b></a></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mixer.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mixer.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mixer.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          mixer.c - &#x1F39A;&#xFE0F; Real-time audio mixer with ducking, gain
+          control, and multi-stream blending
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>mixer_listener_buffer</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MIXER_LISTENER_SAMPLES</b> 8192
+            <br />
+            #define <b>M_PI</b> 3.14159265358979323846
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>mixer_listener_buffer</b>
+            <b>mixer_listener_buffer_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>ducking_init</b> (<b>ducking_t</b> *duck, int num_sources,
+            float sample_rate)
+            <br />
+            Initialize ducking system. void <b>ducking_destroy</b> (<b
+              >ducking_t</b
+            >
+            *duck)
+            <br />
+            Free ducking system resources. void <b>ducking_set_params</b> (<b
+              >ducking_t</b
+            >
+            *duck, float threshold_dB, float leader_margin_dB, float atten_dB,
+            <b>uint64_t</b> attack_ns, <b>uint64_t</b> release_ns)
+            <br />
+            Set ducking parameters. void <b>ducking_process_frame</b> (<b
+              >ducking_t</b
+            >
+            *duck, float *envelopes, float *gains, int num_sources)
+            <br />
+            Process a frame of audio through ducking system. <b>mixer_t</b> *
+            <b>mixer_create</b> (int max_sources, int sample_rate)
+            <br />
+            Create a new audio mixer. <b>mixer_t</b> *
+            <b>mixer_create_channels</b> (int max_sources, int sample_rate,
+            unsigned channels)
+            <br />
+            void <b>mixer_destroy</b> (<b>mixer_t</b> *mixer)
+            <br />
+            Destroy a mixer and free all resources. int
+            <b>mixer_add_source</b> (<b>mixer_t</b> *mixer, const char
+            *client_id, <b>audio_ring_buffer_t</b>
+            *buffer)
+            <br />
+            Add an audio source to the mixer. void
+            <b>mixer_remove_source</b> (<b>mixer_t</b>
+            *mixer, const char *client_id)
+            <br />
+            Remove an audio source from the mixer. void
+            <b>mixer_set_source_active</b> (<b>mixer_t</b> *mixer, const char
+            *client_id, <b>bool</b> active)
+            <br />
+            Set whether a source is active (receiving audio). int
+            <b>mixer_process</b> (<b>mixer_t</b>
+            *mixer, float *output, int num_samples)
+            <br />
+            Process audio from all active sources. int
+            <b>mixer_process_excluding_source</b> (<b>mixer_t</b> *mixer, float
+            *output, int num_samples, <b>uint32_t</b> exclude_client_id)
+            <br />
+            Process audio from all sources except one (for per-client output).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F39A;&#xFE0F; Real-time audio mixer with ducking, gain control,
+          and multi-stream blending
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>mixer.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_M_PI___3">
+            <a class="permalink" href="#_define_M_PI___3"
+              >#define M_PI 3.14159265358979323846</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>63</b> of file <b>mixer.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MIXER_LISTENER_SAMPLES___8192">
+            <a class="permalink" href="#_define_MIXER_LISTENER_SAMPLES___8192"
+              >#define MIXER_LISTENER_SAMPLES 8192</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>25</b> of file <b>mixer.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>mixer_process_excluding_source()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>mixer_listener_buffer</b>
+              <b>mixer_listener_buffer_t</b></a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

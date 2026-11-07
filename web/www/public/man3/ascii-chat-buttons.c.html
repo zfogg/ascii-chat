@@ -1,63 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>buttons.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">buttons.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">buttons.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">buttons.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>ui_buttons_key</b> (<b>ui_buttons_t</b> *s, const
-    <b>ui_button_t</b> *b, size_t n, <b>keyboard_key_t</b> key)
-  <br/>
-  void <b>ui_buttons_render</b> (<b>frame_buffer_t</b> *out, int row, int left,
-    int width, const <b>ui_button_t</b> *b, size_t n, size_t selected)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_buttons_key_("><a class="permalink" href="#int_ui_buttons_key_(">int
-  ui_buttons_key (<b>ui_buttons_t</b> * state, const <b>ui_button_t</b> *
-  buttons, size_t count, <b>keyboard_key_t</b> key)</a></h2>
-<p class="Pp">Returns the activated index or -1. Disabled buttons cannot
-    activate.</p>
-<p class="Pp">Definition at line <b>8</b> of file <b>buttons.c</b>.</p>
-<pre>8                                                                                         {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>buttons.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">buttons.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">buttons.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">buttons.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>ui_buttons_key</b> (<b>ui_buttons_t</b> *s, const
+            <b>ui_button_t</b> *b, size_t n, <b>keyboard_key_t</b> key)
+            <br />
+            void <b>ui_buttons_render</b> (<b>frame_buffer_t</b> *out, int row,
+            int left, int width, const <b>ui_button_t</b> *b, size_t n, size_t
+            selected)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_buttons_key_(">
+            <a class="permalink" href="#int_ui_buttons_key_("
+              >int ui_buttons_key (<b>ui_buttons_t</b> * state, const
+              <b>ui_button_t</b> * buttons, size_t count,
+              <b>keyboard_key_t</b> key)</a
+            >
+          </h2>
+          <p class="Pp">
+            Returns the activated index or -1. Disabled buttons cannot activate.
+          </p>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>buttons.c</b>.
+          </p>
+          <pre>
+8                                                                                         {
 9   if (!s || !b || !n) {
 10     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Button state and entries are required&quot;);
 11     return -1;
@@ -77,20 +122,29 @@
 25   }
 26   return -1;
 27 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_button_t::disabled</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>KEY_DOWN</b>, <b>KEY_LEFT</b>,
-    <b>KEY_RIGHT</b>, <b>KEY_UP</b>, <b>ui_buttons_t::selected</b>,
-    <b>SET_ERRNO</b>, and <b>ui_buttons_key()</b>.</p>
-<p class="Pp">Referenced by <b>ui_buttons_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_buttons_render_("><a class="permalink" href="#void_ui_buttons_render_(">void
-  ui_buttons_render (<b>frame_buffer_t</b> * out, int row, int left, int width,
-  const <b>ui_button_t</b> * b, size_t n, size_t selected)</a></h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>buttons.c</b>.</p>
-<pre>30                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_button_t::disabled</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>KEY_DOWN</b>, <b>KEY_LEFT</b>, <b>KEY_RIGHT</b>, <b>KEY_UP</b>,
+            <b>ui_buttons_t::selected</b>, <b>SET_ERRNO</b>, and
+            <b>ui_buttons_key()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_buttons_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_buttons_render_(">
+            <a class="permalink" href="#void_ui_buttons_render_("
+              >void ui_buttons_render (<b>frame_buffer_t</b> * out, int row, int
+              left, int width, const <b>ui_button_t</b> * b, size_t n, size_t
+              selected)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>buttons.c</b>.
+          </p>
+          <pre>
+30                                         {
 31   if (!out || !b || row &lt; 1 || left &lt; 1 || width &lt; 1) {
 32     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid buttons output or geometry&quot;);
 33     return;
@@ -136,34 +190,44 @@
 73     col += length + 3;
 74   }
 75 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colorscheme_palette_t::background</b>,
-    <b>colorscheme_palette_t::background_codes</b>, <b>ui_button_t::color</b>,
-    <b>colored_string()</b>, <b>colorscheme_current_palette()</b>,
-    <b>colorscheme_highlight_background()</b>, <b>display_width()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>colorscheme_palette_t::foreground</b>,
-    <b>frame_buffer_get_screen_output_fd()</b>, <b>frame_buffer_printf()</b>,
-    <b>GET_OPTION</b>, <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_FATAL</b>,
-    <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_RESET</b>, <b>log_get_color_mode()</b>,
-    <b>SET_ERRNO</b>, <b>TERM_BACKGROUND_DARK</b>, <b>TERM_COLOR_16</b>,
-    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
-    <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_should_color_output()</b>, and
-    <b>ui_buttons_render()</b>.</p>
-<p class="Pp">Referenced by <b>ui_buttons_render()</b>, and
-    <b>ui_error_popup_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colorscheme_palette_t::background</b>,
+            <b>colorscheme_palette_t::background_codes</b>,
+            <b>ui_button_t::color</b>, <b>colored_string()</b>,
+            <b>colorscheme_current_palette()</b>,
+            <b>colorscheme_highlight_background()</b>, <b>display_width()</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>colorscheme_palette_t::foreground</b>,
+            <b>frame_buffer_get_screen_output_fd()</b>,
+            <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+            <b>LOG_COLOR_RESET</b>, <b>log_get_color_mode()</b>,
+            <b>SET_ERRNO</b>, <b>TERM_BACKGROUND_DARK</b>, <b>TERM_COLOR_16</b>,
+            <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, <b>TERM_COLOR_TRUECOLOR</b>,
+            <b>terminal_should_color_output()</b>, and
+            <b>ui_buttons_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_buttons_render()</b>, and
+            <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

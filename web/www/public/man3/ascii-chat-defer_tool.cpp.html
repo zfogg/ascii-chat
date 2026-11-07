@@ -1,64 +1,107 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>tool.cpp(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">tool.cpp(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">tool.cpp(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">tool.cpp</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">std::mutex &amp; <b>outputRegistryMutex</b> ()
-  <br/>
-  std::unordered_set&lt; std::string &gt; &amp; <b>outputRegistry</b> ()
-  <br/>
-  <b>bool</b> <b>registerOutputPath</b> (const std::string &amp;path)
-  <br/>
-  void <b>unregisterOutputPath</b> (const std::string &amp;path)
-  <br/>
-  int <b>main</b> (int argc, const char **argv)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_main_(int_argc,_const_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_const_char_**_argv)">int
-  main (int argc, const char ** argv)</a></h2>
-<p class="Pp">Definition at line <b>813</b> of file <b>defer/tool.cpp</b>.</p>
-<pre>813                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>tool.cpp(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">tool.cpp(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">tool.cpp(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">tool.cpp</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            std::mutex &amp; <b>outputRegistryMutex</b> ()
+            <br />
+            std::unordered_set&lt; std::string &gt; &amp;
+            <b>outputRegistry</b> ()
+            <br />
+            <b>bool</b> <b>registerOutputPath</b> (const std::string &amp;path)
+            <br />
+            void <b>unregisterOutputPath</b> (const std::string &amp;path)
+            <br />
+            int <b>main</b> (int argc, const char **argv)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_main_(int_argc,_const_char_**_argv)">
+            <a class="permalink" href="#int_main_(int_argc,_const_char_**_argv)"
+              >int main (int argc, const char ** argv)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>813</b> of file <b>defer/tool.cpp</b>.
+          </p>
+          <pre>
+813                                       {
 814   InitLLVM InitLLVM(argc, argv);
 815
 816   // Capture CWD before anything else can change it
@@ -490,79 +533,122 @@
 1242   }
 1243   return executionResult;
 1244 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="std::unordered_set__std::string___&amp;_outputRegistry_()"><a class="permalink" href="#std::unordered_set__std::string___&amp;_outputRegistry_()">std::unordered_set&lt;
-  std::string &gt; &amp; outputRegistry ()</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>defer/tool.cpp</b>.</p>
-<pre>39                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="std::unordered_set__std::string___&amp;_outputRegistry_()"
+          >
+            <a
+              class="permalink"
+              href="#std::unordered_set__std::string___&amp;_outputRegistry_()"
+              >std::unordered_set&lt; std::string &gt; &amp; outputRegistry
+              ()</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>39</b> of file <b>defer/tool.cpp</b>.
+          </p>
+          <pre>
+39                                               {
 40   static std::unordered_set&lt;std::string&gt; registry;
 41   return registry;
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>.</p>
-<p class="Pp">Referenced by <b>outputRegistry()</b>,
-    <b>registerOutputPath()</b>, and <b>unregisterOutputPath()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="std::mutex_&amp;_outputRegistryMutex_()"><a class="permalink" href="#std::mutex_&amp;_outputRegistryMutex_()">std::mutex
-  &amp; outputRegistryMutex ()</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>defer/tool.cpp</b>.</p>
-<pre>34                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>outputRegistry()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>outputRegistry()</b>, <b>registerOutputPath()</b>,
+            and <b>unregisterOutputPath()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="std::mutex_&amp;_outputRegistryMutex_()">
+            <a class="permalink" href="#std::mutex_&amp;_outputRegistryMutex_()"
+              >std::mutex &amp; outputRegistryMutex ()</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>defer/tool.cpp</b>.
+          </p>
+          <pre>
+34                                 {
 35   static std::mutex mutex;
 36   return mutex;
 37 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistryMutex()</b>.</p>
-<p class="Pp">Referenced by <b>outputRegistryMutex()</b>,
-    <b>registerOutputPath()</b>, and <b>unregisterOutputPath()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> registerOutputPath (const std::string &amp;
-  path)</h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>defer/tool.cpp</b>.</p>
-<pre>44                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>outputRegistryMutex()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>outputRegistryMutex()</b>,
+            <b>registerOutputPath()</b>, and <b>unregisterOutputPath()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> registerOutputPath (const std::string &amp; path)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>defer/tool.cpp</b>.
+          </p>
+          <pre>
+44                                                {
 45   std::lock_guard&lt;std::mutex&gt; guard(outputRegistryMutex());
 46   auto &amp;registry = outputRegistry();
 47   bool inserted = registry.insert(path).second;
 48   return inserted;
 49 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
-    and <b>registerOutputPath()</b>.</p>
-<p class="Pp">Referenced by <b>registerOutputPath()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_unregisterOutputPath_(const_std::string_&amp;_path)"><a class="permalink" href="#void_unregisterOutputPath_(const_std::string_&amp;_path)">void
-  unregisterOutputPath (const std::string &amp; path)</a></h2>
-<p class="Pp">Definition at line <b>51</b> of file <b>defer/tool.cpp</b>.</p>
-<pre>51                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
+            and <b>registerOutputPath()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>registerOutputPath()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_unregisterOutputPath_(const_std::string_&amp;_path)"
+          >
+            <a
+              class="permalink"
+              href="#void_unregisterOutputPath_(const_std::string_&amp;_path)"
+              >void unregisterOutputPath (const std::string &amp; path)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>51</b> of file <b>defer/tool.cpp</b>.
+          </p>
+          <pre>
+51                                                  {
 52   std::lock_guard&lt;std::mutex&gt; guard(outputRegistryMutex());
 53   outputRegistry().erase(path);
 54 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
-    and <b>unregisterOutputPath()</b>.</p>
-<p class="Pp">Referenced by <b>unregisterOutputPath()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
+            and <b>unregisterOutputPath()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>unregisterOutputPath()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

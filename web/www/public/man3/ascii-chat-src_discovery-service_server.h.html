@@ -1,94 +1,147 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acds_client_data_t</b>
-  <br/>
-  Per-client connection data. struct <b>acds_stats_t</b>
-  <br/>
-  Network statistics for both TCP and WebSocket connections. struct
-    <b>acds_server_t</b>
-  <br/>
-  Discovery server state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acds_server_init</b>
-    (<b>acds_server_t</b> *server, const <b>acds_config_t</b> *config)
-  <br/>
-  Initialize discovery server. void <b>acds_server_shutdown</b>
-    (<b>acds_server_t</b> *server)
-  <br/>
-  Shutdown discovery server. void <b>acds_on_host_announcement</b> (const
-    <b>acip_host_announcement_t</b> *, <b>acip_transport_t</b> *, const char *,
-    void *)
-  <br/>
-  void <b>acds_send_current_host</b> (<b>acds_server_t</b> *,
-    <b>acip_transport_t</b> *, const <b>uint8_t</b>[16])
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const <b>network_connection_callbacks_t</b>
-    <b>acds_network_callbacks</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_on_host_announcement_(const_"><a class="permalink" href="#void_acds_on_host_announcement_(const_">void
-  acds_on_host_announcement (const <b>acip_host_announcement_t</b> *
-  announcement, <b>acip_transport_t</b> * transport, const char * client_ip,
-  void * app_ctx)</a></h2>
-<p class="Pp">Definition at line <b>623</b> of file
-    <b>src/discovery-service/server.c</b>.</p>
-<pre>624                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acds_client_data_t</b>
+            <br />
+            Per-client connection data. struct <b>acds_stats_t</b>
+            <br />
+            Network statistics for both TCP and WebSocket connections. struct
+            <b>acds_server_t</b>
+            <br />
+            Discovery server state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acds_server_init</b> (<b
+              >acds_server_t</b
+            >
+            *server, const <b>acds_config_t</b> *config)
+            <br />
+            Initialize discovery server. void <b>acds_server_shutdown</b> (<b
+              >acds_server_t</b
+            >
+            *server)
+            <br />
+            Shutdown discovery server. void
+            <b>acds_on_host_announcement</b> (const
+            <b>acip_host_announcement_t</b> *, <b>acip_transport_t</b> *, const
+            char *, void *)
+            <br />
+            void <b>acds_send_current_host</b> (<b>acds_server_t</b> *,
+            <b>acip_transport_t</b> *, const <b>uint8_t</b>[16])
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>network_connection_callbacks_t</b>
+            <b>acds_network_callbacks</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_on_host_announcement_(const_">
+            <a class="permalink" href="#void_acds_on_host_announcement_(const_"
+              >void acds_on_host_announcement (const
+              <b>acip_host_announcement_t</b> * announcement,
+              <b>acip_transport_t</b> * transport, const char * client_ip, void
+              * app_ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>623</b> of file
+            <b>src/discovery-service/server.c</b>.
+          </p>
+          <pre>
+624                                                                      {
 625
 626   ASCII_OTEL_SCOPE(DISCOVERY_HOST_ANNOUNCE);
 627   acds_server_t *server = (acds_server_t *)app_ctx;
@@ -127,42 +180,58 @@
 660   }
 661   log_info(&quot;Session host updated via HOST_ANNOUNCEMENT from %s&quot;, client_ip);
 662 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_on_host_announcement()</b>,
-    <b>ACIP_CONNECTION_TYPE_TURN</b>, <b>acip_host_announcement_t</b>,
-    <b>acip_send_error()</b>, <b>ASCII_OTEL_ATTR_INT</b>,
-    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>acds_server_t::handoff_mutex</b>,
-    <b>acds_client_data_t::joined_session</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U32</b>,
-    <b>acds_client_data_t::participant_id</b>,
-    <b>acds_client_data_t::session_id</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>acip_transport::user_data</b>.</p>
-<p class="Pp">Referenced by <b>acds_on_host_announcement()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_send_current_host_("><a class="permalink" href="#void_acds_send_current_host_(">void
-  acds_send_current_host (<b>acds_server_t</b> * , <b>acip_transport_t</b> * ,
-  const <b>uint8_t</b> [16])</a></h2>
-<p class="Pp">References <b>acds_send_current_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_server_init (<b>acds_server_t</b> *
-  server, const <b>acds_config_t</b> * config)</h2>
-<p class="Pp">Initialize discovery server. Loads or generates identity keys,
-    opens database, creates session registry, and binds TCP socket.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>server</i> Server structure to initialize
-<br/>
-<i>config</i> Configuration from command-line parsing</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>102</b> of file
-    <b>src/discovery-service/server.c</b>.</p>
-<pre>102                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_on_host_announcement()</b>,
+            <b>ACIP_CONNECTION_TYPE_TURN</b>, <b>acip_host_announcement_t</b>,
+            <b>acip_send_error()</b>, <b>ASCII_OTEL_ATTR_INT</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>acds_server_t::handoff_mutex</b>,
+            <b>acds_client_data_t::joined_session</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>NET_TO_HOST_U32</b>, <b>acds_client_data_t::participant_id</b>,
+            <b>acds_client_data_t::session_id</b>, <b>SESSION_ID_SIZE</b>, and
+            <b>acip_transport::user_data</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_on_host_announcement()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_send_current_host_(">
+            <a class="permalink" href="#void_acds_send_current_host_("
+              >void acds_send_current_host (<b>acds_server_t</b> * ,
+              <b>acip_transport_t</b> * , const <b>uint8_t</b> [16])</a
+            >
+          </h2>
+          <p class="Pp">References <b>acds_send_current_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_server_init (<b>acds_server_t</b> *
+            server, const <b>acds_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Initialize discovery server. Loads or generates identity keys, opens
+            database, creates session registry, and binds TCP socket.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>server</i> Server structure to initialize
+            <br />
+            <i>config</i> Configuration from command-line parsing
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>102</b> of file
+            <b>src/discovery-service/server.c</b>.
+          </p>
+          <pre>
+102                                                                                        {
 103   ASCII_OTEL_SCOPE(DISCOVERY_INIT);
 104   if (!server || !config) {
 105     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or config is NULL&quot;);
@@ -226,39 +295,55 @@
 163   acds_server_shutdown(server);
 164   return result;
 165 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_server_init()</b>,
-    <b>acds_server_shutdown()</b>, <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
-    <b>acds_stats_t::bytes_received</b>, <b>acds_stats_t::bytes_sent</b>,
-    <b>acds_server_t::config</b>, <b>database_init()</b>,
-    <b>acds_config_t::database_path</b>, <b>acds_server_t::db</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>acds_server_t::handoff_mutex</b>,
-    <b>acds_server_t::handoff_mutex_initialized</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>mutex_init()</b>, <b>acds_server_t::network_server</b>,
-    <b>acds_stats_t::packets_received</b>, <b>acds_stats_t::packets_sent</b>,
-    <b>acds_server_t::rate_limiter</b>, <b>rate_limiter_create_sqlite()</b>,
-    <b>rate_limiter_set_sqlite_db()</b>,
-    <b>session_server_like_get_network_server()</b>, <b>SET_ERRNO</b>,
-    <b>acds_server_t::shutdown</b>, <b>acds_stats_t::start_time</b>,
-    <b>acds_server_t::stats</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_spawn()</b>, and <b>acds_server_t::worker_pool</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_server_shutdown_("><a class="permalink" href="#void_acds_server_shutdown_(">void
-  acds_server_shutdown (<b>acds_server_t</b> * server)</a></h2>
-<p class="Pp">Shutdown discovery server. Closes listen socket, stops accepting
-    connections, waits for handler threads to exit, closes database, and frees
-    resources.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>server</i> Server structure to clean up</div>
-<p class="Pp">Definition at line <b>167</b> of file
-    <b>src/discovery-service/server.c</b>.</p>
-<pre>167                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_server_init()</b>, <b>acds_server_shutdown()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+            <b>acds_stats_t::bytes_received</b>,
+            <b>acds_stats_t::bytes_sent</b>, <b>acds_server_t::config</b>,
+            <b>database_init()</b>, <b>acds_config_t::database_path</b>,
+            <b>acds_server_t::db</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+            <b>acds_server_t::handoff_mutex</b>,
+            <b>acds_server_t::handoff_mutex_initialized</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>mutex_init()</b>,
+            <b>acds_server_t::network_server</b>,
+            <b>acds_stats_t::packets_received</b>,
+            <b>acds_stats_t::packets_sent</b>,
+            <b>acds_server_t::rate_limiter</b>,
+            <b>rate_limiter_create_sqlite()</b>,
+            <b>rate_limiter_set_sqlite_db()</b>,
+            <b>session_server_like_get_network_server()</b>, <b>SET_ERRNO</b>,
+            <b>acds_server_t::shutdown</b>, <b>acds_stats_t::start_time</b>,
+            <b>acds_server_t::stats</b>, <b>thread_pool_create()</b>,
+            <b>thread_pool_spawn()</b>, and <b>acds_server_t::worker_pool</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_server_shutdown_(">
+            <a class="permalink" href="#void_acds_server_shutdown_("
+              >void acds_server_shutdown (<b>acds_server_t</b> * server)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shutdown discovery server. Closes listen socket, stops accepting
+            connections, waits for handler threads to exit, closes database, and
+            frees resources.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>server</i> Server structure to clean up
+          </div>
+          <p class="Pp">
+            Definition at line <b>167</b> of file
+            <b>src/discovery-service/server.c</b>.
+          </p>
+          <pre>
+167                                                  {
 168   ASCII_OTEL_SCOPE(DISCOVERY_SHUTDOWN);
 169   if (!server) {
 170     return;
@@ -300,47 +385,64 @@
 206
 207   log_info(&quot;Server shutdown complete&quot;);
 208 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_server_shutdown()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>atomic_store_bool()</b>, <b>database_close()</b>,
-    <b>acds_server_t::db</b>, <b>acds_server_t::handoff_mutex</b>,
-    <b>acds_server_t::handoff_mutex_initialized</b>,
-    <b>acds_server_t::handoffs</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>mutex_destroy()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>acds_handoff_entry::next</b>, <b>acds_server_t::rate_limiter</b>,
-    <b>rate_limiter_destroy()</b>, <b>SAFE_FREE</b>,
-    <b>acds_server_t::shutdown</b>, <b>thread_pool_destroy()</b>, and
-    <b>acds_server_t::worker_pool</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>, and
-    <b>acds_server_shutdown()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>network_connection_callbacks_t</b> acds_network_callbacks [extern]</a></h2>
-<p class="Pp">Definition at line <b>876</b> of file
-    <b>src/discovery-service/server.c</b>.</p>
-<pre>876                                                             {acds_connection_open, acds_connection_packet,
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_server_shutdown()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>atomic_store_bool()</b>, <b>database_close()</b>,
+            <b>acds_server_t::db</b>, <b>acds_server_t::handoff_mutex</b>,
+            <b>acds_server_t::handoff_mutex_initialized</b>,
+            <b>acds_server_t::handoffs</b>, <b>log_debug</b>, <b>log_info</b>,
+            <b>mutex_destroy()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>acds_handoff_entry::next</b>, <b>acds_server_t::rate_limiter</b>,
+            <b>rate_limiter_destroy()</b>, <b>SAFE_FREE</b>,
+            <b>acds_server_t::shutdown</b>, <b>thread_pool_destroy()</b>, and
+            <b>acds_server_t::worker_pool</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_server_init()</b>, and
+            <b>acds_server_shutdown()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const
+              <b>network_connection_callbacks_t</b> acds_network_callbacks
+              [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>876</b> of file
+            <b>src/discovery-service/server.c</b>.
+          </p>
+          <pre>
+876                                                             {acds_connection_open, acds_connection_packet,
 877                                                                acds_connection_closing, acds_connection_closed};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>acds_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

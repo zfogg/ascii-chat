@@ -1,113 +1,187 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>parallel_connect.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">parallel_connect.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">parallel_connect.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">parallel_connect.c - Parallel IPv4/IPv6 connection
-  implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>connection_attempt_t</b>
-  <br/>
-  Per-thread connection attempt state for parallel IPv4/IPv6 racing.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE</b> 16
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>parallel_connect</b> (const
-    <b>parallel_connect_config_t</b> *config, <b>socket_t</b> *out_socket)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Parallel IPv4/IPv6 connection implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>parallel_connect.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE___16"><a class="permalink" href="#_define_NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE___16">#define
-  NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>parallel_connect.c</b>.</p>
-<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> parallel_connect (const
-  <b>parallel_connect_config_t</b> * config, <b>socket_t</b> * out_socket)</h2>
-<p class="Pp">Connect to hostname with parallel IPv4/IPv6 attempts</p>
-<p class="Pp"></p>
-<p class="Pp">Resolves hostname and attempts IPv4 and IPv6 connections in
-    parallel. Returns the first successful socket; the losing connection is
-    closed. Each connection attempt is non-blocking with select() timeout.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Connection configuration
-<br/>
-<i>out_socket</i> Pointer to receive winning socket</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_* on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller is responsible for closing the returned socket
-<p class="Pp"></p>
-<p class="Pp">Timeout applies to each connection attempt independently</p>
-</div>
-<p class="Pp">Definition at line <b>179</b> of file
-  <b>parallel_connect.c</b>.</p>
-<pre>179                                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>parallel_connect.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">parallel_connect.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">parallel_connect.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          parallel_connect.c - Parallel IPv4/IPv6 connection implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>connection_attempt_t</b>
+            <br />
+            Per-thread connection attempt state for parallel IPv4/IPv6 racing.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE</b> 16
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>parallel_connect</b> (const
+            <b>parallel_connect_config_t</b> *config,
+            <b>socket_t</b> *out_socket)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Parallel IPv4/IPv6 connection implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>parallel_connect.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE___16"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE___16"
+              >#define NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>parallel_connect.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> parallel_connect (const
+            <b>parallel_connect_config_t</b> * config, <b>socket_t</b> *
+            out_socket)
+          </h2>
+          <p class="Pp">Connect to hostname with parallel IPv4/IPv6 attempts</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Resolves hostname and attempts IPv4 and IPv6 connections in
+            parallel. Returns the first successful socket; the losing connection
+            is closed. Each connection attempt is non-blocking with select()
+            timeout.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Connection configuration
+            <br />
+            <i>out_socket</i> Pointer to receive winning socket
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, ERROR_* on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller is responsible for closing the returned socket
+            <p class="Pp"></p>
+            <p class="Pp">
+              Timeout applies to each connection attempt independently
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>179</b> of file <b>parallel_connect.c</b>.
+          </p>
+          <pre>
+179                                                                                                   {
 180   ASCII_OTEL_SCOPE(PARALLEL_CONNECT);
 181   if (!config || !out_socket) {
 182     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or out_socket is NULL&quot;);
@@ -272,45 +346,51 @@
 341   log_info(&quot;PCONN: Successfully connected to %s:%d&quot;, config-&gt;hostname, config-&gt;port);
 342   return ASCIICHAT_OK;
 343 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>,
-    <b>connection_attempt_t::addr</b>, <b>connection_attempt_t::addr_len</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>connection_attempt_t::callback_data</b>,
-    <b>parallel_connect_config_t::callback_data</b>, <b>cond_destroy()</b>,
-    <b>cond_init()</b>, <b>cond_timedwait</b>,
-    <b>connection_attempt_t::done</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>connection_attempt_t::family</b>,
-    <b>connection_attempt_t::family_name</b>,
-    <b>parallel_connect_config_t::hostname</b>, <b>HOSTNAME_BUFFER_SIZE</b>,
-    <b>hostname_to_ascii()</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>connection_attempt_t::lock</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE</b>,
-    <b>NS_PER_MS_INT</b>, <b>parallel_connect()</b>,
-    <b>parallel_connect_config_t::port</b>, <b>safe_snprintf()</b>,
-    <b>SET_ERRNO</b>, <b>connection_attempt_t::should_exit_callback</b>,
-    <b>parallel_connect_config_t::should_exit_callback</b>,
-    <b>connection_attempt_t::signal</b>, <b>connection_attempt_t::socket</b>,
-    <b>socket_close()</b>, <b>thread_init()</b>, <b>thread_is_initialized()</b>,
-    <b>thread_join</b>, <b>connection_attempt_t::timeout_ms</b>,
-    <b>parallel_connect_config_t::timeout_ms</b>,
-    <b>connection_attempt_t::winner_found</b>, and
-    <b>connection_attempt_t::winner_socket</b>.</p>
-<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>,
+            <b>connection_attempt_t::addr</b>,
+            <b>connection_attempt_t::addr_len</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_OK</b>, <b>connection_attempt_t::callback_data</b>,
+            <b>parallel_connect_config_t::callback_data</b>,
+            <b>cond_destroy()</b>, <b>cond_init()</b>, <b>cond_timedwait</b>,
+            <b>connection_attempt_t::done</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>connection_attempt_t::family</b>,
+            <b>connection_attempt_t::family_name</b>,
+            <b>parallel_connect_config_t::hostname</b>,
+            <b>HOSTNAME_BUFFER_SIZE</b>, <b>hostname_to_ascii()</b>,
+            <b>INVALID_SOCKET_VALUE</b>, <b>connection_attempt_t::lock</b>,
+            <b>log_debug</b>, <b>log_info</b>, <b>mutex_destroy()</b>,
+            <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>NETWORK_PARALLEL_CONNECT_PORT_BUFFER_SIZE</b>,
+            <b>NS_PER_MS_INT</b>, <b>parallel_connect()</b>,
+            <b>parallel_connect_config_t::port</b>, <b>safe_snprintf()</b>,
+            <b>SET_ERRNO</b>, <b>connection_attempt_t::should_exit_callback</b>,
+            <b>parallel_connect_config_t::should_exit_callback</b>,
+            <b>connection_attempt_t::signal</b>,
+            <b>connection_attempt_t::socket</b>, <b>socket_close()</b>,
+            <b>thread_init()</b>, <b>thread_is_initialized()</b>,
+            <b>thread_join</b>, <b>connection_attempt_t::timeout_ms</b>,
+            <b>parallel_connect_config_t::timeout_ms</b>,
+            <b>connection_attempt_t::winner_found</b>, and
+            <b>connection_attempt_t::winner_socket</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

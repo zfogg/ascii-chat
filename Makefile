@@ -136,7 +136,7 @@ C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(LIB_DIR)/*.h)
 # Helper targets
 # =============================================================================
 
-.PHONY: help format format-check clang-tidy analyze cloc cloc-all-code
+.PHONY: format-docs format-config format-web format-other format-all help format format-check clang-tidy analyze cloc cloc-all-code
 
 help:
 	@echo "Available targets:"
@@ -148,6 +148,10 @@ help:
 	@echo "  install         - Build and install using CMake"
 	@echo "  ninja           - Run ninja in the build directory"
 	@echo "  format          - Format source code using clang-format"
+	@echo "  format-all      - Format tracked documentation, configuration, and web files"
+	@echo "  format-docs     - Format documentation in docs/"
+	@echo "  format-config   - Format TOML and Markdown outside docs/"
+	@echo "  format-web      - Format all tracked web projects in parallel"
 	@echo "  format-check    - Check code formatting without modifying files"
 	@echo "  clang-tidy      - Run clang-tidy on sources"
 	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
@@ -155,7 +159,7 @@ help:
 	@echo "  cloc-all-code   - Count lines of code for the whole codebase"
 	@echo "  help            - Show this help message"
 
-format:
+format: format-all
 	@echo "Formatting source code..."
 	@find "$(SRC_DIR)" "$(LIB_DIR)" -name "*.c" -o -name "*.h" | \
 		xargs clang-format --Werror -i
@@ -226,3 +230,23 @@ fresh-clone: build
 	touch .env
 	cp web/.env.example web/.env
 	cd web && pnpm install && cd ..
+ifeq ($(OS),Windows_NT)
+FORMAT_PYTHON ?= python
+else
+FORMAT_PYTHON ?= python3
+endif
+
+format-docs:
+	@$(FORMAT_PYTHON) scripts/format-repo.py docs
+
+format-config:
+	@$(FORMAT_PYTHON) scripts/format-repo.py config
+
+format-web:
+	@$(FORMAT_PYTHON) scripts/format-repo.py web
+
+format-other:
+	@$(FORMAT_PYTHON) scripts/format-repo.py other
+
+format-all:
+	@$(FORMAT_PYTHON) scripts/format-repo.py all

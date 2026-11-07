@@ -1,143 +1,213 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.c - ascii-chat Unified Binary - Mode Dispatcher and Entry
-    Point</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>mode_descriptor_t</b>
-  <br/>
-  Metadata for a mode.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MAIN_LOG_OUT_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>MAIN_JSON_FILENAME_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>APP_NAME</b> 'ascii-chat'
-  <br/>
-  #define <b>VERSION</b> <b>ASCII_CHAT_VERSION_FULL</b>
-  <br/>
-  #define <b>REGISTER_GLOBAL_ATOMICS</b>()
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef int(*) <b>mode_entry_point_t</b>(void)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>atomic_t</b> <b>g_should_exit</b> <b>ATOMIC_INIT_AUTO</b>
-    (<b>g_should_exit</b>)
-  <br/>
-  <b>bool</b> <b>should_exit</b> (void)
-  <br/>
-  void <b>signal_exit</b> (void)
-  <br/>
-  void <b>set_interrupt_callback</b> (void(*cb)(void))
-  <br/>
-  void <b>setup_signal_handlers</b> (void)
-  <br/>
-  int <b>main</b> (int argc, char *argv[])
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Unified Binary - Mode Dispatcher and Entry Point</p>
-<p class="Pp">This file implements the main entry point for the unified
-    ascii-chat binary, which provides server, client, mirror, and discovery
-    service functionality in a single executable.</p>
-<p class="Pp"></p>
-<p class="Pp">The dispatcher now delegates ALL option parsing (including mode
-    detection and binary-level options) to <b>options_init()</b>, then simply
-    dispatches to the appropriate mode-specific entry point based on the
-    detected mode.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">3.0</div>
-<p class="Pp">Fix: CMAKE_OSX_SYSROOT properly configured for macOS builds
-    WebRTC: Pass CMAKE_OSX_SYSROOT to subprocess for Threads discovery Test:
-    Running macOS builds with WebRTC Threads fix</p>
-<p class="Pp">Definition in file <b>main.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_APP_NAME___'ascii"><a class="permalink" href="#_define_APP_NAME___'ascii">#define
-  APP_NAME 'ascii-chat'</a></h2>
-<p class="Pp">Definition at line <b>112</b> of file <b>main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAIN_JSON_FILENAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_MAIN_JSON_FILENAME_BUFFER_SIZE___256">#define
-  MAIN_JSON_FILENAME_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>main.c</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAIN_LOG_OUT_BUFFER_SIZE___64"><a class="permalink" href="#_define_MAIN_LOG_OUT_BUFFER_SIZE___64">#define
-  MAIN_LOG_OUT_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_REGISTER_GLOBAL_ATOMICS()"><a class="permalink" href="#_define_REGISTER_GLOBAL_ATOMICS()">#define
-  REGISTER_GLOBAL_ATOMICS()</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          main.c - ascii-chat Unified Binary - Mode Dispatcher and Entry Point
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>mode_descriptor_t</b>
+            <br />
+            Metadata for a mode.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MAIN_LOG_OUT_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>MAIN_JSON_FILENAME_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>APP_NAME</b> 'ascii-chat'
+            <br />
+            #define <b>VERSION</b> <b>ASCII_CHAT_VERSION_FULL</b>
+            <br />
+            #define <b>REGISTER_GLOBAL_ATOMICS</b>()
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef int(*) <b>mode_entry_point_t</b>(void)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>atomic_t</b> <b>g_should_exit</b> <b>ATOMIC_INIT_AUTO</b>
+            (<b>g_should_exit</b>)
+            <br />
+            <b>bool</b> <b>should_exit</b> (void)
+            <br />
+            void <b>signal_exit</b> (void)
+            <br />
+            void <b>set_interrupt_callback</b> (void(*cb)(void))
+            <br />
+            void <b>setup_signal_handlers</b> (void)
+            <br />
+            int <b>main</b> (int argc, char *argv[])
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          ascii-chat Unified Binary - Mode Dispatcher and Entry Point
+        </p>
+        <p class="Pp">
+          This file implements the main entry point for the unified ascii-chat
+          binary, which provides server, client, mirror, and discovery service
+          functionality in a single executable.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The dispatcher now delegates ALL option parsing (including mode
+          detection and binary-level options) to <b>options_init()</b>, then
+          simply dispatches to the appropriate mode-specific entry point based
+          on the detected mode.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">2025</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">3.0</div>
+        <p class="Pp">
+          Fix: CMAKE_OSX_SYSROOT properly configured for macOS builds WebRTC:
+          Pass CMAKE_OSX_SYSROOT to subprocess for Threads discovery Test:
+          Running macOS builds with WebRTC Threads fix
+        </p>
+        <p class="Pp">Definition in file <b>main.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_APP_NAME___'ascii">
+            <a class="permalink" href="#_define_APP_NAME___'ascii"
+              >#define APP_NAME 'ascii-chat'</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>112</b> of file <b>main.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAIN_JSON_FILENAME_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_MAIN_JSON_FILENAME_BUFFER_SIZE___256"
+              >#define MAIN_JSON_FILENAME_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>main.c</b>.</p>
+          <p class="Pp">Referenced by <b>main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAIN_LOG_OUT_BUFFER_SIZE___64">
+            <a class="permalink" href="#_define_MAIN_LOG_OUT_BUFFER_SIZE___64"
+              >#define MAIN_LOG_OUT_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>main.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_REGISTER_GLOBAL_ATOMICS()">
+            <a class="permalink" href="#_define_REGISTER_GLOBAL_ATOMICS()"
+              >#define REGISTER_GLOBAL_ATOMICS()</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   static bool _global_atomics_registered = false;                                                                    \
 <br/>
@@ -149,41 +219,64 @@
 <br/>
   }                                                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>209</b> of file <b>main.c</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VERSION___"><a class="permalink" href="#_define_VERSION___">#define
-  VERSION <b>ASCII_CHAT_VERSION_FULL</b></a></h2>
-<p class="Pp">Definition at line <b>113</b> of file <b>main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_int(*)_mode_entry_point_t(void)"><a class="permalink" href="#typedef_int(*)_mode_entry_point_t(void)">typedef
-  int(*) mode_entry_point_t(void)</a></h2>
-<p class="Pp">Definition at line <b>389</b> of file <b>main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> <b>g_should_exit</b> ATOMIC_INIT_AUTO
-  (<b>g_should_exit</b> )</h2>
-<p class="Pp">Global flag indicating application should exit (used by all
-  modes)</p>
-<p class="Pp">References <b>ATOMIC_INIT_AUTO</b>, and <b>g_should_exit</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
-  main (int argc, char * argv[])</a></h2>
-<p class="Pp">Definition at line <b>493</b> of file <b>main.c</b>.</p>
-<pre>493                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>209</b> of file <b>main.c</b>.</p>
+          <p class="Pp">Referenced by <b>main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VERSION___">
+            <a class="permalink" href="#_define_VERSION___"
+              >#define VERSION <b>ASCII_CHAT_VERSION_FULL</b></a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>113</b> of file <b>main.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_int(*)_mode_entry_point_t(void)">
+            <a class="permalink" href="#typedef_int(*)_mode_entry_point_t(void)"
+              >typedef int(*) mode_entry_point_t(void)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>389</b> of file <b>main.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> <b>g_should_exit</b> ATOMIC_INIT_AUTO (<b
+              >g_should_exit</b
+            >
+            )
+          </h2>
+          <p class="Pp">
+            Global flag indicating application should exit (used by all modes)
+          </p>
+          <p class="Pp">
+            References <b>ATOMIC_INIT_AUTO</b>, and <b>g_should_exit</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)">
+            <a class="permalink" href="#int_main_(int_argc,_char_*_argv__)"
+              >int main (int argc, char * argv[])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>493</b> of file <b>main.c</b>.</p>
+          <pre>
+493                                  {
 494   if (process_utf8_arguments(&amp;argc, &amp;argv) != ASCIICHAT_OK) {
 495     fprintf(stderr, &quot;Failed to convert command-line arguments to UTF-8\n&quot;);
 496     return 1;
@@ -830,119 +923,159 @@
 1137
 1138   return exit_code;
 1139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>action_show_version()</b>,
-    <b>app_callbacks_register()</b>, <b>apply_color_mode_override()</b>,
-    <b>apply_palette_config()</b>, <b>ASCII_CHAT_BUILD_TYPE</b>,
-    <b>ascii_otel_exit()</b>, <b>ascii_otel_init()</b>,
-    <b>ascii_otel_shutdown()</b>, <b>ASCIICHAT_ERRNO_DISMISSED</b>,
-    <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_pcre2_cleanup_all()</b>, <b>asciichat_shared_destroy()</b>,
-    <b>asciichat_shared_init()</b>, <b>ASSERT_NO_ERRNO_SINCE</b>,
-    <b>backtrace_print_simple()</b>, <b>colorscheme_load_builtin()</b>,
-    <b>asciichat_error_context_t::context_message</b>,
-    <b>debug_atomic_init()</b>, <b>debug_errno_start_thread()</b>,
-    <b>debug_memory_set_quiet_mode()</b>, <b>debug_stats_init()</b>,
-    <b>debug_stats_set_main_thread_id()</b>, <b>debug_stats_start_thread()</b>,
-    <b>debug_sync_start_thread()</b>,
-    <b>options_state::debug_sync_state_time</b>,
-    <b>detect_terminal_capabilities()</b>, <b>options_state::detected_mode</b>,
-    <b>mode_descriptor_t::entry_point</b>, <b>errno_exit_code()</b>,
-    <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_PLATFORM_INIT</b>,
-    <b>ERROR_THREAD</b>, <b>ERROR_USAGE</b>, <b>FATAL</b>,
-    <b>FILE_PERM_PRIVATE</b>, <b>options_state::fps</b>, <b>g_argc</b>,
-    <b>g_argv</b>, <b>g_color_flag_passed</b>, <b>g_color_flag_value</b>,
-    <b>GET_OPTION</b>, <b>grep_init()</b>, <b>HAS_ERRNO</b>,
-    <b>options_state::help</b>, <b>IS_OPTION_EXPLICIT</b>, <b>log_debug</b>,
-    <b>log_dev</b>, <b>log_disable_file_output()</b>, <b>LOG_ERRNO_IF_SET</b>,
-    <b>log_error</b>, <b>log_file</b>, <b>options_state::log_file</b>,
-    <b>log_info</b>, <b>log_init_colors()</b>, <b>options_state::log_level</b>,
-    <b>log_redetect_terminal_capabilities()</b>, <b>log_set_color_scheme()</b>,
-    <b>log_set_force_stderr()</b>, <b>log_set_format()</b>,
-    <b>log_set_json_output()</b>, <b>log_set_level()</b>,
-    <b>log_set_terminal_output()</b>, <b>log_truncate_if_large()</b>,
-    <b>log_warn</b>, <b>main()</b>, <b>MAIN_JSON_FILENAME_BUFFER_SIZE</b>,
-    <b>mcp_stdio_reserve()</b>, <b>options_state::mode_arg_index</b>,
-    <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>,
-    <b>MODE_INVALID</b>, <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>,
-    <b>MODE_SERVER</b>, <b>mode_descriptor_t::name</b>, <b>named_init()</b>,
-    <b>NAMED_REGISTER_THREAD</b>, <b>named_registry_register_packet_types()</b>,
-    <b>NOTICE</b>, <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_BOOL</b>,
-    <b>registry_entry_t::optional_arg</b>, <b>options_cleanup_schema()</b>,
-    <b>options_colorscheme_init_early()</b>, <b>options_get()</b>,
-    <b>options_init()</b>, <b>options_state_destroy()</b>,
-    <b>options_state::palette_custom</b>,
-    <b>options_state::palette_custom_set</b>,
-    <b>path_cleanup_thread_locals()</b>,
-    <b>platform_get_monotonic_time_us()</b>, <b>platform_isatty()</b>,
-    <b>platform_open()</b>, <b>platform_process_title_destroy()</b>,
-    <b>platform_process_title_init()</b>,
-    <b>platform_process_title_set_args()</b>, <b>platform_signal()</b>,
-    <b>platform_sleep_ms()</b>, <b>process_utf8_arguments()</b>,
-    <b>REGISTER_GLOBAL_ATOMICS</b>, <b>registry_find_entry_by_name()</b>,
-    <b>registry_find_entry_by_short()</b>, <b>registry_init_size()</b>,
-    <b>SAFE_STRCPY</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>setup_signal_handlers()</b>, <b>should_exit()</b>,
-    <b>shutdown_register_callback()</b>, <b>signal_exit()</b>,
-    <b>simd_backend()</b>, <b>stats_runtime_start()</b>,
-    <b>stats_runtime_stop()</b>, <b>options_state::status_screen</b>,
-    <b>terminal_is_interactive()</b>, <b>terminal_should_force_stderr()</b>,
-    <b>thread_self</b>, <b>registry_entry_t::type</b>,
-    <b>ui_controller_title_start()</b>, <b>ui_controller_write()</b>,
-    <b>update_banner_start_check()</b>, and <b>options_state::version</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>main()</b>, and <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_set_interrupt_callback_(void(*_cb_)(void))"><a class="permalink" href="#void_set_interrupt_callback_(void(*_cb_)(void))">void
-  set_interrupt_callback (void(* cb )(void))</a></h2>
-<p class="Pp">Register a mode-specific interrupt callback</p>
-<p class="Pp"></p>
-<p class="Pp">Called by mode-specific code to register a callback that will be
-    invoked when <b>signal_exit()</b> is called. Used to shut down network
-    sockets so threads blocked in recv() unblock quickly instead of waiting for
-    timeouts.</p>
-<p class="Pp"></p>
-<p class="Pp">The callback is called synchronously from <b>signal_exit()</b>, so
-    it must be async-signal-safe (only atomics, <b>socket_shutdown()</b>, no
-    malloc/etc).</p>
-<p class="Pp"></p>
-<p class="Pp">Only one callback can be registered at a time. Setting a new
-    callback replaces the previous one.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
-  unregister</div>
-<p class="Pp">Definition at line <b>246</b> of file <b>main.c</b>.</p>
-<pre>246                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>action_show_version()</b>,
+            <b>app_callbacks_register()</b>, <b>apply_color_mode_override()</b>,
+            <b>apply_palette_config()</b>, <b>ASCII_CHAT_BUILD_TYPE</b>,
+            <b>ascii_otel_exit()</b>, <b>ascii_otel_init()</b>,
+            <b>ascii_otel_shutdown()</b>, <b>ASCIICHAT_ERRNO_DISMISSED</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>asciichat_pcre2_cleanup_all()</b>,
+            <b>asciichat_shared_destroy()</b>, <b>asciichat_shared_init()</b>,
+            <b>ASSERT_NO_ERRNO_SINCE</b>, <b>backtrace_print_simple()</b>,
+            <b>colorscheme_load_builtin()</b>,
+            <b>asciichat_error_context_t::context_message</b>,
+            <b>debug_atomic_init()</b>, <b>debug_errno_start_thread()</b>,
+            <b>debug_memory_set_quiet_mode()</b>, <b>debug_stats_init()</b>,
+            <b>debug_stats_set_main_thread_id()</b>,
+            <b>debug_stats_start_thread()</b>, <b>debug_sync_start_thread()</b>,
+            <b>options_state::debug_sync_state_time</b>,
+            <b>detect_terminal_capabilities()</b>,
+            <b>options_state::detected_mode</b>,
+            <b>mode_descriptor_t::entry_point</b>, <b>errno_exit_code()</b>,
+            <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>,
+            <b>ERROR_CONFIG</b>, <b>ERROR_FILE_OPERATION</b>,
+            <b>ERROR_PLATFORM_INIT</b>, <b>ERROR_THREAD</b>, <b>ERROR_USAGE</b>,
+            <b>FATAL</b>, <b>FILE_PERM_PRIVATE</b>, <b>options_state::fps</b>,
+            <b>g_argc</b>, <b>g_argv</b>, <b>g_color_flag_passed</b>,
+            <b>g_color_flag_value</b>, <b>GET_OPTION</b>, <b>grep_init()</b>,
+            <b>HAS_ERRNO</b>, <b>options_state::help</b>,
+            <b>IS_OPTION_EXPLICIT</b>, <b>log_debug</b>, <b>log_dev</b>,
+            <b>log_disable_file_output()</b>, <b>LOG_ERRNO_IF_SET</b>,
+            <b>log_error</b>, <b>log_file</b>, <b>options_state::log_file</b>,
+            <b>log_info</b>, <b>log_init_colors()</b>,
+            <b>options_state::log_level</b>,
+            <b>log_redetect_terminal_capabilities()</b>,
+            <b>log_set_color_scheme()</b>, <b>log_set_force_stderr()</b>,
+            <b>log_set_format()</b>, <b>log_set_json_output()</b>,
+            <b>log_set_level()</b>, <b>log_set_terminal_output()</b>,
+            <b>log_truncate_if_large()</b>, <b>log_warn</b>, <b>main()</b>,
+            <b>MAIN_JSON_FILENAME_BUFFER_SIZE</b>, <b>mcp_stdio_reserve()</b>,
+            <b>options_state::mode_arg_index</b>, <b>MODE_CLIENT</b>,
+            <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>,
+            <b>MODE_INVALID</b>, <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>,
+            <b>MODE_SERVER</b>, <b>mode_descriptor_t::name</b>,
+            <b>named_init()</b>, <b>NAMED_REGISTER_THREAD</b>,
+            <b>named_registry_register_packet_types()</b>, <b>NOTICE</b>,
+            <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_BOOL</b>,
+            <b>registry_entry_t::optional_arg</b>,
+            <b>options_cleanup_schema()</b>,
+            <b>options_colorscheme_init_early()</b>, <b>options_get()</b>,
+            <b>options_init()</b>, <b>options_state_destroy()</b>,
+            <b>options_state::palette_custom</b>,
+            <b>options_state::palette_custom_set</b>,
+            <b>path_cleanup_thread_locals()</b>,
+            <b>platform_get_monotonic_time_us()</b>, <b>platform_isatty()</b>,
+            <b>platform_open()</b>, <b>platform_process_title_destroy()</b>,
+            <b>platform_process_title_init()</b>,
+            <b>platform_process_title_set_args()</b>, <b>platform_signal()</b>,
+            <b>platform_sleep_ms()</b>, <b>process_utf8_arguments()</b>,
+            <b>REGISTER_GLOBAL_ATOMICS</b>,
+            <b>registry_find_entry_by_name()</b>,
+            <b>registry_find_entry_by_short()</b>, <b>registry_init_size()</b>,
+            <b>SAFE_STRCPY</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+            <b>setup_signal_handlers()</b>, <b>should_exit()</b>,
+            <b>shutdown_register_callback()</b>, <b>signal_exit()</b>,
+            <b>simd_backend()</b>, <b>stats_runtime_start()</b>,
+            <b>stats_runtime_stop()</b>, <b>options_state::status_screen</b>,
+            <b>terminal_is_interactive()</b>,
+            <b>terminal_should_force_stderr()</b>, <b>thread_self</b>,
+            <b>registry_entry_t::type</b>, <b>ui_controller_title_start()</b>,
+            <b>ui_controller_write()</b>, <b>update_banner_start_check()</b>,
+            and <b>options_state::version</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, <b>main()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_set_interrupt_callback_(void(*_cb_)(void))">
+            <a
+              class="permalink"
+              href="#void_set_interrupt_callback_(void(*_cb_)(void))"
+              >void set_interrupt_callback (void(* cb )(void))</a
+            >
+          </h2>
+          <p class="Pp">Register a mode-specific interrupt callback</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called by mode-specific code to register a callback that will be
+            invoked when
+            <b>signal_exit()</b> is called. Used to shut down network sockets so
+            threads blocked in recv() unblock quickly instead of waiting for
+            timeouts.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The callback is called synchronously from <b>signal_exit()</b>, so
+            it must be async-signal-safe (only atomics,
+            <b>socket_shutdown()</b>, no malloc/etc).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Only one callback can be registered at a time. Setting a new
+            callback replaces the previous one.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>cb</i> Function to call on exit signal, or NULL to unregister
+          </div>
+          <p class="Pp">Definition at line <b>246</b> of file <b>main.c</b>.</p>
+          <pre>
+246                                               {
 247   g_interrupt_callback = cb;
 248 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>set_interrupt_callback()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_setup_signal_handlers_(void_)"><a class="permalink" href="#void_setup_signal_handlers_(void_)">void
-  setup_signal_handlers (void )</a></h2>
-<p class="Pp">Set up global signal handlers Called once at startup before mode
-    dispatch</p>
-<p class="Pp"></p>
-<p class="Pp">Set up global signal handlers</p>
-<p class="Pp"></p>
-<p class="Pp">Called once at program startup in <b>main()</b> BEFORE mode
-    dispatch. Registers:</p>
-<ul class="Bl-bullet">
-  <li>SIGTERM &#x2192; graceful shutdown with logging</li>
-  <li>SIGPIPE &#x2192; ignore (prevent crashes from broken pipes)</li>
-  <li>SIGUSR1 &#x2192; synchronization debugging output (debug builds only)</li>
-  <li>SIGUSR2 &#x2192; memory report (debug builds only)</li>
-  <li>Console Ctrl+C handler (all platforms)</li>
-</ul>
-<p class="Pp">SIGWINCH (terminal resize) is NOT registered here - client mode
-    registers its own handler because it needs special processing.</p>
-<p class="Pp">Definition at line <b>371</b> of file <b>main.c</b>.</p>
-<pre>371                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>set_interrupt_callback()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_setup_signal_handlers_(void_)">
+            <a class="permalink" href="#void_setup_signal_handlers_(void_)"
+              >void setup_signal_handlers (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Set up global signal handlers Called once at startup before mode
+            dispatch
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Set up global signal handlers</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called once at program startup in <b>main()</b> BEFORE mode
+            dispatch. Registers:
+          </p>
+          <ul class="Bl-bullet">
+            <li>SIGTERM &#x2192; graceful shutdown with logging</li>
+            <li>SIGPIPE &#x2192; ignore (prevent crashes from broken pipes)</li>
+            <li>
+              SIGUSR1 &#x2192; synchronization debugging output (debug builds
+              only)
+            </li>
+            <li>SIGUSR2 &#x2192; memory report (debug builds only)</li>
+            <li>Console Ctrl+C handler (all platforms)</li>
+          </ul>
+          <p class="Pp">
+            SIGWINCH (terminal resize) is NOT registered here - client mode
+            registers its own handler because it needs special processing.
+          </p>
+          <p class="Pp">Definition at line <b>371</b> of file <b>main.c</b>.</p>
+          <pre>
+371                                  {
 372   platform_set_console_ctrl_handler(console_ctrl_handler);
 373
 374 #ifndef _WIN32
@@ -955,45 +1088,60 @@
 381   log_debug(&quot;Signal handlers registered&quot;);
 382 #endif
 383 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>,
-    <b>platform_register_signal_handlers()</b>,
-    <b>platform_set_console_ctrl_handler()</b>, and
-    <b>setup_signal_handlers()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, and
-  <b>setup_signal_handlers()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> should_exit (void )</h2>
-<p class="Pp">Check if the application should exit</p>
-<p class="Pp"></p>
-<p class="Pp">Called by mode main loops to detect shutdown requests from signals
-    or errors.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if shutdown has been requested, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>230</b> of file <b>main.c</b>.</p>
-<pre>230                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>,
+            <b>platform_register_signal_handlers()</b>,
+            <b>platform_set_console_ctrl_handler()</b>, and
+            <b>setup_signal_handlers()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, and <b>setup_signal_handlers()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> should_exit (void )</h2>
+          <p class="Pp">Check if the application should exit</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called by mode main loops to detect shutdown requests from signals
+            or errors.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if shutdown has been requested, false otherwise
+          </div>
+          <p class="Pp">Definition at line <b>230</b> of file <b>main.c</b>.</p>
+          <pre>
+230                        {
 231   return atomic_load_bool(&amp;g_should_exit);
 232 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>g_should_exit</b>, and
-    <b>should_exit()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_signal_exit_(void_)"><a class="permalink" href="#void_signal_exit_(void_)">void
-  signal_exit (void )</a></h2>
-<p class="Pp">Signal that the application should exit</p>
-<p class="Pp"></p>
-<p class="Pp">Sets the global exit flag and calls the registered interrupt
-    callback if set. Safe to call from signal handlers (uses only atomics and
-    function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
-    code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>234</b> of file <b>main.c</b>.</p>
-<pre>234                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>g_should_exit</b>, and
+            <b>should_exit()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_signal_exit_(void_)">
+            <a class="permalink" href="#void_signal_exit_(void_)"
+              >void signal_exit (void )</a
+            >
+          </h2>
+          <p class="Pp">Signal that the application should exit</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sets the global exit flag and calls the registered interrupt
+            callback if set. Safe to call from signal handlers (uses only
+            atomics and function pointers). Called by signal handlers (SIGTERM,
+            Ctrl+C) and normal code (errors, timeouts).
+          </p>
+          <p class="Pp">Definition at line <b>234</b> of file <b>main.c</b>.</p>
+          <pre>
+234                        {
 235   // Note: This function may be called from a signal handler context where
 236   // other threads may hold mutex locks. We avoid log_console() here to prevent
 237   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
@@ -1004,22 +1152,26 @@
 242     cb();
 243   }
 244 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>g_should_exit</b>, and
-    <b>signal_exit()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>g_should_exit</b>, and
+            <b>signal_exit()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

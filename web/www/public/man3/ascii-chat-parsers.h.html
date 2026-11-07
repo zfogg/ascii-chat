@@ -1,132 +1,194 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>parsers.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">parsers.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">parsers.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">parsers.h - Custom option parsers for enum types.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>parse_color_setting</b> (const char *arg, void
-    *dest, char **error_msg)
-  <br/>
-  Parse color setting option (--color flag). <b>bool</b>
-    <b>parse_utf8_setting</b> (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Parse UTF-8 setting option (--utf8 flag). <b>bool</b> <b>parse_color_mode</b>
-    (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Parse terminal color level option. <b>bool</b> <b>parse_color_filter</b>
-    (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Parse color filter option. <b>bool</b> <b>parse_render_mode</b> (const char
-    *arg, void *dest, char **error_msg)
-  <br/>
-  Parse render mode option. <b>bool</b> <b>parse_render_theme</b> (const char
-    *arg, void *dest, char **error_msg)
-  <br/>
-  Parse render theme option for pixel rendering. <b>bool</b>
-    <b>parse_palette_type</b> (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Parse palette type option. <b>bool</b> <b>parse_palette_chars</b> (const char
-    *arg, void *dest, char **error_msg)
-  <br/>
-  Parse custom palette characters option. <b>bool</b> <b>parse_log_level</b>
-    (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Parse log level option. <b>bool</b> <b>parse_port_option</b> (const char *arg,
-    void *dest, char **error_msg)
-  <br/>
-  Parse and validate port option for CLI. int <b>parse_server_bind_address</b>
-    (const char *arg, void *config, char **remaining, int num_remaining, char
-    **error_msg)
-  <br/>
-  Parse server bind address positional argument. int <b>parse_client_address</b>
-    (const char *arg, void *config, char **remaining, int num_remaining, char
-    **error_msg)
-  <br/>
-  Parse client address positional argument. int <b>parse_mirror_media</b> (const
-    char *arg, void *config, char **remaining, int num_remaining, char
-    **error_msg)
-  <br/>
-  Parse mirror mode media positional argument. <b>bool</b>
-    <b>parse_verbose_flag</b> (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Custom parser for --verbose flag. <b>bool</b> <b>parse_timestamp</b> (const
-    char *arg, void *dest, char **error_msg)
-  <br/>
-  Custom parser for --timestamp flag. <b>bool</b> <b>parse_volume</b> (const
-    char *arg, void *dest, char **error_msg)
-  <br/>
-  Custom parser for volume options (--volume, --speakers-volume,
-    --microphone-volume). <b>bool</b> <b>parse_log_file</b> (const char *arg,
-    void *dest, char **error_msg)
-  <br/>
-  Custom parser for log file paths (--log-file, -L). <b>bool</b>
-    <b>parse_audio_source</b> (const char *arg, void *dest, char **error_msg)
-  <br/>
-  Parse visualization source option (--audio-source). <b>bool</b>
-    <b>parse_audio_capture_source</b> (const char *arg, void *dest, char
-    **error_msg)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Custom option parsers for enum types.</p>
-<p class="Pp">This module provides custom callback parsers for enum-based
-    options used by the options builder system. Each parser converts a string
-    argument to the appropriate enum value.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">December 2025</div>
-<p class="Pp">Definition in file <b>parsers.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_audio_capture_source (const char * arg, void *
-  dest, char ** error_msg)</h2>
-<p class="Pp">Parse local capture policy option (--audio-capture-source).</p>
-<p class="Pp">Definition at line <b>1143</b> of file <b>parsers.c</b>.</p>
-<pre>1143                                                                                {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>parsers.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">parsers.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">parsers.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">parsers.h - Custom option parsers for enum types.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>parse_color_setting</b> (const char *arg, void *dest,
+            char **error_msg)
+            <br />
+            Parse color setting option (--color flag). <b>bool</b>
+            <b>parse_utf8_setting</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Parse UTF-8 setting option (--utf8 flag). <b>bool</b>
+            <b>parse_color_mode</b>
+            (const char *arg, void *dest, char **error_msg)
+            <br />
+            Parse terminal color level option. <b>bool</b>
+            <b>parse_color_filter</b>
+            (const char *arg, void *dest, char **error_msg)
+            <br />
+            Parse color filter option. <b>bool</b>
+            <b>parse_render_mode</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Parse render mode option. <b>bool</b>
+            <b>parse_render_theme</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Parse render theme option for pixel rendering. <b>bool</b>
+            <b>parse_palette_type</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Parse palette type option. <b>bool</b>
+            <b>parse_palette_chars</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Parse custom palette characters option. <b>bool</b>
+            <b>parse_log_level</b>
+            (const char *arg, void *dest, char **error_msg)
+            <br />
+            Parse log level option. <b>bool</b> <b>parse_port_option</b> (const
+            char *arg, void *dest, char **error_msg)
+            <br />
+            Parse and validate port option for CLI. int
+            <b>parse_server_bind_address</b>
+            (const char *arg, void *config, char **remaining, int num_remaining,
+            char **error_msg)
+            <br />
+            Parse server bind address positional argument. int
+            <b>parse_client_address</b>
+            (const char *arg, void *config, char **remaining, int num_remaining,
+            char **error_msg)
+            <br />
+            Parse client address positional argument. int
+            <b>parse_mirror_media</b> (const char *arg, void *config, char
+            **remaining, int num_remaining, char **error_msg)
+            <br />
+            Parse mirror mode media positional argument. <b>bool</b>
+            <b>parse_verbose_flag</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Custom parser for --verbose flag. <b>bool</b>
+            <b>parse_timestamp</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Custom parser for --timestamp flag. <b>bool</b>
+            <b>parse_volume</b> (const char *arg, void *dest, char **error_msg)
+            <br />
+            Custom parser for volume options (--volume, --speakers-volume,
+            --microphone-volume).
+            <b>bool</b> <b>parse_log_file</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Custom parser for log file paths (--log-file, -L). <b>bool</b>
+            <b>parse_audio_source</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            Parse visualization source option (--audio-source). <b>bool</b>
+            <b>parse_audio_capture_source</b> (const char *arg, void *dest, char
+            **error_msg)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Custom option parsers for enum types.</p>
+        <p class="Pp">
+          This module provides custom callback parsers for enum-based options
+          used by the options builder system. Each parser converts a string
+          argument to the appropriate enum value.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">December 2025</div>
+        <p class="Pp">Definition in file <b>parsers.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_audio_capture_source (const char * arg, void *
+            dest, char ** error_msg)
+          </h2>
+          <p class="Pp">
+            Parse local capture policy option (--audio-capture-source).
+          </p>
+          <p class="Pp">
+            Definition at line <b>1143</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+1143                                                                                {
 1144   if (!arg || !dest) {
 1145     if (error_msg)
 1146       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -153,34 +215,47 @@
 1167   }
 1168   return true;
 1169 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>AUDIO_CAPTURE_SOURCE_AUTO</b>,
-    <b>AUDIO_CAPTURE_SOURCE_BOTH</b>, <b>AUDIO_CAPTURE_SOURCE_MEDIA</b>,
-    <b>AUDIO_CAPTURE_SOURCE_MIC</b>, <b>AUDIO_CAPTURE_SOURCE_REMOTE</b>,
-    <b>OPT_AUDIO_CAPTURE_SOURCE_AUTO</b>, <b>OPT_AUDIO_CAPTURE_SOURCE_BOTH</b>,
-    <b>OPT_AUDIO_CAPTURE_SOURCE_MEDIA</b>, <b>OPT_AUDIO_CAPTURE_SOURCE_MIC</b>,
-    <b>OPT_AUDIO_CAPTURE_SOURCE_REMOTE</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>parse_audio_capture_source()</b>, and <b>platform_strdup()</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_audio_source (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse visualization source option (--audio-source).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;all&quot;,
-  &quot;call&quot;, &quot;mic&quot;, &quot;media&quot;)
-<br/>
-<i>dest</i> Destination pointer (audio_source_t*)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values: all (the default), call, mic, or media.</p>
-<p class="Pp">Definition at line <b>1107</b> of file <b>parsers.c</b>.</p>
-<pre>1107                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_CAPTURE_SOURCE_AUTO</b>,
+            <b>AUDIO_CAPTURE_SOURCE_BOTH</b>, <b>AUDIO_CAPTURE_SOURCE_MEDIA</b>,
+            <b>AUDIO_CAPTURE_SOURCE_MIC</b>, <b>AUDIO_CAPTURE_SOURCE_REMOTE</b>,
+            <b>OPT_AUDIO_CAPTURE_SOURCE_AUTO</b>,
+            <b>OPT_AUDIO_CAPTURE_SOURCE_BOTH</b>,
+            <b>OPT_AUDIO_CAPTURE_SOURCE_MEDIA</b>,
+            <b>OPT_AUDIO_CAPTURE_SOURCE_MIC</b>,
+            <b>OPT_AUDIO_CAPTURE_SOURCE_REMOTE</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>parse_audio_capture_source()</b>, and <b>platform_strdup()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_capture_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_audio_source (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse visualization source option (--audio-source).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;all&quot;, &quot;call&quot;,
+            &quot;mic&quot;, &quot;media&quot;)
+            <br />
+            <i>dest</i> Destination pointer (audio_source_t*)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">
+            Valid values: all (the default), call, mic, or media.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1107</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+1107                                                                        {
 1108   if (!arg || !dest) {
 1109     if (error_msg) {
 1110       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -215,51 +290,72 @@
 1139   }
 1140   return false;
 1141 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>AUDIO_SOURCE_ALL</b>, <b>AUDIO_SOURCE_CALL</b>,
-    <b>AUDIO_SOURCE_MEDIA</b>, <b>AUDIO_SOURCE_MIC</b>,
-    <b>OPT_AUDIO_SOURCE_ALL</b>, <b>OPT_AUDIO_SOURCE_AUTO</b>,
-    <b>OPT_AUDIO_SOURCE_CALL</b>, <b>OPT_AUDIO_SOURCE_MEDIA</b>,
-    <b>OPT_AUDIO_SOURCE_MIC</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>parse_audio_source()</b>, and <b>platform_strdup()</b>.</p>
-<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_parse_client_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_client_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
-  parse_client_address (const char * arg, void * config, char ** remaining, int
-  num_remaining, char ** error_msg)</a></h2>
-<p class="Pp">Parse client address positional argument.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Address argument in format [address][:port]
-<br/>
-<i>config</i> Pointer to options struct (must contain address and port fields)
-<br/>
-<i>remaining</i> Remaining positional args (unused for client)
-<br/>
-<i>num_remaining</i> Count of remaining args
-<br/>
-<i>error_msg</i> Error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of args consumed (always 1), or -1 on error</div>
-<p class="Pp">Client address parsing rules:</p>
-<ul class="Bl-bullet">
-  <li>Parses single argument: [address][:port]</li>
-  <li>IPv6 with brackets and port: [::1]:8080</li>
-  <li>IPv4/hostname with port: 192.168.1.1:8080 or example.com:8080</li>
-  <li>Bare IPv6: ::1 (detected by multiple colons)</li>
-  <li>Bare hostname/IPv4: 192.168.1.1 or example.com</li>
-  <li>IPv4 addresses starting with digit are validated strictly</li>
-  <li>Detects port conflict if --port flag was already used</li>
-</ul>
-<p class="Pp">This parser handles the complex logic of separating address from
-    optional port while correctly handling IPv6 addresses that contain
-  colons.</p>
-<p class="Pp"></p>
-<p class="Pp">Example usage with <b>options_builder_add_positional()</b>:</p>
-<p class="Pp"></p>
-<pre>options_builder_add_positional(
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_SOURCE_ALL</b>, <b>AUDIO_SOURCE_CALL</b>,
+            <b>AUDIO_SOURCE_MEDIA</b>, <b>AUDIO_SOURCE_MIC</b>,
+            <b>OPT_AUDIO_SOURCE_ALL</b>, <b>OPT_AUDIO_SOURCE_AUTO</b>,
+            <b>OPT_AUDIO_SOURCE_CALL</b>, <b>OPT_AUDIO_SOURCE_MEDIA</b>,
+            <b>OPT_AUDIO_SOURCE_MIC</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>parse_audio_source()</b>, and <b>platform_strdup()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_parse_client_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"
+          >
+            <a
+              class="permalink"
+              href="#int_parse_client_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"
+              >int parse_client_address (const char * arg, void * config, char
+              ** remaining, int num_remaining, char ** error_msg)</a
+            >
+          </h2>
+          <p class="Pp">Parse client address positional argument.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> Address argument in format [address][:port]
+            <br />
+            <i>config</i> Pointer to options struct (must contain address and
+            port fields)
+            <br />
+            <i>remaining</i> Remaining positional args (unused for client)
+            <br />
+            <i>num_remaining</i> Count of remaining args
+            <br />
+            <i>error_msg</i> Error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of args consumed (always 1), or -1 on error
+          </div>
+          <p class="Pp">Client address parsing rules:</p>
+          <ul class="Bl-bullet">
+            <li>Parses single argument: [address][:port]</li>
+            <li>IPv6 with brackets and port: [::1]:8080</li>
+            <li>
+              IPv4/hostname with port: 192.168.1.1:8080 or example.com:8080
+            </li>
+            <li>Bare IPv6: ::1 (detected by multiple colons)</li>
+            <li>Bare hostname/IPv4: 192.168.1.1 or example.com</li>
+            <li>IPv4 addresses starting with digit are validated strictly</li>
+            <li>Detects port conflict if --port flag was already used</li>
+          </ul>
+          <p class="Pp">
+            This parser handles the complex logic of separating address from
+            optional port while correctly handling IPv6 addresses that contain
+            colons.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Example usage with <b>options_builder_add_positional()</b>:
+          </p>
+          <p class="Pp"></p>
+          <pre>options_builder_add_positional(
 <br/>
     builder,
 <br/>
@@ -272,10 +368,15 @@
     parse_client_address
 );
 </pre>
-<p class="Pp">Implements the client address parsing logic from client.c. Parses
-    [address][:port] with complex IPv6 handling.</p>
-<p class="Pp">Definition at line <b>634</b> of file <b>parsers.c</b>.</p>
-<pre>634                                                                                                                {
+          <p class="Pp">
+            Implements the client address parsing logic from client.c. Parses
+            [address][:port] with complex IPv6 handling.
+          </p>
+          <p class="Pp">
+            Definition at line <b>634</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+634                                                                                                                {
 635   (void)remaining;
 636   (void)num_remaining;
 637
@@ -451,35 +552,48 @@
 807
 808   return 1; // Consumed 1 arg
 809 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>is_session_string()</b>, <b>is_valid_ipv4()</b>,
-    <b>is_valid_ipv6()</b>, <b>log_debug</b>, <b>OPTIONS_BUFF_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE</b>,
-    <b>parse_client_address()</b>, <b>platform_strdup()</b>,
-    <b>SAFE_SNPRINTF</b>, <b>safe_snprintf()</b>, and
-    <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>, and
-    <b>parse_client_address()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_color_filter (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse color filter option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;green&quot;,
-  &quot;cyan&quot;, &quot;pink&quot;)
-<br/>
-<i>dest</i> Destination pointer (color_filter_t*)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values: none, black, white, green, magenta, fuchsia, orange,
-    teal, cyan, pink, red, yellow</p>
-<p class="Pp">Definition at line <b>217</b> of file <b>parsers.c</b>.</p>
-<pre>217                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>is_session_string()</b>, <b>is_valid_ipv4()</b>,
+            <b>is_valid_ipv6()</b>, <b>log_debug</b>, <b>OPTIONS_BUFF_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE</b>,
+            <b>parse_client_address()</b>, <b>platform_strdup()</b>,
+            <b>SAFE_SNPRINTF</b>, <b>safe_snprintf()</b>, and
+            <b>SESSION_STRING_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_preset_unified()</b>, and
+            <b>parse_client_address()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_color_filter (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse color filter option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;green&quot;,
+            &quot;cyan&quot;, &quot;pink&quot;)
+            <br />
+            <i>dest</i> Destination pointer (color_filter_t*)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">
+            Valid values: none, black, white, green, magenta, fuchsia, orange,
+            teal, cyan, pink, red, yellow
+          </p>
+          <p class="Pp">
+            Definition at line <b>217</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+217                                                                        {
 218   if (!arg || !dest) {
 219     if (error_msg) {
 220       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -509,42 +623,62 @@
 244   }
 245   return false;
 246 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_from_cli_name()</b>,
-    <b>COLOR_FILTER_NONE</b>, <b>OPT_COLOR_FILTER_NONE</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_color_filter()</b>,
-    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_filter()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_color_mode (const char * arg, void * dest, char
-  ** error_msg)</h2>
-<p class="Pp">Parse terminal color level option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
-  &quot;none&quot;, &quot;16&quot;, &quot;256&quot;, &quot;truecolor&quot;)
-<br/>
-<i>dest</i> Destination pointer (terminal_color_mode_t*)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;auto&quot;, &quot;a&quot; - Auto-detect from terminal</li>
-  <li>&quot;none&quot;, &quot;mono&quot;, &quot;monochrome&quot;, &quot;0&quot;
-      - No color (TERM_COLOR_NONE)</li>
-  <li>&quot;16&quot;, &quot;16color&quot;, &quot;ansi&quot; - 16-color mode
-      (TERM_COLOR_16)</li>
-  <li>&quot;256&quot;, &quot;256color&quot; - 256-color mode
-    (TERM_COLOR_256)</li>
-  <li>&quot;truecolor&quot;, &quot;true&quot;, &quot;tc&quot;, &quot;rgb&quot;,
-      &quot;24bit&quot; - Truecolor mode (TERM_COLOR_TRUECOLOR)</li>
-</ul>
-<p class="Pp">Definition at line <b>158</b> of file <b>parsers.c</b>.</p>
-<pre>158                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_filter_from_cli_name()</b>,
+            <b>COLOR_FILTER_NONE</b>, <b>OPT_COLOR_FILTER_NONE</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>parse_color_filter()</b>, <b>platform_strdup()</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_color_filter()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_color_mode (const char * arg, void * dest, char **
+            error_msg)
+          </h2>
+          <p class="Pp">Parse terminal color level option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;auto&quot;,
+            &quot;none&quot;, &quot;16&quot;, &quot;256&quot;,
+            &quot;truecolor&quot;)
+            <br />
+            <i>dest</i> Destination pointer (terminal_color_mode_t*)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>&quot;auto&quot;, &quot;a&quot; - Auto-detect from terminal</li>
+            <li>
+              &quot;none&quot;, &quot;mono&quot;, &quot;monochrome&quot;,
+              &quot;0&quot; - No color (TERM_COLOR_NONE)
+            </li>
+            <li>
+              &quot;16&quot;, &quot;16color&quot;, &quot;ansi&quot; - 16-color
+              mode (TERM_COLOR_16)
+            </li>
+            <li>
+              &quot;256&quot;, &quot;256color&quot; - 256-color mode
+              (TERM_COLOR_256)
+            </li>
+            <li>
+              &quot;truecolor&quot;, &quot;true&quot;, &quot;tc&quot;,
+              &quot;rgb&quot;, &quot;24bit&quot; - Truecolor mode
+              (TERM_COLOR_TRUECOLOR)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+158                                                                      {
 159   if (!arg || !dest) {
 160     if (error_msg) {
 161       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -602,46 +736,65 @@
 213   }
 214   return false;
 215 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
-    <b>OPT_COLOR_MODE_AUTO</b>, <b>OPT_COLOR_MODE_MONO</b>,
-    <b>OPT_COLOR_MODE_NONE</b>, <b>OPT_COLOR_MODE_TRUECOLOR</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_color_mode()</b>,
-    <b>platform_strdup()</b>, <b>safe_snprintf()</b>, <b>TERM_COLOR_16</b>,
-    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, and
-    <b>TERM_COLOR_TRUECOLOR</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_color_setting (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse color setting option (--color flag).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
-  &quot;true&quot;, &quot;false&quot;)
-<br/>
-<i>dest</i> Destination pointer (int*, will store <b>color_setting_t</b> value)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;auto&quot;, &quot;a&quot;, &quot;0&quot; - Smart detection
-      (COLOR_SETTING_AUTO, default)</li>
-  <li>&quot;true&quot;, &quot;yes&quot;, &quot;1&quot;, &quot;on&quot; - Force
-      colors ON (COLOR_SETTING_TRUE)</li>
-  <li>&quot;false&quot;, &quot;no&quot;, &quot;-1&quot;, &quot;off&quot; - Force
-      colors OFF (COLOR_SETTING_FALSE)</li>
-</ul>
-<p class="Pp">This controls whether colors are enabled (&quot;auto&quot;),
-    always on (&quot;true&quot;), or always off (&quot;false&quot;) regardless
-    of TTY detection or environment variables.</p>
-<p class="Pp">Definition at line <b>108</b> of file <b>parsers.c</b>.</p>
-<pre>108                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_suggest_enum_value()</b>,
+            <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
+            <b>OPT_COLOR_MODE_AUTO</b>, <b>OPT_COLOR_MODE_MONO</b>,
+            <b>OPT_COLOR_MODE_NONE</b>, <b>OPT_COLOR_MODE_TRUECOLOR</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>parse_color_mode()</b>, <b>platform_strdup()</b>,
+            <b>safe_snprintf()</b>, <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
+            <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, and
+            <b>TERM_COLOR_TRUECOLOR</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_color_setting (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse color setting option (--color flag).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;auto&quot;,
+            &quot;true&quot;, &quot;false&quot;)
+            <br />
+            <i>dest</i> Destination pointer (int*, will store
+            <b>color_setting_t</b> value)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;auto&quot;, &quot;a&quot;, &quot;0&quot; - Smart detection
+              (COLOR_SETTING_AUTO, default)
+            </li>
+            <li>
+              &quot;true&quot;, &quot;yes&quot;, &quot;1&quot;, &quot;on&quot; -
+              Force colors ON (COLOR_SETTING_TRUE)
+            </li>
+            <li>
+              &quot;false&quot;, &quot;no&quot;, &quot;-1&quot;, &quot;off&quot;
+              - Force colors OFF (COLOR_SETTING_FALSE)
+            </li>
+          </ul>
+          <p class="Pp">
+            This controls whether colors are enabled (&quot;auto&quot;), always
+            on (&quot;true&quot;), or always off (&quot;false&quot;) regardless
+            of TTY detection or environment variables.
+          </p>
+          <p class="Pp">
+            Definition at line <b>108</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+108                                                                         {
 109   if (!dest) {
 110     if (error_msg) {
 111       *error_msg = platform_strdup(&quot;Internal error: NULL destination&quot;);
@@ -659,27 +812,40 @@
 123
 124   return parse_setting_generic(arg, dest, g_color_setting_map, error_msg);
 125 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>COLOR_SETTING_TRUE</b>,
-    <b>parse_color_setting()</b>, and <b>platform_strdup()</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_setting()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_log_file (const char * arg, void * dest, char
-  ** error_msg)</h2>
-<p class="Pp">Custom parser for log file paths (--log-file, -L). Validates that
-    the log file path is safe:</p>
-<ul class="Bl-bullet">
-  <li>Rejects attempts to write to protected system directories (/etc, /System,
-      /Windows, etc.)</li>
-  <li>Allows overwriting existing ascii-chat log files</li>
-  <li>Allows paths in safe locations (/tmp, /var/log, home directory, cwd,
-    etc.)</li>
-  <li>Returns error message if validation fails</li>
-</ul>
-<p class="Pp">Definition at line <b>1073</b> of file <b>parsers.c</b>.</p>
-<pre>1073                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>COLOR_SETTING_TRUE</b>, <b>parse_color_setting()</b>,
+            and <b>platform_strdup()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_color_setting()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_log_file (const char * arg, void * dest, char **
+            error_msg)
+          </h2>
+          <p class="Pp">
+            Custom parser for log file paths (--log-file, -L). Validates that
+            the log file path is safe:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Rejects attempts to write to protected system directories (/etc,
+              /System, /Windows, etc.)
+            </li>
+            <li>Allows overwriting existing ascii-chat log files</li>
+            <li>
+              Allows paths in safe locations (/tmp, /var/log, home directory,
+              cwd, etc.)
+            </li>
+            <li>Returns error message if validation fails</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>1073</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+1073                                                                    {
 1074   if (!arg || !dest) {
 1075     if (error_msg) {
 1076       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -712,44 +878,63 @@
 1103   SAFE_FREE(normalized);
 1104   return true;
 1105 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>,
-    <b>parse_log_file()</b>, <b>PATH_ROLE_LOG_FILE</b>,
-    <b>path_validate_user_path()</b>, <b>platform_strdup()</b>,
-    <b>SAFE_FREE</b>, and <b>SAFE_STRNCPY</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_log_level (const char * arg, void * dest, char
-  ** error_msg)</h2>
-<p class="Pp">Parse log level option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;debug&quot;,
-  &quot;info&quot;, &quot;warn&quot;)
-<br/>
-<i>dest</i> Destination pointer (log_level_t*)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;dev&quot;, &quot;development&quot;, &quot;0&quot; - Development
-      level (LOG_DEV)</li>
-  <li>&quot;debug&quot;, &quot;dbg&quot;, &quot;1&quot; - Debug level
-      (LOG_DEBUG)</li>
-  <li>&quot;info&quot;, &quot;information&quot;, &quot;2&quot; - Info level
-      (LOG_INFO)</li>
-  <li>&quot;warn&quot;, &quot;warning&quot;, &quot;3&quot; - Warning level
-      (LOG_WARN)</li>
-  <li>&quot;error&quot;, &quot;err&quot;, &quot;4&quot; - Error level
-      (LOG_ERROR)</li>
-  <li>&quot;fatal&quot;, &quot;5&quot; - Fatal level (LOG_FATAL)</li>
-</ul>
-<p class="Pp">Definition at line <b>397</b> of file <b>parsers.c</b>.</p>
-<pre>397                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>,
+            <b>parse_log_file()</b>, <b>PATH_ROLE_LOG_FILE</b>,
+            <b>path_validate_user_path()</b>, <b>platform_strdup()</b>,
+            <b>SAFE_FREE</b>, and <b>SAFE_STRNCPY</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_log_file()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_log_level (const char * arg, void * dest, char **
+            error_msg)
+          </h2>
+          <p class="Pp">Parse log level option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;debug&quot;,
+            &quot;info&quot;, &quot;warn&quot;)
+            <br />
+            <i>dest</i> Destination pointer (log_level_t*)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;dev&quot;, &quot;development&quot;, &quot;0&quot; -
+              Development level (LOG_DEV)
+            </li>
+            <li>
+              &quot;debug&quot;, &quot;dbg&quot;, &quot;1&quot; - Debug level
+              (LOG_DEBUG)
+            </li>
+            <li>
+              &quot;info&quot;, &quot;information&quot;, &quot;2&quot; - Info
+              level (LOG_INFO)
+            </li>
+            <li>
+              &quot;warn&quot;, &quot;warning&quot;, &quot;3&quot; - Warning
+              level (LOG_WARN)
+            </li>
+            <li>
+              &quot;error&quot;, &quot;err&quot;, &quot;4&quot; - Error level
+              (LOG_ERROR)
+            </li>
+            <li>&quot;fatal&quot;, &quot;5&quot; - Fatal level (LOG_FATAL)</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>397</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+397                                                                     {
 398   if (!dest) {
 399     if (error_msg) {
 400       *error_msg = platform_strdup(&quot;Internal error: NULL destination&quot;);
@@ -812,51 +997,76 @@
 457   }
 458   return false;
 459 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>DEFAULT_LOG_LEVEL</b>, <b>LOG_DEBUG</b>,
-    <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>,
-    <b>LOG_WARN</b>, <b>OPT_LOG_LEVEL_DEBUG</b>, <b>OPT_LOG_LEVEL_DEV</b>,
-    <b>OPT_LOG_LEVEL_ERROR</b>, <b>OPT_LOG_LEVEL_FATAL</b>,
-    <b>OPT_LOG_LEVEL_INFO</b>, <b>OPT_LOG_LEVEL_WARN</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_log_level()</b>,
-    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_parse_mirror_media_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_mirror_media_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
-  parse_mirror_media (const char * arg, void * config, char ** remaining, int
-  num_remaining, char ** error_msg)</a></h2>
-<p class="Pp">Parse mirror mode media positional argument. Parse mirror mode
-    positional argument (file path or URL).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> File path or URL argument
-<br/>
-<i>config</i> Pointer to options struct (must contain media_file and media_url
-  fields)
-<br/>
-<i>remaining</i> Remaining positional args (unused)
-<br/>
-<i>num_remaining</i> Count of remaining args
-<br/>
-<i>error_msg</i> Error message output (set on failure, caller must free)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">1 if consumed the argument, -1 on error</div>
-<p class="Pp">Mirror mode media argument parsing rules:</p>
-<ul class="Bl-bullet">
-  <li>Cannot be used together with --file or --url flags (mutually
-    exclusive)</li>
-  <li>Attempts to access argument as a file path first (using
-    platform_access)</li>
-  <li>If file doesn't exist or isn't readable, treats as URL</li>
-  <li>Sets either media_file or media_url field depending on what's
-    detected</li>
-</ul>
-<p class="Pp">Example usage with <b>options_builder_add_positional()</b>:</p>
-<p class="Pp"></p>
-<pre>options_builder_add_positional(
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>DEFAULT_LOG_LEVEL</b>, <b>LOG_DEBUG</b>,
+            <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>,
+            <b>LOG_WARN</b>, <b>OPT_LOG_LEVEL_DEBUG</b>,
+            <b>OPT_LOG_LEVEL_DEV</b>, <b>OPT_LOG_LEVEL_ERROR</b>,
+            <b>OPT_LOG_LEVEL_FATAL</b>, <b>OPT_LOG_LEVEL_INFO</b>,
+            <b>OPT_LOG_LEVEL_WARN</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>parse_log_level()</b>, <b>platform_strdup()</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_parse_mirror_media_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"
+          >
+            <a
+              class="permalink"
+              href="#int_parse_mirror_media_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"
+              >int parse_mirror_media (const char * arg, void * config, char **
+              remaining, int num_remaining, char ** error_msg)</a
+            >
+          </h2>
+          <p class="Pp">
+            Parse mirror mode media positional argument. Parse mirror mode
+            positional argument (file path or URL).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> File path or URL argument
+            <br />
+            <i>config</i> Pointer to options struct (must contain media_file and
+            media_url fields)
+            <br />
+            <i>remaining</i> Remaining positional args (unused)
+            <br />
+            <i>num_remaining</i> Count of remaining args
+            <br />
+            <i>error_msg</i> Error message output (set on failure, caller must
+            free)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">1 if consumed the argument, -1 on error</div>
+          <p class="Pp">Mirror mode media argument parsing rules:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Cannot be used together with --file or --url flags (mutually
+              exclusive)
+            </li>
+            <li>
+              Attempts to access argument as a file path first (using
+              platform_access)
+            </li>
+            <li>If file doesn't exist or isn't readable, treats as URL</li>
+            <li>
+              Sets either media_file or media_url field depending on what's
+              detected
+            </li>
+          </ul>
+          <p class="Pp">
+            Example usage with <b>options_builder_add_positional()</b>:
+          </p>
+          <p class="Pp"></p>
+          <pre>options_builder_add_positional(
 <br/>
     builder,
 <br/>
@@ -869,21 +1079,26 @@
     parse_mirror_media
 );
 </pre>
-<p class="Pp">Parse mirror mode media positional argument.</p>
-<p class="Pp"></p>
-<p class="Pp">Logic:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Enforce mutual exclusion with --file and --url flags</dd>
-  <dt>2.</dt>
-  <dd>Check if argument is an accessible file path first</dd>
-  <dt>3.</dt>
-  <dd>If not a file, treat as URL (yt-dlp/ffmpeg will handle errors)</dd>
-  <dt>4.</dt>
-  <dd>Set media_file or media_url accordingly</dd>
-</dl>
-<p class="Pp">Definition at line <b>824</b> of file <b>parsers.c</b>.</p>
-<pre>824                                                                                                              {
+          <p class="Pp">Parse mirror mode media positional argument.</p>
+          <p class="Pp"></p>
+          <p class="Pp">Logic:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Enforce mutual exclusion with --file and --url flags</dd>
+            <dt>2.</dt>
+            <dd>Check if argument is an accessible file path first</dd>
+            <dt>3.</dt>
+            <dd>
+              If not a file, treat as URL (yt-dlp/ffmpeg will handle errors)
+            </dd>
+            <dt>4.</dt>
+            <dd>Set media_file or media_url accordingly</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>824</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+824                                                                                                              {
 825   (void)remaining;
 826   (void)num_remaining;
 827
@@ -928,34 +1143,46 @@
 866   SAFE_SNPRINTF(media_url, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
 867   return 1; // Consumed 1 argument
 868 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>OPTIONS_BUFF_SIZE</b>,
-    <b>parse_mirror_media()</b>, <b>platform_access()</b>,
-    <b>PLATFORM_ACCESS_READ</b>, <b>platform_strdup()</b>, and
-    <b>SAFE_SNPRINTF</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>, and
-    <b>parse_mirror_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_palette_chars (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse custom palette characters option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String of characters ordered from darkest to
-  brightest
-<br/>
-<i>dest</i> Destination pointer (char[256])
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">The characters should be ordered from darkest (leftmost) to
-    brightest (rightmost). Maximum length is 255 characters.</p>
-<p class="Pp"></p>
-<p class="Pp">Example: &quot; .:-=+*#%@&quot;</p>
-<p class="Pp">Definition at line <b>874</b> of file <b>parsers.c</b>.</p>
-<pre>874                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>, <b>OPTIONS_BUFF_SIZE</b>,
+            <b>parse_mirror_media()</b>, <b>platform_access()</b>,
+            <b>PLATFORM_ACCESS_READ</b>, <b>platform_strdup()</b>, and
+            <b>SAFE_SNPRINTF</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_preset_unified()</b>, and
+            <b>parse_mirror_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_palette_chars (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse custom palette characters option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String of characters ordered from darkest to brightest
+            <br />
+            <i>dest</i> Destination pointer (char[256])
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">
+            The characters should be ordered from darkest (leftmost) to
+            brightest (rightmost). Maximum length is 255 characters.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Example: &quot; .:-=+*#%@&quot;</p>
+          <p class="Pp">
+            Definition at line <b>874</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+874                                                                         {
 875   if (!arg || !dest) {
 876     if (error_msg) {
 877       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -998,43 +1225,66 @@
 914
 915   return true;
 916 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>PALETTE_CUSTOM</b>,
-    <b>options_state::palette_explicit</b>, <b>options_state::palette_type</b>,
-    <b>parse_palette_chars()</b>, <b>platform_strdup()</b>,
-    <b>safe_snprintf()</b>, and <b>SAFE_STRNCPY</b>.</p>
-<p class="Pp">Referenced by <b>parse_palette_chars()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_palette_type (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse palette type option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;standard&quot;,
-  &quot;blocks&quot;, &quot;custom&quot;)
-<br/>
-<i>dest</i> Destination pointer (palette_type_t*)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;standard&quot;, &quot;std&quot;, &quot;0&quot; - Standard palette
-      (PALETTE_STANDARD)</li>
-  <li>&quot;blocks&quot;, &quot;block&quot;, &quot;1&quot; - Blocks palette
-      (PALETTE_BLOCKS)</li>
-  <li>&quot;digital&quot;, &quot;dig&quot;, &quot;2&quot; - Digital palette
-      (PALETTE_DIGITAL)</li>
-  <li>&quot;minimal&quot;, &quot;min&quot;, &quot;3&quot; - Minimal palette
-      (PALETTE_MINIMAL)</li>
-  <li>&quot;cool&quot;, &quot;4&quot; - Cool palette (PALETTE_COOL)</li>
-  <li>&quot;custom&quot;, &quot;5&quot; - Custom palette (PALETTE_CUSTOM)</li>
-</ul>
-<p class="Pp">Definition at line <b>334</b> of file <b>parsers.c</b>.</p>
-<pre>334                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>PALETTE_CUSTOM</b>, <b>options_state::palette_explicit</b>,
+            <b>options_state::palette_type</b>, <b>parse_palette_chars()</b>,
+            <b>platform_strdup()</b>, <b>safe_snprintf()</b>, and
+            <b>SAFE_STRNCPY</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_palette_chars()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_palette_type (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse palette type option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;standard&quot;,
+            &quot;blocks&quot;, &quot;custom&quot;)
+            <br />
+            <i>dest</i> Destination pointer (palette_type_t*)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;standard&quot;, &quot;std&quot;, &quot;0&quot; - Standard
+              palette (PALETTE_STANDARD)
+            </li>
+            <li>
+              &quot;blocks&quot;, &quot;block&quot;, &quot;1&quot; - Blocks
+              palette (PALETTE_BLOCKS)
+            </li>
+            <li>
+              &quot;digital&quot;, &quot;dig&quot;, &quot;2&quot; - Digital
+              palette (PALETTE_DIGITAL)
+            </li>
+            <li>
+              &quot;minimal&quot;, &quot;min&quot;, &quot;3&quot; - Minimal
+              palette (PALETTE_MINIMAL)
+            </li>
+            <li>
+              &quot;cool&quot;, &quot;4&quot; - Cool palette (PALETTE_COOL)
+            </li>
+            <li>
+              &quot;custom&quot;, &quot;5&quot; - Custom palette
+              (PALETTE_CUSTOM)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>334</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+334                                                                        {
 335   if (!arg || !dest) {
 336     if (error_msg) {
 337       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -1096,36 +1346,47 @@
 393   }
 394   return false;
 395 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
-    <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
-    <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>PALETTE_BLOCKS</b>,
-    <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>,
-    <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>,
-    <b>parse_palette_type()</b>, <b>platform_strdup()</b>, and
-    <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_palette_type()</b>, and
-    <b>set_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_port_option (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse and validate port option for CLI.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Port string to parse
-<br/>
-<i>dest</i> Destination pointer (int* for port storage)
-<br/>
-<i>error_msg</i> Error message output (set on failure, caller must free)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Validates port is a number in the range 1-65535.</p>
-<p class="Pp">Definition at line <b>461</b> of file <b>parsers.c</b>.</p>
-<pre>461                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_suggest_enum_value()</b>,
+            <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
+            <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
+            <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
+            <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>,
+            <b>PALETTE_STANDARD</b>, <b>parse_palette_type()</b>,
+            <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>parse_palette_type()</b>, and <b>set_palette()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_port_option (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse and validate port option for CLI.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> Port string to parse
+            <br />
+            <i>dest</i> Destination pointer (int* for port storage)
+            <br />
+            <i>error_msg</i> Error message output (set on failure, caller must
+            free)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Validates port is a number in the range 1-65535.</p>
+          <p class="Pp">
+            Definition at line <b>461</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+461                                                                       {
 462   if (!arg || !dest) {
 463     if (error_msg) {
 464       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -1161,38 +1422,53 @@
 494   *port_value = (int)port_num;
 495   return true;
 496 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_port()</b>,
-    <b>parse_port_option()</b>, <b>platform_strdup()</b>, and
-    <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_port_option()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_render_mode (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse render mode option.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;foreground&quot;,
-  &quot;background&quot;, &quot;half-block&quot;)
-<br/>
-<i>dest</i> Destination pointer (render_mode_t*)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;foreground&quot;, &quot;fg&quot;, &quot;0&quot; - Foreground mode
-      (RENDER_MODE_FOREGROUND)</li>
-  <li>&quot;background&quot;, &quot;bg&quot;, &quot;1&quot; - Background mode
-      (RENDER_MODE_BACKGROUND)</li>
-  <li>&quot;half-block&quot;, &quot;half&quot;, &quot;hb&quot;, &quot;2&quot; -
-      Half-block mode (RENDER_MODE_HALF_BLOCK)</li>
-</ul>
-<p class="Pp">Definition at line <b>248</b> of file <b>parsers.c</b>.</p>
-<pre>248                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_port()</b>,
+            <b>parse_port_option()</b>, <b>platform_strdup()</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_port_option()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_render_mode (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse render mode option.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;foreground&quot;,
+            &quot;background&quot;, &quot;half-block&quot;)
+            <br />
+            <i>dest</i> Destination pointer (render_mode_t*)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;foreground&quot;, &quot;fg&quot;, &quot;0&quot; - Foreground
+              mode (RENDER_MODE_FOREGROUND)
+            </li>
+            <li>
+              &quot;background&quot;, &quot;bg&quot;, &quot;1&quot; - Background
+              mode (RENDER_MODE_BACKGROUND)
+            </li>
+            <li>
+              &quot;half-block&quot;, &quot;half&quot;, &quot;hb&quot;,
+              &quot;2&quot; - Half-block mode (RENDER_MODE_HALF_BLOCK)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>248</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+248                                                                       {
 249   if (!arg || !dest) {
 250     if (error_msg) {
 251       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -1238,47 +1514,65 @@
 291   }
 292   return false;
 293 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>OPT_RENDER_MODE_BACKGROUND</b>, <b>OPT_RENDER_MODE_BG</b>,
-    <b>OPT_RENDER_MODE_FG</b>, <b>OPT_RENDER_MODE_FOREGROUND</b>,
-    <b>OPT_RENDER_MODE_HALF_BLOCK</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_render_mode()</b>,
-    <b>platform_strdup()</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>, and
-    <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_render_theme (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse render theme option for pixel rendering.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;dark&quot;,
-  &quot;light&quot;, &quot;auto&quot;)
-<br/>
-<i>dest</i> Destination pointer (int*, will store <b>term_renderer_theme_t</b>
-  value)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Controls the rendering theme when using pixel output. The theme
-    determines color palette for ANSI text rendering.</p>
-<p class="Pp"></p>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;dark&quot;, &quot;0&quot; - Dark theme: dark background, light text
-      (TERM_RENDERER_THEME_DARK)</li>
-  <li>&quot;light&quot;, &quot;1&quot; - Light theme: light background, dark
-      text (TERM_RENDERER_THEME_LIGHT)</li>
-  <li>&quot;auto&quot;, &quot;2&quot; - Auto-detect theme from terminal
-      (TERM_RENDERER_THEME_AUTO, default)</li>
-</ul>
-<p class="Pp">Definition at line <b>295</b> of file <b>parsers.c</b>.</p>
-<pre>295                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_suggest_enum_value()</b>,
+            <b>OPT_RENDER_MODE_BACKGROUND</b>, <b>OPT_RENDER_MODE_BG</b>,
+            <b>OPT_RENDER_MODE_FG</b>, <b>OPT_RENDER_MODE_FOREGROUND</b>,
+            <b>OPT_RENDER_MODE_HALF_BLOCK</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>parse_render_mode()</b>, <b>platform_strdup()</b>,
+            <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_FOREGROUND</b>,
+            <b>RENDER_MODE_HALF_BLOCK</b>, and <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_render_theme (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse render theme option for pixel rendering.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;dark&quot;,
+            &quot;light&quot;, &quot;auto&quot;)
+            <br />
+            <i>dest</i> Destination pointer (int*, will store
+            <b>term_renderer_theme_t</b>
+            value)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">
+            Controls the rendering theme when using pixel output. The theme
+            determines color palette for ANSI text rendering.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;dark&quot;, &quot;0&quot; - Dark theme: dark background,
+              light text (TERM_RENDERER_THEME_DARK)
+            </li>
+            <li>
+              &quot;light&quot;, &quot;1&quot; - Light theme: light background,
+              dark text (TERM_RENDERER_THEME_LIGHT)
+            </li>
+            <li>
+              &quot;auto&quot;, &quot;2&quot; - Auto-detect theme from terminal
+              (TERM_RENDERER_THEME_AUTO, default)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>295</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+295                                                                        {
 296   if (!arg || !dest) {
 297     if (error_msg) {
 298       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -1316,48 +1610,72 @@
 330   }
 331   return false;
 332 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>OPT_RENDER_THEME_DARK</b>,
-    <b>OPT_RENDER_THEME_LIGHT</b>, <b>OPT_VALUE_AUTO</b>,
-    <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>, <b>parse_render_theme()</b>,
-    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_render_theme()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
-  parse_server_bind_address (const char * arg, void * config, char ** remaining,
-  int num_remaining, char ** error_msg)</a></h2>
-<p class="Pp">Parse server bind address positional argument.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Current bind address argument
-<br/>
-<i>config</i> Pointer to options struct (must contain address/address6 fields)
-<br/>
-<i>remaining</i> Remaining positional args (for multi-arg parsing)
-<br/>
-<i>num_remaining</i> Count of remaining args
-<br/>
-<i>error_msg</i> Error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of args consumed (0-2), or -1 on error</div>
-<p class="Pp">Server bind address parsing rules:</p>
-<ul class="Bl-bullet">
-  <li>0 args total: Uses defaults (127.0.0.1 + ::1 for dual-stack
-    localhost)</li>
-  <li>1 arg: Single IPv4 OR IPv6 bind address</li>
-  <li>2 args: One IPv4 AND one IPv6 bind address (order-independent)</li>
-  <li>Cannot specify multiple addresses of the same type</li>
-  <li>IPv6 addresses can be wrapped in brackets (e.g., [::1])</li>
-</ul>
-<p class="Pp">This parser can consume 0-2 arguments depending on what's
-    provided. It tracks internal state to ensure only one IPv4 and one IPv6 are
-    specified.</p>
-<p class="Pp"></p>
-<p class="Pp">Example usage with <b>options_builder_add_positional()</b>:</p>
-<p class="Pp"></p>
-<pre>options_builder_add_positional(
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>OPT_RENDER_THEME_DARK</b>,
+            <b>OPT_RENDER_THEME_LIGHT</b>, <b>OPT_VALUE_AUTO</b>,
+            <b>OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>parse_render_theme()</b>, <b>platform_strdup()</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_render_theme()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"
+          >
+            <a
+              class="permalink"
+              href="#int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"
+              >int parse_server_bind_address (const char * arg, void * config,
+              char ** remaining, int num_remaining, char ** error_msg)</a
+            >
+          </h2>
+          <p class="Pp">Parse server bind address positional argument.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> Current bind address argument
+            <br />
+            <i>config</i> Pointer to options struct (must contain
+            address/address6 fields)
+            <br />
+            <i>remaining</i> Remaining positional args (for multi-arg parsing)
+            <br />
+            <i>num_remaining</i> Count of remaining args
+            <br />
+            <i>error_msg</i> Error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of args consumed (0-2), or -1 on error
+          </div>
+          <p class="Pp">Server bind address parsing rules:</p>
+          <ul class="Bl-bullet">
+            <li>
+              0 args total: Uses defaults (127.0.0.1 + ::1 for dual-stack
+              localhost)
+            </li>
+            <li>1 arg: Single IPv4 OR IPv6 bind address</li>
+            <li>
+              2 args: One IPv4 AND one IPv6 bind address (order-independent)
+            </li>
+            <li>Cannot specify multiple addresses of the same type</li>
+            <li>IPv6 addresses can be wrapped in brackets (e.g., [::1])</li>
+          </ul>
+          <p class="Pp">
+            This parser can consume 0-2 arguments depending on what's provided.
+            It tracks internal state to ensure only one IPv4 and one IPv6 are
+            specified.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Example usage with <b>options_builder_add_positional()</b>:
+          </p>
+          <p class="Pp"></p>
+          <pre>options_builder_add_positional(
 <br/>
     builder,
 <br/>
@@ -1370,11 +1688,17 @@
     parse_server_bind_address
 );
 </pre>
-<p class="Pp">Implements the server bind address parsing logic from server.c.
-    Can consume 1 argument per call, handling IPv4 or IPv6 bind addresses. The
-    positional arg system will call this multiple times for multiple args.</p>
-<p class="Pp">Definition at line <b>512</b> of file <b>parsers.c</b>.</p>
-<pre>512                                                                                                                     {
+          <p class="Pp">
+            Implements the server bind address parsing logic from server.c. Can
+            consume 1 argument per call, handling IPv4 or IPv6 bind addresses.
+            The positional arg system will call this multiple times for multiple
+            args.
+          </p>
+          <p class="Pp">
+            Definition at line <b>512</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+512                                                                                                                     {
 513   if (!arg || !config) {
 514     if (error_msg) {
 515       *error_msg = platform_strdup(&quot;Internal error: NULL argument or config&quot;);
@@ -1489,41 +1813,59 @@
 624
 625   return consumed;
 626 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
-    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>, <b>OPTIONS_BUFF_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
-    <b>OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE</b>,
-    <b>parse_ipv6_address()</b>, <b>parse_server_bind_address()</b>,
-    <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>, and
-  <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>, and
-    <b>parse_server_bind_address()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_timestamp (const char * arg, void * dest, char
-  ** error_msg)</h2>
-<p class="Pp">Custom parser for --timestamp flag. Custom parser for --seek
-  flag.</p>
-<p class="Pp"></p>
-<p class="Pp">Allows --timestamp to work both as a flag with an argument. Sets
-    media_seek_timestamp to the provided timestamp in seconds.</p>
-<p class="Pp"></p>
-<p class="Pp">Custom parser for --timestamp flag.</p>
-<p class="Pp"></p>
-<p class="Pp">Accepts both &quot;hh:mm:ss.ms&quot; format and plain seconds
-    format. Examples:</p>
-<ul class="Bl-bullet">
-  <li>&quot;30&quot; = 30 seconds</li>
-  <li>&quot;30.5&quot; = 30.5 seconds</li>
-  <li>&quot;1:30&quot; = 1 minute 30 seconds (90 seconds)</li>
-  <li>&quot;1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
-  <li>&quot;0:1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
-  <li>&quot;1:2:30.5&quot; = 1 hour 2 minutes 30.5 seconds (3750.5 seconds)</li>
-</ul>
-<p class="Pp">Definition at line <b>956</b> of file <b>parsers.c</b>.</p>
-<pre>956                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
+            <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
+            <b>OPTIONS_BUFF_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_BUFFER_SIZE</b>,
+            <b>OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE</b>,
+            <b>parse_ipv6_address()</b>, <b>parse_server_bind_address()</b>,
+            <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>options_preset_unified()</b>, and
+            <b>parse_server_bind_address()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_timestamp (const char * arg, void * dest, char **
+            error_msg)
+          </h2>
+          <p class="Pp">
+            Custom parser for --timestamp flag. Custom parser for --seek flag.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Allows --timestamp to work both as a flag with an argument. Sets
+            media_seek_timestamp to the provided timestamp in seconds.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Custom parser for --timestamp flag.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Accepts both &quot;hh:mm:ss.ms&quot; format and plain seconds
+            format. Examples:
+          </p>
+          <ul class="Bl-bullet">
+            <li>&quot;30&quot; = 30 seconds</li>
+            <li>&quot;30.5&quot; = 30.5 seconds</li>
+            <li>&quot;1:30&quot; = 1 minute 30 seconds (90 seconds)</li>
+            <li>&quot;1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
+            <li>&quot;0:1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
+            <li>
+              &quot;1:2:30.5&quot; = 1 hour 2 minutes 30.5 seconds (3750.5
+              seconds)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>956</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+956                                                                     {
 957   if (!arg || arg[0] == '\0') {
 958     if (error_msg) {
 959       *error_msg = platform_strdup(&quot;--seek requires a timestamp argument&quot;);
@@ -1607,40 +1949,58 @@
 1037     return false;
 1038   }
 1039 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>parse_timestamp()</b>, <b>platform_strdup()</b>,
-    <b>SEC_PER_HOUR</b>, and <b>SEC_PER_MIN</b>.</p>
-<p class="Pp">Referenced by <b>parse_timestamp()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_utf8_setting (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Parse UTF-8 setting option (--utf8 flag).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
-  &quot;true&quot;, &quot;false&quot;), or NULL/empty for default
-<br/>
-<i>dest</i> Destination pointer (int*, will store <b>utf8_setting_t</b> value)
-<br/>
-<i>error_msg</i> Optional error message output (set on failure)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;auto&quot;, &quot;a&quot;, &quot;0&quot; - Smart detection
-      (UTF8_SETTING_AUTO, default)</li>
-  <li>&quot;true&quot;, &quot;yes&quot;, &quot;1&quot;, &quot;on&quot; - Force
-      UTF-8 ON (UTF8_SETTING_TRUE)</li>
-  <li>&quot;false&quot;, &quot;no&quot;, &quot;-1&quot;, &quot;off&quot; - Force
-      UTF-8 OFF (UTF8_SETTING_FALSE)</li>
-</ul>
-<p class="Pp">When no argument is provided (--utf8 with no value), defaults to
-    UTF8_SETTING_TRUE. This controls whether UTF-8 is auto-detected
-    (&quot;auto&quot;), always on (&quot;true&quot;), or always off
-    (&quot;false&quot;) regardless of terminal capability detection.</p>
-<p class="Pp">Definition at line <b>139</b> of file <b>parsers.c</b>.</p>
-<pre>139                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>parse_timestamp()</b>, <b>platform_strdup()</b>,
+            <b>SEC_PER_HOUR</b>, and <b>SEC_PER_MIN</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_timestamp()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_utf8_setting (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">Parse UTF-8 setting option (--utf8 flag).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>arg</i> String argument (e.g., &quot;auto&quot;,
+            &quot;true&quot;, &quot;false&quot;), or NULL/empty for default
+            <br />
+            <i>dest</i> Destination pointer (int*, will store
+            <b>utf8_setting_t</b> value)
+            <br />
+            <i>error_msg</i> Optional error message output (set on failure)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true on success, false on error</div>
+          <p class="Pp">Valid values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;auto&quot;, &quot;a&quot;, &quot;0&quot; - Smart detection
+              (UTF8_SETTING_AUTO, default)
+            </li>
+            <li>
+              &quot;true&quot;, &quot;yes&quot;, &quot;1&quot;, &quot;on&quot; -
+              Force UTF-8 ON (UTF8_SETTING_TRUE)
+            </li>
+            <li>
+              &quot;false&quot;, &quot;no&quot;, &quot;-1&quot;, &quot;off&quot;
+              - Force UTF-8 OFF (UTF8_SETTING_FALSE)
+            </li>
+          </ul>
+          <p class="Pp">
+            When no argument is provided (--utf8 with no value), defaults to
+            UTF8_SETTING_TRUE. This controls whether UTF-8 is auto-detected
+            (&quot;auto&quot;), always on (&quot;true&quot;), or always off
+            (&quot;false&quot;) regardless of terminal capability detection.
+          </p>
+          <p class="Pp">
+            Definition at line <b>139</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+139                                                                        {
 140   if (!dest) {
 141     if (error_msg) {
 142       *error_msg = platform_strdup(&quot;Internal error: NULL destination&quot;);
@@ -1658,20 +2018,29 @@
 154
 155   return parse_setting_generic(arg, dest, g_utf8_setting_map, error_msg);
 156 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>parse_utf8_setting()</b>, <b>platform_strdup()</b>,
-    and <b>UTF8_SETTING_TRUE</b>.</p>
-<p class="Pp">Referenced by <b>parse_utf8_setting()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_verbose_flag (const char * arg, void * dest,
-  char ** error_msg)</h2>
-<p class="Pp">Custom parser for --verbose flag. Allows --verbose to work both as
-    a flag (without argument) and with an optional count argument. Increments
-    verbose_level each time called.</p>
-<p class="Pp">Definition at line <b>918</b> of file <b>parsers.c</b>.</p>
-<pre>918                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>parse_utf8_setting()</b>, <b>platform_strdup()</b>,
+            and <b>UTF8_SETTING_TRUE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_utf8_setting()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_verbose_flag (const char * arg, void * dest, char
+            ** error_msg)
+          </h2>
+          <p class="Pp">
+            Custom parser for --verbose flag. Allows --verbose to work both as a
+            flag (without argument) and with an optional count argument.
+            Increments verbose_level each time called.
+          </p>
+          <p class="Pp">
+            Definition at line <b>918</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+918                                                                        {
 919   (void)error_msg; // Unused but required by function signature
 920
 921   // If arg is NULL or starts with a flag, just increment
@@ -1696,19 +2065,27 @@
 940   (*verbose_level)++;
 941   return true;
 942 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>parse_verbose_flag()</b>.</p>
-<p class="Pp">Referenced by <b>parse_verbose_flag()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> parse_volume (const char * arg, void * dest, char **
-  error_msg)</h2>
-<p class="Pp">Custom parser for volume options (--volume, --speakers-volume,
-    --microphone-volume). Validates that the volume is a float value between 0.0
-    and 1.0. Sets the destination float to the parsed volume value.</p>
-<p class="Pp">Definition at line <b>1041</b> of file <b>parsers.c</b>.</p>
-<pre>1041                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>parse_verbose_flag()</b>.</p>
+          <p class="Pp">Referenced by <b>parse_verbose_flag()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> parse_volume (const char * arg, void * dest, char **
+            error_msg)
+          </h2>
+          <p class="Pp">
+            Custom parser for volume options (--volume, --speakers-volume,
+            --microphone-volume). Validates that the volume is a float value
+            between 0.0 and 1.0. Sets the destination float to the parsed volume
+            value.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1041</b> of file <b>parsers.c</b>.
+          </p>
+          <pre>
+1041                                                                  {
 1042   if (!arg || !dest) {
 1043     if (error_msg) {
 1044       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
@@ -1739,24 +2116,28 @@
 1069   *volume = val;
 1070   return true;
 1071 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>OPTIONS_PARSING_PARSERS_BUF_BUFFER_SIZE</b>,
-    <b>parse_volume()</b>, <b>platform_strdup()</b>, and
-  <b>SAFE_SNPRINTF</b>.</p>
-<p class="Pp">Referenced by <b>parse_volume()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>OPTIONS_PARSING_PARSERS_BUF_BUFFER_SIZE</b>,
+            <b>parse_volume()</b>, <b>platform_strdup()</b>, and
+            <b>SAFE_SNPRINTF</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_volume()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

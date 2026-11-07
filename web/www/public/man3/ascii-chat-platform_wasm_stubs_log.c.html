@@ -1,91 +1,143 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>log.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">log.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">log.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">log.c - Logging utility stubs for WASM.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>log_mmap_init_simple</b> (const char
-    *log_path, size_t max_size)
-  <br/>
-  Initialize mmap logging with simple parameters. <b>bool</b>
-    <b>log_mmap_is_active</b> (void)
-  <br/>
-  Check if mmap logging is active. void <b>log_mmap_write</b> (int level, const
-    char *file, int line, const char *func, const char *fmt,...)
-  <br/>
-  Write a log entry directly to the mmap'd file (lock-free). <b>bool</b>
-    <b>log_mmap_get_usage</b> (size_t *used, size_t *capacity)
-  <br/>
-  Get current mmap log usage. void <b>log_mmap_rotate</b> (void)
-  <br/>
-  Rotate the mmap log (tail-keeping rotation). void
-    <b>server_status_log_append</b> (const char *message)
-  <br/>
-  void <b>log_json_write</b> (int fd, int level, <b>uint64_t</b> time_ns, const
-    char *file, int line, const char *func, const char *json_msg)
-  <br/>
-  int <b>terminal_choose_log_fd</b> (<b>log_level_t</b> level)
-  <br/>
-  Choose output file descriptor for logging based on level and interactivity.
-    void <b>log_mmap_destroy</b> (void)
-  <br/>
-  Shutdown mmap logging.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Logging utility stubs for WASM.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/stubs/log.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_log_json_write_(int_fd,_int_level,_"><a class="permalink" href="#void_log_json_write_(int_fd,_int_level,_">void
-  log_json_write (int fd, int level, <b>uint64_t</b> time_ns, const char * file,
-  int line, const char * func, const char * json_msg)</a></h2>
-<p class="Pp">Definition at line <b>51</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>52                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>log.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">log.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">log.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">log.c - Logging utility stubs for WASM.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>log_mmap_init_simple</b> (const char
+            *log_path, size_t max_size)
+            <br />
+            Initialize mmap logging with simple parameters. <b>bool</b>
+            <b>log_mmap_is_active</b> (void)
+            <br />
+            Check if mmap logging is active. void <b>log_mmap_write</b> (int
+            level, const char *file, int line, const char *func, const char
+            *fmt,...)
+            <br />
+            Write a log entry directly to the mmap'd file (lock-free).
+            <b>bool</b> <b>log_mmap_get_usage</b> (size_t *used, size_t
+            *capacity)
+            <br />
+            Get current mmap log usage. void <b>log_mmap_rotate</b> (void)
+            <br />
+            Rotate the mmap log (tail-keeping rotation). void
+            <b>server_status_log_append</b> (const char *message)
+            <br />
+            void <b>log_json_write</b> (int fd, int level,
+            <b>uint64_t</b> time_ns, const char *file, int line, const char
+            *func, const char *json_msg)
+            <br />
+            int <b>terminal_choose_log_fd</b> (<b>log_level_t</b> level)
+            <br />
+            Choose output file descriptor for logging based on level and
+            interactivity. void
+            <b>log_mmap_destroy</b> (void)
+            <br />
+            Shutdown mmap logging.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Logging utility stubs for WASM.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>platform/wasm/stubs/log.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_json_write_(int_fd,_int_level,_">
+            <a
+              class="permalink"
+              href="#void_log_json_write_(int_fd,_int_level,_"
+              >void log_json_write (int fd, int level, <b>uint64_t</b> time_ns,
+              const char * file, int line, const char * func, const char *
+              json_msg)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>51</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+52                                           {
 53   (void)fd;
 54   (void)level;
 55   (void)time_ns;
@@ -95,126 +147,185 @@
 59   (void)json_msg;
 60   // No-op - JSON logging in WASM uses console output instead
 61 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_json_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_destroy_(void_)"><a class="permalink" href="#void_log_mmap_destroy_(void_)">void
-  log_mmap_destroy (void )</a></h2>
-<p class="Pp">Shutdown mmap logging. Syncs and unmaps the log file.</p>
-<p class="Pp">Definition at line <b>74</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>74                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_json_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_destroy_(void_)">
+            <a class="permalink" href="#void_log_mmap_destroy_(void_)"
+              >void log_mmap_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Shutdown mmap logging. Syncs and unmaps the log file.
+          </p>
+          <p class="Pp">
+            Definition at line <b>74</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+74                             {
 75   // No-op - mmap logging not used in WASM
 76 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_mmap_get_usage (size_t * used, size_t *
-  capacity)</h2>
-<p class="Pp">Get current mmap log usage.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>used</i> Current bytes used in the log
-<br/>
-<i>capacity</i> Total capacity of the log</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if mmap is active and values are valid</div>
-<p class="Pp">Definition at line <b>32</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>32                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> log_mmap_get_usage (size_t * used, size_t * capacity)
+          </h2>
+          <p class="Pp">Get current mmap log usage.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>used</i> Current bytes used in the log
+            <br />
+            <i>capacity</i> Total capacity of the log
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if mmap is active and values are valid
+          </div>
+          <p class="Pp">
+            Definition at line <b>32</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+32                                                         {
 33   if (used)
 34     *used = 0;
 35   if (capacity)
 36     *capacity = 0;
 37   return false;
 38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_get_usage()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> log_mmap_init_simple (const char *
-  log_path, size_t max_size)</h2>
-<p class="Pp">Initialize mmap logging with simple parameters. Convenience
-    wrapper around <b>log_mmap_init()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>log_path</i> Path to log file
-<br/>
-<i>max_size</i> Maximum file size (0 = default 4MB)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>13</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>13                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_get_usage()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> log_mmap_init_simple (const char *
+            log_path, size_t max_size)
+          </h2>
+          <p class="Pp">
+            Initialize mmap logging with simple parameters. Convenience wrapper
+            around
+            <b>log_mmap_init()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>log_path</i> Path to log file
+            <br />
+            <i>max_size</i> Maximum file size (0 = default 4MB)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>13</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+13                                                                               {
 14   (void)log_path;
 15   (void)max_size;
 16   return ASCIICHAT_OK; // No-op - mmap logging not supported in WASM
 17 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, and
-  <b>log_mmap_init_simple()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_mmap_is_active (void )</h2>
-<p class="Pp">Check if mmap logging is active.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if mmap logging is initialized and active</div>
-<p class="Pp">Definition at line <b>19</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>19                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, and <b>log_mmap_init_simple()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> log_mmap_is_active (void )</h2>
+          <p class="Pp">Check if mmap logging is active.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if mmap logging is initialized and active
+          </div>
+          <p class="Pp">
+            Definition at line <b>19</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+19                               {
 20   return false; // mmap logging not active in WASM
 21 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_is_active()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_rotate_(void_)"><a class="permalink" href="#void_log_mmap_rotate_(void_)">void
-  log_mmap_rotate (void )</a></h2>
-<p class="Pp">Rotate the mmap log (tail-keeping rotation). Keeps the most recent
-    log entries (tail) and discards old ones. This is the mmap equivalent of
-    file-based log rotation.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller must hold the rotation mutex from logging.c. This
-  is called by maybe_rotate_log() which handles locking.</div>
-<p class="Pp">Definition at line <b>40</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>40                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_is_active()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_mmap_rotate_(void_)">
+            <a class="permalink" href="#void_log_mmap_rotate_(void_)"
+              >void log_mmap_rotate (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Rotate the mmap log (tail-keeping rotation). Keeps the most recent
+            log entries (tail) and discards old ones. This is the mmap
+            equivalent of file-based log rotation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller must hold the rotation mutex from logging.c. This is called
+            by maybe_rotate_log() which handles locking.
+          </div>
+          <p class="Pp">
+            Definition at line <b>40</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+40                            {
 41   // No-op
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_rotate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"><a class="permalink" href="#void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__">void
-  log_mmap_write (int level, const char * file, int line, const char * func,
-  const char * fmt, ...)</a></h2>
-<p class="Pp">Write a log entry directly to the mmap'd file (lock-free). Formats
-    the log message and writes it directly as human-readable text. Uses atomic
-    operations only, no mutex.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log level
-<br/>
-<i>file</i> Source file (can be NULL)
-<br/>
-<i>line</i> Source line
-<br/>
-<i>func</i> Function name (can be NULL)
-<br/>
-<i>fmt</i> Format string
-<br/>
-<i>...</i> Format arguments</div>
-<p class="Pp">Definition at line <b>23</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>23                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_rotate()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"
+          >
+            <a
+              class="permalink"
+              href="#void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"
+              >void log_mmap_write (int level, const char * file, int line,
+              const char * func, const char * fmt, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Write a log entry directly to the mmap'd file (lock-free). Formats
+            the log message and writes it directly as human-readable text. Uses
+            atomic operations only, no mutex.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>level</i> Log level
+            <br />
+            <i>file</i> Source file (can be NULL)
+            <br />
+            <i>line</i> Source line
+            <br />
+            <i>func</i> Function name (can be NULL)
+            <br />
+            <i>fmt</i> Format string
+            <br />
+            <i>...</i> Format arguments
+          </div>
+          <p class="Pp">
+            Definition at line <b>23</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+23                                                                                                    {
 24   (void)level;
 25   (void)file;
 26   (void)line;
@@ -222,53 +333,81 @@
 28   (void)fmt;
 29   // No-op - mmap logging not supported in WASM
 30 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_mmap_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_server_status_log_append_(const_char_*_message)"><a class="permalink" href="#void_server_status_log_append_(const_char_*_message)">void
-  server_status_log_append (const char * message)</a></h2>
-<p class="Pp">Definition at line <b>45</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>45                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_mmap_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_server_status_log_append_(const_char_*_message)"
+          >
+            <a
+              class="permalink"
+              href="#void_server_status_log_append_(const_char_*_message)"
+              >void server_status_log_append (const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+45                                                    {
 46   (void)message;
 47   // No-op - server status screen not used in WASM mirror mode
 48 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>server_status_log_append()</b>.</p>
-<p class="Pp">Referenced by <b>server_status_log_append()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_terminal_choose_log_fd_("><a class="permalink" href="#int_terminal_choose_log_fd_(">int
-  terminal_choose_log_fd (<b>log_level_t</b> level)</a></h2>
-<p class="Pp">Choose output file descriptor for logging based on level and
-    interactivity.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log level (determines default routing: WARN+
-  to stderr, others to stdout)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">STDERR_FILENO or STDOUT_FILENO based on log level and
-  terminal state</div>
-<p class="Pp">Routes logs appropriately:</p>
-<ul class="Bl-bullet">
-  <li>When terminal is NOT interactive (piped): ALL logs to stderr</li>
-  <li>When force_stderr enabled: ALL logs to stderr</li>
-  <li>Otherwise: WARN/ERROR/FATAL to stderr, others to stdout</li>
-</ul>
-<p class="Pp">This consolidates log routing logic used throughout the
-  codebase.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Use: int fd = terminal_choose_log_fd(LOG_INFO);
-<p class="Pp"></p>
-<p class="Pp">Common usage: platform_write_all(terminal_choose_log_fd(level),
-    data, len);</p>
-</div>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>64                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>server_status_log_append()</b>.</p>
+          <p class="Pp">Referenced by <b>server_status_log_append()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_terminal_choose_log_fd_(">
+            <a class="permalink" href="#int_terminal_choose_log_fd_("
+              >int terminal_choose_log_fd (<b>log_level_t</b> level)</a
+            >
+          </h2>
+          <p class="Pp">
+            Choose output file descriptor for logging based on level and
+            interactivity.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>level</i> Log level (determines default routing: WARN+ to stderr,
+            others to stdout)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            STDERR_FILENO or STDOUT_FILENO based on log level and terminal state
+          </div>
+          <p class="Pp">Routes logs appropriately:</p>
+          <ul class="Bl-bullet">
+            <li>
+              When terminal is NOT interactive (piped): ALL logs to stderr
+            </li>
+            <li>When force_stderr enabled: ALL logs to stderr</li>
+            <li>Otherwise: WARN/ERROR/FATAL to stderr, others to stdout</li>
+          </ul>
+          <p class="Pp">
+            This consolidates log routing logic used throughout the codebase.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Use: int fd = terminal_choose_log_fd(LOG_INFO);
+            <p class="Pp"></p>
+            <p class="Pp">
+              Common usage: platform_write_all(terminal_choose_log_fd(level),
+              data, len);
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>platform/wasm/stubs/log.c</b>.
+          </p>
+          <pre>
+64                                               {
 65   // Route based on level: INFO and below go to stdout, WARN and above go to stderr
 66   // This matches the native implementation and allows Emscripten to route to
 67   // console.log for INFO/DEBUG/DEV and console.error for WARN/ERROR/FATAL
@@ -277,21 +416,23 @@
 70   }
 71   return 1; // STDOUT_FILENO (LOG_DEV=0, LOG_DEBUG=1, LOG_INFO=2)
 72 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_choose_log_fd()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>terminal_choose_log_fd()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

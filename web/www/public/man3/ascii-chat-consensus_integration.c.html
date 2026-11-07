@@ -1,175 +1,277 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>consensus_integration.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">consensus_integration.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">consensus_integration.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">consensus_integration.c - Integration helpers for session
-    consensus in discovery mode.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define
-    <b>SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE</b> 64
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>consensus_get_discovery_callbacks</b>
-    (void *context, <b>session_consensus_callbacks_t</b> *out_callbacks)
-  <br/>
-  Get callbacks configured for discovery mode integration.
-    <b>asciichat_error_t</b> <b>consensus_create_for_discovery</b> (const
-    <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    my_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    participant_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
-    int num_participants, void *discovery_context, <b>session_consensus_t</b>
-    **out_consensus)
-  <br/>
-  Example: Create session consensus for discovery mode. <b>uint32_t</b>
-    <b>consensus_suggest_timeout_ms</b> (<b>session_consensus_t</b> *consensus,
-    <b>uint32_t</b> current_timeout_ms)
-  <br/>
-  Calculate how long to wait until next consensus processing.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Integration helpers for session consensus in discovery mode.</p>
-<p class="Pp">This file provides example integration code showing how modes
-    (discovery, server, client, acds) can integrate the ring consensus
-    abstraction.</p>
-<p class="Pp"></p>
-<p class="Pp">Design Example for Discovery Mode:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Create consensus when entering ACTIVE state</dd>
-  <dt>2.</dt>
-  <dd>Call consensus_process() in <b>discovery_session_process()</b> loop</dd>
-  <dt>3.</dt>
-  <dd>Hook up packet routing for RING_* consensus packets</dd>
-  <dt>4.</dt>
-  <dd>Update host info when election completes</dd>
-</dl>
-<p class="Pp">Definition in file <b>consensus_integration.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE___64"><a class="permalink" href="#_define_SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE___64">#define
-  SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file
-    <b>consensus_integration.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE___64"><a class="permalink" href="#_define_SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE___64">#define
-  SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file
-    <b>consensus_integration.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_create_for_discovery (const
-  <b>uint8_t</b> session_id[SESSION_ID_SIZE], const <b>uint8_t</b>
-  my_id[SESSION_ID_SIZE], const <b>uint8_t</b>
-  participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int
-  num_participants, void * discovery_context, <b>session_consensus_t</b> **
-  out_consensus)</h2>
-<p class="Pp">Example: Create session consensus for discovery mode. Create
-    session consensus for discovery mode.</p>
-<p class="Pp"></p>
-<p class="Pp">Shows how a mode would create the consensus abstraction. This is a
-    standalone example - real discovery session would call this when
-    transitioning to ACTIVE state if participants found.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session_id</i> Session identifier (16 bytes)
-<br/>
-<i>my_id</i> My participant identifier (16 bytes)
-<br/>
-<i>participant_ids</i> Array of all participant IDs (up to 128)
-<br/>
-<i>num_participants</i> Count of participants
-<br/>
-<i>discovery_context</i> Mode-specific context (e.g.,
-  <b>discovery_session_t</b>)
-<br/>
-<i>out_consensus</i> Output: Created consensus handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Example: Create session consensus for discovery mode.</p>
-<p class="Pp"></p>
-<p class="Pp">Convenience function showing the typical pattern for creating
-    consensus in discovery mode. Calls consensus_create() with
-    discovery-specific callback configuration.</p>
-<p class="Pp"></p>
-<p class="Pp">Real usage:</p>
-<ul class="Bl-bullet">
-  <li>When ACDS gives us participant list -&gt; create consensus</li>
-  <li>Call consensus_process() in <b>discovery_session_process()</b> loop</li>
-  <li>Route RING_* packets to consensus handlers</li>
-  <li>Update host on election results</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session_id</i> Session identifier (16 bytes) -
-  informational
-<br/>
-<i>my_id</i> Our participant ID (16 bytes)
-<br/>
-<i>participant_ids</i> Array of all participant IDs (up to 128)
-<br/>
-<i>num_participants</i> Count of participants
-<br/>
-<i>discovery_context</i> Discovery session context (opaque)
-<br/>
-<i>out_consensus</i> Output: Created consensus handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>154</b> of file
-    <b>consensus_integration.c</b>.</p>
-<pre>156                                                                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>consensus_integration.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">consensus_integration.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">consensus_integration.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          consensus_integration.c - Integration helpers for session consensus in
+          discovery mode.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define
+            <b>SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE</b> 64
+            <br />
+            #define
+            <b>SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b>
+            <b>consensus_get_discovery_callbacks</b> (void *context,
+            <b>session_consensus_callbacks_t</b> *out_callbacks)
+            <br />
+            Get callbacks configured for discovery mode integration.
+            <b>asciichat_error_t</b>
+            <b>consensus_create_for_discovery</b> (const
+            <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const
+            <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>], const
+            <b>uint8_t</b>
+            participant_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
+            int num_participants, void *discovery_context,
+            <b>session_consensus_t</b>
+            **out_consensus)
+            <br />
+            Example: Create session consensus for discovery mode.
+            <b>uint32_t</b> <b>consensus_suggest_timeout_ms</b> (<b
+              >session_consensus_t</b
+            >
+            *consensus, <b>uint32_t</b> current_timeout_ms)
+            <br />
+            Calculate how long to wait until next consensus processing.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Integration helpers for session consensus in discovery mode.
+        </p>
+        <p class="Pp">
+          This file provides example integration code showing how modes
+          (discovery, server, client, acds) can integrate the ring consensus
+          abstraction.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Design Example for Discovery Mode:</p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>Create consensus when entering ACTIVE state</dd>
+          <dt>2.</dt>
+          <dd>
+            Call consensus_process() in <b>discovery_session_process()</b> loop
+          </dd>
+          <dt>3.</dt>
+          <dd>Hook up packet routing for RING_* consensus packets</dd>
+          <dt>4.</dt>
+          <dd>Update host info when election completes</dd>
+        </dl>
+        <p class="Pp">Definition in file <b>consensus_integration.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE___64"
+              >#define SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE
+              64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>consensus_integration.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE___64"
+              >#define SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE
+              64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>consensus_integration.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_create_for_discovery (const
+            <b>uint8_t</b> session_id[SESSION_ID_SIZE], const
+            <b>uint8_t</b> my_id[SESSION_ID_SIZE], const
+            <b>uint8_t</b>
+            participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int
+            num_participants, void * discovery_context,
+            <b>session_consensus_t</b> ** out_consensus)
+          </h2>
+          <p class="Pp">
+            Example: Create session consensus for discovery mode. Create session
+            consensus for discovery mode.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shows how a mode would create the consensus abstraction. This is a
+            standalone example - real discovery session would call this when
+            transitioning to ACTIVE state if participants found.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session_id</i> Session identifier (16 bytes)
+            <br />
+            <i>my_id</i> My participant identifier (16 bytes)
+            <br />
+            <i>participant_ids</i> Array of all participant IDs (up to 128)
+            <br />
+            <i>num_participants</i> Count of participants
+            <br />
+            <i>discovery_context</i> Mode-specific context (e.g.,
+            <b>discovery_session_t</b>)
+            <br />
+            <i>out_consensus</i> Output: Created consensus handle
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp">
+            Example: Create session consensus for discovery mode.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Convenience function showing the typical pattern for creating
+            consensus in discovery mode. Calls consensus_create() with
+            discovery-specific callback configuration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Real usage:</p>
+          <ul class="Bl-bullet">
+            <li>When ACDS gives us participant list -&gt; create consensus</li>
+            <li>
+              Call consensus_process() in
+              <b>discovery_session_process()</b> loop
+            </li>
+            <li>Route RING_* packets to consensus handlers</li>
+            <li>Update host on election results</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session_id</i> Session identifier (16 bytes) - informational
+            <br />
+            <i>my_id</i> Our participant ID (16 bytes)
+            <br />
+            <i>participant_ids</i> Array of all participant IDs (up to 128)
+            <br />
+            <i>num_participants</i> Count of participants
+            <br />
+            <i>discovery_context</i> Discovery session context (opaque)
+            <br />
+            <i>out_consensus</i> Output: Created consensus handle
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>154</b> of file
+            <b>consensus_integration.c</b>.
+          </p>
+          <pre>
+156                                                                                                                    {
 157   (void)session_id; // Informational only, not needed by consensus itself
 158
 159   if (!my_id || !participant_ids || !discovery_context || !out_consensus) {
@@ -194,51 +296,74 @@
 178   // Create consensus with the callbacks
 179   return session_consensus_create(my_id, is_leader, participant_ids, num_participants, &amp;callbacks, out_consensus);
 180 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_create_for_discovery()</b>,
-    <b>consensus_get_discovery_callbacks()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>MAX_SESSION_PARTICIPANTS</b>, <b>session_consensus_create()</b>,
-    <b>SESSION_ID_SIZE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_get_discovery_callbacks (void
-  * context, <b>session_consensus_callbacks_t</b> * out_callbacks)</h2>
-<p class="Pp">Get callbacks configured for discovery mode integration. Get
-    consensus callbacks configured for discovery mode.</p>
-<p class="Pp"></p>
-<p class="Pp">Returns a properly configured callback structure for session
-    consensus. The returned callbacks encapsulate the discovery session's packet
-    sending, election handling, and metrics measurement capabilities.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>context</i> Discovery session pointer (void* for
-  genericity)
-<br/>
-<i>out_callbacks</i> Output: Configured callbacks</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Get callbacks configured for discovery mode integration.</p>
-<p class="Pp"></p>
-<p class="Pp">Returns a callback structure showing how discovery mode would
-    integrate consensus:</p>
-<ul class="Bl-bullet">
-  <li>Send packets via ACDS relay</li>
-  <li>Handle election by storing host info</li>
-  <li>Measure NAT quality metrics</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>context</i> Opaque context (typically
-  discovery_session_t*)
-<br/>
-<i>out_callbacks</i> Output: Configured callback structure</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>123</b> of file
-    <b>consensus_integration.c</b>.</p>
-<pre>123                                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_create_for_discovery()</b>,
+            <b>consensus_get_discovery_callbacks()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>session_consensus_create()</b>, <b>SESSION_ID_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_create_for_discovery()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_get_discovery_callbacks (void *
+            context, <b>session_consensus_callbacks_t</b> * out_callbacks)
+          </h2>
+          <p class="Pp">
+            Get callbacks configured for discovery mode integration. Get
+            consensus callbacks configured for discovery mode.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Returns a properly configured callback structure for session
+            consensus. The returned callbacks encapsulate the discovery
+            session's packet sending, election handling, and metrics measurement
+            capabilities.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>context</i> Discovery session pointer (void* for genericity)
+            <br />
+            <i>out_callbacks</i> Output: Configured callbacks
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp">
+            Get callbacks configured for discovery mode integration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Returns a callback structure showing how discovery mode would
+            integrate consensus:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Send packets via ACDS relay</li>
+            <li>Handle election by storing host info</li>
+            <li>Measure NAT quality metrics</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>context</i> Opaque context (typically discovery_session_t*)
+            <br />
+            <i>out_callbacks</i> Output: Configured callback structure
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>123</b> of file
+            <b>consensus_integration.c</b>.
+          </p>
+          <pre>
+123                                                                                                                  {
 124   if (!context || !out_callbacks) {
 125     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: context=%p, out_callbacks=%p&quot;, context, out_callbacks);
 126   }
@@ -252,53 +377,78 @@
 134
 135   return ASCIICHAT_OK;
 136 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_get_discovery_callbacks()</b>,
-    <b>session_consensus_callbacks_t::context</b>,
-    <b>session_consensus_callbacks_t::election</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>session_consensus_callbacks_t::get_metrics</b>,
-    <b>session_consensus_callbacks_t::on_election</b>,
-    <b>session_consensus_callbacks_t::send_packet</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>, and
-    <b>consensus_get_discovery_callbacks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> consensus_suggest_timeout_ms
-  (<b>session_consensus_t</b> * consensus, <b>uint32_t</b>
-  current_timeout_ms)</h2>
-<p class="Pp">Calculate how long to wait until next consensus processing.
-    Suggest next timeout for consensus processing.</p>
-<p class="Pp"></p>
-<p class="Pp">Useful for modes to schedule when they should call
-    consensus_process() next.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>consensus</i> Consensus handle
-<br/>
-<i>current_timeout_ms</i> Current event loop timeout in milliseconds</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Suggested next timeout in milliseconds</div>
-<p class="Pp">Calculate how long to wait until next consensus processing.</p>
-<p class="Pp"></p>
-<p class="Pp">Helper for modes to schedule consensus processing appropriately.
-    Returns the minimum of consensus deadline or current timeout.</p>
-<p class="Pp"></p>
-<p class="Pp">Usage in mode's main loop:</p>
-<p class="Pp"></p>
-<pre>uint32_t suggested_timeout = consensus_suggest_timeout_ms(consensus, current_timeout);
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_get_discovery_callbacks()</b>,
+            <b>session_consensus_callbacks_t::context</b>,
+            <b>session_consensus_callbacks_t::election</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>session_consensus_callbacks_t::get_metrics</b>,
+            <b>session_consensus_callbacks_t::on_election</b>,
+            <b>session_consensus_callbacks_t::send_packet</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_create_for_discovery()</b>, and
+            <b>consensus_get_discovery_callbacks()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> consensus_suggest_timeout_ms (<b
+              >session_consensus_t</b
+            >
+            * consensus, <b>uint32_t</b> current_timeout_ms)
+          </h2>
+          <p class="Pp">
+            Calculate how long to wait until next consensus processing. Suggest
+            next timeout for consensus processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Useful for modes to schedule when they should call
+            consensus_process() next.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>consensus</i> Consensus handle
+            <br />
+            <i>current_timeout_ms</i> Current event loop timeout in milliseconds
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Suggested next timeout in milliseconds</div>
+          <p class="Pp">
+            Calculate how long to wait until next consensus processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Helper for modes to schedule consensus processing appropriately.
+            Returns the minimum of consensus deadline or current timeout.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Usage in mode's main loop:</p>
+          <p class="Pp"></p>
+          <pre>
+uint32_t suggested_timeout = consensus_suggest_timeout_ms(consensus, current_timeout);
 // Use suggested_timeout in event wait instead of current_timeout
 </pre>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>consensus</i> Consensus handle (NULL safe)
-<br/>
-<i>current_timeout_ms</i> Current event loop timeout in milliseconds</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Suggested next timeout in milliseconds</div>
-<p class="Pp">Definition at line <b>191</b> of file
-    <b>consensus_integration.c</b>.</p>
-<pre>191                                                                                                    {
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>consensus</i> Consensus handle (NULL safe)
+            <br />
+            <i>current_timeout_ms</i> Current event loop timeout in milliseconds
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Suggested next timeout in milliseconds</div>
+          <p class="Pp">
+            Definition at line <b>191</b> of file
+            <b>consensus_integration.c</b>.
+          </p>
+          <pre>
+191                                                                                                    {
 192   if (!consensus) {
 193     return current_timeout_ms;
 194   }
@@ -320,23 +470,27 @@
 210
 211   return current_timeout_ms;
 212 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_suggest_timeout_ms()</b>, and
-    <b>session_consensus_time_until_next_round()</b>.</p>
-<p class="Pp">Referenced by <b>consensus_suggest_timeout_ms()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_suggest_timeout_ms()</b>, and
+            <b>session_consensus_time_until_next_round()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_suggest_timeout_ms()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

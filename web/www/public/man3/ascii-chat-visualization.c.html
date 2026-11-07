@@ -1,82 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>visualization.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">visualization.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">visualization.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">visualization.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>waveform_color_stop_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>visualization_color_for_level</b> (float frequency_hz,
-    float level, int color_mode, unsigned char *red, unsigned char *green,
-    unsigned char *blue)
-  <br/>
-  void <b>audio_visualization_submit_stereo</b>
-    (<b>audio_visualization_source_t</b> source, const float *samples, size_t
-    count)
-  <br/>
-  void <b>audio_visualization_submit</b> (<b>audio_visualization_source_t</b>
-    source, const float *samples, size_t count)
-  <br/>
-  void <b>audio_visualization_read</b> (<b>audio_visualization_source_t</b>
-    source, float *samples, size_t count)
-  <br/>
-  char * <b>visualization_encode</b> (const char *cells, const unsigned char
-    *colors, <b>bool</b> column_colors, unsigned int width, unsigned int height,
-    <b>bool</b> use_color, <b>bool</b> flip_x, <b>bool</b> flip_y)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_visualization_read_("><a class="permalink" href="#void_audio_visualization_read_(">void
-  audio_visualization_read (<b>audio_visualization_source_t</b> source, float *
-  samples, size_t count)</a></h2>
-<p class="Pp">Definition at line <b>100</b> of file <b>visualization.c</b>.</p>
-<pre>100                                                                                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>visualization.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">visualization.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">visualization.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">visualization.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>waveform_color_stop_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>visualization_color_for_level</b> (float frequency_hz, float
+            level, int color_mode, unsigned char *red, unsigned char *green,
+            unsigned char *blue)
+            <br />
+            void <b>audio_visualization_submit_stereo</b> (<b
+              >audio_visualization_source_t</b
+            >
+            source, const float *samples, size_t count)
+            <br />
+            void <b>audio_visualization_submit</b> (<b
+              >audio_visualization_source_t</b
+            >
+            source, const float *samples, size_t count)
+            <br />
+            void <b>audio_visualization_read</b> (<b
+              >audio_visualization_source_t</b
+            >
+            source, float *samples, size_t count)
+            <br />
+            char * <b>visualization_encode</b> (const char *cells, const
+            unsigned char *colors, <b>bool</b> column_colors, unsigned int
+            width, unsigned int height, <b>bool</b> use_color,
+            <b>bool</b> flip_x, <b>bool</b> flip_y)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_visualization_read_(">
+            <a class="permalink" href="#void_audio_visualization_read_("
+              >void audio_visualization_read (<b
+                >audio_visualization_source_t</b
+              >
+              source, float * samples, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>100</b> of file <b>visualization.c</b>.
+          </p>
+          <pre>
+100                                                                                                  {
 101   if (!samples)
 102     return;
 103   if (source &lt; AUDIO_VISUALIZATION_SOURCE_MIC || source &gt;= AUDIO_VISUALIZATION_SOURCE_COUNT) {
@@ -106,26 +158,38 @@
 127   for (size_t i = 0; i &lt; count; i++)
 128     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
 129 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_visualization_read()</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_COUNT</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_MIX</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>, and
-  <b>VISUALIZATION_HISTORY</b>.</p>
-<p class="Pp">Referenced by <b>audio_visualization_read()</b>,
-    <b>audio_visualization_render_fft()</b>, and
-    <b>audio_visualization_render_waveform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_visualization_submit_("><a class="permalink" href="#void_audio_visualization_submit_(">void
-  audio_visualization_submit (<b>audio_visualization_source_t</b> source, const
-  float * samples, size_t count)</a></h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>visualization.c</b>.</p>
-<pre>85                                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_visualization_read()</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_COUNT</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_MIX</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>, and
+            <b>VISUALIZATION_HISTORY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_visualization_read()</b>,
+            <b>audio_visualization_render_fft()</b>, and
+            <b>audio_visualization_render_waveform()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_visualization_submit_(">
+            <a class="permalink" href="#void_audio_visualization_submit_("
+              >void audio_visualization_submit (<b
+                >audio_visualization_source_t</b
+              >
+              source, const float * samples, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>visualization.c</b>.
+          </p>
+          <pre>
+85                                                                                                          {
 86   if ((!GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)) || !samples || source &lt; AUDIO_VISUALIZATION_SOURCE_MIC ||
 87       source &gt; AUDIO_VISUALIZATION_SOURCE_REMOTE)
 88     return;
@@ -139,24 +203,40 @@
 96   write_position[source] = position;
 97   static_mutex_unlock(&amp;history_mutex);
 98 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
-    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>,
-    <b>audio_visualization_submit()</b>, <b>GET_OPTION</b>, and
-    <b>VISUALIZATION_HISTORY</b>.</p>
-<p class="Pp">Referenced by <b>audio_visualization_submit()</b>,
-    <b>audio_visualization_submit_stereo()</b>, and
-    <b>mirror_submit_audio_samples()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_audio_visualization_submit_stereo_("><a class="permalink" href="#void_audio_visualization_submit_stereo_(">void
-  audio_visualization_submit_stereo (<b>audio_visualization_source_t</b> source,
-  const float * samples, size_t count)</a></h2>
-<p class="Pp">Downmix interleaved stereo only for display analysis, preserving
-    its sample clock.</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>visualization.c</b>.</p>
-<pre>70                                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+            <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>,
+            <b>audio_visualization_submit()</b>, <b>GET_OPTION</b>, and
+            <b>VISUALIZATION_HISTORY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_visualization_submit()</b>,
+            <b>audio_visualization_submit_stereo()</b>, and
+            <b>mirror_submit_audio_samples()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_visualization_submit_stereo_(">
+            <a
+              class="permalink"
+              href="#void_audio_visualization_submit_stereo_("
+              >void audio_visualization_submit_stereo (<b
+                >audio_visualization_source_t</b
+              >
+              source, const float * samples, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Downmix interleaved stereo only for display analysis, preserving its
+            sample clock.
+          </p>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>visualization.c</b>.
+          </p>
+          <pre>
+70                                                                                                                 {
 71   if (!samples || count % 2)
 72     return;
 73   float mono[480];
@@ -170,20 +250,35 @@
 81     offset += frames * 2;
 82   }
 83 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_visualization_submit()</b>, and
-    <b>audio_visualization_submit_stereo()</b>.</p>
-<p class="Pp">Referenced by <b>audio_visualization_submit_stereo()</b>, and
-    <b>audio_write_samples()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_visualization_color_for_level_(float_frequency_hz,_float_level,_int_color_mode,_unsigned_char_*_red,_unsigned_char_*_green,_unsigned_char_*_blue)"><a class="permalink" href="#void_visualization_color_for_level_(float_frequency_hz,_float_level,_int_color_mode,_unsigned_char_*_red,_unsigned_char_*_green,_unsigned_char_*_blue)">void
-  visualization_color_for_level (float frequency_hz, float level, int
-  color_mode, unsigned char * red, unsigned char * green, unsigned char *
-  blue)</a></h2>
-<p class="Pp">Definition at line <b>54</b> of file <b>visualization.c</b>.</p>
-<pre>55                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_visualization_submit()</b>, and
+            <b>audio_visualization_submit_stereo()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_visualization_submit_stereo()</b>, and
+            <b>audio_write_samples()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_visualization_color_for_level_(float_frequency_hz,_float_level,_int_color_mode,_unsigned_char_*_red,_unsigned_char_*_green,_unsigned_char_*_blue)"
+          >
+            <a
+              class="permalink"
+              href="#void_visualization_color_for_level_(float_frequency_hz,_float_level,_int_color_mode,_unsigned_char_*_red,_unsigned_char_*_green,_unsigned_char_*_blue)"
+              >void visualization_color_for_level (float frequency_hz, float
+              level, int color_mode, unsigned char * red, unsigned char * green,
+              unsigned char * blue)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>visualization.c</b>.
+          </p>
+          <pre>
+55                                                                               {
 56   visualization_color_for_frequency(frequency_hz, red, green, blue);
 57   float brightness = 0.5f + 0.5f * level;
 58   float white_mix = 0.0f;
@@ -197,22 +292,38 @@
 66   *green = (unsigned char)lrintf(fminf(255.0f, *green * brightness + 255.0f * white_mix));
 67   *blue = (unsigned char)lrintf(fminf(255.0f, *blue * brightness + 255.0f * white_mix));
 68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>AUDIO_VISUALIZATION_COLOR_BRIGHTER</b>,
-    <b>AUDIO_VISUALIZATION_COLOR_DARKER</b>, and
-    <b>visualization_color_for_level()</b>.</p>
-<p class="Pp">Referenced by <b>audio_visualization_render_fft()</b>,
-    <b>audio_visualization_render_waveform()</b>, and
-    <b>visualization_color_for_level()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_visualization_encode_(const_char_*_cells,_const_unsigned_char_*_colors,_"><a class="permalink" href="#char_*_visualization_encode_(const_char_*_cells,_const_unsigned_char_*_colors,_">char
-  * visualization_encode (const char * cells, const unsigned char * colors,
-  <b>bool</b> column_colors, unsigned int width, unsigned int height,
-  <b>bool</b> use_color, <b>bool</b> flip_x, <b>bool</b> flip_y)</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>visualization.c</b>.</p>
-<pre>134                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_VISUALIZATION_COLOR_BRIGHTER</b>,
+            <b>AUDIO_VISUALIZATION_COLOR_DARKER</b>, and
+            <b>visualization_color_for_level()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_visualization_render_fft()</b>,
+            <b>audio_visualization_render_waveform()</b>, and
+            <b>visualization_color_for_level()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="char_*_visualization_encode_(const_char_*_cells,_const_unsigned_char_*_colors,_"
+          >
+            <a
+              class="permalink"
+              href="#char_*_visualization_encode_(const_char_*_cells,_const_unsigned_char_*_colors,_"
+              >char * visualization_encode (const char * cells, const unsigned
+              char * colors, <b>bool</b> column_colors, unsigned int width,
+              unsigned int height, <b>bool</b> use_color, <b>bool</b> flip_x,
+              <b>bool</b> flip_y)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>133</b> of file <b>visualization.c</b>.
+          </p>
+          <pre>
+134                                                                                           {
 135   int mode = GET_OPTION(render_mode);
 136   bool half = mode == RENDER_MODE_HALF_BLOCK;
 137   unsigned int rows = half ? height / 2 : height;
@@ -258,26 +369,32 @@
 177   frame[used] = '\0';
 178   return frame;
 179 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>RENDER_MODE_HALF_BLOCK</b>, <b>SAFE_MALLOC</b>, and
-    <b>visualization_encode()</b>.</p>
-<p class="Pp">Referenced by <b>audio_visualization_render_fft()</b>,
-    <b>audio_visualization_render_waveform()</b>, and
-    <b>visualization_encode()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, <b>RENDER_MODE_BACKGROUND</b>,
+            <b>RENDER_MODE_HALF_BLOCK</b>, <b>SAFE_MALLOC</b>, and
+            <b>visualization_encode()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_visualization_render_fft()</b>,
+            <b>audio_visualization_render_waveform()</b>, and
+            <b>visualization_encode()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

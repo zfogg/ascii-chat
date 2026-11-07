@@ -1,58 +1,100 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>luminance.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">luminance.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">luminance.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">luminance.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>simd_luminance_ssse3</b> (const <b>uint8_t</b> *rgb,
-    <b>uint8_t</b> *out, size_t width)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_simd_luminance_ssse3_(const_"><a class="permalink" href="#void_simd_luminance_ssse3_(const_">void
-  simd_luminance_ssse3 (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
-  width)</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>ssse3/luminance.c</b>.</p>
-<pre>5                                                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>luminance.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">luminance.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">luminance.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">luminance.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>simd_luminance_ssse3</b> (const <b>uint8_t</b> *rgb,
+            <b>uint8_t</b> *out, size_t width)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_luminance_ssse3_(const_">
+            <a class="permalink" href="#void_simd_luminance_ssse3_(const_"
+              >void simd_luminance_ssse3 (const <b>uint8_t</b> * rgb,
+              <b>uint8_t</b> * out, size_t width)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>ssse3/luminance.c</b>.
+          </p>
+          <pre>
+5                                                                           {
 6   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
 7   size_t x = 0;
 8   for (; width - x &gt;= 16; x += 16) {
@@ -111,25 +153,29 @@
 61   }
 62   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
 63 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
-    <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>, <b>LUMA_THRESHOLD</b>,
-    <b>rgb_pixel_t::r</b>, <b>simd_luminance_scalar()</b>, and
-    <b>simd_luminance_ssse3()</b>.</p>
-<p class="Pp">Referenced by <b>simd_luminance_ssse3()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+            <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>,
+            <b>LUMA_THRESHOLD</b>, <b>rgb_pixel_t::r</b>,
+            <b>simd_luminance_scalar()</b>, and <b>simd_luminance_ssse3()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>simd_luminance_ssse3()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

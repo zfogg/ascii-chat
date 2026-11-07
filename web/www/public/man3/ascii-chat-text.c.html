@@ -1,105 +1,168 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>text.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">text.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">text.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">text.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>UI_TEXT_NUMBER_BUFFER_SIZE</b> 96
-  <br/>
-  #define <b>UI_TEXT_STYLED_BUFFER_SIZE</b> 4096
-  <br/>
-  #define <b>UI_TEXT_COLOR_BUFFER_SIZE</b> 128
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>ui_text_color_prefix</b> (<b>log_color_t</b>
-    color)
-  <br/>
-  size_t <b>ui_text_cell</b> (char *out, size_t cap, const char *text, int
-    width, <b>ui_alignment_t</b> align)
-  <br/>
-  void <b>ui_text_values_style</b> (char *out, size_t cap, const char *text,
-    <b>log_color_t</b> zero_color)
-  <br/>
-  void <b>ui_text_values</b> (char *out, size_t cap, const char *text)
-  <br/>
-  void <b>ui_text_render_values</b> (<b>frame_buffer_t</b> *out, const char
-    *text)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_TEXT_COLOR_BUFFER_SIZE___128"><a class="permalink" href="#_define_UI_TEXT_COLOR_BUFFER_SIZE___128">#define
-  UI_TEXT_COLOR_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>text.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_text_color_prefix()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_TEXT_NUMBER_BUFFER_SIZE___96"><a class="permalink" href="#_define_UI_TEXT_NUMBER_BUFFER_SIZE___96">#define
-  UI_TEXT_NUMBER_BUFFER_SIZE 96</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>text.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_text_values_style()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_TEXT_STYLED_BUFFER_SIZE___4096"><a class="permalink" href="#_define_UI_TEXT_STYLED_BUFFER_SIZE___4096">#define
-  UI_TEXT_STYLED_BUFFER_SIZE 4096</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>text.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_text_render_values()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ui_text_cell_(char_*_out,_size_t_capacity,_const_char_*_text,_int_width,_"><a class="permalink" href="#size_t_ui_text_cell_(char_*_out,_size_t_capacity,_const_char_*_text,_int_width,_">size_t
-  ui_text_cell (char * out, size_t capacity, const char * text, int width,
-  <b>ui_alignment_t</b> alignment)</a></h2>
-<p class="Pp">ANSI-aware, UTF-8-safe clipping/padding into caller-owned
-  storage.</p>
-<p class="Pp">Definition at line <b>48</b> of file <b>text.c</b>.</p>
-<pre>48                                                                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>text.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">text.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">text.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">text.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>UI_TEXT_NUMBER_BUFFER_SIZE</b> 96
+            <br />
+            #define <b>UI_TEXT_STYLED_BUFFER_SIZE</b> 4096
+            <br />
+            #define <b>UI_TEXT_COLOR_BUFFER_SIZE</b> 128
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>ui_text_color_prefix</b> (<b>log_color_t</b>
+            color)
+            <br />
+            size_t <b>ui_text_cell</b> (char *out, size_t cap, const char *text,
+            int width, <b>ui_alignment_t</b> align)
+            <br />
+            void <b>ui_text_values_style</b> (char *out, size_t cap, const char
+            *text, <b>log_color_t</b> zero_color)
+            <br />
+            void <b>ui_text_values</b> (char *out, size_t cap, const char *text)
+            <br />
+            void <b>ui_text_render_values</b> (<b>frame_buffer_t</b> *out, const
+            char *text)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_TEXT_COLOR_BUFFER_SIZE___128">
+            <a class="permalink" href="#_define_UI_TEXT_COLOR_BUFFER_SIZE___128"
+              >#define UI_TEXT_COLOR_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>7</b> of file <b>text.c</b>.</p>
+          <p class="Pp">Referenced by <b>ui_text_color_prefix()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_TEXT_NUMBER_BUFFER_SIZE___96">
+            <a class="permalink" href="#_define_UI_TEXT_NUMBER_BUFFER_SIZE___96"
+              >#define UI_TEXT_NUMBER_BUFFER_SIZE 96</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>text.c</b>.</p>
+          <p class="Pp">Referenced by <b>ui_text_values_style()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_TEXT_STYLED_BUFFER_SIZE___4096">
+            <a
+              class="permalink"
+              href="#_define_UI_TEXT_STYLED_BUFFER_SIZE___4096"
+              >#define UI_TEXT_STYLED_BUFFER_SIZE 4096</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>text.c</b>.</p>
+          <p class="Pp">Referenced by <b>ui_text_render_values()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_ui_text_cell_(char_*_out,_size_t_capacity,_const_char_*_text,_int_width,_"
+          >
+            <a
+              class="permalink"
+              href="#size_t_ui_text_cell_(char_*_out,_size_t_capacity,_const_char_*_text,_int_width,_"
+              >size_t ui_text_cell (char * out, size_t capacity, const char *
+              text, int width, <b>ui_alignment_t</b> alignment)</a
+            >
+          </h2>
+          <p class="Pp">
+            ANSI-aware, UTF-8-safe clipping/padding into caller-owned storage.
+          </p>
+          <p class="Pp">Definition at line <b>48</b> of file <b>text.c</b>.</p>
+          <pre>
+48                                                                                               {
 49   if (!out || !cap) {
 50     SET_ERRNO(ERROR_INVALID_PARAM, &quot;UI text requires output storage&quot;);
 51     return 0;
@@ -145,22 +208,33 @@
 91     append(out, cap, &amp;used, &quot; &quot;, 1);
 92   return used;
 93 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
-    <b>UI_ALIGN_CENTER</b>, <b>UI_ALIGN_RIGHT</b>, <b>ui_text_cell()</b>,
-    <b>utf8_display_width_n()</b>, and <b>utf8_next_char_bytes()</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>,
-    <b>ui_error_popup_render()</b>, <b>ui_help_menu_render()</b>,
-    <b>ui_table_row()</b>, and <b>ui_text_cell()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_ui_text_color_prefix_("><a class="permalink" href="#const_char_*_ui_text_color_prefix_(">const
-  char * ui_text_color_prefix (<b>log_color_t</b> color)</a></h2>
-<p class="Pp">Theme-aware prefix for incremental formatting, derived from
-    <b>colored_string()</b>.</p>
-<p class="Pp">Definition at line <b>18</b> of file <b>text.c</b>.</p>
-<pre>18                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
+            <b>UI_ALIGN_CENTER</b>, <b>UI_ALIGN_RIGHT</b>,
+            <b>ui_text_cell()</b>, <b>utf8_display_width_n()</b>, and
+            <b>utf8_next_char_bytes()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_error_popup_preserve()</b>,
+            <b>ui_error_popup_render()</b>, <b>ui_help_menu_render()</b>,
+            <b>ui_table_row()</b>, and <b>ui_text_cell()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ui_text_color_prefix_(">
+            <a class="permalink" href="#const_char_*_ui_text_color_prefix_("
+              >const char * ui_text_color_prefix (<b>log_color_t</b> color)</a
+            >
+          </h2>
+          <p class="Pp">
+            Theme-aware prefix for incremental formatting, derived from
+            <b>colored_string()</b>.
+          </p>
+          <p class="Pp">Definition at line <b>18</b> of file <b>text.c</b>.</p>
+          <pre>
+18                                                     {
 19   static _Thread_local char buffers[LOG_COLOR_WHITE + 1][UI_TEXT_COLOR_BUFFER_SIZE];
 20   if (color &lt; LOG_COLOR_DEV || color &gt; LOG_COLOR_WHITE) {
 21     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid UI text color&quot;);
@@ -176,54 +250,89 @@
 31   out[length] = '\0';
 32   return out;
 33 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>LOG_COLOR_WHITE</b>, <b>SET_ERRNO</b>, <b>UI_TEXT_COLOR_BUFFER_SIZE</b>,
-    and <b>ui_text_color_prefix()</b>.</p>
-<p class="Pp">Referenced by <b>frame_buffer_render_divider()</b>,
-    <b>tui_stats_render()</b>, <b>ui_error_popup_render()</b>,
-    <b>ui_table_render()</b>, and <b>ui_text_color_prefix()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_text_render_values_("><a class="permalink" href="#void_ui_text_render_values_(">void
-  ui_text_render_values (<b>frame_buffer_t</b> * out, const char *
-  text)</a></h2>
-<p class="Pp">Definition at line <b>146</b> of file <b>text.c</b>.</p>
-<pre>146                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>LOG_COLOR_WHITE</b>, <b>SET_ERRNO</b>,
+            <b>UI_TEXT_COLOR_BUFFER_SIZE</b>, and <b>ui_text_color_prefix()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>frame_buffer_render_divider()</b>,
+            <b>tui_stats_render()</b>, <b>ui_error_popup_render()</b>,
+            <b>ui_table_render()</b>, and <b>ui_text_color_prefix()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_text_render_values_(">
+            <a class="permalink" href="#void_ui_text_render_values_("
+              >void ui_text_render_values (<b>frame_buffer_t</b> * out, const
+              char * text)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>146</b> of file <b>text.c</b>.</p>
+          <pre>
+146                                                                   {
 147   char styled[UI_TEXT_STYLED_BUFFER_SIZE];
 148   ui_text_values_style(styled, sizeof(styled), text, LOG_COLOR_FATAL);
 149   frame_buffer_append(out, styled, strlen(styled));
 150 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_append()</b>, <b>LOG_COLOR_FATAL</b>,
-    <b>ui_text_render_values()</b>, <b>UI_TEXT_STYLED_BUFFER_SIZE</b>, and
-    <b>ui_text_values_style()</b>.</p>
-<p class="Pp">Referenced by <b>tui_stats_render()</b>, and
-    <b>ui_text_render_values()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_text_values_(char_*_out,_size_t_capacity,_const_char_*_text)"><a class="permalink" href="#void_ui_text_values_(char_*_out,_size_t_capacity,_const_char_*_text)">void
-  ui_text_values (char * out, size_t capacity, const char * text)</a></h2>
-<p class="Pp">Theme-aware numeric/boolean styling; numeric suffixes retain
-    default color.</p>
-<p class="Pp">Definition at line <b>142</b> of file <b>text.c</b>.</p>
-<pre>142                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_append()</b>, <b>LOG_COLOR_FATAL</b>,
+            <b>ui_text_render_values()</b>, <b>UI_TEXT_STYLED_BUFFER_SIZE</b>,
+            and <b>ui_text_values_style()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>tui_stats_render()</b>, and
+            <b>ui_text_render_values()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ui_text_values_(char_*_out,_size_t_capacity,_const_char_*_text)"
+          >
+            <a
+              class="permalink"
+              href="#void_ui_text_values_(char_*_out,_size_t_capacity,_const_char_*_text)"
+              >void ui_text_values (char * out, size_t capacity, const char *
+              text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Theme-aware numeric/boolean styling; numeric suffixes retain default
+            color.
+          </p>
+          <p class="Pp">Definition at line <b>142</b> of file <b>text.c</b>.</p>
+          <pre>
+142                                                              {
 143   ui_text_values_style(out, cap, text, LOG_COLOR_ERROR);
 144 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>LOG_COLOR_ERROR</b>, <b>ui_text_values()</b>, and
-    <b>ui_text_values_style()</b>.</p>
-<p class="Pp">Referenced by <b>ui_text_values()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_text_values_style_(char_*_out,_size_t_cap,_const_char_*_text,_"><a class="permalink" href="#void_ui_text_values_style_(char_*_out,_size_t_cap,_const_char_*_text,_">void
-  ui_text_values_style (char * out, size_t cap, const char * text,
-  <b>log_color_t</b> zero_color)</a></h2>
-<p class="Pp">Definition at line <b>95</b> of file <b>text.c</b>.</p>
-<pre>95                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>LOG_COLOR_ERROR</b>, <b>ui_text_values()</b>, and
+            <b>ui_text_values_style()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_text_values()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ui_text_values_style_(char_*_out,_size_t_cap,_const_char_*_text,_"
+          >
+            <a
+              class="permalink"
+              href="#void_ui_text_values_style_(char_*_out,_size_t_cap,_const_char_*_text,_"
+              >void ui_text_values_style (char * out, size_t cap, const char *
+              text, <b>log_color_t</b> zero_color)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>95</b> of file <b>text.c</b>.</p>
+          <pre>
+95                                                                                            {
 96   if (!out || !cap) {
 97     SET_ERRNO(ERROR_INVALID_PARAM, &quot;UI text requires output storage&quot;);
 98     return;
@@ -269,27 +378,34 @@
 138     }
 139   }
 140 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
-    <b>SET_ERRNO</b>, <b>UI_TEXT_NUMBER_BUFFER_SIZE</b>,
-    <b>ui_text_values_style()</b>, and <b>utf8_next_char_bytes()</b>.</p>
-<p class="Pp">Referenced by <b>ui_help_menu_render()</b>,
-    <b>ui_text_render_values()</b>, <b>ui_text_values()</b>, and
-    <b>ui_text_values_style()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>,
+            <b>LOG_COLOR_INFO</b>, <b>SET_ERRNO</b>,
+            <b>UI_TEXT_NUMBER_BUFFER_SIZE</b>, <b>ui_text_values_style()</b>,
+            and <b>utf8_next_char_bytes()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_help_menu_render()</b>,
+            <b>ui_text_render_values()</b>, <b>ui_text_values()</b>, and
+            <b>ui_text_values_style()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

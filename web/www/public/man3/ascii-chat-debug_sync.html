@@ -1,166 +1,258 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>debug_sync(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">debug_sync(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">debug_sync(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">debug_sync - Debug_sync</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>mutex.c</b>
-  <br/>
-  Per-thread mutex lock stack for deadlock detection. file <b>sync.c</b>
-  <br/>
-  &#x1F512; Synchronization primitive debugging with dynamic state inspection
-    file <b>mutex.h</b>
-  <br/>
-  Per-thread mutex lock stack for deadlock detection. file <b>sync.h</b>
-  <br/>
-  &#x1F512; Synchronization primitive debugging (mutexes, rwlocks, condition
-    variables)
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>debug_sync_check_cond_deadlocks</b> (void)
-  <br/>
-  Check all condition variables for deadlocks. void
-    <b>debug_sync_print_mutex_state</b> (void)
-  <br/>
-  Print timing state for all named mutexes to stdout/log. void
-    <b>debug_sync_print_rwlock_state</b> (void)
-  <br/>
-  Print timing state for all named read-write locks to stdout/log. void
-    <b>debug_sync_print_cond_state</b> (void)
-  <br/>
-  Print timing state for all named condition variables to stdout/log. void
-    <b>debug_sync_print_state</b> (void)
-  <br/>
-  Print all synchronization primitive states at once. void
-    <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
-    <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
-  <br/>
-  Get synchronization statistics.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">This module provides comprehensive synchronization state
-    inspection and debugging:</p>
-<ul class="Bl-bullet">
-  <li>Dynamic state inspection using named.c registry (see
-    <b>debug/named.h</b>)</li>
-  <li>Timing information for all lock operations (last lock/unlock times)</li>
-  <li>Zero-copy iteration through all registered primitives</li>
-  <li>Scheduled delayed printing for capture during critical sections</li>
-</ul>
-<p class="Pp">No internal collection overhead - queries named.c directly for
-    live state, making it safe to call even in tight loops without performance
-    penalty.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Purpose"><a class="permalink" href="#Purpose">Purpose</a></h2>
-<p class="Pp">Synchronization debugging answers critical questions:</p>
-<ul class="Bl-bullet">
-  <li><b>Development</b>: Which locks are blocking? Which have stale
-    holders?</li>
-  <li><b>Production</b>: Is a deadlock happening? How long are acquisitions
-      taking?</li>
-  <li><b>Testing</b>: Are multiple threads contending properly? What's the lock
-      order?</li>
-</ul>
-<p class="Pp">Useful for:</p>
-<ul class="Bl-bullet">
-  <li>Detecting deadlocks and lock inversions</li>
-  <li>Identifying contention bottlenecks</li>
-  <li>Validating thread safety assumptions</li>
-  <li>Production debugging with minimal overhead</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Key_Features"><a class="permalink" href="#Key_Features">Key
-  Features</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Zero-overhead queries</b>: No collection threads, direct state
-      inspection</li>
-  <li><b>Named primitive support</b>: Works with any primitive registered via
-      named.h</li>
-  <li><b>Timing snapshots</b>: Last lock/unlock times for contention
-    analysis</li>
-  <li><b>Comprehensive views</b>: Print all mutexes, rwlocks, and condition
-      variables</li>
-  <li><b>Delayed reporting</b>: Schedule state capture during specific execution
-      phases</li>
-  <li><b>Thread-safe printing</b>: Can be called from signal handlers or debug
-      threads</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Integration_with_Named_Registry"><a class="permalink" href="#Integration_with_Named_Registry">Integration
-  with Named Registry</a></h2>
-<p class="Pp">Synchronization primitives are identified by their names in the
-    named.c registry:</p>
-<p class="Pp"></p>
-<pre>// In your code:
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>debug_sync(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">debug_sync(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">debug_sync(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">debug_sync - Debug_sync</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>mutex.c</b>
+            <br />
+            Per-thread mutex lock stack for deadlock detection. file
+            <b>sync.c</b>
+            <br />
+            &#x1F512; Synchronization primitive debugging with dynamic state
+            inspection file
+            <b>mutex.h</b>
+            <br />
+            Per-thread mutex lock stack for deadlock detection. file
+            <b>sync.h</b>
+            <br />
+            &#x1F512; Synchronization primitive debugging (mutexes, rwlocks,
+            condition variables)
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>debug_sync_check_cond_deadlocks</b> (void)
+            <br />
+            Check all condition variables for deadlocks. void
+            <b>debug_sync_print_mutex_state</b> (void)
+            <br />
+            Print timing state for all named mutexes to stdout/log. void
+            <b>debug_sync_print_rwlock_state</b> (void)
+            <br />
+            Print timing state for all named read-write locks to stdout/log.
+            void
+            <b>debug_sync_print_cond_state</b> (void)
+            <br />
+            Print timing state for all named condition variables to stdout/log.
+            void
+            <b>debug_sync_print_state</b> (void)
+            <br />
+            Print all synchronization primitive states at once. void
+            <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
+            <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
+            <br />
+            Get synchronization statistics.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          This module provides comprehensive synchronization state inspection
+          and debugging:
+        </p>
+        <ul class="Bl-bullet">
+          <li>
+            Dynamic state inspection using named.c registry (see
+            <b>debug/named.h</b>)
+          </li>
+          <li>
+            Timing information for all lock operations (last lock/unlock times)
+          </li>
+          <li>Zero-copy iteration through all registered primitives</li>
+          <li>
+            Scheduled delayed printing for capture during critical sections
+          </li>
+        </ul>
+        <p class="Pp">
+          No internal collection overhead - queries named.c directly for live
+          state, making it safe to call even in tight loops without performance
+          penalty.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Purpose">
+            <a class="permalink" href="#Purpose">Purpose</a>
+          </h2>
+          <p class="Pp">
+            Synchronization debugging answers critical questions:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Development</b>: Which locks are blocking? Which have stale
+              holders?
+            </li>
+            <li>
+              <b>Production</b>: Is a deadlock happening? How long are
+              acquisitions taking?
+            </li>
+            <li>
+              <b>Testing</b>: Are multiple threads contending properly? What's
+              the lock order?
+            </li>
+          </ul>
+          <p class="Pp">Useful for:</p>
+          <ul class="Bl-bullet">
+            <li>Detecting deadlocks and lock inversions</li>
+            <li>Identifying contention bottlenecks</li>
+            <li>Validating thread safety assumptions</li>
+            <li>Production debugging with minimal overhead</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Key_Features">
+            <a class="permalink" href="#Key_Features">Key Features</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Zero-overhead queries</b>: No collection threads, direct state
+              inspection
+            </li>
+            <li>
+              <b>Named primitive support</b>: Works with any primitive
+              registered via named.h
+            </li>
+            <li>
+              <b>Timing snapshots</b>: Last lock/unlock times for contention
+              analysis
+            </li>
+            <li>
+              <b>Comprehensive views</b>: Print all mutexes, rwlocks, and
+              condition variables
+            </li>
+            <li>
+              <b>Delayed reporting</b>: Schedule state capture during specific
+              execution phases
+            </li>
+            <li>
+              <b>Thread-safe printing</b>: Can be called from signal handlers or
+              debug threads
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Integration_with_Named_Registry">
+            <a class="permalink" href="#Integration_with_Named_Registry"
+              >Integration with Named Registry</a
+            >
+          </h2>
+          <p class="Pp">
+            Synchronization primitives are identified by their names in the
+            named.c registry:
+          </p>
+          <p class="Pp"></p>
+          <pre>
+// In your code:
 mutex_t recv_lock;
 mutex_init(&amp;recv_lock);
 NAMED_REGISTER(&amp;recv_lock, &quot;recv&quot;, &quot;mutex&quot;);  // See debug/named.h
 // Later, in debug output:
 debug_sync_print_state();  // Prints &quot;recv.1 (mutex)&quot; with timing
 </pre>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>debug/named.h</b> - The registry that backs this
-  module</div>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
-  Examples</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Development:_Print_Current_Lock_State"><a class="permalink" href="#Development:_Print_Current_Lock_State">Development:
-  Print Current Lock State</a></h2>
-<pre>// When you suspect a deadlock or lock contention:
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>debug/named.h</b> - The registry that backs this module
+          </div>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_Examples">
+            <a class="permalink" href="#Usage_Examples">Usage Examples</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Development:_Print_Current_Lock_State">
+            <a class="permalink" href="#Development:_Print_Current_Lock_State"
+              >Development: Print Current Lock State</a
+            >
+          </h2>
+          <pre>
+// When you suspect a deadlock or lock contention:
 debug_sync_print_state();  // Prints all mutexes, rwlocks, conds with timing</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Production:_Periodic_State_Dumps"><a class="permalink" href="#Production:_Periodic_State_Dumps">Production:
-  Periodic State Dumps</a></h2>
-<pre>// In a signal handler (e.g., SIGUSR2):
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Production:_Periodic_State_Dumps">
+            <a class="permalink" href="#Production:_Periodic_State_Dumps"
+              >Production: Periodic State Dumps</a
+            >
+          </h2>
+          <pre>// In a signal handler (e.g., SIGUSR2):
 void handle_debug_signal(int sig) {
 <br/>
     debug_stats_trigger_print();  // Schedules print on debug thread
@@ -170,27 +262,38 @@ debug_stats_init();
 debug_sync_start_thread();
 signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
 // Now: kill -USR2 &lt;pid&gt; triggers state dump in logs</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Testing:_Capture_State_at_Specific_Moments"><a class="permalink" href="#Testing:_Capture_State_at_Specific_Moments">Testing:
-  Capture State at Specific Moments</a></h2>
-<pre>// Schedule a state dump after 100ms (during critical section):
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Testing:_Capture_State_at_Specific_Moments">
+            <a
+              class="permalink"
+              href="#Testing:_Capture_State_at_Specific_Moments"
+              >Testing: Capture State at Specific Moments</a
+            >
+          </h2>
+          <pre>
+// Schedule a state dump after 100ms (during critical section):
 debug_sync_print_state_delayed(100 * 1000000);  // 100ms in nanoseconds
 // State will print automatically on debug thread</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Backtrace_on_Lock_Contention"><a class="permalink" href="#Backtrace_on_Lock_Contention">Backtrace
-  on Lock Contention</a></h2>
-<pre>// Combined with backtrace:
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Backtrace_on_Lock_Contention">
+            <a class="permalink" href="#Backtrace_on_Lock_Contention"
+              >Backtrace on Lock Contention</a
+            >
+          </h2>
+          <pre>
+// Combined with backtrace:
 debug_sync_print_state();         // See which locks are held
 debug_sync_print_backtrace_delayed(50 * 1000000);  // Get stacks after 50ms</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Output_Format"><a class="permalink" href="#Output_Format">Output
-  Format</a></h2>
-<p class="Pp">Typical output:</p>
-<p class="Pp"></p>
-<pre>=== Mutex State ===
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Output_Format">
+            <a class="permalink" href="#Output_Format">Output Format</a>
+          </h2>
+          <p class="Pp">Typical output:</p>
+          <p class="Pp"></p>
+          <pre>=== Mutex State ===
 recv.1 (mutex) @ lib/network/socket.c:42:socket_create()
 <br/>
   Last lock:   2026-02-23T17:45:23.123456789Z (123ms ago)
@@ -206,64 +309,91 @@ send.2 (mutex) @ lib/network/socket.c:89:socket_send()
 <br/>
   Status: HELD (potential deadlock!)
 </pre>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_check_cond_deadlocks_(void_)"><a class="permalink" href="#void_debug_sync_check_cond_deadlocks_(void_)">void
-  debug_sync_check_cond_deadlocks (void )</a></h2>
-<p class="Pp">#include &lt;<b>lib/debug/mutex.c</b>&gt;<b></b></p>
-<p class="Pp">Check all condition variables for deadlocks. Check all condition
-    variables for potential deadlocks.</p>
-<p class="Pp"></p>
-<p class="Pp">Scans all registered condition variables and logs warnings for any
-    that have been waiting without signal for longer than
-    COND_DEADLOCK_THRESHOLD_NS. The debug thread polls this deadline every
-    100ms. A new wait cannot become stuck before the five-second threshold, so
-    healthy conditions need no registry scans between deadlines. Existing waits
-    set an earlier deadline.</p>
-<p class="Pp"></p>
-<p class="Pp">Skips checks during shutdown to avoid accessing freed memory.</p>
-<p class="Pp"></p>
-<p class="Pp">Scans all registered condition variables and logs warnings for any
-    that have threads waiting without being signaled for longer than 5
-  seconds.</p>
-<p class="Pp"></p>
-<p class="Pp">For each stuck condition variable, logs:</p>
-<ul class="Bl-bullet">
-  <li>Number of waiting threads and elapsed wait time</li>
-  <li>Callsite where wait was entered (file, line, function)</li>
-  <li>Associated mutex status (held by whom, or free)</li>
-</ul>
-<p class="Pp">Called periodically by the debug thread (every 100ms), so
-    detection latency is at most 5 seconds + 100ms for stuck conditions.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Output_Example"><a class="permalink" href="#Output_Example">Output
-  Example</a></h2>
-<pre>[WARN] Stuck cond 'audio_send_queue_cond.0': 1 thread(s) waiting 66s with no signal (most recent waiter:
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">February 2026</div>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_check_cond_deadlocks_(void_)">
+            <a
+              class="permalink"
+              href="#void_debug_sync_check_cond_deadlocks_(void_)"
+              >void debug_sync_check_cond_deadlocks (void )</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>lib/debug/mutex.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Check all condition variables for deadlocks. Check all condition
+            variables for potential deadlocks.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Scans all registered condition variables and logs warnings for any
+            that have been waiting without signal for longer than
+            COND_DEADLOCK_THRESHOLD_NS. The debug thread polls this deadline
+            every 100ms. A new wait cannot become stuck before the five-second
+            threshold, so healthy conditions need no registry scans between
+            deadlines. Existing waits set an earlier deadline.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Skips checks during shutdown to avoid accessing freed memory.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Scans all registered condition variables and logs warnings for any
+            that have threads waiting without being signaled for longer than 5
+            seconds.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">For each stuck condition variable, logs:</p>
+          <ul class="Bl-bullet">
+            <li>Number of waiting threads and elapsed wait time</li>
+            <li>Callsite where wait was entered (file, line, function)</li>
+            <li>Associated mutex status (held by whom, or free)</li>
+          </ul>
+          <p class="Pp">
+            Called periodically by the debug thread (every 100ms), so detection
+            latency is at most 5 seconds + 100ms for stuck conditions.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Output_Example">
+            <a class="permalink" href="#Output_Example">Output Example</a>
+          </h2>
+          <pre>
+[WARN] Stuck cond 'audio_send_queue_cond.0': 1 thread(s) waiting 66s with no signal (most recent waiter:
 audio_sender.0) [WARN]   wait entered at src/client/audio.c:291 audio_sender_thread_func() [WARN]   associated mutex
 is FREE &#x2014; producer is not calling cond_signal</pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: can be called from any thread
-<p class="Pp"></p>
-<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
-<p class="Pp"></p>
-<p class="Pp">Called automatically by debug thread; only call manually for
-    immediate checks</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>debug_sync_start_thread()</b> to ensure periodic
-  checking</div>
-<p class="Pp">Definition at line <b>854</b> of file <b>debug/mutex.c</b>.</p>
-<pre>854                                            {
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: can be called from any thread
+            <p class="Pp"></p>
+            <p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Called automatically by debug thread; only call manually for
+              immediate checks
+            </p>
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>debug_sync_start_thread()</b> to ensure periodic checking
+          </div>
+          <p class="Pp">
+            Definition at line <b>854</b> of file <b>debug/mutex.c</b>.
+          </p>
+          <pre>
+854                                            {
 855   if (debug_sync_is_cleanup_in_progress()) {
 856     return;
 857   }
@@ -305,49 +435,67 @@ is FREE &#x2014; producer is not calling cond_signal</pre>
 893   }
 894   UNTRACKED_FREE(batch.entries);
 895 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>COND_DEADLOCK_THRESHOLD_NS</b>,
-    <b>cond_deadlock_batch_t::count</b>,
-    <b>debug_sync_check_cond_deadlocks()</b>,
-    <b>debug_sync_is_cleanup_in_progress()</b>,
-    <b>cond_deadlock_batch_t::entries</b>,
-    <b>cond_deadlock_snapshot_t::last_signal_time_ns</b>,
-    <b>cond_deadlock_snapshot_t::last_wait_time_ns</b>,
-    <b>cond_deadlock_entry_t::name</b>, <b>named_registry_try_snapshot()</b>,
-    <b>NS_PER_MS_INT</b>, <b>cond_deadlock_entry_t::state</b>,
-    <b>time_get_ns()</b>, <b>UNTRACKED_FREE</b>, <b>UNTRACKED_MALLOC</b>, and
-    <b>cond_deadlock_snapshot_t::waiting_count</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>, and
-    <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_get_stats_("><a class="permalink" href="#void_debug_sync_get_stats_(">void
-  debug_sync_get_stats (<b>uint64_t</b> * total_acquired, <b>uint64_t</b> *
-  total_released, <b>uint32_t</b> * currently_held)</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
-<p class="Pp">Get synchronization statistics.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>total_acquired</i> Pointer to store total lock
-  acquisitions (can be NULL)
-<br/>
-<i>total_released</i> Pointer to store total lock releases (can be NULL)
-<br/>
-<i>currently_held</i> Pointer to store currently held locks (can be NULL)</div>
-<p class="Pp">Retrieves global statistics about synchronization primitive usage.
-    Any parameter can be NULL if that statistic isn't needed.</p>
-<p class="Pp"></p>
-<p class="Pp">Useful for:</p>
-<ul class="Bl-bullet">
-  <li>Monitoring lock contention trends</li>
-  <li>Validating symmetric lock/unlock behavior</li>
-  <li>Detecting lock leaks (acquired != released)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Example_Usage"><a class="permalink" href="#Example_Usage">Example
-  Usage</a></h2>
-<pre>uint64_t acquired, released;
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>COND_DEADLOCK_THRESHOLD_NS</b>,
+            <b>cond_deadlock_batch_t::count</b>,
+            <b>debug_sync_check_cond_deadlocks()</b>,
+            <b>debug_sync_is_cleanup_in_progress()</b>,
+            <b>cond_deadlock_batch_t::entries</b>,
+            <b>cond_deadlock_snapshot_t::last_signal_time_ns</b>,
+            <b>cond_deadlock_snapshot_t::last_wait_time_ns</b>,
+            <b>cond_deadlock_entry_t::name</b>,
+            <b>named_registry_try_snapshot()</b>, <b>NS_PER_MS_INT</b>,
+            <b>cond_deadlock_entry_t::state</b>, <b>time_get_ns()</b>,
+            <b>UNTRACKED_FREE</b>, <b>UNTRACKED_MALLOC</b>, and
+            <b>cond_deadlock_snapshot_t::waiting_count</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_check_cond_deadlocks()</b>, and
+            <b>debug_sync_print_cond_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_get_stats_(">
+            <a class="permalink" href="#void_debug_sync_get_stats_("
+              >void debug_sync_get_stats (<b>uint64_t</b> * total_acquired,
+              <b>uint64_t</b> * total_released, <b>uint32_t</b> *
+              currently_held)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">Get synchronization statistics.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>total_acquired</i> Pointer to store total lock acquisitions (can
+            be NULL)
+            <br />
+            <i>total_released</i> Pointer to store total lock releases (can be
+            NULL)
+            <br />
+            <i>currently_held</i> Pointer to store currently held locks (can be
+            NULL)
+          </div>
+          <p class="Pp">
+            Retrieves global statistics about synchronization primitive usage.
+            Any parameter can be NULL if that statistic isn't needed.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Useful for:</p>
+          <ul class="Bl-bullet">
+            <li>Monitoring lock contention trends</li>
+            <li>Validating symmetric lock/unlock behavior</li>
+            <li>Detecting lock leaks (acquired != released)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Example_Usage">
+            <a class="permalink" href="#Example_Usage">Example Usage</a>
+          </h2>
+          <pre>uint64_t acquired, released;
 uint32_t held;
 debug_sync_get_stats(&amp;acquired, &amp;released, &amp;held);
 if (acquired == released &amp;&amp; held == 0) {
@@ -357,15 +505,19 @@ if (acquired == released &amp;&amp; held == 0) {
 <br/>
     log_warn(&quot;Possible deadlock: %u locks currently held&quot;, held);
 }</pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Atomically reads global counters, no locking required
-<p class="Pp"></p>
-<p class="Pp">Statistics accumulate over program lifetime</p>
-<p class="Pp"></p>
-<p class="Pp">Useful for periodic health checks or monitoring</p>
-</div>
-<p class="Pp">Definition at line <b>528</b> of file <b>debug/sync.c</b>.</p>
-<pre>528                                                                                                         {
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Atomically reads global counters, no locking required
+            <p class="Pp"></p>
+            <p class="Pp">Statistics accumulate over program lifetime</p>
+            <p class="Pp"></p>
+            <p class="Pp">Useful for periodic health checks or monitoring</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>528</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+528                                                                                                         {
 529   if (total_acquired)
 530     *total_acquired = 0;
 531   if (total_released)
@@ -373,160 +525,224 @@ if (acquired == released &amp;&amp; held == 0) {
 533   if (currently_held)
 534     *currently_held = 0;
 535 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_sync_get_stats()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_get_stats()</b>,
-    <b>debug_sync_print_cond_state()</b>, and <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_cond_state_(void_)"><a class="permalink" href="#void_debug_sync_print_cond_state_(void_)">void
-  debug_sync_print_cond_state (void )</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
-<p class="Pp">Print timing state for all named condition variables to
-    stdout/log. Queries the named.c registry and prints a table of all
-    registered condition variables with their timing information:</p>
-<ul class="Bl-bullet">
-  <li>Name and registration location</li>
-  <li>Last wait time (with elapsed time)</li>
-  <li>Last signal time (with elapsed time)</li>
-  <li>Last broadcast time (with elapsed time)</li>
-</ul>
-<p class="Pp">Useful for detecting:</p>
-<ul class="Bl-bullet">
-  <li>Condition variable deadlocks (waiters never signaled)</li>
-  <li>Signal storms (excessive signaling)</li>
-  <li>Lost wakeups (signals without corresponding waiters)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: can be called from any thread or signal
-  handler
-<p class="Pp"></p>
-<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to
-  register condition variables</div>
-<p class="Pp">References <b>debug_sync_check_cond_deadlocks()</b>,
-    <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>,
-    <b>debug_sync_final_cleanup()</b>, <b>debug_sync_get_stats()</b>,
-    <b>debug_sync_init()</b>, <b>debug_sync_is_cleanup_in_progress()</b>,
-    <b>debug_sync_poll()</b>, <b>debug_sync_print()</b>,
-    <b>debug_sync_print_backtrace_delayed()</b>,
-    <b>debug_sync_print_cond_state()</b>, <b>debug_sync_print_state()</b>,
-    <b>debug_sync_print_state_delayed()</b>, <b>debug_sync_start_thread()</b>,
-    and <b>debug_sync_trigger_print()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_cond_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_mutex_state_(void_)"><a class="permalink" href="#void_debug_sync_print_mutex_state_(void_)">void
-  debug_sync_print_mutex_state (void )</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
-<p class="Pp">Print timing state for all named mutexes to stdout/log. Queries
-    the named.c registry and prints a table of all registered mutexes with their
-    timing information:</p>
-<ul class="Bl-bullet">
-  <li>Name and registration location</li>
-  <li>Last lock time (with elapsed time)</li>
-  <li>Last unlock time (with elapsed time)</li>
-  <li>Current status (held/free)</li>
-</ul>
-<p class="Pp">Useful for detecting:</p>
-<ul class="Bl-bullet">
-  <li>Mutex deadlocks (HELD locks that should be released)</li>
-  <li>Lock starvation (locks never acquired)</li>
-  <li>Excessive lock contention (very frequent lock/unlock cycles)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: can be called from any thread or signal
-  handler
-<p class="Pp"></p>
-<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
-<p class="Pp"></p>
-<p class="Pp">Zero overhead in release builds if no mutexes are named</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to
-  register mutexes for tracking</div>
-<p class="Pp">References <b>debug_sync_print_mutex_state()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_mutex_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_rwlock_state_(void_)"><a class="permalink" href="#void_debug_sync_print_rwlock_state_(void_)">void
-  debug_sync_print_rwlock_state (void )</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
-<p class="Pp">Print timing state for all named read-write locks to stdout/log.
-    Queries the named.c registry and prints a table of all registered rwlocks
-    with their timing information:</p>
-<ul class="Bl-bullet">
-  <li>Name and registration location</li>
-  <li>Last read-lock time (with elapsed time)</li>
-  <li>Last write-lock time (with elapsed time)</li>
-  <li>Last unlock time (with elapsed time)</li>
-  <li>Current status (read-held/write-held/free)</li>
-</ul>
-<p class="Pp">Useful for detecting:</p>
-<ul class="Bl-bullet">
-  <li>RWlock writer starvation (reads blocking writers)</li>
-  <li>Asymmetric lock patterns (only readers or only writers)</li>
-  <li>Writer lock deadlocks (HELD write locks)</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: can be called from any thread or signal
-  handler
-<p class="Pp"></p>
-<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to
-  register rwlocks for tracking</div>
-<p class="Pp">References <b>debug_sync_print_rwlock_state()</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_rwlock_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_state_(void_)"><a class="permalink" href="#void_debug_sync_print_state_(void_)">void
-  debug_sync_print_state (void )</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
-<p class="Pp">Print all synchronization primitive states at once. Comprehensive
-    debugging view that combines output from:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>debug_sync_print_mutex_state()</b></dd>
-  <dt>2.</dt>
-  <dd><b>debug_sync_print_rwlock_state()</b></dd>
-  <dt>3.</dt>
-  <dd><b>debug_sync_print_cond_state()</b></dd>
-</dl>
-<p class="Pp">This is the starting point for understanding overall lock
-    contention and state. Use individual <i>print</i>*_state() functions if you
-    only need specific primitive types.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typical_Workflow"><a class="permalink" href="#Typical_Workflow">Typical
-  Workflow</a></h2>
-<pre>// In debugger or signal handler:
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>debug_sync_get_stats()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_get_stats()</b>,
+            <b>debug_sync_print_cond_state()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_cond_state_(void_)">
+            <a
+              class="permalink"
+              href="#void_debug_sync_print_cond_state_(void_)"
+              >void debug_sync_print_cond_state (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Print timing state for all named condition variables to stdout/log.
+            Queries the named.c registry and prints a table of all registered
+            condition variables with their timing information:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Name and registration location</li>
+            <li>Last wait time (with elapsed time)</li>
+            <li>Last signal time (with elapsed time)</li>
+            <li>Last broadcast time (with elapsed time)</li>
+          </ul>
+          <p class="Pp">Useful for detecting:</p>
+          <ul class="Bl-bullet">
+            <li>Condition variable deadlocks (waiters never signaled)</li>
+            <li>Signal storms (excessive signaling)</li>
+            <li>Lost wakeups (signals without corresponding waiters)</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: can be called from any thread or signal handler
+            <p class="Pp"></p>
+            <p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to register
+            condition variables
+          </div>
+          <p class="Pp">
+            References <b>debug_sync_check_cond_deadlocks()</b>,
+            <b>debug_sync_cleanup_thread()</b>, <b>debug_sync_destroy()</b>,
+            <b>debug_sync_final_cleanup()</b>, <b>debug_sync_get_stats()</b>,
+            <b>debug_sync_init()</b>,
+            <b>debug_sync_is_cleanup_in_progress()</b>,
+            <b>debug_sync_poll()</b>, <b>debug_sync_print()</b>,
+            <b>debug_sync_print_backtrace_delayed()</b>,
+            <b>debug_sync_print_cond_state()</b>,
+            <b>debug_sync_print_state()</b>,
+            <b>debug_sync_print_state_delayed()</b>,
+            <b>debug_sync_start_thread()</b>, and
+            <b>debug_sync_trigger_print()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>debug_sync_print_cond_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_mutex_state_(void_)">
+            <a
+              class="permalink"
+              href="#void_debug_sync_print_mutex_state_(void_)"
+              >void debug_sync_print_mutex_state (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Print timing state for all named mutexes to stdout/log. Queries the
+            named.c registry and prints a table of all registered mutexes with
+            their timing information:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Name and registration location</li>
+            <li>Last lock time (with elapsed time)</li>
+            <li>Last unlock time (with elapsed time)</li>
+            <li>Current status (held/free)</li>
+          </ul>
+          <p class="Pp">Useful for detecting:</p>
+          <ul class="Bl-bullet">
+            <li>Mutex deadlocks (HELD locks that should be released)</li>
+            <li>Lock starvation (locks never acquired)</li>
+            <li>
+              Excessive lock contention (very frequent lock/unlock cycles)
+            </li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: can be called from any thread or signal handler
+            <p class="Pp"></p>
+            <p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Zero overhead in release builds if no mutexes are named
+            </p>
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to register mutexes
+            for tracking
+          </div>
+          <p class="Pp">References <b>debug_sync_print_mutex_state()</b>.</p>
+          <p class="Pp">Referenced by <b>debug_sync_print_mutex_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_rwlock_state_(void_)">
+            <a
+              class="permalink"
+              href="#void_debug_sync_print_rwlock_state_(void_)"
+              >void debug_sync_print_rwlock_state (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Print timing state for all named read-write locks to stdout/log.
+            Queries the named.c registry and prints a table of all registered
+            rwlocks with their timing information:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Name and registration location</li>
+            <li>Last read-lock time (with elapsed time)</li>
+            <li>Last write-lock time (with elapsed time)</li>
+            <li>Last unlock time (with elapsed time)</li>
+            <li>Current status (read-held/write-held/free)</li>
+          </ul>
+          <p class="Pp">Useful for detecting:</p>
+          <ul class="Bl-bullet">
+            <li>RWlock writer starvation (reads blocking writers)</li>
+            <li>Asymmetric lock patterns (only readers or only writers)</li>
+            <li>Writer lock deadlocks (HELD write locks)</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: can be called from any thread or signal handler
+            <p class="Pp"></p>
+            <p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to register rwlocks
+            for tracking
+          </div>
+          <p class="Pp">References <b>debug_sync_print_rwlock_state()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print_rwlock_state()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_print_state_(void_)">
+            <a class="permalink" href="#void_debug_sync_print_state_(void_)"
+              >void debug_sync_print_state (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Print all synchronization primitive states at once. Comprehensive
+            debugging view that combines output from:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>debug_sync_print_mutex_state()</b></dd>
+            <dt>2.</dt>
+            <dd><b>debug_sync_print_rwlock_state()</b></dd>
+            <dt>3.</dt>
+            <dd><b>debug_sync_print_cond_state()</b></dd>
+          </dl>
+          <p class="Pp">
+            This is the starting point for understanding overall lock contention
+            and state. Use individual <i>print</i>*_state() functions if you
+            only need specific primitive types.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typical_Workflow">
+            <a class="permalink" href="#Typical_Workflow">Typical Workflow</a>
+          </h2>
+          <pre>
+// In debugger or signal handler:
 debug_sync_print_state();  // See all sync primitives at once
 // Then examine the output for:
 // - Any HELD locks that should be free
 // - Asymmetric patterns (locks acquired but never released)
 // - Timestamps that suggest contention or deadlock</pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Thread-safe: can be called from any thread or signal
-  handler
-<p class="Pp"></p>
-<p class="Pp">Useful in production with signal handlers for &quot;give me the
-    state now&quot;</p>
-</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>debug_sync_print_mutex_state()</b>
-<p class="Pp"></p>
-<p class="Pp"><b>debug_sync_print_rwlock_state()</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>debug_sync_print_cond_state()</b></p>
-</div>
-<p class="Pp">Definition at line <b>471</b> of file <b>debug/sync.c</b>.</p>
-<pre>471                                   {
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Thread-safe: can be called from any thread or signal handler
+            <p class="Pp"></p>
+            <p class="Pp">
+              Useful in production with signal handlers for &quot;give me the
+              state now&quot;
+            </p>
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>debug_sync_print_mutex_state()</b>
+            <p class="Pp"></p>
+            <p class="Pp"><b>debug_sync_print_rwlock_state()</b></p>
+            <p class="Pp"></p>
+            <p class="Pp"><b>debug_sync_print_cond_state()</b></p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>471</b> of file <b>debug/sync.c</b>.
+          </p>
+          <pre>
+471                                   {
 472 // Use a single large buffer for all sync state output
 473 #define SYNC_BUFFER_SIZE 65536 // Increased from 8192 to handle many syncs
 474
@@ -582,27 +798,33 @@ debug_sync_print_state();  // See all sync primitives at once
 524   SAFE_FREE(buffer);
 525 #undef SYNC_BUFFER_SIZE
 526 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>sync_buffer_t::buffer</b>,
-    <b>sync_buffer_t::buffer_size</b>, <b>debug_sync_print_state()</b>,
-    <b>log_debug</b>, <b>log_info</b>, <b>named_registry_for_each()</b>,
-    <b>sync_buffer_t::offset</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SYNC_BUFFER_SIZE</b>, and <b>sync_buffer_t::truncated</b>.</p>
-<p class="Pp">Referenced by <b>debug_sync_print_cond_state()</b>, and
-    <b>debug_sync_print_state()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>sync_buffer_t::buffer</b>,
+            <b>sync_buffer_t::buffer_size</b>, <b>debug_sync_print_state()</b>,
+            <b>log_debug</b>, <b>log_info</b>, <b>named_registry_for_each()</b>,
+            <b>sync_buffer_t::offset</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SYNC_BUFFER_SIZE</b>, and <b>sync_buffer_t::truncated</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_sync_print_cond_state()</b>, and
+            <b>debug_sync_print_state()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

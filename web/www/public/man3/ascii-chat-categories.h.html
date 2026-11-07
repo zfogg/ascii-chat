@@ -1,92 +1,137 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>categories.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">categories.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">categories.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">categories.h - Extern declarations for all category entry
-  arrays.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const <b>registry_entry_t</b> <b>g_general_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_logging_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_terminal_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_configuration_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_display_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_webcam_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_audio_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_media_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_network_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_security_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_database_entries</b> []
-  <br/>
-  const <b>registry_entry_t</b> <b>g_debug_entries</b> []
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Extern declarations for all category entry arrays.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>categories.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_audio_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>39</b> of file
-    <b>lib/options/registry/audio.c</b>.</p>
-<pre>39                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>categories.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">categories.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">categories.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          categories.h - Extern declarations for all category entry arrays.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>registry_entry_t</b> <b>g_general_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_logging_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_terminal_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_configuration_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_display_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_webcam_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_audio_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_media_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_network_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_security_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_database_entries</b> []
+            <br />
+            const <b>registry_entry_t</b> <b>g_debug_entries</b> []
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Extern declarations for all category entry arrays.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>categories.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_audio_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>39</b> of file
+            <b>lib/options/registry/audio.c</b>.
+          </p>
+          <pre>
+39                                          {
 40     {&quot;test-audio&quot;,
 41      '\0',
 42      OPTION_TYPE_BOOL,
@@ -585,14 +630,18 @@
 535      NULL},
 536
 537     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_configuration_entries[]
-  [extern]</h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>configuration.c</b>.</p>
-<pre>19                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_configuration_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>configuration.c</b>.
+          </p>
+          <pre>
+19                                                  {
 20     // CONFIGURATION GROUP (binary-level)
 21     {&quot;config&quot;,
 22      '\0',
@@ -668,14 +717,19 @@
 92      NULL},
 93
 94     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_database_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>17</b> of file
-    <b>options/registry/database.c</b>.</p>
-<pre>17                                             {// DATABASE GROUP - ACDS Server Specific Options
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_database_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file
+            <b>options/registry/database.c</b>.
+          </p>
+          <pre>
+17                                             {// DATABASE GROUP - ACDS Server Specific Options
 18                                                {&quot;database&quot;,
 19                                                 '\0',
 20                                                 OPTION_TYPE_STRING,
@@ -696,13 +750,16 @@
 35                                                 NULL},
 36
 37                                                REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_debug_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>debug.c</b>.</p>
-<pre>16                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_debug_entries[] [extern]
+          </h2>
+          <p class="Pp">Definition at line <b>16</b> of file <b>debug.c</b>.</p>
+          <pre>
+16                                          {
 17 #ifndef NDEBUG
 18     {&quot;face-follow-debug&quot;, '\0', OPTION_TYPE_BOOL, offsetof(options_t, face_follow_debug),
 19      &amp;default_face_follow_debug_value, sizeof(bool), &quot;Outline the selected detected face with a red square (debug builds only).&quot;,
@@ -784,14 +841,19 @@
 95
 96 #endif
 97     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_display_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>71</b> of file
-    <b>lib/options/registry/display.c</b>.</p>
-<pre>71                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_display_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>71</b> of file
+            <b>lib/options/registry/display.c</b>.
+          </p>
+          <pre>
+71                                            {
 72     {.long_name = &quot;zalgo&quot;,
 73      .type = OPTION_TYPE_CALLBACK,
 74      .offset = offsetof(options_t, zalgo),
@@ -1120,13 +1182,18 @@
 397      NULL},
 398
 399     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_general_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>general.c</b>.</p>
-<pre>20                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_general_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>general.c</b>.
+          </p>
+          <pre>
+20                                            {
 21     {.long_name = &quot;server&quot;,
 22      .type = OPTION_TYPE_BOOL,
 23      .offset = offsetof(options_t, mcp_server_restricted),
@@ -1301,14 +1368,19 @@
 192      NULL},
 193
 194     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_logging_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>29</b> of file
-    <b>options/registry/logging.c</b>.</p>
-<pre>29                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_logging_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file
+            <b>options/registry/logging.c</b>.
+          </p>
+          <pre>
+29                                            {
 30     {&quot;otel-log-level&quot;,
 31      '\0',
 32      OPTION_TYPE_STRING,
@@ -1680,13 +1752,16 @@
 398      NULL},
 399
 400     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_media_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>91</b> of file <b>media.c</b>.</p>
-<pre>91                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_media_entries[] [extern]
+          </h2>
+          <p class="Pp">Definition at line <b>91</b> of file <b>media.c</b>.</p>
+          <pre>
+91                                          {
 92     // Media File Streaming Options
 93     {&quot;file&quot;,
 94      'f',
@@ -1925,14 +2000,19 @@
 327      NULL},
 328
 329     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_network_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>38</b> of file
-    <b>options/registry/network.c</b>.</p>
-<pre>38                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_network_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file
+            <b>options/registry/network.c</b>.
+          </p>
+          <pre>
+38                                            {
 39     {.long_name = &quot;address&quot;,
 40      .type = OPTION_TYPE_STRING,
 41      .offset = offsetof(options_t, address),
@@ -2543,14 +2623,19 @@
 646      NULL},
 647
 648     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_security_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>19</b> of file
-    <b>options/registry/security.c</b>.</p>
-<pre>19                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_security_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file
+            <b>options/registry/security.c</b>.
+          </p>
+          <pre>
+19                                             {
 20     // SECURITY GROUP (client, server, discovery)
 21     {&quot;encrypt&quot;,
 22      'E',
@@ -2759,14 +2844,19 @@
 225      NULL},
 226
 227     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_terminal_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>22</b> of file
-    <b>options/registry/terminal.c</b>.</p>
-<pre>22                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_terminal_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file
+            <b>options/registry/terminal.c</b>.
+          </p>
+          <pre>
+22                                             {
 23     // TERMINAL GROUP (client, mirror, discovery)
 24     {&quot;width&quot;,
 25      'x',
@@ -2910,14 +3000,19 @@
 163      NULL},
 164
 165     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">const <b>registry_entry_t</b> g_webcam_entries[] [extern]</h2>
-<p class="Pp">Definition at line <b>33</b> of file
-    <b>options/registry/webcam.c</b>.</p>
-<pre>33                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            const <b>registry_entry_t</b> g_webcam_entries[] [extern]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>33</b> of file
+            <b>options/registry/webcam.c</b>.
+          </p>
+          <pre>
+33                                           {
 34     // WEBCAM GROUP (client, mirror, discovery)
 35     {&quot;webcam-index&quot;,
 36      'c',
@@ -2975,20 +3070,22 @@
 88      NULL},
 89
 90     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

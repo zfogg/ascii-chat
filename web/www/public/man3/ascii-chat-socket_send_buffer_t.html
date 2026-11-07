@@ -1,109 +1,175 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>socket_send_buffer_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">socket_send_buffer_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">socket_send_buffer_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">socket_send_buffer_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/platform/socket.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">void * <b>data</b>
-  <br/>
-  size_t <b>capacity</b>
-  <br/>
-  <b>bool</b> <b>mapped</b>
-  <br/>
-  <b>buffer_budget_t</b> <b>budget</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Owned send storage. Large Linux allocations use private mappings:
-    unmapping after cancellation cannot recycle pages still pinned by the
-    network stack. Other platforms and small allocations use owned buffers. All
-    storage is budgeted.</p>
-<p class="Pp">Definition at line <b>510</b> of file <b>socket.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>buffer_budget_t</b> socket_send_buffer_t::budget</h2>
-<p class="Pp">Definition at line <b>514</b> of file <b>socket.h</b>.</p>
-<p class="Pp">Referenced by <b>socket_send_buffer_alloc()</b>, and
-    <b>socket_send_buffer_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_socket_send_buffer_t::capacity"><a class="permalink" href="#size_t_socket_send_buffer_t::capacity">size_t
-  socket_send_buffer_t::capacity</a></h2>
-<p class="Pp">Definition at line <b>512</b> of file <b>socket.h</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_write()</b>,
-    <b>socket_send_buffer_alloc()</b>, <b>socket_send_buffer_free()</b>,
-    <b>socket_send_zerocopy()</b>, and <b>socket_zerocopy_try()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_socket_send_buffer_t::data"><a class="permalink" href="#void*_socket_send_buffer_t::data">void*
-  socket_send_buffer_t::data</a></h2>
-<p class="Pp">Definition at line <b>511</b> of file <b>socket.h</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_stream_write()</b>,
-    <b>socket_send_buffer_alloc()</b>, <b>socket_send_buffer_free()</b>,
-    <b>socket_send_zerocopy()</b>, and <b>socket_zerocopy_try()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> socket_send_buffer_t::mapped</h2>
-<p class="Pp">Definition at line <b>513</b> of file <b>socket.h</b>.</p>
-<p class="Pp">Referenced by <b>socket_send_buffer_alloc()</b>,
-    <b>socket_send_buffer_free()</b>, <b>socket_send_zerocopy()</b>, and
-    <b>socket_zerocopy_try()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>socket_send_buffer_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">socket_send_buffer_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">socket_send_buffer_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">socket_send_buffer_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/platform/socket.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void * <b>data</b>
+            <br />
+            size_t <b>capacity</b>
+            <br />
+            <b>bool</b> <b>mapped</b>
+            <br />
+            <b>buffer_budget_t</b> <b>budget</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Owned send storage. Large Linux allocations use private mappings:
+          unmapping after cancellation cannot recycle pages still pinned by the
+          network stack. Other platforms and small allocations use owned
+          buffers. All storage is budgeted.
+        </p>
+        <p class="Pp">Definition at line <b>510</b> of file <b>socket.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>buffer_budget_t</b> socket_send_buffer_t::budget
+          </h2>
+          <p class="Pp">
+            Definition at line <b>514</b> of file <b>socket.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>socket_send_buffer_alloc()</b>, and
+            <b>socket_send_buffer_free()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_socket_send_buffer_t::capacity">
+            <a class="permalink" href="#size_t_socket_send_buffer_t::capacity"
+              >size_t socket_send_buffer_t::capacity</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>512</b> of file <b>socket.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_write()</b>,
+            <b>socket_send_buffer_alloc()</b>, <b>socket_send_buffer_free()</b>,
+            <b>socket_send_zerocopy()</b>, and <b>socket_zerocopy_try()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_socket_send_buffer_t::data">
+            <a class="permalink" href="#void*_socket_send_buffer_t::data"
+              >void* socket_send_buffer_t::data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>511</b> of file <b>socket.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>platform_event_stream_write()</b>,
+            <b>socket_send_buffer_alloc()</b>, <b>socket_send_buffer_free()</b>,
+            <b>socket_send_zerocopy()</b>, and <b>socket_zerocopy_try()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> socket_send_buffer_t::mapped</h2>
+          <p class="Pp">
+            Definition at line <b>513</b> of file <b>socket.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>socket_send_buffer_alloc()</b>,
+            <b>socket_send_buffer_free()</b>, <b>socket_send_zerocopy()</b>, and
+            <b>socket_zerocopy_try()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

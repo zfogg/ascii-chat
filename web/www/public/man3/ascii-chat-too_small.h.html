@@ -1,107 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>too_small.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">too_small.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">too_small.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">too_small.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>UI_MEDIA_MIN_COLS</b> 20
-  <br/>
-  #define <b>UI_MEDIA_MIN_ROWS</b> 10
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>ui_too_small</b> (<b>terminal_size_t</b> actual,
-    <b>terminal_size_t</b> minimum)
-  <br/>
-  size_t <b>ui_too_small_format</b> (char *output, size_t capacity,
-    <b>terminal_size_t</b> actual, <b>terminal_size_t</b> minimum)
-  <br/>
-  void <b>ui_too_small_render</b> (<b>frame_buffer_t</b> *buffer,
-    <b>terminal_size_t</b> actual, <b>terminal_size_t</b> minimum)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_MEDIA_MIN_COLS___20"><a class="permalink" href="#_define_UI_MEDIA_MIN_COLS___20">#define
-  UI_MEDIA_MIN_COLS 20</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>too_small.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_UI_MEDIA_MIN_ROWS___10"><a class="permalink" href="#_define_UI_MEDIA_MIN_ROWS___10">#define
-  UI_MEDIA_MIN_ROWS 10</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>too_small.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_write()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_too_small (<b>terminal_size_t</b> actual,
-  <b>terminal_size_t</b> minimum)</h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>too_small.c</b>.</p>
-<pre>10                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>too_small.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">too_small.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">too_small.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">too_small.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>UI_MEDIA_MIN_COLS</b> 20
+            <br />
+            #define <b>UI_MEDIA_MIN_ROWS</b> 10
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>ui_too_small</b> (<b>terminal_size_t</b> actual,
+            <b>terminal_size_t</b> minimum)
+            <br />
+            size_t <b>ui_too_small_format</b> (char *output, size_t capacity,
+            <b>terminal_size_t</b> actual, <b>terminal_size_t</b> minimum)
+            <br />
+            void <b>ui_too_small_render</b> (<b>frame_buffer_t</b> *buffer,
+            <b>terminal_size_t</b> actual, <b>terminal_size_t</b> minimum)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_MEDIA_MIN_COLS___20">
+            <a class="permalink" href="#_define_UI_MEDIA_MIN_COLS___20"
+              >#define UI_MEDIA_MIN_COLS 20</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>too_small.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_write()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_MEDIA_MIN_ROWS___10">
+            <a class="permalink" href="#_define_UI_MEDIA_MIN_ROWS___10"
+              >#define UI_MEDIA_MIN_ROWS 10</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>too_small.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_write()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_too_small (<b>terminal_size_t</b> actual,
+            <b>terminal_size_t</b> minimum)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>too_small.c</b>.
+          </p>
+          <pre>
+10                                                                    {
 11   return actual.cols &gt; 0 &amp;&amp; actual.rows &gt; 0 &amp;&amp; (actual.cols &lt; minimum.cols || actual.rows &lt; minimum.rows);
 12 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_size_t::cols</b>,
-    <b>terminal_size_t::rows</b>, and <b>ui_too_small()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_state()</b>,
-    <b>ui_error_popup_render()</b>, <b>ui_session_render()</b>,
-    <b>ui_sync_render()</b>, and <b>ui_too_small()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ui_too_small_format_(char_*_output,_size_t_capacity,_"><a class="permalink" href="#size_t_ui_too_small_format_(char_*_output,_size_t_capacity,_">size_t
-  ui_too_small_format (char * output, size_t capacity, <b>terminal_size_t</b>
-  actual, <b>terminal_size_t</b> minimum)</a></h2>
-<p class="Pp">Format the warning without allocation, for independent diagnostic
-    renderers.</p>
-<p class="Pp">Definition at line <b>14</b> of file <b>too_small.c</b>.</p>
-<pre>14                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>,
+            <b>terminal_size_t::rows</b>, and <b>ui_too_small()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_state()</b>,
+            <b>ui_error_popup_render()</b>, <b>ui_session_render()</b>,
+            <b>ui_sync_render()</b>, and <b>ui_too_small()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_ui_too_small_format_(char_*_output,_size_t_capacity,_"
+          >
+            <a
+              class="permalink"
+              href="#size_t_ui_too_small_format_(char_*_output,_size_t_capacity,_"
+              >size_t ui_too_small_format (char * output, size_t capacity,
+              <b>terminal_size_t</b> actual, <b>terminal_size_t</b> minimum)</a
+            >
+          </h2>
+          <p class="Pp">
+            Format the warning without allocation, for independent diagnostic
+            renderers.
+          </p>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>too_small.c</b>.
+          </p>
+          <pre>
+14                                                                                                            {
 15   if (!output || !capacity || actual.cols &lt;= 0 || actual.rows &lt;= 0)
 16     return 0;
 17   char dimensions[TUI_TOO_SMALL_DIMENSIONS_BUFFER_SIZE];
@@ -124,45 +198,63 @@
 34   }
 35   return used;
 36 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_size_t::cols</b>,
-    <b>terminal_size_t::rows</b>, <b>TUI_TOO_SMALL_DIMENSIONS_BUFFER_SIZE</b>,
-    and <b>ui_too_small_format()</b>.</p>
-<p class="Pp">Referenced by <b>ui_sync_render()</b>,
-    <b>ui_too_small_format()</b>, and <b>ui_too_small_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_too_small_render_("><a class="permalink" href="#void_ui_too_small_render_(">void
-  ui_too_small_render (<b>frame_buffer_t</b> * buffer, <b>terminal_size_t</b>
-  actual, <b>terminal_size_t</b> minimum)</a></h2>
-<p class="Pp">Never writes outside actual dimensions, including a 1x1
-  terminal.</p>
-<p class="Pp">Definition at line <b>38</b> of file <b>too_small.c</b>.</p>
-<pre>38                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>,
+            <b>terminal_size_t::rows</b>,
+            <b>TUI_TOO_SMALL_DIMENSIONS_BUFFER_SIZE</b>, and
+            <b>ui_too_small_format()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_sync_render()</b>, <b>ui_too_small_format()</b>,
+            and <b>ui_too_small_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_too_small_render_(">
+            <a class="permalink" href="#void_ui_too_small_render_("
+              >void ui_too_small_render (<b>frame_buffer_t</b> * buffer,
+              <b>terminal_size_t</b> actual, <b>terminal_size_t</b> minimum)</a
+            >
+          </h2>
+          <p class="Pp">
+            Never writes outside actual dimensions, including a 1x1 terminal.
+          </p>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>too_small.c</b>.
+          </p>
+          <pre>
+38                                                                                                   {
 39   char output[TUI_TOO_SMALL_OUTPUT_BUFFER_SIZE];
 40   size_t length = ui_too_small_format(output, sizeof(output), actual, minimum);
 41   frame_buffer_append(buffer, output, length);
 42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame_buffer_append()</b>,
-    <b>TUI_TOO_SMALL_OUTPUT_BUFFER_SIZE</b>, <b>ui_too_small_format()</b>, and
-    <b>ui_too_small_render()</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_render()</b>,
-    <b>ui_session_render()</b>, and <b>ui_too_small_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>frame_buffer_append()</b>,
+            <b>TUI_TOO_SMALL_OUTPUT_BUFFER_SIZE</b>,
+            <b>ui_too_small_format()</b>, and <b>ui_too_small_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_error_popup_render()</b>,
+            <b>ui_session_render()</b>, and <b>ui_too_small_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

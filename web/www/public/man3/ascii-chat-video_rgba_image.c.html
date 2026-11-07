@@ -1,102 +1,151 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>image.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">image.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">image.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">image.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>image_t</b> * <b>image_new</b> (size_t width, size_t height)
-  <br/>
-  Create a new image with standard allocation. void <b>image_destroy</b>
-    (<b>image_t</b> *image)
-  <br/>
-  Destroy an image allocated with <b>image_new()</b>. void <b>image_clear</b>
-    (<b>image_t</b> *p)
-  <br/>
-  Clear image (set all pixels to black). <b>image_t</b> * <b>image_new_copy</b>
-    (const <b>image_t</b> *source)
-  <br/>
-  Create a copy of an existing image. <b>rgb_pixel_t</b> * <b>image_pixel</b>
-    (<b>image_t</b> *p, const int x, const int y)
-  <br/>
-  void <b>image_resize</b> (const <b>image_t</b> *s, <b>image_t</b> *d)
-  <br/>
-  Resize image using nearest-neighbor interpolation. void
-    <b>image_resize_interpolation</b> (const <b>image_t</b> *source,
-    <b>image_t</b> *dest)
-  <br/>
-  Resize image using bilinear interpolation. void <b>precalc_rgb_palettes</b>
-    (const float red, const float green, const float blue)
-  <br/>
-  Precalculate RGB palettes with color adjustment.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>rgb_pixel_t</b> * image_pixel (<b>image_t</b> * p, const int
-  x, const int y) [inline]</h2>
-<p class="Pp">Definition at line <b>105</b> of file
-  <b>video/rgba/image.c</b>.</p>
-<pre>105                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>image.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">image.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">image.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">image.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>image_t</b> * <b>image_new</b> (size_t width, size_t height)
+            <br />
+            Create a new image with standard allocation. void
+            <b>image_destroy</b> (<b>image_t</b>
+            *image)
+            <br />
+            Destroy an image allocated with <b>image_new()</b>. void
+            <b>image_clear</b> (<b>image_t</b>
+            *p)
+            <br />
+            Clear image (set all pixels to black). <b>image_t</b> *
+            <b>image_new_copy</b> (const <b>image_t</b> *source)
+            <br />
+            Create a copy of an existing image. <b>rgb_pixel_t</b> *
+            <b>image_pixel</b> (<b>image_t</b>
+            *p, const int x, const int y)
+            <br />
+            void <b>image_resize</b> (const <b>image_t</b> *s,
+            <b>image_t</b> *d)
+            <br />
+            Resize image using nearest-neighbor interpolation. void
+            <b>image_resize_interpolation</b> (const <b>image_t</b> *source,
+            <b>image_t</b> *dest)
+            <br />
+            Resize image using bilinear interpolation. void
+            <b>precalc_rgb_palettes</b>
+            (const float red, const float green, const float blue)
+            <br />
+            Precalculate RGB palettes with color adjustment.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>rgb_pixel_t</b> * image_pixel (<b>image_t</b> * p, const int x,
+            const int y) [inline]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>105</b> of file <b>video/rgba/image.c</b>.
+          </p>
+          <pre>
+105                                                                       {
 106   // Add bounds checking to prevent buffer overflow on invalid coordinates
 107   if (!p || !p-&gt;pixels || x &lt; 0 || x &gt;= p-&gt;w || y &lt; 0 || y &gt;= p-&gt;h) {
 108     return NULL;
 109   }
 110   return &amp;p-&gt;pixels[x + y * p-&gt;w];
 111 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>image_t::h</b>, <b>image_pixel()</b>,
-    <b>image_t::pixels</b>, and <b>image_t::w</b>.</p>
-<p class="Pp">Referenced by <b>image_pixel()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>image_t::h</b>, <b>image_pixel()</b>,
+            <b>image_t::pixels</b>, and <b>image_t::w</b>.
+          </p>
+          <p class="Pp">Referenced by <b>image_pixel()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

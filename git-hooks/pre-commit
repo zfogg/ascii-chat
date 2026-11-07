@@ -4,34 +4,35 @@ set -e
 
 export PATH="$PWD/node_modules/.bin:$PWD/web/node_modules/.bin:$PATH"
 
-# Run the Vite+ staged-file checks and fixes.
-(cd web && vp staged)
-
-# Format staged web files without staging unrelated working-tree changes.
-web_format_files=()
-while IFS= read -r -d '' file; do
-  case "$file" in
-    web/*.tsx|web/*.ts|web/*.jsx|web/*.js|web/*.css|web/*.json|web/*.html)
-      if ! git diff --quiet -- "$file"; then
-        echo "Cannot format partially staged file: $file" >&2
-        exit 1
-      fi
-      web_format_files+=("${file#web/}")
-      ;;
-  esac
-done < <(git diff --cached --name-only --diff-filter=ACM -z)
-if ((${#web_format_files[@]})); then
-  (cd web && vp format --write -- "${web_format_files[@]}")
-  for file in "${web_format_files[@]}"; do git add -- "web/$file"; done
-fi
-
 # Get list of staged files and export for subprocesses
 export all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 
+# Format staged documentation, configuration, and web files.
+if command -v python3 >/dev/null 2>&1; then
+  python3 scripts/format-repo.py all --staged
+else
+  python scripts/format-repo.py all --staged
+fi
+
 # Check C formatting and web projects in parallel
-bun x concurrently --kill-others-on-fail --kill-timeout $((1000 * 20)) \
-  "scripts/clang-format-and-add.zsh" \
-  "scripts/check-web-project.zsh"
+clang_pid=
+if printf "%s\n" "$all_staged" | grep -Eq '\.(c|h|cpp|hpp|m|mm)$'; then
+  zsh scripts/clang-format-and-add.zsh &
+  clang_pid=$!
+fi
+web_pid=
+if printf "%s\n" "$all_staged" | grep -q "^web/"; then
+  node_command=node
+  if command -v node.exe >/dev/null 2>&1; then node_command=node.exe; fi
+  (cd web && "$node_command" node_modules/vite-plus/bin/vp check) &
+  web_pid=$!
+fi
+status=0
+if [ -n "$clang_pid" ]; then wait "$clang_pid" || status=1; fi
+if [ -n "$web_pid" ]; then wait "$web_pid" || status=1; fi
+if [ "$status" -ne 0 ]; then
+  exit "$status"
+fi
 
 # Build web/www and git add man pages
 if echo "$all_staged" | grep -q "^(web/www/|web/packages/)"; then

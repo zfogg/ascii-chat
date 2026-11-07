@@ -1,128 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>debug_util(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">debug_util(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">debug_util(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">debug_util - Debugging</p>
-<p class="Pp">
-  <br/>
-   - &#x1F41B; Tools to help you figure out what's going on with the code</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>backtrace.c</b>
-  <br/>
-  &#x1F4CD; Backtrace capture, symbolization, and formatting implementation file
-    <b>memory.c</b>
-  <br/>
-  &#x1F9E0; Memory debugging implementation for ascii-chat debug builds file
-    <b>backtrace.h</b>
-  <br/>
-  &#x1F4CD; Backtrace capture, symbolization, and formatting
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>backtrace_print_symbols</b> (<b>log_level_t</b> level,
-    const char *label, char **symbols, int count, int skip_frames, int
-    max_frames, <b>backtrace_frame_filter_t</b> filter)
-  <br/>
-  Print pre-resolved backtrace symbols with consistent formatting. void
-    <b>backtrace_log_frames</b> (<b>log_level_t</b> level, int num_frames, int
-    skip_frames)
-  <br/>
-  Log N backtrace frames with function name, line number, and file. void
-    <b>platform_install_crash_handler</b> (void)
-  <br/>
-  Install crash handlers for the application.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F41B; Tools to help you figure out what's going on with the
-    code</p>
-<p class="Pp">Provides a unified <b>backtrace_t</b> type and API for capturing,
-    symbolizing, and printing stack traces. This abstraction consolidates
-    backtrace handling that was previously scattered across multiple files.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Purpose"><a class="permalink" href="#Purpose">Purpose</a></h2>
-<p class="Pp">Stack traces are invaluable for understanding program flow
-  during:</p>
-<ul class="Bl-bullet">
-  <li><b>Development</b>: Debugging segfaults, assertion failures, and
-      unexpected state</li>
-  <li><b>Production</b>: Correlating errors with their root causes in
-      logs/reports</li>
-  <li><b>Testing</b>: Validating execution paths and error conditions</li>
-</ul>
-<p class="Pp">This module provides efficient capture (single syscall), optional
-    symbolization (maps addresses to function names/source locations), and
-    flexible printing (colored terminal vs. plain log file formats).</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Key_Features"><a class="permalink" href="#Key_Features">Key
-  Features</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Platform abstraction</b>: POSIX (backtrace/addr2line) and Windows
-      (StackWalk) support</li>
-  <li><b>Efficient capture</b>: Minimal overhead - single
-      <b>platform_backtrace()</b> call</li>
-  <li><b>Lazy symbolization</b>: Only symbolize when needed, not on every
-      capture</li>
-  <li><b>Frame filtering</b>: Skip internal/framework frames to focus on
-      application code</li>
-  <li><b>Dual output</b>: Colored stderr for development, plain text for log
-      files</li>
-  <li><b>Multiple formats</b>: Print to stderr, format to buffer, or batch-print
-      multiple traces</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
-  Examples</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Development:_Quick_Backtrace_on_Error"><a class="permalink" href="#Development:_Quick_Backtrace_on_Error">Development:
-  Quick Backtrace on Error</a></h2>
-<pre>asciichat_error_t result = some_operation();
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>debug_util(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">debug_util(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">debug_util(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">debug_util - Debugging</p>
+        <p class="Pp">
+          <br />
+          - &#x1F41B; Tools to help you figure out what's going on with the code
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>backtrace.c</b>
+            <br />
+            &#x1F4CD; Backtrace capture, symbolization, and formatting
+            implementation file
+            <b>memory.c</b>
+            <br />
+            &#x1F9E0; Memory debugging implementation for ascii-chat debug
+            builds file
+            <b>backtrace.h</b>
+            <br />
+            &#x1F4CD; Backtrace capture, symbolization, and formatting
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>backtrace_print_symbols</b> (<b>log_level_t</b> level, const
+            char *label, char **symbols, int count, int skip_frames, int
+            max_frames, <b>backtrace_frame_filter_t</b> filter)
+            <br />
+            Print pre-resolved backtrace symbols with consistent formatting.
+            void
+            <b>backtrace_log_frames</b> (<b>log_level_t</b> level, int
+            num_frames, int skip_frames)
+            <br />
+            Log N backtrace frames with function name, line number, and file.
+            void
+            <b>platform_install_crash_handler</b> (void)
+            <br />
+            Install crash handlers for the application.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F41B; Tools to help you figure out what's going on with the code
+        </p>
+        <p class="Pp">
+          Provides a unified <b>backtrace_t</b> type and API for capturing,
+          symbolizing, and printing stack traces. This abstraction consolidates
+          backtrace handling that was previously scattered across multiple
+          files.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Purpose">
+            <a class="permalink" href="#Purpose">Purpose</a>
+          </h2>
+          <p class="Pp">
+            Stack traces are invaluable for understanding program flow during:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Development</b>: Debugging segfaults, assertion failures, and
+              unexpected state
+            </li>
+            <li>
+              <b>Production</b>: Correlating errors with their root causes in
+              logs/reports
+            </li>
+            <li>
+              <b>Testing</b>: Validating execution paths and error conditions
+            </li>
+          </ul>
+          <p class="Pp">
+            This module provides efficient capture (single syscall), optional
+            symbolization (maps addresses to function names/source locations),
+            and flexible printing (colored terminal vs. plain log file formats).
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Key_Features">
+            <a class="permalink" href="#Key_Features">Key Features</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Platform abstraction</b>: POSIX (backtrace/addr2line) and
+              Windows (StackWalk) support
+            </li>
+            <li>
+              <b>Efficient capture</b>: Minimal overhead - single
+              <b>platform_backtrace()</b> call
+            </li>
+            <li>
+              <b>Lazy symbolization</b>: Only symbolize when needed, not on
+              every capture
+            </li>
+            <li>
+              <b>Frame filtering</b>: Skip internal/framework frames to focus on
+              application code
+            </li>
+            <li>
+              <b>Dual output</b>: Colored stderr for development, plain text for
+              log files
+            </li>
+            <li>
+              <b>Multiple formats</b>: Print to stderr, format to buffer, or
+              batch-print multiple traces
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_Examples">
+            <a class="permalink" href="#Usage_Examples">Usage Examples</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Development:_Quick_Backtrace_on_Error">
+            <a class="permalink" href="#Development:_Quick_Backtrace_on_Error"
+              >Development: Quick Backtrace on Error</a
+            >
+          </h2>
+          <pre>asciichat_error_t result = some_operation();
 if (result != ASCIICHAT_OK) {
 <br/>
     backtrace_t bt;
@@ -135,21 +211,30 @@ if (result != ASCIICHAT_OK) {
 <br/>
     return result;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Production:_Memory_Leak_with_Source_Locations"><a class="permalink" href="#Production:_Memory_Leak_with_Source_Locations">Production:
-  Memory Leak with Source Locations</a></h2>
-<pre>// During allocation - store backtrace for leak reporting
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Production:_Memory_Leak_with_Source_Locations">
+            <a
+              class="permalink"
+              href="#Production:_Memory_Leak_with_Source_Locations"
+              >Production: Memory Leak with Source Locations</a
+            >
+          </h2>
+          <pre>
+// During allocation - store backtrace for leak reporting
 backtrace_t alloc_trace;
 backtrace_capture_and_symbolize(&amp;alloc_trace);
 // ... store trace in allocation metadata ...
 // On leak detection (exit time):
 backtrace_print(LOG_WARN, &quot;Leaked from&quot;, &amp;alloc_trace, 0, 0, NULL);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Filtering:_Skip_Framework_Frames"><a class="permalink" href="#Filtering:_Skip_Framework_Frames">Filtering:
-  Skip Framework Frames</a></h2>
-<pre>bool skip_internal_frames(const char *frame) {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Filtering:_Skip_Framework_Frames">
+            <a class="permalink" href="#Filtering:_Skip_Framework_Frames"
+              >Filtering: Skip Framework Frames</a
+            >
+          </h2>
+          <pre>bool skip_internal_frames(const char *frame) {
 <br/>
     // Skip lib/platform and lib/log frames
 <br/>
@@ -160,11 +245,14 @@ backtrace_print(LOG_WARN, &quot;Leaked from&quot;, &amp;alloc_trace, 0, 0, NULL)
 backtrace_t bt;
 backtrace_capture_and_symbolize(&amp;bt);
 backtrace_print(LOG_INFO, &quot;Application trace&quot;, &amp;bt, 0, 10, skip_internal_frames);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Buffer_Formatting:_Log-Safe_Output"><a class="permalink" href="#Buffer_Formatting:_Log-Safe_Output">Buffer
-  Formatting: Log-Safe Output</a></h2>
-<pre>backtrace_t bt;
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Buffer_Formatting:_Log-Safe_Output">
+            <a class="permalink" href="#Buffer_Formatting:_Log-Safe_Output"
+              >Buffer Formatting: Log-Safe Output</a
+            >
+          </h2>
+          <pre>backtrace_t bt;
 backtrace_capture_and_symbolize(&amp;bt);
 char buffer[4096];
 int written = backtrace_format(buffer, sizeof(buffer),
@@ -175,64 +263,83 @@ if (written &gt; 0) {
     log_info(&quot;Stack: %s&quot;, buffer);  // Safe for log system
 }
 backtrace_t_free(&amp;bt);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Build_Modes"><a class="permalink" href="#Build_Modes">Build
-  Modes</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Full support</b>: Linux with addr2line, macOS, Windows with DWARF/PDB
-      info</li>
-  <li><b>Limited support</b>: Embedded systems may have symbolic info
-    stripped</li>
-  <li><b>Graceful degradation</b>: Hex addresses are always available even if
-      symbols fail</li>
-</ul>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">lib/platform/backtrace.h for platform-specific
-  implementations
-<p class="Pp"></p>
-<p class="Pp"><b>asciichat_errno.h</b> for <b>backtrace_t</b> structure
-    definition</p>
-</div>
-<p class="Pp">Debug README</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
-<p class="Pp">The Debugging Utilities module provides comprehensive debugging
-    and diagnostic tools for ascii-chat development and troubleshooting. This
-    module includes error tracking, lock debugging, memory leak detection, and
-    diagnostic utilities to help identify and resolve issues in the
-  codebase.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key Features</b>:</p>
-<ul class="Bl-bullet">
-  <li>Thread-local error context with stack traces</li>
-  <li>Lock debugging and deadlock detection</li>
-  <li>Memory leak detection and tracking</li>
-  <li>Safe memory allocation macros with error checking</li>
-  <li>Debug build utilities for diagnostics</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Debug_Modules"><a class="permalink" href="#Debug_Modules">Debug
-  Modules</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Error_Handling_(asciichat_errno)"><a class="permalink" href="#Error_Handling_(asciichat_errno)">Error
-  Handling (asciichat_errno)</a></h2>
-<p class="Pp">The error handling system provides thread-local error tracking
-    with full context:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Thread-Local Error Context</b>:</p>
-<ul class="Bl-bullet">
-  <li>Each thread has independent error state</li>
-  <li>Automatic file/line/function capture</li>
-  <li>Stack trace capture in debug builds</li>
-  <li>System error integration (errno, WSA errors)</li>
-</ul>
-<p class="Pp"><b>Error Context Structure</b>:</p>
-<p class="Pp"></p>
-<pre>typedef struct {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Modes">
+            <a class="permalink" href="#Build_Modes">Build Modes</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Full support</b>: Linux with addr2line, macOS, Windows with
+              DWARF/PDB info
+            </li>
+            <li>
+              <b>Limited support</b>: Embedded systems may have symbolic info
+              stripped
+            </li>
+            <li>
+              <b>Graceful degradation</b>: Hex addresses are always available
+              even if symbols fail
+            </li>
+          </ul>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            lib/platform/backtrace.h for platform-specific implementations
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>asciichat_errno.h</b> for <b>backtrace_t</b> structure
+              definition
+            </p>
+          </div>
+          <p class="Pp">Debug README</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The Debugging Utilities module provides comprehensive debugging and
+          diagnostic tools for ascii-chat development and troubleshooting. This
+          module includes error tracking, lock debugging, memory leak detection,
+          and diagnostic utilities to help identify and resolve issues in the
+          codebase.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Key Features</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Thread-local error context with stack traces</li>
+          <li>Lock debugging and deadlock detection</li>
+          <li>Memory leak detection and tracking</li>
+          <li>Safe memory allocation macros with error checking</li>
+          <li>Debug build utilities for diagnostics</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Debug_Modules">
+          <a class="permalink" href="#Debug_Modules">Debug Modules</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Error_Handling_(asciichat_errno)">
+            <a class="permalink" href="#Error_Handling_(asciichat_errno)"
+              >Error Handling (asciichat_errno)</a
+            >
+          </h2>
+          <p class="Pp">
+            The error handling system provides thread-local error tracking with
+            full context:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Thread-Local Error Context</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Each thread has independent error state</li>
+            <li>Automatic file/line/function capture</li>
+            <li>Stack trace capture in debug builds</li>
+            <li>System error integration (errno, WSA errors)</li>
+          </ul>
+          <p class="Pp"><b>Error Context Structure</b>:</p>
+          <p class="Pp"></p>
+          <pre>typedef struct {
 <br/>
     asciichat_error_t error_code;     // Error code
 <br/>
@@ -251,15 +358,16 @@ backtrace_t_free(&amp;bt);</pre>
     int system_error;                 // System errno/WSA error
 } asciichat_error_context_t;
 </pre>
-<p class="Pp"><b>Library Macros</b>:</p>
-<p class="Pp"></p>
-<pre>// In library code (lib/):
+          <p class="Pp"><b>Library Macros</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// In library code (lib/):
 SET_ERRNO(ERROR_NETWORK, &quot;Connection failed&quot;);
 SET_ERRNO_SYS(ERROR_MEMORY, &quot;malloc failed&quot;, errno);
 </pre>
-<p class="Pp"><b>Application Macros</b>:</p>
-<p class="Pp"></p>
-<pre>// In application code (src/):
+          <p class="Pp"><b>Application Macros</b>:</p>
+          <p class="Pp"></p>
+          <pre>// In application code (src/):
 if (HAS_ERRNO()) {
 <br/>
     asciichat_error_context_t *ctx = GET_ERRNO();
@@ -271,30 +379,35 @@ if (HAS_ERRNO()) {
     CLEAR_ERRNO();
 }
 </pre>
-<p class="Pp"><b>Debug Features</b>:</p>
-<ul class="Bl-bullet">
-  <li>Stack traces captured automatically in debug builds</li>
-  <li>Full error context in log messages</li>
-  <li>Error statistics tracking per thread</li>
-  <li>Integration with <b>FATAL()</b> macro</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Lock_Debugging_(lock_debug)"><a class="permalink" href="#Lock_Debugging_(lock_debug)">Lock
-  Debugging (lock_debug)</a></h2>
-<p class="Pp">The lock debugging system tracks all mutex and rwlock acquisitions
-    to help identify deadlocks and lock contention issues:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Lock Tracking</b>:</p>
-<ul class="Bl-bullet">
-  <li>Tracks all mutex and rwlock acquisitions with backtraces</li>
-  <li>Thread-safe lock record management</li>
-  <li>Automatic cleanup of lock records on unlock</li>
-  <li>Integration with platform backtrace functionality</li>
-</ul>
-<p class="Pp"><b>Lock Record Structure</b>:</p>
-<p class="Pp"></p>
-<pre>typedef struct lock_record {
+          <p class="Pp"><b>Debug Features</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Stack traces captured automatically in debug builds</li>
+            <li>Full error context in log messages</li>
+            <li>Error statistics tracking per thread</li>
+            <li>Integration with <b>FATAL()</b> macro</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Lock_Debugging_(lock_debug)">
+            <a class="permalink" href="#Lock_Debugging_(lock_debug)"
+              >Lock Debugging (lock_debug)</a
+            >
+          </h2>
+          <p class="Pp">
+            The lock debugging system tracks all mutex and rwlock acquisitions
+            to help identify deadlocks and lock contention issues:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Lock Tracking</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Tracks all mutex and rwlock acquisitions with backtraces</li>
+            <li>Thread-safe lock record management</li>
+            <li>Automatic cleanup of lock records on unlock</li>
+            <li>Integration with platform backtrace functionality</li>
+          </ul>
+          <p class="Pp"><b>Lock Record Structure</b>:</p>
+          <p class="Pp"></p>
+          <pre>typedef struct lock_record {
 <br/>
     void *lock_address;                    // Lock object address
 <br/>
@@ -315,9 +428,10 @@ if (HAS_ERRNO()) {
     char **backtrace_symbols;             // Symbolized backtrace
 } lock_record_t;
 </pre>
-<p class="Pp"><b>Usage</b>:</p>
-<p class="Pp"></p>
-<pre>// Initialize lock debugging
+          <p class="Pp"><b>Usage</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// Initialize lock debugging
 lock_debug_init();
 // Replace regular locks with debug versions
 DEBUG_MUTEX_LOCK(&amp;my_mutex);
@@ -328,39 +442,45 @@ lock_debug_start_thread();
 // Print lock debug state (held locks, orphaned releases, statistics)
 lock_debug_print_state();
 </pre>
-<p class="Pp"><b>Debug Thread</b>:</p>
-<ul class="Bl-bullet">
-  <li>Runs in background monitoring lock state</li>
-  <li>Press '?' key to trigger lock information printing</li>
-  <li>Prints all held locks with full backtraces</li>
-  <li>Helps identify deadlocks and lock contention</li>
-</ul>
-<p class="Pp"><b>Lock Statistics</b>:</p>
-<ul class="Bl-bullet">
-  <li>Total locks acquired/released (lifetime)</li>
-  <li>Current number of held locks</li>
-  <li>Lock usage statistics by code location</li>
-  <li>Orphaned release detection (unlocks without locks)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Memory_Debugging_(common"><a class="permalink" href="#Memory_Debugging_(common">Memory
-  Debugging (common.h)</a></h2>
-<p class="Pp">The memory debugging system provides comprehensive memory leak
-    detection and tracking:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Memory Macros</b>:</p>
-<ul class="Bl-bullet">
-  <li>SAFE_MALLOC: Safe malloc with error checking</li>
-  <li>SAFE_CALLOC: Safe calloc with error checking</li>
-  <li>SAFE_REALLOC: Safe realloc with error checking</li>
-  <li>SAFE_FREE: Safe free that sets pointer to NULL</li>
-  <li>SAFE_MALLOC_ALIGNED: Aligned memory allocation</li>
-  <li>SAFE_MALLOC_SIMD: SIMD-aligned memory allocation</li>
-</ul>
-<p class="Pp"><b>Usage</b>:</p>
-<p class="Pp"></p>
-<pre>// Allocate memory (automatically checks for NULL)
+          <p class="Pp"><b>Debug Thread</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Runs in background monitoring lock state</li>
+            <li>Press '?' key to trigger lock information printing</li>
+            <li>Prints all held locks with full backtraces</li>
+            <li>Helps identify deadlocks and lock contention</li>
+          </ul>
+          <p class="Pp"><b>Lock Statistics</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Total locks acquired/released (lifetime)</li>
+            <li>Current number of held locks</li>
+            <li>Lock usage statistics by code location</li>
+            <li>Orphaned release detection (unlocks without locks)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Memory_Debugging_(common">
+            <a class="permalink" href="#Memory_Debugging_(common"
+              >Memory Debugging (common.h)</a
+            >
+          </h2>
+          <p class="Pp">
+            The memory debugging system provides comprehensive memory leak
+            detection and tracking:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Memory Macros</b>:</p>
+          <ul class="Bl-bullet">
+            <li>SAFE_MALLOC: Safe malloc with error checking</li>
+            <li>SAFE_CALLOC: Safe calloc with error checking</li>
+            <li>SAFE_REALLOC: Safe realloc with error checking</li>
+            <li>SAFE_FREE: Safe free that sets pointer to NULL</li>
+            <li>SAFE_MALLOC_ALIGNED: Aligned memory allocation</li>
+            <li>SAFE_MALLOC_SIMD: SIMD-aligned memory allocation</li>
+          </ul>
+          <p class="Pp"><b>Usage</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// Allocate memory (automatically checks for NULL)
 int *array = SAFE_MALLOC(100 * sizeof(int), int*);
 // Allocate zero-initialized memory
 char *buffer = SAFE_CALLOC(1024, sizeof(char), char*);
@@ -369,31 +489,37 @@ buffer = SAFE_REALLOC(buffer, 2048, char*);
 // Free memory (sets pointer to NULL, removes from leak tracker)
 SAFE_FREE(buffer);
 </pre>
-<p class="Pp"><b>Debug Memory Tracking</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">When DEBUG_MEMORY is defined and CMAKE_BUILD_TYPE=Debug:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Leak Detection</b>:</p>
-<ul class="Bl-bullet">
-  <li>All allocations tracked with address, size, file, line, timestamp</li>
-  <li>On program exit, reports any unfreed allocations</li>
-  <li>Thread-safe allocation tracking</li>
-  <li>Comprehensive leak reports</li>
-</ul>
-<p class="Pp"><b>Allocation Logging</b>:</p>
-<p class="Pp"></p>
-<pre>[MEMORY] malloc(1024) = 0x7f1234567890 at src/client.c:123 in process_frame()
+          <p class="Pp"><b>Debug Memory Tracking</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            When DEBUG_MEMORY is defined and CMAKE_BUILD_TYPE=Debug:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Leak Detection</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              All allocations tracked with address, size, file, line, timestamp
+            </li>
+            <li>On program exit, reports any unfreed allocations</li>
+            <li>Thread-safe allocation tracking</li>
+            <li>Comprehensive leak reports</li>
+          </ul>
+          <p class="Pp"><b>Allocation Logging</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+[MEMORY] malloc(1024) = 0x7f1234567890 at src/client.c:123 in process_frame()
 [MEMORY] free(0x7f1234567890) at src/client.c:456 in cleanup_frame()
 </pre>
-<p class="Pp"><b>Double-Free Detection</b>:</p>
-<ul class="Bl-bullet">
-  <li>Detects freeing already-freed memory</li>
-  <li>Triggers assertion with full context</li>
-  <li>Prevents use-after-free bugs</li>
-</ul>
-<p class="Pp"><b>Memory Reports</b>:</p>
-<p class="Pp"></p>
-<pre>debug_memory_report();
+          <p class="Pp"><b>Double-Free Detection</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Detects freeing already-freed memory</li>
+            <li>Triggers assertion with full context</li>
+            <li>Prevents use-after-free bugs</li>
+          </ul>
+          <p class="Pp"><b>Memory Reports</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+debug_memory_report();
 // Output:
 // Current allocations: 5 (total 4096 bytes)
 // Peak allocations: 10 (total 8192 bytes)
@@ -401,40 +527,48 @@ SAFE_FREE(buffer);
 // Total free calls: 95
 // Leaked: 5 allocations (4096 bytes)
 </pre>
-<p class="Pp"><b>Memory Statistics</b>:</p>
-<ul class="Bl-bullet">
-  <li>Current allocations and total size</li>
-  <li>Peak allocations and peak size</li>
-  <li>Total allocation/deallocation calls</li>
-  <li>Leak summary (unfreed allocations)</li>
-</ul>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Integration"><a class="permalink" href="#Integration">Integration</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Build_Configuration"><a class="permalink" href="#Build_Configuration">Build
-  Configuration</a></h2>
-<p class="Pp"><b>Debug Build</b>:</p>
-<p class="Pp"></p>
-<pre>cmake -DCMAKE_BUILD_TYPE=Debug -DDEBUG_MEMORY=ON ..
+          <p class="Pp"><b>Memory Statistics</b>:</p>
+          <ul class="Bl-bullet">
+            <li>Current allocations and total size</li>
+            <li>Peak allocations and peak size</li>
+            <li>Total allocation/deallocation calls</li>
+            <li>Leak summary (unfreed allocations)</li>
+          </ul>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Integration">
+          <a class="permalink" href="#Integration">Integration</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Configuration">
+            <a class="permalink" href="#Build_Configuration"
+              >Build Configuration</a
+            >
+          </h2>
+          <p class="Pp"><b>Debug Build</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+cmake -DCMAKE_BUILD_TYPE=Debug -DDEBUG_MEMORY=ON ..
 </pre>
-<p class="Pp"><b>Enable Debug Features</b>:</p>
-<p class="Pp"></p>
-<pre>// Enable memory debugging
+          <p class="Pp"><b>Enable Debug Features</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// Enable memory debugging
 #define DEBUG_MEMORY 1
 // Enable lock debugging
 lock_debug_init();
 lock_debug_start_thread();
 // Error tracking is always enabled (thread-local)
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Runtime_Usage"><a class="permalink" href="#Runtime_Usage">Runtime
-  Usage</a></h2>
-<p class="Pp"><b>Error Handling</b>:</p>
-<p class="Pp"></p>
-<pre>// Library code sets errors
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Runtime_Usage">
+            <a class="permalink" href="#Runtime_Usage">Runtime Usage</a>
+          </h2>
+          <p class="Pp"><b>Error Handling</b>:</p>
+          <p class="Pp"></p>
+          <pre>// Library code sets errors
 if (connect_failed) {
 <br/>
     SET_ERRNO(ERROR_NETWORK, &quot;Connection timeout&quot;);
@@ -455,35 +589,38 @@ if (some_library_function() != ASCIICHAT_OK) {
     }
 }
 </pre>
-<p class="Pp"><b>Lock Debugging</b>:</p>
-<p class="Pp"></p>
-<pre>// Replace mutex_lock with DEBUG_MUTEX_LOCK
+          <p class="Pp"><b>Lock Debugging</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// Replace mutex_lock with DEBUG_MUTEX_LOCK
 DEBUG_MUTEX_LOCK(&amp;my_mutex);
 // ... critical section ...
 DEBUG_MUTEX_UNLOCK(&amp;my_mutex);
 // Print lock debug state anytime (held locks, orphaned releases, statistics)
 lock_debug_print_state();
 </pre>
-<p class="Pp"><b>Memory Debugging</b>:</p>
-<p class="Pp"></p>
-<pre>// Use SAFE_* macros for all allocations
+          <p class="Pp"><b>Memory Debugging</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+// Use SAFE_* macros for all allocations
 void *data = SAFE_MALLOC(size, void*);
 // Check for leaks at any time
 debug_memory_report();
 // Quiet mode (suppress stderr output)
 debug_memory_set_quiet_mode(true);
 </pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
-  Practices</a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Use Error Handling Consistently</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>// Always use SET_ERRNO in library code
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Best_Practices">
+          <a class="permalink" href="#Best_Practices">Best Practices</a>
+        </h1>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd><b>Use Error Handling Consistently</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>// Always use SET_ERRNO in library code
 SET_ERRNO(ERROR_MEMORY, &quot;Allocation failed&quot;);
 // Always check HAS_ERRNO in application code
 if (HAS_ERRNO()) {
@@ -492,79 +629,89 @@ if (HAS_ERRNO()) {
 <br/>
  }
 </pre>
-<dl class="Bl-tag">
-  <dt>2.</dt>
-  <dd><b>Enable Lock Debugging During Development</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>// Initialize early in main()
+        <dl class="Bl-tag">
+          <dt>2.</dt>
+          <dd><b>Enable Lock Debugging During Development</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>
+// Initialize early in main()
 lock_debug_init();
 lock_debug_start_thread();
 // Use DEBUG_* lock macros everywhere
 DEBUG_MUTEX_LOCK(&amp;mutex);
 </pre>
-<dl class="Bl-tag">
-  <dt>3.</dt>
-  <dd><b>Use SAFE_* Macros for All Allocations</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>// Always use SAFE_MALLOC instead of malloc
+        <dl class="Bl-tag">
+          <dt>3.</dt>
+          <dd><b>Use SAFE_* Macros for All Allocations</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>
+// Always use SAFE_MALLOC instead of malloc
 void *ptr = SAFE_MALLOC(size, void*);
 // Always use SAFE_FREE (sets pointer to NULL)
 SAFE_FREE(ptr);
 </pre>
-<dl class="Bl-tag">
-  <dt>4.</dt>
-  <dd><b>Check Memory Leaks Regularly</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>// Call before program exit
+        <dl class="Bl-tag">
+          <dt>4.</dt>
+          <dd><b>Check Memory Leaks Regularly</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>
+// Call before program exit
 debug_memory_report();
 // Or enable automatic leak detection
 // Leaks are reported on program exit automatically
 </pre>
-<dl class="Bl-tag">
-  <dt>5.</dt>
-  <dd><b>Debug Thread for Lock Monitoring</b>:</dd>
-</dl>
-<p class="Pp"></p>
-<pre>// Start debug thread
+        <dl class="Bl-tag">
+          <dt>5.</dt>
+          <dd><b>Debug Thread for Lock Monitoring</b>:</dd>
+        </dl>
+        <p class="Pp"></p>
+        <pre>
+// Start debug thread
 lock_debug_start_thread();
 // Press '?' key anytime to see held locks
 // Useful for debugging deadlocks
 </pre>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Performance_Impact"><a class="permalink" href="#Performance_Impact">Performance
-  Impact</a></h1>
-<p class="Pp"><b>Debug Builds</b>:</p>
-<ul class="Bl-bullet">
-  <li>Stack trace capture adds ~5-10ms per error</li>
-  <li>Lock tracking adds ~1-2&#x00B5;s per lock operation</li>
-  <li>Memory tracking adds ~1-2&#x00B5;s per allocation</li>
-  <li>Debug thread uses minimal CPU (waits for '?' key)</li>
-</ul>
-<p class="Pp"><b>Release Builds</b>:</p>
-<ul class="Bl-bullet">
-  <li>Error handling: Minimal overhead (thread-local storage)</li>
-  <li>Lock debugging: Disabled (no overhead)</li>
-  <li>Memory debugging: Disabled (no overhead)</li>
-  <li>All debug features are compiled out</li>
-</ul>
-<p class="Pp"><b>Recommendations</b>:</p>
-<ul class="Bl-bullet">
-  <li>Use debug builds during development</li>
-  <li>Disable debug features in production builds</li>
-  <li>Enable memory debugging only when investigating leaks</li>
-  <li>Enable lock debugging only when investigating deadlocks</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Examples"><a class="permalink" href="#Examples">Examples</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Error_Handling_Example"><a class="permalink" href="#Error_Handling_Example">Error
-  Handling Example</a></h2>
-<pre>// Library code (lib/network/network.c)
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Performance_Impact">
+          <a class="permalink" href="#Performance_Impact">Performance Impact</a>
+        </h1>
+        <p class="Pp"><b>Debug Builds</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Stack trace capture adds ~5-10ms per error</li>
+          <li>Lock tracking adds ~1-2&#x00B5;s per lock operation</li>
+          <li>Memory tracking adds ~1-2&#x00B5;s per allocation</li>
+          <li>Debug thread uses minimal CPU (waits for '?' key)</li>
+        </ul>
+        <p class="Pp"><b>Release Builds</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Error handling: Minimal overhead (thread-local storage)</li>
+          <li>Lock debugging: Disabled (no overhead)</li>
+          <li>Memory debugging: Disabled (no overhead)</li>
+          <li>All debug features are compiled out</li>
+        </ul>
+        <p class="Pp"><b>Recommendations</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Use debug builds during development</li>
+          <li>Disable debug features in production builds</li>
+          <li>Enable memory debugging only when investigating leaks</li>
+          <li>Enable lock debugging only when investigating deadlocks</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Examples">
+          <a class="permalink" href="#Examples">Examples</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Error_Handling_Example">
+            <a class="permalink" href="#Error_Handling_Example"
+              >Error Handling Example</a
+            >
+          </h2>
+          <pre>// Library code (lib/network/network.c)
 asciichat_error_t network_connect(const char *host, int port) {
 <br/>
     socket_t sock = socket_create();
@@ -624,11 +771,14 @@ int main() {
 <br/>
     return 0;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Lock_Debugging_Example"><a class="permalink" href="#Lock_Debugging_Example">Lock
-  Debugging Example</a></h2>
-<pre>// Initialize lock debugging
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Lock_Debugging_Example">
+            <a class="permalink" href="#Lock_Debugging_Example"
+              >Lock Debugging Example</a
+            >
+          </h2>
+          <pre>// Initialize lock debugging
 int main() {
 <br/>
     lock_debug_init();
@@ -675,11 +825,14 @@ int main() {
 <br/>
     lock_debug_cleanup();
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Memory_Debugging_Example"><a class="permalink" href="#Memory_Debugging_Example">Memory
-  Debugging Example</a></h2>
-<pre>// Enable memory debugging
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Memory_Debugging_Example">
+            <a class="permalink" href="#Memory_Debugging_Example"
+              >Memory Debugging Example</a
+            >
+          </h2>
+          <pre>// Enable memory debugging
 #define DEBUG_MEMORY 1
 void process_data() {
 <br/>
@@ -710,54 +863,73 @@ void process_data() {
 //   Allocated at: client.c:123 in process_data()
 //   Thread: 0x7f123456
 // Total leaked: 1024 bytes in 1 allocation</pre>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Debugging_Tools"><a class="permalink" href="#Debugging_Tools">Debugging
-  Tools</a></h1>
-<p class="Pp">These external tools help with debugging and crash analysis. They
-    are <b>not build tools</b> and are not required to compile ascii-chat, but
-    are essential for development.</p>
-<section class="Ss">
-<h2 class="Ss" id="Stack_Trace_Symbolizers"><a class="permalink" href="#Stack_Trace_Symbolizers">Stack
-  Trace Symbolizers</a></h2>
-<p class="Pp">Symbolizers convert raw memory addresses into human-readable
-    function names and source locations. ascii-chat's backtrace system
-    (<b>lib/platform/symbols.c</b><b>) </b><b>automatically detects and
-    uses</b><b> these tools when available.</b></p>
-<p class="Pp"></p>
-<p class="Pp">Tool Platform Priority <b>llvm-symbolizer</b> All <b>Preferred</b>
-    - best for Clang-compiled binaries <b>addr2line</b> Linux/macOS Fallback -
-    GNU binutils alternative</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent"><b>Important</b>: Ensure at least one symbolizer is in
-  your PATH for readable backtraces during debugging. Without a symbolizer,
-  you'll only see raw memory addresses like 0x401234 instead of <b>main()</b> at
-  src/client.c:42<b>.</b></div>
-<p class="Pp"><b>Automatic Detection</b>
-  (<b>lib/platform/symbols.c</b><b>):</b></p>
-<p class="Pp"></p>
-<p class="Pp">The symbol cache system automatically:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Checks for llvm-symbolizer in PATH (preferred)</dd>
-  <dt>2.</dt>
-  <dd>Falls back to addr2line if llvm-symbolizer is not found</dd>
-  <dt>3.</dt>
-  <dd>Uses raw addresses if neither tool is available</dd>
-  <dt>4.</dt>
-  <dd>Caches resolved symbols in a hashtable to avoid repeated subprocess
-    calls</dd>
-</dl>
-<p class="Pp">You can override the tool paths with environment variables:</p>
-<ul class="Bl-bullet">
-  <li>LLVM_SYMBOLIZER_PATH - Full path to llvm-symbolizer binary</li>
-  <li>ADDR2LINE_PATH - Full path to addr2line binary</li>
-</ul>
-<p class="Pp"><b>Verify Symbolizer Availability</b>:</p>
-<p class="Pp"></p>
-<pre># Check if llvm-symbolizer is available (preferred)
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Debugging_Tools">
+          <a class="permalink" href="#Debugging_Tools">Debugging Tools</a>
+        </h1>
+        <p class="Pp">
+          These external tools help with debugging and crash analysis. They are
+          <b>not build tools</b> and are not required to compile ascii-chat, but
+          are essential for development.
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Stack_Trace_Symbolizers">
+            <a class="permalink" href="#Stack_Trace_Symbolizers"
+              >Stack Trace Symbolizers</a
+            >
+          </h2>
+          <p class="Pp">
+            Symbolizers convert raw memory addresses into human-readable
+            function names and source locations. ascii-chat's backtrace system
+            (<b>lib/platform/symbols.c</b><b>) </b
+            ><b>automatically detects and uses</b
+            ><b> these tools when available.</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Tool Platform Priority <b>llvm-symbolizer</b> All <b>Preferred</b> -
+            best for Clang-compiled binaries <b>addr2line</b> Linux/macOS
+            Fallback - GNU binutils alternative
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            <b>Important</b>: Ensure at least one symbolizer is in your PATH for
+            readable backtraces during debugging. Without a symbolizer, you'll
+            only see raw memory addresses like 0x401234 instead of
+            <b>main()</b> at src/client.c:42<b>.</b>
+          </div>
+          <p class="Pp">
+            <b>Automatic Detection</b> (<b>lib/platform/symbols.c</b><b>):</b>
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The symbol cache system automatically:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Checks for llvm-symbolizer in PATH (preferred)</dd>
+            <dt>2.</dt>
+            <dd>Falls back to addr2line if llvm-symbolizer is not found</dd>
+            <dt>3.</dt>
+            <dd>Uses raw addresses if neither tool is available</dd>
+            <dt>4.</dt>
+            <dd>
+              Caches resolved symbols in a hashtable to avoid repeated
+              subprocess calls
+            </dd>
+          </dl>
+          <p class="Pp">
+            You can override the tool paths with environment variables:
+          </p>
+          <ul class="Bl-bullet">
+            <li>LLVM_SYMBOLIZER_PATH - Full path to llvm-symbolizer binary</li>
+            <li>ADDR2LINE_PATH - Full path to addr2line binary</li>
+          </ul>
+          <p class="Pp"><b>Verify Symbolizer Availability</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+# Check if llvm-symbolizer is available (preferred)
 which llvm-symbolizer || echo &quot;llvm-symbolizer not found&quot;
 # Check if addr2line is available (fallback)
 which addr2line || echo &quot;addr2line not found&quot;
@@ -765,18 +937,20 @@ which addr2line || echo &quot;addr2line not found&quot;
 Get-Command llvm-symbolizer -ErrorAction SilentlyContinue
 Get-Command addr2line -ErrorAction SilentlyContinue
 </pre>
-<p class="Pp"><b>Manual Symbolization Examples</b>:</p>
-<p class="Pp"></p>
-<pre># Manual symbolization of an address
+          <p class="Pp"><b>Manual Symbolization Examples</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+# Manual symbolization of an address
 llvm-symbolizer --obj=build/bin/ascii-chat 0x401234
 # Using addr2line
 addr2line -e build/bin/ascii-chat -f 0x401234
 # Filter through symbolizer for readable crash output
 ./build/bin/ascii-chat 2&gt;&amp;1 | llvm-symbolizer
 </pre>
-<p class="Pp"><b>Installation</b>:</p>
-<p class="Pp"></p>
-<pre># Install on Debian/Ubuntu
+          <p class="Pp"><b>Installation</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+# Install on Debian/Ubuntu
 sudo apt install llvm binutils
 # Install on Arch
 sudo pacman -S llvm binutils
@@ -785,16 +959,22 @@ brew install llvm binutils
 # Install on Windows (via scoop or LLVM installer)
 scoop install llvm
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Interactive_Debuggers"><a class="permalink" href="#Interactive_Debuggers">Interactive
-  Debuggers</a></h2>
-<p class="Pp">Tool Platform Description <b>lldb</b> All LLVM debugger
-    (recommended for Clang builds) <b>gdb</b> Linux GNU debugger</p>
-<p class="Pp"></p>
-<p class="Pp"><b>LLDB Usage</b>:</p>
-<p class="Pp"></p>
-<pre># Start debugging
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Interactive_Debuggers">
+            <a class="permalink" href="#Interactive_Debuggers"
+              >Interactive Debuggers</a
+            >
+          </h2>
+          <p class="Pp">
+            Tool Platform Description <b>lldb</b> All LLVM debugger (recommended
+            for Clang builds) <b>gdb</b> Linux GNU debugger
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>LLDB Usage</b>:</p>
+          <p class="Pp"></p>
+          <pre>
+# Start debugging
 lldb ./build/bin/ascii-chat
 # Run with arguments
 (lldb) run server --port 8080
@@ -809,9 +989,10 @@ lldb ./build/bin/ascii-chat
 # Continue execution
 (lldb) continue
 </pre>
-<p class="Pp"><b>GDB Usage</b> (Linux):</p>
-<p class="Pp"></p>
-<pre># Start debugging
+          <p class="Pp"><b>GDB Usage</b> (Linux):</p>
+          <p class="Pp"></p>
+          <pre>
+# Start debugging
 gdb ./build/bin/ascii-chat
 # Run with arguments
 (gdb) run server --port 8080
@@ -820,217 +1001,287 @@ gdb ./build/bin/ascii-chat
 # Backtrace
 (gdb) bt
 </pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Memory_Checking_Tools"><a class="permalink" href="#Memory_Checking_Tools">Memory
-  Checking Tools</a></h2>
-<p class="Pp">Tool Platform Description <b>valgrind</b> Linux Memory error
-    detector (slower but thorough) <b>leaks</b> macOS Apple's memory leak
-    checker <b>ASan</b> All AddressSanitizer (built into Debug builds)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Valgrind Usage</b> (Linux):</p>
-<p class="Pp"></p>
-<pre># Check for memory leaks
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Memory_Checking_Tools">
+            <a class="permalink" href="#Memory_Checking_Tools"
+              >Memory Checking Tools</a
+            >
+          </h2>
+          <p class="Pp">
+            Tool Platform Description <b>valgrind</b> Linux Memory error
+            detector (slower but thorough) <b>leaks</b> macOS Apple's memory
+            leak checker <b>ASan</b> All AddressSanitizer (built into Debug
+            builds)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Valgrind Usage</b> (Linux):</p>
+          <p class="Pp"></p>
+          <pre>
+# Check for memory leaks
 valgrind --leak-check=full ./build/bin/ascii-chat server
 # Check for invalid memory access
 valgrind --tool=memcheck ./build/bin/ascii-chat server
 </pre>
-<p class="Pp"><b>Leaks Usage</b> (macOS):</p>
-<p class="Pp"></p>
-<pre># Check for leaks at exit
+          <p class="Pp"><b>Leaks Usage</b> (macOS):</p>
+          <p class="Pp"></p>
+          <pre>
+# Check for leaks at exit
 leaks --atExit -- ./build/bin/ascii-chat server
 </pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Debug builds (CMAKE_BUILD_TYPE=Debug) automatically
-  enable AddressSanitizer and UndefinedBehaviorSanitizer, which catch most
-  memory errors at runtime.</div>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Binary_Analysis_Tools"><a class="permalink" href="#Binary_Analysis_Tools">Binary
-  Analysis Tools</a></h2>
-<p class="Pp">Tool Platform Description <b>ldd</b> Linux List dynamic
-    dependencies <b>otool</b> macOS List dynamic dependencies <b>objdump</b>
-    Linux Disassemble binary <b>llvm-objdump</b> All LLVM disassembler</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Verifying Static Linking</b> (Release builds):</p>
-<p class="Pp"></p>
-<pre># Linux - should say &quot;not a dynamic executable&quot; for static builds
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Debug builds (CMAKE_BUILD_TYPE=Debug) automatically enable
+            AddressSanitizer and UndefinedBehaviorSanitizer, which catch most
+            memory errors at runtime.
+          </div>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Binary_Analysis_Tools">
+            <a class="permalink" href="#Binary_Analysis_Tools"
+              >Binary Analysis Tools</a
+            >
+          </h2>
+          <p class="Pp">
+            Tool Platform Description <b>ldd</b> Linux List dynamic dependencies
+            <b>otool</b> macOS List dynamic dependencies <b>objdump</b> Linux
+            Disassemble binary <b>llvm-objdump</b> All LLVM disassembler
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Verifying Static Linking</b> (Release builds):</p>
+          <p class="Pp"></p>
+          <pre>
+# Linux - should say &quot;not a dynamic executable&quot; for static builds
 ldd build/bin/ascii-chat
 # macOS - should only show system libraries
 otool -L build/bin/ascii-chat
 </pre>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The build system automatically verifies static linking in
-  Release builds using check_static_linking.sh - see <b>Build System</b>.</div>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Troubleshooting"><a class="permalink" href="#Troubleshooting">Troubleshooting</a></h1>
-<p class="Pp"><b>Common Issues</b>:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Stack Traces Not Appearing</b>:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Ensure CMAKE_BUILD_TYPE=Debug</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check that debug symbols are available</dd>
-  <dt> &#x2022;</dt>
-  <dd>Verify addr2line or llvm-symbolizer is in PATH</dd>
-  <dt>2.</dt>
-  <dd><b>Lock Debugging Not Working</b>:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Ensure lock_debug_init() is called before any locks</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use DEBUG_* macros instead of regular lock functions</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check that debug thread is started: lock_debug_start_thread()</dd>
-  <dt>3.</dt>
-  <dd><b>Memory Leaks Not Detected</b>:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Ensure DEBUG_MEMORY is defined</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check that CMAKE_BUILD_TYPE=Debug</dd>
-  <dt> &#x2022;</dt>
-  <dd>Verify mimalloc override is disabled (MI_MALLOC_OVERRIDE not set)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use SAFE_* macros for all allocations</dd>
-  <dt>4.</dt>
-  <dd><b>Performance Issues in Debug Builds</b>:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Stack trace capture adds overhead</dd>
-  <dt> &#x2022;</dt>
-  <dd>Lock tracking adds small overhead per operation</dd>
-  <dt> &#x2022;</dt>
-  <dd>Memory tracking adds small overhead per allocation</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use release builds for performance testing</dd>
-</dl>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Debug utilities are designed for development and
-  troubleshooting. Disable debug features in production builds for optimal
-  performance.</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">lib/asciichat_errno.h for <b>Errors</b> handling
-  documentation
-<p class="Pp"></p>
-<p class="Pp">lib/lock_debug.h for lock debugging documentation</p>
-<p class="Pp"></p>
-<p class="Pp">lib/common.h for memory debugging macros</p>
-</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_backtrace_log_frames_("><a class="permalink" href="#void_backtrace_log_frames_(">void
-  backtrace_log_frames (<b>log_level_t</b> level, int num_frames, int
-  skip_frames)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/debug/backtrace.h</b>&gt;<b></b></p>
-<p class="Pp">Log N backtrace frames with function name, line number, and file.
-    Captures and logs the backtrace at the requested severity, showing the
-    function name, file path, and line number for each frame.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log severity for the backtrace entry
-<br/>
-<i>num_frames</i> Number of frames to capture and log (0 = all available)
-<br/>
-<i>skip_frames</i> Number of frames to skip from the top (e.g., skip this
-  function itself)</div>
-<p class="Pp">Example output: [0] my_function() at <b>src/main.c</b>:42 [1]
-    caller_function() at src/caller.c:123 [2] <b>main()</b> at
-    <b>src/main.c</b>:999</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Call with skip_frames=1 to skip the
-  platform_log_backtrace_frames() call itself</div>
-<p class="Pp">Definition at line <b>379</b> of file
-  <b>debug/backtrace.c</b>.</p>
-<pre>379                                                                               {
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The build system automatically verifies static linking in Release
+            builds using check_static_linking.sh - see <b>Build System</b>.
+          </div>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Troubleshooting">
+          <a class="permalink" href="#Troubleshooting">Troubleshooting</a>
+        </h1>
+        <p class="Pp"><b>Common Issues</b>:</p>
+        <p class="Pp"></p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd><b>Stack Traces Not Appearing</b>:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Ensure CMAKE_BUILD_TYPE=Debug</dd>
+          <dt>&#x2022;</dt>
+          <dd>Check that debug symbols are available</dd>
+          <dt>&#x2022;</dt>
+          <dd>Verify addr2line or llvm-symbolizer is in PATH</dd>
+          <dt>2.</dt>
+          <dd><b>Lock Debugging Not Working</b>:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Ensure lock_debug_init() is called before any locks</dd>
+          <dt>&#x2022;</dt>
+          <dd>Use DEBUG_* macros instead of regular lock functions</dd>
+          <dt>&#x2022;</dt>
+          <dd>Check that debug thread is started: lock_debug_start_thread()</dd>
+          <dt>3.</dt>
+          <dd><b>Memory Leaks Not Detected</b>:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Ensure DEBUG_MEMORY is defined</dd>
+          <dt>&#x2022;</dt>
+          <dd>Check that CMAKE_BUILD_TYPE=Debug</dd>
+          <dt>&#x2022;</dt>
+          <dd>
+            Verify mimalloc override is disabled (MI_MALLOC_OVERRIDE not set)
+          </dd>
+          <dt>&#x2022;</dt>
+          <dd>Use SAFE_* macros for all allocations</dd>
+          <dt>4.</dt>
+          <dd><b>Performance Issues in Debug Builds</b>:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Stack trace capture adds overhead</dd>
+          <dt>&#x2022;</dt>
+          <dd>Lock tracking adds small overhead per operation</dd>
+          <dt>&#x2022;</dt>
+          <dd>Memory tracking adds small overhead per allocation</dd>
+          <dt>&#x2022;</dt>
+          <dd>Use release builds for performance testing</dd>
+        </dl>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Debug utilities are designed for development and troubleshooting.
+          Disable debug features in production builds for optimal performance.
+        </div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          lib/asciichat_errno.h for <b>Errors</b> handling documentation
+          <p class="Pp"></p>
+          <p class="Pp">lib/lock_debug.h for lock debugging documentation</p>
+          <p class="Pp"></p>
+          <p class="Pp">lib/common.h for memory debugging macros</p>
+        </div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_backtrace_log_frames_(">
+            <a class="permalink" href="#void_backtrace_log_frames_("
+              >void backtrace_log_frames (<b>log_level_t</b> level, int
+              num_frames, int skip_frames)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/backtrace.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Log N backtrace frames with function name, line number, and file.
+            Captures and logs the backtrace at the requested severity, showing
+            the function name, file path, and line number for each frame.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>level</i> Log severity for the backtrace entry
+            <br />
+            <i>num_frames</i> Number of frames to capture and log (0 = all
+            available)
+            <br />
+            <i>skip_frames</i> Number of frames to skip from the top (e.g., skip
+            this function itself)
+          </div>
+          <p class="Pp">
+            Example output: [0] my_function() at <b>src/main.c</b>:42 [1]
+            caller_function() at src/caller.c:123 [2] <b>main()</b> at
+            <b>src/main.c</b>:999
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Call with skip_frames=1 to skip the platform_log_backtrace_frames()
+            call itself
+          </div>
+          <p class="Pp">
+            Definition at line <b>379</b> of file <b>debug/backtrace.c</b>.
+          </p>
+          <pre>
+379                                                                               {
 380   backtrace_t bt;
 381   backtrace_capture_and_symbolize(&amp;bt);
 382   backtrace_print(level, &quot;Backtrace&quot;, &amp;bt, skip_frames, num_frames, NULL);
 383   backtrace_t_free(&amp;bt);
 384 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>backtrace_capture_and_symbolize()</b>,
-    <b>backtrace_log_frames()</b>, <b>backtrace_print()</b>, and
-    <b>backtrace_t_free()</b>.</p>
-<p class="Pp">Referenced by <b>backtrace_log_frames()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_symbols_("><a class="permalink" href="#void_backtrace_print_symbols_(">void
-  backtrace_print_symbols (<b>log_level_t</b> level, const char * label, char **
-  symbols, int count, int skip_frames, int max_frames,
-  <b>backtrace_frame_filter_t</b> filter)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/debug/backtrace.h</b>&gt;<b></b></p>
-<p class="Pp">Print pre-resolved backtrace symbols with consistent formatting.
-    Uses colored format for all backtraces: [-1]
-    <b>crypto_handshake_server_complete()</b> (lib/crypto/handshake.c:1471) [0]
-    server_crypto_handshake() (src/server/crypto.c:511)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log severity for the backtrace entry
-<br/>
-<i>label</i> Header label (e.g., &quot;Backtrace&quot;, &quot;Call stack&quot;)
-<br/>
-<i>symbols</i> Array of pre-resolved symbol strings
-<br/>
-<i>count</i> Number of symbols in the array
-<br/>
-<i>skip_frames</i> Number of frames to skip from the start
-<br/>
-<i>max_frames</i> Maximum frames to print (-1 = unlimited)
-<br/>
-<i>filter</i> Optional filter callback to skip specific frames (NULL = no
-  filtering)</div>
-<p class="Pp">Definition at line <b>386</b> of file
-  <b>debug/backtrace.c</b>.</p>
-<pre>387                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>backtrace_capture_and_symbolize()</b>,
+            <b>backtrace_log_frames()</b>, <b>backtrace_print()</b>, and
+            <b>backtrace_t_free()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>backtrace_log_frames()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_backtrace_print_symbols_(">
+            <a class="permalink" href="#void_backtrace_print_symbols_("
+              >void backtrace_print_symbols (<b>log_level_t</b> level, const
+              char * label, char ** symbols, int count, int skip_frames, int
+              max_frames, <b>backtrace_frame_filter_t</b> filter)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/debug/backtrace.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Print pre-resolved backtrace symbols with consistent formatting.
+            Uses colored format for all backtraces: [-1]
+            <b>crypto_handshake_server_complete()</b>
+            (lib/crypto/handshake.c:1471) [0] server_crypto_handshake()
+            (src/server/crypto.c:511)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>level</i> Log severity for the backtrace entry
+            <br />
+            <i>label</i> Header label (e.g., &quot;Backtrace&quot;, &quot;Call
+            stack&quot;)
+            <br />
+            <i>symbols</i> Array of pre-resolved symbol strings
+            <br />
+            <i>count</i> Number of symbols in the array
+            <br />
+            <i>skip_frames</i> Number of frames to skip from the start
+            <br />
+            <i>max_frames</i> Maximum frames to print (-1 = unlimited)
+            <br />
+            <i>filter</i> Optional filter callback to skip specific frames (NULL
+            = no filtering)
+          </div>
+          <p class="Pp">
+            Definition at line <b>386</b> of file <b>debug/backtrace.c</b>.
+          </p>
+          <pre>
+387                                                                               {
 388   backtrace_t bt = {0};
 389   bt.symbols = symbols;
 390   bt.count = count;
 391   backtrace_print(level, label, &amp;bt, skip_frames, max_frames, filter);
 392 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>backtrace_print()</b>,
-    <b>backtrace_print_symbols()</b>, <b>backtrace_t::count</b>, and
-    <b>backtrace_t::symbols</b>.</p>
-<p class="Pp">Referenced by <b>backtrace_print_symbols()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_install_crash_handler_(void_)"><a class="permalink" href="#void_platform_install_crash_handler_(void_)">void
-  platform_install_crash_handler (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/platform/system.h</b>&gt;<b></b></p>
-<p class="Pp">Install crash handlers for the application. Installs signal
-    handlers for common crash signals (SIGSEGV, SIGABRT, etc.) that will print a
-    backtrace before terminating the process.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This should be called early in program
-  initialization.</div>
-<p class="Pp">References <b>platform_destroy()</b>,
-    <b>platform_force_exit()</b>, <b>platform_get_monotonic_time_us()</b>,
-    <b>platform_init()</b>, <b>platform_install_crash_handler()</b>, and
-    <b>platform_sleep_ms()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>backtrace_print()</b>,
+            <b>backtrace_print_symbols()</b>, <b>backtrace_t::count</b>, and
+            <b>backtrace_t::symbols</b>.
+          </p>
+          <p class="Pp">Referenced by <b>backtrace_print_symbols()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_platform_install_crash_handler_(void_)">
+            <a
+              class="permalink"
+              href="#void_platform_install_crash_handler_(void_)"
+              >void platform_install_crash_handler (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/platform/system.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Install crash handlers for the application. Installs signal handlers
+            for common crash signals (SIGSEGV, SIGABRT, etc.) that will print a
+            backtrace before terminating the process.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This should be called early in program initialization.
+          </div>
+          <p class="Pp">
+            References <b>platform_destroy()</b>, <b>platform_force_exit()</b>,
+            <b>platform_get_monotonic_time_us()</b>, <b>platform_init()</b>,
+            <b>platform_install_crash_handler()</b>, and
+            <b>platform_sleep_ms()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

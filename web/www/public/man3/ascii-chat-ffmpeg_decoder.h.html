@@ -1,172 +1,252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ffmpeg_decoder.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ffmpeg_decoder.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ffmpeg_decoder.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ffmpeg_decoder.h - &#x1F39E;&#xFE0F; FFmpeg-based media decoder
-    for video and audio streams</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct ffmpeg_decoder_t <b>ffmpeg_decoder_t</b>
-  <br/>
-  Opaque FFmpeg decoder handle.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>ffmpeg_frame_status_t</b> { <b>FFMPEG_FRAME_READY</b>,
-    <b>FFMPEG_FRAME_WAITING</b>, <b>FFMPEG_FRAME_EOF</b>,
-    <b>FFMPEG_FRAME_FAILED</b> }
-  <br/>
-  Decode next video frame.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create</b> (const char
-    *path)
-  <br/>
-  Create FFmpeg decoder from file path. <b>ffmpeg_decoder_t</b> *
-    <b>ffmpeg_decoder_create_stdin</b> (void)
-  <br/>
-  Create FFmpeg decoder from stdin. void <b>ffmpeg_decoder_destroy</b>
-    (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Destroy FFmpeg decoder and free resources. <b>asciichat_error_t</b>
-    <b>ffmpeg_decoder_start_prefetch</b> (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Start background frame prefetching thread. void
-    <b>ffmpeg_decoder_stop_prefetch</b> (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Stop background frame prefetching thread. void
-    <b>ffmpeg_decoder_set_exit_callback</b> (<b>ffmpeg_decoder_t</b> *decoder,
-    <b>bool</b>(*should_exit_callback)(void *), void *user_data)
-  <br/>
-  Set exit signal callback for graceful shutdown during I/O. <b>bool</b>
-    <b>ffmpeg_decoder_is_prefetch_running</b> (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Check if background frame prefetching thread is running.
-    <b>ffmpeg_frame_status_t</b> <b>ffmpeg_decoder_poll_video</b>
-    (<b>ffmpeg_decoder_t</b> *decoder, <b>image_t</b> **frame,
-    <b>asciichat_error_context_t</b> *failure)
-  <br/>
-  <b>image_t</b> * <b>ffmpeg_decoder_read_video_frame</b>
-    (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  <b>bool</b> <b>ffmpeg_decoder_has_video</b> (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Check if decoder has video stream. <b>asciichat_error_t</b>
-    <b>ffmpeg_decoder_get_video_dimensions</b> (<b>ffmpeg_decoder_t</b>
-    *decoder, int *width, int *height)
-  <br/>
-  Get video dimensions. double <b>ffmpeg_decoder_get_video_fps</b>
-    (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Get video frame rate. size_t <b>ffmpeg_decoder_read_audio_samples</b>
-    (<b>ffmpeg_decoder_t</b> *decoder, float *buffer, size_t num_samples)
-  <br/>
-  Decode audio samples. <b>bool</b> <b>ffmpeg_decoder_has_audio</b>
-    (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Check if decoder has audio stream. <b>asciichat_error_t</b>
-    <b>ffmpeg_decoder_rewind</b> (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Seek to beginning of media. <b>asciichat_error_t</b>
-    <b>ffmpeg_decoder_seek_to_timestamp</b> (<b>ffmpeg_decoder_t</b> *decoder,
-    double timestamp_sec)
-  <br/>
-  Seek to specific timestamp in media. <b>bool</b> <b>ffmpeg_decoder_at_end</b>
-    (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Check if decoder reached end of stream. double
-    <b>ffmpeg_decoder_get_duration</b> (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Get media duration in seconds. double <b>ffmpeg_decoder_get_position</b>
-    (<b>ffmpeg_decoder_t</b> *decoder)
-  <br/>
-  Get current playback position in seconds. <b>ffmpeg_decoder_t</b> *
-    <b>ffmpeg_decoder_create_interruptible</b> (const char *path,
-    <b>bool</b>(*cancel)(void *), void *data)
-  <br/>
-  <b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create_with_request_options</b>
-    (const char *path, <b>bool</b>(*cancel)(void *), void *data, const char
-    *headers, const char *cookies, const char *proxy)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F39E;&#xFE0F; FFmpeg-based media decoder for video and audio
-    streams</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>ffmpeg_decoder.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>ffmpeg_decoder_t</b> * ffmpeg_decoder_create_interruptible
-  (const char * path, <b>bool</b>(* cancel )(void *), void * data)</h2>
-<p class="Pp">Definition at line <b>765</b> of file
-    <b>media/ffmpeg_decoder.c</b>.</p>
-<pre>765                                                                                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ffmpeg_decoder.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ffmpeg_decoder.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ffmpeg_decoder.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          ffmpeg_decoder.h - &#x1F39E;&#xFE0F; FFmpeg-based media decoder for
+          video and audio streams
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct ffmpeg_decoder_t <b>ffmpeg_decoder_t</b>
+            <br />
+            Opaque FFmpeg decoder handle.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>ffmpeg_frame_status_t</b> { <b>FFMPEG_FRAME_READY</b>,
+            <b>FFMPEG_FRAME_WAITING</b>, <b>FFMPEG_FRAME_EOF</b>,
+            <b>FFMPEG_FRAME_FAILED</b> }
+            <br />
+            Decode next video frame.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create</b> (const char
+            *path)
+            <br />
+            Create FFmpeg decoder from file path. <b>ffmpeg_decoder_t</b> *
+            <b>ffmpeg_decoder_create_stdin</b> (void)
+            <br />
+            Create FFmpeg decoder from stdin. void
+            <b>ffmpeg_decoder_destroy</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Destroy FFmpeg decoder and free resources. <b>asciichat_error_t</b>
+            <b>ffmpeg_decoder_start_prefetch</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Start background frame prefetching thread. void
+            <b>ffmpeg_decoder_stop_prefetch</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Stop background frame prefetching thread. void
+            <b>ffmpeg_decoder_set_exit_callback</b> (<b>ffmpeg_decoder_t</b>
+            *decoder, <b>bool</b>(*should_exit_callback)(void *), void
+            *user_data)
+            <br />
+            Set exit signal callback for graceful shutdown during I/O.
+            <b>bool</b> <b>ffmpeg_decoder_is_prefetch_running</b> (<b
+              >ffmpeg_decoder_t</b
+            >
+            *decoder)
+            <br />
+            Check if background frame prefetching thread is running.
+            <b>ffmpeg_frame_status_t</b> <b>ffmpeg_decoder_poll_video</b> (<b
+              >ffmpeg_decoder_t</b
+            >
+            *decoder, <b>image_t</b> **frame,
+            <b>asciichat_error_context_t</b> *failure)
+            <br />
+            <b>image_t</b> * <b>ffmpeg_decoder_read_video_frame</b> (<b
+              >ffmpeg_decoder_t</b
+            >
+            *decoder)
+            <br />
+            <b>bool</b> <b>ffmpeg_decoder_has_video</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Check if decoder has video stream. <b>asciichat_error_t</b>
+            <b>ffmpeg_decoder_get_video_dimensions</b> (<b>ffmpeg_decoder_t</b>
+            *decoder, int *width, int *height)
+            <br />
+            Get video dimensions. double <b>ffmpeg_decoder_get_video_fps</b> (<b
+              >ffmpeg_decoder_t</b
+            >
+            *decoder)
+            <br />
+            Get video frame rate. size_t
+            <b>ffmpeg_decoder_read_audio_samples</b> (<b>ffmpeg_decoder_t</b>
+            *decoder, float *buffer, size_t num_samples)
+            <br />
+            Decode audio samples. <b>bool</b>
+            <b>ffmpeg_decoder_has_audio</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Check if decoder has audio stream. <b>asciichat_error_t</b>
+            <b>ffmpeg_decoder_rewind</b> (<b>ffmpeg_decoder_t</b> *decoder)
+            <br />
+            Seek to beginning of media. <b>asciichat_error_t</b>
+            <b>ffmpeg_decoder_seek_to_timestamp</b> (<b>ffmpeg_decoder_t</b>
+            *decoder, double timestamp_sec)
+            <br />
+            Seek to specific timestamp in media. <b>bool</b>
+            <b>ffmpeg_decoder_at_end</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Check if decoder reached end of stream. double
+            <b>ffmpeg_decoder_get_duration</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Get media duration in seconds. double
+            <b>ffmpeg_decoder_get_position</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
+            <br />
+            Get current playback position in seconds. <b>ffmpeg_decoder_t</b> *
+            <b>ffmpeg_decoder_create_interruptible</b> (const char *path,
+            <b>bool</b>(*cancel)(void *), void *data)
+            <br />
+            <b>ffmpeg_decoder_t</b> *
+            <b>ffmpeg_decoder_create_with_request_options</b> (const char *path,
+            <b>bool</b>(*cancel)(void *), void *data, const char *headers, const
+            char *cookies, const char *proxy)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F39E;&#xFE0F; FFmpeg-based media decoder for video and audio
+          streams
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>ffmpeg_decoder.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ffmpeg_decoder_t</b> * ffmpeg_decoder_create_interruptible (const
+            char * path, <b>bool</b>(* cancel )(void *), void * data)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>765</b> of file <b>media/ffmpeg_decoder.c</b>.
+          </p>
+          <pre>
+765                                                                                                             {
 766   return ffmpeg_decoder_create_with_request_options(path, cancel, data, NULL, NULL, NULL);
 767 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ffmpeg_decoder_create_interruptible()</b>, and
-    <b>ffmpeg_decoder_create_with_request_options()</b>.</p>
-<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>, and
-    <b>ffmpeg_decoder_create_interruptible()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ffmpeg_decoder_t</b> *
-  ffmpeg_decoder_create_with_request_options (const char * path, <b>bool</b>(*
-  cancel )(void *), void * data, const char * headers, const char * cookies,
-  const char * proxy)</h2>
-<p class="Pp">Definition at line <b>769</b> of file
-    <b>media/ffmpeg_decoder.c</b>.</p>
-<pre>771                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ffmpeg_decoder_create_interruptible()</b>, and
+            <b>ffmpeg_decoder_create_with_request_options()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ffmpeg_decoder_create()</b>, and
+            <b>ffmpeg_decoder_create_interruptible()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ffmpeg_decoder_t</b> * ffmpeg_decoder_create_with_request_options
+            (const char * path, <b>bool</b>(* cancel )(void *), void * data,
+            const char * headers, const char * cookies, const char * proxy)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>769</b> of file <b>media/ffmpeg_decoder.c</b>.
+          </p>
+          <pre>
+771                                                                                 {
 772   ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
 773   if (!path) {
 774     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Path is NULL&quot;);
@@ -429,55 +509,64 @@
 1031
 1032   return decoder;
 1033 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
-    <b>ffmpeg_decoder_t::audio_buffer</b>,
-    <b>ffmpeg_decoder_t::audio_buffer_size</b>,
-    <b>ffmpeg_decoder_t::audio_codec_ctx</b>,
-    <b>ffmpeg_decoder_t::audio_sample_rate</b>,
-    <b>ffmpeg_decoder_t::audio_stream_idx</b>, <b>cond_destroy()</b>,
-    <b>cond_init()</b>, <b>ffmpeg_decoder_t::current_prefetch_image</b>,
-    <b>ffmpeg_decoder_t::eof_reached</b>, <b>errno_scope_begin()</b>,
-    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_MEDIA_OPEN</b>, <b>ERROR_MEMORY</b>,
-    <b>ffmpeg_decoder_create_with_request_options()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_t::format_ctx</b>,
-    <b>ffmpeg_decoder_t::frame</b>, <b>image_new()</b>,
-    <b>ffmpeg_decoder_t::last_audio_pts</b>,
-    <b>ffmpeg_decoder_t::last_video_pts</b>, <b>log_debug</b>, <b>LOG_IO</b>,
-    <b>log_warn</b>, <b>MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NAMED_REGISTER_FFMPEG_DECODER</b>, <b>ffmpeg_decoder_t::packet</b>,
-    <b>platform_strncasecmp()</b>, <b>ffmpeg_decoder_t::prefetch_cond</b>,
-    <b>ffmpeg_decoder_t::prefetch_frame_ready</b>,
-    <b>ffmpeg_decoder_t::prefetch_image_a</b>,
-    <b>ffmpeg_decoder_t::prefetch_image_b</b>,
-    <b>ffmpeg_decoder_t::prefetch_mutex</b>,
-    <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
-    <b>ffmpeg_decoder_t::prefetch_thread_running</b>,
-    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
-    <b>ffmpeg_decoder_t::sws_ctx</b>, <b>TARGET_CHANNELS</b>,
-    <b>TARGET_SAMPLE_RATE</b>, <b>url_is_valid()</b>,
-    <b>ffmpeg_decoder_t::video_codec_ctx</b>, and
-    <b>ffmpeg_decoder_t::video_stream_idx</b>.</p>
-<p class="Pp">Referenced by <b>ffmpeg_decoder_create_interruptible()</b>,
-    <b>ffmpeg_decoder_create_with_request_options()</b>, and
-    <b>media_source_create_interruptible()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
+            <b>ffmpeg_decoder_t::audio_buffer</b>,
+            <b>ffmpeg_decoder_t::audio_buffer_size</b>,
+            <b>ffmpeg_decoder_t::audio_codec_ctx</b>,
+            <b>ffmpeg_decoder_t::audio_sample_rate</b>,
+            <b>ffmpeg_decoder_t::audio_stream_idx</b>, <b>cond_destroy()</b>,
+            <b>cond_init()</b>, <b>ffmpeg_decoder_t::current_prefetch_image</b>,
+            <b>ffmpeg_decoder_t::eof_reached</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_MEDIA_OPEN</b>,
+            <b>ERROR_MEMORY</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>,
+            <b>ffmpeg_decoder_destroy()</b>,
+            <b>ffmpeg_decoder_t::format_ctx</b>, <b>ffmpeg_decoder_t::frame</b>,
+            <b>image_new()</b>, <b>ffmpeg_decoder_t::last_audio_pts</b>,
+            <b>ffmpeg_decoder_t::last_video_pts</b>, <b>log_debug</b>,
+            <b>LOG_IO</b>, <b>log_warn</b>,
+            <b>MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_FFMPEG_DECODER</b>,
+            <b>ffmpeg_decoder_t::packet</b>, <b>platform_strncasecmp()</b>,
+            <b>ffmpeg_decoder_t::prefetch_cond</b>,
+            <b>ffmpeg_decoder_t::prefetch_frame_ready</b>,
+            <b>ffmpeg_decoder_t::prefetch_image_a</b>,
+            <b>ffmpeg_decoder_t::prefetch_image_b</b>,
+            <b>ffmpeg_decoder_t::prefetch_mutex</b>,
+            <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
+            <b>ffmpeg_decoder_t::prefetch_thread_running</b>,
+            <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>ffmpeg_decoder_t::swr_ctx</b>, <b>ffmpeg_decoder_t::sws_ctx</b>,
+            <b>TARGET_CHANNELS</b>, <b>TARGET_SAMPLE_RATE</b>,
+            <b>url_is_valid()</b>, <b>ffmpeg_decoder_t::video_codec_ctx</b>, and
+            <b>ffmpeg_decoder_t::video_stream_idx</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ffmpeg_decoder_create_interruptible()</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>, and
+            <b>media_source_create_interruptible()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,117 +1,177 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ui_popup_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ui_popup_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ui_popup_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ui_popup_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/ui/popup.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">const char * <b>title</b>
-  <br/>
-  const char *const * <b>lines</b>
-  <br/>
-  size_t <b>line_count</b>
-  <br/>
-  const char * <b>footer</b>
-  <br/>
-  int <b>minimum_width</b>
-  <br/>
-  int <b>top_margin</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">A compact modal drawn over an already-rendered terminal frame.</p>
-<p class="Pp">Definition at line <b>20</b> of file <b>popup.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_ui_popup_t::footer"><a class="permalink" href="#const_char*_ui_popup_t::footer">const
-  char* ui_popup_t::footer</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>popup.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ui_popup_t::line_count"><a class="permalink" href="#size_t_ui_popup_t::line_count">size_t
-  ui_popup_t::line_count</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>popup.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_const*_ui_popup_t::lines"><a class="permalink" href="#const_char*_const*_ui_popup_t::lines">const
-  char* const* ui_popup_t::lines</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>popup.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_popup_t::minimum_width"><a class="permalink" href="#int_ui_popup_t::minimum_width">int
-  ui_popup_t::minimum_width</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>popup.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_ui_popup_t::title"><a class="permalink" href="#const_char*_ui_popup_t::title">const
-  char* ui_popup_t::title</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>popup.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_ui_popup_t::top_margin"><a class="permalink" href="#int_ui_popup_t::top_margin">int
-  ui_popup_t::top_margin</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>popup.h</b>.</p>
-<p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ui_popup_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ui_popup_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ui_popup_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ui_popup_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/ui/popup.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>title</b>
+            <br />
+            const char *const * <b>lines</b>
+            <br />
+            size_t <b>line_count</b>
+            <br />
+            const char * <b>footer</b>
+            <br />
+            int <b>minimum_width</b>
+            <br />
+            int <b>top_margin</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          A compact modal drawn over an already-rendered terminal frame.
+        </p>
+        <p class="Pp">Definition at line <b>20</b> of file <b>popup.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_ui_popup_t::footer">
+            <a class="permalink" href="#const_char*_ui_popup_t::footer"
+              >const char* ui_popup_t::footer</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>24</b> of file <b>popup.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ui_popup_t::line_count">
+            <a class="permalink" href="#size_t_ui_popup_t::line_count"
+              >size_t ui_popup_t::line_count</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>23</b> of file <b>popup.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_const*_ui_popup_t::lines">
+            <a class="permalink" href="#const_char*_const*_ui_popup_t::lines"
+              >const char* const* ui_popup_t::lines</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>22</b> of file <b>popup.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_popup_t::minimum_width">
+            <a class="permalink" href="#int_ui_popup_t::minimum_width"
+              >int ui_popup_t::minimum_width</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>25</b> of file <b>popup.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_ui_popup_t::title">
+            <a class="permalink" href="#const_char*_ui_popup_t::title"
+              >const char* ui_popup_t::title</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>21</b> of file <b>popup.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_popup_t::top_margin">
+            <a class="permalink" href="#int_ui_popup_t::top_margin"
+              >int ui_popup_t::top_margin</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>26</b> of file <b>popup.h</b>.</p>
+          <p class="Pp">Referenced by <b>ui_popup_render()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

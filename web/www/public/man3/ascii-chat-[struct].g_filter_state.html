@@ -1,167 +1,234 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>[struct].g_filter_state(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">[struct].g_filter_state(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">[struct].g_filter_state(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">[struct].g_filter_state - Global filter state (supports multiple
-    patterns ORed together).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>grep_pattern_t</b> * <b>patterns</b>
-  <br/>
-  Array of patterns. int <b>pattern_count</b>
-  <br/>
-  Number of active patterns. int <b>pattern_capacity</b>
-  <br/>
-  Allocated capacity. <b>bool</b> <b>enabled</b>
-  <br/>
-  Is filtering active? <b>tls_key_t</b> <b>match_data_key</b>
-  <br/>
-  Thread-local match_data key. <b>lifecycle_t</b> <b>match_data_lifecycle</b>
-  <br/>
-  Lifecycle for TLS key initialization. char ** <b>line_buffer</b>
-  <br/>
-  Circular buffer for context_before. int <b>buffer_size</b>
-  <br/>
-  Size of circular buffer. int <b>buffer_pos</b>
-  <br/>
-  Current position in buffer. int <b>lines_after_match</b>
-  <br/>
-  Counter for context_after lines. int <b>max_context_after</b>
-  <br/>
-  Maximum context_after across all patterns. <b>grep_pattern_t</b> *
-    <b>saved_patterns</b>
-  <br/>
-  Backup of patterns for restore. int <b>saved_pattern_count</b>
-  <br/>
-  Number of saved patterns. int <b>saved_pattern_capacity</b>
-  <br/>
-  Allocated capacity for saved. <b>bool</b> <b>saved_enabled</b>
-  <br/>
-  Saved enabled state.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Global filter state (supports multiple patterns ORed
-  together).</p>
-<p class="Pp">Definition at line <b>55</b> of file <b>grep.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> buffer_pos</h2>
-<p class="Pp">Current position in buffer.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> buffer_size</h2>
-<p class="Pp">Size of circular buffer.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">bool <b>[struct].g_filter_state</b> enabled</h2>
-<p class="Pp">Is filtering active?</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char**_"><a class="permalink" href="#char**_">char**
-  <b>[struct].g_filter_state</b> line_buffer</a></h2>
-<p class="Pp">Circular buffer for context_before.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> lines_after_match</h2>
-<p class="Pp">Counter for context_after lines.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="tls_key_t_"><a class="permalink" href="#tls_key_t_">tls_key_t
-  <b>[struct].g_filter_state</b> match_data_key</a></h2>
-<p class="Pp">Thread-local match_data key.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="lifecycle_t_"><a class="permalink" href="#lifecycle_t_">lifecycle_t
-  <b>[struct].g_filter_state</b> match_data_lifecycle</a></h2>
-<p class="Pp">Lifecycle for TLS key initialization.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> max_context_after</h2>
-<p class="Pp">Maximum context_after across all patterns.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> pattern_capacity</h2>
-<p class="Pp">Allocated capacity.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> pattern_count</h2>
-<p class="Pp">Number of active patterns.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">grep_pattern_t* <b>[struct].g_filter_state</b> patterns</h2>
-<p class="Pp">Array of patterns.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">bool <b>[struct].g_filter_state</b> saved_enabled</h2>
-<p class="Pp">Saved enabled state.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> saved_pattern_capacity</h2>
-<p class="Pp">Allocated capacity for saved.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">int <b>[struct].g_filter_state</b> saved_pattern_count</h2>
-<p class="Pp">Number of saved patterns.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">grep_pattern_t* <b>[struct].g_filter_state</b>
-  saved_patterns</h2>
-<p class="Pp">Backup of patterns for restore.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>[struct].g_filter_state(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">[struct].g_filter_state(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">[struct].g_filter_state(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          [struct].g_filter_state - Global filter state (supports multiple
+          patterns ORed together).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>grep_pattern_t</b> * <b>patterns</b>
+            <br />
+            Array of patterns. int <b>pattern_count</b>
+            <br />
+            Number of active patterns. int <b>pattern_capacity</b>
+            <br />
+            Allocated capacity. <b>bool</b> <b>enabled</b>
+            <br />
+            Is filtering active? <b>tls_key_t</b> <b>match_data_key</b>
+            <br />
+            Thread-local match_data key. <b>lifecycle_t</b>
+            <b>match_data_lifecycle</b>
+            <br />
+            Lifecycle for TLS key initialization. char ** <b>line_buffer</b>
+            <br />
+            Circular buffer for context_before. int <b>buffer_size</b>
+            <br />
+            Size of circular buffer. int <b>buffer_pos</b>
+            <br />
+            Current position in buffer. int <b>lines_after_match</b>
+            <br />
+            Counter for context_after lines. int <b>max_context_after</b>
+            <br />
+            Maximum context_after across all patterns. <b>grep_pattern_t</b> *
+            <b>saved_patterns</b>
+            <br />
+            Backup of patterns for restore. int <b>saved_pattern_count</b>
+            <br />
+            Number of saved patterns. int <b>saved_pattern_capacity</b>
+            <br />
+            Allocated capacity for saved. <b>bool</b> <b>saved_enabled</b>
+            <br />
+            Saved enabled state.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Global filter state (supports multiple patterns ORed together).
+        </p>
+        <p class="Pp">Definition at line <b>55</b> of file <b>grep.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">int <b>[struct].g_filter_state</b> buffer_pos</h2>
+          <p class="Pp">Current position in buffer.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">int <b>[struct].g_filter_state</b> buffer_size</h2>
+          <p class="Pp">Size of circular buffer.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">bool <b>[struct].g_filter_state</b> enabled</h2>
+          <p class="Pp">Is filtering active?</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char**_">
+            <a class="permalink" href="#char**_"
+              >char** <b>[struct].g_filter_state</b> line_buffer</a
+            >
+          </h2>
+          <p class="Pp">Circular buffer for context_before.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            int <b>[struct].g_filter_state</b> lines_after_match
+          </h2>
+          <p class="Pp">Counter for context_after lines.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="tls_key_t_">
+            <a class="permalink" href="#tls_key_t_"
+              >tls_key_t <b>[struct].g_filter_state</b> match_data_key</a
+            >
+          </h2>
+          <p class="Pp">Thread-local match_data key.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="lifecycle_t_">
+            <a class="permalink" href="#lifecycle_t_"
+              >lifecycle_t
+              <b>[struct].g_filter_state</b> match_data_lifecycle</a
+            >
+          </h2>
+          <p class="Pp">Lifecycle for TLS key initialization.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            int <b>[struct].g_filter_state</b> max_context_after
+          </h2>
+          <p class="Pp">Maximum context_after across all patterns.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            int <b>[struct].g_filter_state</b> pattern_capacity
+          </h2>
+          <p class="Pp">Allocated capacity.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">int <b>[struct].g_filter_state</b> pattern_count</h2>
+          <p class="Pp">Number of active patterns.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            grep_pattern_t* <b>[struct].g_filter_state</b> patterns
+          </h2>
+          <p class="Pp">Array of patterns.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">bool <b>[struct].g_filter_state</b> saved_enabled</h2>
+          <p class="Pp">Saved enabled state.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            int <b>[struct].g_filter_state</b> saved_pattern_capacity
+          </h2>
+          <p class="Pp">Allocated capacity for saved.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            int <b>[struct].g_filter_state</b> saved_pattern_count
+          </h2>
+          <p class="Pp">Number of saved patterns.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            grep_pattern_t* <b>[struct].g_filter_state</b> saved_patterns
+          </h2>
+          <p class="Pp">Backup of patterns for restore.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

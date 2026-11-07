@@ -1,127 +1,207 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>security.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">security.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">security.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">security.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>acip_security</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>acip_security</b> <b>acip_security_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_security_start</b>
-    (<b>acip_security_t</b> *security, <b>acip_transport_t</b> *transport)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_security_receive</b> (<b>acip_security_t</b>
-    *security, <b>acip_transport_t</b> *transport, <b>packet_type_t</b> type,
-    const void *payload, size_t length)
-  <br/>
-  <b>asciichat_error_t</b> <b>acip_security_init_options</b>
-    (<b>acip_security_t</b> *security, <b>bool</b> server, <b>bool</b>
-    transport_secure, const char *password)
-  <br/>
-  void <b>acip_security_cleanup</b> (<b>acip_security_t</b> *security)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_webrtc_transport_create_secure</b> (struct
-    <b>webrtc_peer_connection</b> *peer, struct <b>webrtc_data_channel</b>
-    *channel, <b>acip_security_t</b> *security,
-    void(*on_ready)(<b>acip_transport_t</b> *, void *), void *user_data)
-  <br/>
-  <b>acip_security_t</b> * <b>acip_webrtc_transport_security</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>acip_security</b> <b>acip_security_t</b></a></h2>
-<p class="Pp">Per-peer, event-driven negotiation. The caller owns and configures
-    handshake. Callers serialize receive/start and keep the transport alive
-    until cleanup. Media must wait for ready, including authentication-only
-    connections.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_security_cleanup_("><a class="permalink" href="#void_acip_security_cleanup_(">void
-  acip_security_cleanup (<b>acip_security_t</b> * security)</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file
-    <b>network/acip/security.c</b>.</p>
-<pre>8                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>security.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">security.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">security.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">security.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>acip_security</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>acip_security</b> <b>acip_security_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_security_start</b> (<b
+              >acip_security_t</b
+            >
+            *security, <b>acip_transport_t</b> *transport)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_security_receive</b> (<b
+              >acip_security_t</b
+            >
+            *security, <b>acip_transport_t</b> *transport,
+            <b>packet_type_t</b> type, const void *payload, size_t length)
+            <br />
+            <b>asciichat_error_t</b> <b>acip_security_init_options</b> (<b
+              >acip_security_t</b
+            >
+            *security, <b>bool</b> server, <b>bool</b>
+            transport_secure, const char *password)
+            <br />
+            void <b>acip_security_cleanup</b> (<b>acip_security_t</b> *security)
+            <br />
+            <b>acip_transport_t</b> *
+            <b>acip_webrtc_transport_create_secure</b> (struct
+            <b>webrtc_peer_connection</b> *peer, struct
+            <b>webrtc_data_channel</b> *channel,
+            <b>acip_security_t</b> *security, void(*on_ready)(<b
+              >acip_transport_t</b
+            >
+            *, void *), void *user_data)
+            <br />
+            <b>acip_security_t</b> * <b>acip_webrtc_transport_security</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>acip_security</b> <b>acip_security_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Per-peer, event-driven negotiation. The caller owns and configures
+            handshake. Callers serialize receive/start and keep the transport
+            alive until cleanup. Media must wait for ready, including
+            authentication-only connections.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_security_cleanup_(">
+            <a class="permalink" href="#void_acip_security_cleanup_("
+              >void acip_security_cleanup (<b>acip_security_t</b> * security)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>network/acip/security.c</b>.
+          </p>
+          <pre>
+8                                                       {
 9   if (!security)
 10     return;
 11   SAFE_FREE(security-&gt;handshake.client_whitelist);
 12   crypto_handshake_destroy(&amp;security-&gt;handshake);
 13 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_security_cleanup()</b>,
-    <b>crypto_handshake_context_t::client_whitelist</b>,
-    <b>crypto_handshake_destroy()</b>, <b>acip_security::handshake</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_cleanup()</b>,
-    <b>acip_security_init_options()</b>, and <b>peer_crypto_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_security_init_options
-  (<b>acip_security_t</b> * security, <b>bool</b> server, <b>bool</b>
-  transport_secure, const char * password)</h2>
-<p class="Pp">Initialize a peer from native CLI options; cleanup releases owned
-    credentials.</p>
-<p class="Pp">Definition at line <b>6</b> of file <b>security_options.c</b>.</p>
-<pre>7                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_security_cleanup()</b>,
+            <b>crypto_handshake_context_t::client_whitelist</b>,
+            <b>crypto_handshake_destroy()</b>, <b>acip_security::handshake</b>,
+            and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_cleanup()</b>,
+            <b>acip_security_init_options()</b>, and
+            <b>peer_crypto_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_security_init_options (<b
+              >acip_security_t</b
+            >
+            * security, <b>bool</b> server, <b>bool</b> transport_secure, const
+            char * password)
+          </h2>
+          <p class="Pp">
+            Initialize a peer from native CLI options; cleanup releases owned
+            credentials.
+          </p>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>security_options.c</b>.
+          </p>
+          <pre>
+7                                                                             {
 8   if (!security)
 9     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing peer security state&quot;);
 10   memset(security, 0, sizeof(*security));
@@ -185,54 +265,71 @@
 68   acip_security_cleanup(security);
 69   return result;
 70 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
-    <b>acip_security_cleanup()</b>, <b>acip_security_init_options()</b>,
-    <b>ASCIICHAT_OK</b>, <b>crypto_handshake_context_t::client_gpg_key_id</b>,
-    <b>options_state::client_keys</b>,
-    <b>crypto_handshake_context_t::client_private_key</b>,
-    <b>crypto_handshake_context_t::client_public_key</b>,
-    <b>crypto_handshake_context_t::client_whitelist</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>crypto_handshake_init()</b>,
-    <b>crypto_handshake_init_with_password()</b>,
-    <b>crypto_policy_resolve()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>crypto_policy_t::encrypt</b>, <b>crypto_context_t::encrypt_data</b>,
-    <b>options_state::encrypt_enabled</b>, <b>options_state::encrypt_key</b>,
-    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>crypto_handshake_context_t::expected_server_key</b>,
-    <b>acip_security::forbid_encryption</b>, <b>acip_security::handshake</b>,
-    <b>crypto_policy_t::has_identity</b>, <b>crypto_policy_t::has_password</b>,
-    <b>crypto_policy_t::has_verification_key</b>, <b>public_key_t::key</b>,
-    <b>KEY_TYPE_ED25519</b>, <b>MAX_CLIENTS</b>, <b>acip_security::mode</b>,
-    <b>options_state::no_auth</b>, <b>crypto_policy_t::no_encrypt</b>,
-    <b>options_state::no_encrypt</b>,
-    <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
-    <b>options_get()</b>, <b>parse_private_key()</b>,
-    <b>parse_public_keys()</b>, <b>options_state::password</b>,
-    <b>private_key_t::public_key</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>,
-    <b>acip_security::require_encryption</b>,
-    <b>options_state::require_server_verify</b>, <b>SAFE_CALLOC</b>,
-    <b>SAFE_STRNCPY</b>, <b>crypto_handshake_context_t::server_hostname</b>,
-    <b>options_state::server_key</b>,
-    <b>crypto_handshake_context_t::server_private_key</b>,
-    <b>crypto_handshake_context_t::server_public_key</b>,
-    <b>options_state::session_string</b>, <b>SET_ERRNO</b>,
-    <b>public_key_t::type</b>, and
-    <b>crypto_handshake_context_t::verify_server_key</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_init_options()</b>, and
-    <b>network_connection_prepare_security()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_security_receive
-  (<b>acip_security_t</b> * security, <b>acip_transport_t</b> * transport,
-  <b>packet_type_t</b> type, const void * payload, size_t length)</h2>
-<p class="Pp">Definition at line <b>30</b> of file
-    <b>network/acip/security.c</b>.</p>
-<pre>31                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
+            <b>acip_security_cleanup()</b>, <b>acip_security_init_options()</b>,
+            <b>ASCIICHAT_OK</b>,
+            <b>crypto_handshake_context_t::client_gpg_key_id</b>,
+            <b>options_state::client_keys</b>,
+            <b>crypto_handshake_context_t::client_private_key</b>,
+            <b>crypto_handshake_context_t::client_public_key</b>,
+            <b>crypto_handshake_context_t::client_whitelist</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>crypto_handshake_init()</b>,
+            <b>crypto_handshake_init_with_password()</b>,
+            <b>crypto_policy_resolve()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>crypto_policy_t::encrypt</b>,
+            <b>crypto_context_t::encrypt_data</b>,
+            <b>options_state::encrypt_enabled</b>,
+            <b>options_state::encrypt_key</b>, <b>ERROR_CRYPTO_AUTH</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>,
+            <b>crypto_handshake_context_t::expected_server_key</b>,
+            <b>acip_security::forbid_encryption</b>,
+            <b>acip_security::handshake</b>,
+            <b>crypto_policy_t::has_identity</b>,
+            <b>crypto_policy_t::has_password</b>,
+            <b>crypto_policy_t::has_verification_key</b>,
+            <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>,
+            <b>MAX_CLIENTS</b>, <b>acip_security::mode</b>,
+            <b>options_state::no_auth</b>, <b>crypto_policy_t::no_encrypt</b>,
+            <b>options_state::no_encrypt</b>,
+            <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
+            <b>options_get()</b>, <b>parse_private_key()</b>,
+            <b>parse_public_keys()</b>, <b>options_state::password</b>,
+            <b>private_key_t::public_key</b>,
+            <b>crypto_handshake_context_t::require_client_auth</b>,
+            <b>acip_security::require_encryption</b>,
+            <b>options_state::require_server_verify</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_STRNCPY</b>,
+            <b>crypto_handshake_context_t::server_hostname</b>,
+            <b>options_state::server_key</b>,
+            <b>crypto_handshake_context_t::server_private_key</b>,
+            <b>crypto_handshake_context_t::server_public_key</b>,
+            <b>options_state::session_string</b>, <b>SET_ERRNO</b>,
+            <b>public_key_t::type</b>, and
+            <b>crypto_handshake_context_t::verify_server_key</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_init_options()</b>, and
+            <b>network_connection_prepare_security()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_security_receive (<b
+              >acip_security_t</b
+            >
+            * security, <b>acip_transport_t</b> * transport,
+            <b>packet_type_t</b> type, const void * payload, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>network/acip/security.c</b>.
+          </p>
+          <pre>
+31                                                                             {
 32   if (!security || !transport || (!payload &amp;&amp; length) || security-&gt;ready)
 33     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Unexpected peer security packet&quot;);
 34   crypto_handshake_context_t *ctx = &amp;security-&gt;handshake;
@@ -324,59 +421,69 @@
 120     ctx-&gt;state = CRYPTO_HANDSHAKE_FAILED;
 121   return result;
 122 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CRYPTO_FULL</b>, <b>ACIP_CRYPTO_HAS_AUTH</b>,
-    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ACIP_CRYPTO_NONE</b>,
-    <b>acip_security_receive()</b>, <b>ASCIICHAT_OK</b>,
-    <b>crypto_handshake_context_t::client_private_key</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>CRYPTO_HANDSHAKE_AUTHENTICATING</b>,
-    <b>crypto_handshake_client_auth_response()</b>,
-    <b>crypto_handshake_client_complete()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>CRYPTO_HANDSHAKE_FAILED</b>,
-    <b>CRYPTO_HANDSHAKE_INIT</b>, <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>,
-    <b>CRYPTO_HANDSHAKE_READY</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>crypto_handshake_set_parameters()</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>acip_security::forbid_encryption</b>,
-    <b>acip_security::handshake</b>,
-    <b>crypto_handshake_context_t::has_password</b>,
-    <b>crypto_handshake_context_t::is_server</b>, <b>KEY_TYPE_ED25519</b>,
-    <b>acip_security::mode</b>, <b>NET_TO_HOST_U16</b>,
-    <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
-    <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
-    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
-    <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
-    <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
-    <b>acip_security::parameters_received</b>,
-    <b>protocol_version_packet_t::protocol_version</b>,
-    <b>crypto_context_t::public_key_size</b>, <b>acip_security::ready</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>,
-    <b>acip_security::require_encryption</b>, <b>SET_ERRNO</b>,
-    <b>crypto_handshake_context_t::state</b>,
-    <b>protocol_version_packet_t::supports_encryption</b>,
-    <b>private_key_t::type</b>,
-    <b>crypto_handshake_context_t::verify_server_key</b>, and
-    <b>acip_security::version_received</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_receive()</b>, and
-    <b>peer_crypto_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_security_start
-  (<b>acip_security_t</b> * security, <b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Definition at line <b>15</b> of file
-    <b>network/acip/security.c</b>.</p>
-<pre>15                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_FULL</b>, <b>ACIP_CRYPTO_HAS_AUTH</b>,
+            <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ACIP_CRYPTO_NONE</b>,
+            <b>acip_security_receive()</b>, <b>ASCIICHAT_OK</b>,
+            <b>crypto_handshake_context_t::client_private_key</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>CRYPTO_HANDSHAKE_AUTHENTICATING</b>,
+            <b>crypto_handshake_client_auth_response()</b>,
+            <b>crypto_handshake_client_complete()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>CRYPTO_HANDSHAKE_FAILED</b>,
+            <b>CRYPTO_HANDSHAKE_INIT</b>, <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>,
+            <b>CRYPTO_HANDSHAKE_READY</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>crypto_handshake_set_parameters()</b>,
+            <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>,
+            <b>acip_security::forbid_encryption</b>,
+            <b>acip_security::handshake</b>,
+            <b>crypto_handshake_context_t::has_password</b>,
+            <b>crypto_handshake_context_t::is_server</b>,
+            <b>KEY_TYPE_ED25519</b>, <b>acip_security::mode</b>,
+            <b>NET_TO_HOST_U16</b>, <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+            <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
+            <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
+            <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
+            <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+            <b>acip_security::parameters_received</b>,
+            <b>protocol_version_packet_t::protocol_version</b>,
+            <b>crypto_context_t::public_key_size</b>,
+            <b>acip_security::ready</b>,
+            <b>crypto_handshake_context_t::require_client_auth</b>,
+            <b>acip_security::require_encryption</b>, <b>SET_ERRNO</b>,
+            <b>crypto_handshake_context_t::state</b>,
+            <b>protocol_version_packet_t::supports_encryption</b>,
+            <b>private_key_t::type</b>,
+            <b>crypto_handshake_context_t::verify_server_key</b>, and
+            <b>acip_security::version_received</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_receive()</b>, and
+            <b>peer_crypto_receive()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_security_start (<b>acip_security_t</b>
+            * security, <b>acip_transport_t</b> * transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>network/acip/security.c</b>.
+          </p>
+          <pre>
+15                                                                                               {
 16   if (!security || !transport || security-&gt;mode &gt; ACIP_CRYPTO_FULL ||
 17       security-&gt;handshake.state != CRYPTO_HANDSHAKE_INIT)
 18     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid peer security initialization&quot;);
@@ -390,33 +497,46 @@
 26   version.supports_encryption = security-&gt;mode;
 27   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &amp;version, sizeof(version), 0);
 28 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CRYPTO_FULL</b>,
-    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>acip_security_start()</b>,
-    <b>crypto_handshake_context_t::addressless_transport</b>,
-    <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
-    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>acip_security::handshake</b>, <b>HOST_TO_NET_U16</b>,
-    <b>crypto_handshake_context_t::is_server</b>, <b>acip_security::mode</b>,
-    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
-    <b>protocol_version_packet_t::protocol_version</b>, <b>SET_ERRNO</b>,
-    <b>crypto_handshake_context_t::state</b>, and
-    <b>protocol_version_packet_t::supports_encryption</b>.</p>
-<p class="Pp">Referenced by <b>acip_security_start()</b>, and
-    <b>peer_crypto_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_webrtc_transport_create_secure
-  (struct <b>webrtc_peer_connection</b> * peer, struct
-  <b>webrtc_data_channel</b> * channel, <b>acip_security_t</b> * security,
-  void(* on_ready )(<b>acip_transport_t</b> *, void *), void * user_data)</h2>
-<p class="Pp">Transfer security ownership on success. Ready fires only after
-    negotiation.</p>
-<p class="Pp">Definition at line <b>915</b> of file
-  <b>webrtc/transport.c</b>.</p>
-<pre>917                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_FULL</b>, <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
+            <b>acip_security_start()</b>,
+            <b>crypto_handshake_context_t::addressless_transport</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>CRYPTO_HANDSHAKE_INIT</b>, <b>crypto_context_t::encrypt_data</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>acip_security::handshake</b>,
+            <b>HOST_TO_NET_U16</b>,
+            <b>crypto_handshake_context_t::is_server</b>,
+            <b>acip_security::mode</b>, <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+            <b>protocol_version_packet_t::protocol_version</b>,
+            <b>SET_ERRNO</b>, <b>crypto_handshake_context_t::state</b>, and
+            <b>protocol_version_packet_t::supports_encryption</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_security_start()</b>, and
+            <b>peer_crypto_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_webrtc_transport_create_secure
+            (struct <b>webrtc_peer_connection</b> * peer, struct
+            <b>webrtc_data_channel</b> * channel, <b>acip_security_t</b> *
+            security, void(* on_ready )(<b>acip_transport_t</b> *, void *), void
+            * user_data)
+          </h2>
+          <p class="Pp">
+            Transfer security ownership on success. Ready fires only after
+            negotiation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>915</b> of file <b>webrtc/transport.c</b>.
+          </p>
+          <pre>
+917                                                                                                                      {
 918   if (!security) {
 919     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing WebRTC security state&quot;);
 920     return NULL;
@@ -424,42 +544,61 @@
 922   return webrtc_transport_create(peer_conn, data_channel, &amp;security-&gt;handshake.crypto_ctx, security, on_ready,
 923                                  user_data);
 924 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_transport_create_secure()</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acip_security::handshake</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create_secure()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_security_t</b> * acip_webrtc_transport_security
-  (<b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Borrow security already owned by an authenticated peer
-  transport.</p>
-<p class="Pp">Definition at line <b>771</b> of file
-  <b>webrtc/transport.c</b>.</p>
-<pre>771                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_webrtc_transport_create_secure()</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>acip_security::handshake</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_webrtc_transport_create_secure()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_security_t</b> * acip_webrtc_transport_security (<b
+              >acip_transport_t</b
+            >
+            * transport)
+          </h2>
+          <p class="Pp">
+            Borrow security already owned by an authenticated peer transport.
+          </p>
+          <p class="Pp">
+            Definition at line <b>771</b> of file <b>webrtc/transport.c</b>.
+          </p>
+          <pre>
+771                                                                              {
 772   if (!transport || transport-&gt;methods != &amp;webrtc_methods || !transport-&gt;impl_data)
 773     return NULL;
 774   return ((webrtc_transport_data_t *)transport-&gt;impl_data)-&gt;security;
 775 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_webrtc_transport_security()</b>,
-    <b>acip_transport::impl_data</b>, and <b>acip_transport::methods</b>.</p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_security()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_webrtc_transport_security()</b>,
+            <b>acip_transport::impl_data</b>, and
+            <b>acip_transport::methods</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_webrtc_transport_security()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -153,8 +153,16 @@ set(DELETED_COUNT 0)
 foreach(MANPAGE \${MANPAGES})
     get_filename_component(FILENAME \"\${MANPAGE}\" NAME)
 
+    # Directory pages contain machine-specific paths and are not API references.
+    file(STRINGS "\${MANPAGE}" MANPAGE_TITLE LIMIT_COUNT 1)
+    if(MANPAGE_TITLE MATCHES "Directory Reference")
+        file(REMOVE "\${MANPAGE}")
+        math(EXPR DELETED_COUNT "\${DELETED_COUNT} + 1")
+        continue()
+    endif()
+
     # Skip/delete path-based entries (Doxygen directory documentation)
-    if(FILENAME MATCHES \"_home_|_usr_|_opt_|_var_|_Users_\")
+    if(FILENAME MATCHES \"_home_|_usr_|_opt_|_var_|_Users_|_root_|_tmp_|_mnt_|_cygdrive_\")
         file(REMOVE \"\${MANPAGE}\")
         math(EXPR DELETED_COUNT \"\${DELETED_COUNT} + 1\")
         continue()
@@ -179,6 +187,9 @@ message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/.man3.done"
+        # Doxygen leaves pages for removed symbols behind in an existing output directory.
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_BINARY_DIR}/share/man/man3"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/share/man/man3"
         COMMAND ${ASCIICHAT_DOXYGEN_COMMAND} ${DOXYFILE_MAN3_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake

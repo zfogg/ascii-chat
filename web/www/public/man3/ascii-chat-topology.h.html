@@ -1,139 +1,206 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>topology.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">topology.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">topology.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">topology.h - Ring topology management.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>consensus_topology_create</b> (const
-    <b>uint8_t</b>
-    participant_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
-    int num_participants, const <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>],
-    <b>consensus_topology_t</b> **out_topology)
-  <br/>
-  Create new ring topology from participant list. void
-    <b>consensus_topology_destroy</b> (<b>consensus_topology_t</b> *topology)
-  <br/>
-  Destroy topology. int <b>consensus_topology_get_position</b> (const
-    <b>consensus_topology_t</b> *topology)
-  <br/>
-  Get my position in ring (0 = first). <b>bool</b>
-    <b>consensus_topology_am_leader</b> (const <b>consensus_topology_t</b>
-    *topology)
-  <br/>
-  Check if I am the ring leader (last position). <b>asciichat_error_t</b>
-    <b>consensus_topology_get_next</b> (const <b>consensus_topology_t</b>
-    *topology, <b>uint8_t</b> out_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Get next participant ID in ring. <b>asciichat_error_t</b>
-    <b>consensus_topology_get_prev</b> (const <b>consensus_topology_t</b>
-    *topology, <b>uint8_t</b> out_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Get previous participant ID in ring. <b>asciichat_error_t</b>
-    <b>consensus_topology_get_leader</b> (const <b>consensus_topology_t</b>
-    *topology, <b>uint8_t</b> out_id[<b>SESSION_ID_SIZE</b>])
-  <br/>
-  Get ring leader ID (last participant). <b>asciichat_error_t</b>
-    <b>consensus_topology_get_all</b> (const <b>consensus_topology_t</b>
-    *topology, <b>uint8_t</b>
-    out_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>], int
-    *out_count)
-  <br/>
-  Get all participant IDs in ring order.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Ring topology management.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>topology.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> consensus_topology_am_leader (const
-  <b>consensus_topology_t</b> * topology)</h2>
-<p class="Pp">Check if I am the ring leader (last position).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if I am the leader, false otherwise</div>
-<p class="Pp">Definition at line <b>82</b> of file <b>topology.c</b>.</p>
-<pre>82                                                                         {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>topology.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">topology.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">topology.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">topology.h - Ring topology management.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>consensus_topology_create</b> (const
+            <b>uint8_t</b>
+            participant_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
+            int num_participants, const
+            <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>],
+            <b>consensus_topology_t</b> **out_topology)
+            <br />
+            Create new ring topology from participant list. void
+            <b>consensus_topology_destroy</b> (<b>consensus_topology_t</b>
+            *topology)
+            <br />
+            Destroy topology. int <b>consensus_topology_get_position</b> (const
+            <b>consensus_topology_t</b> *topology)
+            <br />
+            Get my position in ring (0 = first). <b>bool</b>
+            <b>consensus_topology_am_leader</b> (const
+            <b>consensus_topology_t</b>
+            *topology)
+            <br />
+            Check if I am the ring leader (last position).
+            <b>asciichat_error_t</b> <b>consensus_topology_get_next</b> (const
+            <b>consensus_topology_t</b> *topology,
+            <b>uint8_t</b> out_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Get next participant ID in ring. <b>asciichat_error_t</b>
+            <b>consensus_topology_get_prev</b> (const
+            <b>consensus_topology_t</b> *topology,
+            <b>uint8_t</b> out_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Get previous participant ID in ring. <b>asciichat_error_t</b>
+            <b>consensus_topology_get_leader</b> (const
+            <b>consensus_topology_t</b> *topology,
+            <b>uint8_t</b> out_id[<b>SESSION_ID_SIZE</b>])
+            <br />
+            Get ring leader ID (last participant). <b>asciichat_error_t</b>
+            <b>consensus_topology_get_all</b> (const
+            <b>consensus_topology_t</b> *topology,
+            <b>uint8_t</b>
+            out_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
+            int *out_count)
+            <br />
+            Get all participant IDs in ring order.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Ring topology management.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>topology.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> consensus_topology_am_leader (const
+            <b>consensus_topology_t</b> * topology)
+          </h2>
+          <p class="Pp">Check if I am the ring leader (last position).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>topology</i> Topology handle</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if I am the leader, false otherwise</div>
+          <p class="Pp">
+            Definition at line <b>82</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+82                                                                         {
 83   if (!topology)
 84     return false;
 85   return topology-&gt;my_position == (topology-&gt;num_participants - 1);
 86 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_topology_am_leader()</b>,
-    <b>consensus_topology::my_position</b>, and
-    <b>consensus_topology::num_participants</b>.</p>
-<p class="Pp">Referenced by <b>consensus_coordinator_process()</b>,
-    <b>consensus_state_collection_complete()</b>,
-    <b>consensus_state_is_leader()</b>, and
-    <b>consensus_topology_am_leader()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_topology_create (const
-  <b>uint8_t</b> participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int
-  num_participants, const <b>uint8_t</b> my_id[SESSION_ID_SIZE],
-  <b>consensus_topology_t</b> ** out_topology)</h2>
-<p class="Pp">Create new ring topology from participant list. Sorts participants
-    lexicographically and computes ring positions. Returns error if my_id not in
-    participant list.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>participant_ids</i> Array of 16-byte UUIDs (up to 128
-  participants)
-<br/>
-<i>num_participants</i> Number of participants (1-128)
-<br/>
-<i>my_id</i> My 16-byte UUID (must be in participant_ids)
-<br/>
-<i>out_topology</i> Output topology handle (caller must destroy)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>42</b> of file <b>topology.c</b>.</p>
-<pre>44                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_topology_am_leader()</b>,
+            <b>consensus_topology::my_position</b>, and
+            <b>consensus_topology::num_participants</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_coordinator_process()</b>,
+            <b>consensus_state_collection_complete()</b>,
+            <b>consensus_state_is_leader()</b>, and
+            <b>consensus_topology_am_leader()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_topology_create (const
+            <b>uint8_t</b>
+            participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int
+            num_participants, const <b>uint8_t</b> my_id[SESSION_ID_SIZE],
+            <b>consensus_topology_t</b> ** out_topology)
+          </h2>
+          <p class="Pp">
+            Create new ring topology from participant list. Sorts participants
+            lexicographically and computes ring positions. Returns error if
+            my_id not in participant list.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>participant_ids</i> Array of 16-byte UUIDs (up to 128
+            participants)
+            <br />
+            <i>num_participants</i> Number of participants (1-128)
+            <br />
+            <i>my_id</i> My 16-byte UUID (must be in participant_ids)
+            <br />
+            <i>out_topology</i> Output topology handle (caller must destroy)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+44                                                                                  {
 45   if (!participant_ids || !my_id || !out_topology || num_participants &lt;= 0 ||
 46       num_participants &gt; MAX_SESSION_PARTICIPANTS) {
 47     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid topology creation parameters&quot;);
@@ -158,53 +225,82 @@
 66   *out_topology = topology;
 67   return ASCIICHAT_OK;
 68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_topology_create()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>MAX_SESSION_PARTICIPANTS</b>, <b>consensus_topology::my_position</b>,
-    <b>consensus_topology::num_participants</b>,
-    <b>consensus_topology::participant_ids</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SESSION_ID_SIZE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_create()</b>,
-    <b>session_consensus_create()</b>, and
-    <b>session_consensus_set_topology()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_consensus_topology_destroy_("><a class="permalink" href="#void_consensus_topology_destroy_(">void
-  consensus_topology_destroy (<b>consensus_topology_t</b> * topology)</a></h2>
-<p class="Pp">Destroy topology.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle (safe to pass NULL)</div>
-<p class="Pp">Definition at line <b>70</b> of file <b>topology.c</b>.</p>
-<pre>70                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>consensus_topology_create()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>consensus_topology::my_position</b>,
+            <b>consensus_topology::num_participants</b>,
+            <b>consensus_topology::participant_ids</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SESSION_ID_SIZE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_topology_create()</b>,
+            <b>session_consensus_create()</b>, and
+            <b>session_consensus_set_topology()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_consensus_topology_destroy_(">
+            <a class="permalink" href="#void_consensus_topology_destroy_("
+              >void consensus_topology_destroy (<b>consensus_topology_t</b> *
+              topology)</a
+            >
+          </h2>
+          <p class="Pp">Destroy topology.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>topology</i> Topology handle (safe to pass NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+70                                                                 {
 71   if (topology) {
 72     SAFE_FREE(topology);
 73   }
 74 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_topology_destroy()</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_destroy()</b>,
-    <b>session_consensus_create()</b>, <b>session_consensus_destroy()</b>, and
-    <b>session_consensus_set_topology()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_topology_get_all (const
-  <b>consensus_topology_t</b> * topology, <b>uint8_t</b>
-  out_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int * out_count)</h2>
-<p class="Pp">Get all participant IDs in ring order.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle
-<br/>
-<i>out_ids</i> Array to fill with 16-byte UUIDs (must hold 64*16 bytes)
-<br/>
-<i>out_count</i> Output number of participants</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>117</b> of file <b>topology.c</b>.</p>
-<pre>119                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_topology_destroy()</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_topology_destroy()</b>,
+            <b>session_consensus_create()</b>,
+            <b>session_consensus_destroy()</b>, and
+            <b>session_consensus_set_topology()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_topology_get_all (const
+            <b>consensus_topology_t</b> * topology,
+            <b>uint8_t</b> out_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
+            int * out_count)
+          </h2>
+          <p class="Pp">Get all participant IDs in ring order.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>topology</i> Topology handle
+            <br />
+            <i>out_ids</i> Array to fill with 16-byte UUIDs (must hold 64*16
+            bytes)
+            <br />
+            <i>out_count</i> Output number of participants
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>117</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+119                                                              {
 120   if (!topology || !out_ids || !out_count) {
 121     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 122   }
@@ -213,29 +309,39 @@
 125   *out_count = topology-&gt;num_participants;
 126   return ASCIICHAT_OK;
 127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_topology_get_all()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>MAX_SESSION_PARTICIPANTS</b>,
-    <b>consensus_topology::num_participants</b>,
-    <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_get_all()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_topology_get_leader (const
-  <b>consensus_topology_t</b> * topology, <b>uint8_t</b>
-  out_id[SESSION_ID_SIZE])</h2>
-<p class="Pp">Get ring leader ID (last participant).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle
-<br/>
-<i>out_id</i> Output 16-byte UUID of ring leader</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>108</b> of file <b>topology.c</b>.</p>
-<pre>108                                                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>consensus_topology_get_all()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>consensus_topology::num_participants</b>,
+            <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_topology_get_all()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_topology_get_leader (const
+            <b>consensus_topology_t</b> * topology,
+            <b>uint8_t</b> out_id[SESSION_ID_SIZE])
+          </h2>
+          <p class="Pp">Get ring leader ID (last participant).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>topology</i> Topology handle
+            <br />
+            <i>out_id</i> Output 16-byte UUID of ring leader
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>108</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+108                                                                                                                        {
 109   if (!topology || !out_id) {
 110     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 111   }
@@ -243,30 +349,45 @@
 113   memcpy(out_id, topology-&gt;participant_ids[topology-&gt;num_participants - 1], SESSION_ID_SIZE);
 114   return ASCIICHAT_OK;
 115 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_topology_get_leader()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>consensus_topology::num_participants</b>,
-    <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_get_leader()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_topology_get_next (const
-  <b>consensus_topology_t</b> * topology, <b>uint8_t</b>
-  out_id[SESSION_ID_SIZE])</h2>
-<p class="Pp">Get next participant ID in ring. Wraps around from last position
-    to first.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle
-<br/>
-<i>out_id</i> Output 16-byte UUID of next participant</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>88</b> of file <b>topology.c</b>.</p>
-<pre>88                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_topology_get_leader()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>consensus_topology::num_participants</b>,
+            <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_topology_get_leader()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_topology_get_next (const
+            <b>consensus_topology_t</b> * topology,
+            <b>uint8_t</b> out_id[SESSION_ID_SIZE])
+          </h2>
+          <p class="Pp">
+            Get next participant ID in ring. Wraps around from last position to
+            first.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>topology</i> Topology handle
+            <br />
+            <i>out_id</i> Output 16-byte UUID of next participant
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+88                                                                                                                      {
 89   if (!topology || !out_id) {
 90     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 91   }
@@ -275,52 +396,79 @@
 94   memcpy(out_id, topology-&gt;participant_ids[next_pos], SESSION_ID_SIZE);
 95   return ASCIICHAT_OK;
 96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_topology_get_next()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>consensus_topology::my_position</b>,
-    <b>consensus_topology::num_participants</b>,
-    <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_get_next()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_consensus_topology_get_position_(const_"><a class="permalink" href="#int_consensus_topology_get_position_(const_">int
-  consensus_topology_get_position (const <b>consensus_topology_t</b> *
-  topology)</a></h2>
-<p class="Pp">Get my position in ring (0 = first).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">My position in ring order, or -1 if invalid</div>
-<p class="Pp">Definition at line <b>76</b> of file <b>topology.c</b>.</p>
-<pre>76                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_topology_get_next()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>consensus_topology::my_position</b>,
+            <b>consensus_topology::num_participants</b>,
+            <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_topology_get_next()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_consensus_topology_get_position_(const_">
+            <a
+              class="permalink"
+              href="#int_consensus_topology_get_position_(const_"
+              >int consensus_topology_get_position (const
+              <b>consensus_topology_t</b> * topology)</a
+            >
+          </h2>
+          <p class="Pp">Get my position in ring (0 = first).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>topology</i> Topology handle</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            My position in ring order, or -1 if invalid
+          </div>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+76                                                                           {
 77   if (!topology)
 78     return -1;
 79   return topology-&gt;my_position;
 80 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_topology_get_position()</b>, and
-    <b>consensus_topology::my_position</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_get_position()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_topology_get_prev (const
-  <b>consensus_topology_t</b> * topology, <b>uint8_t</b>
-  out_id[SESSION_ID_SIZE])</h2>
-<p class="Pp">Get previous participant ID in ring. Wraps around from first
-    position to last.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>topology</i> Topology handle
-<br/>
-<i>out_id</i> Output 16-byte UUID of previous participant</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>98</b> of file <b>topology.c</b>.</p>
-<pre>98                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_topology_get_position()</b>, and
+            <b>consensus_topology::my_position</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_topology_get_position()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_topology_get_prev (const
+            <b>consensus_topology_t</b> * topology,
+            <b>uint8_t</b> out_id[SESSION_ID_SIZE])
+          </h2>
+          <p class="Pp">
+            Get previous participant ID in ring. Wraps around from first
+            position to last.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>topology</i> Topology handle
+            <br />
+            <i>out_id</i> Output 16-byte UUID of previous participant
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>topology.c</b>.
+          </p>
+          <pre>
+98                                                                                                                      {
 99   if (!topology || !out_id) {
 100     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 101   }
@@ -329,27 +477,31 @@
 104   memcpy(out_id, topology-&gt;participant_ids[prev_pos], SESSION_ID_SIZE);
 105   return ASCIICHAT_OK;
 106 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_topology_get_prev()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>consensus_topology::my_position</b>,
-    <b>consensus_topology::num_participants</b>,
-    <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_topology_get_prev()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_topology_get_prev()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>consensus_topology::my_position</b>,
+            <b>consensus_topology::num_participants</b>,
+            <b>consensus_topology::participant_ids</b>, <b>SESSION_ID_SIZE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_topology_get_prev()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

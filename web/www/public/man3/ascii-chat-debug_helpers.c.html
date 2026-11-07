@@ -1,79 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>debug_helpers.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">debug_helpers.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">debug_helpers.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">debug_helpers.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>debug_report_deadline_after</b>
-    (<b>uint64_t</b> now, <b>uint64_t</b> delay_ns)
-  <br/>
-  void <b>debug_report_schedule</b> (<b>mutex_t</b> *mutex, <b>cond_t</b>
-    *condition, <b>uint64_t</b> *deadline, <b>uint64_t</b> delay_ns)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> debug_report_deadline_after (<b>uint64_t</b> now,
-  <b>uint64_t</b> delay_ns)</h2>
-<p class="Pp">Compute a monotonic deadline, saturating on overflow.</p>
-<p class="Pp">Definition at line <b>4</b> of file <b>debug_helpers.c</b>.</p>
-<pre>4                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>debug_helpers.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">debug_helpers.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">debug_helpers.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">debug_helpers.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>debug_report_deadline_after</b> (<b>uint64_t</b>
+            now, <b>uint64_t</b> delay_ns)
+            <br />
+            void <b>debug_report_schedule</b> (<b>mutex_t</b> *mutex,
+            <b>cond_t</b> *condition, <b>uint64_t</b> *deadline,
+            <b>uint64_t</b> delay_ns)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> debug_report_deadline_after (<b>uint64_t</b> now,
+            <b>uint64_t</b> delay_ns)
+          </h2>
+          <p class="Pp">
+            Compute a monotonic deadline, saturating on overflow.
+          </p>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>debug_helpers.c</b>.
+          </p>
+          <pre>
+4                                                                       {
 5   return delay_ns &gt; UINT64_MAX - now ? UINT64_MAX : now + delay_ns;
 6 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_report_deadline_after()</b>.</p>
-<p class="Pp">Referenced by <b>debug_report_deadline_after()</b>,
-    <b>debug_report_schedule()</b>, <b>debug_stats_poll()</b>, and
-    <b>debug_stats_set_memory_report_interval()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_report_schedule_("><a class="permalink" href="#void_debug_report_schedule_(">void
-  debug_report_schedule (<b>mutex_t</b> * mutex, <b>cond_t</b> * condition,
-  <b>uint64_t</b> * deadline, <b>uint64_t</b> delay_ns)</a></h2>
-<p class="Pp">Schedule a report under the initialized worker mutex and wake its
-    condition. Duplicate requests for the same report retain the earliest
-    deadline.</p>
-<p class="Pp">Definition at line <b>8</b> of file <b>debug_helpers.c</b>.</p>
-<pre>8                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>debug_report_deadline_after()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>debug_report_deadline_after()</b>,
+            <b>debug_report_schedule()</b>, <b>debug_stats_poll()</b>, and
+            <b>debug_stats_set_memory_report_interval()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_report_schedule_(">
+            <a class="permalink" href="#void_debug_report_schedule_("
+              >void debug_report_schedule (<b>mutex_t</b> * mutex,
+              <b>cond_t</b> * condition, <b>uint64_t</b> * deadline,
+              <b>uint64_t</b> delay_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Schedule a report under the initialized worker mutex and wake its
+            condition. Duplicate requests for the same report retain the
+            earliest deadline.
+          </p>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>debug_helpers.c</b>.
+          </p>
+          <pre>
+8                                                                                                      {
 9   uint64_t requested = debug_report_deadline_after(time_get_ns(), delay_ns);
 10   mutex_lock(mutex);
 11   if (!*deadline || requested &lt; *deadline)
@@ -81,26 +136,34 @@
 13   cond_signal(condition);
 14   mutex_unlock(mutex);
 15 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>cond_signal()</b>,
-    <b>debug_report_deadline_after()</b>, <b>debug_report_schedule()</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>time_get_ns()</b>.</p>
-<p class="Pp">Referenced by <b>debug_errno_print_delayed()</b>,
-    <b>debug_report_schedule()</b>, <b>debug_sync_print_backtrace_delayed()</b>,
-    and <b>debug_sync_print_state_delayed()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>cond_signal()</b>,
+            <b>debug_report_deadline_after()</b>,
+            <b>debug_report_schedule()</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>debug_errno_print_delayed()</b>,
+            <b>debug_report_schedule()</b>,
+            <b>debug_sync_print_backtrace_delayed()</b>, and
+            <b>debug_sync_print_state_delayed()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

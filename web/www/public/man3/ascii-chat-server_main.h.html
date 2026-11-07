@@ -1,197 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.h - ascii-chat Server Mode Entry Point Header</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>server_context_t</b>
-  <br/>
-  Server context - encapsulates all server state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct server_context_t <b>server_context_t</b>
-  <br/>
-  Server context - encapsulates all server state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>server_main</b> (void)
-  <br/>
-  Server mode entry point for unified binary.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>atomic_t</b> <b>g_should_exit</b>
-  <br/>
-  Global application exit flag (shared across all modes). <b>rate_limiter_t</b>
-    * <b>g_rate_limiter</b>
-  <br/>
-  Global connection rate limiter. <b>client_manager_t</b>
-    <b>g_client_manager</b>
-  <br/>
-  Global client manager. <b>rwlock_t</b> <b>g_client_manager_rwlock</b>
-  <br/>
-  Read-write lock protecting client manager. <b>mixer_t</b> *volatile
-    <b>g_audio_mixer</b>
-  <br/>
-  Global audio mixer. <b>h265_server_context_t</b> *volatile
-    <b>g_h265_server</b>
-  <br/>
-  Global H.265 codec server context. <b>bool</b>
-    <b>g_server_encryption_enabled</b>
-  <br/>
-  Server encryption enabled flag. <b>private_key_t</b>
-    <b>g_server_private_key</b>
-  <br/>
-  Server's private key. <b>private_key_t</b> <b>g_server_identity_keys</b>
-    [<b>MAX_SESSION_KEYS</b>]
-  <br/>
-  Array of server identity keys. size_t <b>g_num_server_identity_keys</b>
-  <br/>
-  Number of server identity keys in use. <b>public_key_t</b>
-    <b>g_client_whitelist</b> [<b>MAX_CLIENTS</b>]
-  <br/>
-  Whitelist of allowed client public keys. size_t
-    <b>g_num_whitelisted_clients</b>
-  <br/>
-  Number of whitelisted clients.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Server Mode Entry Point Header</p>
-<p class="Pp">This header exposes the server mode entry point for the unified
-    binary architecture. The unified binary dispatches to <b>server_main()</b>
-    when invoked as ascii-chat server.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Unified_Binary_Architecture"><a class="permalink" href="#Unified_Binary_Architecture">Unified
-  Binary Architecture</a></h2>
-<p class="Pp">The ascii-chat application uses a single binary with multiple
-    operating modes:</p>
-<ul class="Bl-bullet">
-  <li><b>ascii-chat server</b> - Run as server (multi-client connection
-    manager)</li>
-  <li><b>ascii-chat client</b> - Run as client (connects to server, streams
-      video/audio)</li>
-</ul>
-<p class="Pp">This design provides several benefits:</p>
-<ul class="Bl-bullet">
-  <li>Simplified distribution (single binary to install)</li>
-  <li>Reduced disk space (shared library code)</li>
-  <li>Easier testing (one binary to build and deploy)</li>
-  <li>Consistent versioning across modes</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Mode_Entry_Point_Contract"><a class="permalink" href="#Mode_Entry_Point_Contract">Mode
-  Entry Point Contract</a></h2>
-<p class="Pp">Each mode entry point (server_main, client_main) must:</p>
-<ul class="Bl-bullet">
-  <li>Accept no arguments: int mode_main(void)</li>
-  <li>Options are already parsed by main dispatcher (available via global opt_*
-      variables)</li>
-  <li>Return 0 on success, non-zero error code on failure</li>
-  <li>Perform mode-specific initialization and main loop</li>
-  <li>Perform complete cleanup before returning</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Notes"><a class="permalink" href="#Implementation_Notes">Implementation
-  Notes</a></h2>
-<p class="Pp">The <b>server_main()</b> function is the original <b>main()</b>
-    from <b>src/server/main.c</b>, adapted to the new dispatcher pattern. Common
-    initialization (options parsing, logging setup, lock debugging) now happens
-    in <b>src/main.c</b> before dispatch.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0</div>
-<p class="Pp">Definition in file <b>server/main.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_server_main_(void_)"><a class="permalink" href="#int_server_main_(void_)">int
-  server_main (void )</a></h2>
-<p class="Pp">Server mode entry point for unified binary. This function
-    implements the complete server lifecycle including:</p>
-<ul class="Bl-bullet">
-  <li>Server-specific initialization (crypto, shutdown callback)</li>
-  <li>Network socket setup and binding</li>
-  <li>Main connection accept loop</li>
-  <li>Client lifecycle management</li>
-  <li>Graceful shutdown and cleanup</li>
-</ul>
-<p class="Pp">Options are already parsed by the main dispatcher before this
-    function is called, so they are available via global opt_* variables.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp"><b>Example</b></p>
-<div class="Bd-indent">
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Invoked by dispatcher after options are parsed:
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">main.h - ascii-chat Server Mode Entry Point Header</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>server_context_t</b>
+            <br />
+            Server context - encapsulates all server state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct server_context_t <b>server_context_t</b>
+            <br />
+            Server context - encapsulates all server state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>server_main</b> (void)
+            <br />
+            Server mode entry point for unified binary.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>atomic_t</b> <b>g_should_exit</b>
+            <br />
+            Global application exit flag (shared across all modes).
+            <b>rate_limiter_t</b> *
+            <b>g_rate_limiter</b>
+            <br />
+            Global connection rate limiter. <b>client_manager_t</b>
+            <b>g_client_manager</b>
+            <br />
+            Global client manager. <b>rwlock_t</b>
+            <b>g_client_manager_rwlock</b>
+            <br />
+            Read-write lock protecting client manager. <b>mixer_t</b> *volatile
+            <b>g_audio_mixer</b>
+            <br />
+            Global audio mixer. <b>h265_server_context_t</b> *volatile
+            <b>g_h265_server</b>
+            <br />
+            Global H.265 codec server context. <b>bool</b>
+            <b>g_server_encryption_enabled</b>
+            <br />
+            Server encryption enabled flag. <b>private_key_t</b>
+            <b>g_server_private_key</b>
+            <br />
+            Server's private key. <b>private_key_t</b>
+            <b>g_server_identity_keys</b>
+            [<b>MAX_SESSION_KEYS</b>]
+            <br />
+            Array of server identity keys. size_t
+            <b>g_num_server_identity_keys</b>
+            <br />
+            Number of server identity keys in use. <b>public_key_t</b>
+            <b>g_client_whitelist</b> [<b>MAX_CLIENTS</b>]
+            <br />
+            Whitelist of allowed client public keys. size_t
+            <b>g_num_whitelisted_clients</b>
+            <br />
+            Number of whitelisted clients.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ascii-chat Server Mode Entry Point Header</p>
+        <p class="Pp">
+          This header exposes the server mode entry point for the unified binary
+          architecture. The unified binary dispatches to
+          <b>server_main()</b> when invoked as ascii-chat server.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Unified_Binary_Architecture">
+            <a class="permalink" href="#Unified_Binary_Architecture"
+              >Unified Binary Architecture</a
+            >
+          </h2>
+          <p class="Pp">
+            The ascii-chat application uses a single binary with multiple
+            operating modes:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>ascii-chat server</b> - Run as server (multi-client connection
+              manager)
+            </li>
+            <li>
+              <b>ascii-chat client</b> - Run as client (connects to server,
+              streams video/audio)
+            </li>
+          </ul>
+          <p class="Pp">This design provides several benefits:</p>
+          <ul class="Bl-bullet">
+            <li>Simplified distribution (single binary to install)</li>
+            <li>Reduced disk space (shared library code)</li>
+            <li>Easier testing (one binary to build and deploy)</li>
+            <li>Consistent versioning across modes</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Mode_Entry_Point_Contract">
+            <a class="permalink" href="#Mode_Entry_Point_Contract"
+              >Mode Entry Point Contract</a
+            >
+          </h2>
+          <p class="Pp">
+            Each mode entry point (server_main, client_main) must:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Accept no arguments: int mode_main(void)</li>
+            <li>
+              Options are already parsed by main dispatcher (available via
+              global opt_* variables)
+            </li>
+            <li>Return 0 on success, non-zero error code on failure</li>
+            <li>Perform mode-specific initialization and main loop</li>
+            <li>Perform complete cleanup before returning</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Notes">
+            <a class="permalink" href="#Implementation_Notes"
+              >Implementation Notes</a
+            >
+          </h2>
+          <p class="Pp">
+            The <b>server_main()</b> function is the original <b>main()</b> from
+            <b>src/server/main.c</b>, adapted to the new dispatcher pattern.
+            Common initialization (options parsing, logging setup, lock
+            debugging) now happens in <b>src/main.c</b> before dispatch.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">2025</div>
+          <p class="Pp"><b>Version</b></p>
+          <div class="Bd-indent">2.0</div>
+          <p class="Pp">Definition in file <b>server/main.h</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_server_main_(void_)">
+            <a class="permalink" href="#int_server_main_(void_)"
+              >int server_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Server mode entry point for unified binary. This function implements
+            the complete server lifecycle including:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Server-specific initialization (crypto, shutdown callback)</li>
+            <li>Network socket setup and binding</li>
+            <li>Main connection accept loop</li>
+            <li>Client lifecycle management</li>
+            <li>Graceful shutdown and cleanup</li>
+          </ul>
+          <p class="Pp">
+            Options are already parsed by the main dispatcher before this
+            function is called, so they are available via global opt_*
+            variables.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, non-zero error code on failure
+          </div>
+          <p class="Pp"><b>Example</b></p>
+          <div class="Bd-indent">
+            <p class="Pp"></p>
+            <p class="Pp"></p>
+            <pre>
+# Invoked by dispatcher after options are parsed:
 ascii-chat server --port 8080
 # Options parsed in main.c, then server_main() called
 </pre>
-</div>
-<p class="Pp">Definition at line <b>2053</b> of file <b>server/main.c</b>.</p>
-<pre>2053                       {
+          </div>
+          <p class="Pp">
+            Definition at line <b>2053</b> of file <b>server/main.c</b>.
+          </p>
+          <pre>
+2053                       {
 2054   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
 2055
 2056   // Register atomic for debug tracking
@@ -293,197 +381,285 @@ ascii-chat server --port 8080
 2152   asciichat_error_t result = session_server_like_run(&amp;config);
 2153   return (result == ASCIICHAT_OK) ? 0 : 1;
 2154 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ATOMIC_REGISTER_AUTO</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>, <b>FATAL</b>,
-    <b>g_audio_mixer</b>, <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
-    <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
-    <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
-    <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
-    <b>GET_OPTION</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>precalc_rgb_palettes()</b>,
-    <b>server_main()</b>, <b>server_network_callbacks</b>,
-    <b>session_server_like_run()</b>, <b>shutdown_register_callback()</b>,
-    <b>stats_init()</b>, <b>stats_logger_thread()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_spawn()</b>, <b>weight_blue</b>,
-    <b>weight_green</b>, and <b>weight_red</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>mixer_t</b>* volatile g_audio_mixer [extern]</h2>
-<p class="Pp">Global audio mixer. Global audio mixer instance for multi-client
-    audio processing.</p>
-<p class="Pp"></p>
-<p class="Pp">Volatile pointer to the multi-client audio mixer instance. Used to
-    mix audio from multiple clients for playback.</p>
-<p class="Pp"></p>
-<p class="Pp">Global audio mixer.</p>
-<p class="Pp"></p>
-<p class="Pp">The mixer combines audio streams from multiple clients, excluding
-    each client's own audio from their outbound stream (preventing echo).
-    Created once during server initialization and shared by all audio render
-    threads.</p>
-<p class="Pp"></p>
-<p class="Pp">THREAD SAFETY: The mixer itself is thread-safe and can be used
-    concurrently by multiple render.c audio threads without external
-    synchronization. During shutdown, set to NULL before destroying to prevent
-    use-after-free.</p>
-<p class="Pp">Definition at line <b>199</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_manager_t</b> g_client_manager [extern]</h2>
-<p class="Pp">Global client manager. Global client manager singleton - central
-    coordination point.</p>
-<p class="Pp"></p>
-<p class="Pp">Registry for all connected clients. Used to track client state,
-    routing, and lifecycle management across server threads.</p>
-<p class="Pp"></p>
-<p class="Pp">This is the primary data structure for managing all connected
-    clients. It serves as the bridge between main.c's connection accept loop and
-    the per-client threading architecture.</p>
-<p class="Pp"></p>
-<p class="Pp">STRUCTURE COMPONENTS:</p>
-<ul class="Bl-bullet">
-  <li>clients[]: Array backing storage for <b>client_info_t</b> structs</li>
-  <li>client_hashtable: O(1) lookup table for client_id -&gt;
-    client_info_t*</li>
-  <li>client_count: Current number of active clients</li>
-  <li>mutex: Legacy mutex (mostly replaced by rwlock)</li>
-  <li>next_client_id: Monotonic counter for unique client identification</li>
-</ul>
-<p class="Pp">THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent
-    access</p>
-<p class="Pp">Definition at line <b>189</b> of file
-  <b>src/server/client.c</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>,
-    <b>any_clients_sending_video()</b>, <b>find_client_by_id()</b>,
-    <b>send_server_state_to_client()</b>, <b>server_main()</b>, and
-    <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>rwlock_t</b> g_client_manager_rwlock [extern]</h2>
-<p class="Pp">Read-write lock protecting client manager. Reader-writer lock
-    protecting the global client manager.</p>
-<p class="Pp"></p>
-<p class="Pp">Protects concurrent access to g_client_manager from server
-    threads. Use <b>rwlock_rdlock()</b> for reads, <b>rwlock_wrlock()</b> for
-    writes.</p>
-<p class="Pp"></p>
-<p class="Pp">This lock enables high-performance concurrent access patterns:</p>
-<ul class="Bl-bullet">
-  <li>Multiple threads can read client data simultaneously (stats,
-    rendering)</li>
-  <li>Only one thread can modify client data at a time (add/remove
-    operations)</li>
-  <li>Eliminates contention between read-heavy operations</li>
-</ul>
-<p class="Pp">USAGE PATTERN:</p>
-<ul class="Bl-bullet">
-  <li>Read operations: <b>rwlock_rdlock()</b> for client lookups, stats
-      gathering</li>
-  <li>Write operations: <b>rwlock_wrlock()</b> for
-      <b>add_transport_client()</b>, <b>remove_client()</b></li>
-  <li>Always acquire THIS lock before per-client mutexes (lock ordering)</li>
-</ul>
-<p class="Pp">Definition at line <b>204</b> of file
-  <b>src/server/client.c</b>.</p>
-<pre>204 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>,
-    <b>find_client_by_id()</b>, <b>server_main()</b>, and
-    <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>h265_server_context_t</b>* volatile g_h265_server
-  [extern]</h2>
-<p class="Pp">Global H.265 codec server context. Shared H.265 decoding context
-    used by all packet handlers to decode client H.265 frames. Each client gets
-    its own decoder instance.</p>
-<p class="Pp"></p>
-<p class="Pp">Shared H.265 decoding context used by all packet handlers to
-    decode client H.265 frames. Each client gets its own decoder instance.</p>
-<p class="Pp"></p>
-<p class="Pp">THREAD SAFETY: The h265_server context is thread-safe and can be
-    used concurrently by multiple client handlers. Decoders are per-client.
-    During shutdown, set to NULL before destroying to prevent
-  use-after-free.</p>
-<p class="Pp">Definition at line <b>211</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>rate_limiter_t</b>* g_rate_limiter [extern]</h2>
-<p class="Pp">Global connection rate limiter. Global rate limiter for connection
-    attempts and packet processing.</p>
-<p class="Pp"></p>
-<p class="Pp">Shared rate limiter instance used by packet handlers to prevent
-    DoS attacks. Tracks connection attempts and packet rates per IP address.</p>
-<p class="Pp"></p>
-<p class="Pp">Global connection rate limiter.</p>
-<p class="Pp"></p>
-<p class="Pp">In-memory rate limiter to prevent connection flooding and DoS
-    attacks. Tracks connection attempts and packet rates per IP address with
-    configurable limits.</p>
-<p class="Pp"></p>
-<p class="Pp">Default limits (from <b>rate_limit.c</b>):</p>
-<ul class="Bl-bullet">
-  <li>RATE_EVENT_CONNECTION: 50 connections per 60 seconds</li>
-  <li>RATE_EVENT_IMAGE_FRAME: 144 FPS (8640 frames/min)</li>
-  <li>RATE_EVENT_AUDIO: 172 FPS (10320 packets/min)</li>
-  <li>RATE_EVENT_PING: 2 Hz (120 pings/min)</li>
-  <li>RATE_EVENT_CLIENT_JOIN: 10 joins per 60 seconds</li>
-  <li>RATE_EVENT_CONTROL: 100 control packets per 60 seconds</li>
-</ul>
-<p class="Pp">THREAD SAFETY: The rate limiter is thread-safe and can be used
-    concurrently from the main accept loop and packet handlers without external
-    synchronization.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">main.h for extern declaration</div>
-<p class="Pp">Definition at line <b>241</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>process_decrypted_packet()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> g_should_exit [extern]</h2>
-<p class="Pp">Global application exit flag (shared across all modes). Set by
-    signal handlers to request graceful shutdown. Used by all server threads to
-    check if they should exit their loops.</p>
-<p class="Pp"></p>
-<p class="Pp">Global shutdown flag referenced by lib/logging.c and
-    lib/debug/lock.c In production builds, this is defined in main.c and set
-    during shutdown. For tests, we stub it out as false (tests don't perform
-    shutdown).</p>
-<p class="Pp"></p>
-<p class="Pp">Global exit flag used by all modes</p>
-<p class="Pp"></p>
-<p class="Pp">Set to true when the application should exit (SIGTERM, Ctrl+C,
-    error, etc). All modes check this flag regularly to exit gracefully.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>globals.c</b>.</p>
-<pre>34 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ATOMIC_REGISTER_AUTO</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+            <b>FATAL</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
+            <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
+            <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
+            <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
+            <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
+            <b>GET_OPTION</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>precalc_rgb_palettes()</b>,
+            <b>server_main()</b>, <b>server_network_callbacks</b>,
+            <b>session_server_like_run()</b>,
+            <b>shutdown_register_callback()</b>, <b>stats_init()</b>,
+            <b>stats_logger_thread()</b>, <b>thread_pool_create()</b>,
+            <b>thread_pool_spawn()</b>, <b>weight_blue</b>, <b>weight_green</b>,
+            and <b>weight_red</b>.
+          </p>
+          <p class="Pp">Referenced by <b>server_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>mixer_t</b>* volatile g_audio_mixer [extern]</h2>
+          <p class="Pp">
+            Global audio mixer. Global audio mixer instance for multi-client
+            audio processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Volatile pointer to the multi-client audio mixer instance. Used to
+            mix audio from multiple clients for playback.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Global audio mixer.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The mixer combines audio streams from multiple clients, excluding
+            each client's own audio from their outbound stream (preventing
+            echo). Created once during server initialization and shared by all
+            audio render threads.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            THREAD SAFETY: The mixer itself is thread-safe and can be used
+            concurrently by multiple render.c audio threads without external
+            synchronization. During shutdown, set to NULL before destroying to
+            prevent use-after-free.
+          </p>
+          <p class="Pp">
+            Definition at line <b>199</b> of file <b>server/main.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_render_thread()</b>, and
+            <b>server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>client_manager_t</b> g_client_manager [extern]</h2>
+          <p class="Pp">
+            Global client manager. Global client manager singleton - central
+            coordination point.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Registry for all connected clients. Used to track client state,
+            routing, and lifecycle management across server threads.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This is the primary data structure for managing all connected
+            clients. It serves as the bridge between main.c's connection accept
+            loop and the per-client threading architecture.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">STRUCTURE COMPONENTS:</p>
+          <ul class="Bl-bullet">
+            <li>
+              clients[]: Array backing storage for <b>client_info_t</b> structs
+            </li>
+            <li>
+              client_hashtable: O(1) lookup table for client_id -&gt;
+              client_info_t*
+            </li>
+            <li>client_count: Current number of active clients</li>
+            <li>mutex: Legacy mutex (mostly replaced by rwlock)</li>
+            <li>
+              next_client_id: Monotonic counter for unique client identification
+            </li>
+          </ul>
+          <p class="Pp">
+            THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent
+            access
+          </p>
+          <p class="Pp">
+            Definition at line <b>189</b> of file <b>src/server/client.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>any_clients_sending_video()</b>, <b>find_client_by_id()</b>,
+            <b>send_server_state_to_client()</b>, <b>server_main()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>rwlock_t</b> g_client_manager_rwlock [extern]</h2>
+          <p class="Pp">
+            Read-write lock protecting client manager. Reader-writer lock
+            protecting the global client manager.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Protects concurrent access to g_client_manager from server threads.
+            Use
+            <b>rwlock_rdlock()</b> for reads, <b>rwlock_wrlock()</b> for writes.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This lock enables high-performance concurrent access patterns:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Multiple threads can read client data simultaneously (stats,
+              rendering)
+            </li>
+            <li>
+              Only one thread can modify client data at a time (add/remove
+              operations)
+            </li>
+            <li>Eliminates contention between read-heavy operations</li>
+          </ul>
+          <p class="Pp">USAGE PATTERN:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Read operations: <b>rwlock_rdlock()</b> for client lookups, stats
+              gathering
+            </li>
+            <li>
+              Write operations: <b>rwlock_wrlock()</b> for
+              <b>add_transport_client()</b>,
+              <b>remove_client()</b>
+            </li>
+            <li>
+              Always acquire THIS lock before per-client mutexes (lock ordering)
+            </li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>204</b> of file <b>src/server/client.c</b>.
+          </p>
+          <pre>204 {0};</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>find_client_by_id()</b>, <b>server_main()</b>, and
+            <b>stats_logger_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>h265_server_context_t</b>* volatile g_h265_server [extern]
+          </h2>
+          <p class="Pp">
+            Global H.265 codec server context. Shared H.265 decoding context
+            used by all packet handlers to decode client H.265 frames. Each
+            client gets its own decoder instance.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shared H.265 decoding context used by all packet handlers to decode
+            client H.265 frames. Each client gets its own decoder instance.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            THREAD SAFETY: The h265_server context is thread-safe and can be
+            used concurrently by multiple client handlers. Decoders are
+            per-client. During shutdown, set to NULL before destroying to
+            prevent use-after-free.
+          </p>
+          <p class="Pp">
+            Definition at line <b>211</b> of file <b>server/main.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_image_frame_h265_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>rate_limiter_t</b>* g_rate_limiter [extern]</h2>
+          <p class="Pp">
+            Global connection rate limiter. Global rate limiter for connection
+            attempts and packet processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shared rate limiter instance used by packet handlers to prevent DoS
+            attacks. Tracks connection attempts and packet rates per IP address.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Global connection rate limiter.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            In-memory rate limiter to prevent connection flooding and DoS
+            attacks. Tracks connection attempts and packet rates per IP address
+            with configurable limits.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Default limits (from <b>rate_limit.c</b>):</p>
+          <ul class="Bl-bullet">
+            <li>RATE_EVENT_CONNECTION: 50 connections per 60 seconds</li>
+            <li>RATE_EVENT_IMAGE_FRAME: 144 FPS (8640 frames/min)</li>
+            <li>RATE_EVENT_AUDIO: 172 FPS (10320 packets/min)</li>
+            <li>RATE_EVENT_PING: 2 Hz (120 pings/min)</li>
+            <li>RATE_EVENT_CLIENT_JOIN: 10 joins per 60 seconds</li>
+            <li>RATE_EVENT_CONTROL: 100 control packets per 60 seconds</li>
+          </ul>
+          <p class="Pp">
+            THREAD SAFETY: The rate limiter is thread-safe and can be used
+            concurrently from the main accept loop and packet handlers without
+            external synchronization.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">main.h for extern declaration</div>
+          <p class="Pp">
+            Definition at line <b>241</b> of file <b>server/main.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>process_decrypted_packet()</b>, and
+            <b>server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> g_should_exit [extern]</h2>
+          <p class="Pp">
+            Global application exit flag (shared across all modes). Set by
+            signal handlers to request graceful shutdown. Used by all server
+            threads to check if they should exit their loops.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Global shutdown flag referenced by lib/logging.c and
+            lib/debug/lock.c In production builds, this is defined in main.c and
+            set during shutdown. For tests, we stub it out as false (tests don't
+            perform shutdown).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Global exit flag used by all modes</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Set to true when the application should exit (SIGTERM, Ctrl+C,
+            error, etc). All modes check this flag regularly to exit gracefully.
+          </p>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>globals.c</b>.
+          </p>
+          <pre>34 {0};</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

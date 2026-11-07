@@ -3,6 +3,7 @@ Interactive prompts could wait indefinitely, leaving terminal sessions and autom
 Remove blocking noninteractive stdin fallbacks, allow explicit automated password answers, make completion-generation timeouts fail, and give native server handshakes enough time for peer prompts. Include the WASM API stub and user documentation. There is no CLI or environment timeout override.
 
 Validation on Windows with Clang/Ninja:
+
 - Built ascii-chat and ascii-chat-shared.
 - Native ConPTY deadline regressions cover text, masked/hidden passwords, default-yes confirmations, mDNS, updates, successful input, cancellation, pipes held open, and automated password responses.
 - CLI overwrite checks use the fixed 30-second deadline, preserve existing completion/config/manpage files, and exit nonzero on expiration.

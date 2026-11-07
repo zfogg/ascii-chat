@@ -4,14 +4,14 @@ Authority: `.github/workflows/test.yml`, `.github/actions/{generate-coverage,pub
 
 ## Generated files
 
-| Artifact | Producer | Meaning / consumer |
-| --- | --- | --- |
-| `<build>/Testing/criterion-xml/*.xml` | Criterion `--xml` supplied by CMake | Individual cases; GitHub checks and Codecov test analytics |
-| `<build>/Testing/ctest-results.xml` | CTest `--output-junit Testing/ctest-results.xml` | CTest-level executable/harness results; shard-completion evidence |
-| `<build>/Testing/python-*.xml` | pytest `--junitxml` through CTest | Individual Python case results, including skips |
-| `*.gcno` / `*.gcda` in build tree | Clang instrumentation / execution | Compile metadata / execution counters |
-| `<build>/coverage.xml` | `generate-coverage.py` with gcovr and matching `llvm-cov gcov` | Cobertura line/branch data for Codecov coverage |
-| `coverage-reports/summary.json` | `prepare-coverage-upload.py` | Validated shard inventory and union of executed lines |
+| Artifact                              | Producer                                                       | Meaning / consumer                                                |
+| ------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `<build>/Testing/criterion-xml/*.xml` | Criterion `--xml` supplied by CMake                            | Individual cases; GitHub checks and Codecov test analytics        |
+| `<build>/Testing/ctest-results.xml`   | CTest `--output-junit Testing/ctest-results.xml`               | CTest-level executable/harness results; shard-completion evidence |
+| `<build>/Testing/python-*.xml`        | pytest `--junitxml` through CTest                              | Individual Python case results, including skips                   |
+| `*.gcno` / `*.gcda` in build tree     | Clang instrumentation / execution                              | Compile metadata / execution counters                             |
+| `<build>/coverage.xml`                | `generate-coverage.py` with gcovr and matching `llvm-cov gcov` | Cobertura line/branch data for Codecov coverage                   |
+| `coverage-reports/summary.json`       | `prepare-coverage-upload.py`                                   | Validated shard inventory and union of executed lines             |
 
 The requested “junity.xml” means JUnit XML; this pipeline has no canonical file named `junity.xml`. Test-result XML and Cobertura coverage XML serve different uploads and cannot substitute for one another.
 

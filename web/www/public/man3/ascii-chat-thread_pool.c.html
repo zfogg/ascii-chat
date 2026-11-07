@@ -1,129 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>thread_pool.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">thread_pool.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">thread_pool.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">thread_pool.c - &#x1F9F5; Generic thread pool implementation for
-    managing worker threads</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE</b> 64
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>thread_pool_t</b> * <b>thread_pool_create</b> (const char
-    *pool_name)
-  <br/>
-  Create a new thread pool (long-lived threads mode). <b>thread_pool_t</b> *
-    <b>thread_pool_create_with_workers</b> (const char *pool_name, size_t
-    num_workers)
-  <br/>
-  Create a new thread pool in work queue mode. void <b>thread_pool_destroy</b>
-    (<b>thread_pool_t</b> *pool)
-  <br/>
-  Destroy a thread pool. <b>asciichat_error_t</b> <b>thread_pool_queue_work</b>
-    (const char *name, <b>thread_pool_t</b> *pool, void *(*work_func)(void *),
-    void *work_arg)
-  <br/>
-  Queue a named work item to a work queue pool. <b>asciichat_error_t</b>
-    <b>thread_pool_spawn</b> (<b>thread_pool_t</b> *pool, void
-    *(*thread_func)(void *), void *thread_arg, int stop_id, const char
-    *thread_name)
-  <br/>
-  Spawn a worker thread in the pool. <b>asciichat_error_t</b>
-    <b>thread_pool_stop_all</b> (<b>thread_pool_t</b> *pool)
-  <br/>
-  Stop all threads in the pool in stop_id order. size_t
-    <b>thread_pool_get_count</b> (const <b>thread_pool_t</b> *pool)
-  <br/>
-  Get thread count in the pool. <b>bool</b> <b>thread_pool_has_threads</b>
-    (const <b>thread_pool_t</b> *pool)
-  <br/>
-  Check if pool has any threads. <b>asciichat_error_t</b>
-    <b>thread_pool_interrupt_all</b> (<b>thread_pool_t</b> *pool, int sig)
-  <br/>
-  Send a signal to all threads in the pool.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F9F5; Generic thread pool implementation for managing worker
-    threads</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>thread_pool.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE___64"><a class="permalink" href="#_define_THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE___64">#define
-  THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>thread_pool.c</b>.</p>
-<p class="Pp">Referenced by <b>thread_pool_spawn()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>thread_pool_t</b> * thread_pool_create (const char *
-  pool_name)</h2>
-<p class="Pp">Create a new thread pool (long-lived threads mode). Allocates and
-    initializes a thread pool structure. The pool starts empty with no threads.
-    Use <b>thread_pool_spawn()</b> to add threads to the pool.</p>
-<p class="Pp"></p>
-<p class="Pp">This mode is used for long-lived worker threads that run for the
-    lifetime of the application or connection (e.g., stats logger, cleanup
-    thread).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool_name</i> Name for the pool (max 63 chars, used
-  for debugging)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to new thread pool, or NULL on allocation
-  failure</div>
-<p class="Pp">Definition at line <b>92</b> of file <b>thread_pool.c</b>.</p>
-<pre>92                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>thread_pool.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">thread_pool.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">thread_pool.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          thread_pool.c - &#x1F9F5; Generic thread pool implementation for
+          managing worker threads
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>thread_pool_t</b> * <b>thread_pool_create</b> (const char
+            *pool_name)
+            <br />
+            Create a new thread pool (long-lived threads mode).
+            <b>thread_pool_t</b> * <b>thread_pool_create_with_workers</b> (const
+            char *pool_name, size_t num_workers)
+            <br />
+            Create a new thread pool in work queue mode. void
+            <b>thread_pool_destroy</b> (<b>thread_pool_t</b>
+            *pool)
+            <br />
+            Destroy a thread pool. <b>asciichat_error_t</b>
+            <b>thread_pool_queue_work</b> (const char *name,
+            <b>thread_pool_t</b> *pool, void *(*work_func)(void *), void
+            *work_arg)
+            <br />
+            Queue a named work item to a work queue pool.
+            <b>asciichat_error_t</b> <b>thread_pool_spawn</b> (<b
+              >thread_pool_t</b
+            >
+            *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
+            const char *thread_name)
+            <br />
+            Spawn a worker thread in the pool. <b>asciichat_error_t</b>
+            <b>thread_pool_stop_all</b> (<b>thread_pool_t</b> *pool)
+            <br />
+            Stop all threads in the pool in stop_id order. size_t
+            <b>thread_pool_get_count</b> (const <b>thread_pool_t</b> *pool)
+            <br />
+            Get thread count in the pool. <b>bool</b>
+            <b>thread_pool_has_threads</b> (const <b>thread_pool_t</b> *pool)
+            <br />
+            Check if pool has any threads. <b>asciichat_error_t</b>
+            <b>thread_pool_interrupt_all</b> (<b>thread_pool_t</b> *pool, int
+            sig)
+            <br />
+            Send a signal to all threads in the pool.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F9F5; Generic thread pool implementation for managing worker
+          threads
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>thread_pool.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE___64"
+              >#define THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>thread_pool.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>thread_pool_spawn()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>thread_pool_t</b> * thread_pool_create (const char * pool_name)
+          </h2>
+          <p class="Pp">
+            Create a new thread pool (long-lived threads mode). Allocates and
+            initializes a thread pool structure. The pool starts empty with no
+            threads. Use <b>thread_pool_spawn()</b> to add threads to the pool.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This mode is used for long-lived worker threads that run for the
+            lifetime of the application or connection (e.g., stats logger,
+            cleanup thread).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pool_name</i> Name for the pool (max 63 chars, used for
+            debugging)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to new thread pool, or NULL on allocation failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+92                                                          {
 93   thread_pool_t *pool = SAFE_MALLOC(sizeof(thread_pool_t), thread_pool_t *);
 94   if (!pool) {
 95     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate thread pool&quot;);
@@ -160,38 +235,55 @@
 126   log_debug(&quot;Thread pool '%s' created (long-lived thread mode)&quot;, pool-&gt;name);
 127   return pool;
 128 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
-    <b>log_debug</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_MUTEX</b>,
-    <b>NAMED_REGISTER_THREAD_POOL</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and <b>thread_pool_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>thread_pool_t</b> * thread_pool_create_with_workers (const
-  char * pool_name, size_t num_workers)</h2>
-<p class="Pp">Create a new thread pool in work queue mode. Creates a thread pool
-    with pre-allocated worker threads that pull tasks from a work queue. Use
-    <b>thread_pool_queue_work()</b> to add work to the pool.</p>
-<p class="Pp"></p>
-<p class="Pp">This mode is used for short-lived tasks that need to be executed
-    without creating new threads from callback context (e.g., WebSocket
-    handlers).</p>
-<p class="Pp"></p>
-<p class="Pp">Worker threads are created immediately and wait for work to be
-    queued. The pool will not accept spawn() calls - use queue_work()
-  instead.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool_name</i> Name for the pool (max 63 chars, used
-  for debugging)
-<br/>
-<i>num_workers</i> Number of pre-allocated worker threads</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to new thread pool, or NULL on allocation
-  failure</div>
-<p class="Pp">Definition at line <b>130</b> of file <b>thread_pool.c</b>.</p>
-<pre>130                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+            <b>log_debug</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_MUTEX</b>,
+            <b>NAMED_REGISTER_THREAD_POOL</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and
+            <b>thread_pool_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>thread_pool_t</b> * thread_pool_create_with_workers (const char *
+            pool_name, size_t num_workers)
+          </h2>
+          <p class="Pp">
+            Create a new thread pool in work queue mode. Creates a thread pool
+            with pre-allocated worker threads that pull tasks from a work queue.
+            Use <b>thread_pool_queue_work()</b> to add work to the pool.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This mode is used for short-lived tasks that need to be executed
+            without creating new threads from callback context (e.g., WebSocket
+            handlers).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Worker threads are created immediately and wait for work to be
+            queued. The pool will not accept spawn() calls - use queue_work()
+            instead.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pool_name</i> Name for the pool (max 63 chars, used for
+            debugging)
+            <br />
+            <i>num_workers</i> Number of pre-allocated worker threads
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to new thread pool, or NULL on allocation failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>130</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+130                                                                                           {
 131   if (num_workers == 0) {
 132     SET_ERRNO(ERROR_INVALID_PARAM, &quot;num_workers must be &gt; 0&quot;);
 133     return NULL;
@@ -286,35 +378,52 @@
 222   log_info(&quot;[ThreadPool] Created work queue pool '%s' with %zu worker threads&quot;, pool-&gt;name, num_workers);
 223   return pool;
 224 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>cond_init()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>mutex_destroy()</b>,
-    <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>thread_pool_entry::name</b>, <b>NAMED_REGISTER_COND</b>,
-    <b>NAMED_REGISTER_MUTEX</b>, <b>NAMED_REGISTER_THREAD_POOL</b>,
-    <b>thread_pool_entry::next</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>thread_pool_entry::stop_id</b>, <b>thread_pool_entry::thread</b>,
-    <b>thread_pool_entry::thread_arg</b>, <b>thread_pool_entry::thread_func</b>,
-    <b>thread_pool_create_with_workers()</b>, and
-  <b>thread_pool_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>, and
-    <b>websocket_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_thread_pool_destroy_("><a class="permalink" href="#void_thread_pool_destroy_(">void
-  thread_pool_destroy (<b>thread_pool_t</b> * pool)</a></h2>
-<p class="Pp">Destroy a thread pool. Stops all threads (if not already stopped),
-    waits for them to exit, and frees all pool resources. It's safe to call this
-    even if threads are still running - they will be stopped first.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool</i> Thread pool to destroy (NULL is safe, does
-  nothing)</div>
-<p class="Pp">Definition at line <b>226</b> of file <b>thread_pool.c</b>.</p>
-<pre>226                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>cond_init()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_THREAD</b>, <b>log_debug</b>, <b>log_error</b>,
+            <b>log_info</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>thread_pool_entry::name</b>, <b>NAMED_REGISTER_COND</b>,
+            <b>NAMED_REGISTER_MUTEX</b>, <b>NAMED_REGISTER_THREAD_POOL</b>,
+            <b>thread_pool_entry::next</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, <b>thread_pool_entry::stop_id</b>,
+            <b>thread_pool_entry::thread</b>,
+            <b>thread_pool_entry::thread_arg</b>,
+            <b>thread_pool_entry::thread_func</b>,
+            <b>thread_pool_create_with_workers()</b>, and
+            <b>thread_pool_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>thread_pool_create_with_workers()</b>, and
+            <b>websocket_server_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_thread_pool_destroy_(">
+            <a class="permalink" href="#void_thread_pool_destroy_("
+              >void thread_pool_destroy (<b>thread_pool_t</b> * pool)</a
+            >
+          </h2>
+          <p class="Pp">
+            Destroy a thread pool. Stops all threads (if not already stopped),
+            waits for them to exit, and frees all pool resources. It's safe to
+            call this even if threads are still running - they will be stopped
+            first.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pool</i> Thread pool to destroy (NULL is safe, does nothing)
+          </div>
+          <p class="Pp">
+            Definition at line <b>226</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+226                                               {
 227   if (!pool) {
 228     return;
 229   }
@@ -369,26 +478,39 @@
 278
 279   log_debug(&quot;Thread pool destroyed (freed memory)&quot;);
 280 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>cond_destroy()</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>mutex_destroy()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NAMED_UNREGISTER</b>,
-    <b>thread_pool_work_entry::next</b>, <b>SAFE_FREE</b>,
-    <b>thread_pool_destroy()</b>, and <b>thread_pool_stop_all()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_thread_pool_get_count_(const_"><a class="permalink" href="#size_t_thread_pool_get_count_(const_">size_t
-  thread_pool_get_count (const <b>thread_pool_t</b> * pool)</a></h2>
-<p class="Pp">Get thread count in the pool. Thread-safe count of active threads
-    in the pool.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool</i> Thread pool to query</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of threads in pool, or 0 if pool is NULL</div>
-<p class="Pp">Definition at line <b>493</b> of file <b>thread_pool.c</b>.</p>
-<pre>493                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>cond_destroy()</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>mutex_destroy()</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>NAMED_UNREGISTER</b>,
+            <b>thread_pool_work_entry::next</b>, <b>SAFE_FREE</b>,
+            <b>thread_pool_destroy()</b>, and <b>thread_pool_stop_all()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_thread_pool_get_count_(const_">
+            <a class="permalink" href="#size_t_thread_pool_get_count_(const_"
+              >size_t thread_pool_get_count (const <b>thread_pool_t</b> *
+              pool)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get thread count in the pool. Thread-safe count of active threads in
+            the pool.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pool</i> Thread pool to query</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of threads in pool, or 0 if pool is NULL
+          </div>
+          <p class="Pp">
+            Definition at line <b>493</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+493                                                         {
 494   if (!pool) {
 495     return 0;
 496   }
@@ -398,59 +520,92 @@
 500   // If strict thread safety is required, use mutex_lock/unlock
 501   return pool-&gt;thread_count;
 502 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>thread_pool_get_count()</b>.</p>
-<p class="Pp">Referenced by <b>thread_pool_get_count()</b>, and
-    <b>thread_pool_has_threads()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> thread_pool_has_threads (const <b>thread_pool_t</b> *
-  pool)</h2>
-<p class="Pp">Check if pool has any threads. Convenience function equivalent to
-    thread_pool_get_count(pool) &gt; 0.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool</i> Thread pool to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if pool has threads, false if empty or NULL</div>
-<p class="Pp">Definition at line <b>504</b> of file <b>thread_pool.c</b>.</p>
-<pre>504                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>thread_pool_get_count()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>thread_pool_get_count()</b>, and
+            <b>thread_pool_has_threads()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> thread_pool_has_threads (const <b>thread_pool_t</b> *
+            pool)
+          </h2>
+          <p class="Pp">
+            Check if pool has any threads. Convenience function equivalent to
+            thread_pool_get_count(pool) &gt; 0.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pool</i> Thread pool to check</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if pool has threads, false if empty or NULL
+          </div>
+          <p class="Pp">
+            Definition at line <b>504</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+504                                                         {
 505   return thread_pool_get_count(pool) &gt; 0;
 506 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>thread_pool_get_count()</b>, and
-    <b>thread_pool_has_threads()</b>.</p>
-<p class="Pp">Referenced by <b>thread_pool_has_threads()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> thread_pool_interrupt_all
-  (<b>thread_pool_t</b> * pool, int sig)</h2>
-<p class="Pp">Send a signal to all threads in the pool. Sends the specified
-    signal to every thread in the pool. This is used to interrupt threads that
-    are blocked in system calls (e.g., recv(), connect()) so they unblock and
-    can check the global exit flag.</p>
-<p class="Pp"></p>
-<p class="Pp">Thread-safe: acquires threads_mutex to iterate the thread list.
-    Not async-signal-safe: cannot be called from signal handlers.</p>
-<p class="Pp"></p>
-<p class="Pp">On POSIX systems, uses pthread_kill() to send the signal. On
-    Windows, this is a no-op (pthread_kill is not available, but
-    <b>socket_shutdown()</b> is sufficient for Windows socket unblocking).</p>
-<p class="Pp"></p>
-<p class="Pp">Typically used with SIGUSR1 (which should have a registered no-op
-    handler) or another signal that the threads are prepared to handle
-    gracefully.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool</i> Thread pool to interrupt
-<br/>
-<i>sig</i> Signal number to send (e.g., SIGUSR1)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>508</b> of file <b>thread_pool.c</b>.</p>
-<pre>508                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>thread_pool_get_count()</b>, and
+            <b>thread_pool_has_threads()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>thread_pool_has_threads()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> thread_pool_interrupt_all (<b
+              >thread_pool_t</b
+            >
+            * pool, int sig)
+          </h2>
+          <p class="Pp">
+            Send a signal to all threads in the pool. Sends the specified signal
+            to every thread in the pool. This is used to interrupt threads that
+            are blocked in system calls (e.g., recv(), connect()) so they
+            unblock and can check the global exit flag.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Thread-safe: acquires threads_mutex to iterate the thread list. Not
+            async-signal-safe: cannot be called from signal handlers.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            On POSIX systems, uses pthread_kill() to send the signal. On
+            Windows, this is a no-op (pthread_kill is not available, but
+            <b>socket_shutdown()</b> is sufficient for Windows socket
+            unblocking).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Typically used with SIGUSR1 (which should have a registered no-op
+            handler) or another signal that the threads are prepared to handle
+            gracefully.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pool</i> Thread pool to interrupt
+            <br />
+            <i>sig</i> Signal number to send (e.g., SIGUSR1)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>508</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+508                                                                           {
 509   if (!pool) {
 510     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
 511   }
@@ -500,41 +655,57 @@
 555   return ASCIICHAT_OK;
 556 #endif
 557 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_THREAD</b>, <b>log_debug</b>, <b>log_warn</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>thread_pool_entry::name</b>,
-    <b>thread_pool_entry::next</b>, <b>SET_ERRNO</b>,
-    <b>thread_pool_entry::thread</b>, and
-  <b>thread_pool_interrupt_all()</b>.</p>
-<p class="Pp">Referenced by <b>thread_pool_interrupt_all()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> thread_pool_queue_work (const char *
-  name, <b>thread_pool_t</b> * pool, void * work_func (*)(void *), void *
-  work_arg)</h2>
-<p class="Pp">Queue a named work item to a work queue pool. Adds a named work
-    item to the pool's work queue. One of the pre-created worker threads will
-    pick up the work and execute it. This function is only valid for pools
-    created with <b>thread_pool_create_with_workers()</b>. The work is
-    automatically registered with the debug naming system.</p>
-<p class="Pp"></p>
-<p class="Pp">Safe to call from callback context (e.g., LWS callbacks). Work is
-    queued without creating new threads.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for the work item
-<br/>
-<i>pool</i> Thread pool to queue work to (must be in work queue mode)
-<br/>
-<i>work_func</i> Function to execute
-<br/>
-<i>work_arg</i> Argument passed to work function</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>282</b> of file <b>thread_pool.c</b>.</p>
-<pre>283                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_THREAD</b>, <b>log_debug</b>, <b>log_warn</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>thread_pool_entry::name</b>, <b>thread_pool_entry::next</b>,
+            <b>SET_ERRNO</b>, <b>thread_pool_entry::thread</b>, and
+            <b>thread_pool_interrupt_all()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>thread_pool_interrupt_all()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> thread_pool_queue_work (const char * name,
+            <b>thread_pool_t</b> * pool, void * work_func (*)(void *), void *
+            work_arg)
+          </h2>
+          <p class="Pp">
+            Queue a named work item to a work queue pool. Adds a named work item
+            to the pool's work queue. One of the pre-created worker threads will
+            pick up the work and execute it. This function is only valid for
+            pools created with <b>thread_pool_create_with_workers()</b>. The
+            work is automatically registered with the debug naming system.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Safe to call from callback context (e.g., LWS callbacks). Work is
+            queued without creating new threads.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for the work item
+            <br />
+            <i>pool</i> Thread pool to queue work to (must be in work queue
+            mode)
+            <br />
+            <i>work_func</i> Function to execute
+            <br />
+            <i>work_arg</i> Argument passed to work function
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>282</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+283                                                          {
 284   if (!name) {
 285     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;work name is required&quot;);
 286   }
@@ -586,55 +757,70 @@
 332   log_dev(&quot;Queued work to pool '%s' (workers=%zu)&quot;, pool-&gt;name, pool-&gt;num_workers);
 333   return ASCIICHAT_OK;
 334 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>cond_signal()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>log_dev</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>NAMED_REGISTER_THREADPOOL_WORK</b>, <b>thread_pool_work_entry::next</b>,
-    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>thread_pool_queue_work()</b>,
-    <b>thread_pool_work_entry::work_arg</b>, and
-    <b>thread_pool_work_entry::work_func</b>.</p>
-<p class="Pp">Referenced by <b>thread_pool_queue_work()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> thread_pool_spawn (<b>thread_pool_t</b>
-  * pool, void * thread_func (*)(void *), void * thread_arg, int stop_id, const
-  char * thread_name)</h2>
-<p class="Pp">Spawn a worker thread in the pool. Creates and tracks a new worker
-    thread with optional ordered cleanup. Threads are inserted into the pool's
-    linked list in sorted order by stop_id (ascending). When the pool is
-    stopped, threads with lower stop_id values are stopped first.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Stop ID Ordering Guidelines:</b></p>
-<ul class="Bl-bullet">
-  <li>stop_id &lt; 0: Unordered (stopped last, order undefined)</li>
-  <li>stop_id = 0: General background workers</li>
-  <li>stop_id = 1: Data source threads (e.g., receive, capture)</li>
-  <li>stop_id = 2: Processing threads (e.g., render, encode)</li>
-  <li>stop_id = 3: Data sink threads (e.g., send, write)</li>
-</ul>
-<p class="Pp"><b>Example (Server Per-Client Threads):</b></p>
-<ul class="Bl-bullet">
-  <li>stop_id=1: Receive thread (stop first to prevent new data)</li>
-  <li>stop_id=2: Render threads (stop after receive)</li>
-  <li>stop_id=3: Send thread (stop last after all processing)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool</i> Thread pool to spawn into
-<br/>
-<i>thread_func</i> Thread function to execute
-<br/>
-<i>thread_arg</i> Argument passed to thread function
-<br/>
-<i>stop_id</i> Cleanup order (-1=unordered, 0+=ordered)
-<br/>
-<i>thread_name</i> Thread name for debugging (max 63 chars,
-  NULL=auto-generate)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>336</b> of file <b>thread_pool.c</b>.</p>
-<pre>337                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>cond_signal()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>log_dev</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>NAMED_REGISTER_THREADPOOL_WORK</b>,
+            <b>thread_pool_work_entry::next</b>, <b>SAFE_MALLOC</b>,
+            <b>SET_ERRNO</b>, <b>thread_pool_queue_work()</b>,
+            <b>thread_pool_work_entry::work_arg</b>, and
+            <b>thread_pool_work_entry::work_func</b>.
+          </p>
+          <p class="Pp">Referenced by <b>thread_pool_queue_work()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> thread_pool_spawn (<b>thread_pool_t</b> *
+            pool, void * thread_func (*)(void *), void * thread_arg, int
+            stop_id, const char * thread_name)
+          </h2>
+          <p class="Pp">
+            Spawn a worker thread in the pool. Creates and tracks a new worker
+            thread with optional ordered cleanup. Threads are inserted into the
+            pool's linked list in sorted order by stop_id (ascending). When the
+            pool is stopped, threads with lower stop_id values are stopped
+            first.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Stop ID Ordering Guidelines:</b></p>
+          <ul class="Bl-bullet">
+            <li>stop_id &lt; 0: Unordered (stopped last, order undefined)</li>
+            <li>stop_id = 0: General background workers</li>
+            <li>stop_id = 1: Data source threads (e.g., receive, capture)</li>
+            <li>stop_id = 2: Processing threads (e.g., render, encode)</li>
+            <li>stop_id = 3: Data sink threads (e.g., send, write)</li>
+          </ul>
+          <p class="Pp"><b>Example (Server Per-Client Threads):</b></p>
+          <ul class="Bl-bullet">
+            <li>stop_id=1: Receive thread (stop first to prevent new data)</li>
+            <li>stop_id=2: Render threads (stop after receive)</li>
+            <li>stop_id=3: Send thread (stop last after all processing)</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pool</i> Thread pool to spawn into
+            <br />
+            <i>thread_func</i> Thread function to execute
+            <br />
+            <i>thread_arg</i> Argument passed to thread function
+            <br />
+            <i>stop_id</i> Cleanup order (-1=unordered, 0+=ordered)
+            <br />
+            <i>thread_name</i> Thread name for debugging (max 63 chars,
+            NULL=auto-generate)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>336</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+337                                                              {
 338   if (!pool) {
 339     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
 340   }
@@ -701,45 +887,59 @@
 401
 402   return ASCIICHAT_OK;
 403 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_THREAD</b>, <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>thread_pool_entry::name</b>,
-    <b>thread_pool_entry::next</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>thread_pool_entry::stop_id</b>, <b>thread_pool_entry::thread</b>,
-    <b>thread_pool_entry::thread_arg</b>, <b>thread_pool_entry::thread_func</b>,
-    <b>thread_pool_spawn()</b>, and
-    <b>THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> thread_pool_stop_all
-  (<b>thread_pool_t</b> * pool)</h2>
-<p class="Pp">Stop all threads in the pool in stop_id order. Joins all threads
-    in ascending stop_id order (lower values first). Threads with negative
-    stop_id are stopped last in undefined order. This function blocks until all
-    threads have exited.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Shutdown Sequence:</b></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Threads with stop_id &gt;= 0 are joined in ascending order</dd>
-  <dt>2.</dt>
-  <dd>Threads with stop_id &lt; 0 are joined in any order</dd>
-  <dt>3.</dt>
-  <dd>All thread entries are freed</dd>
-</dl>
-<p class="Pp">After this call, the pool is empty but still valid - you can spawn
-    new threads or destroy the pool.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pool</i> Thread pool to stop</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>405</b> of file <b>thread_pool.c</b>.</p>
-<pre>405                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>, <b>log_debug</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>thread_pool_entry::name</b>, <b>thread_pool_entry::next</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>,
+            <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+            <b>thread_pool_entry::stop_id</b>, <b>thread_pool_entry::thread</b>,
+            <b>thread_pool_entry::thread_arg</b>,
+            <b>thread_pool_entry::thread_func</b>, <b>thread_pool_spawn()</b>,
+            and <b>THREAD_POOL_THREAD_NAME_COPY_BUFFER_SIZE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> thread_pool_stop_all (<b>thread_pool_t</b>
+            * pool)
+          </h2>
+          <p class="Pp">
+            Stop all threads in the pool in stop_id order. Joins all threads in
+            ascending stop_id order (lower values first). Threads with negative
+            stop_id are stopped last in undefined order. This function blocks
+            until all threads have exited.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Shutdown Sequence:</b></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Threads with stop_id &gt;= 0 are joined in ascending order</dd>
+            <dt>2.</dt>
+            <dd>Threads with stop_id &lt; 0 are joined in any order</dd>
+            <dt>3.</dt>
+            <dd>All thread entries are freed</dd>
+          </dl>
+          <p class="Pp">
+            After this call, the pool is empty but still valid - you can spawn
+            new threads or destroy the pool.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pool</i> Thread pool to stop</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>405</b> of file <b>thread_pool.c</b>.
+          </p>
+          <pre>
+405                                                             {
 406   if (!pool) {
 407     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
 408   }
@@ -826,27 +1026,32 @@
 489   }
 490   return ASCIICHAT_OK;
 491 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>cond_broadcast()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>, <b>ETIMEDOUT</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_warn</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>thread_pool_entry::name</b>,
-    <b>thread_pool_entry::next</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
-    <b>thread_pool_entry::stop_id</b>, <b>thread_pool_entry::thread</b>,
-    <b>thread_join_timeout()</b>, and <b>thread_pool_stop_all()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>cond_broadcast()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>, <b>ETIMEDOUT</b>,
+            <b>log_debug</b>, <b>log_error</b>, <b>log_warn</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>thread_pool_entry::name</b>, <b>thread_pool_entry::next</b>,
+            <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+            <b>thread_pool_entry::stop_id</b>, <b>thread_pool_entry::thread</b>,
+            <b>thread_join_timeout()</b>, and <b>thread_pool_stop_all()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

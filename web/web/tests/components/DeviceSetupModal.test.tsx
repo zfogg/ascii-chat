@@ -210,7 +210,10 @@ describe("Device setup with unavailable inputs", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(
       JSON.parse(localStorage.getItem("ascii-chat.microphone-layout")!),
-    ).toEqual({ channels: 2, firstChannel: 2 });
+    ).toEqual({
+      channels: 2,
+      firstChannel: 2,
+    });
   });
 
   it("shows the automatic upload preference rather than the resolved codec", () => {
@@ -810,7 +813,10 @@ it("offers System default for both inputs and preserves it after preview and sav
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
   expect(
     JSON.parse(localStorage.getItem("ascii-chat.media-devices")!),
-  ).toMatchObject({ cameraId: "", microphoneId: "" });
+  ).toMatchObject({
+    cameraId: "",
+    microphoneId: "",
+  });
 });
 
 describe("shared Device Setup without chat URL policy", () => {
@@ -937,5 +943,8 @@ it("restores a saved microphone and speaker while permission hides their IDs", a
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
   expect(
     JSON.parse(localStorage.getItem("ascii-chat.media-devices")!),
-  ).toMatchObject({ microphoneId: "hidden-mic", speakerId: "hidden-speaker" });
+  ).toMatchObject({
+    microphoneId: "hidden-mic",
+    speakerId: "hidden-speaker",
+  });
 });

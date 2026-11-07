@@ -41,7 +41,9 @@ test("saved microphone feeds the docs WASM audio visualization", async ({
   await widget.getByRole("button", { name: "Microphone", exact: true }).click();
   await expect(
     widget.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 30000 });
+  ).toBeVisible({
+    timeout: 30000,
+  });
   expect(
     await page.evaluate(() =>
       (

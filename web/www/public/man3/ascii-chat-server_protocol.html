@@ -1,142 +1,206 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server_protocol(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server_protocol(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server_protocol(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server_protocol - Protocol Handler</p>
-<p class="Pp">
-  <br/>
-   - &#x1F4E1; Network packet processing and protocol implementation</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>protocol.h</b>
-  <br/>
-  Server packet processing and protocol implementation.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>handle_audio_opus_batch_packet</b> (<b>client_info_t</b>
-    *client, const void *data, size_t len)
-  <br/>
-  Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch from
-    client. void <b>handle_audio_opus_packet</b> (<b>client_info_t</b> *client,
-    const void *data, size_t len)
-  <br/>
-  Process AUDIO_OPUS packet - decode single Opus frame from client.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4E1; Network packet processing and protocol
-  implementation</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_handle_audio_opus_batch_packet_("><a class="permalink" href="#void_handle_audio_opus_batch_packet_(">void
-  handle_audio_opus_batch_packet (<b>client_info_t</b> * client, const void *
-  data, size_t len)</a></h2>
-<p class="Pp">#include &lt;<b>src/server/protocol.c</b>&gt;<b></b></p>
-<p class="Pp">Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio
-    batch from client. Handles batched Opus-encoded audio frames sent by the
-    client. This provides ~98% bandwidth reduction compared to raw PCM audio
-    while maintaining excellent audio quality.</p>
-<p class="Pp"></p>
-<p class="Pp">PACKET STRUCTURE EXPECTED:</p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>opus_batch_header_t (16 bytes):</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>sample_rate (4 bytes)</dd>
-  <dt> &#x2022;</dt>
-  <dd>frame_duration (4 bytes)</dd>
-  <dt> &#x2022;</dt>
-  <dd>frame_count (4 bytes)</dd>
-  <dt> &#x2022;</dt>
-  <dd>reserved (4 bytes)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Opus encoded data (variable size, typically ~60 bytes/frame @ 24kbps)</dd>
-</dl>
-<p class="Pp">PROCESSING FLOW:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Parse batch header</dd>
-  <dt>2.</dt>
-  <dd>Decode each Opus frame back to PCM samples (OPUS_FRAME_SAMPLES
-      samples/frame @ 48kHz)</dd>
-  <dt>3.</dt>
-  <dd>Write decoded samples to client's incoming audio buffer</dd>
-</dl>
-<p class="Pp">PERFORMANCE:</p>
-<ul class="Bl-bullet">
-  <li>Bandwidth: ~60 bytes/frame vs ~3840 bytes/frame for raw PCM (64:1
-      compression)</li>
-  <li>Quality: Excellent at 24 kbps VOIP mode</li>
-  <li>Latency: 20ms frames for real-time audio</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Client that sent the audio packet
-<br/>
-<i>data</i> Packet payload data
-<br/>
-<i>len</i> Packet payload length</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">av_receive_audio_opus_batch() For <b>Packet Types</b>
-  parsing
-<p class="Pp"></p>
-<p class="Pp"><b>opus_codec_decode()</b> For Opus decoding</p>
-<p class="Pp"></p>
-<p class="Pp"><b>handle_audio_batch_packet()</b> For raw PCM <b>Audio</b> batch
-    handling</p>
-</div>
-<p class="Pp">Definition at line <b>1303</b> of file
-  <b>server/protocol.c</b>.</p>
-<pre>1303                                                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server_protocol(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server_protocol(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server_protocol(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server_protocol - Protocol Handler</p>
+        <p class="Pp">
+          <br />
+          - &#x1F4E1; Network packet processing and protocol implementation
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>protocol.h</b>
+            <br />
+            Server packet processing and protocol implementation.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>handle_audio_opus_batch_packet</b> (<b>client_info_t</b>
+            *client, const void *data, size_t len)
+            <br />
+            Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch
+            from client. void
+            <b>handle_audio_opus_packet</b> (<b>client_info_t</b> *client, const
+            void *data, size_t len)
+            <br />
+            Process AUDIO_OPUS packet - decode single Opus frame from client.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4E1; Network packet processing and protocol implementation
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_handle_audio_opus_batch_packet_(">
+            <a class="permalink" href="#void_handle_audio_opus_batch_packet_("
+              >void handle_audio_opus_batch_packet (<b>client_info_t</b> *
+              client, const void * data, size_t len)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/server/protocol.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch
+            from client. Handles batched Opus-encoded audio frames sent by the
+            client. This provides ~98% bandwidth reduction compared to raw PCM
+            audio while maintaining excellent audio quality.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>opus_batch_header_t (16 bytes):</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>sample_rate (4 bytes)</dd>
+            <dt>&#x2022;</dt>
+            <dd>frame_duration (4 bytes)</dd>
+            <dt>&#x2022;</dt>
+            <dd>frame_count (4 bytes)</dd>
+            <dt>&#x2022;</dt>
+            <dd>reserved (4 bytes)</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Opus encoded data (variable size, typically ~60 bytes/frame @
+              24kbps)
+            </dd>
+          </dl>
+          <p class="Pp">PROCESSING FLOW:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Parse batch header</dd>
+            <dt>2.</dt>
+            <dd>
+              Decode each Opus frame back to PCM samples (OPUS_FRAME_SAMPLES
+              samples/frame @ 48kHz)
+            </dd>
+            <dt>3.</dt>
+            <dd>Write decoded samples to client's incoming audio buffer</dd>
+          </dl>
+          <p class="Pp">PERFORMANCE:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Bandwidth: ~60 bytes/frame vs ~3840 bytes/frame for raw PCM (64:1
+              compression)
+            </li>
+            <li>Quality: Excellent at 24 kbps VOIP mode</li>
+            <li>Latency: 20ms frames for real-time audio</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client</i> Client that sent the audio packet
+            <br />
+            <i>data</i> Packet payload data
+            <br />
+            <i>len</i> Packet payload length
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            av_receive_audio_opus_batch() For <b>Packet Types</b>
+            parsing
+            <p class="Pp"></p>
+            <p class="Pp"><b>opus_codec_decode()</b> For Opus decoding</p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              <b>handle_audio_batch_packet()</b> For raw PCM <b>Audio</b> batch
+              handling
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>1303</b> of file <b>server/protocol.c</b>.
+          </p>
+          <pre>
+1303                                                                                          {
 1304   log_debug_every(LOG_RATE_SLOW, &quot;Received Opus audio batch from client %s (len=%zu)&quot;, client-&gt;client_id, len);
 1305
 1306   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO_OPUS_BATCH&quot;);
@@ -284,51 +348,68 @@
 1448     SAFE_FREE(decoded_samples);
 1449   }
 1450 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>AUDIO_CHANNELS</b>, <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>,
-    <b>audio_ring_buffer_write()</b>, <b>client_info::client_id</b>,
-    <b>disconnect_client_for_bad_data()</b>, <b>ERROR_MEMORY</b>,
-    <b>handle_audio_opus_batch_packet()</b>,
-    <b>client_info::incoming_audio_buffer</b>, <b>log_debug_every</b>,
-    <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>,
-    <b>log_warn</b>, <b>NET_TO_HOST_U16</b>, <b>opus_codec_decode()</b>,
-    <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>, <b>client_info::opus_decoder</b>,
-    <b>packet_parse_opus_batch()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, <b>US_PER_SEC_INT</b>,
-    <b>VALIDATE_AUDIO_STREAM_ENABLED</b>, <b>VALIDATE_NONZERO</b>,
-    <b>VALIDATE_NOTNULL_DATA</b>, <b>VALIDATE_RANGE</b>, and
-    <b>VALIDATE_RESOURCE_INITIALIZED</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_handle_audio_opus_packet_("><a class="permalink" href="#void_handle_audio_opus_packet_(">void
-  handle_audio_opus_packet (<b>client_info_t</b> * client, const void * data,
-  size_t len)</a></h2>
-<p class="Pp">#include &lt;<b>src/server/protocol.c</b>&gt;<b></b></p>
-<p class="Pp">Process AUDIO_OPUS packet - decode single Opus frame from client.
-    Handles single Opus-encoded audio frames sent by clients. The packet format
-    includes a 16-byte header followed by the Opus-encoded data.</p>
-<p class="Pp"></p>
-<p class="Pp">PACKET STRUCTURE:</p>
-<ul class="Bl-bullet">
-  <li>Offset 0: sample_rate (<b>uint32_t</b>, native byte order - bug in
-    client)</li>
-  <li>Offset 4: frame_duration (<b>uint32_t</b>, native byte order - bug in
-      client)</li>
-  <li>Offset 8: reserved (8 bytes)</li>
-  <li>Offset 16: Opus-encoded audio data</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Client info structure
-<br/>
-<i>data</i> Packet payload
-<br/>
-<i>len</i> Packet length</div>
-<p class="Pp">Definition at line <b>1470</b> of file
-  <b>server/protocol.c</b>.</p>
-<pre>1470                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>AUDIO_CHANNELS</b>, <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>,
+            <b>audio_ring_buffer_write()</b>, <b>client_info::client_id</b>,
+            <b>disconnect_client_for_bad_data()</b>, <b>ERROR_MEMORY</b>,
+            <b>handle_audio_opus_batch_packet()</b>,
+            <b>client_info::incoming_audio_buffer</b>, <b>log_debug_every</b>,
+            <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>,
+            <b>log_warn</b>, <b>NET_TO_HOST_U16</b>, <b>opus_codec_decode()</b>,
+            <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>,
+            <b>client_info::opus_decoder</b>, <b>packet_parse_opus_batch()</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>US_PER_SEC_INT</b>, <b>VALIDATE_AUDIO_STREAM_ENABLED</b>,
+            <b>VALIDATE_NONZERO</b>, <b>VALIDATE_NOTNULL_DATA</b>,
+            <b>VALIDATE_RANGE</b>, and <b>VALIDATE_RESOURCE_INITIALIZED</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_audio_opus_batch_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_handle_audio_opus_packet_(">
+            <a class="permalink" href="#void_handle_audio_opus_packet_("
+              >void handle_audio_opus_packet (<b>client_info_t</b> * client,
+              const void * data, size_t len)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/server/protocol.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Process AUDIO_OPUS packet - decode single Opus frame from client.
+            Handles single Opus-encoded audio frames sent by clients. The packet
+            format includes a 16-byte header followed by the Opus-encoded data.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">PACKET STRUCTURE:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Offset 0: sample_rate (<b>uint32_t</b>, native byte order - bug in
+              client)
+            </li>
+            <li>
+              Offset 4: frame_duration (<b>uint32_t</b>, native byte order - bug
+              in client)
+            </li>
+            <li>Offset 8: reserved (8 bytes)</li>
+            <li>Offset 16: Opus-encoded audio data</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client</i> Client info structure
+            <br />
+            <i>data</i> Packet payload
+            <br />
+            <i>len</i> Packet length
+          </div>
+          <p class="Pp">
+            Definition at line <b>1470</b> of file <b>server/protocol.c</b>.
+          </p>
+          <pre>
+1470                                                                                    {
 1471   log_debug_every(LOG_RATE_DEFAULT, &quot;Received Opus audio from client %s (len=%zu)&quot;, client-&gt;client_id, len);
 1472
 1473   if (VALIDATE_PACKET_NOT_NULL(client, data, &quot;AUDIO_OPUS&quot;)) {
@@ -403,31 +484,37 @@
 1542     }
 1543   }
 1544 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>atomic_load_bool()</b>, <b>AUDIO_CHANNELS</b>,
-    <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>, <b>audio_ring_buffer_write()</b>,
-    <b>client_info::client_id</b>, <b>disconnect_client_for_bad_data()</b>,
-    <b>handle_audio_opus_packet()</b>,
-    <b>client_info::incoming_audio_buffer</b>,
-    <b>client_info::is_sending_audio</b>, <b>log_debug_every</b>,
-    <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_VERY_FAST</b>,
-    <b>NET_TO_HOST_U32</b>, <b>opus_codec_decode()</b>,
-    <b>client_info::opus_decoder</b>, and <b>VALIDATE_PACKET_NOT_NULL</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_opus_packet()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>atomic_load_bool()</b>, <b>AUDIO_CHANNELS</b>,
+            <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>,
+            <b>audio_ring_buffer_write()</b>, <b>client_info::client_id</b>,
+            <b>disconnect_client_for_bad_data()</b>,
+            <b>handle_audio_opus_packet()</b>,
+            <b>client_info::incoming_audio_buffer</b>,
+            <b>client_info::is_sending_audio</b>, <b>log_debug_every</b>,
+            <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>,
+            <b>LOG_RATE_VERY_FAST</b>, <b>NET_TO_HOST_U32</b>,
+            <b>opus_codec_decode()</b>, <b>client_info::opus_decoder</b>, and
+            <b>VALIDATE_PACKET_NOT_NULL</b>.
+          </p>
+          <p class="Pp">Referenced by <b>handle_audio_opus_packet()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

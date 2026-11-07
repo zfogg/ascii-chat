@@ -1,82 +1,131 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>wasm_console.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">wasm_console.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">wasm_console.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">wasm_console.h - WASM browser console logging API.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>wasm_log_to_console</b> (int fd, const <b>uint8_t</b>
-    *buf, size_t count)
-  <br/>
-  Route output to browser console based on log level. int
-    <b>wasm_parse_log_level</b> (const <b>uint8_t</b> *buf, size_t count)
-  <br/>
-  Parse log level from formatted message.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WASM browser console logging API.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>wasm_console.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_wasm_log_to_console_(int_fd,_const_"><a class="permalink" href="#void_wasm_log_to_console_(int_fd,_const_">void
-  wasm_log_to_console (int fd, const <b>uint8_t</b> * buf, size_t
-  count)</a></h2>
-<p class="Pp">Route output to browser console based on log level. Parses the log
-    level from the message format [LEVEL] and routes to the appropriate console
-    method (console.debug, console.log, etc).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor (typically 1 for stdout, 2 for
-  stderr)
-<br/>
-<i>buf</i> Message buffer
-<br/>
-<i>count</i> Message length</div>
-<p class="Pp">Definition at line <b>120</b> of file <b>wasm.c</b>.</p>
-<pre>120                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>wasm_console.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">wasm_console.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">wasm_console.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">wasm_console.h - WASM browser console logging API.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>wasm_log_to_console</b> (int fd, const <b>uint8_t</b>
+            *buf, size_t count)
+            <br />
+            Route output to browser console based on log level. int
+            <b>wasm_parse_log_level</b> (const <b>uint8_t</b> *buf, size_t
+            count)
+            <br />
+            Parse log level from formatted message.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WASM browser console logging API.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>wasm_console.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_wasm_log_to_console_(int_fd,_const_">
+            <a
+              class="permalink"
+              href="#void_wasm_log_to_console_(int_fd,_const_"
+              >void wasm_log_to_console (int fd, const <b>uint8_t</b> * buf,
+              size_t count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Route output to browser console based on log level. Parses the log
+            level from the message format [LEVEL] and routes to the appropriate
+            console method (console.debug, console.log, etc).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor (typically 1 for stdout, 2 for stderr)
+            <br />
+            <i>buf</i> Message buffer
+            <br />
+            <i>count</i> Message length
+          </div>
+          <p class="Pp">Definition at line <b>120</b> of file <b>wasm.c</b>.</p>
+          <pre>
+120                                                                    {
 121   // For WASM, route stdout/stderr to browser console
 122   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
 123     // Parse log level from formatted message
@@ -99,27 +148,39 @@
 140     }
 141   }
 142 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>LOG_WASM_MSG_BUFFER_SIZE</b>,
-    <b>wasm_log_to_console()</b>, and <b>wasm_parse_log_level()</b>.</p>
-<p class="Pp">Referenced by <b>wasm_log_to_console()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_wasm_parse_log_level_(const_"><a class="permalink" href="#int_wasm_parse_log_level_(const_">int
-  wasm_parse_log_level (const <b>uint8_t</b> * buf, size_t count)</a></h2>
-<p class="Pp">Parse log level from formatted message. Expects format:
-    &quot;[LEVEL] message...&quot;</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Message buffer
-<br/>
-<i>count</i> Message length</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent"><b>log_level_t</b> enum value (0-5), or -1 if not
-  found</div>
-<p class="Pp">Definition at line <b>69</b> of file <b>wasm.c</b>.</p>
-<pre>69                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>LOG_WASM_MSG_BUFFER_SIZE</b>,
+            <b>wasm_log_to_console()</b>, and <b>wasm_parse_log_level()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>wasm_log_to_console()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_wasm_parse_log_level_(const_">
+            <a class="permalink" href="#int_wasm_parse_log_level_(const_"
+              >int wasm_parse_log_level (const <b>uint8_t</b> * buf, size_t
+              count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Parse log level from formatted message. Expects format:
+            &quot;[LEVEL] message...&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Message buffer
+            <br />
+            <i>count</i> Message length
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            <b>log_level_t</b> enum value (0-5), or -1 if not found
+          </div>
+          <p class="Pp">Definition at line <b>69</b> of file <b>wasm.c</b>.</p>
+          <pre>
+69                                                            {
 70   if (!buf || count &lt; 5) {
 71     return -1; // Too short to contain [LEVEL]
 72   }
@@ -168,25 +229,31 @@
 115
 116   return -1; // Level not recognized
 117 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
-    <b>LOG_FATAL</b>, <b>LOG_INFO</b>, <b>LOG_WARN</b>, and
-    <b>wasm_parse_log_level()</b>.</p>
-<p class="Pp">Referenced by <b>wasm_log_to_console()</b>, and
-    <b>wasm_parse_log_level()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
+            <b>LOG_FATAL</b>, <b>LOG_INFO</b>, <b>LOG_WARN</b>, and
+            <b>wasm_parse_log_level()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>wasm_log_to_console()</b>, and
+            <b>wasm_parse_log_level()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,88 +1,142 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>audio.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">audio.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">audio.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio.h - Stub audio types for WASM builds (uses Web Audio API
-    instead of PortAudio).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>audio_batch_info_t</b>
-  <br/>
-  Parsed audio batch packet header information. struct <b>audio_frame_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>audio_parse_batch_header</b> (const
-    void *data, size_t len, <b>audio_batch_info_t</b> *out_batch)
-  <br/>
-  <b>asciichat_error_t</b> <b>audio_validate_batch_params</b> (const
-    <b>audio_batch_info_t</b> *batch)
-  <br/>
-  <b>bool</b> <b>audio_is_supported_sample_rate</b> (<b>uint32_t</b>
-    sample_rate)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Stub audio types for WASM builds (uses Web Audio API instead of
-    PortAudio).</p>
-<p class="Pp">This header provides minimal audio type definitions for WASM
-    builds. In WASM, audio is handled by Web Audio API via AudioPipeline.ts
-    instead of PortAudio. This stub provides just enough definitions for network
-    packet parsing to compile.</p>
-<p class="Pp">Definition in file <b>lib/platform/wasm/stubs/audio.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> audio_is_supported_sample_rate (<b>uint32_t</b>
-  sample_rate)</h2>
-<p class="Pp">Definition at line <b>2339</b> of file
-  <b>lib/audio/audio.c</b>.</p>
-<pre>2339                                                           {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>audio.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">audio.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">audio.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          audio.h - Stub audio types for WASM builds (uses Web Audio API instead
+          of PortAudio).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>audio_batch_info_t</b>
+            <br />
+            Parsed audio batch packet header information. struct
+            <b>audio_frame_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>audio_parse_batch_header</b> (const void
+            *data, size_t len, <b>audio_batch_info_t</b> *out_batch)
+            <br />
+            <b>asciichat_error_t</b> <b>audio_validate_batch_params</b> (const
+            <b>audio_batch_info_t</b> *batch)
+            <br />
+            <b>bool</b> <b>audio_is_supported_sample_rate</b> (<b>uint32_t</b>
+            sample_rate)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Stub audio types for WASM builds (uses Web Audio API instead of
+          PortAudio).
+        </p>
+        <p class="Pp">
+          This header provides minimal audio type definitions for WASM builds.
+          In WASM, audio is handled by Web Audio API via AudioPipeline.ts
+          instead of PortAudio. This stub provides just enough definitions for
+          network packet parsing to compile.
+        </p>
+        <p class="Pp">
+          Definition in file <b>lib/platform/wasm/stubs/audio.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> audio_is_supported_sample_rate (<b>uint32_t</b>
+            sample_rate)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>2339</b> of file <b>lib/audio/audio.c</b>.
+          </p>
+          <pre>
+2339                                                           {
 2340   // List of commonly supported audio sample rates
 2341   static const uint32_t supported_rates[] = {
 2342       8000,   // Telephone quality
@@ -104,15 +158,19 @@
 2358
 2359   return false;
 2360 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_parse_batch_header (const void *
-  data, size_t len, <b>audio_batch_info_t</b> * out_batch)</h2>
-<p class="Pp">Definition at line <b>2273</b> of file
-  <b>lib/audio/audio.c</b>.</p>
-<pre>2273                                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_parse_batch_header (const void *
+            data, size_t len, <b>audio_batch_info_t</b> * out_batch)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>2273</b> of file <b>lib/audio/audio.c</b>.
+          </p>
+          <pre>
+2273                                                                                                         {
 2274   if (!data) {
 2275     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header data pointer is NULL&quot;);
 2276   }
@@ -136,15 +194,19 @@
 2294
 2295   return ASCIICHAT_OK;
 2296 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> audio_validate_batch_params (const
-  <b>audio_batch_info_t</b> * batch)</h2>
-<p class="Pp">Definition at line <b>2298</b> of file
-  <b>lib/audio/audio.c</b>.</p>
-<pre>2298                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_validate_batch_params (const
+            <b>audio_batch_info_t</b> * batch)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>2298</b> of file <b>lib/audio/audio.c</b>.
+          </p>
+          <pre>
+2298                                                                                {
 2299   if (!batch) {
 2300     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info pointer is NULL&quot;);
 2301   }
@@ -184,20 +246,22 @@
 2335
 2336   return ASCIICHAT_OK;
 2337 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,112 +1,176 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>digital_rain.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">digital_rain.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">digital_rain.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">digital_rain.c - Matrix-style digital rain effect
-  implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>M_PI</b> 3.14159265358979323846
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>digital_rain_glyph_group</b> (<b>uint32_t</b> codepoint)
-  <br/>
-  <b>digital_rain_t</b> * <b>digital_rain_init</b> (int num_columns, int
-    num_rows)
-  <br/>
-  Initialize digital rain effect context. void <b>digital_rain_destroy</b>
-    (<b>digital_rain_t</b> *rain)
-  <br/>
-  Destroy digital rain effect context. void <b>digital_rain_reset</b>
-    (<b>digital_rain_t</b> *rain)
-  <br/>
-  Reset digital rain effect state. void <b>digital_rain_set_fall_speed</b>
-    (<b>digital_rain_t</b> *rain, float speed)
-  <br/>
-  Set digital rain fall speed. void <b>digital_rain_set_raindrop_length</b>
-    (<b>digital_rain_t</b> *rain, float length)
-  <br/>
-  Set digital rain raindrop length. void <b>digital_rain_set_color</b>
-    (<b>digital_rain_t</b> *rain, <b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> b)
-  <br/>
-  Set digital rain color. void <b>digital_rain_set_color_from_filter</b>
-    (<b>digital_rain_t</b> *rain, <b>color_filter_t</b> filter)
-  <br/>
-  Set digital rain color from color filter. char * <b>digital_rain_apply</b>
-    (<b>digital_rain_t</b> *rain, const char *frame, float delta_time)
-  <br/>
-  Apply digital rain effect to ASCII frame. char * <b>digital_rain_render_at</b>
-    (<b>digital_rain_t</b> *rain, const char *frame, float seconds)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Matrix-style digital rain effect implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>digital_rain.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_M_PI___3"><a class="permalink" href="#_define_M_PI___3">#define
-  M_PI 3.14159265358979323846</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>digital_rain.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_digital_rain_render_at_("><a class="permalink" href="#char_*_digital_rain_render_at_(">char
-  * digital_rain_render_at (<b>digital_rain_t</b> * rain, const char * frame,
-  float seconds)</a></h2>
-<p class="Pp">Definition at line <b>382</b> of file <b>digital_rain.c</b>.</p>
-<pre>382                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>digital_rain.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">digital_rain.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">digital_rain.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          digital_rain.c - Matrix-style digital rain effect implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>M_PI</b> 3.14159265358979323846
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>digital_rain_glyph_group</b> (<b>uint32_t</b> codepoint)
+            <br />
+            <b>digital_rain_t</b> * <b>digital_rain_init</b> (int num_columns,
+            int num_rows)
+            <br />
+            Initialize digital rain effect context. void
+            <b>digital_rain_destroy</b> (<b>digital_rain_t</b>
+            *rain)
+            <br />
+            Destroy digital rain effect context. void
+            <b>digital_rain_reset</b> (<b>digital_rain_t</b>
+            *rain)
+            <br />
+            Reset digital rain effect state. void
+            <b>digital_rain_set_fall_speed</b> (<b>digital_rain_t</b>
+            *rain, float speed)
+            <br />
+            Set digital rain fall speed. void
+            <b>digital_rain_set_raindrop_length</b> (<b>digital_rain_t</b>
+            *rain, float length)
+            <br />
+            Set digital rain raindrop length. void
+            <b>digital_rain_set_color</b> (<b>digital_rain_t</b> *rain,
+            <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
+            <br />
+            Set digital rain color. void
+            <b>digital_rain_set_color_from_filter</b> (<b>digital_rain_t</b>
+            *rain, <b>color_filter_t</b> filter)
+            <br />
+            Set digital rain color from color filter. char *
+            <b>digital_rain_apply</b> (<b>digital_rain_t</b>
+            *rain, const char *frame, float delta_time)
+            <br />
+            Apply digital rain effect to ASCII frame. char *
+            <b>digital_rain_render_at</b> (<b>digital_rain_t</b>
+            *rain, const char *frame, float seconds)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Matrix-style digital rain effect implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>digital_rain.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_M_PI___3">
+            <a class="permalink" href="#_define_M_PI___3"
+              >#define M_PI 3.14159265358979323846</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>digital_rain.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_digital_rain_render_at_(">
+            <a class="permalink" href="#char_*_digital_rain_render_at_("
+              >char * digital_rain_render_at (<b>digital_rain_t</b> * rain,
+              const char * frame, float seconds)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>382</b> of file <b>digital_rain.c</b>.
+          </p>
+          <pre>
+382                                                                                      {
 383   if (!rain || !frame) {
 384     log_error(&quot;NULL parameter&quot;);
 385     return NULL;
@@ -228,30 +292,38 @@
 501   rain-&gt;first_frame = false;
 502   return output;
 503 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>digital_rain::brightness_decay</b>,
-    <b>digital_rain::color_b</b>, <b>color_filter_calculate_rainbow()</b>,
-    <b>digital_rain::color_g</b>, <b>digital_rain::color_r</b>,
-    <b>digital_rain_render_at()</b>, <b>digital_rain::first_frame</b>,
-    <b>log_error</b>, <b>digital_rain::num_columns</b>,
-    <b>digital_rain::previous_brightness</b>, <b>digital_rain::rainbow_mode</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>digital_rain::time</b>, and
-    <b>utf8_decode()</b>.</p>
-<p class="Pp">Referenced by <b>animation_apply()</b>, and
-    <b>digital_rain_render_at()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>digital_rain::brightness_decay</b>,
+            <b>digital_rain::color_b</b>,
+            <b>color_filter_calculate_rainbow()</b>,
+            <b>digital_rain::color_g</b>, <b>digital_rain::color_r</b>,
+            <b>digital_rain_render_at()</b>, <b>digital_rain::first_frame</b>,
+            <b>log_error</b>, <b>digital_rain::num_columns</b>,
+            <b>digital_rain::previous_brightness</b>,
+            <b>digital_rain::rainbow_mode</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>digital_rain::time</b>, and
+            <b>utf8_decode()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>animation_apply()</b>, and
+            <b>digital_rain_render_at()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

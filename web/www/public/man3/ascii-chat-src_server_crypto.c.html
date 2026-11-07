@@ -1,282 +1,408 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>crypto.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">crypto.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">crypto.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">crypto.c - &#x1F510; Server cryptography: per-client handshake,
-    X25519 key exchange, and session encryption management</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>server_crypto_init</b> (void)
-  <br/>
-  int <b>server_crypto_handshake</b> (<b>client_info_t</b> *client)
-  <br/>
-  <b>bool</b> <b>crypto_server_is_ready</b> (const char *client_id)
-  <br/>
-  const <b>crypto_context_t</b> * <b>crypto_server_get_context</b> (const char
-    *client_id)
-  <br/>
-  int <b>crypto_server_encrypt_packet</b> (const char *client_id, const
-    <b>uint8_t</b> *plaintext, size_t plaintext_len, <b>uint8_t</b> *ciphertext,
-    size_t ciphertext_size, size_t *ciphertext_len)
-  <br/>
-  int <b>crypto_server_decrypt_packet</b> (const char *client_id, const
-    <b>uint8_t</b> *ciphertext, size_t ciphertext_len, <b>uint8_t</b>
-    *plaintext, size_t plaintext_size, size_t *plaintext_len)
-  <br/>
-  void <b>crypto_server_cleanup_client</b> (const char *client_id)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F510; Server cryptography: per-client handshake, X25519 key
-    exchange, and session encryption management</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Initialize server crypto system and validate encryption configuration</dd>
-  <dt>2.</dt>
-  <dd>Perform cryptographic handshake with each connecting client</dd>
-  <dt>3.</dt>
-  <dd>Manage per-client crypto contexts stored in <b>client_info_t</b>
-      structures</dd>
-  <dt>4.</dt>
-  <dd>Provide encryption/decryption functions for secure packet
-    transmission</dd>
-  <dt>5.</dt>
-  <dd>Support multiple authentication modes (password, SSH key,
-    passwordless)</dd>
-  <dt>6.</dt>
-  <dd>Integrate with client whitelist for authenticated access control</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CRYPTOGRAPHIC_HANDSHAKE_ARCHITECTURE:"><a class="permalink" href="#CRYPTOGRAPHIC_HANDSHAKE_ARCHITECTURE:">CRYPTOGRAPHIC
-  HANDSHAKE ARCHITECTURE: </a></h1>
-<p class="Pp">The handshake follows a multi-phase protocol:</p>
-<p class="Pp"></p>
-<p class="Pp">PHASE 0: PROTOCOL NEGOTIATION:</p>
-<ul class="Bl-bullet">
-  <li>Step 0a: Receive client protocol version</li>
-  <li>Step 0b: Send server protocol version</li>
-  <li>Step 0c: Receive client crypto capabilities</li>
-  <li>Step 0d: Select algorithms and send crypto parameters</li>
-</ul>
-<p class="Pp">PHASE 1: KEY EXCHANGE:</p>
-<ul class="Bl-bullet">
-  <li>Step 1: Send server's ephemeral public key (X25519)</li>
-  <li>Server generates ephemeral key pair for this client session</li>
-  <li>Both sides derive shared secret using X25519 key exchange</li>
-</ul>
-<p class="Pp">PHASE 2: AUTHENTICATION:</p>
-<ul class="Bl-bullet">
-  <li>Step 2: Receive client's public key and send auth challenge</li>
-  <li>Server verifies client identity (if whitelist enabled)</li>
-  <li>Server signs challenge with identity key (if server has identity key)</li>
-  <li>Step 3: Receive auth response and complete handshake</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SUPPORTED_AUTHENTICATION_MODES:"><a class="permalink" href="#SUPPORTED_AUTHENTICATION_MODES:">SUPPORTED
-  AUTHENTICATION MODES: </a></h1>
-<p class="Pp">The server supports three authentication modes:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>PASSWORD AUTHENTICATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Uses Argon2id key derivation from shared password</dd>
-  <dt> &#x2022;</dt>
-  <dd>Both server and client derive same key from password</dd>
-  <dt> &#x2022;</dt>
-  <dd>No identity keys required (password-only mode)</dd>
-  <dt>2.</dt>
-  <dd>SSH KEY AUTHENTICATION:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Server uses Ed25519 private key for identity verification</dd>
-  <dt> &#x2022;</dt>
-  <dd>Client provides Ed25519 public key for authentication</dd>
-  <dt> &#x2022;</dt>
-  <dd>Identity verification via known_hosts and whitelist</dd>
-  <dt>3.</dt>
-  <dd>PASSWORDLESS MODE:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Ephemeral keys only (no long-term identity)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Key exchange provides confidentiality but not authentication</dd>
-  <dt> &#x2022;</dt>
-  <dd>Suitable for trusted networks or testing</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PER-CLIENT_CRYPTO_CONTEXTS:"><a class="permalink" href="#PER-CLIENT_CRYPTO_CONTEXTS:">PER-CLIENT
-  CRYPTO CONTEXTS: </a></h1>
-<p class="Pp">Each client has an independent crypto context stored in
-    <b>client_info_t</b>:</p>
-<ul class="Bl-bullet">
-  <li>crypto_handshake_ctx: Handshake state machine and cryptographic
-    operations</li>
-  <li>crypto_initialized: Flag indicating handshake completion</li>
-  <li>Context is created during connection and cleaned up on disconnect</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_WITH_CLIENT_WHITELIST:"><a class="permalink" href="#INTEGRATION_WITH_CLIENT_WHITELIST:">INTEGRATION
-  WITH CLIENT WHITELIST: </a></h1>
-<p class="Pp">When client whitelist is enabled:</p>
-<ul class="Bl-bullet">
-  <li>Server requires client authentication during handshake</li>
-  <li>Client public key must be in whitelist array</li>
-  <li>Verification happens in
-    <b>crypto_handshake_server_auth_challenge()</b></li>
-  <li>Clients not in whitelist are rejected during handshake</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ENCRYPTION/DECRYPTION_OPERATIONS:"><a class="permalink" href="#ENCRYPTION/DECRYPTION_OPERATIONS:">ENCRYPTION/DECRYPTION
-  OPERATIONS: </a></h1>
-<p class="Pp">After handshake completion:</p>
-<ul class="Bl-bullet">
-  <li><b>crypto_server_encrypt_packet()</b>: Encrypts packets before
-      transmission</li>
-  <li><b>crypto_server_decrypt_packet()</b>: Decrypts received packets</li>
-  <li>Both functions use per-client crypto contexts</li>
-  <li>Automatic passthrough when encryption disabled (--no-encrypt)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ALGORITHM_SUPPORT:"><a class="permalink" href="#ALGORITHM_SUPPORT:">ALGORITHM
-  SUPPORT: </a></h1>
-<p class="Pp">The server currently supports:</p>
-<ul class="Bl-bullet">
-  <li>Key Exchange: X25519 (Elliptic Curve Diffie-Hellman)</li>
-  <li>Cipher: XSalsa20-Poly1305 (Authenticated Encryption)</li>
-  <li>Authentication: Ed25519 (when server has identity key)</li>
-  <li>Key Derivation: Argon2id (for password-based authentication)</li>
-  <li>HMAC: HMAC-SHA256 (for additional integrity protection)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ERROR_HANDLING:"><a class="permalink" href="#ERROR_HANDLING:">ERROR
-  HANDLING: </a></h1>
-<p class="Pp">Handshake errors are handled gracefully:</p>
-<ul class="Bl-bullet">
-  <li>Client disconnection during handshake: Log and return error</li>
-  <li>Protocol mismatch: Log detailed error and disconnect client</li>
-  <li>Authentication failure: Log and disconnect client (whitelist
-    rejection)</li>
-  <li>Network errors: Detect and handle gracefully (don't crash server)</li>
-  <li>Invalid packets: Validate size and format before processing</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
-  SAFETY: </a></h1>
-<p class="Pp">Crypto operations are thread-safe:</p>
-<ul class="Bl-bullet">
-  <li>Each client has independent crypto context (no shared state)</li>
-  <li>Socket access protected by client_state_mutex</li>
-  <li>Per-client encryption/decryption operations are isolated</li>
-  <li>Global server crypto state (g_server_private_key) read-only after
-    init</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
-  WITH OTHER MODULES: </a></h1>
-<ul class="Bl-bullet">
-  <li>main.c: Calls <b>server_crypto_init()</b> during server startup</li>
-  <li>client.c: Calls <b>server_crypto_handshake()</b> for each new client</li>
-  <li>protocol.c: Uses encryption functions for secure packet transmission</li>
-  <li>crypto/handshake.h: Core handshake protocol implementation</li>
-  <li>crypto/keys/keys.h: Key management and parsing functions</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:"><a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:">WHY
-  THIS MODULAR DESIGN: </a></h1>
-<p class="Pp">The original server.c mixed cryptographic operations with
-    connection management and packet processing, making it difficult to:</p>
-<ul class="Bl-bullet">
-  <li>Add new authentication methods</li>
-  <li>Modify handshake protocol</li>
-  <li>Debug cryptographic issues</li>
-  <li>Test encryption/decryption independently</li>
-</ul>
-<p class="Pp">This separation provides:</p>
-<ul class="Bl-bullet">
-  <li>Clear cryptographic interface</li>
-  <li>Easier handshake protocol evolution</li>
-  <li>Better error isolation</li>
-  <li>Improved security auditing</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">September 2025</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">2.0 (Post-Modularization)</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">client.c For client <b>lifecycle</b> management and
-  <b>Crypto Module</b> context storage
-<p class="Pp"></p>
-<p class="Pp">crypto/handshake.h For <b>Handshake Module</b> protocol
-    implementation</p>
-<p class="Pp"></p>
-<p class="Pp">crypto/keys/keys.h For key parsing and management</p>
-</div>
-<p class="Pp">Definition in file <b>src/server/crypto.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_crypto_server_cleanup_client_(const_char_*_client_id)"><a class="permalink" href="#void_crypto_server_cleanup_client_(const_char_*_client_id)">void
-  crypto_server_cleanup_client (const char * client_id)</a></h2>
-<p class="Pp">Cleanup crypto resources for a specific client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Client ID to cleanup crypto for</div>
-<p class="Pp">Definition at line <b>794</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>794                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>crypto.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">crypto.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">crypto.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          crypto.c - &#x1F510; Server cryptography: per-client handshake, X25519
+          key exchange, and session encryption management
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>server_crypto_init</b> (void)
+            <br />
+            int <b>server_crypto_handshake</b> (<b>client_info_t</b> *client)
+            <br />
+            <b>bool</b> <b>crypto_server_is_ready</b> (const char *client_id)
+            <br />
+            const <b>crypto_context_t</b> *
+            <b>crypto_server_get_context</b> (const char *client_id)
+            <br />
+            int <b>crypto_server_encrypt_packet</b> (const char *client_id,
+            const <b>uint8_t</b> *plaintext, size_t plaintext_len,
+            <b>uint8_t</b> *ciphertext, size_t ciphertext_size, size_t
+            *ciphertext_len)
+            <br />
+            int <b>crypto_server_decrypt_packet</b> (const char *client_id,
+            const <b>uint8_t</b> *ciphertext, size_t ciphertext_len,
+            <b>uint8_t</b>
+            *plaintext, size_t plaintext_size, size_t *plaintext_len)
+            <br />
+            void <b>crypto_server_cleanup_client</b> (const char *client_id)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F510; Server cryptography: per-client handshake, X25519 key
+          exchange, and session encryption management
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>
+            Initialize server crypto system and validate encryption
+            configuration
+          </dd>
+          <dt>2.</dt>
+          <dd>Perform cryptographic handshake with each connecting client</dd>
+          <dt>3.</dt>
+          <dd>
+            Manage per-client crypto contexts stored in
+            <b>client_info_t</b> structures
+          </dd>
+          <dt>4.</dt>
+          <dd>
+            Provide encryption/decryption functions for secure packet
+            transmission
+          </dd>
+          <dt>5.</dt>
+          <dd>
+            Support multiple authentication modes (password, SSH key,
+            passwordless)
+          </dd>
+          <dt>6.</dt>
+          <dd>
+            Integrate with client whitelist for authenticated access control
+          </dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="CRYPTOGRAPHIC_HANDSHAKE_ARCHITECTURE:">
+          <a class="permalink" href="#CRYPTOGRAPHIC_HANDSHAKE_ARCHITECTURE:"
+            >CRYPTOGRAPHIC HANDSHAKE ARCHITECTURE:
+          </a>
+        </h1>
+        <p class="Pp">The handshake follows a multi-phase protocol:</p>
+        <p class="Pp"></p>
+        <p class="Pp">PHASE 0: PROTOCOL NEGOTIATION:</p>
+        <ul class="Bl-bullet">
+          <li>Step 0a: Receive client protocol version</li>
+          <li>Step 0b: Send server protocol version</li>
+          <li>Step 0c: Receive client crypto capabilities</li>
+          <li>Step 0d: Select algorithms and send crypto parameters</li>
+        </ul>
+        <p class="Pp">PHASE 1: KEY EXCHANGE:</p>
+        <ul class="Bl-bullet">
+          <li>Step 1: Send server's ephemeral public key (X25519)</li>
+          <li>Server generates ephemeral key pair for this client session</li>
+          <li>Both sides derive shared secret using X25519 key exchange</li>
+        </ul>
+        <p class="Pp">PHASE 2: AUTHENTICATION:</p>
+        <ul class="Bl-bullet">
+          <li>Step 2: Receive client's public key and send auth challenge</li>
+          <li>Server verifies client identity (if whitelist enabled)</li>
+          <li>
+            Server signs challenge with identity key (if server has identity
+            key)
+          </li>
+          <li>Step 3: Receive auth response and complete handshake</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SUPPORTED_AUTHENTICATION_MODES:">
+          <a class="permalink" href="#SUPPORTED_AUTHENTICATION_MODES:"
+            >SUPPORTED AUTHENTICATION MODES:
+          </a>
+        </h1>
+        <p class="Pp">The server supports three authentication modes:</p>
+        <p class="Pp"></p>
+        <dl class="Bl-tag">
+          <dt>1.</dt>
+          <dd>PASSWORD AUTHENTICATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Uses Argon2id key derivation from shared password</dd>
+          <dt>&#x2022;</dt>
+          <dd>Both server and client derive same key from password</dd>
+          <dt>&#x2022;</dt>
+          <dd>No identity keys required (password-only mode)</dd>
+          <dt>2.</dt>
+          <dd>SSH KEY AUTHENTICATION:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Server uses Ed25519 private key for identity verification</dd>
+          <dt>&#x2022;</dt>
+          <dd>Client provides Ed25519 public key for authentication</dd>
+          <dt>&#x2022;</dt>
+          <dd>Identity verification via known_hosts and whitelist</dd>
+          <dt>3.</dt>
+          <dd>PASSWORDLESS MODE:</dd>
+          <dt>&#x2022;</dt>
+          <dd>Ephemeral keys only (no long-term identity)</dd>
+          <dt>&#x2022;</dt>
+          <dd>Key exchange provides confidentiality but not authentication</dd>
+          <dt>&#x2022;</dt>
+          <dd>Suitable for trusted networks or testing</dd>
+        </dl>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PER-CLIENT_CRYPTO_CONTEXTS:">
+          <a class="permalink" href="#PER-CLIENT_CRYPTO_CONTEXTS:"
+            >PER-CLIENT CRYPTO CONTEXTS:
+          </a>
+        </h1>
+        <p class="Pp">
+          Each client has an independent crypto context stored in
+          <b>client_info_t</b>:
+        </p>
+        <ul class="Bl-bullet">
+          <li>
+            crypto_handshake_ctx: Handshake state machine and cryptographic
+            operations
+          </li>
+          <li>crypto_initialized: Flag indicating handshake completion</li>
+          <li>
+            Context is created during connection and cleaned up on disconnect
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_WITH_CLIENT_WHITELIST:">
+          <a class="permalink" href="#INTEGRATION_WITH_CLIENT_WHITELIST:"
+            >INTEGRATION WITH CLIENT WHITELIST:
+          </a>
+        </h1>
+        <p class="Pp">When client whitelist is enabled:</p>
+        <ul class="Bl-bullet">
+          <li>Server requires client authentication during handshake</li>
+          <li>Client public key must be in whitelist array</li>
+          <li>
+            Verification happens in
+            <b>crypto_handshake_server_auth_challenge()</b>
+          </li>
+          <li>Clients not in whitelist are rejected during handshake</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ENCRYPTION/DECRYPTION_OPERATIONS:">
+          <a class="permalink" href="#ENCRYPTION/DECRYPTION_OPERATIONS:"
+            >ENCRYPTION/DECRYPTION OPERATIONS:
+          </a>
+        </h1>
+        <p class="Pp">After handshake completion:</p>
+        <ul class="Bl-bullet">
+          <li>
+            <b>crypto_server_encrypt_packet()</b>: Encrypts packets before
+            transmission
+          </li>
+          <li>
+            <b>crypto_server_decrypt_packet()</b>: Decrypts received packets
+          </li>
+          <li>Both functions use per-client crypto contexts</li>
+          <li>Automatic passthrough when encryption disabled (--no-encrypt)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ALGORITHM_SUPPORT:">
+          <a class="permalink" href="#ALGORITHM_SUPPORT:"
+            >ALGORITHM SUPPORT:
+          </a>
+        </h1>
+        <p class="Pp">The server currently supports:</p>
+        <ul class="Bl-bullet">
+          <li>Key Exchange: X25519 (Elliptic Curve Diffie-Hellman)</li>
+          <li>Cipher: XSalsa20-Poly1305 (Authenticated Encryption)</li>
+          <li>Authentication: Ed25519 (when server has identity key)</li>
+          <li>Key Derivation: Argon2id (for password-based authentication)</li>
+          <li>HMAC: HMAC-SHA256 (for additional integrity protection)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ERROR_HANDLING:">
+          <a class="permalink" href="#ERROR_HANDLING:">ERROR HANDLING: </a>
+        </h1>
+        <p class="Pp">Handshake errors are handled gracefully:</p>
+        <ul class="Bl-bullet">
+          <li>Client disconnection during handshake: Log and return error</li>
+          <li>Protocol mismatch: Log detailed error and disconnect client</li>
+          <li>
+            Authentication failure: Log and disconnect client (whitelist
+            rejection)
+          </li>
+          <li>
+            Network errors: Detect and handle gracefully (don't crash server)
+          </li>
+          <li>Invalid packets: Validate size and format before processing</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY:">
+          <a class="permalink" href="#THREAD_SAFETY:">THREAD SAFETY: </a>
+        </h1>
+        <p class="Pp">Crypto operations are thread-safe:</p>
+        <ul class="Bl-bullet">
+          <li>Each client has independent crypto context (no shared state)</li>
+          <li>Socket access protected by client_state_mutex</li>
+          <li>Per-client encryption/decryption operations are isolated</li>
+          <li>
+            Global server crypto state (g_server_private_key) read-only after
+            init
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:">
+          <a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:"
+            >INTEGRATION WITH OTHER MODULES:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            main.c: Calls <b>server_crypto_init()</b> during server startup
+          </li>
+          <li>
+            client.c: Calls <b>server_crypto_handshake()</b> for each new client
+          </li>
+          <li>
+            protocol.c: Uses encryption functions for secure packet transmission
+          </li>
+          <li>crypto/handshake.h: Core handshake protocol implementation</li>
+          <li>crypto/keys/keys.h: Key management and parsing functions</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:">
+          <a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:"
+            >WHY THIS MODULAR DESIGN:
+          </a>
+        </h1>
+        <p class="Pp">
+          The original server.c mixed cryptographic operations with connection
+          management and packet processing, making it difficult to:
+        </p>
+        <ul class="Bl-bullet">
+          <li>Add new authentication methods</li>
+          <li>Modify handshake protocol</li>
+          <li>Debug cryptographic issues</li>
+          <li>Test encryption/decryption independently</li>
+        </ul>
+        <p class="Pp">This separation provides:</p>
+        <ul class="Bl-bullet">
+          <li>Clear cryptographic interface</li>
+          <li>Easier handshake protocol evolution</li>
+          <li>Better error isolation</li>
+          <li>Improved security auditing</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">September 2025</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">2.0 (Post-Modularization)</div>
+        <p class="Pp"><b>See also</b></p>
+        <div class="Bd-indent">
+          client.c For client <b>lifecycle</b> management and
+          <b>Crypto Module</b> context storage
+          <p class="Pp"></p>
+          <p class="Pp">
+            crypto/handshake.h For <b>Handshake Module</b> protocol
+            implementation
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">crypto/keys/keys.h For key parsing and management</p>
+        </div>
+        <p class="Pp">Definition in file <b>src/server/crypto.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_crypto_server_cleanup_client_(const_char_*_client_id)"
+          >
+            <a
+              class="permalink"
+              href="#void_crypto_server_cleanup_client_(const_char_*_client_id)"
+              >void crypto_server_cleanup_client (const char * client_id)</a
+            >
+          </h2>
+          <p class="Pp">Cleanup crypto resources for a specific client</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_id</i> Client ID to cleanup crypto for
+          </div>
+          <p class="Pp">
+            Definition at line <b>794</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+794                                                          {
 795   client_info_t *client = find_client_by_id(client_id);
 796   if (!client) {
 797     return;
@@ -288,36 +414,52 @@
 803     log_debug(&quot;Crypto handshake cleaned up for client %s&quot;, client_id);
 804   }
 805 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::crypto_handshake_ctx</b>,
-    <b>crypto_handshake_destroy()</b>, <b>client_info::crypto_initialized</b>,
-    <b>find_client_by_id()</b>, and <b>log_debug</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_server_decrypt_packet_(const_char_*_client_id,_const_"><a class="permalink" href="#int_crypto_server_decrypt_packet_(const_char_*_client_id,_const_">int
-  crypto_server_decrypt_packet (const char * client_id, const <b>uint8_t</b> *
-  ciphertext, size_t ciphertext_len, <b>uint8_t</b> * plaintext, size_t
-  plaintext_size, size_t * plaintext_len)</a></h2>
-<p class="Pp">Decrypt a received packet from a specific client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Client ID that sent the packet
-<br/>
-<i>ciphertext</i> Encrypted data to decrypt
-<br/>
-<i>ciphertext_len</i> Length of encrypted data
-<br/>
-<i>plaintext</i> Output buffer for decrypted data
-<br/>
-<i>plaintext_size</i> Size of output buffer
-<br/>
-<i>plaintext_len</i> Output length of decrypted data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>778</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>779                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_info::crypto_handshake_ctx</b>,
+            <b>crypto_handshake_destroy()</b>,
+            <b>client_info::crypto_initialized</b>, <b>find_client_by_id()</b>,
+            and <b>log_debug</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_crypto_server_decrypt_packet_(const_char_*_client_id,_const_"
+          >
+            <a
+              class="permalink"
+              href="#int_crypto_server_decrypt_packet_(const_char_*_client_id,_const_"
+              >int crypto_server_decrypt_packet (const char * client_id, const
+              <b>uint8_t</b> * ciphertext, size_t ciphertext_len,
+              <b>uint8_t</b> * plaintext, size_t plaintext_size, size_t *
+              plaintext_len)</a
+            >
+          </h2>
+          <p class="Pp">Decrypt a received packet from a specific client</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_id</i> Client ID that sent the packet
+            <br />
+            <i>ciphertext</i> Encrypted data to decrypt
+            <br />
+            <i>ciphertext_len</i> Length of encrypted data
+            <br />
+            <i>plaintext</i> Output buffer for decrypted data
+            <br />
+            <i>plaintext_size</i> Size of output buffer
+            <br />
+            <i>plaintext_len</i> Output length of decrypted data
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>778</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+779                                                                                                    {
 780   client_info_t *client = find_client_by_id(client_id);
 781   if (!client) {
 782     return -1;
@@ -326,37 +468,53 @@
 785   return crypto_decrypt_packet_or_passthrough(&amp;client-&gt;crypto_handshake_ctx, crypto_server_is_ready(client_id),
 786                                               ciphertext, ciphertext_len, plaintext, plaintext_size, plaintext_len);
 787 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>crypto_decrypt_packet_or_passthrough()</b>,
-    <b>client_info::crypto_handshake_ctx</b>, <b>crypto_server_is_ready()</b>,
-    and <b>find_client_by_id()</b>.</p>
-<p class="Pp">Referenced by <b>process_encrypted_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_crypto_server_encrypt_packet_(const_char_*_client_id,_const_"><a class="permalink" href="#int_crypto_server_encrypt_packet_(const_char_*_client_id,_const_">int
-  crypto_server_encrypt_packet (const char * client_id, const <b>uint8_t</b> *
-  plaintext, size_t plaintext_len, <b>uint8_t</b> * ciphertext, size_t
-  ciphertext_size, size_t * ciphertext_len)</a></h2>
-<p class="Pp">Encrypt a packet for transmission to a specific client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Client ID to encrypt for
-<br/>
-<i>plaintext</i> Plaintext data to encrypt
-<br/>
-<i>plaintext_len</i> Length of plaintext data
-<br/>
-<i>ciphertext</i> Output buffer for encrypted data
-<br/>
-<i>ciphertext_size</i> Size of output buffer
-<br/>
-<i>ciphertext_len</i> Output length of encrypted data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>756</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>757                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>crypto_decrypt_packet_or_passthrough()</b>,
+            <b>client_info::crypto_handshake_ctx</b>,
+            <b>crypto_server_is_ready()</b>, and <b>find_client_by_id()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>process_encrypted_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_crypto_server_encrypt_packet_(const_char_*_client_id,_const_"
+          >
+            <a
+              class="permalink"
+              href="#int_crypto_server_encrypt_packet_(const_char_*_client_id,_const_"
+              >int crypto_server_encrypt_packet (const char * client_id, const
+              <b>uint8_t</b> * plaintext, size_t plaintext_len, <b>uint8_t</b> *
+              ciphertext, size_t ciphertext_size, size_t * ciphertext_len)</a
+            >
+          </h2>
+          <p class="Pp">
+            Encrypt a packet for transmission to a specific client
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_id</i> Client ID to encrypt for
+            <br />
+            <i>plaintext</i> Plaintext data to encrypt
+            <br />
+            <i>plaintext_len</i> Length of plaintext data
+            <br />
+            <i>ciphertext</i> Output buffer for encrypted data
+            <br />
+            <i>ciphertext_size</i> Size of output buffer
+            <br />
+            <i>ciphertext_len</i> Output length of encrypted data
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>756</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+757                                                                                                       {
 758   client_info_t *client = find_client_by_id(client_id);
 759   if (!client) {
 760     return -1;
@@ -365,26 +523,36 @@
 763   return crypto_encrypt_packet_or_passthrough(&amp;client-&gt;crypto_handshake_ctx, crypto_server_is_ready(client_id),
 764                                               plaintext, plaintext_len, ciphertext, ciphertext_size, ciphertext_len);
 765 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>crypto_encrypt_packet_or_passthrough()</b>,
-    <b>client_info::crypto_handshake_ctx</b>, <b>crypto_server_is_ready()</b>,
-    and <b>find_client_by_id()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>crypto_context_t</b> * crypto_server_get_context (const char *
-  client_id)</a></h2>
-<p class="Pp">Get crypto context for encryption/decryption for a specific
-  client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Client ID to get context for</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">crypto context or NULL if not ready</div>
-<p class="Pp">Definition at line <b>732</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>732                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>crypto_encrypt_packet_or_passthrough()</b>,
+            <b>client_info::crypto_handshake_ctx</b>,
+            <b>crypto_server_is_ready()</b>, and <b>find_client_by_id()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>crypto_context_t</b> * crypto_server_get_context (const
+              char * client_id)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get crypto context for encryption/decryption for a specific client
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_id</i> Client ID to get context for
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">crypto context or NULL if not ready</div>
+          <p class="Pp">
+            Definition at line <b>732</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+732                                                                          {
 733   if (!crypto_server_is_ready(client_id)) {
 734     return NULL;
 735   }
@@ -396,24 +564,34 @@
 741
 742   return crypto_handshake_get_context(&amp;client-&gt;crypto_handshake_ctx);
 743 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::crypto_handshake_ctx</b>,
-    <b>crypto_handshake_get_context()</b>, <b>crypto_server_is_ready()</b>, and
-    <b>find_client_by_id()</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> crypto_server_is_ready (const char * client_id)</h2>
-<p class="Pp">Check if crypto handshake is ready for a specific client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_id</i> Client ID to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if encryption is ready, false otherwise</div>
-<p class="Pp">Definition at line <b>708</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>708                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_info::crypto_handshake_ctx</b>,
+            <b>crypto_handshake_get_context()</b>,
+            <b>crypto_server_is_ready()</b>, and <b>find_client_by_id()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>add_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> crypto_server_is_ready (const char * client_id)
+          </h2>
+          <p class="Pp">
+            Check if crypto handshake is ready for a specific client
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>client_id</i> Client ID to check</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if encryption is ready, false otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>708</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+708                                                    {
 709   if (GET_OPTION(no_encrypt)) {
 710     return false;
 711   }
@@ -430,27 +608,38 @@
 722   bool ready = crypto_handshake_is_ready(&amp;client-&gt;crypto_handshake_ctx);
 723   return ready;
 724 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_info::crypto_handshake_ctx</b>,
-    <b>crypto_handshake_is_ready()</b>, <b>client_info::crypto_initialized</b>,
-    <b>find_client_by_id()</b>, and <b>GET_OPTION</b>.</p>
-<p class="Pp">Referenced by <b>crypto_server_decrypt_packet()</b>,
-    <b>crypto_server_encrypt_packet()</b>, <b>crypto_server_get_context()</b>,
-    and <b>process_encrypted_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_server_crypto_handshake_("><a class="permalink" href="#int_server_crypto_handshake_(">int
-  server_crypto_handshake (<b>client_info_t</b> * client)</a></h2>
-<p class="Pp">Perform crypto handshake with client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client</i> Client info structure</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>182</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>182                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_info::crypto_handshake_ctx</b>,
+            <b>crypto_handshake_is_ready()</b>,
+            <b>client_info::crypto_initialized</b>, <b>find_client_by_id()</b>,
+            and <b>GET_OPTION</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_server_decrypt_packet()</b>,
+            <b>crypto_server_encrypt_packet()</b>,
+            <b>crypto_server_get_context()</b>, and
+            <b>process_encrypted_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_server_crypto_handshake_(">
+            <a class="permalink" href="#int_server_crypto_handshake_("
+              >int server_crypto_handshake (<b>client_info_t</b> * client)</a
+            >
+          </h2>
+          <p class="Pp">Perform crypto handshake with client</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>client</i> Client info structure</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>182</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+182                                                    {
 183   if (!client) {
 184     FATAL(ERROR_CRYPTO_HANDSHAKE, &quot;Client is NULL for crypto handshake&quot;);
 185     return -1;
@@ -969,86 +1158,103 @@
 698   log_info_client(client, &quot;Encryption established - secure channel ready&quot;);
 699   return 0;
 700 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
-    <b>ACIP_CRYPTO_NONE</b>, <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>,
-    <b>AUTH_ALGO_NONE</b>,
-    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
-    <b>buffer_pool_free()</b>, <b>CIPHER_ALGO_NONE</b>,
-    <b>CIPHER_ALGO_XSALSA20_POLY1305</b>, <b>client_info::client_id</b>,
-    <b>client_info::client_state_mutex</b>,
-    <b>crypto_handshake_context_t::client_whitelist</b>,
-    <b>protocol_version_packet_t::compression_algorithms</b>,
-    <b>protocol_version_packet_t::compression_threshold</b>,
-    <b>acip_transport::crypto_ctx</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>,
-    <b>client_info::crypto_handshake_ctx</b>,
-    <b>crypto_handshake_get_context()</b>, <b>crypto_handshake_init()</b>,
-    <b>crypto_handshake_init_with_password()</b>, <b>CRYPTO_HANDSHAKE_READY</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>crypto_handshake_set_parameters()</b>, <b>CRYPTO_HMAC_SIZE</b>,
-    <b>client_info::crypto_initialized</b>, <b>CRYPTO_MAC_SIZE</b>,
-    <b>CRYPTO_NONCE_SIZE</b>, <b>CRYPTO_PUBLIC_KEY_SIZE</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
-    <b>client_info::encrypt_data</b>, <b>crypto_context_t::encrypt_data</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_CRYPTO_AUTH</b>,
-    <b>ERROR_CRYPTO_HANDSHAKE</b>, <b>ERROR_CRYPTO_VERIFICATION</b>,
-    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>, <b>FATAL</b>,
-    <b>protocol_version_packet_t::feature_flags</b>, <b>g_client_whitelist</b>,
-    <b>g_num_server_identity_keys</b>, <b>g_num_whitelisted_clients</b>,
-    <b>g_server_encryption_enabled</b>, <b>g_server_identity_keys</b>,
-    <b>g_server_private_key</b>, <b>GET_OPTION</b>,
-    <b>crypto_parameters_packet_t::hmac_size</b>, <b>HOST_TO_NET_U16</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>KEX_ALGO_X25519</b>,
-    <b>crypto_parameters_packet_t::kex_public_key_size</b>,
-    <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>log_info_client</b>, <b>crypto_parameters_packet_t::mac_size</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
-    <b>crypto_parameters_packet_t::nonce_size</b>, <b>NS_PER_MS_INT</b>,
-    <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
-    <b>options_get()</b>, <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
-    <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
-    <b>options_state::password</b>, <b>client_info::pending_packet_length</b>,
-    <b>client_info::pending_packet_payload</b>,
-    <b>client_info::pending_packet_type</b>,
-    <b>protocol_version_packet_t::protocol_revision</b>,
-    <b>protocol_version_packet_t::protocol_version</b>, <b>pubkey_to_hex()</b>,
-    <b>receive_packet()</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>,
-    <b>SAFE_SNPRINTF</b>, <b>crypto_parameters_packet_t::selected_auth</b>,
-    <b>crypto_parameters_packet_t::selected_cipher</b>,
-    <b>crypto_parameters_packet_t::selected_kex</b>,
-    <b>send_crypto_parameters_packet()</b>,
-    <b>send_protocol_version_packet()</b>,
-    <b>crypto_handshake_context_t::server_private_key</b>,
-    <b>crypto_handshake_context_t::server_public_key</b>, <b>SET_ERRNO</b>,
-    <b>crypto_parameters_packet_t::shared_secret_size</b>,
-    <b>crypto_parameters_packet_t::signature_size</b>,
-    <b>client_info::socket</b>, <b>START_TIMER</b>,
-    <b>crypto_handshake_context_t::state</b>, <b>STOP_TIMER</b>,
-    <b>STOP_TIMER_AND_LOG</b>,
-    <b>crypto_capabilities_packet_t::supported_auth_algorithms</b>,
-    <b>crypto_capabilities_packet_t::supported_cipher_algorithms</b>,
-    <b>crypto_capabilities_packet_t::supported_kex_algorithms</b>,
-    <b>protocol_version_packet_t::supports_encryption</b>,
-    <b>client_info::transport</b>, <b>public_key_t::type</b>, and
-    <b>crypto_parameters_packet_t::verification_enabled</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_server_crypto_init_(void_)"><a class="permalink" href="#int_server_crypto_init_(void_)">int
-  server_crypto_init (void )</a></h2>
-<p class="Pp">Initialize server crypto system (global initialization)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>162</b> of file
-  <b>src/server/crypto.c</b>.</p>
-<pre>162                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ACIP_CRYPTO_NONE</b>,
+            <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>,
+            <b>AUTH_ALGO_NONE</b>,
+            <b>crypto_parameters_packet_t::auth_public_key_size</b>,
+            <b>buffer_pool_free()</b>, <b>CIPHER_ALGO_NONE</b>,
+            <b>CIPHER_ALGO_XSALSA20_POLY1305</b>, <b>client_info::client_id</b>,
+            <b>client_info::client_state_mutex</b>,
+            <b>crypto_handshake_context_t::client_whitelist</b>,
+            <b>protocol_version_packet_t::compression_algorithms</b>,
+            <b>protocol_version_packet_t::compression_threshold</b>,
+            <b>acip_transport::crypto_ctx</b>,
+            <b>crypto_handshake_context_t::crypto_ctx</b>,
+            <b>client_info::crypto_handshake_ctx</b>,
+            <b>crypto_handshake_get_context()</b>,
+            <b>crypto_handshake_init()</b>,
+            <b>crypto_handshake_init_with_password()</b>,
+            <b>CRYPTO_HANDSHAKE_READY</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>crypto_handshake_set_parameters()</b>, <b>CRYPTO_HMAC_SIZE</b>,
+            <b>client_info::crypto_initialized</b>, <b>CRYPTO_MAC_SIZE</b>,
+            <b>CRYPTO_NONCE_SIZE</b>, <b>CRYPTO_PUBLIC_KEY_SIZE</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+            <b>client_info::encrypt_data</b>,
+            <b>crypto_context_t::encrypt_data</b>, <b>ERROR_CRYPTO</b>,
+            <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_CRYPTO_HANDSHAKE</b>,
+            <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_NETWORK</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>FATAL</b>,
+            <b>protocol_version_packet_t::feature_flags</b>,
+            <b>g_client_whitelist</b>, <b>g_num_server_identity_keys</b>,
+            <b>g_num_whitelisted_clients</b>,
+            <b>g_server_encryption_enabled</b>, <b>g_server_identity_keys</b>,
+            <b>g_server_private_key</b>, <b>GET_OPTION</b>,
+            <b>crypto_parameters_packet_t::hmac_size</b>,
+            <b>HOST_TO_NET_U16</b>, <b>INVALID_SOCKET_VALUE</b>,
+            <b>KEX_ALGO_X25519</b>,
+            <b>crypto_parameters_packet_t::kex_public_key_size</b>,
+            <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>log_info_client</b>, <b>crypto_parameters_packet_t::mac_size</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+            <b>crypto_parameters_packet_t::nonce_size</b>, <b>NS_PER_MS_INT</b>,
+            <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
+            <b>options_get()</b>, <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
+            <b>PACKET_TYPE_PROTOCOL_VERSION</b>, <b>options_state::password</b>,
+            <b>client_info::pending_packet_length</b>,
+            <b>client_info::pending_packet_payload</b>,
+            <b>client_info::pending_packet_type</b>,
+            <b>protocol_version_packet_t::protocol_revision</b>,
+            <b>protocol_version_packet_t::protocol_version</b>,
+            <b>pubkey_to_hex()</b>, <b>receive_packet()</b>,
+            <b>crypto_handshake_context_t::require_client_auth</b>,
+            <b>SAFE_SNPRINTF</b>,
+            <b>crypto_parameters_packet_t::selected_auth</b>,
+            <b>crypto_parameters_packet_t::selected_cipher</b>,
+            <b>crypto_parameters_packet_t::selected_kex</b>,
+            <b>send_crypto_parameters_packet()</b>,
+            <b>send_protocol_version_packet()</b>,
+            <b>crypto_handshake_context_t::server_private_key</b>,
+            <b>crypto_handshake_context_t::server_public_key</b>,
+            <b>SET_ERRNO</b>,
+            <b>crypto_parameters_packet_t::shared_secret_size</b>,
+            <b>crypto_parameters_packet_t::signature_size</b>,
+            <b>client_info::socket</b>, <b>START_TIMER</b>,
+            <b>crypto_handshake_context_t::state</b>, <b>STOP_TIMER</b>,
+            <b>STOP_TIMER_AND_LOG</b>,
+            <b>crypto_capabilities_packet_t::supported_auth_algorithms</b>,
+            <b>crypto_capabilities_packet_t::supported_cipher_algorithms</b>,
+            <b>crypto_capabilities_packet_t::supported_kex_algorithms</b>,
+            <b>protocol_version_packet_t::supports_encryption</b>,
+            <b>client_info::transport</b>, <b>public_key_t::type</b>, and
+            <b>crypto_parameters_packet_t::verification_enabled</b>.
+          </p>
+          <p class="Pp">Referenced by <b>add_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_server_crypto_init_(void_)">
+            <a class="permalink" href="#int_server_crypto_init_(void_)"
+              >int server_crypto_init (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Initialize server crypto system (global initialization)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 on failure</div>
+          <p class="Pp">
+            Definition at line <b>162</b> of file <b>src/server/crypto.c</b>.
+          </p>
+          <pre>
+162                              {
 163   // Only skip handshake if BOTH encryption and authentication are disabled
 164   bool no_encrypt = GET_OPTION(no_encrypt);
 165   bool no_auth = GET_OPTION(no_auth);
@@ -1061,23 +1267,26 @@
 172   log_debug(&quot;Server crypto system initialized (per-client contexts will be created on demand)&quot;);
 173   return 0;
 174 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>log_debug</b>, and
-    <b>log_info</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.25</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, <b>log_debug</b>, and <b>log_info</b>.
+          </p>
+          <p class="Pp">Referenced by <b>add_client()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

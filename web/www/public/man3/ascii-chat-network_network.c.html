@@ -1,99 +1,147 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>network.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">network.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">network.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">network.c - &#x1F310; Cross-platform socket I/O with timeout
-    management and connection handling</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">ssize_t <b>send_with_timeout</b> (<b>socket_t</b> sockfd, const
-    void *data, size_t len, <b>uint64_t</b> timeout_ns)
-  <br/>
-  Send data with timeout using chunked transmission. ssize_t
-    <b>recv_with_timeout</b> (<b>socket_t</b> sockfd, void *buf, size_t len,
-    <b>uint64_t</b> timeout_ns)
-  <br/>
-  Receive data with timeout. int <b>accept_with_timeout</b> (<b>socket_t</b>
-    listenfd, struct sockaddr *addr, socklen_t *addrlen, <b>uint64_t</b>
-    timeout_ns)
-  <br/>
-  Accept connection with timeout. <b>asciichat_error_t</b>
-    <b>set_socket_timeout</b> (<b>socket_t</b> sockfd, <b>uint64_t</b>
-    timeout_ns)
-  <br/>
-  Set socket timeout. <b>asciichat_error_t</b> <b>set_socket_keepalive</b>
-    (<b>socket_t</b> sockfd)
-  <br/>
-  Set socket keepalive. <b>asciichat_error_t</b> <b>set_socket_nonblocking</b>
-    (<b>socket_t</b> sockfd)
-  <br/>
-  Set socket non-blocking. <b>asciichat_error_t</b>
-    <b>socket_configure_buffers</b> (<b>socket_t</b> sockfd)
-  <br/>
-  Configure socket buffers and TCP_NODELAY for optimal performance. const char *
-    <b>network_error_string</b> ()
-  <br/>
-  Get human-readable error string for network errors. <b>bool</b>
-    <b>connect_with_timeout</b> (<b>socket_t</b> sockfd, const struct sockaddr
-    *addr, socklen_t addrlen, int timeout_seconds)
-  <br/>
-  Connect with timeout.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F310; Cross-platform socket I/O with timeout management and
-    connection handling</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>network/network.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>network.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">network.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">network.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          network.c - &#x1F310; Cross-platform socket I/O with timeout
+          management and connection handling
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            ssize_t <b>send_with_timeout</b> (<b>socket_t</b> sockfd, const void
+            *data, size_t len, <b>uint64_t</b> timeout_ns)
+            <br />
+            Send data with timeout using chunked transmission. ssize_t
+            <b>recv_with_timeout</b> (<b>socket_t</b> sockfd, void *buf, size_t
+            len, <b>uint64_t</b> timeout_ns)
+            <br />
+            Receive data with timeout. int <b>accept_with_timeout</b> (<b
+              >socket_t</b
+            >
+            listenfd, struct sockaddr *addr, socklen_t *addrlen, <b>uint64_t</b>
+            timeout_ns)
+            <br />
+            Accept connection with timeout. <b>asciichat_error_t</b>
+            <b>set_socket_timeout</b> (<b>socket_t</b> sockfd, <b>uint64_t</b>
+            timeout_ns)
+            <br />
+            Set socket timeout. <b>asciichat_error_t</b>
+            <b>set_socket_keepalive</b> (<b>socket_t</b>
+            sockfd)
+            <br />
+            Set socket keepalive. <b>asciichat_error_t</b>
+            <b>set_socket_nonblocking</b> (<b>socket_t</b>
+            sockfd)
+            <br />
+            Set socket non-blocking. <b>asciichat_error_t</b>
+            <b>socket_configure_buffers</b> (<b>socket_t</b>
+            sockfd)
+            <br />
+            Configure socket buffers and TCP_NODELAY for optimal performance.
+            const char *
+            <b>network_error_string</b> ()
+            <br />
+            Get human-readable error string for network errors. <b>bool</b>
+            <b>connect_with_timeout</b> (<b>socket_t</b> sockfd, const struct
+            sockaddr *addr, socklen_t addrlen, int timeout_seconds)
+            <br />
+            Connect with timeout.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F310; Cross-platform socket I/O with timeout management and
+          connection handling
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>network/network.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

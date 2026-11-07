@@ -1,97 +1,151 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>loop_work_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">loop_work_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">loop_work_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">loop_work_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">uv_work_t <b>request</b>
-  <br/>
-  <b>platform_event_task_fn</b> <b>work</b>
-  <br/>
-  <b>platform_event_task_fn</b> <b>done</b>
-  <br/>
-  void * <b>arg</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>715</b> of file <b>event.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void*_loop_work_t::arg"><a class="permalink" href="#void*_loop_work_t::arg">void*
-  loop_work_t::arg</a></h2>
-<p class="Pp">Definition at line <b>718</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>platform_event_task_fn</b> loop_work_t::done</h2>
-<p class="Pp">Definition at line <b>717</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uv_work_t_loop_work_t::request"><a class="permalink" href="#uv_work_t_loop_work_t::request">uv_work_t
-  loop_work_t::request</a></h2>
-<p class="Pp">Definition at line <b>716</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>platform_event_task_fn</b> loop_work_t::work</h2>
-<p class="Pp">Definition at line <b>717</b> of file <b>event.c</b>.</p>
-<p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>loop_work_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">loop_work_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">loop_work_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">loop_work_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            uv_work_t <b>request</b>
+            <br />
+            <b>platform_event_task_fn</b> <b>work</b>
+            <br />
+            <b>platform_event_task_fn</b> <b>done</b>
+            <br />
+            void * <b>arg</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>715</b> of file <b>event.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_loop_work_t::arg">
+            <a class="permalink" href="#void*_loop_work_t::arg"
+              >void* loop_work_t::arg</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>718</b> of file <b>event.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>platform_event_task_fn</b> loop_work_t::done</h2>
+          <p class="Pp">
+            Definition at line <b>717</b> of file <b>event.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uv_work_t_loop_work_t::request">
+            <a class="permalink" href="#uv_work_t_loop_work_t::request"
+              >uv_work_t loop_work_t::request</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>716</b> of file <b>event.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>platform_event_task_fn</b> loop_work_t::work</h2>
+          <p class="Pp">
+            Definition at line <b>717</b> of file <b>event.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

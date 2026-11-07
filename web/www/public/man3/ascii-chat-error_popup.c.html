@@ -1,195 +1,360 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>error_popup.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">error_popup.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">error_popup.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">error_popup.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE</b> 65536
-  <br/>
-  #define <b>TUI_ERROR_POPUP_STYLE_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>TUI_ERROR_POPUP_THREAD_BUFFER_SIZE</b> 160
-  <br/>
-  #define <b>TUI_ERROR_POPUP_FILE_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>TUI_ERROR_POPUP_LINE_BUFFER_SIZE</b> 24
-  <br/>
-  #define <b>TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE</b> 40
-  <br/>
-  #define <b>TUI_ERROR_POPUP_TITLE_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>TUI_ERROR_POPUP_HEADING_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE</b> 65536
-  <br/>
-  #define <b>ERROR_POPUP_LINE_CAPACITY</b> 2048
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>ui_error_popup_visible</b> (void)
-  <br/>
-  <b>terminal_size_t</b> <b>ui_error_popup_minimum</b> (void)
-  <br/>
-  void <b>ui_error_popup_key</b> (<b>keyboard_key_t</b> key)
-  <br/>
-  void <b>ui_error_popup_render</b> (<b>frame_buffer_t</b> *out,
-    <b>terminal_size_t</b> size)
-  <br/>
-  void <b>ui_error_popup_reset</b> (void)
-  <br/>
-  void <b>ui_error_popup_preserve</b> (int fd, <b>terminal_size_t</b> size)
-  <br/>
-  void <b>ui_error_popup_flush</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ERROR_POPUP_LINE_CAPACITY___2048"><a class="permalink" href="#_define_ERROR_POPUP_LINE_CAPACITY___2048">#define
-  ERROR_POPUP_LINE_CAPACITY 2048</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE___40"><a class="permalink" href="#_define_TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE___40">#define
-  TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE 40</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_CELL_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_ERROR_POPUP_CELL_BUFFER_SIZE___1024">#define
-  TUI_ERROR_POPUP_CELL_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>error_popup.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>, and
-    <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_CODE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_ERROR_POPUP_CODE_BUFFER_SIZE___512">#define
-  TUI_ERROR_POPUP_CODE_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>error_popup.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>, and
-    <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_FILE_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_ERROR_POPUP_FILE_BUFFER_SIZE___1024">#define
-  TUI_ERROR_POPUP_FILE_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE___65536"><a class="permalink" href="#_define_TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE___65536">#define
-  TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE 65536</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE___256">#define
-  TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_HEADING_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERROR_POPUP_HEADING_BUFFER_SIZE___256">#define
-  TUI_ERROR_POPUP_HEADING_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>error_popup.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_LINE_BUFFER_SIZE___24"><a class="permalink" href="#_define_TUI_ERROR_POPUP_LINE_BUFFER_SIZE___24">#define
-  TUI_ERROR_POPUP_LINE_BUFFER_SIZE 24</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_STYLE_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_ERROR_POPUP_STYLE_BUFFER_SIZE___128">#define
-  TUI_ERROR_POPUP_STYLE_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_THREAD_BUFFER_SIZE___160"><a class="permalink" href="#_define_TUI_ERROR_POPUP_THREAD_BUFFER_SIZE___160">#define
-  TUI_ERROR_POPUP_THREAD_BUFFER_SIZE 160</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>error_popup.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_TITLE_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_ERROR_POPUP_TITLE_BUFFER_SIZE___128">#define
-  TUI_ERROR_POPUP_TITLE_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>error_popup.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE___65536"><a class="permalink" href="#_define_TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE___65536">#define
-  TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE 65536</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>error_popup.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_error_popup_flush_(void_)"><a class="permalink" href="#void_ui_error_popup_flush_(void_)">void
-  ui_error_popup_flush (void )</a></h2>
-<p class="Pp">Write preserved terminal output after shutdown diagnostics,
-    without allocating or using options.</p>
-<p class="Pp">Definition at line <b>444</b> of file <b>error_popup.c</b>.</p>
-<pre>444                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>error_popup.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">error_popup.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">error_popup.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">error_popup.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE</b> 65536
+            <br />
+            #define <b>TUI_ERROR_POPUP_STYLE_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>TUI_ERROR_POPUP_THREAD_BUFFER_SIZE</b> 160
+            <br />
+            #define <b>TUI_ERROR_POPUP_FILE_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_ERROR_POPUP_LINE_BUFFER_SIZE</b> 24
+            <br />
+            #define <b>TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE</b> 40
+            <br />
+            #define <b>TUI_ERROR_POPUP_TITLE_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>TUI_ERROR_POPUP_HEADING_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE</b> 65536
+            <br />
+            #define <b>ERROR_POPUP_LINE_CAPACITY</b> 2048
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>ui_error_popup_visible</b> (void)
+            <br />
+            <b>terminal_size_t</b> <b>ui_error_popup_minimum</b> (void)
+            <br />
+            void <b>ui_error_popup_key</b> (<b>keyboard_key_t</b> key)
+            <br />
+            void <b>ui_error_popup_render</b> (<b>frame_buffer_t</b> *out,
+            <b>terminal_size_t</b> size)
+            <br />
+            void <b>ui_error_popup_reset</b> (void)
+            <br />
+            void <b>ui_error_popup_preserve</b> (int fd,
+            <b>terminal_size_t</b> size)
+            <br />
+            void <b>ui_error_popup_flush</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ERROR_POPUP_LINE_CAPACITY___2048">
+            <a
+              class="permalink"
+              href="#_define_ERROR_POPUP_LINE_CAPACITY___2048"
+              >#define ERROR_POPUP_LINE_CAPACITY 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE___40">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE___40"
+              >#define TUI_ERROR_POPUP_ADDRESS_BUFFER_SIZE 40</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_CELL_BUFFER_SIZE___1024">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_CELL_BUFFER_SIZE___1024"
+              >#define TUI_ERROR_POPUP_CELL_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>error_popup.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_error_popup_preserve()</b>, and
+            <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_CODE_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_CODE_BUFFER_SIZE___512"
+              >#define TUI_ERROR_POPUP_CODE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>error_popup.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_error_popup_preserve()</b>, and
+            <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_FILE_BUFFER_SIZE___1024">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_FILE_BUFFER_SIZE___1024"
+              >#define TUI_ERROR_POPUP_FILE_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE___65536"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE___65536"
+              >#define TUI_ERROR_POPUP_FINAL_OUTPUT_BUFFER_SIZE 65536</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE___256"
+              >#define TUI_ERROR_POPUP_FUNCTION_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_HEADING_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_HEADING_BUFFER_SIZE___256"
+              >#define TUI_ERROR_POPUP_HEADING_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>error_popup.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_LINE_BUFFER_SIZE___24">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_LINE_BUFFER_SIZE___24"
+              >#define TUI_ERROR_POPUP_LINE_BUFFER_SIZE 24</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_STYLE_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_STYLE_BUFFER_SIZE___128"
+              >#define TUI_ERROR_POPUP_STYLE_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_THREAD_BUFFER_SIZE___160">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_THREAD_BUFFER_SIZE___160"
+              >#define TUI_ERROR_POPUP_THREAD_BUFFER_SIZE 160</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>error_popup.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_ERROR_POPUP_TITLE_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_TITLE_BUFFER_SIZE___128"
+              >#define TUI_ERROR_POPUP_TITLE_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>error_popup.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE___65536"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE___65536"
+              >#define TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE 65536</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>error_popup.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_flush_(void_)">
+            <a class="permalink" href="#void_ui_error_popup_flush_(void_)"
+              >void ui_error_popup_flush (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Write preserved terminal output after shutdown diagnostics, without
+            allocating or using options.
+          </p>
+          <p class="Pp">
+            Definition at line <b>444</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+444                                 {
 445   if (g_final_length)
 446     platform_write_all(g_final_fd, g_final_output, g_final_length);
 447   g_final_length = 0;
 448 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_write_all()</b>, and
-    <b>ui_error_popup_flush()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
-    <b>ui_error_popup_flush()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_error_popup_key_("><a class="permalink" href="#void_ui_error_popup_key_(">void
-  ui_error_popup_key (<b>keyboard_key_t</b> key)</a></h2>
-<p class="Pp">Definition at line <b>76</b> of file <b>error_popup.c</b>.</p>
-<pre>76                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>platform_write_all()</b>, and
+            <b>ui_error_popup_flush()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_shared_destroy()</b>, and
+            <b>ui_error_popup_flush()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_key_(">
+            <a class="permalink" href="#void_ui_error_popup_key_("
+              >void ui_error_popup_key (<b>keyboard_key_t</b> key)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+76                                             {
 77   lock_state();
 78   refresh_locked();
 79   uint64_t dismiss = 0;
@@ -250,37 +415,58 @@
 134     errno_notifications_dismiss(dismiss);
 135   ui_controller_redraw();
 136 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_ui_usage()</b>,
-    <b>errno_notifications_dismiss()</b>, <b>KEY_DOWN</b>, <b>KEY_END</b>,
-    <b>KEY_ESCAPE</b>, <b>KEY_HOME</b>, <b>KEY_LEFT</b>, <b>KEY_PAGEDOWN</b>,
-    <b>KEY_PAGEUP</b>, <b>KEY_RIGHT</b>, <b>KEY_UP</b>,
-    <b>ui_controller_redraw()</b>, and <b>ui_error_popup_key()</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_key()</b>, and
-    <b>ui_input_read_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>terminal_size_t</b> ui_error_popup_minimum (void )</h2>
-<p class="Pp">Definition at line <b>72</b> of file <b>error_popup.c</b>.</p>
-<pre>72                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_ui_usage()</b>,
+            <b>errno_notifications_dismiss()</b>, <b>KEY_DOWN</b>,
+            <b>KEY_END</b>, <b>KEY_ESCAPE</b>, <b>KEY_HOME</b>, <b>KEY_LEFT</b>,
+            <b>KEY_PAGEDOWN</b>, <b>KEY_PAGEUP</b>, <b>KEY_RIGHT</b>,
+            <b>KEY_UP</b>, <b>ui_controller_redraw()</b>, and
+            <b>ui_error_popup_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_error_popup_key()</b>, and
+            <b>ui_input_read_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> ui_error_popup_minimum (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>72</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+72                                              {
 73   return (terminal_size_t){.cols = 60, .rows = 14};
 74 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_error_popup_minimum()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_state()</b>,
-    <b>ui_error_popup_minimum()</b>, and <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_error_popup_preserve_(int_fd,_"><a class="permalink" href="#void_ui_error_popup_preserve_(int_fd,_">void
-  ui_error_popup_preserve (int fd, <b>terminal_size_t</b> size)</a></h2>
-<p class="Pp">Preserve pending notifications using cached terminal dimensions
-    before queue retirement. Callers own an interactive terminal and must
-    prevent concurrent rendering. This formatter performs no console queries and
-    does not wait for input.</p>
-<p class="Pp">Definition at line <b>381</b> of file <b>error_popup.c</b>.</p>
-<pre>381                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_error_popup_minimum()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_state()</b>,
+            <b>ui_error_popup_minimum()</b>, and <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_preserve_(int_fd,_">
+            <a class="permalink" href="#void_ui_error_popup_preserve_(int_fd,_"
+              >void ui_error_popup_preserve (int fd,
+              <b>terminal_size_t</b> size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Preserve pending notifications using cached terminal dimensions
+            before queue retirement. Callers own an interactive terminal and
+            must prevent concurrent rendering. This formatter performs no
+            console queries and does not wait for input.
+          </p>
+          <p class="Pp">
+            Definition at line <b>381</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+381                                                            {
 382   if (!errno_notifications_pending())
 383     return;
 384   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
@@ -342,32 +528,45 @@
 440     frame_buffer_destroy(output);
 441   errno_notifications_suppress(previous);
 442 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
-    <b>ASCIICHAT_ERRNO_MESSAGE_MAX</b>, <b>colored_string()</b>,
-    <b>terminal_size_t::cols</b>, <b>errno_notifications_pending()</b>,
-    <b>errno_notifications_snapshot()</b>,
-    <b>errno_notifications_suppress()</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
-    <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
-    <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>, <b>LOG_COLOR_ERROR</b>,
-    <b>LOG_COLOR_RESET</b>, <b>MAX</b>, <b>MIN</b>, <b>safe_snprintf()</b>,
-    <b>terminal_should_color_output()</b>, <b>terminal_should_use_utf8()</b>,
-    <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b>,
-    <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b>,
-    <b>TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE</b>, <b>UI_ALIGN_LEFT</b>,
-    <b>ui_error_popup_preserve()</b>, <b>UI_POPUP_BOTTOM</b>,
-    <b>ui_popup_rule()</b>, <b>UI_POPUP_TOP</b>, and <b>ui_text_cell()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_shutdown()</b>, and
-    <b>ui_error_popup_preserve()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_error_popup_render_("><a class="permalink" href="#void_ui_error_popup_render_(">void
-  ui_error_popup_render (<b>frame_buffer_t</b> * out, <b>terminal_size_t</b>
-  size)</a></h2>
-<p class="Pp">Definition at line <b>299</b> of file <b>error_popup.c</b>.</p>
-<pre>299                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
+            <b>ASCIICHAT_ERRNO_MESSAGE_MAX</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>, <b>errno_notifications_pending()</b>,
+            <b>errno_notifications_snapshot()</b>,
+            <b>errno_notifications_suppress()</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+            <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+            <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_RESET</b>, <b>MAX</b>,
+            <b>MIN</b>, <b>safe_snprintf()</b>,
+            <b>terminal_should_color_output()</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_WRAPPED_BUFFER_SIZE</b>, <b>UI_ALIGN_LEFT</b>,
+            <b>ui_error_popup_preserve()</b>, <b>UI_POPUP_BOTTOM</b>,
+            <b>ui_popup_rule()</b>, <b>UI_POPUP_TOP</b>, and
+            <b>ui_text_cell()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>, and
+            <b>ui_error_popup_preserve()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_render_(">
+            <a class="permalink" href="#void_ui_error_popup_render_("
+              >void ui_error_popup_render (<b>frame_buffer_t</b> * out,
+              <b>terminal_size_t</b> size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>299</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+299                                                                       {
 300   asciichat_error_context_t error;
 301   lock_state();
 302   refresh_locked();
@@ -436,68 +635,91 @@
 365   ui_button_t button = {.label = &quot;Dismiss all&quot;, .shortcut = '\r'};
 366   ui_buttons_render(out, top + height - 2, left + 10, width - 20, &amp;button, 1, 0);
 367 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
-    <b>asciichat_error_context_t::error_id</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer_get_screen_output_fd()</b>, <b>frame_buffer_printf()</b>,
-    <b>GET_OPTION</b>, <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
-    <b>LOG_COLOR_RESET</b>, <b>MIN</b>, <b>terminal_size_t::rows</b>,
-    <b>safe_snprintf()</b>, <b>terminal_should_color_output()</b>,
-    <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b>,
-    <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b>,
-    <b>TUI_ERROR_POPUP_HEADING_BUFFER_SIZE</b>,
-    <b>TUI_ERROR_POPUP_TITLE_BUFFER_SIZE</b>, <b>UI_ALIGN_LEFT</b>,
-    <b>ui_buttons_render()</b>, <b>ui_error_popup_minimum()</b>,
-    <b>ui_error_popup_render()</b>, <b>ui_popup_frame()</b>,
-    <b>ui_scrollbar_render()</b>, <b>ui_text_cell()</b>,
-    <b>ui_text_color_prefix()</b>, <b>ui_too_small()</b>, and
-    <b>ui_too_small_render()</b>.</p>
-<p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_error_popup_reset_(void_)"><a class="permalink" href="#void_ui_error_popup_reset_(void_)">void
-  ui_error_popup_reset (void )</a></h2>
-<p class="Pp">Definition at line <b>369</b> of file <b>error_popup.c</b>.</p>
-<pre>369                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>asciichat_error_context_t::error_id</b>,
+            <b>frame_buffer_append()</b>,
+            <b>frame_buffer_get_screen_output_fd()</b>,
+            <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
+            <b>LOG_COLOR_RESET</b>, <b>MIN</b>, <b>terminal_size_t::rows</b>,
+            <b>safe_snprintf()</b>, <b>terminal_should_color_output()</b>,
+            <b>TUI_ERROR_POPUP_CELL_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_CODE_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_HEADING_BUFFER_SIZE</b>,
+            <b>TUI_ERROR_POPUP_TITLE_BUFFER_SIZE</b>, <b>UI_ALIGN_LEFT</b>,
+            <b>ui_buttons_render()</b>, <b>ui_error_popup_minimum()</b>,
+            <b>ui_error_popup_render()</b>, <b>ui_popup_frame()</b>,
+            <b>ui_scrollbar_render()</b>, <b>ui_text_cell()</b>,
+            <b>ui_text_color_prefix()</b>, <b>ui_too_small()</b>, and
+            <b>ui_too_small_render()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_error_popup_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_error_popup_reset_(void_)">
+            <a class="permalink" href="#void_ui_error_popup_reset_(void_)"
+              >void ui_error_popup_reset (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>369</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+369                                 {
 370   lock_state();
 371   g_count = g_selected = g_scroll = 0;
 372   g_latest = g_displayed_latest = g_dropped = 0;
 373   unlock_state();
 374   g_cached_id = 0;
 375 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_error_popup_reset()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_shutdown()</b>, and
-    <b>ui_error_popup_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_error_popup_visible (void )</h2>
-<p class="Pp">Error notifications are an overlay, independent of the selected
-    application screen.</p>
-<p class="Pp">Definition at line <b>68</b> of file <b>error_popup.c</b>.</p>
-<pre>68                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_error_popup_reset()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>, and
+            <b>ui_error_popup_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_error_popup_visible (void )</h2>
+          <p class="Pp">
+            Error notifications are an overlay, independent of the selected
+            application screen.
+          </p>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>error_popup.c</b>.
+          </p>
+          <pre>
+68                                   {
 69   return errno_notifications_pending();
 70 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>errno_notifications_pending()</b>, and
-    <b>ui_error_popup_visible()</b>.</p>
-<p class="Pp">Referenced by <b>ui_controller_current_screen()</b>,
-    <b>ui_error_popup_visible()</b>, and <b>ui_input_read_key()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>errno_notifications_pending()</b>, and
+            <b>ui_error_popup_visible()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_current_screen()</b>,
+            <b>ui_error_popup_visible()</b>, and <b>ui_input_read_key()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,98 +1,151 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>io.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">io.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">io.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">io.c - IO capture implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>LOG_IO_BUFFER_SIZE</b> 8192
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>log_io_t</b> <b>log_io_start</b> (void)
-  <br/>
-  Start capturing stdout and stderr. void <b>log_io_stop</b> (<b>log_io_t</b>
-    capture, const char *prefix)
-  <br/>
-  Stop capturing and log the accumulated output.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">IO capture implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>io.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_IO_BUFFER_SIZE___8192"><a class="permalink" href="#_define_LOG_IO_BUFFER_SIZE___8192">#define
-  LOG_IO_BUFFER_SIZE 8192</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>io.c</b>.</p>
-<p class="Pp">Referenced by <b>log_io_stop()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>log_io_t</b> log_io_start (void )</h2>
-<p class="Pp">Start capturing stdout and stderr. Redirects both stdout and
-    stderr to a temporary file so their output can be captured and logged. Call
-    <b>log_io_stop()</b> to end capture and log the accumulated output.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Capture handle (use with log_io_stop)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">If capture fails, returns a handle with saved_stdout_fd =
-  -1
-<p class="Pp"></p>
-<p class="Pp">Do not use stdout/stderr directly while capturing</p>
-</div>
-<p class="Pp">Definition at line <b>13</b> of file <b>io.c</b>.</p>
-<pre>13                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>io.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">io.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">io.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">io.c - IO capture implementation.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LOG_IO_BUFFER_SIZE</b> 8192
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>log_io_t</b> <b>log_io_start</b> (void)
+            <br />
+            Start capturing stdout and stderr. void <b>log_io_stop</b> (<b
+              >log_io_t</b
+            >
+            capture, const char *prefix)
+            <br />
+            Stop capturing and log the accumulated output.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">IO capture implementation.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>io.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_IO_BUFFER_SIZE___8192">
+            <a class="permalink" href="#_define_LOG_IO_BUFFER_SIZE___8192"
+              >#define LOG_IO_BUFFER_SIZE 8192</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>11</b> of file <b>io.c</b>.</p>
+          <p class="Pp">Referenced by <b>log_io_stop()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>log_io_t</b> log_io_start (void )</h2>
+          <p class="Pp">
+            Start capturing stdout and stderr. Redirects both stdout and stderr
+            to a temporary file so their output can be captured and logged. Call
+            <b>log_io_stop()</b> to end capture and log the accumulated output.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Capture handle (use with log_io_stop)</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            If capture fails, returns a handle with saved_stdout_fd = -1
+            <p class="Pp"></p>
+            <p class="Pp">Do not use stdout/stderr directly while capturing</p>
+          </div>
+          <p class="Pp">Definition at line <b>13</b> of file <b>io.c</b>.</p>
+          <pre>
+13                             {
 14   log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
 15
 16   // A pipe cannot be drained until the wrapped call returns. A temporary file
@@ -126,34 +179,50 @@
 44   fclose(capture.output);
 45   return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
 46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_io_start()</b>,
-    <b>log_io_t::output</b>, <b>platform_close()</b>, <b>platform_dup()</b>,
-    <b>platform_dup2()</b>, <b>platform_fileno()</b>, <b>platform_tmpfile()</b>,
-    <b>log_io_t::saved_stderr_fd</b>, and <b>log_io_t::saved_stdout_fd</b>.</p>
-<p class="Pp">Referenced by <b>log_io_start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_io_stop_("><a class="permalink" href="#void_log_io_stop_(">void
-  log_io_stop (<b>log_io_t</b> capture, const char * prefix)</a></h2>
-<p class="Pp">Stop capturing and log the accumulated output. Restores stdout and
-    stderr to their original state, reads all captured output from the temporary
-    file, and logs it at DEBUG level with the given prefix.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capture</i> Capture handle returned by
-  <b>log_io_start()</b>
-<br/>
-<i>prefix</i> Prefix to use in log messages (e.g., &quot;ffmpeg&quot;,
-  &quot;portaudio&quot;)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call with invalid handle (saved_stdout_fd = -1)
-<p class="Pp"></p>
-<p class="Pp">After calling this, the capture handle is invalidated</p>
-</div>
-<p class="Pp">Definition at line <b>48</b> of file <b>io.c</b>.</p>
-<pre>48                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>log_io_start()</b>,
+            <b>log_io_t::output</b>, <b>platform_close()</b>,
+            <b>platform_dup()</b>, <b>platform_dup2()</b>,
+            <b>platform_fileno()</b>, <b>platform_tmpfile()</b>,
+            <b>log_io_t::saved_stderr_fd</b>, and
+            <b>log_io_t::saved_stdout_fd</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_io_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_io_stop_(">
+            <a class="permalink" href="#void_log_io_stop_("
+              >void log_io_stop (<b>log_io_t</b> capture, const char *
+              prefix)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stop capturing and log the accumulated output. Restores stdout and
+            stderr to their original state, reads all captured output from the
+            temporary file, and logs it at DEBUG level with the given prefix.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capture</i> Capture handle returned by
+            <b>log_io_start()</b>
+            <br />
+            <i>prefix</i> Prefix to use in log messages (e.g.,
+            &quot;ffmpeg&quot;, &quot;portaudio&quot;)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call with invalid handle (saved_stdout_fd = -1)
+            <p class="Pp"></p>
+            <p class="Pp">
+              After calling this, the capture handle is invalidated
+            </p>
+          </div>
+          <p class="Pp">Definition at line <b>48</b> of file <b>io.c</b>.</p>
+          <pre>
+48                                                        {
 49   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
 50     return; // Capture was not started successfully
 51   }
@@ -216,25 +285,30 @@
 108     fclose(capture.output);
 109   }
 110 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>LOG_IO_BUFFER_SIZE</b>,
-    <b>log_io_stop()</b>, <b>log_io_t::output</b>, <b>platform_close()</b>,
-    <b>platform_dup2()</b>, <b>log_io_t::saved_stderr_fd</b>, and
-    <b>log_io_t::saved_stdout_fd</b>.</p>
-<p class="Pp">Referenced by <b>log_io_stop()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>, <b>LOG_IO_BUFFER_SIZE</b>,
+            <b>log_io_stop()</b>, <b>log_io_t::output</b>,
+            <b>platform_close()</b>, <b>platform_dup2()</b>,
+            <b>log_io_t::saved_stderr_fd</b>, and
+            <b>log_io_t::saved_stdout_fd</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_io_stop()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

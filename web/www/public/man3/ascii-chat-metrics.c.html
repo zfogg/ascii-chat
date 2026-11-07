@@ -1,157 +1,246 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>metrics.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">metrics.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">metrics.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">metrics.c - Ring consensus metrics collection and wire protocol
-    implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>consensus_metrics_collection</b>
-  <br/>
-  Metrics collection structure for participant quality measurements.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>CONSENSUS_METRICS_INITIAL_CAPACITY</b> 10
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>consensus_metrics_collection</b>
-    <b>consensus_metrics_collection_t</b>
-  <br/>
-  Metrics collection structure for participant quality measurements.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>consensus_metrics_measure</b> (const
-    <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>], participant_metrics_t
-    *out_metrics)
-  <br/>
-  Measure participant network quality metrics. <b>asciichat_error_t</b>
-    <b>consensus_metrics_to_wire</b> (const participant_metrics_t *metrics,
-    participant_metrics_t *out_wire)
-  <br/>
-  Serialize metrics to wire format with network byte order.
-    <b>asciichat_error_t</b> <b>consensus_metrics_from_wire</b> (const
-    participant_metrics_t *wire_metrics, participant_metrics_t *out_metrics)
-  <br/>
-  Deserialize metrics from wire format. <b>asciichat_error_t</b>
-    <b>consensus_metrics_collection_create</b>
-    (<b>consensus_metrics_collection_t</b> **out_collection)
-  <br/>
-  Create empty metrics collection. <b>asciichat_error_t</b>
-    <b>consensus_metrics_collection_add</b>
-    (<b>consensus_metrics_collection_t</b> *collection, const
-    participant_metrics_t *metrics)
-  <br/>
-  Add metrics to collection. <b>asciichat_error_t</b>
-    <b>consensus_metrics_collection_get</b> (const
-    <b>consensus_metrics_collection_t</b> *collection, const
-    participant_metrics_t **out_metrics, int *out_count)
-  <br/>
-  Get all accumulated metrics. void <b>consensus_metrics_collection_destroy</b>
-    (<b>consensus_metrics_collection_t</b> *collection)
-  <br/>
-  Destroy metrics collection.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Ring consensus metrics collection and wire protocol
-    implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>metrics.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CONSENSUS_METRICS_INITIAL_CAPACITY___10"><a class="permalink" href="#_define_CONSENSUS_METRICS_INITIAL_CAPACITY___10">#define
-  CONSENSUS_METRICS_INITIAL_CAPACITY 10</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>metrics.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_collection_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>consensus_metrics_collection</b>
-  <b>consensus_metrics_collection_t</b></a></h2>
-<p class="Pp">Metrics collection structure for participant quality measurements.
-    Opaque metrics collection handle.</p>
-<p class="Pp"></p>
-<p class="Pp">Dynamic array storing network quality metrics for all participants
-    in a consensus session.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_metrics_collection_add
-  (<b>consensus_metrics_collection_t</b> * collection, const
-  participant_metrics_t * metrics)</h2>
-<p class="Pp">Add metrics to collection. Accumulates metrics from a participant
-    into the collection. Metrics are stored in dynamically-allocated array.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>collection</i> Collection to add to
-<br/>
-<i>metrics</i> Metrics to add</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>92</b> of file <b>metrics.c</b>.</p>
-<pre>93                                                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>metrics.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">metrics.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">metrics.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          metrics.c - Ring consensus metrics collection and wire protocol
+          implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>consensus_metrics_collection</b>
+            <br />
+            Metrics collection structure for participant quality measurements.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CONSENSUS_METRICS_INITIAL_CAPACITY</b> 10
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>consensus_metrics_collection</b>
+            <b>consensus_metrics_collection_t</b>
+            <br />
+            Metrics collection structure for participant quality measurements.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>consensus_metrics_measure</b> (const
+            <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>], participant_metrics_t
+            *out_metrics)
+            <br />
+            Measure participant network quality metrics.
+            <b>asciichat_error_t</b> <b>consensus_metrics_to_wire</b> (const
+            participant_metrics_t *metrics, participant_metrics_t *out_wire)
+            <br />
+            Serialize metrics to wire format with network byte order.
+            <b>asciichat_error_t</b> <b>consensus_metrics_from_wire</b> (const
+            participant_metrics_t *wire_metrics, participant_metrics_t
+            *out_metrics)
+            <br />
+            Deserialize metrics from wire format. <b>asciichat_error_t</b>
+            <b>consensus_metrics_collection_create</b>
+            (<b>consensus_metrics_collection_t</b> **out_collection)
+            <br />
+            Create empty metrics collection. <b>asciichat_error_t</b>
+            <b>consensus_metrics_collection_add</b>
+            (<b>consensus_metrics_collection_t</b> *collection, const
+            participant_metrics_t *metrics)
+            <br />
+            Add metrics to collection. <b>asciichat_error_t</b>
+            <b>consensus_metrics_collection_get</b> (const
+            <b>consensus_metrics_collection_t</b> *collection, const
+            participant_metrics_t **out_metrics, int *out_count)
+            <br />
+            Get all accumulated metrics. void
+            <b>consensus_metrics_collection_destroy</b> (<b
+              >consensus_metrics_collection_t</b
+            >
+            *collection)
+            <br />
+            Destroy metrics collection.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Ring consensus metrics collection and wire protocol implementation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>metrics.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CONSENSUS_METRICS_INITIAL_CAPACITY___10">
+            <a
+              class="permalink"
+              href="#_define_CONSENSUS_METRICS_INITIAL_CAPACITY___10"
+              >#define CONSENSUS_METRICS_INITIAL_CAPACITY 10</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>metrics.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_metrics_collection_create()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>consensus_metrics_collection</b>
+              <b>consensus_metrics_collection_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Metrics collection structure for participant quality measurements.
+            Opaque metrics collection handle.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Dynamic array storing network quality metrics for all participants
+            in a consensus session.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_metrics_collection_add (<b
+              >consensus_metrics_collection_t</b
+            >
+            * collection, const participant_metrics_t * metrics)
+          </h2>
+          <p class="Pp">
+            Add metrics to collection. Accumulates metrics from a participant
+            into the collection. Metrics are stored in dynamically-allocated
+            array.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>collection</i> Collection to add to
+            <br />
+            <i>metrics</i> Metrics to add
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+93                                                                                          {
 94   if (!collection || !metrics) {
 95     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to collection_add&quot;);
 96   }
@@ -186,31 +275,51 @@
 125
 126   return ASCIICHAT_OK;
 127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_metrics_collection::capacity</b>,
-    <b>consensus_metrics_collection_add()</b>,
-    <b>consensus_metrics_collection::count</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>consensus_metrics_collection::metrics</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_collection_add()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_metrics_collection_create
-  (<b>consensus_metrics_collection_t</b> ** out_collection)</h2>
-<p class="Pp">Create empty metrics collection. Allocates a collection structure
-    for accumulating metrics from multiple participants during a collection
-    round.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>out_collection</i> Output collection handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Must be freed with consensus_metrics_destroy()</div>
-<p class="Pp">Definition at line <b>76</b> of file <b>metrics.c</b>.</p>
-<pre>76                                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_metrics_collection::capacity</b>,
+            <b>consensus_metrics_collection_add()</b>,
+            <b>consensus_metrics_collection::count</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>consensus_metrics_collection::metrics</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_metrics_collection_add()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_metrics_collection_create (<b
+              >consensus_metrics_collection_t</b
+            >
+            ** out_collection)
+          </h2>
+          <p class="Pp">
+            Create empty metrics collection. Allocates a collection structure
+            for accumulating metrics from multiple participants during a
+            collection round.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>out_collection</i> Output collection handle
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Must be freed with consensus_metrics_destroy()
+          </div>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+76                                                                                                        {
 77   if (!out_collection) {
 78     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid output parameter&quot;);
 79   }
@@ -225,29 +334,47 @@
 88   *out_collection = collection;
 89   return ASCIICHAT_OK;
 90 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_metrics_collection::capacity</b>,
-    <b>consensus_metrics_collection_create()</b>,
-    <b>CONSENSUS_METRICS_INITIAL_CAPACITY</b>,
-    <b>consensus_metrics_collection::count</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>consensus_metrics_collection::metrics</b>, <b>SAFE_MALLOC</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_collection_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_consensus_metrics_collection_destroy_("><a class="permalink" href="#void_consensus_metrics_collection_destroy_(">void
-  consensus_metrics_collection_destroy (<b>consensus_metrics_collection_t</b> *
-  collection)</a></h2>
-<p class="Pp">Destroy metrics collection. Frees all allocated memory in the
-    collection, including the metrics array.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>collection</i> Collection to destroy (can be
-  NULL)</div>
-<p class="Pp">Definition at line <b>141</b> of file <b>metrics.c</b>.</p>
-<pre>141                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_metrics_collection::capacity</b>,
+            <b>consensus_metrics_collection_create()</b>,
+            <b>CONSENSUS_METRICS_INITIAL_CAPACITY</b>,
+            <b>consensus_metrics_collection::count</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>consensus_metrics_collection::metrics</b>, <b>SAFE_MALLOC</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_metrics_collection_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_consensus_metrics_collection_destroy_(">
+            <a
+              class="permalink"
+              href="#void_consensus_metrics_collection_destroy_("
+              >void consensus_metrics_collection_destroy (<b
+                >consensus_metrics_collection_t</b
+              >
+              * collection)</a
+            >
+          </h2>
+          <p class="Pp">
+            Destroy metrics collection. Frees all allocated memory in the
+            collection, including the metrics array.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>collection</i> Collection to destroy (can be NULL)
+          </div>
+          <p class="Pp">
+            Definition at line <b>141</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+141                                                                                       {
 142   if (!collection) {
 143     return;
 144   }
@@ -258,36 +385,52 @@
 149
 150   SAFE_FREE(collection);
 151 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_metrics_collection_destroy()</b>,
-    <b>consensus_metrics_collection::metrics</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_collection_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_metrics_collection_get (const
-  <b>consensus_metrics_collection_t</b> * collection, const
-  participant_metrics_t ** out_metrics, int * out_count)</h2>
-<p class="Pp">Get all accumulated metrics. Retrieves the accumulated metrics
-    array from collection.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>collection</i> Collection to query
-<br/>
-<i>out_metrics</i> Pointer to receive metrics array (not copied, owned by
-  collection)
-<br/>
-<i>out_count</i> Pointer to receive number of metrics</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">out_metrics points to internal collection storage - do
-  not modify or free
-<p class="Pp"></p>
-<p class="Pp">Valid only until collection is destroyed</p>
-</div>
-<p class="Pp">Definition at line <b>129</b> of file <b>metrics.c</b>.</p>
-<pre>130                                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_metrics_collection_destroy()</b>,
+            <b>consensus_metrics_collection::metrics</b>, and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_metrics_collection_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_metrics_collection_get (const
+            <b>consensus_metrics_collection_t</b> * collection, const
+            participant_metrics_t ** out_metrics, int * out_count)
+          </h2>
+          <p class="Pp">
+            Get all accumulated metrics. Retrieves the accumulated metrics array
+            from collection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>collection</i> Collection to query
+            <br />
+            <i>out_metrics</i> Pointer to receive metrics array (not copied,
+            owned by collection)
+            <br />
+            <i>out_count</i> Pointer to receive number of metrics
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            out_metrics points to internal collection storage - do not modify or
+            free
+            <p class="Pp"></p>
+            <p class="Pp">Valid only until collection is destroyed</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+130                                                                                                               {
 131   if (!collection || !out_metrics || !out_count) {
 132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to collection_get&quot;);
 133   }
@@ -297,33 +440,51 @@
 137
 138   return ASCIICHAT_OK;
 139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_metrics_collection_get()</b>,
-    <b>consensus_metrics_collection::count</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>consensus_metrics_collection::metrics</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_collection_get()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_metrics_from_wire (const
-  participant_metrics_t * wire_metrics, participant_metrics_t *
-  out_metrics)</h2>
-<p class="Pp">Deserialize metrics from wire format. Converts network byte order
-    values back to host byte order. Inverse operation of
-    <b>consensus_metrics_to_wire()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>wire_metrics</i> Input metrics in network byte order
-<br/>
-<i>out_metrics</i> Output metrics in host byte order</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">out_metrics must point to valid participant_metrics_t
-  allocated by caller</div>
-<p class="Pp">Definition at line <b>57</b> of file <b>metrics.c</b>.</p>
-<pre>58                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_metrics_collection_get()</b>,
+            <b>consensus_metrics_collection::count</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>consensus_metrics_collection::metrics</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>consensus_metrics_collection_get()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_metrics_from_wire (const
+            participant_metrics_t * wire_metrics, participant_metrics_t *
+            out_metrics)
+          </h2>
+          <p class="Pp">
+            Deserialize metrics from wire format. Converts network byte order
+            values back to host byte order. Inverse operation of
+            <b>consensus_metrics_to_wire()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>wire_metrics</i> Input metrics in network byte order
+            <br />
+            <i>out_metrics</i> Output metrics in host byte order
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            out_metrics must point to valid participant_metrics_t allocated by
+            caller
+          </div>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+58                                                                                   {
 59   if (!wire_metrics || !out_metrics) {
 60     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 61   }
@@ -340,43 +501,61 @@
 72
 73   return ASCIICHAT_OK;
 74 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_metrics_from_wire()</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_from_wire()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_metrics_measure (const
-  <b>uint8_t</b> my_id[SESSION_ID_SIZE], participant_metrics_t *
-  out_metrics)</h2>
-<p class="Pp">Measure participant network quality metrics. Collects all metrics
-    needed for host selection:</p>
-<ul class="Bl-bullet">
-  <li>NAT tier from detected NAT type (0-4)</li>
-  <li>Session-supplied measured bandwidth</li>
-  <li>Matched-probe RTT when available</li>
-  <li>STUN probe success rate by sending 10 probes</li>
-</ul>
-<p class="Pp">Without a session provider this returns ERROR_INVALID_STATE with
-    an empty observation. Missing data must not be scored as a favorable
-    default.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>my_id</i> Participant UUID (16 bytes)
-<br/>
-<i>out_metrics</i> Output metrics structure (caller-allocated)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">out_metrics must point to valid participant_metrics_t
-  allocated by caller
-<p class="Pp"></p>
-<p class="Pp">Measurement window and timestamp are set automatically</p>
-</div>
-<p class="Pp">Definition at line <b>30</b> of file <b>metrics.c</b>.</p>
-<pre>30                                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>consensus_metrics_from_wire()</b>, <b>ERROR_INVALID_PARAM</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_metrics_from_wire()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_metrics_measure (const
+            <b>uint8_t</b> my_id[SESSION_ID_SIZE], participant_metrics_t *
+            out_metrics)
+          </h2>
+          <p class="Pp">
+            Measure participant network quality metrics. Collects all metrics
+            needed for host selection:
+          </p>
+          <ul class="Bl-bullet">
+            <li>NAT tier from detected NAT type (0-4)</li>
+            <li>Session-supplied measured bandwidth</li>
+            <li>Matched-probe RTT when available</li>
+            <li>STUN probe success rate by sending 10 probes</li>
+          </ul>
+          <p class="Pp">
+            Without a session provider this returns ERROR_INVALID_STATE with an
+            empty observation. Missing data must not be scored as a favorable
+            default.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>my_id</i> Participant UUID (16 bytes)
+            <br />
+            <i>out_metrics</i> Output metrics structure (caller-allocated)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            out_metrics must point to valid participant_metrics_t allocated by
+            caller
+            <p class="Pp"></p>
+            <p class="Pp">
+              Measurement window and timestamp are set automatically
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+30                                                                                                                       {
 31   if (!my_id || !out_metrics)
 32     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid measurement parameters&quot;);
 33   memset(out_metrics, 0, sizeof(*out_metrics));
@@ -384,37 +563,52 @@
 35   out_metrics-&gt;nat_tier = 4;
 36   return SET_ERRNO(ERROR_INVALID_STATE, &quot;Network measurements require a session measurement provider&quot;);
 37 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>consensus_metrics_measure()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>SESSION_ID_SIZE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_measure()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> consensus_metrics_to_wire (const
-  participant_metrics_t * metrics, participant_metrics_t * out_wire)</h2>
-<p class="Pp">Serialize metrics to wire format with network byte order. Converts
-    host-order values to network byte order (big-endian) for transmission over
-    the network. Multi-byte fields are converted:</p>
-<ul class="Bl-bullet">
-  <li>upload_kbps (<b>uint32_t</b>)</li>
-  <li>rtt_ms (<b>uint16_t</b>)</li>
-  <li>public_port (<b>uint16_t</b>)</li>
-  <li>measurement_time_ms (<b>uint64_t</b>)</li>
-  <li>measurement_window_ms (<b>uint32_t</b>)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>metrics</i> Input metrics in host byte order
-<br/>
-<i>out_wire</i> Output metrics in network byte order</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">out_wire must point to valid participant_metrics_t
-  allocated by caller</div>
-<p class="Pp">Definition at line <b>39</b> of file <b>metrics.c</b>.</p>
-<pre>39                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>consensus_metrics_measure()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>SESSION_ID_SIZE</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_metrics_measure()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> consensus_metrics_to_wire (const
+            participant_metrics_t * metrics, participant_metrics_t * out_wire)
+          </h2>
+          <p class="Pp">
+            Serialize metrics to wire format with network byte order. Converts
+            host-order values to network byte order (big-endian) for
+            transmission over the network. Multi-byte fields are converted:
+          </p>
+          <ul class="Bl-bullet">
+            <li>upload_kbps (<b>uint32_t</b>)</li>
+            <li>rtt_ms (<b>uint16_t</b>)</li>
+            <li>public_port (<b>uint16_t</b>)</li>
+            <li>measurement_time_ms (<b>uint64_t</b>)</li>
+            <li>measurement_window_ms (<b>uint32_t</b>)</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>metrics</i> Input metrics in host byte order
+            <br />
+            <i>out_wire</i> Output metrics in network byte order
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            out_wire must point to valid participant_metrics_t allocated by
+            caller
+          </div>
+          <p class="Pp">
+            Definition at line <b>39</b> of file <b>metrics.c</b>.
+          </p>
+          <pre>
+39                                                                                                                    {
 40   if (!metrics || !out_wire) {
 41     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 42   }
@@ -431,24 +625,27 @@
 53
 54   return ASCIICHAT_OK;
 55 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_metrics_to_wire()</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>consensus_metrics_to_wire()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>consensus_metrics_to_wire()</b>,
+            <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>consensus_metrics_to_wire()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

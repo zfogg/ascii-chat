@@ -1,142 +1,206 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>pem.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">pem.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">pem.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">pem.c - &#x1F4C4; PEM format encoding/decoding utilities for
-    certificates and keys (adapted from BearSSL)</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>bvector</b>
-  <br/>
-  Dynamic byte vector for PEM decoding. struct <b>pem_object_t</b>
-  <br/>
-  Parsed PEM object with name and data.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>VECTOR</b>(type)
-  <br/>
-  #define <b>VEC_INIT</b> {0, 0, 0}
-  <br/>
-  #define <b>VEC_CLEAR</b>(vec)
-  <br/>
-  #define <b>VEC_CLEAREXT</b>(vec, fun)
-  <br/>
-  #define <b>VEC_ADD</b>(vec, x)
-  <br/>
-  #define <b>VEC_ADDMANY</b>(vec, xp, num)
-  <br/>
-  #define <b>VEC_ELT</b>(vec, idx)
-  <br/>
-  #define <b>VEC_LEN</b>(vec)
-  <br/>
-  #define <b>VEC_TOARRAY</b>(vec)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>free_ta_contents</b> (br_x509_trust_anchor *ta)
-  <br/>
-  Free the contents of a trust anchor. size_t
-    <b>read_trust_anchors_from_memory</b> (<b>anchor_list</b> *dst, const
-    unsigned char *pem_data, size_t pem_len)
-  <br/>
-  Read trust anchors from PEM-encoded data in memory.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4C4; PEM format encoding/decoding utilities for certificates
-    and keys (adapted from BearSSL)</p>
-<p class="Pp">Copyright (c) 2016 Thomas Pornin pornin@bolet.org Adapted for
-    ascii-chat by Zachary Fogg me@zfo.gg</p>
-<p class="Pp"></p>
-<p class="Pp">Permission is hereby granted, free of charge, to any person
-    obtaining a copy of this software and associated documentation files (the
-    &quot;Software&quot;), to deal in the Software without restriction,
-    including without limitation the rights to use, copy, modify, merge,
-    publish, distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:</p>
-<p class="Pp"></p>
-<p class="Pp">The above copyright notice and this permission notice shall be
-    included in all copies or substantial portions of the Software.</p>
-<p class="Pp"></p>
-<p class="Pp">THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF
-    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
-    EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-    USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
-<p class="Pp">Definition in file <b>pem.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_ADD(_vec,__x)"><a class="permalink" href="#_define_VEC_ADD(_vec,__x)">#define
-  VEC_ADD( vec, x)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pem.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pem.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pem.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          pem.c - &#x1F4C4; PEM format encoding/decoding utilities for
+          certificates and keys (adapted from BearSSL)
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>bvector</b>
+            <br />
+            Dynamic byte vector for PEM decoding. struct <b>pem_object_t</b>
+            <br />
+            Parsed PEM object with name and data.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>VECTOR</b>(type)
+            <br />
+            #define <b>VEC_INIT</b> {0, 0, 0}
+            <br />
+            #define <b>VEC_CLEAR</b>(vec)
+            <br />
+            #define <b>VEC_CLEAREXT</b>(vec, fun)
+            <br />
+            #define <b>VEC_ADD</b>(vec, x)
+            <br />
+            #define <b>VEC_ADDMANY</b>(vec, xp, num)
+            <br />
+            #define <b>VEC_ELT</b>(vec, idx)
+            <br />
+            #define <b>VEC_LEN</b>(vec)
+            <br />
+            #define <b>VEC_TOARRAY</b>(vec)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>free_ta_contents</b> (br_x509_trust_anchor *ta)
+            <br />
+            Free the contents of a trust anchor. size_t
+            <b>read_trust_anchors_from_memory</b> (<b>anchor_list</b> *dst,
+            const unsigned char *pem_data, size_t pem_len)
+            <br />
+            Read trust anchors from PEM-encoded data in memory.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4C4; PEM format encoding/decoding utilities for certificates and
+          keys (adapted from BearSSL)
+        </p>
+        <p class="Pp">
+          Copyright (c) 2016 Thomas Pornin pornin@bolet.org Adapted for
+          ascii-chat by Zachary Fogg me@zfo.gg
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Permission is hereby granted, free of charge, to any person obtaining
+          a copy of this software and associated documentation files (the
+          &quot;Software&quot;), to deal in the Software without restriction,
+          including without limitation the rights to use, copy, modify, merge,
+          publish, distribute, sublicense, and/or sell copies of the Software,
+          and to permit persons to whom the Software is furnished to do so,
+          subject to the following conditions:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The above copyright notice and this permission notice shall be
+          included in all copies or substantial portions of the Software.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY
+          KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+          OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+          NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+          LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+          OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+          WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+        </p>
+        <p class="Pp">Definition in file <b>pem.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_ADD(_vec,__x)">
+            <a class="permalink" href="#_define_VEC_ADD(_vec,__x)"
+              >#define VEC_ADD( vec, x)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, 1);                              \
 <br/>
   (vec).buf[(vec).ptr++] = (x);                                                                                      \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>68</b> of file <b>pem.c</b>.</p>
-<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_ADDMANY(_vec,__xp,__num)"><a class="permalink" href="#_define_VEC_ADDMANY(_vec,__xp,__num)">#define
-  VEC_ADDMANY( vec, xp, num)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>68</b> of file <b>pem.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>read_trust_anchors_from_memory()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_ADDMANY(_vec,__xp,__num)">
+            <a class="permalink" href="#_define_VEC_ADDMANY(_vec,__xp,__num)"
+              >#define VEC_ADDMANY( vec, xp, num)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   size_t vec_num = (num);                                                                                            \
 <br/>
@@ -146,16 +210,21 @@
 <br/>
   (vec).ptr += vec_num;                                                                                              \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>74</b> of file <b>pem.c</b>.</p>
-<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_CLEAR(_vec)"><a class="permalink" href="#_define_VEC_CLEAR(_vec)">#define
-  VEC_CLEAR( vec)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>74</b> of file <b>pem.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>read_trust_anchors_from_memory()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_CLEAR(_vec)">
+            <a class="permalink" href="#_define_VEC_CLEAR(_vec)"
+              >#define VEC_CLEAR( vec)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   SAFE_FREE((vec).buf);                                                                                              \
 <br/>
@@ -165,16 +234,21 @@
 <br/>
   (vec).len = 0;                                                                                                     \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>51</b> of file <b>pem.c</b>.</p>
-<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_CLEAREXT(_vec,__fun)"><a class="permalink" href="#_define_VEC_CLEAREXT(_vec,__fun)">#define
-  VEC_CLEAREXT( vec, fun)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>51</b> of file <b>pem.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>read_trust_anchors_from_memory()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_CLEAREXT(_vec,__fun)">
+            <a class="permalink" href="#_define_VEC_CLEAREXT(_vec,__fun)"
+              >#define VEC_CLEAREXT( vec, fun)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   size_t vec_tmp;                                                                                                    \
 <br/>
@@ -186,70 +260,93 @@
 <br/>
   VEC_CLEAR(vec);                                                                                                    \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>59</b> of file <b>pem.c</b>.</p>
-<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_ELT(_vec,__idx)"><a class="permalink" href="#_define_VEC_ELT(_vec,__idx)">#define
-  VEC_ELT( vec, idx)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((vec).buf[idx])</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>82</b> of file <b>pem.c</b>.</p>
-<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_INIT____0,_0,_0_"><a class="permalink" href="#_define_VEC_INIT____0,_0,_0_">#define
-  VEC_INIT {0, 0, 0}</a></h2>
-<p class="Pp">Definition at line <b>48</b> of file <b>pem.c</b>.</p>
-<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_LEN(_vec)"><a class="permalink" href="#_define_VEC_LEN(_vec)">#define
-  VEC_LEN( vec)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((vec).ptr)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>83</b> of file <b>pem.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VEC_TOARRAY(_vec)"><a class="permalink" href="#_define_VEC_TOARRAY(_vec)">#define
-  VEC_TOARRAY( vec)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>xblobdup((vec).buf, sizeof *((vec).buf) * (vec).ptr)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>84</b> of file <b>pem.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_VECTOR(_type)"><a class="permalink" href="#_define_VECTOR(_type)">#define
-  VECTOR( type)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>struct {                                                                                                             \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>59</b> of file <b>pem.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>read_trust_anchors_from_memory()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_ELT(_vec,__idx)">
+            <a class="permalink" href="#_define_VEC_ELT(_vec,__idx)"
+              >#define VEC_ELT( vec, idx)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((vec).buf[idx])</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>82</b> of file <b>pem.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>read_trust_anchors_from_memory()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_INIT____0,_0,_0_">
+            <a class="permalink" href="#_define_VEC_INIT____0,_0,_0_"
+              >#define VEC_INIT {0, 0, 0}</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>48</b> of file <b>pem.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>read_trust_anchors_from_memory()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_LEN(_vec)">
+            <a class="permalink" href="#_define_VEC_LEN(_vec)"
+              >#define VEC_LEN( vec)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((vec).ptr)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>83</b> of file <b>pem.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VEC_TOARRAY(_vec)">
+            <a class="permalink" href="#_define_VEC_TOARRAY(_vec)"
+              >#define VEC_TOARRAY( vec)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>xblobdup((vec).buf, sizeof *((vec).buf) * (vec).ptr)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>84</b> of file <b>pem.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_VECTOR(_type)">
+            <a class="permalink" href="#_define_VECTOR(_type)"
+              >#define VECTOR( type)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>struct {                                                                                                             \
 <br/>
   type *buf;                                                                                                         \
 <br/>
   size_t ptr, len;                                                                                                   \
 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>41</b> of file <b>pem.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>41</b> of file <b>pem.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

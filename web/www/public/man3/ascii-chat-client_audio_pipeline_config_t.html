@@ -1,189 +1,306 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client_audio_pipeline_config_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client_audio_pipeline_config_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client_audio_pipeline_config_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client_audio_pipeline_config_t - Pipeline configuration
-    parameters.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/audio/client_pipeline.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">int <b>channels</b>
-  <br/>
-  PCM channels (1 or 2). int <b>encoder_channels</b>
-  <br/>
-  Transmitted channels, independent of playback. int <b>sample_rate</b>
-  <br/>
-  <b>uint64_t</b> <b>frame_duration_ms</b>
-  <br/>
-  int <b>opus_bitrate</b>
-  <br/>
-  int <b>opus_application</b>
-  <br/>
-  <b>uint64_t</b> <b>echo_filter_ms</b>
-  <br/>
-  <b>audio_processor_config_t</b> <b>processor</b>
-  <br/>
-  <b>uint64_t</b> <b>jitter_margin_ms</b>
-  <br/>
-  <b>client_audio_pipeline_flags_t</b> <b>flags</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Pipeline configuration parameters.</p>
-<p class="Pp">All parameters have sensible defaults. Pass NULL to create() for
-    defaults.</p>
-<p class="Pp">Definition at line <b>147</b> of file
-  <b>client_pipeline.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_config_t::channels"><a class="permalink" href="#int_client_audio_pipeline_config_t::channels">int
-  client_audio_pipeline_config_t::channels</a></h2>
-<p class="Pp">PCM channels (1 or 2). Sample rate in Hz (default: 48000)</p>
-<p class="Pp">Definition at line <b>149</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_capture()</b>,
-    <b>client_audio_pipeline_config_for_source()</b>,
-    <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_playback()</b>, and
-    <b>client_audio_pipeline_process_duplex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  client_audio_pipeline_config_t::echo_filter_ms</h2>
-<p class="Pp">Reserved echo-filter hint in milliseconds; AEC3 currently uses its
-    fixed configuration</p>
-<p class="Pp">Definition at line <b>160</b> of file
-  <b>client_pipeline.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_config_t::encoder_channels"><a class="permalink" href="#int_client_audio_pipeline_config_t::encoder_channels">int
-  client_audio_pipeline_config_t::encoder_channels</a></h2>
-<p class="Pp">Transmitted channels, independent of playback.</p>
-<p class="Pp">Definition at line <b>150</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_capture()</b>,
-    <b>client_audio_pipeline_create()</b>, and
-    <b>session_participant_start_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_audio_pipeline_flags_t</b>
-  client_audio_pipeline_config_t::flags</h2>
-<p class="Pp">Component enable flags</p>
-<p class="Pp">Definition at line <b>169</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>, and
-    <b>client_audio_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  client_audio_pipeline_config_t::frame_duration_ms</h2>
-<p class="Pp">Frame size in milliseconds (default: 20ms)</p>
-<p class="Pp">Definition at line <b>153</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
-  client_audio_pipeline_config_t::jitter_margin_ms</h2>
-<p class="Pp">Initial playback jitter margin in milliseconds.</p>
-<p class="Pp">Definition at line <b>166</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>, and
-    <b>client_audio_pipeline_jitter_margin()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_config_t::opus_application"><a class="permalink" href="#int_client_audio_pipeline_config_t::opus_application">int
-  client_audio_pipeline_config_t::opus_application</a></h2>
-<p class="Pp">Opus application: 2048 for speech, 2049 for media/mixed audio.</p>
-<p class="Pp">Definition at line <b>157</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_config_for_source()</b>,
-    <b>client_audio_pipeline_create()</b>, and
-    <b>session_participant_start_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_config_t::opus_bitrate"><a class="permalink" href="#int_client_audio_pipeline_config_t::opus_bitrate">int
-  client_audio_pipeline_config_t::opus_bitrate</a></h2>
-<p class="Pp">Opus bitrate in bps (default: 32000)</p>
-<p class="Pp">Definition at line <b>155</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>,
-    <b>client_audio_pipeline_config_for_source()</b>,
-    <b>client_audio_pipeline_create()</b>, and
-    <b>session_participant_start_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>audio_processor_config_t</b>
-  client_audio_pipeline_config_t::processor</h2>
-<p class="Pp">Shared microphone enhancement settings.</p>
-<p class="Pp">Definition at line <b>163</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_config_for_source()</b>,
-    and <b>client_audio_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_config_t::sample_rate"><a class="permalink" href="#int_client_audio_pipeline_config_t::sample_rate">int
-  client_audio_pipeline_config_t::sample_rate</a></h2>
-<p class="Pp">Definition at line <b>151</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>,
-    <b>client_audio_pipeline_create()</b>, and
-    <b>client_audio_pipeline_process_duplex()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_audio_pipeline_config_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_audio_pipeline_config_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_audio_pipeline_config_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          client_audio_pipeline_config_t - Pipeline configuration parameters.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/audio/client_pipeline.h&gt;
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>channels</b>
+            <br />
+            PCM channels (1 or 2). int <b>encoder_channels</b>
+            <br />
+            Transmitted channels, independent of playback. int
+            <b>sample_rate</b>
+            <br />
+            <b>uint64_t</b> <b>frame_duration_ms</b>
+            <br />
+            int <b>opus_bitrate</b>
+            <br />
+            int <b>opus_application</b>
+            <br />
+            <b>uint64_t</b> <b>echo_filter_ms</b>
+            <br />
+            <b>audio_processor_config_t</b> <b>processor</b>
+            <br />
+            <b>uint64_t</b> <b>jitter_margin_ms</b>
+            <br />
+            <b>client_audio_pipeline_flags_t</b> <b>flags</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Pipeline configuration parameters.</p>
+        <p class="Pp">
+          All parameters have sensible defaults. Pass NULL to create() for
+          defaults.
+        </p>
+        <p class="Pp">
+          Definition at line <b>147</b> of file <b>client_pipeline.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_config_t::channels">
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_config_t::channels"
+              >int client_audio_pipeline_config_t::channels</a
+            >
+          </h2>
+          <p class="Pp">
+            PCM channels (1 or 2). Sample rate in Hz (default: 48000)
+          </p>
+          <p class="Pp">
+            Definition at line <b>149</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_capture()</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_playback()</b>, and
+            <b>client_audio_pipeline_process_duplex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> client_audio_pipeline_config_t::echo_filter_ms
+          </h2>
+          <p class="Pp">
+            Reserved echo-filter hint in milliseconds; AEC3 currently uses its
+            fixed configuration
+          </p>
+          <p class="Pp">
+            Definition at line <b>160</b> of file <b>client_pipeline.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_client_audio_pipeline_config_t::encoder_channels"
+          >
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_config_t::encoder_channels"
+              >int client_audio_pipeline_config_t::encoder_channels</a
+            >
+          </h2>
+          <p class="Pp">Transmitted channels, independent of playback.</p>
+          <p class="Pp">
+            Definition at line <b>150</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_capture()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>session_participant_start_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_flags_t</b>
+            client_audio_pipeline_config_t::flags
+          </h2>
+          <p class="Pp">Component enable flags</p>
+          <p class="Pp">
+            Definition at line <b>169</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>, and
+            <b>client_audio_pipeline_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> client_audio_pipeline_config_t::frame_duration_ms
+          </h2>
+          <p class="Pp">Frame size in milliseconds (default: 20ms)</p>
+          <p class="Pp">
+            Definition at line <b>153</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> client_audio_pipeline_config_t::jitter_margin_ms
+          </h2>
+          <p class="Pp">Initial playback jitter margin in milliseconds.</p>
+          <p class="Pp">
+            Definition at line <b>166</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>, and
+            <b>client_audio_pipeline_jitter_margin()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_client_audio_pipeline_config_t::opus_application"
+          >
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_config_t::opus_application"
+              >int client_audio_pipeline_config_t::opus_application</a
+            >
+          </h2>
+          <p class="Pp">
+            Opus application: 2048 for speech, 2049 for media/mixed audio.
+          </p>
+          <p class="Pp">
+            Definition at line <b>157</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>session_participant_start_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_config_t::opus_bitrate">
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_config_t::opus_bitrate"
+              >int client_audio_pipeline_config_t::opus_bitrate</a
+            >
+          </h2>
+          <p class="Pp">Opus bitrate in bps (default: 32000)</p>
+          <p class="Pp">
+            Definition at line <b>155</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>session_participant_start_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_processor_config_t</b>
+            client_audio_pipeline_config_t::processor
+          </h2>
+          <p class="Pp">Shared microphone enhancement settings.</p>
+          <p class="Pp">
+            Definition at line <b>163</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_config_for_source()</b>, and
+            <b>client_audio_pipeline_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_config_t::sample_rate">
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_config_t::sample_rate"
+              >int client_audio_pipeline_config_t::sample_rate</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>151</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>client_audio_pipeline_process_duplex()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

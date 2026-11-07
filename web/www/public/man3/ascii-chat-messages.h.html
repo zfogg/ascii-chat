@@ -1,96 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>messages.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">messages.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">messages.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">messages.h - ACIP protocol message structures and helpers.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const char * <b>acip_packet_type_name</b> (<b>uint16_t</b> type)
-  <br/>
-  Get human-readable name for packet type.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ACIP protocol message structures and helpers.</p>
-<p class="Pp">This header provides a centralized location for all ACIP message
-    structures used in ACIP packets. It includes packet structures from
-    <b>packet.h</b> and adds ACIP-specific helpers and type definitions.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ACIP_PACKET_RANGES:"><a class="permalink" href="#ACIP_PACKET_RANGES:">ACIP
-  PACKET RANGES: </a></h1>
-<ul class="Bl-bullet">
-  <li>Packets 1-35: Core ascii-chat protocol (video, audio, control)</li>
-  <li>Packets 6000-6199: ACDS discovery service protocol</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="DESIGN_RATIONALE:"><a class="permalink" href="#DESIGN_RATIONALE:">DESIGN
-  RATIONALE: </a></h1>
-<p class="Pp">Rather than duplicating structures, we include <b>packet.h</b>
-    which already defines all core protocol structures
-    (<b>ascii_frame_packet_t</b>, etc.). This header adds convenience helpers
-    and ACIP-specific functionality.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>messages.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_acip_packet_type_name_("><a class="permalink" href="#const_char_*_acip_packet_type_name_(">const
-  char * acip_packet_type_name (<b>uint16_t</b> type)</a></h2>
-<p class="Pp">Get human-readable name for packet type.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>type</i> Packet type from <b>packet_type_t</b>
-  enum</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">String name or &quot;UNKNOWN&quot;</div>
-<p class="Pp">Definition at line <b>672</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-<pre>672                                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>messages.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">messages.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">messages.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          messages.h - ACIP protocol message structures and helpers.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char * <b>acip_packet_type_name</b> (<b>uint16_t</b> type)
+            <br />
+            Get human-readable name for packet type.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ACIP protocol message structures and helpers.</p>
+        <p class="Pp">
+          This header provides a centralized location for all ACIP message
+          structures used in ACIP packets. It includes packet structures from
+          <b>packet.h</b> and adds ACIP-specific helpers and type definitions.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ACIP_PACKET_RANGES:">
+          <a class="permalink" href="#ACIP_PACKET_RANGES:"
+            >ACIP PACKET RANGES:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            Packets 1-35: Core ascii-chat protocol (video, audio, control)
+          </li>
+          <li>Packets 6000-6199: ACDS discovery service protocol</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="DESIGN_RATIONALE:">
+          <a class="permalink" href="#DESIGN_RATIONALE:">DESIGN RATIONALE: </a>
+        </h1>
+        <p class="Pp">
+          Rather than duplicating structures, we include <b>packet.h</b> which
+          already defines all core protocol structures
+          (<b>ascii_frame_packet_t</b>, etc.). This header adds convenience
+          helpers and ACIP-specific functionality.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>messages.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_acip_packet_type_name_(">
+            <a class="permalink" href="#const_char_*_acip_packet_type_name_("
+              >const char * acip_packet_type_name (<b>uint16_t</b> type)</a
+            >
+          </h2>
+          <p class="Pp">Get human-readable name for packet type.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>type</i> Packet type from <b>packet_type_t</b> enum
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">String name or &quot;UNKNOWN&quot;</div>
+          <p class="Pp">
+            Definition at line <b>672</b> of file
+            <b>network/acip/handlers.c</b>.
+          </p>
+          <pre>
+672                                                  {
 673   switch (type) {
 674   case PACKET_TYPE_PROTOCOL_VERSION:
 675     return &quot;PROTOCOL_VERSION&quot;;
@@ -240,75 +298,90 @@
 819     return &quot;UNKNOWN&quot;;
 820   }
 821 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_packet_type_name()</b>,
-    <b>PACKET_TYPE_ACIP_BANDWIDTH_RESULT</b>,
-    <b>PACKET_TYPE_ACIP_BANDWIDTH_TEST</b>,
-    <b>PACKET_TYPE_ACIP_BROADCAST_ACK</b>,
-    <b>PACKET_TYPE_ACIP_DISCOVERY_PING</b>, <b>PACKET_TYPE_ACIP_ERROR</b>,
-    <b>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED</b>,
-    <b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b>,
-    <b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b>, <b>PACKET_TYPE_ACIP_HOST_LOST</b>,
-    <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>,
-    <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b>,
-    <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b>,
-    <b>PACKET_TYPE_ACIP_PARTICIPANT_LIST</b>,
-    <b>PACKET_TYPE_ACIP_RING_COLLECT</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_CREATED</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_END</b>, <b>PACKET_TYPE_ACIP_SESSION_INFO</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b>,
-    <b>PACKET_TYPE_ACIP_SESSION_RECONNECT</b>,
-    <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>, <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
-    <b>PACKET_TYPE_ACIP_STRING_RELEASE</b>,
-    <b>PACKET_TYPE_ACIP_STRING_RENEW</b>,
-    <b>PACKET_TYPE_ACIP_STRING_RESERVE</b>,
-    <b>PACKET_TYPE_ACIP_STRING_RESERVED</b>, <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>,
-    <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b>, <b>PACKET_TYPE_ASCII_FRAME</b>,
-    <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_MESSAGE</b>,
-    <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>, <b>PACKET_TYPE_CLEAR_CONSOLE</b>,
-    <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>, <b>PACKET_TYPE_CLIENT_JOIN</b>,
-    <b>PACKET_TYPE_CLIENT_LEAVE</b>, <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
-    <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b>,
-    <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
-    <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
-    <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
-    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b>,
-    <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b>,
-    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
-    <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b>,
-    <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b>,
-    <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b>,
-    <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
-    <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
-    <b>PACKET_TYPE_IMAGE_FRAME_H264</b>, <b>PACKET_TYPE_IMAGE_FRAME_H265</b>,
-    <b>PACKET_TYPE_PING</b>, <b>PACKET_TYPE_PONG</b>,
-    <b>PACKET_TYPE_PROTOCOL_VERSION</b>, <b>PACKET_TYPE_REMOTE_LOG</b>,
-    <b>PACKET_TYPE_RING_ELECTION_RESULT</b>, <b>PACKET_TYPE_RING_MEMBERS</b>,
-    <b>PACKET_TYPE_SERVER_STATE</b>, <b>PACKET_TYPE_SIZE_MESSAGE</b>,
-    <b>PACKET_TYPE_STATS_ACK</b>, <b>PACKET_TYPE_STATS_COLLECTION_START</b>,
-    <b>PACKET_TYPE_STATS_UPDATE</b>, <b>PACKET_TYPE_STREAM_START</b>,
-    <b>PACKET_TYPE_STREAM_STOP</b>, and <b>PACKET_TYPE_TEXT_MESSAGE</b>.</p>
-<p class="Pp">Referenced by <b>acip_handle_server_packet()</b>,
-    <b>acip_packet_type_name()</b>, and <b>ascii_otel_packet()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_packet_type_name()</b>,
+            <b>PACKET_TYPE_ACIP_BANDWIDTH_RESULT</b>,
+            <b>PACKET_TYPE_ACIP_BANDWIDTH_TEST</b>,
+            <b>PACKET_TYPE_ACIP_BROADCAST_ACK</b>,
+            <b>PACKET_TYPE_ACIP_DISCOVERY_PING</b>,
+            <b>PACKET_TYPE_ACIP_ERROR</b>,
+            <b>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED</b>,
+            <b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b>,
+            <b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b>,
+            <b>PACKET_TYPE_ACIP_HOST_LOST</b>,
+            <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LIST</b>,
+            <b>PACKET_TYPE_ACIP_RING_COLLECT</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATED</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_END</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_INFO</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_RECONNECT</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RELEASE</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RENEW</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RESERVE</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RESERVED</b>,
+            <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>,
+            <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b>, <b>PACKET_TYPE_ASCII_FRAME</b>,
+            <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_MESSAGE</b>,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+            <b>PACKET_TYPE_CLEAR_CONSOLE</b>,
+            <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CLIENT_JOIN</b>, <b>PACKET_TYPE_CLIENT_LEAVE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b>,
+            <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
+            <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b>,
+            <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b>,
+            <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
+            <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b>,
+            <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b>,
+            <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
+            <b>PACKET_TYPE_ENCRYPTED</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME</b>, <b>PACKET_TYPE_IMAGE_FRAME_H264</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, <b>PACKET_TYPE_PING</b>,
+            <b>PACKET_TYPE_PONG</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+            <b>PACKET_TYPE_REMOTE_LOG</b>,
+            <b>PACKET_TYPE_RING_ELECTION_RESULT</b>,
+            <b>PACKET_TYPE_RING_MEMBERS</b>, <b>PACKET_TYPE_SERVER_STATE</b>,
+            <b>PACKET_TYPE_SIZE_MESSAGE</b>, <b>PACKET_TYPE_STATS_ACK</b>,
+            <b>PACKET_TYPE_STATS_COLLECTION_START</b>,
+            <b>PACKET_TYPE_STATS_UPDATE</b>, <b>PACKET_TYPE_STREAM_START</b>,
+            <b>PACKET_TYPE_STREAM_STOP</b>, and <b>PACKET_TYPE_TEXT_MESSAGE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_handle_server_packet()</b>,
+            <b>acip_packet_type_name()</b>, and <b>ascii_otel_packet()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

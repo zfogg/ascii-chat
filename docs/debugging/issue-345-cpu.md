@@ -57,125 +57,125 @@ Use the native executable path on Linux. The manual runner supports Windows/Linu
 
 Values are CPU percentages, **server / client** for two processes, otherwise a single process. `running` means alive at the sampling deadline, not proof of successful media exchange. Server variants 0/1/2/3/4 mean default idle / no audio mixer / forced status / no encryption / no compression. Unreachable variants 5/6/7/8 mean default retries / zero retries / splash enabled / snapshot.
 
-| Scenario | Windows CPU (state) | Linux CPU (state) |
-|---|---|---|
-| server-0 | 0.00 (running) | 0.40 (running) |
-| server-1 | 0.31 (running) | 0.40 (running) |
-| server-2 | 64.06 (running) | 80.78 (running) |
-| server-3 | 0.94 (running) | 0.60 (running) |
-| server-4 | 0.00 (running) | 0.40 (running) |
-| unreachable-5 | 0.00 (running) | 0.40 (running) |
-| unreachable-6 | 0.00 (exit 1) | 0.00 (exit 1) |
-| unreachable-7 | 0.00 (running) | 13.40 (running) |
-| unreachable-8 | 0.31 (exit 1) | 0.00 (exit 1) |
-| client-default | 28.75 / 51.88 (running / running) | 26.59 / 91.17 (running / running) |
-| client-raw | 29.69 / 52.81 (running / running) | 48.18 / 85.37 (running / running) |
-| client-no-encrypt | 0.31 / 1.56 (running / running) | 2.60 / 1.80 (running / running) |
-| client-no-compress | 27.19 / 51.25 (running / running) | 24.59 / 86.37 (running / running) |
-| client-audio | 30.31 / 52.81 (running / running) | 2.20 / 0.80 (exit 1 / running) |
-| client-fps1 | 1.25 / 1.56 (running / running) | 4.40 / 2.20 (running / running) |
-| client-fps144 | 53.44 / 61.88 (running / running) | 37.39 / 120.76 (running / running) |
-| client-snapshot | 0.62 / 0.94 (running / exit 0) | 0.60 / 0.00 (running / exit 0) |
-| client-snapshot3 | 25.31 / 46.25 (running / exit 0) | 7.00 / 23.79 (running / exit 0) |
-| client-waveform | 0.00 / 0.00 (running / exit 2) | 0.60 / 0.00 (running / exit 2) |
-| client-fft | 0.00 / 0.00 (running / exit 2) | 0.40 / 0.00 (running / exit 2) |
-| client-password | 32.50 / 50.31 (running / running) | 23.19 / 84.37 (running / running) |
-| client-wrong-password | 5.62 / 6.56 (running / exit 62) | 0.40 / 0.00 (running / exit 62) |
-| server-loss | 0.00 / 0.62 (exit 1 / running) | 0.00 / 0.40 (exit -9 / running) |
-| blocked-output | 28.98 / 51.10 (running / running) | 23.99 / 83.37 (running / running) |
-| closed-output | 29.38 / 121.25 (running / running) | 24.79 / 142.35 (running / running) |
-| closed-input | 30.00 / 51.56 (running / running) | 23.99 / 88.57 (running / running) |
-| mirror-default | 5.30 (running) | 40.99 (running) |
-| mirror-fps1 | 1.25 (running) | 14.80 (running) |
-| mirror-fps144 | 0.00 (running) | 76.58 (running) |
-| mirror-audio | 11.88 (running) | 39.19 (running) |
-| mirror-waveform | 0.00 (exit 2) | 0.00 (exit 2) |
-| mirror-fft | 0.00 (exit 2) | 0.00 (exit 2) |
-| mirror-snapshot | 0.00 (exit 0) | 0.00 (exit 0) |
-| mirror-matrix | 21.56 (running) | 54.19 (running) |
-| mirror-color | 9.69 (running) | 43.59 (running) |
-| mirror-large | 13.44 (running) | 46.99 (running) |
-| file-eof | 3.75 (exit 0) | 15.40 (exit 0) |
-| file-loop | 5.62 (running) | 23.59 (running) |
-| file-pause | 1.56 (running) | 16.40 (running) |
-| file-seek | 3.75 (exit 0) | 15.20 (exit 0) |
-| file-missing | 0.00 (exit 26) | 0.00 (exit 26) |
-| acds | 0.00 (running) | 0.40 (running) |
-| discovery-unreachable | 0.31 (exit 42) | 0.00 (exit 42) |
+| Scenario              | Windows CPU (state)                | Linux CPU (state)                  |
+| --------------------- | ---------------------------------- | ---------------------------------- |
+| server-0              | 0.00 (running)                     | 0.40 (running)                     |
+| server-1              | 0.31 (running)                     | 0.40 (running)                     |
+| server-2              | 64.06 (running)                    | 80.78 (running)                    |
+| server-3              | 0.94 (running)                     | 0.60 (running)                     |
+| server-4              | 0.00 (running)                     | 0.40 (running)                     |
+| unreachable-5         | 0.00 (running)                     | 0.40 (running)                     |
+| unreachable-6         | 0.00 (exit 1)                      | 0.00 (exit 1)                      |
+| unreachable-7         | 0.00 (running)                     | 13.40 (running)                    |
+| unreachable-8         | 0.31 (exit 1)                      | 0.00 (exit 1)                      |
+| client-default        | 28.75 / 51.88 (running / running)  | 26.59 / 91.17 (running / running)  |
+| client-raw            | 29.69 / 52.81 (running / running)  | 48.18 / 85.37 (running / running)  |
+| client-no-encrypt     | 0.31 / 1.56 (running / running)    | 2.60 / 1.80 (running / running)    |
+| client-no-compress    | 27.19 / 51.25 (running / running)  | 24.59 / 86.37 (running / running)  |
+| client-audio          | 30.31 / 52.81 (running / running)  | 2.20 / 0.80 (exit 1 / running)     |
+| client-fps1           | 1.25 / 1.56 (running / running)    | 4.40 / 2.20 (running / running)    |
+| client-fps144         | 53.44 / 61.88 (running / running)  | 37.39 / 120.76 (running / running) |
+| client-snapshot       | 0.62 / 0.94 (running / exit 0)     | 0.60 / 0.00 (running / exit 0)     |
+| client-snapshot3      | 25.31 / 46.25 (running / exit 0)   | 7.00 / 23.79 (running / exit 0)    |
+| client-waveform       | 0.00 / 0.00 (running / exit 2)     | 0.60 / 0.00 (running / exit 2)     |
+| client-fft            | 0.00 / 0.00 (running / exit 2)     | 0.40 / 0.00 (running / exit 2)     |
+| client-password       | 32.50 / 50.31 (running / running)  | 23.19 / 84.37 (running / running)  |
+| client-wrong-password | 5.62 / 6.56 (running / exit 62)    | 0.40 / 0.00 (running / exit 62)    |
+| server-loss           | 0.00 / 0.62 (exit 1 / running)     | 0.00 / 0.40 (exit -9 / running)    |
+| blocked-output        | 28.98 / 51.10 (running / running)  | 23.99 / 83.37 (running / running)  |
+| closed-output         | 29.38 / 121.25 (running / running) | 24.79 / 142.35 (running / running) |
+| closed-input          | 30.00 / 51.56 (running / running)  | 23.99 / 88.57 (running / running)  |
+| mirror-default        | 5.30 (running)                     | 40.99 (running)                    |
+| mirror-fps1           | 1.25 (running)                     | 14.80 (running)                    |
+| mirror-fps144         | 0.00 (running)                     | 76.58 (running)                    |
+| mirror-audio          | 11.88 (running)                    | 39.19 (running)                    |
+| mirror-waveform       | 0.00 (exit 2)                      | 0.00 (exit 2)                      |
+| mirror-fft            | 0.00 (exit 2)                      | 0.00 (exit 2)                      |
+| mirror-snapshot       | 0.00 (exit 0)                      | 0.00 (exit 0)                      |
+| mirror-matrix         | 21.56 (running)                    | 54.19 (running)                    |
+| mirror-color          | 9.69 (running)                     | 43.59 (running)                    |
+| mirror-large          | 13.44 (running)                    | 46.99 (running)                    |
+| file-eof              | 3.75 (exit 0)                      | 15.40 (exit 0)                     |
+| file-loop             | 5.62 (running)                     | 23.59 (running)                    |
+| file-pause            | 1.56 (running)                     | 16.40 (running)                    |
+| file-seek             | 3.75 (exit 0)                      | 15.20 (exit 0)                     |
+| file-missing          | 0.00 (exit 26)                     | 0.00 (exit 26)                     |
+| acds                  | 0.00 (running)                     | 0.40 (running)                     |
+| discovery-unreachable | 0.31 (exit 42)                     | 0.00 (exit 42)                     |
 
 ## After-fix checks and extended flags
 
-| Scenario | Windows CPU (state) | Linux CPU (state) |
-|---|---|---|
-| server-0 | 0.00 (running) | 0.60 (running) |
-| server-2 | 2.19 (running) | 6.60 (running) |
-| client-default | 31.25 / 52.19 (running / running) | 25.59 / 89.17 (running / running) |
-| client-fps1 | 0.93 / 0.93 (running / running) | 5.00 / 2.20 (running / running) |
-| client-fps144 | 34.69 / 62.81 (running / running) | 39.79 / 122.56 (running / running) |
-| server-loss | 0.00 / 0.00 (exit 1 / running) | 0.00 / 0.40 (exit -9 / running) |
-| closed-output | 1.25 / 1.56 (running / exit 1) | 0.80 / 0.60 (running / exit 1) |
-| mirror-default | 5.62 (running) | 28.79 (running) |
-| mirror-fps144 | 29.38 (running) | 67.38 (running) |
-| file-pause | 0.94 (running) | 5.20 (running) |
-| acds | 0.00 (running) | 0.40 (running) |
-| mirror-closed-output | 0.00 (exit 0) | 0.40 (exit 0) |
-| mirror-waveform-remote | 0.00 (exit 2) | 0.00 (exit 2) |
-| mirror-fft-remote | 0.00 (exit 2) | 0.00 (exit 2) |
+| Scenario               | Windows CPU (state)               | Linux CPU (state)                  |
+| ---------------------- | --------------------------------- | ---------------------------------- |
+| server-0               | 0.00 (running)                    | 0.60 (running)                     |
+| server-2               | 2.19 (running)                    | 6.60 (running)                     |
+| client-default         | 31.25 / 52.19 (running / running) | 25.59 / 89.17 (running / running)  |
+| client-fps1            | 0.93 / 0.93 (running / running)   | 5.00 / 2.20 (running / running)    |
+| client-fps144          | 34.69 / 62.81 (running / running) | 39.79 / 122.56 (running / running) |
+| server-loss            | 0.00 / 0.00 (exit 1 / running)    | 0.00 / 0.40 (exit -9 / running)    |
+| closed-output          | 1.25 / 1.56 (running / exit 1)    | 0.80 / 0.60 (running / exit 1)     |
+| mirror-default         | 5.62 (running)                    | 28.79 (running)                    |
+| mirror-fps144          | 29.38 (running)                   | 67.38 (running)                    |
+| file-pause             | 0.94 (running)                    | 5.20 (running)                     |
+| acds                   | 0.00 (running)                    | 0.40 (running)                     |
+| mirror-closed-output   | 0.00 (exit 0)                     | 0.40 (exit 0)                      |
+| mirror-waveform-remote | 0.00 (exit 2)                     | 0.00 (exit 2)                      |
+| mirror-fft-remote      | 0.00 (exit 2)                     | 0.00 (exit 2)                      |
 | client-waveform-remote | 31.25 / 87.50 (running / running) | 27.79 / 197.52 (running / running) |
-| client-fft-remote | 31.56 / 88.44 (running / running) | 27.79 / 197.72 (running / running) |
-| client-websocket | 75.62 / 70.94 (running / running) | 32.59 / 92.57 (running / running) |
-| client-file-pause | 33.12 / 53.12 (running / running) | 24.39 / 51.98 (running / running) |
-| mirror-invalid-camera | 0.00 (exit 2) | 0.00 (exit 2) |
-| mirror-strip-ansi | 15.00 (running) | 35.99 (running) |
-| mirror-http | 0.00 (exit 0) | 0.00 (exit 0) |
-| render-file-png | 0.00 (exit 8) | 0.00 (exit 0) |
-| server-status-long | 2.73 (running) | 7.00 (running) |
+| client-fft-remote      | 31.56 / 88.44 (running / running) | 27.79 / 197.72 (running / running) |
+| client-websocket       | 75.62 / 70.94 (running / running) | 32.59 / 92.57 (running / running)  |
+| client-file-pause      | 33.12 / 53.12 (running / running) | 24.39 / 51.98 (running / running)  |
+| mirror-invalid-camera  | 0.00 (exit 2)                     | 0.00 (exit 2)                      |
+| mirror-strip-ansi      | 15.00 (running)                   | 35.99 (running)                    |
+| mirror-http            | 0.00 (exit 0)                     | 0.00 (exit 0)                      |
+| render-file-png        | 0.00 (exit 8)                     | 0.00 (exit 0)                      |
+| server-status-long     | 2.73 (running)                    | 7.00 (running)                     |
 
 ## Multiple clients and error paths
 
-| Scenario | Windows CPU (state) | Linux CPU (state) |
-|---|---|---|
-| multi-2 | 63.54 / 72.14 / 41.15 (running / running / running) | 84.50 / 70.66 / 71.16 (running / running / running) |
-| multi-4 | 197.92 / 74.74 / 73.96 / 78.12 / 77.34 (running / running / running / running / running) | 214.32 / 94.99 / 72.50 / 72.16 / 71.49 (running / running / running / running / running) |
-| acds-status | 0.00 (running) | 0.60 (running) |
-| mirror-url-failed | 0.00 (running) | 0.00 (exit 26) |
-| mirror-stdin-eof | 0.00 (exit 26) | 0.00 (exit 26) |
-| mirror-media-audio | 0.00 (exit 2) | 0.00 (exit 2) |
+| Scenario           | Windows CPU (state)                                                                      | Linux CPU (state)                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| multi-2            | 63.54 / 72.14 / 41.15 (running / running / running)                                      | 84.50 / 70.66 / 71.16 (running / running / running)                                      |
+| multi-4            | 197.92 / 74.74 / 73.96 / 78.12 / 77.34 (running / running / running / running / running) | 214.32 / 94.99 / 72.50 / 72.16 / 71.49 (running / running / running / running / running) |
+| acds-status        | 0.00 (running)                                                                           | 0.60 (running)                                                                           |
+| mirror-url-failed  | 0.00 (running)                                                                           | 0.00 (exit 26)                                                                           |
+| mirror-stdin-eof   | 0.00 (exit 26)                                                                           | 0.00 (exit 26)                                                                           |
+| mirror-media-audio | 0.00 (exit 2)                                                                            | 0.00 (exit 2)                                                                            |
 
 ## Corrected audio visualization variants
 
-| Scenario | Windows CPU (state) | Linux CPU (state) |
-|---|---|---|
-| mirror-waveform-valid | 40.00 (running) | 98.17 (running) |
-| mirror-fft-valid | 42.19 (running) | 122.76 (running) |
-| mirror-media-audio-valid | 6.88 (running) | 12.80 (running) |
+| Scenario                 | Windows CPU (state) | Linux CPU (state) |
+| ------------------------ | ------------------- | ----------------- |
+| mirror-waveform-valid    | 40.00 (running)     | 98.17 (running)   |
+| mirror-fft-valid         | 42.19 (running)     | 122.76 (running)  |
+| mirror-media-audio-valid | 6.88 (running)      | 12.80 (running)   |
 
 ## Lifecycle, terminal, and discovery probes
 
-| Scenario | Platform / phase | CPU (state) |
-|---|---|---|
-| silent-handshake | Windows baseline | 0.00 (running) |
-| mirror-closed-output | Windows baseline | 103.73 (running) |
-| mirror-blocked-output | Windows baseline | 6.54 (running) |
-| discovery-waiting-for-peer | Windows baseline | 0.16 / 10.94 (running / running) |
-| discovery-service-lost | Windows baseline | 0.00 / 5.21 (exit 1 / exit 40) |
-| silent-handshake | Linux baseline | 0.25 (running) |
-| mirror-closed-output | Linux baseline | 78.58 (running) |
-| mirror-blocked-output | Linux baseline | 23.19 (running) |
-| pty-mirror | Linux baseline | 29.66 (running) |
-| pty-paused | Linux baseline | 5.50 (running) |
-| pty-small-terminal | Linux baseline | 31.83 (running) |
-| pty-help | Linux baseline | 26.16 (running) |
-| pty-terminal-closed | Linux baseline | 54.66 (running) |
-| pty-sigterm | Linux baseline | 0.33 (exit 0) |
-| pty-client | Linux baseline | 46.83 / 84.33 (running / running) |
-| pty-server-stopped | Linux baseline | 0.00 / 2.33 (running / running) |
-| pty-server-killed | Linux baseline | 0.00 / 1.00 (exit -9 / running) |
-| pty-client-sigterm | Linux baseline | 0.67 / 0.67 (running / exit 1) |
-| discovery-waiting-for-peer | Linux baseline | 0.40 / 29.60 (running / running) |
-| discovery-service-lost | Linux baseline | 0.00 / 29.66 (exit -9 / running) |
-| pty-paused | Linux fixed | 6.17 (running) |
-| pty-small-terminal | Linux fixed | 30.50 (running) |
-| pty-help | Linux fixed | 24.33 (running) |
-| pty-terminal-closed | Linux fixed | 30.16 (running) |
-| pty-sigterm | Linux fixed | 0.33 (exit 0) |
+| Scenario                   | Platform / phase | CPU (state)                       |
+| -------------------------- | ---------------- | --------------------------------- |
+| silent-handshake           | Windows baseline | 0.00 (running)                    |
+| mirror-closed-output       | Windows baseline | 103.73 (running)                  |
+| mirror-blocked-output      | Windows baseline | 6.54 (running)                    |
+| discovery-waiting-for-peer | Windows baseline | 0.16 / 10.94 (running / running)  |
+| discovery-service-lost     | Windows baseline | 0.00 / 5.21 (exit 1 / exit 40)    |
+| silent-handshake           | Linux baseline   | 0.25 (running)                    |
+| mirror-closed-output       | Linux baseline   | 78.58 (running)                   |
+| mirror-blocked-output      | Linux baseline   | 23.19 (running)                   |
+| pty-mirror                 | Linux baseline   | 29.66 (running)                   |
+| pty-paused                 | Linux baseline   | 5.50 (running)                    |
+| pty-small-terminal         | Linux baseline   | 31.83 (running)                   |
+| pty-help                   | Linux baseline   | 26.16 (running)                   |
+| pty-terminal-closed        | Linux baseline   | 54.66 (running)                   |
+| pty-sigterm                | Linux baseline   | 0.33 (exit 0)                     |
+| pty-client                 | Linux baseline   | 46.83 / 84.33 (running / running) |
+| pty-server-stopped         | Linux baseline   | 0.00 / 2.33 (running / running)   |
+| pty-server-killed          | Linux baseline   | 0.00 / 1.00 (exit -9 / running)   |
+| pty-client-sigterm         | Linux baseline   | 0.67 / 0.67 (running / exit 1)    |
+| discovery-waiting-for-peer | Linux baseline   | 0.40 / 29.60 (running / running)  |
+| discovery-service-lost     | Linux baseline   | 0.00 / 29.66 (exit -9 / running)  |
+| pty-paused                 | Linux fixed      | 6.17 (running)                    |
+| pty-small-terminal         | Linux fixed      | 30.50 (running)                   |
+| pty-help                   | Linux fixed      | 24.33 (running)                   |
+| pty-terminal-closed        | Linux fixed      | 30.16 (running)                   |
+| pty-sigterm                | Linux fixed      | 0.33 (exit 0)                     |

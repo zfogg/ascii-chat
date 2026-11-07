@@ -1,103 +1,168 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>async.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">async.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">async.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">async.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>async_packet</b>
-  <br/>
-  struct <b>async_tcp_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>async_packet</b> <b>async_packet_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>acip_async_tcp_transport_detach</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  <b>bool</b> <b>acip_async_tcp_transport_is</b> (const <b>acip_transport_t</b>
-    *transport)
-  <br/>
-  size_t <b>acip_async_tcp_transport_queued</b> (<b>acip_transport_t</b>
-    *transport)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_async_tcp_transport_create</b>
-    (<b>platform_event_stream_t</b> *stream, <b>crypto_context_t</b> *crypto)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_async_tcp_client_create</b> (<b>socket_t</b>
-    *socket, <b>crypto_context_t</b> *crypto)
-  <br/>
-  <b>acip_transport_t</b> * <b>acip_async_tcp_accepted_create</b>
-    (<b>platform_event_stream_t</b> *stream)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>async_packet</b> <b>async_packet_t</b></a></h2>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_async_tcp_accepted_create
-  (<b>platform_event_stream_t</b> * stream)</h2>
-<p class="Pp">Queue complete packets from an accepted stream on its listener's
-    loop. The returned transport is owned by the accepting caller. Destroy it
-    outside the loop thread while the listener is running, or after the listener
-    stops.</p>
-<p class="Pp">Definition at line <b>419</b> of file <b>async.c</b>.</p>
-<pre>419                                                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>async.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">async.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">async.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">async.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>async_packet</b>
+            <br />
+            struct <b>async_tcp_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>async_packet</b> <b>async_packet_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>acip_async_tcp_transport_detach</b> (<b>acip_transport_t</b>
+            *transport)
+            <br />
+            <b>bool</b> <b>acip_async_tcp_transport_is</b> (const
+            <b>acip_transport_t</b>
+            *transport)
+            <br />
+            size_t <b>acip_async_tcp_transport_queued</b> (<b
+              >acip_transport_t</b
+            >
+            *transport)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_async_tcp_transport_create</b> (<b
+              >platform_event_stream_t</b
+            >
+            *stream, <b>crypto_context_t</b> *crypto)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_async_tcp_client_create</b> (<b
+              >socket_t</b
+            >
+            *socket, <b>crypto_context_t</b> *crypto)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_async_tcp_accepted_create</b> (<b
+              >platform_event_stream_t</b
+            >
+            *stream)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>async_packet</b> <b>async_packet_t</b></a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_async_tcp_accepted_create (<b
+              >platform_event_stream_t</b
+            >
+            * stream)
+          </h2>
+          <p class="Pp">
+            Queue complete packets from an accepted stream on its listener's
+            loop. The returned transport is owned by the accepting caller.
+            Destroy it outside the loop thread while the listener is running, or
+            after the listener stops.
+          </p>
+          <p class="Pp">
+            Definition at line <b>419</b> of file <b>async.c</b>.
+          </p>
+          <pre>
+419                                                                                   {
 420   acip_transport_t *transport = acip_async_tcp_transport_create(stream, NULL);
 421   if (!transport)
 422     return NULL;
@@ -119,24 +184,39 @@
 438   }
 439   return transport;
 440 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_async_tcp_accepted_create()</b>,
-    <b>acip_async_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>ASCIICHAT_OK</b>, <b>cond_init()</b>, <b>acip_transport::impl_data</b>,
-    <b>platform_event_stream_close()</b>,
-    <b>platform_event_stream_observe_queue()</b>,
-    <b>platform_event_stream_start()</b>, and <b>async_tcp_t::stream</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_async_tcp_client_create
-  (<b>socket_t</b> * socket, <b>crypto_context_t</b> * crypto)</h2>
-<p class="Pp">Native client adapter. Owns a loop thread; recv waits on a bounded
-    packet queue. Takes socket ownership when *socket becomes
-    INVALID_SOCKET_VALUE.</p>
-<p class="Pp">Definition at line <b>384</b> of file <b>async.c</b>.</p>
-<pre>384                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_async_tcp_accepted_create()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
+            <b>cond_init()</b>, <b>acip_transport::impl_data</b>,
+            <b>platform_event_stream_close()</b>,
+            <b>platform_event_stream_observe_queue()</b>,
+            <b>platform_event_stream_start()</b>, and
+            <b>async_tcp_t::stream</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_accepted_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_async_tcp_client_create (<b
+              >socket_t</b
+            >
+            * socket, <b>crypto_context_t</b> * crypto)
+          </h2>
+          <p class="Pp">
+            Native client adapter. Owns a loop thread; recv waits on a bounded
+            packet queue. Takes socket ownership when *socket becomes
+            INVALID_SOCKET_VALUE.
+          </p>
+          <p class="Pp">
+            Definition at line <b>384</b> of file <b>async.c</b>.
+          </p>
+          <pre>
+384                                                                                            {
 385   acip_transport_t *transport = acip_async_tcp_transport_create(NULL, crypto);
 386   if (!transport)
 387     return NULL;
@@ -170,27 +250,40 @@
 415   }
 416   return transport;
 417 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_async_tcp_client_create()</b>,
-    <b>acip_async_tcp_transport_create()</b>, <b>acip_outbound_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>acthread_create</b>,
-    <b>ASCIICHAT_OK</b>, <b>cond_init()</b>, <b>acip_transport::impl_data</b>,
-    <b>platform_event_loop_create()</b>, <b>platform_event_loop_tick()</b>,
-    <b>platform_event_stream_adopt()</b>,
-    <b>platform_event_stream_observe_queue()</b>,
-    <b>platform_event_stream_start()</b>, and <b>async_tcp_t::stream</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_async_tcp_transport_create
-  (<b>platform_event_stream_t</b> * stream, <b>crypto_context_t</b> *
-  crypto)</h2>
-<p class="Pp">Outbound ACIP adapter. Incoming packets are delivered by the
-    connection's decoder. Destroy after the stream close callback, when workers
-    have drained.</p>
-<p class="Pp">Definition at line <b>286</b> of file <b>async.c</b>.</p>
-<pre>286                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_async_tcp_client_create()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_outbound_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>acthread_create</b>, <b>ASCIICHAT_OK</b>, <b>cond_init()</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>platform_event_loop_create()</b>,
+            <b>platform_event_loop_tick()</b>,
+            <b>platform_event_stream_adopt()</b>,
+            <b>platform_event_stream_observe_queue()</b>,
+            <b>platform_event_stream_start()</b>, and
+            <b>async_tcp_t::stream</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_async_tcp_transport_create (<b
+              >platform_event_stream_t</b
+            >
+            * stream, <b>crypto_context_t</b> * crypto)
+          </h2>
+          <p class="Pp">
+            Outbound ACIP adapter. Incoming packets are delivered by the
+            connection's decoder. Destroy after the stream close callback, when
+            workers have drained.
+          </p>
+          <p class="Pp">
+            Definition at line <b>286</b> of file <b>async.c</b>.
+          </p>
+          <pre>
+286                                                                                                              {
 287   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
 288   async_tcp_t *tcp = SAFE_CALLOC(1, sizeof(*tcp), async_tcp_t *);
 289   if (mutex_init(&amp;tcp-&gt;mutex, &quot;tcp_packet_io_lifetime_guard&quot;) != ASCIICHAT_OK) {
@@ -210,25 +303,36 @@
 303   platform_event_stream_observe_queue(stream, queue_changed, tcp);
 304   return transport;
 305 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_async_tcp_transport_create()</b>,
-    <b>acip_outbound_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
-    <b>acip_transport::impl_data</b>, <b>acip_transport::methods</b>,
-    <b>async_tcp_t::mutex</b>, <b>mutex_init()</b>,
-    <b>platform_event_stream_observe_queue()</b>, <b>SAFE_CALLOC</b>,
-    <b>SAFE_FREE</b>, <b>acip_transport::stats_peer</b>,
-    <b>stats_runtime_peer_open()</b>, and <b>async_tcp_t::stream</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>,
-    <b>acip_async_tcp_client_create()</b>, and
-    <b>acip_async_tcp_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_async_tcp_transport_detach_("><a class="permalink" href="#void_acip_async_tcp_transport_detach_(">void
-  acip_async_tcp_transport_detach (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Definition at line <b>183</b> of file <b>async.c</b>.</p>
-<pre>183                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_outbound_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
+            <b>acip_transport::impl_data</b>, <b>acip_transport::methods</b>,
+            <b>async_tcp_t::mutex</b>, <b>mutex_init()</b>,
+            <b>platform_event_stream_observe_queue()</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>acip_transport::stats_peer</b>,
+            <b>stats_runtime_peer_open()</b>, and <b>async_tcp_t::stream</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_accepted_create()</b>,
+            <b>acip_async_tcp_client_create()</b>, and
+            <b>acip_async_tcp_transport_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_async_tcp_transport_detach_(">
+            <a class="permalink" href="#void_acip_async_tcp_transport_detach_("
+              >void acip_async_tcp_transport_detach (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>183</b> of file <b>async.c</b>.
+          </p>
+          <pre>
+183                                                                   {
 184   async_tcp_t *tcp = transport-&gt;impl_data;
 185   mutex_lock(&amp;tcp-&gt;mutex);
 186   tcp-&gt;closed = true;
@@ -236,53 +340,79 @@
 188   tcp-&gt;stream = NULL;
 189   mutex_unlock(&amp;tcp-&gt;mutex);
 190 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_async_tcp_transport_detach()</b>,
-    <b>acip_transport::impl_data</b>, <b>async_tcp_t::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>platform_event_stream_observe_queue()</b>, and
-    <b>async_tcp_t::stream</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_transport_detach()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acip_async_tcp_transport_is (const
-  <b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Definition at line <b>272</b> of file <b>async.c</b>.</p>
-<pre>272                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_async_tcp_transport_detach()</b>,
+            <b>acip_transport::impl_data</b>, <b>async_tcp_t::mutex</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>platform_event_stream_observe_queue()</b>, and
+            <b>async_tcp_t::stream</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_transport_detach()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> acip_async_tcp_transport_is (const
+            <b>acip_transport_t</b> * transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>272</b> of file <b>async.c</b>.
+          </p>
+          <pre>
+272                                                                     {
 273   return transport &amp;&amp; transport-&gt;methods == &amp;async_methods;
 274 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_async_tcp_transport_is()</b>, and
-    <b>acip_transport::methods</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_transport_is()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_async_tcp_transport_queued_("><a class="permalink" href="#size_t_acip_async_tcp_transport_queued_(">size_t
-  acip_async_tcp_transport_queued (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Definition at line <b>276</b> of file <b>async.c</b>.</p>
-<pre>276                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_async_tcp_transport_is()</b>, and
+            <b>acip_transport::methods</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_async_tcp_transport_is()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_async_tcp_transport_queued_(">
+            <a
+              class="permalink"
+              href="#size_t_acip_async_tcp_transport_queued_("
+              >size_t acip_async_tcp_transport_queued (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>276</b> of file <b>async.c</b>.
+          </p>
+          <pre>
+276                                                                     {
 277   async_tcp_t *tcp = transport-&gt;impl_data;
 278   return tcp-&gt;queued_wire_bytes;
 279 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_async_tcp_transport_queued()</b>, and
-    <b>acip_transport::impl_data</b>.</p>
-<p class="Pp">Referenced by <b>acip_async_tcp_transport_queued()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_async_tcp_transport_queued()</b>, and
+            <b>acip_transport::impl_data</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_transport_queued()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

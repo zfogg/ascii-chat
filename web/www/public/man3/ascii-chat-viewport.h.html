@@ -1,71 +1,116 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>viewport.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">viewport.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">viewport.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">viewport.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ui_viewport_t</b>
-  <br/>
-  struct <b>ui_viewport_range_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>ui_viewport_range_t</b> <b>ui_viewport_update</b>
-    (<b>ui_viewport_t</b> *view, size_t count, size_t rows)
-  <br/>
-  <b>bool</b> <b>ui_viewport_key</b> (<b>ui_viewport_t</b> *view, size_t count,
-    size_t rows, <b>keyboard_key_t</b> key)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_viewport_key (<b>ui_viewport_t</b> * view, size_t
-  count, size_t rows, <b>keyboard_key_t</b> key)</h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>viewport.c</b>.</p>
-<pre>38                                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>viewport.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">viewport.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">viewport.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">viewport.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_viewport_t</b>
+            <br />
+            struct <b>ui_viewport_range_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>ui_viewport_range_t</b> <b>ui_viewport_update</b> (<b
+              >ui_viewport_t</b
+            >
+            *view, size_t count, size_t rows)
+            <br />
+            <b>bool</b> <b>ui_viewport_key</b> (<b>ui_viewport_t</b> *view,
+            size_t count, size_t rows, <b>keyboard_key_t</b> key)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_viewport_key (<b>ui_viewport_t</b> * view, size_t
+            count, size_t rows, <b>keyboard_key_t</b> key)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>viewport.c</b>.
+          </p>
+          <pre>
+38                                                                                       {
 39   if (!v) {
 40     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Viewport state is NULL&quot;);
 41     return false;
@@ -104,23 +149,32 @@
 74   ui_viewport_update(v, count, rows);
 75   return true;
 76 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
-    <b>ui_viewport_t::first_visible</b>, <b>KEY_DOWN</b>, <b>KEY_END</b>,
-    <b>KEY_HOME</b>, <b>KEY_LEFT</b>, <b>KEY_RIGHT</b>, <b>KEY_UP</b>,
-    <b>ui_viewport_range_t::page</b>, <b>ui_viewport_t::page_size</b>,
-    <b>ui_viewport_range_t::pages</b>, <b>ui_viewport_t::selected</b>,
-    <b>SET_ERRNO</b>, <b>ui_viewport_key()</b>, and
-  <b>ui_viewport_update()</b>.</p>
-<p class="Pp">Referenced by <b>ui_sync_handle_key()</b>, and
-    <b>ui_viewport_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_viewport_range_t</b> ui_viewport_update
-  (<b>ui_viewport_t</b> * view, size_t count, size_t rows)</h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>viewport.c</b>.</p>
-<pre>4                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_PARAM</b>,
+            <b>ui_viewport_t::first_visible</b>, <b>KEY_DOWN</b>,
+            <b>KEY_END</b>, <b>KEY_HOME</b>, <b>KEY_LEFT</b>, <b>KEY_RIGHT</b>,
+            <b>KEY_UP</b>, <b>ui_viewport_range_t::page</b>,
+            <b>ui_viewport_t::page_size</b>, <b>ui_viewport_range_t::pages</b>,
+            <b>ui_viewport_t::selected</b>, <b>SET_ERRNO</b>,
+            <b>ui_viewport_key()</b>, and <b>ui_viewport_update()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_sync_handle_key()</b>, and
+            <b>ui_viewport_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_viewport_range_t</b> ui_viewport_update (<b>ui_viewport_t</b>
+            * view, size_t count, size_t rows)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>viewport.c</b>.
+          </p>
+          <pre>
+4                                                                                     {
 5   ui_viewport_range_t r = {.pages = 1};
 6   if (!v) {
 7     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Viewport state is NULL&quot;);
@@ -153,30 +207,38 @@
 34     r.count = rows;
 35   return r;
 36 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_viewport_range_t::count</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ui_viewport_range_t::first</b>,
-    <b>ui_viewport_t::first_visible</b>, <b>ui_viewport_range_t::page</b>,
-    <b>ui_viewport_range_t::page_count</b>,
-    <b>ui_viewport_range_t::page_first</b>, <b>ui_viewport_t::page_size</b>,
-    <b>ui_viewport_range_t::pages</b>, <b>ui_viewport_t::selected</b>,
-    <b>SET_ERRNO</b>, and <b>ui_viewport_update()</b>.</p>
-<p class="Pp">Referenced by <b>ui_selectable_list_keep_visible()</b>,
-    <b>ui_table_render()</b>, <b>ui_viewport_key()</b>, and
-    <b>ui_viewport_update()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_viewport_range_t::count</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ui_viewport_range_t::first</b>,
+            <b>ui_viewport_t::first_visible</b>,
+            <b>ui_viewport_range_t::page</b>,
+            <b>ui_viewport_range_t::page_count</b>,
+            <b>ui_viewport_range_t::page_first</b>,
+            <b>ui_viewport_t::page_size</b>, <b>ui_viewport_range_t::pages</b>,
+            <b>ui_viewport_t::selected</b>, <b>SET_ERRNO</b>, and
+            <b>ui_viewport_update()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_selectable_list_keep_visible()</b>,
+            <b>ui_table_render()</b>, <b>ui_viewport_key()</b>, and
+            <b>ui_viewport_update()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

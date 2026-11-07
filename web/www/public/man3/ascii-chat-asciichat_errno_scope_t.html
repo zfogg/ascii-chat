@@ -1,104 +1,166 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>asciichat_errno_scope_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">asciichat_errno_scope_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">asciichat_errno_scope_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">asciichat_errno_scope_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>thread_id</b>
-  <br/>
-  <b>uint64_t</b> <b>generation</b>
-  <br/>
-  <b>uint64_t</b> <b>after_id</b>
-  <br/>
-  <b>uint64_t</b> <b>previous_after_id</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Checkpoints use IDs, not depths, so concurrent removals cannot
-    invalidate them.</p>
-<p class="Pp">Definition at line <b>83</b> of file <b>asciichat_errno.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_errno_scope_t::after_id</h2>
-<p class="Pp">Definition at line <b>86</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_has_code_since()</b>,
-    <b>errno_peek_since()</b>, <b>errno_scope_end()</b>, and
-    <b>errno_scope_is_clean()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_errno_scope_t::generation</h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_has_code_since()</b>,
-    <b>errno_peek_since()</b>, <b>errno_scope_end()</b>, and
-    <b>errno_scope_is_clean()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_errno_scope_t::previous_after_id</h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_scope_end()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_errno_scope_t::thread_id</h2>
-<p class="Pp">Definition at line <b>84</b> of file <b>asciichat_errno.h</b>.</p>
-<p class="Pp">Referenced by <b>errno_has_code_since()</b>,
-    <b>errno_peek_since()</b>, <b>errno_scope_end()</b>, and
-    <b>errno_scope_is_clean()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>asciichat_errno_scope_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">asciichat_errno_scope_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">asciichat_errno_scope_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">asciichat_errno_scope_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>thread_id</b>
+            <br />
+            <b>uint64_t</b> <b>generation</b>
+            <br />
+            <b>uint64_t</b> <b>after_id</b>
+            <br />
+            <b>uint64_t</b> <b>previous_after_id</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Checkpoints use IDs, not depths, so concurrent removals cannot
+          invalidate them.
+        </p>
+        <p class="Pp">
+          Definition at line <b>83</b> of file <b>asciichat_errno.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> asciichat_errno_scope_t::after_id</h2>
+          <p class="Pp">
+            Definition at line <b>86</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_has_code_since()</b>,
+            <b>errno_peek_since()</b>, <b>errno_scope_end()</b>, and
+            <b>errno_scope_is_clean()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_errno_scope_t::generation
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_has_code_since()</b>,
+            <b>errno_peek_since()</b>, <b>errno_scope_end()</b>, and
+            <b>errno_scope_is_clean()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> asciichat_errno_scope_t::previous_after_id
+          </h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>errno_scope_end()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> asciichat_errno_scope_t::thread_id</h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file <b>asciichat_errno.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>errno_has_code_since()</b>,
+            <b>errno_peek_since()</b>, <b>errno_scope_end()</b>, and
+            <b>errno_scope_is_clean()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

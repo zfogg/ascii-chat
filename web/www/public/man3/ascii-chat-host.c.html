@@ -1,237 +1,357 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>host.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">host.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">host.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">host.c - &#x1F3E0; Server-side session hosting implementation</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_host_client_t</b>
-  <br/>
-  Internal client record structure. struct <b>host_render_history</b>
-  <br/>
-  Internal session host structure. struct <b>session_host</b>
-  <br/>
-  struct <b>host_connection_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SESSION_HOST_KEY_PATH_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>HOST_AUDIO_BUFFER_FRAMES</b> 10
-  <br/>
-  #define <b>SESSION_HOST_DEFAULT_MAX_CLIENTS</b>
-    <b>MAX_SESSION_PARTICIPANTS</b>
-  <br/>
-  Default maximum clients.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>host_render_history</b>
-    <b>host_render_history_t</b>
-  <br/>
-  Internal session host structure. typedef struct <b>session_host</b>
-    <b>session_host_t</b>
-  <br/>
-  Opaque session host handle.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>session_host_t</b> * <b>session_host_create</b> (const
-    <b>session_host_config_t</b> *config)
-  <br/>
-  Create a new session host. <b>asciichat_error_t</b>
-    <b>session_host_destroy</b> (<b>session_host_t</b> *host)
-  <br/>
-  Destroy session host and free resources. <b>asciichat_error_t</b>
-    <b>session_host_receive_packet</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id, <b>packet_type_t</b> ptype, const void *data,
-    size_t len)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_host_render_video</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_host_render_audio</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_host_start</b> (<b>session_host_t</b>
-    *host)
-  <br/>
-  Start accepting client connections. <b>asciichat_error_t</b>
-    <b>session_host_stop</b> (<b>session_host_t</b> *host)
-  <br/>
-  Stop accepting connections and disconnect all clients.
-    <b>asciichat_error_t</b> <b>session_host_accept_peer</b>
-    (<b>session_host_t</b> *host, <b>acip_transport_t</b> *transport)
-  <br/>
-  <b>bool</b> <b>session_host_is_running</b> (<b>session_host_t</b> *host)
-  <br/>
-  Check if host is running. <b>uint32_t</b> <b>session_host_add_client</b>
-    (<b>session_host_t</b> *host, <b>acip_transport_t</b> *transport,
-    <b>acip_transport_ownership_t</b> ownership, const char *ip, int port)
-  <br/>
-  <b>uint32_t</b> <b>session_host_add_memory_participant</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  Add a memory participant (host's own media). <b>asciichat_error_t</b>
-    <b>session_host_inject_frame</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> participant_id, const <b>image_t</b> *frame)
-  <br/>
-  Inject a video frame from memory participant. <b>asciichat_error_t</b>
-    <b>session_host_inject_audio</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> participant_id, const float *samples, size_t count)
-  <br/>
-  Inject audio samples from memory participant. <b>asciichat_error_t</b>
-    <b>session_host_remove_client</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id)
-  <br/>
-  Remove a client by ID. <b>asciichat_error_t</b>
-    <b>session_host_find_client</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id, <b>session_host_client_info_t</b> *info)
-  <br/>
-  Find a client by ID. int <b>session_host_get_client_count</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  Get number of connected clients. int <b>session_host_get_client_ids</b>
-    (<b>session_host_t</b> *host, <b>uint32_t</b> *ids, int max_ids)
-  <br/>
-  Get list of all connected client IDs. <b>asciichat_error_t</b>
-    <b>session_host_broadcast_frame</b> (<b>session_host_t</b> *host, const char
-    *frame)
-  <br/>
-  Broadcast ASCII frame to all clients. <b>asciichat_error_t</b>
-    <b>session_host_send_frame</b> (<b>session_host_t</b> *host, <b>uint32_t</b>
-    client_id, const char *frame)
-  <br/>
-  Send ASCII frame to a specific client. <b>asciichat_error_t</b>
-    <b>session_host_set_render_target</b> (<b>session_host_t</b> *host, const
-    <b>session_host_render_target_t</b> *target)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_host_set_display</b>
-    (<b>session_host_t</b> *host, struct <b>session_display_ctx</b> *display)
-  <br/>
-  Set a native terminal display context for local frame rendering.
-    <b>asciichat_error_t</b> <b>session_host_start_render</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  Start media rendering thread (video mixing and audio distribution). void
-    <b>session_host_stop_render</b> (<b>session_host_t</b> *host)
-  <br/>
-  Stop media rendering thread. <b>asciichat_error_t</b>
-    <b>session_host_set_client_transport</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id, <b>acip_transport_t</b> *transport,
-    <b>acip_transport_ownership_t</b> ownership)
-  <br/>
-  Select a transport for a specific client in the host. <b>acip_transport_t</b>
-    * <b>session_host_get_client_transport</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id)
-  <br/>
-  Get the current transport for a specific client in the host. <b>bool</b>
-    <b>session_host_client_has_transport</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id)
-  <br/>
-  Check if a specific client has an active ACIP transport.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3E0; Server-side session hosting implementation</p>
-<p class="Pp">Implements the session host abstraction for server-side client
-    management and session coordination.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>host.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_HOST_AUDIO_BUFFER_FRAMES___10"><a class="permalink" href="#_define_HOST_AUDIO_BUFFER_FRAMES___10">#define
-  HOST_AUDIO_BUFFER_FRAMES 10</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_add_client()</b>, and
-    <b>session_host_add_memory_participant()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_HOST_DEFAULT_MAX_CLIENTS___"><a class="permalink" href="#_define_SESSION_HOST_DEFAULT_MAX_CLIENTS___">#define
-  SESSION_HOST_DEFAULT_MAX_CLIENTS <b>MAX_SESSION_PARTICIPANTS</b></a></h2>
-<p class="Pp">Default maximum clients.</p>
-<p class="Pp">Definition at line <b>65</b> of file <b>host.c</b>.</p>
-<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_HOST_KEY_PATH_BUFFER_SIZE___512"><a class="permalink" href="#_define_SESSION_HOST_KEY_PATH_BUFFER_SIZE___512">#define
-  SESSION_HOST_KEY_PATH_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>host.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>host_render_history</b> <b>host_render_history_t</b></a></h2>
-<p class="Pp">Internal session host structure. Contains server state, client
-    list, and callback configuration.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_host_accept_peer
-  (<b>session_host_t</b> * host, <b>acip_transport_t</b> * transport)</h2>
-<p class="Pp">Definition at line <b>1072</b> of file <b>host.c</b>.</p>
-<pre>1072                                                                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>host.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">host.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">host.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          host.c - &#x1F3E0; Server-side session hosting implementation
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_host_client_t</b>
+            <br />
+            Internal client record structure. struct <b>host_render_history</b>
+            <br />
+            Internal session host structure. struct <b>session_host</b>
+            <br />
+            struct <b>host_connection_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SESSION_HOST_KEY_PATH_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>HOST_AUDIO_BUFFER_FRAMES</b> 10
+            <br />
+            #define <b>SESSION_HOST_DEFAULT_MAX_CLIENTS</b>
+            <b>MAX_SESSION_PARTICIPANTS</b>
+            <br />
+            Default maximum clients.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>host_render_history</b>
+            <b>host_render_history_t</b>
+            <br />
+            Internal session host structure. typedef struct <b>session_host</b>
+            <b>session_host_t</b>
+            <br />
+            Opaque session host handle.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_host_t</b> * <b>session_host_create</b> (const
+            <b>session_host_config_t</b> *config)
+            <br />
+            Create a new session host. <b>asciichat_error_t</b>
+            <b>session_host_destroy</b> (<b>session_host_t</b>
+            *host)
+            <br />
+            Destroy session host and free resources. <b>asciichat_error_t</b>
+            <b>session_host_receive_packet</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b> client_id, <b>packet_type_t</b> ptype, const void
+            *data, size_t len)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_render_video</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_render_audio</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_start</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Start accepting client connections. <b>asciichat_error_t</b>
+            <b>session_host_stop</b> (<b>session_host_t</b> *host)
+            <br />
+            Stop accepting connections and disconnect all clients.
+            <b>asciichat_error_t</b> <b>session_host_accept_peer</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>acip_transport_t</b> *transport)
+            <br />
+            <b>bool</b> <b>session_host_is_running</b> (<b>session_host_t</b>
+            *host)
+            <br />
+            Check if host is running. <b>uint32_t</b>
+            <b>session_host_add_client</b> (<b>session_host_t</b> *host,
+            <b>acip_transport_t</b> *transport,
+            <b>acip_transport_ownership_t</b> ownership, const char *ip, int
+            port)
+            <br />
+            <b>uint32_t</b> <b>session_host_add_memory_participant</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Add a memory participant (host's own media).
+            <b>asciichat_error_t</b> <b>session_host_inject_frame</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> participant_id, const <b>image_t</b> *frame)
+            <br />
+            Inject a video frame from memory participant.
+            <b>asciichat_error_t</b> <b>session_host_inject_audio</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> participant_id, const float *samples, size_t
+            count)
+            <br />
+            Inject audio samples from memory participant.
+            <b>asciichat_error_t</b> <b>session_host_remove_client</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> client_id)
+            <br />
+            Remove a client by ID. <b>asciichat_error_t</b>
+            <b>session_host_find_client</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b> client_id, <b>session_host_client_info_t</b> *info)
+            <br />
+            Find a client by ID. int <b>session_host_get_client_count</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Get number of connected clients. int
+            <b>session_host_get_client_ids</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b> *ids, int max_ids)
+            <br />
+            Get list of all connected client IDs. <b>asciichat_error_t</b>
+            <b>session_host_broadcast_frame</b> (<b>session_host_t</b> *host,
+            const char *frame)
+            <br />
+            Broadcast ASCII frame to all clients. <b>asciichat_error_t</b>
+            <b>session_host_send_frame</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b>
+            client_id, const char *frame)
+            <br />
+            Send ASCII frame to a specific client. <b>asciichat_error_t</b>
+            <b>session_host_set_render_target</b> (<b>session_host_t</b> *host,
+            const <b>session_host_render_target_t</b> *target)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_set_display</b> (<b
+              >session_host_t</b
+            >
+            *host, struct <b>session_display_ctx</b> *display)
+            <br />
+            Set a native terminal display context for local frame rendering.
+            <b>asciichat_error_t</b> <b>session_host_start_render</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Start media rendering thread (video mixing and audio distribution).
+            void
+            <b>session_host_stop_render</b> (<b>session_host_t</b> *host)
+            <br />
+            Stop media rendering thread. <b>asciichat_error_t</b>
+            <b>session_host_set_client_transport</b> (<b>session_host_t</b>
+            *host, <b>uint32_t</b> client_id,
+            <b>acip_transport_t</b> *transport,
+            <b>acip_transport_ownership_t</b> ownership)
+            <br />
+            Select a transport for a specific client in the host.
+            <b>acip_transport_t</b> *
+            <b>session_host_get_client_transport</b> (<b>session_host_t</b>
+            *host, <b>uint32_t</b> client_id)
+            <br />
+            Get the current transport for a specific client in the host.
+            <b>bool</b> <b>session_host_client_has_transport</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> client_id)
+            <br />
+            Check if a specific client has an active ACIP transport.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x1F3E0; Server-side session hosting implementation</p>
+        <p class="Pp">
+          Implements the session host abstraction for server-side client
+          management and session coordination.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>host.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HOST_AUDIO_BUFFER_FRAMES___10">
+            <a class="permalink" href="#_define_HOST_AUDIO_BUFFER_FRAMES___10"
+              >#define HOST_AUDIO_BUFFER_FRAMES 10</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>5</b> of file <b>host.c</b>.</p>
+          <p class="Pp">
+            Referenced by <b>session_host_add_client()</b>, and
+            <b>session_host_add_memory_participant()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_HOST_DEFAULT_MAX_CLIENTS___">
+            <a
+              class="permalink"
+              href="#_define_SESSION_HOST_DEFAULT_MAX_CLIENTS___"
+              >#define SESSION_HOST_DEFAULT_MAX_CLIENTS
+              <b>MAX_SESSION_PARTICIPANTS</b></a
+            >
+          </h2>
+          <p class="Pp">Default maximum clients.</p>
+          <p class="Pp">Definition at line <b>65</b> of file <b>host.c</b>.</p>
+          <p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_HOST_KEY_PATH_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_SESSION_HOST_KEY_PATH_BUFFER_SIZE___512"
+              >#define SESSION_HOST_KEY_PATH_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>host.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>host_render_history</b>
+              <b>host_render_history_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Internal session host structure. Contains server state, client list,
+            and callback configuration.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_accept_peer (<b
+              >session_host_t</b
+            >
+            * host, <b>acip_transport_t</b> * transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1072</b> of file <b>host.c</b>.
+          </p>
+          <pre>
+1072                                                                                               {
 1073 #ifndef __EMSCRIPTEN__
 1074   if (!host || !host-&gt;network_server)
 1075     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Host network is not running&quot;);
@@ -242,23 +362,33 @@
 1080   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Browser peers use the browser host bridge&quot;);
 1081 #endif
 1082 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_STATE</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>session_host::network_server</b>, <b>network_server_adopt()</b>,
-    <b>session_host_accept_peer()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>session_host_accept_peer()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint32_t</b> session_host_add_client (<b>session_host_t</b> *
-  host, <b>acip_transport_t</b> * transport, <b>acip_transport_ownership_t</b>
-  ownership, const char * ip, int port)</h2>
-<p class="Pp">Register a transport-backed client. The same API accepts TCP,
-    WebSocket, and WebRTC. Ownership transfers only on success. NULL registers a
-    participant whose transport will be supplied later. on_client_join runs
-    after admission.</p>
-<p class="Pp">Definition at line <b>1095</b> of file <b>host.c</b>.</p>
-<pre>1096                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_STATE</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>session_host::network_server</b>, <b>network_server_adopt()</b>,
+            <b>session_host_accept_peer()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_host_accept_peer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> session_host_add_client (<b>session_host_t</b> *
+            host, <b>acip_transport_t</b> * transport,
+            <b>acip_transport_ownership_t</b> ownership, const char * ip, int
+            port)
+          </h2>
+          <p class="Pp">
+            Register a transport-backed client. The same API accepts TCP,
+            WebSocket, and WebRTC. Ownership transfers only on success. NULL
+            registers a participant whose transport will be supplied later.
+            on_client_join runs after admission.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1095</b> of file <b>host.c</b>.
+          </p>
+          <pre>
+1096                                                                                                  {
 1097   if (!host || !host-&gt;initialized) {
 1098     return 0;
 1099   }
@@ -340,47 +470,61 @@
 1175   mutex_unlock(&amp;host-&gt;clients_mutex);
 1176   return 0;
 1177 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_TRANSPORT_BORROWED</b>,
-    <b>ACIP_TRANSPORT_OWNED</b>, <b>session_host_client_t::active</b>,
-    <b>session_host_client_t::audio_active</b>, <b>AUDIO_CHANNELS</b>,
-    <b>session_host::callbacks</b>, <b>session_host::client_count</b>,
-    <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
-    <b>session_host::clients_mutex</b>,
-    <b>session_host_client_t::connected_at</b>,
-    <b>session_host_client_t::connection</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_SESSION_FULL</b>,
-    <b>acip_render_settings_t::fps_limit</b>, <b>HOST_AUDIO_BUFFER_FRAMES</b>,
-    <b>image_destroy()</b>, <b>image_new()</b>,
-    <b>session_host_client_t::incoming_audio</b>,
-    <b>session_host_client_t::incoming_video</b>,
-    <b>session_host::initialized</b>, <b>session_host_client_t::ip_address</b>,
-    <b>session_host::max_clients</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>session_host::next_client_id</b>,
-    <b>session_host_client_t::next_video_deadline</b>,
-    <b>session_host_callbacks_t::on_client_join</b>, <b>OPUS_FRAME_SAMPLES</b>,
-    <b>session_host_client_t::participant_type</b>,
-    <b>PARTICIPANT_TYPE_NETWORK</b>, <b>session_host_client_t::port</b>,
-    <b>session_host_client_t::render_height</b>,
-    <b>session_host_client_t::render_width</b>,
-    <b>session_host_client_t::rendering</b>, <b>ringbuffer_create()</b>,
-    <b>ringbuffer_destroy()</b>, <b>SAFE_STRNCPY</b>,
-    <b>session_host_add_client()</b>, <b>SET_ERRNO</b>,
-    <b>session_host_client_t::transport</b>,
-    <b>session_host_client_t::transport_ownership</b>,
-    <b>session_host::user_data</b>, and
-    <b>session_host_client_t::video_active</b>.</p>
-<p class="Pp">Referenced by <b>add_transport_client()</b>,
-    <b>browser_host_add_client()</b>, and <b>session_host_add_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_host_receive_packet
-  (<b>session_host_t</b> * host, <b>uint32_t</b> client_id, <b>packet_type_t</b>
-  type, const void * data, size_t len)</h2>
-<p class="Pp">Process a packet delivered by an event-driven transport.</p>
-<p class="Pp">Definition at line <b>324</b> of file <b>host.c</b>.</p>
-<pre>325                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_BORROWED</b>,
+            <b>ACIP_TRANSPORT_OWNED</b>, <b>session_host_client_t::active</b>,
+            <b>session_host_client_t::audio_active</b>, <b>AUDIO_CHANNELS</b>,
+            <b>session_host::callbacks</b>, <b>session_host::client_count</b>,
+            <b>session_host_client_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>session_host_client_t::connected_at</b>,
+            <b>session_host_client_t::connection</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_SESSION_FULL</b>, <b>acip_render_settings_t::fps_limit</b>,
+            <b>HOST_AUDIO_BUFFER_FRAMES</b>, <b>image_destroy()</b>,
+            <b>image_new()</b>, <b>session_host_client_t::incoming_audio</b>,
+            <b>session_host_client_t::incoming_video</b>,
+            <b>session_host::initialized</b>,
+            <b>session_host_client_t::ip_address</b>,
+            <b>session_host::max_clients</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_host::next_client_id</b>,
+            <b>session_host_client_t::next_video_deadline</b>,
+            <b>session_host_callbacks_t::on_client_join</b>,
+            <b>OPUS_FRAME_SAMPLES</b>,
+            <b>session_host_client_t::participant_type</b>,
+            <b>PARTICIPANT_TYPE_NETWORK</b>, <b>session_host_client_t::port</b>,
+            <b>session_host_client_t::render_height</b>,
+            <b>session_host_client_t::render_width</b>,
+            <b>session_host_client_t::rendering</b>, <b>ringbuffer_create()</b>,
+            <b>ringbuffer_destroy()</b>, <b>SAFE_STRNCPY</b>,
+            <b>session_host_add_client()</b>, <b>SET_ERRNO</b>,
+            <b>session_host_client_t::transport</b>,
+            <b>session_host_client_t::transport_ownership</b>,
+            <b>session_host::user_data</b>, and
+            <b>session_host_client_t::video_active</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>browser_host_add_client()</b>, and
+            <b>session_host_add_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_receive_packet (<b
+              >session_host_t</b
+            >
+            * host, <b>uint32_t</b> client_id, <b>packet_type_t</b> type, const
+            void * data, size_t len)
+          </h2>
+          <p class="Pp">
+            Process a packet delivered by an event-driven transport.
+          </p>
+          <p class="Pp">Definition at line <b>324</b> of file <b>host.c</b>.</p>
+          <pre>
+325                                                                             {
 326   if (!host || !host-&gt;initialized || (!data &amp;&amp; len))
 327     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid host packet&quot;);
 328   acip_transport_t *client_transport = session_host_get_client_transport(host, client_id);
@@ -605,54 +749,70 @@
 547
 548   return ASCIICHAT_OK;
 549 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_render_settings_capabilities()</b>,
-    <b>acip_send_pong()</b>, <b>acip_settings_encode()</b>,
-    <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ACIP_SETTINGS_MAX_SIZE</b>,
-    <b>acip_settings_request()</b>, <b>session_host_client_t::active</b>,
-    <b>ASCIICHAT_OK</b>, <b>session_host_client_t::audio_active</b>,
-    <b>AUDIO_CHANNELS</b>, <b>AUDIO_SAMPLE_RATE</b>,
-    <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
-    <b>session_host::clients_mutex</b>, <b>ERROR_AUDIO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>image_t::h</b>,
-    <b>acip_render_settings_t::height</b>, <b>image_frame_packet_t::height</b>,
-    <b>image_destroy()</b>, <b>image_new()</b>,
-    <b>session_host_client_t::incoming_audio</b>,
-    <b>session_host_client_t::incoming_video</b>,
-    <b>session_host::initialized</b>, <b>log_debug_every</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>session_host::max_clients</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
-    <b>NS_PER_MS_INT</b>, <b>opus_codec_create_decoder_channels()</b>,
-    <b>opus_codec_decode()</b>, <b>session_host_client_t::opus_decoder</b>,
-    <b>OPUS_FRAME_SAMPLES</b>, <b>packet_send_via_transport()</b>,
-    <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>, <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
-    <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>, <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
-    <b>PACKET_TYPE_CLIENT_LEAVE</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
-    <b>PACKET_TYPE_PING</b>, <b>PACKET_TYPE_STREAM_START</b>,
-    <b>PACKET_TYPE_STREAM_STOP</b>, <b>image_frame_packet_t::pixel_format</b>,
-    <b>PIXEL_FORMAT_BGR</b>, <b>PIXEL_FORMAT_BGRA</b>, <b>PIXEL_FORMAT_RGB</b>,
-    <b>PIXEL_FORMAT_RGBA</b>, <b>image_t::pixels</b>,
-    <b>session_host_client_t::render_height</b>,
-    <b>session_host_client_t::render_width</b>,
-    <b>session_host_client_t::rendering</b>,
-    <b>acip_render_settings_t::revision</b>, <b>ringbuffer_write()</b>,
-    <b>session_host_get_client_transport()</b>,
-    <b>session_host_receive_packet()</b>, <b>SET_ERRNO</b>,
-    <b>session_host_client_t::transport</b>, <b>US_PER_MS_INT</b>,
-    <b>session_host_client_t::video_active</b>, <b>image_t::w</b>,
-    <b>acip_render_settings_t::width</b>, and
-    <b>image_frame_packet_t::width</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_receive()</b>, and
-    <b>session_host_receive_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_host_render_audio
-  (<b>session_host_t</b> * host)</h2>
-<p class="Pp">Mix and distribute one 20 ms audio frame without starting a
-    thread.</p>
-<p class="Pp">Definition at line <b>798</b> of file <b>host.c</b>.</p>
-<pre>798                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_capabilities()</b>,
+            <b>acip_send_pong()</b>, <b>acip_settings_encode()</b>,
+            <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ACIP_SETTINGS_MAX_SIZE</b>,
+            <b>acip_settings_request()</b>,
+            <b>session_host_client_t::active</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_host_client_t::audio_active</b>, <b>AUDIO_CHANNELS</b>,
+            <b>AUDIO_SAMPLE_RATE</b>, <b>session_host_client_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>ERROR_AUDIO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>image_t::h</b>,
+            <b>acip_render_settings_t::height</b>,
+            <b>image_frame_packet_t::height</b>, <b>image_destroy()</b>,
+            <b>image_new()</b>, <b>session_host_client_t::incoming_audio</b>,
+            <b>session_host_client_t::incoming_video</b>,
+            <b>session_host::initialized</b>, <b>log_debug_every</b>,
+            <b>log_info</b>, <b>log_warn</b>, <b>session_host::max_clients</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+            <b>NET_TO_HOST_U32</b>, <b>NS_PER_MS_INT</b>,
+            <b>opus_codec_create_decoder_channels()</b>,
+            <b>opus_codec_decode()</b>,
+            <b>session_host_client_t::opus_decoder</b>,
+            <b>OPUS_FRAME_SAMPLES</b>, <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+            <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CLIENT_LEAVE</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
+            <b>PACKET_TYPE_PING</b>, <b>PACKET_TYPE_STREAM_START</b>,
+            <b>PACKET_TYPE_STREAM_STOP</b>,
+            <b>image_frame_packet_t::pixel_format</b>, <b>PIXEL_FORMAT_BGR</b>,
+            <b>PIXEL_FORMAT_BGRA</b>, <b>PIXEL_FORMAT_RGB</b>,
+            <b>PIXEL_FORMAT_RGBA</b>, <b>image_t::pixels</b>,
+            <b>session_host_client_t::render_height</b>,
+            <b>session_host_client_t::render_width</b>,
+            <b>session_host_client_t::rendering</b>,
+            <b>acip_render_settings_t::revision</b>, <b>ringbuffer_write()</b>,
+            <b>session_host_get_client_transport()</b>,
+            <b>session_host_receive_packet()</b>, <b>SET_ERRNO</b>,
+            <b>session_host_client_t::transport</b>, <b>US_PER_MS_INT</b>,
+            <b>session_host_client_t::video_active</b>, <b>image_t::w</b>,
+            <b>acip_render_settings_t::width</b>, and
+            <b>image_frame_packet_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_receive()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_render_audio (<b
+              >session_host_t</b
+            >
+            * host)
+          </h2>
+          <p class="Pp">
+            Mix and distribute one 20 ms audio frame without starting a thread.
+          </p>
+          <p class="Pp">Definition at line <b>798</b> of file <b>host.c</b>.</p>
+          <pre>
+798                                                                   {
 799   if (!host || !host-&gt;initialized)
 800     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid host&quot;);
 801   uint64_t mix_start = time_get_ns();
@@ -709,59 +869,86 @@
 852 #endif
 853   return result;
 854 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_audio_opus_batch()</b>,
-    <b>session_host_client_t::active</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ASCIICHAT_OK</b>, <b>session_host_client_t::audio_active</b>,
-    <b>AUDIO_CHANNELS</b>, <b>session_host_client_t::audio_frame</b>,
-    <b>AUDIO_OPUS_SESSION_PACKET_CAPACITY</b>, <b>AUDIO_RECORDING_REMOTE</b>,
-    <b>audio_recording_submit()</b>, <b>AUDIO_SAMPLE_RATE</b>,
-    <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b>,
-    <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
-    <b>session_host::clients_mutex</b>, <b>ERROR_AUDIO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>session_host_client_t::incoming_audio</b>,
-    <b>session_host::initialized</b>, <b>log_warn</b>,
-    <b>session_host::max_clients</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>OPUS_APPLICATION_AUDIO</b>, <b>opus_codec_create_encoder_channels()</b>,
-    <b>opus_codec_encode()</b>, <b>session_host_client_t::opus_encoder</b>,
-    <b>OPUS_FRAME_SAMPLES</b>, <b>ringbuffer_read()</b>,
-    <b>session_host_render_audio()</b>, <b>SET_ERRNO</b>,
-    <b>STATS_DURATION_AUDIO_MIX</b>, <b>stats_duration_record()</b>,
-    <b>stats_runtime_scope()</b>, <b>time_get_ns()</b>, and
-    <b>session_host_client_t::transport</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_create()</b>,
-    <b>browser_host_render_audio()</b>, and
-  <b>session_host_render_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_host_render_video
-  (<b>session_host_t</b> * host)</h2>
-<p class="Pp">Run one shared host video cycle without starting a thread.</p>
-<p class="Pp">Definition at line <b>791</b> of file <b>host.c</b>.</p>
-<pre>791                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_audio_opus_batch()</b>,
+            <b>session_host_client_t::active</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_OK</b>, <b>session_host_client_t::audio_active</b>,
+            <b>AUDIO_CHANNELS</b>, <b>session_host_client_t::audio_frame</b>,
+            <b>AUDIO_OPUS_SESSION_PACKET_CAPACITY</b>,
+            <b>AUDIO_RECORDING_REMOTE</b>, <b>audio_recording_submit()</b>,
+            <b>AUDIO_SAMPLE_RATE</b>, <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b>,
+            <b>session_host_client_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>ERROR_AUDIO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_host_client_t::incoming_audio</b>,
+            <b>session_host::initialized</b>, <b>log_warn</b>,
+            <b>session_host::max_clients</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>OPUS_APPLICATION_AUDIO</b>,
+            <b>opus_codec_create_encoder_channels()</b>,
+            <b>opus_codec_encode()</b>,
+            <b>session_host_client_t::opus_encoder</b>,
+            <b>OPUS_FRAME_SAMPLES</b>, <b>ringbuffer_read()</b>,
+            <b>session_host_render_audio()</b>, <b>SET_ERRNO</b>,
+            <b>STATS_DURATION_AUDIO_MIX</b>, <b>stats_duration_record()</b>,
+            <b>stats_runtime_scope()</b>, <b>time_get_ns()</b>, and
+            <b>session_host_client_t::transport</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_create()</b>,
+            <b>browser_host_render_audio()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_render_video (<b
+              >session_host_t</b
+            >
+            * host)
+          </h2>
+          <p class="Pp">
+            Run one shared host video cycle without starting a thread.
+          </p>
+          <p class="Pp">Definition at line <b>791</b> of file <b>host.c</b>.</p>
+          <pre>
+791                                                                   {
 792   if (!host || !host-&gt;initialized)
 793     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session host&quot;);
 794   host_render_video(host, false);
 795   return ASCIICHAT_OK;
 796 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>session_host::initialized</b>, <b>session_host_render_video()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_render()</b>, and
-    <b>session_host_render_video()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_host_set_render_target
-  (<b>session_host_t</b> * host, const <b>session_host_render_target_t</b> *
-  target)</h2>
-<p class="Pp">Set local output on native or WASM hosts. NULL disables the local
-    target. A client target is rendered once and delivered through its existing
-    transport. A backend's context must outlive its registration.</p>
-<p class="Pp">Definition at line <b>1516</b> of file <b>host.c</b>.</p>
-<pre>1516                                                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_host::initialized</b>,
+            <b>session_host_render_video()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_render()</b>, and
+            <b>session_host_render_video()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_set_render_target (<b
+              >session_host_t</b
+            >
+            * host, const <b>session_host_render_target_t</b> * target)
+          </h2>
+          <p class="Pp">
+            Set local output on native or WASM hosts. NULL disables the local
+            target. A client target is rendered once and delivered through its
+            existing transport. A backend's context must outlive its
+            registration.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1516</b> of file <b>host.c</b>.
+          </p>
+          <pre>
+1516                                                                                                                    {
 1517   if (!host || !host-&gt;initialized) {
 1518     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid host&quot;);
 1519   }
@@ -788,33 +975,39 @@
 1540   mutex_unlock(&amp;host-&gt;clients_mutex);
 1541   return ASCIICHAT_OK;
 1542 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_host_client_t::active</b>,
-    <b>ASCIICHAT_OK</b>, <b>session_host_client_t::client_id</b>,
-    <b>session_host_render_target_t::client_id</b>,
-    <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
-    <b>session_host_render_target_t::get_config</b>,
-    <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>session_host_render_target_t::render_frame</b>,
-    <b>session_host::render_target</b>, <b>session_host_set_render_target()</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_set_local_client()</b>, and
-    <b>session_host_set_render_target()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_host_client_t::active</b>,
+            <b>ASCIICHAT_OK</b>, <b>session_host_client_t::client_id</b>,
+            <b>session_host_render_target_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>session_host_render_target_t::get_config</b>,
+            <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>session_host_render_target_t::render_frame</b>,
+            <b>session_host::render_target</b>,
+            <b>session_host_set_render_target()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_set_local_client()</b>, and
+            <b>session_host_set_render_target()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

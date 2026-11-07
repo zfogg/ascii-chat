@@ -1,144 +1,258 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_help.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_help.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_help.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_help.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_SESSION_HELP_SETTINGS_COUNT</b> 20
-  <br/>
-  #define <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b> 32
-  <br/>
-  #define <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b> 40
-  <br/>
-  #define <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>SESSION_HELP_SETTING_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>SESSION_HELP_KEY_BUFFER_SIZE</b> 48
-  <br/>
-  #define <b>SESSION_HELP_ENTRY_CAPACITY</b> 40
-  <br/>
-  #define <b>ENABLED_COLOR</b> <b>LOG_COLOR_INFO</b>
-  <br/>
-  #define <b>DISABLED_COLOR</b> <b>LOG_COLOR_ERROR</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>ui_session_help_free</b> (char *text)
-  <br/>
-  char * <b>ui_session_help_render</b> (<b>terminal_size_t</b> size, <b>bool</b>
-    has_media, <b>bool</b> browser, <b>terminal_size_t</b> *minimum)
-  <br/>
-  char * <b>ui_session_context_help_render</b> (<b>terminal_size_t</b> size,
-    <b>ui_screen_t</b> screen, <b>terminal_size_t</b> *minimum)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_DISABLED_COLOR___"><a class="permalink" href="#_define_DISABLED_COLOR___">#define
-  DISABLED_COLOR <b>LOG_COLOR_ERROR</b></a></h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>session_help.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ENABLED_COLOR___"><a class="permalink" href="#_define_ENABLED_COLOR___">#define
-  ENABLED_COLOR <b>LOG_COLOR_INFO</b></a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>session_help.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_HELP_ENTRY_CAPACITY___40"><a class="permalink" href="#_define_SESSION_HELP_ENTRY_CAPACITY___40">#define
-  SESSION_HELP_ENTRY_CAPACITY 40</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_HELP_KEY_BUFFER_SIZE___48"><a class="permalink" href="#_define_SESSION_HELP_KEY_BUFFER_SIZE___48">#define
-  SESSION_HELP_KEY_BUFFER_SIZE 48</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_HELP_SETTING_BUFFER_SIZE___256"><a class="permalink" href="#_define_SESSION_HELP_SETTING_BUFFER_SIZE___256">#define
-  SESSION_HELP_SETTING_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_HELP_FOOTER_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_SESSION_HELP_FOOTER_BUFFER_SIZE___128">#define
-  TUI_SESSION_HELP_FOOTER_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_context_help_render()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_HELP_KEY_STORAGE_COUNT___40"><a class="permalink" href="#_define_TUI_SESSION_HELP_KEY_STORAGE_COUNT___40">#define
-  TUI_SESSION_HELP_KEY_STORAGE_COUNT 40</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_HELP_SETTINGS_COUNT___20"><a class="permalink" href="#_define_TUI_SESSION_HELP_SETTINGS_COUNT___20">#define
-  TUI_SESSION_HELP_SETTINGS_COUNT 20</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE___32"><a class="permalink" href="#_define_TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE___32">#define
-  TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>session_help.c</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ui_session_context_help_render_("><a class="permalink" href="#char_*_ui_session_context_help_render_(">char
-  * ui_session_context_help_render (<b>terminal_size_t</b> size,
-  <b>ui_screen_t</b> screen, <b>terminal_size_t</b> * minimum)</a></h2>
-<p class="Pp">Definition at line <b>250</b> of file <b>session_help.c</b>.</p>
-<pre>250                                                                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_help.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_help.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_help.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_help.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_SESSION_HELP_SETTINGS_COUNT</b> 20
+            <br />
+            #define <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b> 40
+            <br />
+            #define <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>SESSION_HELP_SETTING_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>SESSION_HELP_KEY_BUFFER_SIZE</b> 48
+            <br />
+            #define <b>SESSION_HELP_ENTRY_CAPACITY</b> 40
+            <br />
+            #define <b>ENABLED_COLOR</b> <b>LOG_COLOR_INFO</b>
+            <br />
+            #define <b>DISABLED_COLOR</b> <b>LOG_COLOR_ERROR</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_session_help_free</b> (char *text)
+            <br />
+            char * <b>ui_session_help_render</b> (<b>terminal_size_t</b> size,
+            <b>bool</b> has_media, <b>bool</b> browser,
+            <b>terminal_size_t</b> *minimum)
+            <br />
+            char * <b>ui_session_context_help_render</b> (<b>terminal_size_t</b>
+            size, <b>ui_screen_t</b> screen, <b>terminal_size_t</b> *minimum)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DISABLED_COLOR___">
+            <a class="permalink" href="#_define_DISABLED_COLOR___"
+              >#define DISABLED_COLOR <b>LOG_COLOR_ERROR</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>31</b> of file <b>session_help.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ENABLED_COLOR___">
+            <a class="permalink" href="#_define_ENABLED_COLOR___"
+              >#define ENABLED_COLOR <b>LOG_COLOR_INFO</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>session_help.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_HELP_ENTRY_CAPACITY___40">
+            <a
+              class="permalink"
+              href="#_define_SESSION_HELP_ENTRY_CAPACITY___40"
+              >#define SESSION_HELP_ENTRY_CAPACITY 40</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_HELP_KEY_BUFFER_SIZE___48">
+            <a
+              class="permalink"
+              href="#_define_SESSION_HELP_KEY_BUFFER_SIZE___48"
+              >#define SESSION_HELP_KEY_BUFFER_SIZE 48</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_HELP_SETTING_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_SESSION_HELP_SETTING_BUFFER_SIZE___256"
+              >#define SESSION_HELP_SETTING_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_SESSION_HELP_FOOTER_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_HELP_FOOTER_BUFFER_SIZE___128"
+              >#define TUI_SESSION_HELP_FOOTER_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_context_help_render()</b>, and
+            <b>ui_session_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_SESSION_HELP_KEY_STORAGE_COUNT___40">
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_HELP_KEY_STORAGE_COUNT___40"
+              >#define TUI_SESSION_HELP_KEY_STORAGE_COUNT 40</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_SESSION_HELP_SETTINGS_COUNT___20">
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_HELP_SETTINGS_COUNT___20"
+              >#define TUI_SESSION_HELP_SETTINGS_COUNT 20</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE___32"
+              >#define TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>session_help.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ui_session_context_help_render_(">
+            <a class="permalink" href="#char_*_ui_session_context_help_render_("
+              >char * ui_session_context_help_render (<b>terminal_size_t</b>
+              size, <b>ui_screen_t</b> screen, <b>terminal_size_t</b> *
+              minimum)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>250</b> of file <b>session_help.c</b>.
+          </p>
+          <pre>
+250                                                                                                          {
 251   if (!minimum) {
 252     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help minimum geometry output is required&quot;);
 253     return NULL;
@@ -243,44 +357,68 @@
 352   frame_buffer_destroy(buffer);
 353   return result;
 354 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_create()</b>,
-    <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
-    <b>frame_buffer_get_length()</b>, <b>GET_OPTION</b>, <b>LOG_COLOR_WARN</b>,
-    <b>terminal_size_t::rows</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
-    <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>, <b>ui_help_menu_measure()</b>,
-    <b>ui_help_menu_render()</b>, <b>UI_SCREEN_ERRNO</b>,
-    <b>UI_SCREEN_ERROR</b>, <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_PROMPT</b>,
-    <b>UI_SCREEN_STATS</b>, <b>UI_SCREEN_SYNC</b>, <b>UI_SCREEN_UPDATE</b>,
-    <b>ui_session_context_help_render()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-<p class="Pp">Referenced by <b>keyboard_help_toggle_terminal()</b>, and
-    <b>ui_session_context_help_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_session_help_free_(char_*_text)"><a class="permalink" href="#void_ui_session_help_free_(char_*_text)">void
-  ui_session_help_free (char * text)</a></h2>
-<p class="Pp">Release rendered help with the same allocator that created it.</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>session_help.c</b>.</p>
-<pre>33                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_create()</b>,
+            <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
+            <b>frame_buffer_get_length()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_WARN</b>, <b>terminal_size_t::rows</b>,
+            <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>,
+            <b>ui_help_menu_measure()</b>, <b>ui_help_menu_render()</b>,
+            <b>UI_SCREEN_ERRNO</b>, <b>UI_SCREEN_ERROR</b>,
+            <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_PROMPT</b>,
+            <b>UI_SCREEN_STATS</b>, <b>UI_SCREEN_SYNC</b>,
+            <b>UI_SCREEN_UPDATE</b>, <b>ui_session_context_help_render()</b>,
+            and <b>ui_session_help_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>keyboard_help_toggle_terminal()</b>, and
+            <b>ui_session_context_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_help_free_(char_*_text)">
+            <a class="permalink" href="#void_ui_session_help_free_(char_*_text)"
+              >void ui_session_help_free (char * text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Release rendered help with the same allocator that created it.
+          </p>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>session_help.c</b>.
+          </p>
+          <pre>
+33                                       {
 34   SAFE_FREE(text);
 35 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>, and
-  <b>ui_session_help_free()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_help_free()</b>, and
-    <b>ui_session_tick()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ui_session_help_render_("><a class="permalink" href="#char_*_ui_session_help_render_(">char
-  * ui_session_help_render (<b>terminal_size_t</b> size, <b>bool</b> has_media,
-  <b>bool</b> browser, <b>terminal_size_t</b> * minimum)</a></h2>
-<p class="Pp">Returns owned ANSI text, released with SAFE_FREE.</p>
-<p class="Pp">Definition at line <b>124</b> of file <b>session_help.c</b>.</p>
-<pre>124                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SAFE_FREE</b>, and <b>ui_session_help_free()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_help_free()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ui_session_help_render_(">
+            <a class="permalink" href="#char_*_ui_session_help_render_("
+              >char * ui_session_help_render (<b>terminal_size_t</b> size,
+              <b>bool</b> has_media, <b>bool</b> browser,
+              <b>terminal_size_t</b> * minimum)</a
+            >
+          </h2>
+          <p class="Pp">Returns owned ANSI text, released with SAFE_FREE.</p>
+          <p class="Pp">
+            Definition at line <b>124</b> of file <b>session_help.c</b>.
+          </p>
+          <pre>
+124                                                                                                            {
 125   if (!minimum) {
 126     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help minimum geometry output is required&quot;);
 127     return NULL;
@@ -405,38 +543,46 @@
 246   frame_buffer_destroy(output);
 247   return result;
 248 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_mode_to_string()</b>, <b>colored_string()</b>,
-    <b>terminal_size_t::cols</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
-    <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
-    <b>GET_OPTION</b>, <b>LOG_COLOR_WARN</b>, <b>MODE_DISCOVERY_SERVICE</b>,
-    <b>MODE_MCP_SERVER</b>, <b>MODE_SERVER</b>, <b>render_mode_to_string()</b>,
-    <b>terminal_size_t::rows</b>, <b>SAFE_MALLOC</b>,
-    <b>SESSION_HELP_ENTRY_CAPACITY</b>, <b>SESSION_HELP_KEY_BUFFER_SIZE</b>,
-    <b>SESSION_HELP_SETTING_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
-    <b>terminal_should_use_utf8()</b>,
-    <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>,
-    <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b>,
-    <b>TUI_SESSION_HELP_SETTINGS_COUNT</b>,
-    <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b>, <b>tui_shortcut_help()</b>,
-    <b>ui_help_menu_measure()</b>, <b>ui_help_menu_render()</b>, and
-    <b>ui_session_help_render()</b>.</p>
-<p class="Pp">Referenced by <b>ui_session_context_help_render()</b>,
-    <b>ui_session_help_render()</b>, and <b>ui_session_tick()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_mode_to_string()</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+            <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+            <b>GET_OPTION</b>, <b>LOG_COLOR_WARN</b>,
+            <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MCP_SERVER</b>,
+            <b>MODE_SERVER</b>, <b>render_mode_to_string()</b>,
+            <b>terminal_size_t::rows</b>, <b>SAFE_MALLOC</b>,
+            <b>SESSION_HELP_ENTRY_CAPACITY</b>,
+            <b>SESSION_HELP_KEY_BUFFER_SIZE</b>,
+            <b>SESSION_HELP_SETTING_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b>,
+            <b>TUI_SESSION_HELP_SETTINGS_COUNT</b>,
+            <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b>,
+            <b>tui_shortcut_help()</b>, <b>ui_help_menu_measure()</b>,
+            <b>ui_help_menu_render()</b>, and <b>ui_session_help_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_context_help_render()</b>,
+            <b>ui_session_help_render()</b>, and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,223 +1,353 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client_like.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client_like.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client_like.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client_like.c - Shared initialization and teardown for client-like
-    modes.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>client_like_state_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE</b> 32
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>terminal_fd_reader_t</b> *
-    <b>session_client_like_get_stdin_reader</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_client_like_run</b> (const
-    <b>session_client_like_config_t</b> *config)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>bool</b>(*)(void *)
-    <b>session_client_like_get_render_should_exit</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Shared initialization and teardown for client-like modes.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>client_like.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE___32"><a class="permalink" href="#_define_SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE___32">#define
-  SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>client_like.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_client_like_run (const
-  <b>session_client_like_config_t</b> * config)</h2>
-<p class="Pp">Run a client-like mode with fully shared initialization and
-    teardown</p>
-<p class="Pp"></p>
-<p class="Pp">This function orchestrates the complete lifecycle of client-like
-    modes:</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Initialization_(automatic_from_"><a class="permalink" href="#Initialization_(automatic_from_">Initialization
-  (automatic from <b>GET_OPTION()</b>)</a></h2>
-<p class="Pp"><b>Terminal:</b></p>
-<ul class="Bl-bullet">
-  <li>Forces stderr when stdout is piped (terminal_should_force_stderr)</li>
-  <li>Disables terminal logging during rendering, re-enables on exit</li>
-  <li>Handles snapshot mode log visibility</li>
-</ul>
-<p class="Pp"><b>Keepawake:</b></p>
-<ul class="Bl-bullet">
-  <li>Validates --keepawake / --no-keepawake mutual exclusivity</li>
-  <li>Calls <b>platform_enable_keepawake()</b> unless --no-keepawake set</li>
-  <li>Disables keepawake on exit</li>
-</ul>
-<p class="Pp"><b>Splash Screen:</b></p>
-<ul class="Bl-bullet">
-  <li>Creates temporary display context</li>
-  <li>Calls <b>splash_intro_start()</b> to show splash animation</li>
-  <li>Holds splash visible during media probing and audio init</li>
-  <li>Calls <b>splash_intro_done()</b> when capture and display are ready</li>
-</ul>
-<p class="Pp"><b>Media / Webcam
-    (</b><b>session_capture_ctx_t</b><b>):</b><b></b></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>Selects source type from options (priority order):</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> 1.</dt>
-  <dd>--url &#x2192; MEDIA_SOURCE_FILE (FFmpeg handles http/rtsp/rtmp)</dd>
-  <dt> 2.</dt>
-  <dd>--file &#x2192; MEDIA_SOURCE_FILE; &quot;-&quot; &#x2192;
-      MEDIA_SOURCE_STDIN</dd>
-  <dt> 3.</dt>
-  <dd>--test-pattern &#x2192; MEDIA_SOURCE_TEST</dd>
-  <dt> 4.</dt>
-  <dd>(default) &#x2192; MEDIA_SOURCE_WEBCAM</dd>
-</dl>
-<ul class="Bl-bullet">
-  <li>FPS: uses <b>GET_OPTION(fps)</b> if &gt; 0, otherwise probes with
-      temporary media source</li>
-  <li>Applies <b>GET_OPTION(media_seek_timestamp)</b> as initial seek</li>
-  <li>Applies <b>GET_OPTION(media_loop)</b> for file looping</li>
-  <li>Calls <b>session_capture_create()</b> to open webcam or media file</li>
-  <li>Destroys capture on exit</li>
-</ul>
-<p class="Pp"><b>Audio (</b><b>audio_context_t</b><b>):</b><b></b></p>
-<ul class="Bl-bullet">
-  <li>Skipped entirely for immediate snapshots (snapshot_mode &amp;&amp;
-      snapshot_delay == 0)</li>
-  <li>Probes for audio via <b>media_source_has_audio()</b> on capture's
-    source</li>
-  <li>Allocates and initializes <b>audio_context_t</b> when audio available</li>
-  <li>Links audio context to capture and media source</li>
-  <li>Sets playback_only based on <b>audio_should_enable_microphone()</b></li>
-  <li>Disables jitter buffering for local file playback</li>
-  <li>Calls <b>audio_start_duplex()</b> after <b>splash_intro_done()</b></li>
-  <li>Stops, destroys, and frees audio on exit</li>
-</ul>
-<p class="Pp"><b>Display (</b><b>session_display_ctx_t</b><b>):</b><b></b></p>
-<ul class="Bl-bullet">
-  <li>Calls <b>session_display_create()</b> with snapshot and color
-    settings</li>
-  <li>Passes audio context if initialized</li>
-  <li>Destroys display on exit</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Mode-Specific_Loop"><a class="permalink" href="#Mode-Specific_Loop">Mode-Specific
-  Loop</a></h2>
-<p class="Pp">Calls config-&gt;run_fn(capture, display,
-    config-&gt;run_user_data) once all initialization is complete. This is where
-    each mode calls <b>session_render_loop()</b> or runs its own
-    protocol-thread-driven loop.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Cleanup_(always_runs,_even_on_error)"><a class="permalink" href="#Cleanup_(always_runs,_even_on_error)">Cleanup
-  (always runs, even on error)</a></h2>
-<p class="Pp">Cleanup sequence (order is critical):</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Re-enable terminal logging</dd>
-  <dt>2.</dt>
-  <dd><b>audio_terminate_portaudio_final()</b> - Free PortAudio device resources
-      FIRST</dd>
-  <dt>3.</dt>
-  <dd><b>audio_stop_duplex()</b> + <b>audio_destroy()</b> + SAFE_FREE</dd>
-  <dt>4.</dt>
-  <dd><b>session_display_destroy()</b></dd>
-  <dt>5.</dt>
-  <dd><b>session_capture_destroy()</b></dd>
-  <dt>6.</dt>
-  <dd><b>media_source_destroy()</b> - Free capture buffers and source state</dd>
-  <dt>7.</dt>
-  <dd><b>session_log_buffer_destroy()</b></dd>
-  <dt>8.</dt>
-  <dd><b>platform_disable_keepawake()</b></dd>
-  <dt>9.</dt>
-  <dd>Print '
-    <br/>
-  </dd>
-</dl>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Mode configuration. Must not be NULL.
-  run_fn must not be NULL.</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, or the first error code from
-  initialization or from run_fn. Cleanup always runs regardless of return
-  value.</div>
-<p class="Pp">Definition at line <b>879</b> of file <b>client_like.c</b>.</p>
-<pre>879                                                                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_like.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_like.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_like.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          client_like.c - Shared initialization and teardown for client-like
+          modes.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>client_like_state_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>terminal_fd_reader_t</b> *
+            <b>session_client_like_get_stdin_reader</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>session_client_like_run</b> (const
+            <b>session_client_like_config_t</b> *config)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b>(*)(void *)
+            <b>session_client_like_get_render_should_exit</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Shared initialization and teardown for client-like modes.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>client_like.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE___32"
+          >
+            <a
+              class="permalink"
+              href="#_define_SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE___32"
+              >#define SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>client_like.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_client_like_run (const
+            <b>session_client_like_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Run a client-like mode with fully shared initialization and teardown
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This function orchestrates the complete lifecycle of client-like
+            modes:
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Initialization_(automatic_from_">
+            <a class="permalink" href="#Initialization_(automatic_from_"
+              >Initialization (automatic from <b>GET_OPTION()</b>)</a
+            >
+          </h2>
+          <p class="Pp"><b>Terminal:</b></p>
+          <ul class="Bl-bullet">
+            <li>
+              Forces stderr when stdout is piped (terminal_should_force_stderr)
+            </li>
+            <li>
+              Disables terminal logging during rendering, re-enables on exit
+            </li>
+            <li>Handles snapshot mode log visibility</li>
+          </ul>
+          <p class="Pp"><b>Keepawake:</b></p>
+          <ul class="Bl-bullet">
+            <li>Validates --keepawake / --no-keepawake mutual exclusivity</li>
+            <li>
+              Calls <b>platform_enable_keepawake()</b> unless --no-keepawake set
+            </li>
+            <li>Disables keepawake on exit</li>
+          </ul>
+          <p class="Pp"><b>Splash Screen:</b></p>
+          <ul class="Bl-bullet">
+            <li>Creates temporary display context</li>
+            <li>Calls <b>splash_intro_start()</b> to show splash animation</li>
+            <li>Holds splash visible during media probing and audio init</li>
+            <li>
+              Calls <b>splash_intro_done()</b> when capture and display are
+              ready
+            </li>
+          </ul>
+          <p class="Pp">
+            <b>Media / Webcam (</b><b>session_capture_ctx_t</b><b>):</b><b></b>
+          </p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Selects source type from options (priority order):</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              --url &#x2192; MEDIA_SOURCE_FILE (FFmpeg handles http/rtsp/rtmp)
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              --file &#x2192; MEDIA_SOURCE_FILE; &quot;-&quot; &#x2192;
+              MEDIA_SOURCE_STDIN
+            </dd>
+            <dt>3.</dt>
+            <dd>--test-pattern &#x2192; MEDIA_SOURCE_TEST</dd>
+            <dt>4.</dt>
+            <dd>(default) &#x2192; MEDIA_SOURCE_WEBCAM</dd>
+          </dl>
+          <ul class="Bl-bullet">
+            <li>
+              FPS: uses <b>GET_OPTION(fps)</b> if &gt; 0, otherwise probes with
+              temporary media source
+            </li>
+            <li>
+              Applies <b>GET_OPTION(media_seek_timestamp)</b> as initial seek
+            </li>
+            <li>Applies <b>GET_OPTION(media_loop)</b> for file looping</li>
+            <li>
+              Calls <b>session_capture_create()</b> to open webcam or media file
+            </li>
+            <li>Destroys capture on exit</li>
+          </ul>
+          <p class="Pp"><b>Audio (</b><b>audio_context_t</b><b>):</b><b></b></p>
+          <ul class="Bl-bullet">
+            <li>
+              Skipped entirely for immediate snapshots (snapshot_mode &amp;&amp;
+              snapshot_delay == 0)
+            </li>
+            <li>
+              Probes for audio via <b>media_source_has_audio()</b> on capture's
+              source
+            </li>
+            <li>
+              Allocates and initializes <b>audio_context_t</b> when audio
+              available
+            </li>
+            <li>Links audio context to capture and media source</li>
+            <li>
+              Sets playback_only based on
+              <b>audio_should_enable_microphone()</b>
+            </li>
+            <li>Disables jitter buffering for local file playback</li>
+            <li>
+              Calls <b>audio_start_duplex()</b> after <b>splash_intro_done()</b>
+            </li>
+            <li>Stops, destroys, and frees audio on exit</li>
+          </ul>
+          <p class="Pp">
+            <b>Display (</b><b>session_display_ctx_t</b><b>):</b><b></b>
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Calls <b>session_display_create()</b> with snapshot and color
+              settings
+            </li>
+            <li>Passes audio context if initialized</li>
+            <li>Destroys display on exit</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Mode-Specific_Loop">
+            <a class="permalink" href="#Mode-Specific_Loop"
+              >Mode-Specific Loop</a
+            >
+          </h2>
+          <p class="Pp">
+            Calls config-&gt;run_fn(capture, display, config-&gt;run_user_data)
+            once all initialization is complete. This is where each mode calls
+            <b>session_render_loop()</b> or runs its own protocol-thread-driven
+            loop.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Cleanup_(always_runs,_even_on_error)">
+            <a class="permalink" href="#Cleanup_(always_runs,_even_on_error)"
+              >Cleanup (always runs, even on error)</a
+            >
+          </h2>
+          <p class="Pp">Cleanup sequence (order is critical):</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Re-enable terminal logging</dd>
+            <dt>2.</dt>
+            <dd>
+              <b>audio_terminate_portaudio_final()</b> - Free PortAudio device
+              resources FIRST
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>audio_stop_duplex()</b> + <b>audio_destroy()</b> + SAFE_FREE
+            </dd>
+            <dt>4.</dt>
+            <dd><b>session_display_destroy()</b></dd>
+            <dt>5.</dt>
+            <dd><b>session_capture_destroy()</b></dd>
+            <dt>6.</dt>
+            <dd>
+              <b>media_source_destroy()</b> - Free capture buffers and source
+              state
+            </dd>
+            <dt>7.</dt>
+            <dd><b>session_log_buffer_destroy()</b></dd>
+            <dt>8.</dt>
+            <dd><b>platform_disable_keepawake()</b></dd>
+            <dt>9.</dt>
+            <dd>
+              Print '
+              <br />
+            </dd>
+          </dl>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Mode configuration. Must not be NULL. run_fn must not
+            be NULL.
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, or the first error code from initialization
+            or from run_fn. Cleanup always runs regardless of return value.
+          </div>
+          <p class="Pp">
+            Definition at line <b>879</b> of file <b>client_like.c</b>.
+          </p>
+          <pre>
+879                                                                                       {
 880   ASCII_OTEL_SCOPE(SESSION_CLIENT_LIKE_RUN);
 881   if (!config || !config-&gt;run_fn) {
 882     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or run_fn is NULL&quot;);
@@ -279,43 +409,57 @@
 938 cleanup:
 939   return client_like_cleanup_session(config, &amp;state, result);
 940 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>client_like_state_t::audio_available</b>,
-    <b>AUDIO_CAPTURE_SOURCE_MIC</b>, <b>ERROR_AUDIO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
-    <b>session_client_like_config::run_fn</b>, <b>SAFE_GETENV</b>,
-    <b>session_client_like_run()</b>, <b>SET_ERRNO</b>, and
-    <b>client_like_state_t::should_init_audio</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>, <b>discovery_main()</b>,
-    <b>mirror_main()</b>, and <b>session_client_like_run()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b>(*)(void *)
-  session_client_like_get_render_should_exit(void) (void )</h2>
-<p class="Pp">Definition at line <b>99</b> of file <b>client_like.c</b>.</p>
-<pre>99                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>client_like_state_t::audio_available</b>,
+            <b>AUDIO_CAPTURE_SOURCE_MIC</b>, <b>ERROR_AUDIO</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
+            <b>session_client_like_config::run_fn</b>, <b>SAFE_GETENV</b>,
+            <b>session_client_like_run()</b>, <b>SET_ERRNO</b>, and
+            <b>client_like_state_t::should_init_audio</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_main()</b>, <b>discovery_main()</b>,
+            <b>mirror_main()</b>, and <b>session_client_like_run()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b>(*)(void *)
+            session_client_like_get_render_should_exit(void) (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>99</b> of file <b>client_like.c</b>.
+          </p>
+          <pre>
+99                                                                  {
 100   return g_render_should_exit;
 101 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

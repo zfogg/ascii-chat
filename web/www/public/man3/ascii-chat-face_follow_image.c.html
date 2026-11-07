@@ -1,94 +1,153 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>face_follow_image.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">face_follow_image.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">face_follow_image.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">face_follow_image.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>face_follow_image</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>face_follow_image_destroy</b> (<b>face_follow_image_t</b>
-    *context)
-  <br/>
-  <b>image_t</b> * <b>face_follow_image_process</b> (<b>face_follow_image_t</b>
-    **context, <b>image_t</b> *source, double now, <b>bool</b> enabled,
-    <b>bool</b> debug, int max_width, int max_height)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_image_destroy_("><a class="permalink" href="#void_face_follow_image_destroy_(">void
-  face_follow_image_destroy (<b>face_follow_image_t</b> * context)</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file
-  <b>face_follow_image.c</b>.</p>
-<pre>14                                                              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>face_follow_image.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">face_follow_image.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">face_follow_image.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">face_follow_image.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>face_follow_image</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>face_follow_image_destroy</b> (<b>face_follow_image_t</b>
+            *context)
+            <br />
+            <b>image_t</b> * <b>face_follow_image_process</b> (<b
+              >face_follow_image_t</b
+            >
+            **context, <b>image_t</b> *source, double now, <b>bool</b> enabled,
+            <b>bool</b> debug, int max_width, int max_height)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_image_destroy_(">
+            <a class="permalink" href="#void_face_follow_image_destroy_("
+              >void face_follow_image_destroy (<b>face_follow_image_t</b> *
+              context)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>face_follow_image.c</b>.
+          </p>
+          <pre>
+14                                                              {
 15   if (!context)
 16     return;
 17   image_destroy(context-&gt;output);
 18   context-&gt;output = NULL;
 19   SAFE_FREE(context);
 20 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_image_destroy()</b>,
-    <b>image_destroy()</b>, <b>face_follow_image::output</b>, and
-    <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_destroy()</b>, and
-    <b>session_capture_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b> * face_follow_image_process
-  (<b>face_follow_image_t</b> ** context, <b>image_t</b> * source, double now,
-  <b>bool</b> enabled, <b>bool</b> debug, int max_width, int max_height)</h2>
-<p class="Pp">Output is borrowed until the next call; the source image is never
-    modified.</p>
-<p class="Pp">Definition at line <b>22</b> of file
-  <b>face_follow_image.c</b>.</p>
-<pre>23                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_image_destroy()</b>,
+            <b>image_destroy()</b>, <b>face_follow_image::output</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_destroy()</b>, and
+            <b>session_capture_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>image_t</b> * face_follow_image_process (<b
+              >face_follow_image_t</b
+            >
+            ** context, <b>image_t</b> * source, double now,
+            <b>bool</b> enabled, <b>bool</b> debug, int max_width, int
+            max_height)
+          </h2>
+          <p class="Pp">
+            Output is borrowed until the next call; the source image is never
+            modified.
+          </p>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>face_follow_image.c</b>.
+          </p>
+          <pre>
+23                                                                   {
 24   if (!source || source-&gt;w &lt;= 0 || source-&gt;h &lt;= 0)
 25     return source;
 26   if (!*context &amp;&amp; !enabled &amp;&amp; !debug)
@@ -158,37 +217,44 @@
 90   }
 91   return ctx-&gt;output;
 92 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>face_follow_image::bgr</b>,
-    <b>face_follow_state_t::crop</b>, <b>face_follow_state_t::detected</b>,
-    <b>face_follow_state_t::face</b>, <b>face_follow_detect()</b>,
-    <b>FACE_FOLLOW_DETECT_HEIGHT</b>, <b>FACE_FOLLOW_DETECT_WIDTH</b>,
-    <b>face_follow_image_process()</b>, <b>face_follow_init()</b>,
-    <b>FACE_FOLLOW_MAX_DETECTIONS</b>, <b>face_follow_observe()</b>,
-    <b>face_follow_tick()</b>, <b>rgb_pixel_t::g</b>,
-    <b>face_follow_rect_t::h</b>, <b>image_t::h</b>, <b>image_destroy()</b>,
-    <b>image_new()</b>, <b>face_follow_image::last_detection</b>,
-    <b>face_follow_state_t::last_seen</b>, <b>face_follow_image::output</b>,
-    <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>,
-    <b>face_follow_image::results</b>, <b>SAFE_CALLOC</b>,
-    <b>face_follow_image::source_height</b>,
-    <b>face_follow_image::source_width</b>, <b>face_follow_image::state</b>,
-    <b>face_follow_rect_t::w</b>, <b>image_t::w</b>,
-    <b>face_follow_rect_t::x</b>, and <b>face_follow_rect_t::y</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>rgb_pixel_t::b</b>, <b>face_follow_image::bgr</b>,
+            <b>face_follow_state_t::crop</b>,
+            <b>face_follow_state_t::detected</b>,
+            <b>face_follow_state_t::face</b>, <b>face_follow_detect()</b>,
+            <b>FACE_FOLLOW_DETECT_HEIGHT</b>, <b>FACE_FOLLOW_DETECT_WIDTH</b>,
+            <b>face_follow_image_process()</b>, <b>face_follow_init()</b>,
+            <b>FACE_FOLLOW_MAX_DETECTIONS</b>, <b>face_follow_observe()</b>,
+            <b>face_follow_tick()</b>, <b>rgb_pixel_t::g</b>,
+            <b>face_follow_rect_t::h</b>, <b>image_t::h</b>,
+            <b>image_destroy()</b>, <b>image_new()</b>,
+            <b>face_follow_image::last_detection</b>,
+            <b>face_follow_state_t::last_seen</b>,
+            <b>face_follow_image::output</b>, <b>image_t::pixels</b>,
+            <b>rgb_pixel_t::r</b>, <b>face_follow_image::results</b>,
+            <b>SAFE_CALLOC</b>, <b>face_follow_image::source_height</b>,
+            <b>face_follow_image::source_width</b>,
+            <b>face_follow_image::state</b>, <b>face_follow_rect_t::w</b>,
+            <b>image_t::w</b>, <b>face_follow_rect_t::x</b>, and
+            <b>face_follow_rect_t::y</b>.
+          </p>
+          <p class="Pp">Referenced by <b>face_follow_image_process()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

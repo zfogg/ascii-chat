@@ -1,82 +1,125 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>browser_host.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">browser_host.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">browser_host.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">browser_host.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>EM_JS</b> (void, browser_host_send,(<b>uint32_t</b> client,
-    const <b>uint8_t</b> *data, size_t length), { if(Module.hostPacketCallback)
-    Module.hostPacketCallback(client, HEAPU8.slice(data, data+length));})
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>browser_host_destroy</b> (void)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-    <b>browser_host_create</b> (void)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>uint32_t</b> <b>browser_host_add_client</b>
-    (void)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>browser_host_remove_client</b>
-    (<b>uint32_t</b> id)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-    <b>browser_host_set_local_client</b> (<b>uint32_t</b> id)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-    <b>browser_host_receive</b> (<b>uint32_t</b> id, <b>uint32_t</b> type, const
-    void *data, size_t length)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-    <b>browser_host_render</b> (void)
-  <br/>
-  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-    <b>browser_host_render_audio</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>uint32_t</b>
-  browser_host_add_client (void )</h2>
-<p class="Pp">Definition at line <b>49</b> of file <b>browser_host.c</b>.</p>
-<pre>49                                                             {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>browser_host.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">browser_host.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">browser_host.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">browser_host.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EM_JS</b> (void, browser_host_send,(<b>uint32_t</b> client, const
+            <b>uint8_t</b> *data, size_t length), {
+            if(Module.hostPacketCallback) Module.hostPacketCallback(client,
+            HEAPU8.slice(data, data+length));})
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>browser_host_destroy</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_host_create</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>uint32_t</b>
+            <b>browser_host_add_client</b>
+            (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void
+            <b>browser_host_remove_client</b> (<b>uint32_t</b> id)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_host_set_local_client</b> (<b>uint32_t</b> id)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_host_receive</b> (<b>uint32_t</b> id,
+            <b>uint32_t</b> type, const void *data, size_t length)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_host_render</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_host_render_audio</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>uint32_t</b> browser_host_add_client
+            (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>49</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+49                                                             {
 50   if (!host)
 51     return 0;
 52   for (size_t i = 0; i &lt; MAX_SESSION_PARTICIPANTS; ++i) {
@@ -96,20 +139,27 @@
 66   }
 67   return 0;
 68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_TRANSPORT_BORROWED</b>, <b>ASCIICHAT_OK</b>,
-    <b>browser_host_add_client()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
-    <b>MAX_SESSION_PARTICIPANTS</b>, <b>session_host_add_client()</b>,
-    <b>session_host_remove_client()</b>, and
-    <b>session_host_set_client_transport()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_add_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-  browser_host_create (void )</h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>browser_host.c</b>.</p>
-<pre>41                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_BORROWED</b>, <b>ASCIICHAT_OK</b>,
+            <b>browser_host_add_client()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>MAX_SESSION_PARTICIPANTS</b>, <b>session_host_add_client()</b>,
+            <b>session_host_remove_client()</b>, and
+            <b>session_host_set_client_transport()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_host_add_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_host_create (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+41                                                                  {
 42   browser_host_destroy();
 43   session_host_config_t config = {.max_clients = MAX_SESSION_PARTICIPANTS};
 44   host = session_host_create(&amp;config);
@@ -117,50 +167,76 @@
 46     return ERROR_MEMORY;
 47   return session_host_render_audio(host);
 48 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_create()</b>,
-    <b>browser_host_destroy()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
-    <b>ERROR_MEMORY</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
-    <b>session_host_create()</b>, and <b>session_host_render_audio()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void browser_host_destroy (void
-  )</h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>browser_host.c</b>.</p>
-<pre>35                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_create()</b>,
+            <b>browser_host_destroy()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>ERROR_MEMORY</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+            <b>session_host_create()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_host_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void browser_host_destroy (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+35                                                      {
 36   session_host_destroy(host);
 37   host = NULL;
 38   memset(client_ids, 0, sizeof(client_ids));
 39   memset(transports, 0, sizeof(transports));
 40 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_destroy()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_create()</b>, and
-    <b>browser_host_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-  browser_host_receive (<b>uint32_t</b> id, <b>uint32_t</b> type, const void *
-  data, size_t length)</h2>
-<p class="Pp">Definition at line <b>81</b> of file <b>browser_host.c</b>.</p>
-<pre>82                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_destroy()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_create()</b>, and
+            <b>browser_host_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_host_receive (<b>uint32_t</b> id,
+            <b>uint32_t</b> type, const void * data, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+82                                                                            {
 83   return session_host_receive_packet(host, id, (packet_type_t)type, data, length);
 84 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_receive()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_receive_packet()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_receive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void browser_host_remove_client
-  (<b>uint32_t</b> id)</h2>
-<p class="Pp">Definition at line <b>69</b> of file <b>browser_host.c</b>.</p>
-<pre>69                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_receive()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_host_receive()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void browser_host_remove_client (<b
+              >uint32_t</b
+            >
+            id)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+69                                                                   {
 70   if (!host)
 71     return;
 72   session_host_remove_client(host, id);
@@ -168,75 +244,109 @@
 74     if (client_ids[i] == id)
 75       client_ids[i] = 0;
 76 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_remove_client()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>MAX_SESSION_PARTICIPANTS</b>, and
-    <b>session_host_remove_client()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-  browser_host_render (void )</h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>browser_host.c</b>.</p>
-<pre>85                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_remove_client()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, <b>MAX_SESSION_PARTICIPANTS</b>, and
+            <b>session_host_remove_client()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_host_remove_client()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_host_render (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+85                                                                  {
 86   return session_host_render_video(host);
 87 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_render()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_render_video()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-  browser_host_render_audio (void )</h2>
-<p class="Pp">Definition at line <b>88</b> of file <b>browser_host.c</b>.</p>
-<pre>88                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_render()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_render_video()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_host_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_host_render_audio (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+88                                                                        {
 89   return session_host_render_audio(host);
 90 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_render_audio()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_render_audio()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_render_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
-  browser_host_set_local_client (<b>uint32_t</b> id)</h2>
-<p class="Pp">Definition at line <b>77</b> of file <b>browser_host.c</b>.</p>
-<pre>77                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_render_audio()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and <b>session_host_render_audio()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_host_render_audio()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_host_set_local_client (<b
+              >uint32_t</b
+            >
+            id)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>browser_host.c</b>.
+          </p>
+          <pre>
+77                                                                                   {
 78   session_host_render_target_t target = {.client_id = id};
 79   return session_host_set_render_target(host, id ? &amp;target : NULL);
 80 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>browser_host_set_local_client()</b>,
-    <b>EMSCRIPTEN_KEEPALIVE</b>, and
-  <b>session_host_set_render_target()</b>.</p>
-<p class="Pp">Referenced by <b>browser_host_set_local_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="EM_JS_(void_,_browser_host_send_,_("><a class="permalink" href="#EM_JS_(void_,_browser_host_send_,_(">EM_JS
-  (void , browser_host_send , (<b>uint32_t</b> client, const <b>uint8_t</b>
-  *data, size_t length) , { if(Module.hostPacketCallback)
-  Module.hostPacketCallback(client, HEAPU8.slice(data, data+length));}
-  )</a></h2>
-<p class="Pp">Browser adapter for the same session host used by CLI
-  discovery.</p>
-<p class="Pp">References <b>EM_JS()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_host_set_local_client()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>session_host_set_render_target()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_set_local_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="EM_JS_(void_,_browser_host_send_,_(">
+            <a class="permalink" href="#EM_JS_(void_,_browser_host_send_,_("
+              >EM_JS (void , browser_host_send , (<b>uint32_t</b> client, const
+              <b>uint8_t</b> *data, size_t length) , {
+              if(Module.hostPacketCallback) Module.hostPacketCallback(client,
+              HEAPU8.slice(data, data+length));} )</a
+            >
+          </h2>
+          <p class="Pp">
+            Browser adapter for the same session host used by CLI discovery.
+          </p>
+          <p class="Pp">References <b>EM_JS()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

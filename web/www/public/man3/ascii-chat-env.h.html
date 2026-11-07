@@ -1,79 +1,127 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>env.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">env.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">env.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">env.h - Environment variable utilities with stack-based prompt
-    responses.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>env_pop_prompt_response</b> (char *response_out,
-    size_t response_size)
-  <br/>
-  Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE stack.
-    <b>bool</b> <b>env_has_prompt_response</b> (void)
-  <br/>
-  Check if ASCII_CHAT_QUESTION_PROMPT_RESPONSE has any responses available.
-    <b>bool</b> <b>env_validate_prompt_response_format</b> (void)
-  <br/>
-  Validate ASCII_CHAT_QUESTION_PROMPT_RESPONSE format.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Environment variable utilities with stack-based prompt
-  responses.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>env.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> env_has_prompt_response (void )</h2>
-<p class="Pp">Check if ASCII_CHAT_QUESTION_PROMPT_RESPONSE has any responses
-    available.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if at least one response is available, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>204</b> of file <b>env.c</b>.</p>
-<pre>204                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>env.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">env.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">env.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          env.h - Environment variable utilities with stack-based prompt
+          responses.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>env_pop_prompt_response</b> (char *response_out,
+            size_t response_size)
+            <br />
+            Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE
+            stack.
+            <b>bool</b> <b>env_has_prompt_response</b> (void)
+            <br />
+            Check if ASCII_CHAT_QUESTION_PROMPT_RESPONSE has any responses
+            available.
+            <b>bool</b> <b>env_validate_prompt_response_format</b> (void)
+            <br />
+            Validate ASCII_CHAT_QUESTION_PROMPT_RESPONSE format.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Environment variable utilities with stack-based prompt responses.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>env.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> env_has_prompt_response (void )</h2>
+          <p class="Pp">
+            Check if ASCII_CHAT_QUESTION_PROMPT_RESPONSE has any responses
+            available.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if at least one response is available, false otherwise
+          </div>
+          <p class="Pp">Definition at line <b>204</b> of file <b>env.c</b>.</p>
+          <pre>
+204                                    {
 205   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
 206   if (!env_value || env_value[0] == '\0' || env_value[0] == ';') {
 207     return false;
@@ -88,71 +136,105 @@
 216
 217   return false;
 218 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>env_has_prompt_response()</b>, and
-    <b>SAFE_GETENV</b>.</p>
-<p class="Pp">Referenced by <b>env_has_prompt_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> env_pop_prompt_response (char * response_out, size_t
-  response_size)</h2>
-<p class="Pp">Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE
-    stack. Format: &quot;response1;response2;response3&quot; or
-    &quot;response1;response2;response3;&quot;</p>
-<p class="Pp"></p>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>&quot;y;n;123&quot; -&gt; returns &quot;y&quot;, sets env to
-      &quot;n;123&quot;</li>
-  <li>&quot;password&quot; -&gt; returns &quot;password&quot;, sets env to
-      &quot;&quot;</li>
-  <li>&quot;y;&quot; -&gt; returns &quot;y&quot;, sets env to &quot;&quot;</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>response_out</i> Buffer to store the popped response
-  (must be at least 256 bytes)
-<br/>
-<i>response_size</i> Size of response_out buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if a response was successfully popped, false
-  otherwise</div>
-<p class="Pp">Format: &quot;response1;response2;response3&quot; or
-    &quot;response1;response2;response3;&quot; This function extracts the first
-    response and updates the environment variable to contain the remaining
-    responses.</p>
-<p class="Pp"></p>
-<p class="Pp">Escaping: Use backslash to include literal semicolons or
-    backslashes:</p>
-<ul class="Bl-bullet">
-  <li>\; &#x2192; ; (literal semicolon)</li>
-  <li>\ &#x2192; \ (literal backslash)</li>
-</ul>
-<p class="Pp">Examples:</p>
-<ul class="Bl-bullet">
-  <li>&quot;y;n;123&quot; -&gt; returns &quot;y&quot;, sets env to
-      &quot;n;123&quot;</li>
-  <li>&quot;password&quot; -&gt; returns &quot;password&quot;, sets env to
-      &quot;&quot;</li>
-  <li>&quot;y;&quot; -&gt; returns &quot;y&quot;, sets env to &quot;&quot;</li>
-  <li>&quot;pass\;word;y&quot; -&gt; returns &quot;pass;word&quot;, sets env to
-      &quot;y&quot;</li>
-  <li>&quot;path\\to\\file;n&quot; -&gt; returns &quot;path\to\file&quot;, sets
-      env to &quot;n&quot;</li>
-  <li>&quot;&quot; -&gt; returns NULL</li>
-  <li>&quot;;;y&quot; -&gt; returns NULL (invalid format)</li>
-  <li>&quot;;y&quot; -&gt; returns NULL (invalid format)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>response_out</i> Buffer to store the popped response
-  (must be at least 256 bytes)
-<br/>
-<i>response_size</i> Size of response_out buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if a response was successfully popped, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>96</b> of file <b>env.c</b>.</p>
-<pre>96                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>env_has_prompt_response()</b>, and <b>SAFE_GETENV</b>.
+          </p>
+          <p class="Pp">Referenced by <b>env_has_prompt_response()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> env_pop_prompt_response (char * response_out, size_t
+            response_size)
+          </h2>
+          <p class="Pp">
+            Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE
+            stack. Format: &quot;response1;response2;response3&quot; or
+            &quot;response1;response2;response3;&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Examples:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;y;n;123&quot; -&gt; returns &quot;y&quot;, sets env to
+              &quot;n;123&quot;
+            </li>
+            <li>
+              &quot;password&quot; -&gt; returns &quot;password&quot;, sets env
+              to &quot;&quot;
+            </li>
+            <li>
+              &quot;y;&quot; -&gt; returns &quot;y&quot;, sets env to
+              &quot;&quot;
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>response_out</i> Buffer to store the popped response (must be at
+            least 256 bytes)
+            <br />
+            <i>response_size</i> Size of response_out buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if a response was successfully popped, false otherwise
+          </div>
+          <p class="Pp">
+            Format: &quot;response1;response2;response3&quot; or
+            &quot;response1;response2;response3;&quot; This function extracts
+            the first response and updates the environment variable to contain
+            the remaining responses.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Escaping: Use backslash to include literal semicolons or
+            backslashes:
+          </p>
+          <ul class="Bl-bullet">
+            <li>\; &#x2192; ; (literal semicolon)</li>
+            <li>\ &#x2192; \ (literal backslash)</li>
+          </ul>
+          <p class="Pp">Examples:</p>
+          <ul class="Bl-bullet">
+            <li>
+              &quot;y;n;123&quot; -&gt; returns &quot;y&quot;, sets env to
+              &quot;n;123&quot;
+            </li>
+            <li>
+              &quot;password&quot; -&gt; returns &quot;password&quot;, sets env
+              to &quot;&quot;
+            </li>
+            <li>
+              &quot;y;&quot; -&gt; returns &quot;y&quot;, sets env to
+              &quot;&quot;
+            </li>
+            <li>
+              &quot;pass\;word;y&quot; -&gt; returns &quot;pass;word&quot;, sets
+              env to &quot;y&quot;
+            </li>
+            <li>
+              &quot;path\\to\\file;n&quot; -&gt; returns
+              &quot;path\to\file&quot;, sets env to &quot;n&quot;
+            </li>
+            <li>&quot;&quot; -&gt; returns NULL</li>
+            <li>&quot;;;y&quot; -&gt; returns NULL (invalid format)</li>
+            <li>&quot;;y&quot; -&gt; returns NULL (invalid format)</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>response_out</i> Buffer to store the popped response (must be at
+            least 256 bytes)
+            <br />
+            <i>response_size</i> Size of response_out buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if a response was successfully popped, false otherwise
+          </div>
+          <p class="Pp">Definition at line <b>96</b> of file <b>env.c</b>.</p>
+          <pre>
+96                                                                        {
 97   if (!response_out || response_size &lt; 2) {
 98     return false;
 99   }
@@ -254,45 +336,54 @@
 195
 196   return true;
 197 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>env_pop_prompt_response()</b>, <b>log_debug</b>,
-    <b>log_dev</b>, <b>log_warn</b>, <b>platform_setenv()</b>,
-    <b>platform_unsetenv()</b>, <b>SAFE_GETENV</b>, <b>SAFE_STRNCPY</b>, and
-    <b>UTIL_ENV_NEW_ENV_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>env_pop_prompt_response()</b>, and
-    <b>ui_input_password()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> env_validate_prompt_response_format (void )</h2>
-<p class="Pp">Validate ASCII_CHAT_QUESTION_PROMPT_RESPONSE format. Valid
-    formats: &quot;y&quot;, &quot;y;n&quot;, &quot;y;n;123&quot;,
-    &quot;y;n;123;&quot; Invalid formats: &quot;&quot;, &quot;;&quot;,
-    &quot;;y&quot;, &quot;y;;n&quot;, &quot;;;&quot;</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if format is valid, false otherwise</div>
-<p class="Pp">Valid formats:</p>
-<ul class="Bl-bullet">
-  <li>&quot;y&quot;</li>
-  <li>&quot;y;n&quot;</li>
-  <li>&quot;y;n;123&quot;</li>
-  <li>&quot;y;n;123;&quot;</li>
-  <li>&quot;pass\;word;y&quot; (escaped semicolon)</li>
-  <li>&quot;path\\to\\file&quot; (escaped backslash)</li>
-</ul>
-<p class="Pp">Invalid formats:</p>
-<ul class="Bl-bullet">
-  <li>&quot;&quot;</li>
-  <li>&quot;;&quot;</li>
-  <li>&quot;;y&quot;</li>
-  <li>&quot;y;;n&quot; (empty segment)</li>
-  <li>&quot;;;&quot;</li>
-</ul>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if format is valid, false otherwise</div>
-<p class="Pp">Definition at line <b>240</b> of file <b>env.c</b>.</p>
-<pre>240                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>env_pop_prompt_response()</b>, <b>log_debug</b>,
+            <b>log_dev</b>, <b>log_warn</b>, <b>platform_setenv()</b>,
+            <b>platform_unsetenv()</b>, <b>SAFE_GETENV</b>, <b>SAFE_STRNCPY</b>,
+            and <b>UTIL_ENV_NEW_ENV_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>env_pop_prompt_response()</b>, and
+            <b>ui_input_password()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> env_validate_prompt_response_format (void )
+          </h2>
+          <p class="Pp">
+            Validate ASCII_CHAT_QUESTION_PROMPT_RESPONSE format. Valid formats:
+            &quot;y&quot;, &quot;y;n&quot;, &quot;y;n;123&quot;,
+            &quot;y;n;123;&quot; Invalid formats: &quot;&quot;, &quot;;&quot;,
+            &quot;;y&quot;, &quot;y;;n&quot;, &quot;;;&quot;
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if format is valid, false otherwise</div>
+          <p class="Pp">Valid formats:</p>
+          <ul class="Bl-bullet">
+            <li>&quot;y&quot;</li>
+            <li>&quot;y;n&quot;</li>
+            <li>&quot;y;n;123&quot;</li>
+            <li>&quot;y;n;123;&quot;</li>
+            <li>&quot;pass\;word;y&quot; (escaped semicolon)</li>
+            <li>&quot;path\\to\\file&quot; (escaped backslash)</li>
+          </ul>
+          <p class="Pp">Invalid formats:</p>
+          <ul class="Bl-bullet">
+            <li>&quot;&quot;</li>
+            <li>&quot;;&quot;</li>
+            <li>&quot;;y&quot;</li>
+            <li>&quot;y;;n&quot; (empty segment)</li>
+            <li>&quot;;;&quot;</li>
+          </ul>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if format is valid, false otherwise</div>
+          <p class="Pp">Definition at line <b>240</b> of file <b>env.c</b>.</p>
+          <pre>
+240                                                {
 241   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
 242   if (!env_value) {
 243     return true; // Not set is valid (no automated responses)
@@ -332,23 +423,29 @@
 277   // Trailing semicolon is allowed
 278   return true;
 279 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>env_validate_prompt_response_format()</b>, and
-    <b>SAFE_GETENV</b>.</p>
-<p class="Pp">Referenced by <b>env_validate_prompt_response_format()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>env_validate_prompt_response_format()</b>, and
+            <b>SAFE_GETENV</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>env_validate_prompt_response_format()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

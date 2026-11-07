@@ -1,240 +1,326 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client_pipeline.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client_pipeline.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client_pipeline.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client_pipeline.h - Unified client-side audio processing
-  pipeline.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>client_audio_pipeline_flags_t</b>
-  <br/>
-  Component enable/disable flags. struct <b>client_audio_pipeline_config_t</b>
-  <br/>
-  Pipeline configuration parameters. struct <b>client_audio_pipeline_t</b>
-  <br/>
-  Client audio pipeline state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>CLIENT_AUDIO_PIPELINE_FLAGS_ALL</b>
-  <br/>
-  Default flags with all processing enabled. #define
-    <b>CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL</b>
-  <br/>
-  Minimal flags for testing (only codec, no processing).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct SpeexPreprocessState_ <b>SpeexPreprocessState</b>
-  <br/>
-  typedef struct JitterBuffer_ <b>JitterBuffer</b>
-  <br/>
-  typedef struct <b>webrtc_EchoCanceller3</b> <b>webrtc_EchoCanceller3</b>
-  <br/>
-  typedef struct <b>OpusEncoder</b> <b>OpusEncoder</b>
-  <br/>
-  typedef struct <b>OpusDecoder</b> <b>OpusDecoder</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>client_audio_pipeline_config_t</b>
-    <b>client_audio_pipeline_default_config</b> (void)
-  <br/>
-  Get default configuration. <b>client_audio_pipeline_config_t</b>
-    <b>client_audio_pipeline_config_for_source</b> (<b>bool</b> has_media_audio)
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Lifecycle Functions</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  <b>client_audio_pipeline_t</b> * <b>client_audio_pipeline_create</b> (const
-    <b>client_audio_pipeline_config_t</b> *config)
-  <br/>
-  Create a new client audio pipeline. void <b>client_audio_pipeline_destroy</b>
-    (<b>client_audio_pipeline_t</b> *pipeline)
-  <br/>
-  Destroy a client audio pipeline.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Flag Management</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  void <b>client_audio_pipeline_set_flags</b> (<b>client_audio_pipeline_t</b>
-    *pipeline, <b>client_audio_pipeline_flags_t</b> flags)
-  <br/>
-  Set component enable flags. <b>client_audio_pipeline_flags_t</b>
-    <b>client_audio_pipeline_get_flags</b> (<b>client_audio_pipeline_t</b>
-    *pipeline)
-  <br/>
-  Get current component enable flags.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Capture Path (Microphone &#x2192; Network)</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  int <b>client_audio_pipeline_capture</b> (<b>client_audio_pipeline_t</b>
-    *pipeline, const float *input, int num_samples, <b>uint8_t</b> *opus_out,
-    int opus_out_size)
-  <br/>
-  Process captured audio and encode to Opus.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Playback Path (Network &#x2192; Speakers)</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  int <b>client_audio_pipeline_playback</b> (<b>client_audio_pipeline_t</b>
-    *pipeline, const <b>uint8_t</b> *opus_in, int opus_len, float *output, int
-    max_samples)
-  <br/>
-  Decode Opus packet and process for playback. int
-    <b>client_audio_pipeline_get_playback_frame</b>
-    (<b>client_audio_pipeline_t</b> *pipeline, float *output, int num_samples)
-  <br/>
-  Get audio frame from jitter buffer for playback callback.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Full-Duplex AEC3 Processing</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  void <b>client_audio_pipeline_process_duplex</b>
-    (<b>client_audio_pipeline_t</b> *pipeline, const float *render_samples, int
-    render_count, const float *capture_samples, int capture_count, float
-    *processed_output)
-  <br/>
-  Process AEC3 inline in full-duplex callback.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Status and Diagnostics</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  int <b>client_audio_pipeline_jitter_margin</b> (<b>client_audio_pipeline_t</b>
-    *pipeline)
-  <br/>
-  Get jitter buffer margin (buffered time in ms). <b>bool</b>
-    <b>client_audio_pipeline_voice_detected</b> (<b>client_audio_pipeline_t</b>
-    *pipeline)
-  <br/>
-  Check if VAD detected voice activity in last capture. void
-    <b>client_audio_pipeline_reset</b> (<b>client_audio_pipeline_t</b>
-    *pipeline)
-  <br/>
-  Reset pipeline state.
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Unified client-side audio processing pipeline.</p>
-<p class="Pp">This header provides a complete audio processing pipeline for
-    ascii-chat clients, integrating WebRTC AEC3 (production-grade echo
-    cancellation), SpeexDSP (noise suppression, AGC, VAD), Speex jitter buffer,
-    Opus codec, and mixer components (compression, noise gate, filters).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PIPELINE_ARCHITECTURE:"><a class="permalink" href="#PIPELINE_ARCHITECTURE:">PIPELINE
-  ARCHITECTURE: </a></h1>
-<p class="Pp">CAPTURE PATH (microphone &#x2192; network): Mic Input (float32,
-    48kHz) &#x2193; Echo Cancellation (WebRTC AEC3 - automatic network delay
-    estimation + adaptive filtering) &#x2193; Preprocessor (Noise/AGC/VAD)
-    &#x2193; High-Pass Filter (remove rumble) &#x2193; Low-Pass Filter (remove
-    hiss) &#x2193; Noise Gate (silence detection) &#x2193; Compressor (dynamic
-    range control) &#x2193; Opus Encode &#x2192; Network</p>
-<p class="Pp"></p>
-<p class="Pp">PLAYBACK PATH (network &#x2192; speakers): Network &#x2193; Speex
-    Jitter Buffer &#x2193; Opus Decode &#x2193; Register with AEC (WebRTC AEC3
-    reference signal for echo learning) &#x2193; Soft Clipping &#x2192;
-  Speakers</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="COMPONENT_FLAGS:"><a class="permalink" href="#COMPONENT_FLAGS:">COMPONENT
-  FLAGS: </a></h1>
-<p class="Pp">Each processing stage can be individually enabled/disabled via
-    flags. This allows testing and debugging specific components.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
-  SAFETY: </a></h1>
-<ul class="Bl-bullet">
-  <li>Pipeline has internal mutex for state protection</li>
-  <li>Capture and playback paths can run concurrently</li>
-  <li>Echo reference feeding is thread-safe</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">December 2025</div>
-<p class="Pp">Definition in file <b>client_pipeline.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CLIENT_AUDIO_PIPELINE_FLAGS_ALL"><a class="permalink" href="#_define_CLIENT_AUDIO_PIPELINE_FLAGS_ALL">#define
-  CLIENT_AUDIO_PIPELINE_FLAGS_ALL</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((client_audio_pipeline_flags_t){                                                                                    \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_pipeline.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_pipeline.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_pipeline.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          client_pipeline.h - Unified client-side audio processing pipeline.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>client_audio_pipeline_flags_t</b>
+            <br />
+            Component enable/disable flags. struct
+            <b>client_audio_pipeline_config_t</b>
+            <br />
+            Pipeline configuration parameters. struct
+            <b>client_audio_pipeline_t</b>
+            <br />
+            Client audio pipeline state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CLIENT_AUDIO_PIPELINE_FLAGS_ALL</b>
+            <br />
+            Default flags with all processing enabled. #define
+            <b>CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL</b>
+            <br />
+            Minimal flags for testing (only codec, no processing).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct SpeexPreprocessState_ <b>SpeexPreprocessState</b>
+            <br />
+            typedef struct JitterBuffer_ <b>JitterBuffer</b>
+            <br />
+            typedef struct <b>webrtc_EchoCanceller3</b>
+            <b>webrtc_EchoCanceller3</b>
+            <br />
+            typedef struct <b>OpusEncoder</b> <b>OpusEncoder</b>
+            <br />
+            typedef struct <b>OpusDecoder</b> <b>OpusDecoder</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>client_audio_pipeline_config_t</b>
+            <b>client_audio_pipeline_default_config</b> (void)
+            <br />
+            Get default configuration. <b>client_audio_pipeline_config_t</b>
+            <b>client_audio_pipeline_config_for_source</b> (<b>bool</b>
+            has_media_audio)
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Lifecycle Functions</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            <b>client_audio_pipeline_t</b> *
+            <b>client_audio_pipeline_create</b> (const
+            <b>client_audio_pipeline_config_t</b> *config)
+            <br />
+            Create a new client audio pipeline. void
+            <b>client_audio_pipeline_destroy</b> (<b>client_audio_pipeline_t</b>
+            *pipeline)
+            <br />
+            Destroy a client audio pipeline.
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Flag Management</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            void <b>client_audio_pipeline_set_flags</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline, <b>client_audio_pipeline_flags_t</b> flags)
+            <br />
+            Set component enable flags. <b>client_audio_pipeline_flags_t</b>
+            <b>client_audio_pipeline_get_flags</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline)
+            <br />
+            Get current component enable flags.
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Capture Path (Microphone &#x2192; Network)</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            int <b>client_audio_pipeline_capture</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline, const float *input, int num_samples,
+            <b>uint8_t</b> *opus_out, int opus_out_size)
+            <br />
+            Process captured audio and encode to Opus.
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Playback Path (Network &#x2192; Speakers)</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            int <b>client_audio_pipeline_playback</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline, const <b>uint8_t</b> *opus_in, int opus_len, float
+            *output, int max_samples)
+            <br />
+            Decode Opus packet and process for playback. int
+            <b>client_audio_pipeline_get_playback_frame</b>
+            (<b>client_audio_pipeline_t</b> *pipeline, float *output, int
+            num_samples)
+            <br />
+            Get audio frame from jitter buffer for playback callback.
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Full-Duplex AEC3 Processing</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            void <b>client_audio_pipeline_process_duplex</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline, const float *render_samples, int render_count, const
+            float *capture_samples, int capture_count, float *processed_output)
+            <br />
+            Process AEC3 inline in full-duplex callback.
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Status and Diagnostics</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            int <b>client_audio_pipeline_jitter_margin</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline)
+            <br />
+            Get jitter buffer margin (buffered time in ms). <b>bool</b>
+            <b>client_audio_pipeline_voice_detected</b> (<b
+              >client_audio_pipeline_t</b
+            >
+            *pipeline)
+            <br />
+            Check if VAD detected voice activity in last capture. void
+            <b>client_audio_pipeline_reset</b> (<b>client_audio_pipeline_t</b>
+            *pipeline)
+            <br />
+            Reset pipeline state.
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Unified client-side audio processing pipeline.</p>
+        <p class="Pp">
+          This header provides a complete audio processing pipeline for
+          ascii-chat clients, integrating WebRTC AEC3 (production-grade echo
+          cancellation), SpeexDSP (noise suppression, AGC, VAD), Speex jitter
+          buffer, Opus codec, and mixer components (compression, noise gate,
+          filters).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PIPELINE_ARCHITECTURE:">
+          <a class="permalink" href="#PIPELINE_ARCHITECTURE:"
+            >PIPELINE ARCHITECTURE:
+          </a>
+        </h1>
+        <p class="Pp">
+          CAPTURE PATH (microphone &#x2192; network): Mic Input (float32, 48kHz)
+          &#x2193; Echo Cancellation (WebRTC AEC3 - automatic network delay
+          estimation + adaptive filtering) &#x2193; Preprocessor (Noise/AGC/VAD)
+          &#x2193; High-Pass Filter (remove rumble) &#x2193; Low-Pass Filter
+          (remove hiss) &#x2193; Noise Gate (silence detection) &#x2193;
+          Compressor (dynamic range control) &#x2193; Opus Encode &#x2192;
+          Network
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          PLAYBACK PATH (network &#x2192; speakers): Network &#x2193; Speex
+          Jitter Buffer &#x2193; Opus Decode &#x2193; Register with AEC (WebRTC
+          AEC3 reference signal for echo learning) &#x2193; Soft Clipping
+          &#x2192; Speakers
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="COMPONENT_FLAGS:">
+          <a class="permalink" href="#COMPONENT_FLAGS:">COMPONENT FLAGS: </a>
+        </h1>
+        <p class="Pp">
+          Each processing stage can be individually enabled/disabled via flags.
+          This allows testing and debugging specific components.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="THREAD_SAFETY:">
+          <a class="permalink" href="#THREAD_SAFETY:">THREAD SAFETY: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Pipeline has internal mutex for state protection</li>
+          <li>Capture and playback paths can run concurrently</li>
+          <li>Echo reference feeding is thread-safe</li>
+        </ul>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">December 2025</div>
+        <p class="Pp">Definition in file <b>client_pipeline.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_AUDIO_PIPELINE_FLAGS_ALL">
+            <a class="permalink" href="#_define_CLIENT_AUDIO_PIPELINE_FLAGS_ALL"
+              >#define CLIENT_AUDIO_PIPELINE_FLAGS_ALL</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((client_audio_pipeline_flags_t){                                                                                    \
 <br/>
     .echo_cancel = true,                                                                                             \
 <br/>
@@ -254,18 +340,26 @@
 <br/>
     .lowpass = true,                                                                                                 \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Default flags with all processing enabled.</p>
-<p class="Pp">Definition at line <b>113</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_default_config()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL"><a class="permalink" href="#_define_CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL">#define
-  CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((client_audio_pipeline_flags_t){                                                                                    \
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Default flags with all processing enabled.</p>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_default_config()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL">
+            <a
+              class="permalink"
+              href="#_define_CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL"
+              >#define CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((client_audio_pipeline_flags_t){                                                                                    \
 <br/>
     .echo_cancel = false,                                                                                            \
 <br/>
@@ -285,84 +379,122 @@
 <br/>
     .lowpass = false,                                                                                                \
 })</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Minimal flags for testing (only codec, no processing).</p>
-<p class="Pp">Definition at line <b>129</b> of file
-  <b>client_pipeline.h</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_get_flags()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_JitterBuffer__"><a class="permalink" href="#typedef_struct_JitterBuffer__">typedef
-  struct JitterBuffer_ <b>JitterBuffer</b></a></h2>
-<p class="Pp">Definition at line <b>70</b> of file <b>client_pipeline.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_SpeexPreprocessState__"><a class="permalink" href="#typedef_struct_SpeexPreprocessState__">typedef
-  struct SpeexPreprocessState_ <b>SpeexPreprocessState</b></a></h2>
-<p class="Pp">Definition at line <b>69</b> of file <b>client_pipeline.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>webrtc_EchoCanceller3</b> <b>webrtc_EchoCanceller3</b></a></h2>
-<p class="Pp">Definition at line <b>73</b> of file <b>client_pipeline.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_capture_("><a class="permalink" href="#int_client_audio_pipeline_capture_(">int
-  client_audio_pipeline_capture (<b>client_audio_pipeline_t</b> * pipeline,
-  const float * input, int num_samples, <b>uint8_t</b> * opus_out, int
-  max_opus_len)</a></h2>
-<p class="Pp">Process captured audio and encode to Opus.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance
-<br/>
-<i>input</i> Input samples (float32, -1.0 to 1.0)
-<br/>
-<i>num_samples</i> Number of input samples (should match frame_size)
-<br/>
-<i>opus_out</i> Output buffer for Opus packet
-<br/>
-<i>opus_out_size</i> Size of opus_out buffer (should be &gt;=
-  MAX_OPUS_PACKET)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of bytes written to opus_out, or negative on
-  error</div>
-<p class="Pp">Processing pipeline (when flags enabled):</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Convert float &#x2192; int16</dd>
-  <dt>2.</dt>
-  <dd>Echo cancellation (subtract speaker output from mic input)</dd>
-  <dt>3.</dt>
-  <dd>Speex preprocessor (noise suppression, AGC, VAD)</dd>
-  <dt>4.</dt>
-  <dd>Convert int16 &#x2192; float</dd>
-  <dt>5.</dt>
-  <dd>High-pass filter</dd>
-  <dt>6.</dt>
-  <dd>Low-pass filter</dd>
-  <dt>7.</dt>
-  <dd>Noise gate</dd>
-  <dt>8.</dt>
-  <dd>Compressor</dd>
-  <dt>9.</dt>
-  <dd>Opus encode</dd>
-</dl>
-<p class="Pp">Encode already-processed audio to Opus.</p>
-<p class="Pp"></p>
-<p class="Pp">In full-duplex mode, AEC3 and DSP processing are done in
-    process_duplex(). This function just does Opus encoding.</p>
-<p class="Pp">Definition at line <b>427</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>428                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Minimal flags for testing (only codec, no processing).
+          </p>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>client_pipeline.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_get_flags()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_JitterBuffer__">
+            <a class="permalink" href="#typedef_struct_JitterBuffer__"
+              >typedef struct JitterBuffer_ <b>JitterBuffer</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>client_pipeline.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_SpeexPreprocessState__">
+            <a class="permalink" href="#typedef_struct_SpeexPreprocessState__"
+              >typedef struct SpeexPreprocessState_
+              <b>SpeexPreprocessState</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>client_pipeline.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>webrtc_EchoCanceller3</b>
+              <b>webrtc_EchoCanceller3</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>73</b> of file <b>client_pipeline.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_capture_(">
+            <a class="permalink" href="#int_client_audio_pipeline_capture_("
+              >int client_audio_pipeline_capture (<b>client_audio_pipeline_t</b>
+              * pipeline, const float * input, int num_samples, <b>uint8_t</b> *
+              opus_out, int max_opus_len)</a
+            >
+          </h2>
+          <p class="Pp">Process captured audio and encode to Opus.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline instance
+            <br />
+            <i>input</i> Input samples (float32, -1.0 to 1.0)
+            <br />
+            <i>num_samples</i> Number of input samples (should match frame_size)
+            <br />
+            <i>opus_out</i> Output buffer for Opus packet
+            <br />
+            <i>opus_out_size</i> Size of opus_out buffer (should be &gt;=
+            MAX_OPUS_PACKET)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of bytes written to opus_out, or negative on error
+          </div>
+          <p class="Pp">Processing pipeline (when flags enabled):</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Convert float &#x2192; int16</dd>
+            <dt>2.</dt>
+            <dd>Echo cancellation (subtract speaker output from mic input)</dd>
+            <dt>3.</dt>
+            <dd>Speex preprocessor (noise suppression, AGC, VAD)</dd>
+            <dt>4.</dt>
+            <dd>Convert int16 &#x2192; float</dd>
+            <dt>5.</dt>
+            <dd>High-pass filter</dd>
+            <dt>6.</dt>
+            <dd>Low-pass filter</dd>
+            <dt>7.</dt>
+            <dd>Noise gate</dd>
+            <dt>8.</dt>
+            <dd>Compressor</dd>
+            <dt>9.</dt>
+            <dd>Opus encode</dd>
+          </dl>
+          <p class="Pp">Encode already-processed audio to Opus.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            In full-duplex mode, AEC3 and DSP processing are done in
+            process_duplex(). This function just does Opus encoding.
+          </p>
+          <p class="Pp">
+            Definition at line <b>427</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+428                                                                        {
 429   if (!pipeline || !input || !opus_out || num_samples != pipeline-&gt;frame_size) {
 430     return -1;
 431   }
@@ -389,28 +521,40 @@
 452
 453   return opus_len;
 454 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUDIO_CHANNELS</b>,
-    <b>audio_convert_channels()</b>, <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>,
-    <b>client_audio_pipeline_config_t::channels</b>,
-    <b>client_audio_pipeline_capture()</b>,
-    <b>client_audio_pipeline_t::config</b>,
-    <b>client_audio_pipeline_t::encoder</b>,
-    <b>client_audio_pipeline_config_t::encoder_channels</b>,
-    <b>client_audio_pipeline_t::frame_size</b>, <b>log_error_every</b>, and
-    <b>US_PER_SEC_INT</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_capture()</b>, and
-    <b>client_audio_pipeline_capture()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_audio_pipeline_config_t</b>
-  client_audio_pipeline_config_for_source (<b>bool</b> has_media_audio)</h2>
-<p class="Pp">Select the codec profile using current capture options and actual
-    media audio availability.</p>
-<p class="Pp">Definition at line <b>128</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>128                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>AUDIO_CHANNELS</b>,
+            <b>audio_convert_channels()</b>,
+            <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>,
+            <b>client_audio_pipeline_config_t::channels</b>,
+            <b>client_audio_pipeline_capture()</b>,
+            <b>client_audio_pipeline_t::config</b>,
+            <b>client_audio_pipeline_t::encoder</b>,
+            <b>client_audio_pipeline_config_t::encoder_channels</b>,
+            <b>client_audio_pipeline_t::frame_size</b>, <b>log_error_every</b>,
+            and <b>US_PER_SEC_INT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_capture()</b>, and
+            <b>client_audio_pipeline_capture()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_config_t</b>
+            client_audio_pipeline_config_for_source (<b>bool</b>
+            has_media_audio)
+          </h2>
+          <p class="Pp">
+            Select the codec profile using current capture options and actual
+            media audio availability.
+          </p>
+          <p class="Pp">
+            Definition at line <b>128</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+128                                                                                              {
 129   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
 130   config.channels = AUDIO_CHANNELS;
 131   const options_t *options = options_get();
@@ -430,63 +574,79 @@
 145   }
 146   return config;
 147 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>spectral_config_t::adaptive_eq</b>,
-    <b>options_state::audio_adaptive_eq</b>,
-    <b>options_state::audio_capture_source</b>, <b>AUDIO_CAPTURE_SOURCE_MIC</b>,
-    <b>AUDIO_CAPTURE_SOURCE_REMOTE</b>, <b>AUDIO_CHANNELS</b>,
-    <b>options_state::audio_fft_size</b>, <b>options_state::audio_multiband</b>,
-    <b>options_state::audio_pitch_correct</b>,
-    <b>options_state::audio_spectral</b>,
-    <b>options_state::audio_spectral_agc</b>,
-    <b>options_state::audio_spectral_gate</b>,
-    <b>spectral_config_t::auto_gain</b>,
-    <b>client_audio_pipeline_config_t::channels</b>,
-    <b>client_audio_pipeline_config_for_source()</b>,
-    <b>client_audio_pipeline_default_config()</b>,
-    <b>spectral_config_t::compressor</b>, <b>spectral_config_t::fft_size</b>,
-    <b>options_state::microphone_channels</b>,
-    <b>spectral_config_t::noise_gate</b>, <b>options_get()</b>,
-    <b>client_audio_pipeline_config_t::opus_application</b>,
-    <b>OPUS_APPLICATION_AUDIO</b>, <b>OPUS_APPLICATION_VOIP</b>,
-    <b>client_audio_pipeline_config_t::opus_bitrate</b>,
-    <b>spectral_config_t::pitch_correct</b>,
-    <b>client_audio_pipeline_config_t::processor</b>,
-    <b>audio_processor_config_t::spectral</b>,
-    <b>audio_processor_config_t::spectral_enabled</b>, and
-    <b>options_state::test_audio</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>,
-    <b>client_audio_pipeline_config_for_source()</b>,
-    <b>session_audio_start_duplex()</b>, and
-    <b>session_participant_start_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_audio_pipeline_t</b> * client_audio_pipeline_create
-  (const <b>client_audio_pipeline_config_t</b> * config)</h2>
-<p class="Pp">Create a new client audio pipeline. Create and initialize a client
-    audio pipeline.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config</i> Pipeline configuration (NULL for
-  defaults)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">New pipeline instance, or NULL on failure</div>
-<p class="Pp">Allocates and initializes all audio processing components. Must be
-    destroyed with <b>client_audio_pipeline_destroy()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Create a new client audio pipeline.</p>
-<p class="Pp"></p>
-<p class="Pp">This function:</p>
-<ul class="Bl-bullet">
-  <li>Allocates the pipeline structure</li>
-  <li>Initializes Opus encoder/decoder</li>
-  <li>Sets up WebRTC AEC3 echo cancellation</li>
-  <li>Configures all audio processing parameters</li>
-</ul>
-<p class="Pp">Definition at line <b>162</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>162                                                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>spectral_config_t::adaptive_eq</b>,
+            <b>options_state::audio_adaptive_eq</b>,
+            <b>options_state::audio_capture_source</b>,
+            <b>AUDIO_CAPTURE_SOURCE_MIC</b>, <b>AUDIO_CAPTURE_SOURCE_REMOTE</b>,
+            <b>AUDIO_CHANNELS</b>, <b>options_state::audio_fft_size</b>,
+            <b>options_state::audio_multiband</b>,
+            <b>options_state::audio_pitch_correct</b>,
+            <b>options_state::audio_spectral</b>,
+            <b>options_state::audio_spectral_agc</b>,
+            <b>options_state::audio_spectral_gate</b>,
+            <b>spectral_config_t::auto_gain</b>,
+            <b>client_audio_pipeline_config_t::channels</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>spectral_config_t::compressor</b>,
+            <b>spectral_config_t::fft_size</b>,
+            <b>options_state::microphone_channels</b>,
+            <b>spectral_config_t::noise_gate</b>, <b>options_get()</b>,
+            <b>client_audio_pipeline_config_t::opus_application</b>,
+            <b>OPUS_APPLICATION_AUDIO</b>, <b>OPUS_APPLICATION_VOIP</b>,
+            <b>client_audio_pipeline_config_t::opus_bitrate</b>,
+            <b>spectral_config_t::pitch_correct</b>,
+            <b>client_audio_pipeline_config_t::processor</b>,
+            <b>audio_processor_config_t::spectral</b>,
+            <b>audio_processor_config_t::spectral_enabled</b>, and
+            <b>options_state::test_audio</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>session_audio_start_duplex()</b>, and
+            <b>session_participant_start_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_t</b> * client_audio_pipeline_create (const
+            <b>client_audio_pipeline_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Create a new client audio pipeline. Create and initialize a client
+            audio pipeline.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Pipeline configuration (NULL for defaults)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">New pipeline instance, or NULL on failure</div>
+          <p class="Pp">
+            Allocates and initializes all audio processing components. Must be
+            destroyed with
+            <b>client_audio_pipeline_destroy()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Create a new client audio pipeline.</p>
+          <p class="Pp"></p>
+          <p class="Pp">This function:</p>
+          <ul class="Bl-bullet">
+            <li>Allocates the pipeline structure</li>
+            <li>Initializes Opus encoder/decoder</li>
+            <li>Sets up WebRTC AEC3 echo cancellation</li>
+            <li>Configures all audio processing parameters</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>162</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+162                                                                                                     {
 163   client_audio_pipeline_t *p = SAFE_CALLOC(1, sizeof(client_audio_pipeline_t), client_audio_pipeline_t *);
 164   if (!p) {
 165     log_error(&quot;Failed to allocate client audio pipeline&quot;);
@@ -672,64 +832,74 @@
 345   client_audio_pipeline_destroy(p);
 346   return NULL;
 347 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_t::aec3_capture_buffer</b>,
-    <b>client_audio_pipeline_t::aec3_render_buffer</b>,
-    <b>client_audio_pipeline_flags_t::agc</b>, <b>ASCIICHAT_OK</b>,
-    <b>AUDIO_CHANNELS</b>, <b>audio_opus_configure_encoder()</b>,
-    <b>audio_processor_create()</b>,
-    <b>client_audio_pipeline_t::capture_fadein_remaining</b>,
-    <b>audio_processor_config_t::channels</b>,
-    <b>client_audio_pipeline_config_t::channels</b>,
-    <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_default_config()</b>,
-    <b>client_audio_pipeline_destroy()</b>,
-    <b>client_audio_pipeline_flags_t::compressor</b>,
-    <b>client_audio_pipeline_t::config</b>,
-    <b>client_audio_pipeline_t::debug_wav_aec3_in</b>,
-    <b>client_audio_pipeline_t::debug_wav_aec3_out</b>,
-    <b>client_audio_pipeline_t::decoder</b>,
-    <b>client_audio_pipeline_flags_t::echo_cancel</b>,
-    <b>client_audio_pipeline_t::echo_canceller</b>,
-    <b>client_audio_pipeline_t::encoder</b>,
-    <b>client_audio_pipeline_config_t::encoder_channels</b>,
-    <b>audio_processor_config_t::flags</b>,
-    <b>client_audio_pipeline_config_t::flags</b>,
-    <b>client_audio_pipeline_t::flags</b>,
-    <b>client_audio_pipeline_config_t::frame_duration_ms</b>,
-    <b>client_audio_pipeline_t::frame_size</b>,
-    <b>client_audio_pipeline_flags_t::highpass</b>,
-    <b>client_audio_pipeline_t::initialized</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>client_audio_pipeline_flags_t::lowpass</b>,
-    <b>NAMED_REGISTER_CLIENT_AUDIO_PIPELINE</b>,
-    <b>client_audio_pipeline_flags_t::noise_gate</b>,
-    <b>client_audio_pipeline_config_t::opus_application</b>,
-    <b>client_audio_pipeline_config_t::opus_bitrate</b>,
-    <b>platform_get_temp_dir()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>client_audio_pipeline_config_t::processor</b>,
-    <b>client_audio_pipeline_t::processor</b>, <b>SAFE_CALLOC</b>,
-    <b>SAFE_FREE</b>, <b>safe_snprintf()</b>,
-    <b>audio_processor_config_t::sample_rate</b>,
-    <b>client_audio_pipeline_config_t::sample_rate</b>,
-    <b>spectral_config_t::sample_rate</b>,
-    <b>audio_processor_config_t::spectral</b>, <b>wav_dump_enabled()</b>,
-    <b>wav_writer_open()</b>, and
-  <b>WebRTCAec3Wrapper::WebRTCAec3Wrapper()</b>.</p>
-<p class="Pp">Referenced by <b>audio_connection_init()</b>,
-    <b>client_audio_pipeline_create()</b>, and
-    <b>session_audio_start_duplex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_audio_pipeline_config_t</b>
-  client_audio_pipeline_default_config (void )</h2>
-<p class="Pp">Get default configuration.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Configuration with sensible defaults for voice chat</div>
-<p class="Pp">Definition at line <b>110</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>110                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_t::aec3_capture_buffer</b>,
+            <b>client_audio_pipeline_t::aec3_render_buffer</b>,
+            <b>client_audio_pipeline_flags_t::agc</b>, <b>ASCIICHAT_OK</b>,
+            <b>AUDIO_CHANNELS</b>, <b>audio_opus_configure_encoder()</b>,
+            <b>audio_processor_create()</b>,
+            <b>client_audio_pipeline_t::capture_fadein_remaining</b>,
+            <b>audio_processor_config_t::channels</b>,
+            <b>client_audio_pipeline_config_t::channels</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>client_audio_pipeline_destroy()</b>,
+            <b>client_audio_pipeline_flags_t::compressor</b>,
+            <b>client_audio_pipeline_t::config</b>,
+            <b>client_audio_pipeline_t::debug_wav_aec3_in</b>,
+            <b>client_audio_pipeline_t::debug_wav_aec3_out</b>,
+            <b>client_audio_pipeline_t::decoder</b>,
+            <b>client_audio_pipeline_flags_t::echo_cancel</b>,
+            <b>client_audio_pipeline_t::echo_canceller</b>,
+            <b>client_audio_pipeline_t::encoder</b>,
+            <b>client_audio_pipeline_config_t::encoder_channels</b>,
+            <b>audio_processor_config_t::flags</b>,
+            <b>client_audio_pipeline_config_t::flags</b>,
+            <b>client_audio_pipeline_t::flags</b>,
+            <b>client_audio_pipeline_config_t::frame_duration_ms</b>,
+            <b>client_audio_pipeline_t::frame_size</b>,
+            <b>client_audio_pipeline_flags_t::highpass</b>,
+            <b>client_audio_pipeline_t::initialized</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>client_audio_pipeline_flags_t::lowpass</b>,
+            <b>NAMED_REGISTER_CLIENT_AUDIO_PIPELINE</b>,
+            <b>client_audio_pipeline_flags_t::noise_gate</b>,
+            <b>client_audio_pipeline_config_t::opus_application</b>,
+            <b>client_audio_pipeline_config_t::opus_bitrate</b>,
+            <b>platform_get_temp_dir()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+            <b>client_audio_pipeline_config_t::processor</b>,
+            <b>client_audio_pipeline_t::processor</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>safe_snprintf()</b>,
+            <b>audio_processor_config_t::sample_rate</b>,
+            <b>client_audio_pipeline_config_t::sample_rate</b>,
+            <b>spectral_config_t::sample_rate</b>,
+            <b>audio_processor_config_t::spectral</b>,
+            <b>wav_dump_enabled()</b>, <b>wav_writer_open()</b>, and
+            <b>WebRTCAec3Wrapper::WebRTCAec3Wrapper()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>session_audio_start_duplex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_config_t</b>
+            client_audio_pipeline_default_config (void )
+          </h2>
+          <p class="Pp">Get default configuration.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Configuration with sensible defaults for voice chat
+          </div>
+          <p class="Pp">
+            Definition at line <b>110</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+110                                                                           {
 111   return (client_audio_pipeline_config_t){
 112       .channels = AUDIO_CHANNELS,
 113       .encoder_channels = AUDIO_CHANNELS,
@@ -746,31 +916,46 @@
 124       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
 125   };
 126 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>AUDIO_CHANNELS</b>,
-    <b>audio_processor_default_config()</b>, <b>AUDIO_SAMPLE_RATE</b>,
-    <b>client_audio_pipeline_default_config()</b>,
-    <b>CLIENT_AUDIO_PIPELINE_FLAGS_ALL</b>,
-    <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b>,
-    <b>audio_processor_config_t::flags</b>, and
-  <b>OPUS_APPLICATION_VOIP</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_config_for_source()</b>,
-    <b>client_audio_pipeline_create()</b>, and
-    <b>client_audio_pipeline_default_config()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_client_audio_pipeline_destroy_("><a class="permalink" href="#void_client_audio_pipeline_destroy_(">void
-  client_audio_pipeline_destroy (<b>client_audio_pipeline_t</b> *
-  pipeline)</a></h2>
-<p class="Pp">Destroy a client audio pipeline.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline to destroy (can be NULL)</div>
-<p class="Pp">Frees all resources including SpeexDSP states, Opus codec, and all
-    work buffers.</p>
-<p class="Pp">Definition at line <b>349</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>349                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>AUDIO_CHANNELS</b>,
+            <b>audio_processor_default_config()</b>, <b>AUDIO_SAMPLE_RATE</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>CLIENT_AUDIO_PIPELINE_FLAGS_ALL</b>,
+            <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b>,
+            <b>audio_processor_config_t::flags</b>, and
+            <b>OPUS_APPLICATION_VOIP</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_create()</b>, and
+            <b>client_audio_pipeline_default_config()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_client_audio_pipeline_destroy_(">
+            <a class="permalink" href="#void_client_audio_pipeline_destroy_("
+              >void client_audio_pipeline_destroy (<b
+                >client_audio_pipeline_t</b
+              >
+              * pipeline)</a
+            >
+          </h2>
+          <p class="Pp">Destroy a client audio pipeline.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline to destroy (can be NULL)
+          </div>
+          <p class="Pp">
+            Frees all resources including SpeexDSP states, Opus codec, and all
+            work buffers.
+          </p>
+          <p class="Pp">
+            Definition at line <b>349</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+349                                                                       {
 350   if (!pipeline)
 351     return;
 352
@@ -817,67 +1002,100 @@
 393
 394   SAFE_FREE(pipeline);
 395 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_t::aec3_capture_buffer</b>,
-    <b>client_audio_pipeline_t::aec3_render_buffer</b>,
-    <b>audio_processor_destroy()</b>, <b>client_audio_pipeline_destroy()</b>,
-    <b>client_audio_pipeline_t::debug_wav_aec3_in</b>,
-    <b>client_audio_pipeline_t::debug_wav_aec3_out</b>,
-    <b>client_audio_pipeline_t::decoder</b>,
-    <b>client_audio_pipeline_t::echo_canceller</b>,
-    <b>client_audio_pipeline_t::encoder</b>, <b>NAMED_UNREGISTER</b>,
-    <b>client_audio_pipeline_t::processor</b>, <b>SAFE_FREE</b>, and
-    <b>wav_writer_close()</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_destroy()</b>, <b>session_audio_destroy()</b>, and
-    <b>session_audio_set_capture_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>client_audio_pipeline_flags_t</b>
-  client_audio_pipeline_get_flags (<b>client_audio_pipeline_t</b> *
-  pipeline)</h2>
-<p class="Pp">Get current component enable flags.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current flags</div>
-<p class="Pp">Definition at line <b>410</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>410                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_t::aec3_capture_buffer</b>,
+            <b>client_audio_pipeline_t::aec3_render_buffer</b>,
+            <b>audio_processor_destroy()</b>,
+            <b>client_audio_pipeline_destroy()</b>,
+            <b>client_audio_pipeline_t::debug_wav_aec3_in</b>,
+            <b>client_audio_pipeline_t::debug_wav_aec3_out</b>,
+            <b>client_audio_pipeline_t::decoder</b>,
+            <b>client_audio_pipeline_t::echo_canceller</b>,
+            <b>client_audio_pipeline_t::encoder</b>, <b>NAMED_UNREGISTER</b>,
+            <b>client_audio_pipeline_t::processor</b>, <b>SAFE_FREE</b>, and
+            <b>wav_writer_close()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_destroy()</b>,
+            <b>session_audio_destroy()</b>, and
+            <b>session_audio_set_capture_source()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_flags_t</b> client_audio_pipeline_get_flags
+            (<b>client_audio_pipeline_t</b>
+            * pipeline)
+          </h2>
+          <p class="Pp">Get current component enable flags.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Current flags</div>
+          <p class="Pp">
+            Definition at line <b>410</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+410                                                                                                  {
 411   if (!pipeline)
 412     return CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
 413   // No mutex needed - flags are only written from main thread during setup
 414   return pipeline-&gt;flags;
 415 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL</b>,
-    <b>client_audio_pipeline_get_flags()</b>, and
-    <b>client_audio_pipeline_t::flags</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_get_flags()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_get_playback_frame_("><a class="permalink" href="#int_client_audio_pipeline_get_playback_frame_(">int
-  client_audio_pipeline_get_playback_frame (<b>client_audio_pipeline_t</b> *
-  pipeline, float * output, int num_samples)</a></h2>
-<p class="Pp">Get audio frame from jitter buffer for playback callback.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance
-<br/>
-<i>output</i> Output buffer for decoded samples (float32)
-<br/>
-<i>num_samples</i> Number of samples to retrieve</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of samples written, or negative on error</div>
-<p class="Pp">This is called from the audio output callback to get the next
-    frame of audio. It pulls from the jitter buffer and decodes.</p>
-<p class="Pp"></p>
-<p class="Pp">Get a processed playback frame (currently just returns decoded
-    frame)</p>
-<p class="Pp">Definition at line <b>487</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>487                                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL</b>,
+            <b>client_audio_pipeline_get_flags()</b>, and
+            <b>client_audio_pipeline_t::flags</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_get_flags()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_get_playback_frame_(">
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_get_playback_frame_("
+              >int client_audio_pipeline_get_playback_frame (<b
+                >client_audio_pipeline_t</b
+              >
+              * pipeline, float * output, int num_samples)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get audio frame from jitter buffer for playback callback.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline instance
+            <br />
+            <i>output</i> Output buffer for decoded samples (float32)
+            <br />
+            <i>num_samples</i> Number of samples to retrieve
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of samples written, or negative on error
+          </div>
+          <p class="Pp">
+            This is called from the audio output callback to get the next frame
+            of audio. It pulls from the jitter buffer and decodes.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Get a processed playback frame (currently just returns decoded
+            frame)
+          </p>
+          <p class="Pp">
+            Definition at line <b>487</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+487                                                                                                                 {
 488   if (!pipeline || !output) {
 489     return -1;
 490   }
@@ -886,74 +1104,107 @@
 493   memset(output, 0, num_samples * sizeof(float));
 494   return num_samples;
 495 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_get_playback_frame()</b>.</p>
-<p class="Pp">Referenced by
-  <b>client_audio_pipeline_get_playback_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_jitter_margin_("><a class="permalink" href="#int_client_audio_pipeline_jitter_margin_(">int
-  client_audio_pipeline_jitter_margin (<b>client_audio_pipeline_t</b> *
-  pipeline)</a></h2>
-<p class="Pp">Get jitter buffer margin (buffered time in ms).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Current jitter buffer margin in milliseconds</div>
-<p class="Pp">Get jitter buffer margin</p>
-<p class="Pp">Definition at line <b>644</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>644                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_get_playback_frame()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_get_playback_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_jitter_margin_(">
+            <a
+              class="permalink"
+              href="#int_client_audio_pipeline_jitter_margin_("
+              >int client_audio_pipeline_jitter_margin (<b
+                >client_audio_pipeline_t</b
+              >
+              * pipeline)</a
+            >
+          </h2>
+          <p class="Pp">Get jitter buffer margin (buffered time in ms).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Current jitter buffer margin in milliseconds
+          </div>
+          <p class="Pp">Get jitter buffer margin</p>
+          <p class="Pp">
+            Definition at line <b>644</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+644                                                                            {
 645   if (!pipeline)
 646     return 0;
 647   return pipeline-&gt;config.jitter_margin_ms;
 648 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_jitter_margin()</b>,
-    <b>client_audio_pipeline_t::config</b>, and
-    <b>client_audio_pipeline_config_t::jitter_margin_ms</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_jitter_margin()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_client_audio_pipeline_playback_("><a class="permalink" href="#int_client_audio_pipeline_playback_(">int
-  client_audio_pipeline_playback (<b>client_audio_pipeline_t</b> * pipeline,
-  const <b>uint8_t</b> * opus_in, int opus_len, float * output, int
-  num_samples)</a></h2>
-<p class="Pp">Decode Opus packet and process for playback.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance
-<br/>
-<i>opus_in</i> Opus packet data (can be NULL for packet loss concealment)
-<br/>
-<i>opus_len</i> Opus packet length (0 if opus_in is NULL)
-<br/>
-<i>output</i> Output buffer for decoded samples (float32)
-<br/>
-<i>max_samples</i> Maximum samples to write to output</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of samples written to output, or negative on
-  error</div>
-<p class="Pp">Processing pipeline (when flags enabled):</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Put Opus packet into jitter buffer</dd>
-  <dt>2.</dt>
-  <dd>Get packet from jitter buffer (handles reordering, loss)</dd>
-  <dt>3.</dt>
-  <dd>Opus decode</dd>
-  <dt>4.</dt>
-  <dd>Soft clipping</dd>
-</dl>
-<p class="Pp">Note: Output should be fed to speakers AND to echo reference via
-    client_audio_pipeline_feed_echo_ref().</p>
-<p class="Pp"></p>
-<p class="Pp">Process network playback (decode and register with echo canceller
-    as reference)</p>
-<p class="Pp">Definition at line <b>459</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>460                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_jitter_margin()</b>,
+            <b>client_audio_pipeline_t::config</b>, and
+            <b>client_audio_pipeline_config_t::jitter_margin_ms</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_jitter_margin()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_audio_pipeline_playback_(">
+            <a class="permalink" href="#int_client_audio_pipeline_playback_("
+              >int client_audio_pipeline_playback (<b
+                >client_audio_pipeline_t</b
+              >
+              * pipeline, const <b>uint8_t</b> * opus_in, int opus_len, float *
+              output, int num_samples)</a
+            >
+          </h2>
+          <p class="Pp">Decode Opus packet and process for playback.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline instance
+            <br />
+            <i>opus_in</i> Opus packet data (can be NULL for packet loss
+            concealment)
+            <br />
+            <i>opus_len</i> Opus packet length (0 if opus_in is NULL)
+            <br />
+            <i>output</i> Output buffer for decoded samples (float32)
+            <br />
+            <i>max_samples</i> Maximum samples to write to output
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of samples written to output, or negative on error
+          </div>
+          <p class="Pp">Processing pipeline (when flags enabled):</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Put Opus packet into jitter buffer</dd>
+            <dt>2.</dt>
+            <dd>Get packet from jitter buffer (handles reordering, loss)</dd>
+            <dt>3.</dt>
+            <dd>Opus decode</dd>
+            <dt>4.</dt>
+            <dd>Soft clipping</dd>
+          </dl>
+          <p class="Pp">
+            Note: Output should be fed to speakers AND to echo reference via
+            client_audio_pipeline_feed_echo_ref().
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Process network playback (decode and register with echo canceller as
+            reference)
+          </p>
+          <p class="Pp">
+            Definition at line <b>459</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+460                                                                    {
 461   if (!pipeline || !output || num_samples &lt;= 0 || opus_len &lt; 0 || (!opus_in &amp;&amp; opus_len != 0)) {
 462     return -1;
 463   }
@@ -976,74 +1227,99 @@
 480
 481   return decoded_samples * pipeline-&gt;config.channels;
 482 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_config_t::channels</b>,
-    <b>client_audio_pipeline_playback()</b>,
-    <b>client_audio_pipeline_t::config</b>,
-    <b>client_audio_pipeline_t::decoder</b>, <b>log_error_every</b>, and
-    <b>US_PER_SEC_INT</b>.</p>
-<p class="Pp">Referenced by <b>audio_decode_opus()</b>,
-    <b>client_audio_pipeline_playback()</b>, and
-    <b>client_audio_pipeline_playback()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_client_audio_pipeline_process_duplex_("><a class="permalink" href="#void_client_audio_pipeline_process_duplex_(">void
-  client_audio_pipeline_process_duplex (<b>client_audio_pipeline_t</b> *
-  pipeline, const float * render_samples, int render_count, const float *
-  capture_samples, int capture_count, float * processed_output)</a></h2>
-<p class="Pp">Process AEC3 inline in full-duplex callback.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance
-<br/>
-<i>render_samples</i> Audio samples being played to speakers RIGHT NOW
-<br/>
-<i>render_count</i> Number of render samples
-<br/>
-<i>capture_samples</i> Audio samples from microphone RIGHT NOW
-<br/>
-<i>capture_count</i> Number of capture samples
-<br/>
-<i>processed_output</i> Output buffer for processed capture (must be
-  capture_count size)</div>
-<p class="Pp">Called from PortAudio's single full-duplex callback where render
-    and capture happen at the EXACT same instant. No ring buffers, no timing
-    mismatch.</p>
-<p class="Pp"></p>
-<p class="Pp">Processing:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>AEC3 AnalyzeRender on render_samples</dd>
-  <dt>2.</dt>
-  <dd>AEC3 AnalyzeCapture + ProcessCapture on capture_samples</dd>
-  <dt>3.</dt>
-  <dd>Apply highpass, lowpass, noise gate, compressor</dd>
-</dl>
-<p class="Pp">REAL-TIME SAFE: No mutexes, no allocations, no blocking.</p>
-<p class="Pp"></p>
-<p class="Pp">Process AEC3 inline in full-duplex callback (REAL-TIME SAFE).</p>
-<p class="Pp"></p>
-<p class="Pp">This is the PROFESSIONAL approach to AEC3 timing:</p>
-<ul class="Bl-bullet">
-  <li>Called from a single PortAudio full-duplex callback</li>
-  <li>render_samples = what is being played to speakers RIGHT NOW</li>
-  <li>capture_samples = what microphone captured RIGHT NOW</li>
-  <li>Perfect synchronization - no timing mismatch possible</li>
-</ul>
-<p class="Pp">This function does ALL AEC3 processing inline:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>AnalyzeRender on render samples (speaker output)</dd>
-  <dt>2.</dt>
-  <dd>AnalyzeCapture + ProcessCapture on capture samples</dd>
-  <dt>3.</dt>
-  <dd>Apply filters, noise gate, compressor</dd>
-</dl>
-<p class="Pp">Returns processed capture samples in processed_output. Opus
-    encoding is done separately by the encoding thread.</p>
-<p class="Pp">Definition at line <b>514</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>516                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_config_t::channels</b>,
+            <b>client_audio_pipeline_playback()</b>,
+            <b>client_audio_pipeline_t::config</b>,
+            <b>client_audio_pipeline_t::decoder</b>, <b>log_error_every</b>, and
+            <b>US_PER_SEC_INT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_decode_opus()</b>,
+            <b>client_audio_pipeline_playback()</b>, and
+            <b>client_audio_pipeline_playback()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_client_audio_pipeline_process_duplex_(">
+            <a
+              class="permalink"
+              href="#void_client_audio_pipeline_process_duplex_("
+              >void client_audio_pipeline_process_duplex (<b
+                >client_audio_pipeline_t</b
+              >
+              * pipeline, const float * render_samples, int render_count, const
+              float * capture_samples, int capture_count, float *
+              processed_output)</a
+            >
+          </h2>
+          <p class="Pp">Process AEC3 inline in full-duplex callback.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline instance
+            <br />
+            <i>render_samples</i> Audio samples being played to speakers RIGHT
+            NOW
+            <br />
+            <i>render_count</i> Number of render samples
+            <br />
+            <i>capture_samples</i> Audio samples from microphone RIGHT NOW
+            <br />
+            <i>capture_count</i> Number of capture samples
+            <br />
+            <i>processed_output</i> Output buffer for processed capture (must be
+            capture_count size)
+          </div>
+          <p class="Pp">
+            Called from PortAudio's single full-duplex callback where render and
+            capture happen at the EXACT same instant. No ring buffers, no timing
+            mismatch.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Processing:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>AEC3 AnalyzeRender on render_samples</dd>
+            <dt>2.</dt>
+            <dd>AEC3 AnalyzeCapture + ProcessCapture on capture_samples</dd>
+            <dt>3.</dt>
+            <dd>Apply highpass, lowpass, noise gate, compressor</dd>
+          </dl>
+          <p class="Pp">
+            REAL-TIME SAFE: No mutexes, no allocations, no blocking.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Process AEC3 inline in full-duplex callback (REAL-TIME SAFE).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">This is the PROFESSIONAL approach to AEC3 timing:</p>
+          <ul class="Bl-bullet">
+            <li>Called from a single PortAudio full-duplex callback</li>
+            <li>render_samples = what is being played to speakers RIGHT NOW</li>
+            <li>capture_samples = what microphone captured RIGHT NOW</li>
+            <li>Perfect synchronization - no timing mismatch possible</li>
+          </ul>
+          <p class="Pp">This function does ALL AEC3 processing inline:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>AnalyzeRender on render samples (speaker output)</dd>
+            <dt>2.</dt>
+            <dd>AnalyzeCapture + ProcessCapture on capture samples</dd>
+            <dt>3.</dt>
+            <dd>Apply filters, noise gate, compressor</dd>
+          </dl>
+          <p class="Pp">
+            Returns processed capture samples in processed_output. Opus encoding
+            is done separately by the encoding thread.
+          </p>
+          <p class="Pp">
+            Definition at line <b>514</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+516                                                                    {
 517   if (!pipeline || !processed_output || capture_count &lt; 0 || render_count &lt; 0 ||
 518       capture_count % pipeline-&gt;config.channels || render_count % pipeline-&gt;config.channels)
 519     return;
@@ -1167,40 +1443,53 @@
 637   if (result != ASCIICHAT_OK)
 638     log_error(&quot;Audio enhancement failed: %d&quot;, result);
 639 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>client_audio_pipeline_t::aec3_capture_buffer</b>,
-    <b>client_audio_pipeline_t::aec3_render_buffer</b>, <b>ASCIICHAT_OK</b>,
-    <b>audio_analysis_set_aec3_metrics()</b>, <b>audio_processor_process()</b>,
-    <b>client_audio_pipeline_t::capture_fadein_remaining</b>,
-    <b>client_audio_pipeline_config_t::channels</b>,
-    <b>client_audio_pipeline_process_duplex()</b>,
-    <b>client_audio_pipeline_t::config</b>,
-    <b>client_audio_pipeline_t::debug_wav_aec3_in</b>,
-    <b>client_audio_pipeline_t::debug_wav_aec3_out</b>,
-    <b>client_audio_pipeline_flags_t::echo_cancel</b>,
-    <b>client_audio_pipeline_t::echo_canceller</b>,
-    <b>client_audio_pipeline_t::flags</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>log_warn</b>, <b>log_warn_every</b>, <b>platform_getenv()</b>,
-    <b>client_audio_pipeline_t::processor</b>,
-    <b>client_audio_pipeline_config_t::sample_rate</b>, <b>smoothstep()</b>,
-    <b>soft_clip()</b>, and <b>wav_writer_write()</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_process_duplex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_client_audio_pipeline_reset_("><a class="permalink" href="#void_client_audio_pipeline_reset_(">void
-  client_audio_pipeline_reset (<b>client_audio_pipeline_t</b> *
-  pipeline)</a></h2>
-<p class="Pp">Reset pipeline state.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
-<p class="Pp">Resets echo canceller, jitter buffer, and filter states. Call when
-    starting a new audio session.</p>
-<p class="Pp"></p>
-<p class="Pp">Reset pipeline state</p>
-<p class="Pp">Definition at line <b>653</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>653                                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>client_audio_pipeline_t::aec3_capture_buffer</b>,
+            <b>client_audio_pipeline_t::aec3_render_buffer</b>,
+            <b>ASCIICHAT_OK</b>, <b>audio_analysis_set_aec3_metrics()</b>,
+            <b>audio_processor_process()</b>,
+            <b>client_audio_pipeline_t::capture_fadein_remaining</b>,
+            <b>client_audio_pipeline_config_t::channels</b>,
+            <b>client_audio_pipeline_process_duplex()</b>,
+            <b>client_audio_pipeline_t::config</b>,
+            <b>client_audio_pipeline_t::debug_wav_aec3_in</b>,
+            <b>client_audio_pipeline_t::debug_wav_aec3_out</b>,
+            <b>client_audio_pipeline_flags_t::echo_cancel</b>,
+            <b>client_audio_pipeline_t::echo_canceller</b>,
+            <b>client_audio_pipeline_t::flags</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_warn</b>, <b>log_warn_every</b>,
+            <b>platform_getenv()</b>, <b>client_audio_pipeline_t::processor</b>,
+            <b>client_audio_pipeline_config_t::sample_rate</b>,
+            <b>smoothstep()</b>, <b>soft_clip()</b>, and
+            <b>wav_writer_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_process_duplex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_client_audio_pipeline_reset_(">
+            <a class="permalink" href="#void_client_audio_pipeline_reset_("
+              >void client_audio_pipeline_reset (<b>client_audio_pipeline_t</b>
+              * pipeline)</a
+            >
+          </h2>
+          <p class="Pp">Reset pipeline state.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
+          <p class="Pp">
+            Resets echo canceller, jitter buffer, and filter states. Call when
+            starting a new audio session.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Reset pipeline state</p>
+          <p class="Pp">
+            Definition at line <b>653</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+653                                                                     {
 654   if (!pipeline)
 655     return;
 656
@@ -1212,28 +1501,42 @@
 662
 663   log_info(&quot;Pipeline state reset&quot;);
 664 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_reset()</b>,
-    <b>client_audio_pipeline_reset()</b>, <b>log_info</b>, and
-    <b>client_audio_pipeline_t::processor</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_reset()</b>, and
-    <b>client_audio_pipeline_voice_detected()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_client_audio_pipeline_set_flags_("><a class="permalink" href="#void_client_audio_pipeline_set_flags_(">void
-  client_audio_pipeline_set_flags (<b>client_audio_pipeline_t</b> * pipeline,
-  <b>client_audio_pipeline_flags_t</b> flags)</a></h2>
-<p class="Pp">Set component enable flags.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance
-<br/>
-<i>flags</i> New flags to set</div>
-<p class="Pp">Thread-safe. Changes take effect on next capture/playback
-  call.</p>
-<p class="Pp">Definition at line <b>401</b> of file
-  <b>client_pipeline.cpp</b>.</p>
-<pre>401                                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_reset()</b>,
+            <b>client_audio_pipeline_reset()</b>, <b>log_info</b>, and
+            <b>client_audio_pipeline_t::processor</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_reset()</b>, and
+            <b>client_audio_pipeline_voice_detected()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_client_audio_pipeline_set_flags_(">
+            <a class="permalink" href="#void_client_audio_pipeline_set_flags_("
+              >void client_audio_pipeline_set_flags (<b
+                >client_audio_pipeline_t</b
+              >
+              * pipeline, <b>client_audio_pipeline_flags_t</b> flags)</a
+            >
+          </h2>
+          <p class="Pp">Set component enable flags.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pipeline</i> Pipeline instance
+            <br />
+            <i>flags</i> New flags to set
+          </div>
+          <p class="Pp">
+            Thread-safe. Changes take effect on next capture/playback call.
+          </p>
+          <p class="Pp">
+            Definition at line <b>401</b> of file <b>client_pipeline.cpp</b>.
+          </p>
+          <pre>
+401                                                                                                              {
 402   if (!pipeline)
 403     return;
 404   // No mutex needed - flags are only read by capture thread
@@ -1241,37 +1544,55 @@
 406   audio_processor_set_flags(pipeline-&gt;processor,
 407                             {flags.agc, flags.compressor, flags.noise_gate, flags.highpass, flags.lowpass});
 408 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>audio_processor_set_flags()</b>,
-    <b>client_audio_pipeline_set_flags()</b>,
-    <b>client_audio_pipeline_t::flags</b>, and
-    <b>client_audio_pipeline_t::processor</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_set_flags()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> client_audio_pipeline_voice_detected
-  (<b>client_audio_pipeline_t</b> * pipeline)</h2>
-<p class="Pp">Check if VAD detected voice activity in last capture.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if voice was detected, false otherwise</div>
-<p class="Pp">References <b>client_audio_pipeline_reset()</b>, and
-    <b>client_audio_pipeline_voice_detected()</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_voice_detected()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_processor_set_flags()</b>,
+            <b>client_audio_pipeline_set_flags()</b>,
+            <b>client_audio_pipeline_t::flags</b>, and
+            <b>client_audio_pipeline_t::processor</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_set_flags()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_audio_pipeline_voice_detected (<b
+              >client_audio_pipeline_t</b
+            >
+            * pipeline)
+          </h2>
+          <p class="Pp">
+            Check if VAD detected voice activity in last capture.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>pipeline</i> Pipeline instance</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if voice was detected, false otherwise
+          </div>
+          <p class="Pp">
+            References <b>client_audio_pipeline_reset()</b>, and
+            <b>client_audio_pipeline_voice_detected()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_pipeline_voice_detected()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

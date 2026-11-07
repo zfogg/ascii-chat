@@ -1,299 +1,419 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>log.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">log.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">log.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">log.c - &#x1F4DD; Multi-level logging with terminal color support,
-    file rotation, and async output</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>log_system_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>LOG_BUFFER_BUFFER_SIZE</b> 8192
-  <br/>
-  #define <b>LOG_LOG_MSG_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>LOG_PARSE_TIMESTAMP_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>LOG_LEVEL_BUFFER_SIZE</b> 16
-  <br/>
-  #define <b>LOG_FILE_PATH_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>LOG_FUNC_NAME_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>LOG_COLOR_COUNT</b> 8
-  <br/>
-  #define <b>LOGGING_INTERNAL_ERROR</b>(error, message, ...)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>__attribute__</b> ((weak))
-  <br/>
-  const char * <b>get_level_string_padded</b> (<b>log_level_t</b> level)
-  <br/>
-  Get padded level string for consistent alignment. size_t
-    <b>get_current_time_formatted</b> (char *time_buf)
-  <br/>
-  Get current time as formatted string. char * <b>format_message</b> (const char
-    *format, va_list args)
-  <br/>
-  Format a message using va_list. <b>session_log_buffer_t</b> *
-    <b>log_get_history_buffer</b> (void)
-  <br/>
-  void <b>log_init</b> (const char *filename, <b>log_level_t</b> level,
-    <b>bool</b> force_stderr, <b>bool</b> use_mmap)
-  <br/>
-  Initialize the logging system. void <b>log_destroy</b> (void)
-  <br/>
-  Destroy the logging system and close log file. void <b>log_system_init</b>
-    (void)
-  <br/>
-  Initialize the logging system internal state (system-level init). void
-    <b>log_system_destroy</b> (void)
-  <br/>
-  Shutdown the logging system internal state (system-level cleanup). void
-    <b>log_set_level</b> (<b>log_level_t</b> level)
-  <br/>
-  Set the minimum log level. <b>log_level_t</b> <b>log_get_level</b> (void)
-  <br/>
-  Get the current minimum log level. void <b>log_set_terminal_output</b>
-    (<b>bool</b> enabled)
-  <br/>
-  Control stderr output to terminal. <b>bool</b> <b>log_get_terminal_output</b>
-    (void)
-  <br/>
-  Get current terminal output setting. void <b>log_set_force_stderr</b>
-    (<b>bool</b> enabled)
-  <br/>
-  Force all terminal log output to stderr. <b>bool</b>
-    <b>log_get_force_stderr</b> (void)
-  <br/>
-  Get current force_stderr setting. void <b>log_set_json_output</b> (int fd)
-  <br/>
-  Set the JSON output file descriptor. void <b>log_disable_file_output</b>
-    (void)
-  <br/>
-  Disable file output and use stderr instead. <b>asciichat_error_t</b>
-    <b>log_set_format</b> (const char *format_str, <b>bool</b> console_only)
-  <br/>
-  Set a custom log format string. <b>bool</b> <b>log_lock_terminal</b> (void)
-  <br/>
-  Lock terminal output for exclusive access by the calling thread. void
-    <b>log_unlock_terminal</b> (<b>bool</b> previous_state)
-  <br/>
-  Release terminal lock and flush buffered messages. void
-    <b>log_set_flush_delay</b> (unsigned int delay_ms)
-  <br/>
-  Set the delay between flushing buffered log entries. void
-    <b>log_truncate_if_large</b> (void)
-  <br/>
-  Manually truncate large log files. void <b>ui_notice_log</b>
-    (<b>ui_notice_severity_t</b> severity, const char *file, int line, const
-    char *func, const char *title, const char *format,...)
-  <br/>
-  void <b>ui_notice_announce</b> (const char *file, int line, const char *func,
-    const char *title, const char *format,...)
-  <br/>
-  void <b>log_msg</b> (<b>log_level_t</b> level, const char *file, int line,
-    const char *func, const char *fmt,...)
-  <br/>
-  Log a message at a specific level. void <b>log_terminal_msg</b>
-    (<b>log_level_t</b> level, const char *file, int line, const char *func,
-    const char *fmt,...)
-  <br/>
-  Log a message to terminal only (no file output). void
-    <b>log_colored_msg_impl</b> (<b>log_level_t</b> level, const char *file, int
-    line, const char *func, const char *colored_message, const char
-    *plain_message)
-  <br/>
-  Write semantically colored terminal text and an ANSI-free log equivalent. void
-    <b>log_terminal_colored_msg_impl</b> (<b>log_level_t</b> level, const char
-    *file, int line, const char *func, const char *colored_message, const char
-    *plain_message)
-  <br/>
-  Write semantically colored terminal text without persistent logging. void
-    <b>log_plain_msg</b> (const char *fmt,...)
-  <br/>
-  Plain logging without timestamps or levels. void <b>log_plain_stderr_msg</b>
-    (const char *fmt,...)
-  <br/>
-  Plain logging to stderr with newline. void
-    <b>log_plain_stderr_nonewline_msg</b> (const char *fmt,...)
-  <br/>
-  Plain logging to stderr without trailing newline. void
-    <b>log_plain_stdout_msg</b> (const char *fmt,...)
-  <br/>
-  Plain logging to stdout with newline. void <b>log_file_msg</b> (const char
-    *fmt,...)
-  <br/>
-  Log to file only, no stderr output. <b>asciichat_error_t</b>
-    <b>log_net_message</b> (struct <b>acip_transport</b> *transport,
-    <b>log_level_t</b> level, <b>remote_log_direction_t</b> direction, const
-    char *file, int line, const char *func, const char *fmt,...)
-  <br/>
-  Log a message to all destinations (network, file, and terminal). void
-    <b>log_redetect_terminal_capabilities</b> (void)
-  <br/>
-  Re-detect terminal capabilities after logging is initialized. const char **
-    <b>log_get_color_array</b> (void)
-  <br/>
-  Get the appropriate color array based on terminal capabilities. int
-    <b>log_get_color_mode</b> (void)
-  <br/>
-  const char * <b>log_get_foreground_color</b> (void)
-  <br/>
-  const char * <b>log_level_color</b> (<b>log_color_t</b> color)
-  <br/>
-  Get color string for a given color enum. const char *
-    <b>log_level_color_for_output</b> (<b>log_color_t</b> color, <b>bool</b>
-    enabled)
-  <br/>
-  void <b>log_init_colors</b> (void)
-  <br/>
-  Initialize logging color system with current terminal capabilities. void
-    <b>log_set_color_scheme</b> (const <b>color_scheme_t</b> *scheme)
-  <br/>
-  Set the color scheme for logging output. <b>asciichat_error_t</b>
-    <b>log_enable_mmap</b> (const char *log_path)
-  <br/>
-  Enable lock-free mmap-based logging. <b>asciichat_error_t</b>
-    <b>log_enable_mmap_sized</b> (const char *log_path, size_t max_size)
-  <br/>
-  Enable lock-free mmap logging with custom file size. void
-    <b>log_disable_mmap</b> (void)
-  <br/>
-  Disable mmap logging and return to mutex-based logging. void
-    <b>log_shutdown_begin</b> (void)
-  <br/>
-  Begin shutdown phase - disable console logging but keep file logging. void
-    <b>log_shutdown_end</b> (void)
-  <br/>
-  End shutdown phase - restore previous logging settings. void
-    <b>log_cleanup_colors</b> (void)
-  <br/>
-  Clean up compiled color scheme. void <b>log_set_session_log_buffer</b>
-    (<b>session_log_buffer_t</b> *buf)
-  <br/>
-  Register a session log buffer with the logger. void
-    <b>log_clear_session_log_buffer</b> (void)
-  <br/>
-  Unregister the session log buffer. <b>session_log_buffer_t</b> *
-    <b>log_get_session_log_buffer</b> (void)
-  <br/>
-  Get the currently registered session log buffer. size_t
-    <b>log_recolor_plain_entry</b> (const char *plain_line, char *colored_buf,
-    size_t buf_size)
-  <br/>
-  Recolor a plain (non-colored) log line with proper ANSI codes. void
-    <b>log_console_impl</b> (<b>log_level_t</b> level, const char *file, int
-    line, const char *func, const char *message)
-  <br/>
-  void * <b>log_get_template</b> (void)
-  <br/>
-  Get the current log format template.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F4DD; Multi-level logging with terminal color support, file
-    rotation, and async output</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>log/log.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_BUFFER_BUFFER_SIZE___8192"><a class="permalink" href="#_define_LOG_BUFFER_BUFFER_SIZE___8192">#define
-  LOG_BUFFER_BUFFER_SIZE 8192</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>log/log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_COLOR_COUNT___8"><a class="permalink" href="#_define_LOG_COLOR_COUNT___8">#define
-  LOG_COLOR_COUNT 8</a></h2>
-<p class="Pp">Definition at line <b>210</b> of file <b>log/log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_FILE_PATH_BUFFER_SIZE___256"><a class="permalink" href="#_define_LOG_FILE_PATH_BUFFER_SIZE___256">#define
-  LOG_FILE_PATH_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>log/log.c</b>.</p>
-<p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_FUNC_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_LOG_FUNC_NAME_BUFFER_SIZE___256">#define
-  LOG_FUNC_NAME_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>log/log.c</b>.</p>
-<p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_LEVEL_BUFFER_SIZE___16"><a class="permalink" href="#_define_LOG_LEVEL_BUFFER_SIZE___16">#define
-  LOG_LEVEL_BUFFER_SIZE 16</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>log/log.c</b>.</p>
-<p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_LOG_MSG_BUFFER_SIZE___256"><a class="permalink" href="#_define_LOG_LOG_MSG_BUFFER_SIZE___256">#define
-  LOG_LOG_MSG_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>log/log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_PARSE_TIMESTAMP_BUFFER_SIZE___64"><a class="permalink" href="#_define_LOG_PARSE_TIMESTAMP_BUFFER_SIZE___64">#define
-  LOG_PARSE_TIMESTAMP_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>log/log.c</b>.</p>
-<p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOGGING_INTERNAL_ERROR(_error,__message,__"><a class="permalink" href="#_define_LOGGING_INTERNAL_ERROR(_error,__message,__">#define
-  LOGGING_INTERNAL_ERROR( error, message, ...)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                                                                 \
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>log.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">log.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">log.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          log.c - &#x1F4DD; Multi-level logging with terminal color support,
+          file rotation, and async output
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>log_system_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LOG_BUFFER_BUFFER_SIZE</b> 8192
+            <br />
+            #define <b>LOG_LOG_MSG_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>LOG_PARSE_TIMESTAMP_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>LOG_LEVEL_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>LOG_FILE_PATH_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>LOG_FUNC_NAME_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>LOG_COLOR_COUNT</b> 8
+            <br />
+            #define <b>LOGGING_INTERNAL_ERROR</b>(error, message, ...)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>__attribute__</b> ((weak))
+            <br />
+            const char * <b>get_level_string_padded</b> (<b>log_level_t</b>
+            level)
+            <br />
+            Get padded level string for consistent alignment. size_t
+            <b>get_current_time_formatted</b> (char *time_buf)
+            <br />
+            Get current time as formatted string. char *
+            <b>format_message</b> (const char *format, va_list args)
+            <br />
+            Format a message using va_list. <b>session_log_buffer_t</b> *
+            <b>log_get_history_buffer</b> (void)
+            <br />
+            void <b>log_init</b> (const char *filename,
+            <b>log_level_t</b> level, <b>bool</b> force_stderr,
+            <b>bool</b> use_mmap)
+            <br />
+            Initialize the logging system. void <b>log_destroy</b> (void)
+            <br />
+            Destroy the logging system and close log file. void
+            <b>log_system_init</b>
+            (void)
+            <br />
+            Initialize the logging system internal state (system-level init).
+            void
+            <b>log_system_destroy</b> (void)
+            <br />
+            Shutdown the logging system internal state (system-level cleanup).
+            void
+            <b>log_set_level</b> (<b>log_level_t</b> level)
+            <br />
+            Set the minimum log level. <b>log_level_t</b>
+            <b>log_get_level</b> (void)
+            <br />
+            Get the current minimum log level. void
+            <b>log_set_terminal_output</b> (<b>bool</b>
+            enabled)
+            <br />
+            Control stderr output to terminal. <b>bool</b>
+            <b>log_get_terminal_output</b>
+            (void)
+            <br />
+            Get current terminal output setting. void
+            <b>log_set_force_stderr</b> (<b>bool</b>
+            enabled)
+            <br />
+            Force all terminal log output to stderr. <b>bool</b>
+            <b>log_get_force_stderr</b> (void)
+            <br />
+            Get current force_stderr setting. void
+            <b>log_set_json_output</b> (int fd)
+            <br />
+            Set the JSON output file descriptor. void
+            <b>log_disable_file_output</b>
+            (void)
+            <br />
+            Disable file output and use stderr instead. <b>asciichat_error_t</b>
+            <b>log_set_format</b> (const char *format_str,
+            <b>bool</b> console_only)
+            <br />
+            Set a custom log format string. <b>bool</b>
+            <b>log_lock_terminal</b> (void)
+            <br />
+            Lock terminal output for exclusive access by the calling thread.
+            void
+            <b>log_unlock_terminal</b> (<b>bool</b> previous_state)
+            <br />
+            Release terminal lock and flush buffered messages. void
+            <b>log_set_flush_delay</b> (unsigned int delay_ms)
+            <br />
+            Set the delay between flushing buffered log entries. void
+            <b>log_truncate_if_large</b> (void)
+            <br />
+            Manually truncate large log files. void <b>ui_notice_log</b> (<b
+              >ui_notice_severity_t</b
+            >
+            severity, const char *file, int line, const char *func, const char
+            *title, const char *format,...)
+            <br />
+            void <b>ui_notice_announce</b> (const char *file, int line, const
+            char *func, const char *title, const char *format,...)
+            <br />
+            void <b>log_msg</b> (<b>log_level_t</b> level, const char *file, int
+            line, const char *func, const char *fmt,...)
+            <br />
+            Log a message at a specific level. void <b>log_terminal_msg</b> (<b
+              >log_level_t</b
+            >
+            level, const char *file, int line, const char *func, const char
+            *fmt,...)
+            <br />
+            Log a message to terminal only (no file output). void
+            <b>log_colored_msg_impl</b> (<b>log_level_t</b> level, const char
+            *file, int line, const char *func, const char *colored_message,
+            const char *plain_message)
+            <br />
+            Write semantically colored terminal text and an ANSI-free log
+            equivalent. void
+            <b>log_terminal_colored_msg_impl</b> (<b>log_level_t</b> level,
+            const char *file, int line, const char *func, const char
+            *colored_message, const char *plain_message)
+            <br />
+            Write semantically colored terminal text without persistent logging.
+            void
+            <b>log_plain_msg</b> (const char *fmt,...)
+            <br />
+            Plain logging without timestamps or levels. void
+            <b>log_plain_stderr_msg</b>
+            (const char *fmt,...)
+            <br />
+            Plain logging to stderr with newline. void
+            <b>log_plain_stderr_nonewline_msg</b> (const char *fmt,...)
+            <br />
+            Plain logging to stderr without trailing newline. void
+            <b>log_plain_stdout_msg</b> (const char *fmt,...)
+            <br />
+            Plain logging to stdout with newline. void
+            <b>log_file_msg</b> (const char *fmt,...)
+            <br />
+            Log to file only, no stderr output. <b>asciichat_error_t</b>
+            <b>log_net_message</b> (struct <b>acip_transport</b> *transport,
+            <b>log_level_t</b> level, <b>remote_log_direction_t</b> direction,
+            const char *file, int line, const char *func, const char *fmt,...)
+            <br />
+            Log a message to all destinations (network, file, and terminal).
+            void
+            <b>log_redetect_terminal_capabilities</b> (void)
+            <br />
+            Re-detect terminal capabilities after logging is initialized. const
+            char **
+            <b>log_get_color_array</b> (void)
+            <br />
+            Get the appropriate color array based on terminal capabilities. int
+            <b>log_get_color_mode</b> (void)
+            <br />
+            const char * <b>log_get_foreground_color</b> (void)
+            <br />
+            const char * <b>log_level_color</b> (<b>log_color_t</b> color)
+            <br />
+            Get color string for a given color enum. const char *
+            <b>log_level_color_for_output</b> (<b>log_color_t</b> color,
+            <b>bool</b>
+            enabled)
+            <br />
+            void <b>log_init_colors</b> (void)
+            <br />
+            Initialize logging color system with current terminal capabilities.
+            void
+            <b>log_set_color_scheme</b> (const <b>color_scheme_t</b> *scheme)
+            <br />
+            Set the color scheme for logging output. <b>asciichat_error_t</b>
+            <b>log_enable_mmap</b> (const char *log_path)
+            <br />
+            Enable lock-free mmap-based logging. <b>asciichat_error_t</b>
+            <b>log_enable_mmap_sized</b> (const char *log_path, size_t max_size)
+            <br />
+            Enable lock-free mmap logging with custom file size. void
+            <b>log_disable_mmap</b> (void)
+            <br />
+            Disable mmap logging and return to mutex-based logging. void
+            <b>log_shutdown_begin</b> (void)
+            <br />
+            Begin shutdown phase - disable console logging but keep file
+            logging. void
+            <b>log_shutdown_end</b> (void)
+            <br />
+            End shutdown phase - restore previous logging settings. void
+            <b>log_cleanup_colors</b> (void)
+            <br />
+            Clean up compiled color scheme. void
+            <b>log_set_session_log_buffer</b> (<b>session_log_buffer_t</b>
+            *buf)
+            <br />
+            Register a session log buffer with the logger. void
+            <b>log_clear_session_log_buffer</b> (void)
+            <br />
+            Unregister the session log buffer. <b>session_log_buffer_t</b> *
+            <b>log_get_session_log_buffer</b> (void)
+            <br />
+            Get the currently registered session log buffer. size_t
+            <b>log_recolor_plain_entry</b> (const char *plain_line, char
+            *colored_buf, size_t buf_size)
+            <br />
+            Recolor a plain (non-colored) log line with proper ANSI codes. void
+            <b>log_console_impl</b> (<b>log_level_t</b> level, const char *file,
+            int line, const char *func, const char *message)
+            <br />
+            void * <b>log_get_template</b> (void)
+            <br />
+            Get the current log format template.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F4DD; Multi-level logging with terminal color support, file
+          rotation, and async output
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>log/log.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_BUFFER_BUFFER_SIZE___8192">
+            <a class="permalink" href="#_define_LOG_BUFFER_BUFFER_SIZE___8192"
+              >#define LOG_BUFFER_BUFFER_SIZE 8192</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>log/log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_COLOR_COUNT___8">
+            <a class="permalink" href="#_define_LOG_COLOR_COUNT___8"
+              >#define LOG_COLOR_COUNT 8</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>210</b> of file <b>log/log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_FILE_PATH_BUFFER_SIZE___256">
+            <a class="permalink" href="#_define_LOG_FILE_PATH_BUFFER_SIZE___256"
+              >#define LOG_FILE_PATH_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>log/log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_FUNC_NAME_BUFFER_SIZE___256">
+            <a class="permalink" href="#_define_LOG_FUNC_NAME_BUFFER_SIZE___256"
+              >#define LOG_FUNC_NAME_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>log/log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_LEVEL_BUFFER_SIZE___16">
+            <a class="permalink" href="#_define_LOG_LEVEL_BUFFER_SIZE___16"
+              >#define LOG_LEVEL_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>log/log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_LOG_MSG_BUFFER_SIZE___256">
+            <a class="permalink" href="#_define_LOG_LOG_MSG_BUFFER_SIZE___256"
+              >#define LOG_LOG_MSG_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>log/log.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_PARSE_TIMESTAMP_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_LOG_PARSE_TIMESTAMP_BUFFER_SIZE___64"
+              >#define LOG_PARSE_TIMESTAMP_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>log/log.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_recolor_plain_entry()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_LOGGING_INTERNAL_ERROR(_error,__message,__"
+          >
+            <a
+              class="permalink"
+              href="#_define_LOGGING_INTERNAL_ERROR(_error,__message,__"
+              >#define LOGGING_INTERNAL_ERROR( error, message, ...)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
   errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                               \
 <br/>
@@ -311,57 +431,86 @@
 <br/>
   backtrace_print_simple(0);                                                                                         \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>228</b> of file <b>log/log.c</b>.</p>
-<p class="Pp">Referenced by <b>format_message()</b>,
-    <b>get_current_time_formatted()</b>, and <b>log_msg()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="__attribute___((weak)_)"><a class="permalink" href="#__attribute___((weak)_)">__attribute__
-  ((weak) )</a></h2>
-<p class="Pp">Definition at line <b>60</b> of file <b>log/log.c</b>.</p>
-<pre>60                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>228</b> of file <b>log/log.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>format_message()</b>,
+            <b>get_current_time_formatted()</b>, and <b>log_msg()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="__attribute___((weak)_)">
+            <a class="permalink" href="#__attribute___((weak)_)"
+              >__attribute__ ((weak) )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+60                                                                                      {
 61   (void)level;
 62   (void)message;
 63   // Default: no-op
 64 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_log_hook()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_get_level_string_padded_("><a class="permalink" href="#const_char_*_get_level_string_padded_(">const
-  char * get_level_string_padded (<b>log_level_t</b> level)</a></h2>
-<p class="Pp">Get padded level string for consistent alignment. Get padded log
-    level string (internal utility for formatting).</p>
-<p class="Pp"></p>
-<p class="Pp">Returns level names padded to 5 characters for visual alignment.
-    Used consistently in both colored and plain text formatters to ensure grep
-    pattern matching works correctly.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log level</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Padded level string (e.g., &quot;INFO &quot;, &quot;WARN
-  &quot;, &quot;DEBUG&quot;)</div>
-<p class="Pp">Get padded level string for consistent alignment.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>level</i> Log level</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Padded level string (5 chars: &quot;DEBUG&quot;,
-  &quot;INFO &quot;, &quot;WARN &quot;, &quot;DEV &quot;, &quot;ERROR&quot;,
-  &quot;FATAL&quot;)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Internal function - do not use directly in application
-  code</div>
-<p class="Pp">Definition at line <b>178</b> of file <b>log/log.c</b>.</p>
-<pre>178                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_log_hook()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_get_level_string_padded_(">
+            <a class="permalink" href="#const_char_*_get_level_string_padded_("
+              >const char * get_level_string_padded (<b>log_level_t</b>
+              level)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get padded level string for consistent alignment. Get padded log
+            level string (internal utility for formatting).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Returns level names padded to 5 characters for visual alignment.
+            Used consistently in both colored and plain text formatters to
+            ensure grep pattern matching works correctly.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>level</i> Log level</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Padded level string (e.g., &quot;INFO &quot;, &quot;WARN &quot;,
+            &quot;DEBUG&quot;)
+          </div>
+          <p class="Pp">Get padded level string for consistent alignment.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>level</i> Log level</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Padded level string (5 chars: &quot;DEBUG&quot;, &quot;INFO &quot;,
+            &quot;WARN &quot;, &quot;DEV &quot;, &quot;ERROR&quot;,
+            &quot;FATAL&quot;)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Internal function - do not use directly in application code
+          </div>
+          <p class="Pp">
+            Definition at line <b>178</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+178                                                        {
 179   const char *result;
 180   switch (level) {
 181   case LOG_INFO:
@@ -392,20 +541,30 @@
 206   }
 207   return result;
 208 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_level_string_padded()</b>, <b>LOG_DEBUG</b>,
-    <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>, and
-    <b>LOG_WARN</b>.</p>
-<p class="Pp">Referenced by <b>get_level_string_padded()</b>, and
-    <b>log_template_apply()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_console_impl_("><a class="permalink" href="#void_log_console_impl_(">void
-  log_console_impl (<b>log_level_t</b> level, const char * file, int line, const
-  char * func, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>2321</b> of file <b>log/log.c</b>.</p>
-<pre>2321                                                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>get_level_string_padded()</b>, <b>LOG_DEBUG</b>,
+            <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>,
+            and <b>LOG_WARN</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>get_level_string_padded()</b>, and
+            <b>log_template_apply()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_console_impl_(">
+            <a class="permalink" href="#void_log_console_impl_("
+              >void log_console_impl (<b>log_level_t</b> level, const char *
+              file, int line, const char * func, const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>2321</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+2321                                                                                                             {
 2322   if (!message) {
 2323     return;
 2324   }
@@ -436,98 +595,149 @@
 2349     }
 2350   }
 2351 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>, <b>log_console_impl()</b>,
-    <b>log_json_async_safe()</b>, <b>platform_isatty()</b>,
-    <b>terminal_choose_log_fd()</b>, <b>ui_controller_is_owner()</b>,
-    <b>ui_controller_is_presenting()</b>, and <b>ui_controller_write()</b>.</p>
-<p class="Pp">Referenced by <b>log_console_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_log_buffer_t</b> * log_get_history_buffer (void )</h2>
-<p class="Pp">Borrowed history retained from log_init through
-    log_system_destroy, independent of screens.</p>
-<p class="Pp">Definition at line <b>560</b> of file <b>log/log.c</b>.</p>
-<pre>560                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_int()</b>, <b>log_console_impl()</b>,
+            <b>log_json_async_safe()</b>, <b>platform_isatty()</b>,
+            <b>terminal_choose_log_fd()</b>, <b>ui_controller_is_owner()</b>,
+            <b>ui_controller_is_presenting()</b>, and
+            <b>ui_controller_write()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_console_impl()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_log_buffer_t</b> * log_get_history_buffer (void )
+          </h2>
+          <p class="Pp">
+            Borrowed history retained from log_init through log_system_destroy,
+            independent of screens.
+          </p>
+          <p class="Pp">
+            Definition at line <b>560</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+560                                                    {
 561   return g_history;
 562 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_get_history_buffer()</b>.</p>
-<p class="Pp">Referenced by <b>log_get_history_buffer()</b>,
-    <b>log_search_filter_buffer()</b>, <b>terminal_screen_log_init()</b>, and
-    <b>ui_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_set_json_output_(int_fd)"><a class="permalink" href="#void_log_set_json_output_(int_fd)">void
-  log_set_json_output (int fd)</a></h2>
-<p class="Pp">Set the JSON output file descriptor. Sets which file descriptor
-    should receive JSON-formatted logs. Pass -1 to disable JSON output.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor (typically STDERR_FILENO for
-  terminal, or an open log file)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function is thread-safe (uses atomic
-  operations)</div>
-<p class="Pp">Definition at line <b>766</b> of file <b>log/log.c</b>.</p>
-<pre>766                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>log_get_history_buffer()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>log_get_history_buffer()</b>,
+            <b>log_search_filter_buffer()</b>,
+            <b>terminal_screen_log_init()</b>, and <b>ui_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_set_json_output_(int_fd)">
+            <a class="permalink" href="#void_log_set_json_output_(int_fd)"
+              >void log_set_json_output (int fd)</a
+            >
+          </h2>
+          <p class="Pp">
+            Set the JSON output file descriptor. Sets which file descriptor
+            should receive JSON-formatted logs. Pass -1 to disable JSON output.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor (typically STDERR_FILENO for terminal, or
+            an open log file)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function is thread-safe (uses atomic operations)
+          </div>
+          <p class="Pp">
+            Definition at line <b>766</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+766                                  {
 767   atomic_store_int(&amp;g_log.json_file, fd);
 768 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_int()</b>, and
-    <b>log_set_json_output()</b>.</p>
-<p class="Pp">Referenced by <b>log_set_json_output()</b>, and <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_notice_announce_(const_char_*_file,_int_line,_const_char_*_func,_const_char_*_title,_const_char_*_format,__"><a class="permalink" href="#void_ui_notice_announce_(const_char_*_file,_int_line,_const_char_*_func,_const_char_*_title,_const_char_*_format,__">void
-  ui_notice_announce (const char * file, int line, const char * func, const char
-  * title, const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>1179</b> of file <b>log/log.c</b>.</p>
-<pre>1179                                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_int()</b>, and
+            <b>log_set_json_output()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_set_json_output()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ui_notice_announce_(const_char_*_file,_int_line,_const_char_*_func,_const_char_*_title,_const_char_*_format,__"
+          >
+            <a
+              class="permalink"
+              href="#void_ui_notice_announce_(const_char_*_file,_int_line,_const_char_*_func,_const_char_*_title,_const_char_*_format,__"
+              >void ui_notice_announce (const char * file, int line, const char
+              * func, const char * title, const char * format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1179</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+1179                                                                                                                   {
 1180   va_list args;
 1181   va_start(args, format);
 1182   notice_logv(UI_NOTICE_INFO, true, file, line, func, title, format, args);
 1183   va_end(args);
 1184 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_notice_announce()</b>, and
-  <b>UI_NOTICE_INFO</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_announce()</b>, and
-    <b>ui_notice_announce()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ui_notice_log_("><a class="permalink" href="#void_ui_notice_log_(">void
-  ui_notice_log (<b>ui_notice_severity_t</b> severity, const char * file, int
-  line, const char * func, const char * title, const char * format,
-  ...)</a></h2>
-<p class="Pp">Definition at line <b>1171</b> of file <b>log/log.c</b>.</p>
-<pre>1172                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_notice_announce()</b>, and <b>UI_NOTICE_INFO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_announce()</b>, and
+            <b>ui_notice_announce()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_notice_log_(">
+            <a class="permalink" href="#void_ui_notice_log_("
+              >void ui_notice_log (<b>ui_notice_severity_t</b> severity, const
+              char * file, int line, const char * func, const char * title,
+              const char * format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1171</b> of file <b>log/log.c</b>.
+          </p>
+          <pre>
+1172                                             {
 1173   va_list args;
 1174   va_start(args, format);
 1175   notice_logv(severity, false, file, line, func, title, format, args);
 1176   va_end(args);
 1177 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ui_notice_log()</b>.</p>
-<p class="Pp">Referenced by <b>ui_notice_confirm_kind()</b>,
-    <b>ui_notice_log()</b>, and <b>ui_notice_log()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_notice_log()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_notice_confirm_kind()</b>,
+            <b>ui_notice_log()</b>, and <b>ui_notice_log()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

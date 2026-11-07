@@ -1,210 +1,358 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>server_stats_visit_t</b>
-  <br/>
-  struct <b>server_discovery_policy_t</b>
-  <br/>
-  struct <b>server_discovery_startup_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SERVER_MAIN_SESSION_STRING_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>SERVER_MAIN_HEX_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>SERVER_MAIN_ASCII_BUFFER_SIZE</b> 20
-  <br/>
-  #define <b>SERVER_MAIN_PARTICIPANT_BUFFER_SIZE</b> 33
-  <br/>
-  #define <b>SERVER_MAIN_SESSION_NAME_BUFFER_SIZE</b> 56
-  <br/>
-  #define <b>SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>SERVER_MAIN_LABEL_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE</b> 128
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>server_main</b> (void)
-  <br/>
-  Server mode entry point for unified binary.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>mixer_t</b> *volatile <b>g_audio_mixer</b> = NULL
-  <br/>
-  Global audio mixer instance for multi-client audio processing.
-    <b>h265_server_context_t</b> *volatile <b>g_h265_server</b> = NULL
-  <br/>
-  Global H.265 codec server context. <b>static_cond_t</b> <b>g_shutdown_cond</b>
-    = <b>STATIC_COND_INIT</b>
-  <br/>
-  Global shutdown condition variable for waking blocked threads.
-    <b>rate_limiter_t</b> * <b>g_rate_limiter</b> = NULL
-  <br/>
-  Global rate limiter for connection attempts and packet processing. <b>bool</b>
-    <b>g_server_encryption_enabled</b> = <b>false</b>
-  <br/>
-  Global flag indicating if server encryption is enabled. <b>private_key_t</b>
-    <b>g_server_private_key</b> = {0}
-  <br/>
-  Global server private key (first identity key, for backward compatibility).
-    <b>private_key_t</b> <b>g_server_identity_keys</b> [<b>MAX_SESSION_KEYS</b>]
-    = {0}
-  <br/>
-  Global server identity keys array (multi-key support). size_t
-    <b>g_num_server_identity_keys</b> = 0
-  <br/>
-  Number of loaded server identity keys. <b>public_key_t</b>
-    <b>g_client_whitelist</b> [<b>MAX_CLIENTS</b>] = {0}
-  <br/>
-  Global client public key whitelist. size_t <b>g_num_whitelisted_clients</b> =
-    0
-  <br/>
-  Number of whitelisted clients.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_ASCII_BUFFER_SIZE___20"><a class="permalink" href="#_define_SERVER_MAIN_ASCII_BUFFER_SIZE___20">#define
-  SERVER_MAIN_ASCII_BUFFER_SIZE 20</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_HEX_BUFFER_SIZE___64"><a class="permalink" href="#_define_SERVER_MAIN_HEX_BUFFER_SIZE___64">#define
-  SERVER_MAIN_HEX_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_LABEL_BUFFER_SIZE___64"><a class="permalink" href="#_define_SERVER_MAIN_LABEL_BUFFER_SIZE___64">#define
-  SERVER_MAIN_LABEL_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_PARTICIPANT_BUFFER_SIZE___33"><a class="permalink" href="#_define_SERVER_MAIN_PARTICIPANT_BUFFER_SIZE___33">#define
-  SERVER_MAIN_PARTICIPANT_BUFFER_SIZE 33</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_SESSION_NAME_BUFFER_SIZE___56"><a class="permalink" href="#_define_SERVER_MAIN_SESSION_NAME_BUFFER_SIZE___56">#define
-  SERVER_MAIN_SESSION_NAME_BUFFER_SIZE 56</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_SESSION_STRING_BUFFER_SIZE___64"><a class="permalink" href="#_define_SERVER_MAIN_SESSION_STRING_BUFFER_SIZE___64">#define
-  SERVER_MAIN_SESSION_STRING_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE___128"><a class="permalink" href="#_define_SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE___128">#define
-  SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE___128"><a class="permalink" href="#_define_SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE___128">#define
-  SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE___512"><a class="permalink" href="#_define_SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE___512">#define
-  SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>server/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE___512"><a class="permalink" href="#_define_SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE___512">#define
-  SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>server/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_server_main_(void_)"><a class="permalink" href="#int_server_main_(void_)">int
-  server_main (void )</a></h2>
-<p class="Pp">Server mode entry point for unified binary. This function
-    implements the complete server lifecycle including:</p>
-<ul class="Bl-bullet">
-  <li>Server-specific initialization (crypto, shutdown callback)</li>
-  <li>Network socket setup and binding</li>
-  <li>Main connection accept loop</li>
-  <li>Client lifecycle management</li>
-  <li>Graceful shutdown and cleanup</li>
-</ul>
-<p class="Pp">Options are already parsed by the main dispatcher before this
-    function is called, so they are available via global opt_* variables.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp"><b>Example</b></p>
-<div class="Bd-indent">
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Invoked by dispatcher after options are parsed:
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">main.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>server_stats_visit_t</b>
+            <br />
+            struct <b>server_discovery_policy_t</b>
+            <br />
+            struct <b>server_discovery_startup_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SERVER_MAIN_SESSION_STRING_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>SERVER_MAIN_HEX_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>SERVER_MAIN_ASCII_BUFFER_SIZE</b> 20
+            <br />
+            #define <b>SERVER_MAIN_PARTICIPANT_BUFFER_SIZE</b> 33
+            <br />
+            #define <b>SERVER_MAIN_SESSION_NAME_BUFFER_SIZE</b> 56
+            <br />
+            #define <b>SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>SERVER_MAIN_LABEL_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE</b> 128
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>server_main</b> (void)
+            <br />
+            Server mode entry point for unified binary.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>mixer_t</b> *volatile <b>g_audio_mixer</b> = NULL
+            <br />
+            Global audio mixer instance for multi-client audio processing.
+            <b>h265_server_context_t</b> *volatile <b>g_h265_server</b> = NULL
+            <br />
+            Global H.265 codec server context. <b>static_cond_t</b>
+            <b>g_shutdown_cond</b> =
+            <b>STATIC_COND_INIT</b>
+            <br />
+            Global shutdown condition variable for waking blocked threads.
+            <b>rate_limiter_t</b> * <b>g_rate_limiter</b> = NULL
+            <br />
+            Global rate limiter for connection attempts and packet processing.
+            <b>bool</b> <b>g_server_encryption_enabled</b> = <b>false</b>
+            <br />
+            Global flag indicating if server encryption is enabled.
+            <b>private_key_t</b> <b>g_server_private_key</b> = {0}
+            <br />
+            Global server private key (first identity key, for backward
+            compatibility).
+            <b>private_key_t</b>
+            <b>g_server_identity_keys</b> [<b>MAX_SESSION_KEYS</b>] = {0}
+            <br />
+            Global server identity keys array (multi-key support). size_t
+            <b>g_num_server_identity_keys</b> = 0
+            <br />
+            Number of loaded server identity keys. <b>public_key_t</b>
+            <b>g_client_whitelist</b> [<b>MAX_CLIENTS</b>] = {0}
+            <br />
+            Global client public key whitelist. size_t
+            <b>g_num_whitelisted_clients</b> = 0
+            <br />
+            Number of whitelisted clients.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_MAIN_ASCII_BUFFER_SIZE___20">
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_ASCII_BUFFER_SIZE___20"
+              >#define SERVER_MAIN_ASCII_BUFFER_SIZE 20</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_MAIN_HEX_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_HEX_BUFFER_SIZE___64"
+              >#define SERVER_MAIN_HEX_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_MAIN_LABEL_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_LABEL_BUFFER_SIZE___64"
+              >#define SERVER_MAIN_LABEL_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_MAIN_PARTICIPANT_BUFFER_SIZE___33">
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_PARTICIPANT_BUFFER_SIZE___33"
+              >#define SERVER_MAIN_PARTICIPANT_BUFFER_SIZE 33</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_MAIN_SESSION_NAME_BUFFER_SIZE___56">
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_SESSION_NAME_BUFFER_SIZE___56"
+              >#define SERVER_MAIN_SESSION_NAME_BUFFER_SIZE 56</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SERVER_MAIN_SESSION_STRING_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_SESSION_STRING_BUFFER_SIZE___64"
+              >#define SERVER_MAIN_SESSION_STRING_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE___128"
+              >#define SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE___128"
+              >#define SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE___512"
+              >#define SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE___512"
+              >#define SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_server_main_(void_)">
+            <a class="permalink" href="#int_server_main_(void_)"
+              >int server_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Server mode entry point for unified binary. This function implements
+            the complete server lifecycle including:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Server-specific initialization (crypto, shutdown callback)</li>
+            <li>Network socket setup and binding</li>
+            <li>Main connection accept loop</li>
+            <li>Client lifecycle management</li>
+            <li>Graceful shutdown and cleanup</li>
+          </ul>
+          <p class="Pp">
+            Options are already parsed by the main dispatcher before this
+            function is called, so they are available via global opt_*
+            variables.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, non-zero error code on failure
+          </div>
+          <p class="Pp"><b>Example</b></p>
+          <div class="Bd-indent">
+            <p class="Pp"></p>
+            <p class="Pp"></p>
+            <pre>
+# Invoked by dispatcher after options are parsed:
 ascii-chat server --port 8080
 # Options parsed in main.c, then server_main() called
 </pre>
-</div>
-<p class="Pp">Definition at line <b>2053</b> of file <b>server/main.c</b>.</p>
-<pre>2053                       {
+          </div>
+          <p class="Pp">
+            Definition at line <b>2053</b> of file <b>server/main.c</b>.
+          </p>
+          <pre>
+2053                       {
 2054   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
 2055
 2056   // Register atomic for debug tracking
@@ -306,121 +454,173 @@ ascii-chat server --port 8080
 2152   asciichat_error_t result = session_server_like_run(&amp;config);
 2153   return (result == ASCIICHAT_OK) ? 0 : 1;
 2154 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ATOMIC_REGISTER_AUTO</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>, <b>FATAL</b>,
-    <b>g_audio_mixer</b>, <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
-    <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
-    <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
-    <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
-    <b>GET_OPTION</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>precalc_rgb_palettes()</b>,
-    <b>server_main()</b>, <b>server_network_callbacks</b>,
-    <b>session_server_like_run()</b>, <b>shutdown_register_callback()</b>,
-    <b>stats_init()</b>, <b>stats_logger_thread()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_spawn()</b>, <b>weight_blue</b>,
-    <b>weight_green</b>, and <b>weight_red</b>.</p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>mixer_t</b>* volatile g_audio_mixer = NULL</h2>
-<p class="Pp">Global audio mixer instance for multi-client audio processing.
-    Global audio mixer.</p>
-<p class="Pp"></p>
-<p class="Pp">The mixer combines audio streams from multiple clients, excluding
-    each client's own audio from their outbound stream (preventing echo).
-    Created once during server initialization and shared by all audio render
-    threads.</p>
-<p class="Pp"></p>
-<p class="Pp">THREAD SAFETY: The mixer itself is thread-safe and can be used
-    concurrently by multiple render.c audio threads without external
-    synchronization. During shutdown, set to NULL before destroying to prevent
-    use-after-free.</p>
-<p class="Pp"></p>
-<p class="Pp">Global audio mixer instance for multi-client audio processing.</p>
-<p class="Pp"></p>
-<p class="Pp">Volatile pointer to the multi-client audio mixer instance. Used to
-    mix audio from multiple clients for playback.</p>
-<p class="Pp">Definition at line <b>199</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>h265_server_context_t</b>* volatile g_h265_server = NULL</h2>
-<p class="Pp">Global H.265 codec server context. Shared H.265 decoding context
-    used by all packet handlers to decode client H.265 frames. Each client gets
-    its own decoder instance.</p>
-<p class="Pp"></p>
-<p class="Pp">THREAD SAFETY: The h265_server context is thread-safe and can be
-    used concurrently by multiple client handlers. Decoders are per-client.
-    During shutdown, set to NULL before destroying to prevent
-  use-after-free.</p>
-<p class="Pp"></p>
-<p class="Pp">Shared H.265 decoding context used by all packet handlers to
-    decode client H.265 frames. Each client gets its own decoder instance.</p>
-<p class="Pp">Definition at line <b>211</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>rate_limiter_t</b>* g_rate_limiter = NULL</h2>
-<p class="Pp">Global rate limiter for connection attempts and packet processing.
-    Global connection rate limiter.</p>
-<p class="Pp"></p>
-<p class="Pp">In-memory rate limiter to prevent connection flooding and DoS
-    attacks. Tracks connection attempts and packet rates per IP address with
-    configurable limits.</p>
-<p class="Pp"></p>
-<p class="Pp">Default limits (from <b>rate_limit.c</b>):</p>
-<ul class="Bl-bullet">
-  <li>RATE_EVENT_CONNECTION: 50 connections per 60 seconds</li>
-  <li>RATE_EVENT_IMAGE_FRAME: 144 FPS (8640 frames/min)</li>
-  <li>RATE_EVENT_AUDIO: 172 FPS (10320 packets/min)</li>
-  <li>RATE_EVENT_PING: 2 Hz (120 pings/min)</li>
-  <li>RATE_EVENT_CLIENT_JOIN: 10 joins per 60 seconds</li>
-  <li>RATE_EVENT_CONTROL: 100 control packets per 60 seconds</li>
-</ul>
-<p class="Pp">THREAD SAFETY: The rate limiter is thread-safe and can be used
-    concurrently from the main accept loop and packet handlers without external
-    synchronization.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">main.h for extern declaration</div>
-<p class="Pp">Global rate limiter for connection attempts and packet
-  processing.</p>
-<p class="Pp"></p>
-<p class="Pp">Shared rate limiter instance used by packet handlers to prevent
-    DoS attacks. Tracks connection attempts and packet rates per IP address.</p>
-<p class="Pp">Definition at line <b>241</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>process_decrypted_packet()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>static_cond_t</b> g_shutdown_cond =
-  <b>STATIC_COND_INIT</b></h2>
-<p class="Pp">Global shutdown condition variable for waking blocked threads.
-    Used to wake up threads that might be blocked on condition variables (like
-    packet queues) during shutdown. This ensures responsive shutdown even when
-    threads are waiting on blocking operations.</p>
-<p class="Pp">Definition at line <b>220</b> of file <b>server/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ATOMIC_REGISTER_AUTO</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+            <b>FATAL</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
+            <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
+            <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
+            <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
+            <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
+            <b>GET_OPTION</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>precalc_rgb_palettes()</b>,
+            <b>server_main()</b>, <b>server_network_callbacks</b>,
+            <b>session_server_like_run()</b>,
+            <b>shutdown_register_callback()</b>, <b>stats_init()</b>,
+            <b>stats_logger_thread()</b>, <b>thread_pool_create()</b>,
+            <b>thread_pool_spawn()</b>, <b>weight_blue</b>, <b>weight_green</b>,
+            and <b>weight_red</b>.
+          </p>
+          <p class="Pp">Referenced by <b>server_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>mixer_t</b>* volatile g_audio_mixer = NULL</h2>
+          <p class="Pp">
+            Global audio mixer instance for multi-client audio processing.
+            Global audio mixer.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The mixer combines audio streams from multiple clients, excluding
+            each client's own audio from their outbound stream (preventing
+            echo). Created once during server initialization and shared by all
+            audio render threads.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            THREAD SAFETY: The mixer itself is thread-safe and can be used
+            concurrently by multiple render.c audio threads without external
+            synchronization. During shutdown, set to NULL before destroying to
+            prevent use-after-free.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Global audio mixer instance for multi-client audio processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Volatile pointer to the multi-client audio mixer instance. Used to
+            mix audio from multiple clients for playback.
+          </p>
+          <p class="Pp">
+            Definition at line <b>199</b> of file <b>server/main.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_audio_render_thread()</b>, and
+            <b>server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>h265_server_context_t</b>* volatile g_h265_server = NULL
+          </h2>
+          <p class="Pp">
+            Global H.265 codec server context. Shared H.265 decoding context
+            used by all packet handlers to decode client H.265 frames. Each
+            client gets its own decoder instance.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            THREAD SAFETY: The h265_server context is thread-safe and can be
+            used concurrently by multiple client handlers. Decoders are
+            per-client. During shutdown, set to NULL before destroying to
+            prevent use-after-free.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shared H.265 decoding context used by all packet handlers to decode
+            client H.265 frames. Each client gets its own decoder instance.
+          </p>
+          <p class="Pp">
+            Definition at line <b>211</b> of file <b>server/main.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>handle_image_frame_h265_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>rate_limiter_t</b>* g_rate_limiter = NULL</h2>
+          <p class="Pp">
+            Global rate limiter for connection attempts and packet processing.
+            Global connection rate limiter.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            In-memory rate limiter to prevent connection flooding and DoS
+            attacks. Tracks connection attempts and packet rates per IP address
+            with configurable limits.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Default limits (from <b>rate_limit.c</b>):</p>
+          <ul class="Bl-bullet">
+            <li>RATE_EVENT_CONNECTION: 50 connections per 60 seconds</li>
+            <li>RATE_EVENT_IMAGE_FRAME: 144 FPS (8640 frames/min)</li>
+            <li>RATE_EVENT_AUDIO: 172 FPS (10320 packets/min)</li>
+            <li>RATE_EVENT_PING: 2 Hz (120 pings/min)</li>
+            <li>RATE_EVENT_CLIENT_JOIN: 10 joins per 60 seconds</li>
+            <li>RATE_EVENT_CONTROL: 100 control packets per 60 seconds</li>
+          </ul>
+          <p class="Pp">
+            THREAD SAFETY: The rate limiter is thread-safe and can be used
+            concurrently from the main accept loop and packet handlers without
+            external synchronization.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">main.h for extern declaration</div>
+          <p class="Pp">
+            Global rate limiter for connection attempts and packet processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shared rate limiter instance used by packet handlers to prevent DoS
+            attacks. Tracks connection attempts and packet rates per IP address.
+          </p>
+          <p class="Pp">
+            Definition at line <b>241</b> of file <b>server/main.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>process_decrypted_packet()</b>, and
+            <b>server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>static_cond_t</b> g_shutdown_cond = <b>STATIC_COND_INIT</b>
+          </h2>
+          <p class="Pp">
+            Global shutdown condition variable for waking blocked threads. Used
+            to wake up threads that might be blocked on condition variables
+            (like packet queues) during shutdown. This ensures responsive
+            shutdown even when threads are waiting on blocking operations.
+          </p>
+          <p class="Pp">
+            Definition at line <b>220</b> of file <b>server/main.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

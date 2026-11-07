@@ -1,204 +1,381 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>update_banner.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">update_banner.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">update_banner.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">update_banner.c - Update available prompt screen
-  implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>update_child_result_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE</b> 1024
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE</b> 160
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE</b> 160
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE</b> 160
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE</b> 2048
-  <br/>
-  #define <b>TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE</b> 1024
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>update_banner_set_result</b> (const
-    <b>update_check_result_t</b> *result)
-  <br/>
-  Store the update check result (thread-safe). <b>bool</b>
-    <b>update_banner_has_update</b> (void)
-  <br/>
-  Check if an update is available (thread-safe). <b>bool</b>
-    <b>update_banner_show_prompt</b> (<b>session_display_ctx_t</b> *ctx)
-  <br/>
-  Show the update prompt screen and wait for user input. void
-    <b>update_banner_print_instructions</b> (void)
-  <br/>
-  Print upgrade instructions to stdout and prepare for clean exit. <b>bool</b>
-    <b>update_banner_install_update</b> (void)
-  <br/>
-  void <b>update_banner_start_check</b> (void)
-  <br/>
-  Start the background update check thread. void
-    <b>update_banner_toggle_overlay</b> (void)
-  <br/>
-  <b>bool</b> <b>update_banner_is_checking</b> (void)
-  <br/>
-  <b>bool</b> <b>update_banner_is_overlay_open</b> (void)
-  <br/>
-  <b>bool</b> <b>update_banner_handle_key</b> (int key)
-  <br/>
-  void <b>update_banner_wait_for_check</b> (void)
-  <br/>
-  Wait for the background update check thread to finish. void
-    <b>update_banner_cancel_check</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Update available prompt screen implementation.</p>
-<p class="Pp">Renders a centered box-drawing prompt after splash ends, showing
-    version info and upgrade instructions. Blocks for user input (Y/Enter or
-    N/Esc).</p>
-<p class="Pp">Definition in file <b>update_banner.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE___1024">#define
-  TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE___512">#define
-  TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE___128">#define
-  TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>update_banner.c</b>.</p>
-<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE___160"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE___160">#define
-  TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE 160</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE___160"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE___160">#define
-  TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE 160</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE___128">#define
-  TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE___128">#define
-  TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE___256">#define
-  TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>update_banner.c</b>.</p>
-<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE___160"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE___160">#define
-  TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE 160</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE___1024">#define
-  TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE 1024</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>update_banner.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE___2048"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE___2048">#define
-  TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>update_banner.c</b>.</p>
-<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE___256">#define
-  TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>update_banner.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>update_banner.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">update_banner.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">update_banner.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          update_banner.c - Update available prompt screen implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>update_child_result_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE</b> 160
+            <br />
+            #define <b>TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE</b> 160
+            <br />
+            #define <b>TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE</b> 160
+            <br />
+            #define <b>TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE</b> 256
+            <br />
+            #define
+            <b>TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE</b> 2048
+            <br />
+            #define <b>TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE</b> 1024
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>update_banner_set_result</b> (const
+            <b>update_check_result_t</b> *result)
+            <br />
+            Store the update check result (thread-safe). <b>bool</b>
+            <b>update_banner_has_update</b> (void)
+            <br />
+            Check if an update is available (thread-safe). <b>bool</b>
+            <b>update_banner_show_prompt</b> (<b>session_display_ctx_t</b> *ctx)
+            <br />
+            Show the update prompt screen and wait for user input. void
+            <b>update_banner_print_instructions</b> (void)
+            <br />
+            Print upgrade instructions to stdout and prepare for clean exit.
+            <b>bool</b> <b>update_banner_install_update</b> (void)
+            <br />
+            void <b>update_banner_start_check</b> (void)
+            <br />
+            Start the background update check thread. void
+            <b>update_banner_toggle_overlay</b> (void)
+            <br />
+            <b>bool</b> <b>update_banner_is_checking</b> (void)
+            <br />
+            <b>bool</b> <b>update_banner_is_overlay_open</b> (void)
+            <br />
+            <b>bool</b> <b>update_banner_handle_key</b> (int key)
+            <br />
+            void <b>update_banner_wait_for_check</b> (void)
+            <br />
+            Wait for the background update check thread to finish. void
+            <b>update_banner_cancel_check</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Update available prompt screen implementation.</p>
+        <p class="Pp">
+          Renders a centered box-drawing prompt after splash ends, showing
+          version info and upgrade instructions. Blocks for user input (Y/Enter
+          or N/Esc).
+        </p>
+        <p class="Pp">Definition in file <b>update_banner.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE___1024"
+              >#define TUI_UPDATE_BANNER_CLIPPED_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE___512"
+              >#define TUI_UPDATE_BANNER_COMMAND_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE___128"
+              >#define TUI_UPDATE_BANNER_DOMAIN_LINK_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>update_banner.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>update_banner_print_instructions()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE___160"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE___160"
+              >#define TUI_UPDATE_BANNER_HEADING_BUFFER_SIZE 160</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE___160"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE___160"
+              >#define TUI_UPDATE_BANNER_INSTALLED_BUFFER_SIZE 160</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE___128"
+              >#define TUI_UPDATE_BANNER_INSTALLED_VERSION_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE___128"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE___128"
+              >#define TUI_UPDATE_BANNER_INSTRUCTIONS_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE___256"
+              >#define TUI_UPDATE_BANNER_INSTRUCTIONS_EXTENDED_BUFFER_SIZE
+              256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>update_banner.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>update_banner_print_instructions()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE___160"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE___160"
+              >#define TUI_UPDATE_BANNER_LATEST_BUFFER_SIZE 160</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE___1024"
+              >#define TUI_UPDATE_BANNER_NOTIFICATION_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE___2048"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE___2048"
+              >#define TUI_UPDATE_BANNER_OUTPUT_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>update_banner.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>update_banner_print_instructions()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE___256"
+              >#define TUI_UPDATE_BANNER_STYLED_INSTRUCTIONS_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>update_banner.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

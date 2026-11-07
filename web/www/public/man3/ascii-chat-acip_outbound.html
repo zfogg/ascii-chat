@@ -1,200 +1,311 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>acip_outbound(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">acip_outbound(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">acip_outbound(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">acip_outbound</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>acip_transport_t</b> * <b>transport</b>
-  <br/>
-  <b>mutex_t</b> <b>mutex</b>
-  <br/>
-  <b>cond_t</b> <b>changed</b>
-  <br/>
-  <b>asciichat_thread_t</b> <b>worker</b>
-  <br/>
-  <b>bool</b> <b>stopping</b>
-  <br/>
-  <b>bool</b> <b>failed</b>
-  <br/>
-  <b>bool</b> <b>stopped_by_caller</b>
-  <br/>
-  <b>asciichat_error_t</b> <b>failure_code</b>
-  <br/>
-  <b>asciichat_error_context_t</b> <b>failure</b>
-  <br/>
-  <b>asciichat_error_context_t</b> <b>failure_detail</b>
-  <br/>
-  <b>outbound_packet_t</b> * <b>head</b>
-  <br/>
-  <b>outbound_packet_t</b> * <b>recycled</b>
-  <br/>
-  size_t <b>recycled_count</b>
-  <br/>
-  size_t <b>count</b>
-  <br/>
-  size_t <b>bytes</b>
-  <br/>
-  size_t <b>active_bytes</b>
-  <br/>
-  <b>outbound_stream_t</b> <b>streams</b> [64]
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>35</b> of file <b>backpressure.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound::active_bytes"><a class="permalink" href="#size_t_acip_outbound::active_bytes">size_t
-  acip_outbound::active_bytes</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>, and
-    <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound::bytes"><a class="permalink" href="#size_t_acip_outbound::bytes">size_t
-  acip_outbound::bytes</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>, and
-    <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>cond_t</b> acip_outbound::changed</h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_create()</b>,
-    <b>acip_outbound_destroy()</b>, and <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound::count"><a class="permalink" href="#size_t_acip_outbound::count">size_t
-  acip_outbound::count</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acip_outbound::failed</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_context_t</b> acip_outbound::failure</h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_outbound::failure_code</h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_context_t</b>
-  acip_outbound::failure_detail</h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>outbound_packet_t</b>* acip_outbound::head</h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_snapshot()</b>, and
-    <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> acip_outbound::mutex</h2>
-<p class="Pp">Definition at line <b>37</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_create()</b>,
-    <b>acip_outbound_destroy()</b>, <b>acip_outbound_snapshot()</b>,
-    <b>acip_outbound_stop()</b>, and <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>outbound_packet_t</b>* acip_outbound::recycled</h2>
-<p class="Pp">Definition at line <b>45</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_destroy()</b>, and
-    <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_acip_outbound::recycled_count"><a class="permalink" href="#size_t_acip_outbound::recycled_count">size_t
-  acip_outbound::recycled_count</a></h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acip_outbound::stopped_by_caller</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acip_outbound::stopping</h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_destroy()</b>,
-    <b>acip_outbound_stop()</b>, and <b>acip_outbound_submitv()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>outbound_stream_t</b> acip_outbound::streams[64]</h2>
-<p class="Pp">Definition at line <b>48</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_needs_keyframe()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b>* acip_outbound::transport</h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b> acip_outbound::worker</h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>backpressure.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_outbound_create()</b>, and
-    <b>acip_outbound_destroy()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>acip_outbound(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">acip_outbound(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">acip_outbound(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">acip_outbound</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>acip_transport_t</b> * <b>transport</b>
+            <br />
+            <b>mutex_t</b> <b>mutex</b>
+            <br />
+            <b>cond_t</b> <b>changed</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>worker</b>
+            <br />
+            <b>bool</b> <b>stopping</b>
+            <br />
+            <b>bool</b> <b>failed</b>
+            <br />
+            <b>bool</b> <b>stopped_by_caller</b>
+            <br />
+            <b>asciichat_error_t</b> <b>failure_code</b>
+            <br />
+            <b>asciichat_error_context_t</b> <b>failure</b>
+            <br />
+            <b>asciichat_error_context_t</b> <b>failure_detail</b>
+            <br />
+            <b>outbound_packet_t</b> * <b>head</b>
+            <br />
+            <b>outbound_packet_t</b> * <b>recycled</b>
+            <br />
+            size_t <b>recycled_count</b>
+            <br />
+            size_t <b>count</b>
+            <br />
+            size_t <b>bytes</b>
+            <br />
+            size_t <b>active_bytes</b>
+            <br />
+            <b>outbound_stream_t</b> <b>streams</b> [64]
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>35</b> of file <b>backpressure.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound::active_bytes">
+            <a class="permalink" href="#size_t_acip_outbound::active_bytes"
+              >size_t acip_outbound::active_bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_snapshot()</b>, and
+            <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound::bytes">
+            <a class="permalink" href="#size_t_acip_outbound::bytes"
+              >size_t acip_outbound::bytes</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_snapshot()</b>, and
+            <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>cond_t</b> acip_outbound::changed</h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_create()</b>,
+            <b>acip_outbound_destroy()</b>, and <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound::count">
+            <a class="permalink" href="#size_t_acip_outbound::count"
+              >size_t acip_outbound::count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> acip_outbound::failed</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_context_t</b> acip_outbound::failure
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_outbound::failure_code
+          </h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_context_t</b> acip_outbound::failure_detail
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>outbound_packet_t</b>* acip_outbound::head</h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_snapshot()</b>, and
+            <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> acip_outbound::mutex</h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_create()</b>,
+            <b>acip_outbound_destroy()</b>, <b>acip_outbound_snapshot()</b>,
+            <b>acip_outbound_stop()</b>, and <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>outbound_packet_t</b>* acip_outbound::recycled</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_destroy()</b>, and
+            <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_acip_outbound::recycled_count">
+            <a class="permalink" href="#size_t_acip_outbound::recycled_count"
+              >size_t acip_outbound::recycled_count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_submitv()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> acip_outbound::stopped_by_caller</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_stop()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> acip_outbound::stopping</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_destroy()</b>,
+            <b>acip_outbound_stop()</b>, and <b>acip_outbound_submitv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>outbound_stream_t</b> acip_outbound::streams[64]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_needs_keyframe()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>acip_transport_t</b>* acip_outbound::transport</h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acip_outbound_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>asciichat_thread_t</b> acip_outbound::worker</h2>
+          <p class="Pp">
+            Definition at line <b>39</b> of file <b>backpressure.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_create()</b>, and
+            <b>acip_outbound_destroy()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

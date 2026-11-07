@@ -1,85 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>identity.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">identity.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">identity.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">identity.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acds_identity_generate</b>
-    (<b>uint8_t</b> public_key[32], <b>uint8_t</b> secret_key[64])
-  <br/>
-  Generate new Ed25519 keypair. <b>asciichat_error_t</b>
-    <b>acds_identity_load</b> (const char *path, <b>uint8_t</b> public_key[32],
-    <b>uint8_t</b> secret_key[64])
-  <br/>
-  Load identity from file. <b>asciichat_error_t</b> <b>acds_identity_save</b>
-    (const char *path, const <b>uint8_t</b> public_key[32], const <b>uint8_t</b>
-    secret_key[64])
-  <br/>
-  Save identity to file. void <b>acds_identity_fingerprint</b> (const
-    <b>uint8_t</b> public_key[32], char fingerprint[(32 *2+1)])
-  <br/>
-  Compute SHA256 fingerprint of public key. <b>asciichat_error_t</b>
-    <b>acds_identity_default_path</b> (char *path_out, size_t path_size)
-  <br/>
-  Get default identity file path for current platform.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_identity_default_path (char *
-  path_out, size_t path_size)</h2>
-<p class="Pp">Get default identity file path for current platform.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>path_out</i> Output buffer for path (should be at
-  least 256 bytes)
-<br/>
-<i>path_size</i> Size of output buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Returns:</p>
-<ul class="Bl-bullet">
-  <li>Unix: ~/.config/ascii-chat/acds_identity</li>
-  <li>Windows: APPDATA%\ascii-chat\acds_identity</li>
-</ul>
-<p class="Pp">Definition at line <b>153</b> of file <b>identity.c</b>.</p>
-<pre>153                                                                                {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>identity.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">identity.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">identity.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">identity.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acds_identity_generate</b> (<b
+              >uint8_t</b
+            >
+            public_key[32], <b>uint8_t</b> secret_key[64])
+            <br />
+            Generate new Ed25519 keypair. <b>asciichat_error_t</b>
+            <b>acds_identity_load</b> (const char *path,
+            <b>uint8_t</b> public_key[32], <b>uint8_t</b> secret_key[64])
+            <br />
+            Load identity from file. <b>asciichat_error_t</b>
+            <b>acds_identity_save</b> (const char *path, const
+            <b>uint8_t</b> public_key[32], const <b>uint8_t</b>
+            secret_key[64])
+            <br />
+            Save identity to file. void <b>acds_identity_fingerprint</b> (const
+            <b>uint8_t</b> public_key[32], char fingerprint[(32 *2+1)])
+            <br />
+            Compute SHA256 fingerprint of public key. <b>asciichat_error_t</b>
+            <b>acds_identity_default_path</b> (char *path_out, size_t path_size)
+            <br />
+            Get default identity file path for current platform.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_identity_default_path (char *
+            path_out, size_t path_size)
+          </h2>
+          <p class="Pp">Get default identity file path for current platform.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>path_out</i> Output buffer for path (should be at least 256
+            bytes)
+            <br />
+            <i>path_size</i> Size of output buffer
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">Returns:</p>
+          <ul class="Bl-bullet">
+            <li>Unix: ~/.config/ascii-chat/acds_identity</li>
+            <li>Windows: APPDATA%\ascii-chat\acds_identity</li>
+          </ul>
+          <p class="Pp">
+            Definition at line <b>153</b> of file <b>identity.c</b>.
+          </p>
+          <pre>
+153                                                                                {
 154   if (!path_out || path_size == 0) {
 155     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;path_out cannot be NULL and path_size must be &gt; 0&quot;);
 156   }
@@ -100,27 +148,39 @@
 171
 172   return ASCIICHAT_OK;
 173 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_identity_default_path()</b>,
-    <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>platform_get_config_dir()</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_default_path()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acds_identity_fingerprint_(const_"><a class="permalink" href="#void_acds_identity_fingerprint_(const_">void
-  acds_identity_fingerprint (const <b>uint8_t</b> public_key[32], char
-  fingerprint[(32 *2+1)])</a></h2>
-<p class="Pp">Compute SHA256 fingerprint of public key.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>public_key</i> 32-byte Ed25519 public key
-<br/>
-<i>fingerprint</i> Output buffer for 65 bytes (64 hex chars + null
-  terminator)</div>
-<p class="Pp">Definition at line <b>132</b> of file <b>identity.c</b>.</p>
-<pre>133                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_identity_default_path()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>platform_get_config_dir()</b>, <b>SAFE_FREE</b>,
+            <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_default_path()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acds_identity_fingerprint_(const_">
+            <a class="permalink" href="#void_acds_identity_fingerprint_(const_"
+              >void acds_identity_fingerprint (const
+              <b>uint8_t</b> public_key[32], char fingerprint[(32 *2+1)])</a
+            >
+          </h2>
+          <p class="Pp">Compute SHA256 fingerprint of public key.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>public_key</i> 32-byte Ed25519 public key
+            <br />
+            <i>fingerprint</i> Output buffer for 65 bytes (64 hex chars + null
+            terminator)
+          </div>
+          <p class="Pp">
+            Definition at line <b>132</b> of file <b>identity.c</b>.
+          </p>
+          <pre>
+133                                                                      {
 134   if (!public_key || !fingerprint) {
 135     log_error(&quot;NULL parameters&quot;);
 136     return;
@@ -139,27 +199,40 @@
 149   }
 150   fingerprint[64] = '\0';
 151 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_identity_fingerprint()</b>,
-    <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>key_fingerprint_digest()</b>,
-    <b>log_error</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_fingerprint()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_identity_generate (<b>uint8_t</b>
-  public_key[32], <b>uint8_t</b> secret_key[64])</h2>
-<p class="Pp">Generate new Ed25519 keypair.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>public_key</i> Output buffer for 32-byte public key
-<br/>
-<i>secret_key</i> Output buffer for 64-byte secret key</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>20</b> of file <b>identity.c</b>.</p>
-<pre>21                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_identity_fingerprint()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>HEX_STRING_SIZE_32</b>,
+            <b>key_fingerprint_digest()</b>, <b>log_error</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_fingerprint()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_identity_generate (<b>uint8_t</b>
+            public_key[32], <b>uint8_t</b> secret_key[64])
+          </h2>
+          <p class="Pp">Generate new Ed25519 keypair.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>public_key</i> Output buffer for 32-byte public key
+            <br />
+            <i>secret_key</i> Output buffer for 64-byte secret key
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>identity.c</b>.
+          </p>
+          <pre>
+21                                                                                        {
 22   if (!public_key || !secret_key) {
 23     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;public_key and secret_key cannot be NULL&quot;);
 24   }
@@ -172,31 +245,43 @@
 31   log_debug(&quot;Generated new Ed25519 identity keypair&quot;);
 32   return ASCIICHAT_OK;
 33 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_identity_generate()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_generate()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_identity_load (const char * path,
-  <b>uint8_t</b> public_key[32], <b>uint8_t</b> secret_key[64])</h2>
-<p class="Pp">Load identity from file.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>path</i> Path to identity file (e.g.,
-  ~/.config/ascii-chat/acds_identity)
-<br/>
-<i>public_key</i> Output buffer for 32-byte public key
-<br/>
-<i>secret_key</i> Output buffer for 64-byte secret key</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_CONFIG if file doesn't
-  exist</div>
-<p class="Pp">Definition at line <b>35</b> of file <b>identity.c</b>.</p>
-<pre>36                                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_identity_generate()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_generate()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_identity_load (const char * path,
+            <b>uint8_t</b> public_key[32], <b>uint8_t</b> secret_key[64])
+          </h2>
+          <p class="Pp">Load identity from file.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>path</i> Path to identity file (e.g.,
+            ~/.config/ascii-chat/acds_identity)
+            <br />
+            <i>public_key</i> Output buffer for 32-byte public key
+            <br />
+            <i>secret_key</i> Output buffer for 64-byte secret key
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, ERROR_CONFIG if file doesn't exist
+          </div>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>identity.c</b>.
+          </p>
+          <pre>
+36                                                                                    {
 37   if (!path || !public_key || !secret_key) {
 38     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;path, public_key, and secret_key cannot be NULL&quot;);
 39   }
@@ -247,32 +332,46 @@
 84   log_info(&quot;Loaded OpenSSH Ed25519 identity from %s&quot;, path);
 85   return ASCIICHAT_OK;
 86 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_identity_load()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>errno</b>, <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>private_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>log_info</b>,
-    <b>parse_ssh_private_key()</b>, <b>platform_fopen()</b>,
-    <b>private_key_t::public_key</b>, <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>,
-    and <b>private_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_load()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_identity_save (const char * path,
-  const <b>uint8_t</b> public_key[32], const <b>uint8_t</b> secret_key[64])</h2>
-<p class="Pp">Save identity to file.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>path</i> Path to identity file
-<br/>
-<i>public_key</i> 32-byte public key
-<br/>
-<i>secret_key</i> 64-byte secret key</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>88</b> of file <b>identity.c</b>.</p>
-<pre>89                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_identity_load()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>errno</b>, <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>private_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>log_info</b>,
+            <b>parse_ssh_private_key()</b>, <b>platform_fopen()</b>,
+            <b>private_key_t::public_key</b>, <b>SET_ERRNO</b>,
+            <b>SET_ERRNO_SYS</b>, and <b>private_key_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_load()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_identity_save (const char * path,
+            const <b>uint8_t</b> public_key[32], const
+            <b>uint8_t</b> secret_key[64])
+          </h2>
+          <p class="Pp">Save identity to file.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>path</i> Path to identity file
+            <br />
+            <i>public_key</i> 32-byte public key
+            <br />
+            <i>secret_key</i> 64-byte secret key
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>identity.c</b>.
+          </p>
+          <pre>
+89                                                                                          {
 90   if (!path || !public_key || !secret_key) {
 91     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;path, public_key, and secret_key cannot be NULL&quot;);
 92   }
@@ -314,28 +413,34 @@
 128   log_info(&quot;Saved identity to %s&quot;, path);
 129   return ASCIICHAT_OK;
 130 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_identity_save()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>platform_mkdir_recursive()</b>,
-    <b>platform_open()</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and
-    <b>SET_ERRNO_SYS</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_save()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_identity_save()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ED25519_PRIVATE_KEY_SIZE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>platform_mkdir_recursive()</b>,
+            <b>platform_open()</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and
+            <b>SET_ERRNO_SYS</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_save()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

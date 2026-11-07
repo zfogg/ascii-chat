@@ -1,78 +1,129 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>negotiate.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">negotiate.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">negotiate.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">negotiate.c - Host negotiation logic for discovery mode.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>negotiate_init</b> (<b>negotiate_ctx_t</b> *ctx, const
-    <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
-    participant_id[<b>SESSION_ID_SIZE</b>], <b>bool</b> is_initiator)
-  <br/>
-  Initialize negotiation context. <b>asciichat_error_t</b>
-    <b>negotiate_determine_result</b> (<b>negotiate_ctx_t</b> *ctx)
-  <br/>
-  Determine negotiation result.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Host negotiation logic for discovery mode.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>negotiate.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> negotiate_determine_result
-  (<b>negotiate_ctx_t</b> * ctx)</h2>
-<p class="Pp">Determine negotiation result. Called once bootstrap observations
-    are available. Sets we_are_host and related fields.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Negotiation context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Definition at line <b>62</b> of file <b>negotiate.c</b>.</p>
-<pre>62                                                                    {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>negotiate.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">negotiate.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">negotiate.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          negotiate.c - Host negotiation logic for discovery mode.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>negotiate_init</b> (<b>negotiate_ctx_t</b> *ctx, const
+            <b>uint8_t</b> session_id[<b>SESSION_ID_SIZE</b>], const
+            <b>uint8_t</b> participant_id[<b>SESSION_ID_SIZE</b>],
+            <b>bool</b> is_initiator)
+            <br />
+            Initialize negotiation context. <b>asciichat_error_t</b>
+            <b>negotiate_determine_result</b> (<b>negotiate_ctx_t</b> *ctx)
+            <br />
+            Determine negotiation result.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Host negotiation logic for discovery mode.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>negotiate.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> negotiate_determine_result (<b
+              >negotiate_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Determine negotiation result. Called once bootstrap observations are
+            available. Sets we_are_host and related fields.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>ctx</i> Negotiation context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>negotiate.c</b>.
+          </p>
+          <pre>
+62                                                                    {
 63   if (!ctx) {
 64     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ctx is NULL&quot;);
 65   }
@@ -124,41 +175,55 @@
 111   ctx-&gt;state = NEGOTIATE_STATE_COMPLETE;
 112   return ASCIICHAT_OK;
 113 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_HOST_DEFAULT_PORT</b>, <b>ASCIICHAT_OK</b>,
-    <b>negotiate_ctx_t::connection_type</b>,
-    <b>nat_quality_t::detection_complete</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>negotiate_ctx_t::host_address</b>,
-    <b>negotiate_ctx_t::host_port</b>, <b>negotiate_ctx_t::is_initiator</b>,
-    <b>log_info</b>, <b>nat_compare_quality()</b>,
-    <b>negotiate_determine_result()</b>, <b>NEGOTIATE_STATE_COMPARING</b>,
-    <b>NEGOTIATE_STATE_COMPLETE</b>, <b>NEGOTIATE_STATE_THEY_HOST</b>,
-    <b>NEGOTIATE_STATE_WE_HOST</b>, <b>negotiate_ctx_t::our_quality</b>,
-    <b>negotiate_ctx_t::peer_quality</b>,
-    <b>negotiate_ctx_t::peer_quality_received</b>,
-    <b>nat_quality_t::public_address</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>negotiate_ctx_t::state</b>, <b>nat_quality_t::upnp_available</b>,
-    <b>nat_quality_t::upnp_mapped_port</b>, and
-    <b>negotiate_ctx_t::we_are_host</b>.</p>
-<p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_negotiate_init_("><a class="permalink" href="#void_negotiate_init_(">void
-  negotiate_init (<b>negotiate_ctx_t</b> * ctx, const <b>uint8_t</b>
-  session_id[SESSION_ID_SIZE], const <b>uint8_t</b>
-  participant_id[SESSION_ID_SIZE], <b>bool</b> is_initiator)</a></h2>
-<p class="Pp">Initialize negotiation context.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Context to initialize
-<br/>
-<i>session_id</i> Session UUID
-<br/>
-<i>participant_id</i> Our participant UUID
-<br/>
-<i>is_initiator</i> True if we created the session</div>
-<p class="Pp">Definition at line <b>16</b> of file <b>negotiate.c</b>.</p>
-<pre>17                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_HOST_DEFAULT_PORT</b>, <b>ASCIICHAT_OK</b>,
+            <b>negotiate_ctx_t::connection_type</b>,
+            <b>nat_quality_t::detection_complete</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>negotiate_ctx_t::host_address</b>,
+            <b>negotiate_ctx_t::host_port</b>,
+            <b>negotiate_ctx_t::is_initiator</b>, <b>log_info</b>,
+            <b>nat_compare_quality()</b>, <b>negotiate_determine_result()</b>,
+            <b>NEGOTIATE_STATE_COMPARING</b>, <b>NEGOTIATE_STATE_COMPLETE</b>,
+            <b>NEGOTIATE_STATE_THEY_HOST</b>, <b>NEGOTIATE_STATE_WE_HOST</b>,
+            <b>negotiate_ctx_t::our_quality</b>,
+            <b>negotiate_ctx_t::peer_quality</b>,
+            <b>negotiate_ctx_t::peer_quality_received</b>,
+            <b>nat_quality_t::public_address</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, <b>negotiate_ctx_t::state</b>,
+            <b>nat_quality_t::upnp_available</b>,
+            <b>nat_quality_t::upnp_mapped_port</b>, and
+            <b>negotiate_ctx_t::we_are_host</b>.
+          </p>
+          <p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_negotiate_init_(">
+            <a class="permalink" href="#void_negotiate_init_("
+              >void negotiate_init (<b>negotiate_ctx_t</b> * ctx, const
+              <b>uint8_t</b> session_id[SESSION_ID_SIZE], const
+              <b>uint8_t</b> participant_id[SESSION_ID_SIZE],
+              <b>bool</b> is_initiator)</a
+            >
+          </h2>
+          <p class="Pp">Initialize negotiation context.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Context to initialize
+            <br />
+            <i>session_id</i> Session UUID
+            <br />
+            <i>participant_id</i> Our participant UUID
+            <br />
+            <i>is_initiator</i> True if we created the session
+          </div>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>negotiate.c</b>.
+          </p>
+          <pre>
+17                                                                                       {
 18   if (!ctx)
 19     return;
 20
@@ -179,29 +244,34 @@
 35
 36   log_debug(&quot;Negotiation initialized (initiator=%d)&quot;, is_initiator);
 37 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>negotiate_ctx_t::is_initiator</b>, <b>log_debug</b>,
-    <b>nat_quality_init()</b>, <b>negotiate_init()</b>,
-    <b>NEGOTIATE_STATE_INIT</b>, <b>negotiate_ctx_t::our_quality</b>,
-    <b>negotiate_ctx_t::participant_id</b>,
-    <b>negotiate_ctx_t::peer_quality</b>,
-    <b>negotiate_ctx_t::peer_quality_received</b>,
-    <b>negotiate_ctx_t::session_id</b>, <b>SESSION_ID_SIZE</b>,
-    <b>negotiate_ctx_t::state</b>, and <b>negotiate_ctx_t::we_are_host</b>.</p>
-<p class="Pp">Referenced by <b>negotiate_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>negotiate_ctx_t::is_initiator</b>, <b>log_debug</b>,
+            <b>nat_quality_init()</b>, <b>negotiate_init()</b>,
+            <b>NEGOTIATE_STATE_INIT</b>, <b>negotiate_ctx_t::our_quality</b>,
+            <b>negotiate_ctx_t::participant_id</b>,
+            <b>negotiate_ctx_t::peer_quality</b>,
+            <b>negotiate_ctx_t::peer_quality_received</b>,
+            <b>negotiate_ctx_t::session_id</b>, <b>SESSION_ID_SIZE</b>,
+            <b>negotiate_ctx_t::state</b>, and
+            <b>negotiate_ctx_t::we_are_host</b>.
+          </p>
+          <p class="Pp">Referenced by <b>negotiate_init()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

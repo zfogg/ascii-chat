@@ -1,112 +1,179 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>keymask.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">keymask.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">keymask.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">keymask.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>KEYMASK_INTERIOR_ROWS</b> (<b>KEYMASK_ROWS</b> - 2)
-  <br/>
-  #define <b>KEYMASK_INTERIOR_COLUMNS</b> (<b>KEYMASK_WIDTH</b> - 2)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>key_fingerprint_digest</b> (const
-    <b>uint8_t</b> public_key[<b>ED25519_PUBLIC_KEY_SIZE</b>], <b>uint8_t</b>
-    digest[<b>KEYMASK_DIGEST_SIZE</b>])
-  <br/>
-  <b>asciichat_error_t</b> <b>keymask_render</b> (const <b>uint8_t</b>
-    digest[<b>KEYMASK_DIGEST_SIZE</b>], <b>bool</b> unicode, char *out, size_t
-    size)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_KEYMASK_INTERIOR_COLUMNS___("><a class="permalink" href="#_define_KEYMASK_INTERIOR_COLUMNS___(">#define
-  KEYMASK_INTERIOR_COLUMNS (<b>KEYMASK_WIDTH</b> - 2)</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>keymask.c</b>.</p>
-<p class="Pp">Referenced by <b>keymask_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_KEYMASK_INTERIOR_ROWS___("><a class="permalink" href="#_define_KEYMASK_INTERIOR_ROWS___(">#define
-  KEYMASK_INTERIOR_ROWS (<b>KEYMASK_ROWS</b> - 2)</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>keymask.c</b>.</p>
-<p class="Pp">Referenced by <b>keymask_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> key_fingerprint_digest (const
-  <b>uint8_t</b> public_key[ED25519_PUBLIC_KEY_SIZE], <b>uint8_t</b>
-  digest[KEYMASK_DIGEST_SIZE])</h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>keymask.c</b>.</p>
-<pre>12                                                                               {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>keymask.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">keymask.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">keymask.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">keymask.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>KEYMASK_INTERIOR_ROWS</b> (<b>KEYMASK_ROWS</b> - 2)
+            <br />
+            #define <b>KEYMASK_INTERIOR_COLUMNS</b> (<b>KEYMASK_WIDTH</b> - 2)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>key_fingerprint_digest</b> (const
+            <b>uint8_t</b> public_key[<b>ED25519_PUBLIC_KEY_SIZE</b>],
+            <b>uint8_t</b>
+            digest[<b>KEYMASK_DIGEST_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>keymask_render</b> (const
+            <b>uint8_t</b> digest[<b>KEYMASK_DIGEST_SIZE</b>],
+            <b>bool</b> unicode, char *out, size_t size)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_KEYMASK_INTERIOR_COLUMNS___(">
+            <a class="permalink" href="#_define_KEYMASK_INTERIOR_COLUMNS___("
+              >#define KEYMASK_INTERIOR_COLUMNS (<b>KEYMASK_WIDTH</b> - 2)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>keymask.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keymask_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_KEYMASK_INTERIOR_ROWS___(">
+            <a class="permalink" href="#_define_KEYMASK_INTERIOR_ROWS___("
+              >#define KEYMASK_INTERIOR_ROWS (<b>KEYMASK_ROWS</b> - 2)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>keymask.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keymask_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> key_fingerprint_digest (const
+            <b>uint8_t</b> public_key[ED25519_PUBLIC_KEY_SIZE],
+            <b>uint8_t</b> digest[KEYMASK_DIGEST_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>keymask.c</b>.
+          </p>
+          <pre>
+12                                                                               {
 13   if (!public_key || !digest)
 14     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing public key or fingerprint output&quot;);
 15   if (crypto_hash_sha256(digest, public_key, ED25519_PUBLIC_KEY_SIZE) != 0)
 16     return SET_ERRNO(ERROR_CRYPTO, &quot;Cannot compute public-key fingerprint&quot;);
 17   return ASCIICHAT_OK;
 18 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>key_fingerprint_digest()</b>, <b>KEYMASK_DIGEST_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_fingerprint()</b>,
-    <b>compute_key_fingerprint()</b>, <b>generate_key_fingerprint()</b>,
-    <b>key_fingerprint_digest()</b>, <b>key_fingerprint_digest()</b>, and
-    <b>key_identity_format()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> keymask_render (const <b>uint8_t</b>
-  digest[KEYMASK_DIGEST_SIZE], <b>bool</b> unicode, char * out, size_t
-  size)</h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>keymask.c</b>.</p>
-<pre>42                                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>key_fingerprint_digest()</b>, <b>KEYMASK_DIGEST_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_fingerprint()</b>,
+            <b>compute_key_fingerprint()</b>, <b>generate_key_fingerprint()</b>,
+            <b>key_fingerprint_digest()</b>, <b>key_fingerprint_digest()</b>,
+            and <b>key_identity_format()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> keymask_render (const
+            <b>uint8_t</b> digest[KEYMASK_DIGEST_SIZE], <b>bool</b> unicode,
+            char * out, size_t size)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>keymask.c</b>.
+          </p>
+          <pre>
+42                                                                                                                   {
 43   if (!out || !size)
 44     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing Keymask output buffer&quot;);
 45   out[0] = '\0';
@@ -217,26 +284,32 @@
 150   memcpy(p, border, sizeof(border));
 151   return ASCIICHAT_OK;
 152 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>KEYMASK_DIGEST_SIZE</b>, <b>KEYMASK_INTERIOR_COLUMNS</b>,
-    <b>KEYMASK_INTERIOR_ROWS</b>, <b>keymask_render()</b>, <b>KEYMASK_ROWS</b>,
-    <b>KEYMASK_WIDTH</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>key_identity_format()</b>,
-    <b>keymask_render()</b>, and <b>keymask_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>KEYMASK_DIGEST_SIZE</b>, <b>KEYMASK_INTERIOR_COLUMNS</b>,
+            <b>KEYMASK_INTERIOR_ROWS</b>, <b>keymask_render()</b>,
+            <b>KEYMASK_ROWS</b>, <b>KEYMASK_WIDTH</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>key_identity_format()</b>, <b>keymask_render()</b>,
+            and <b>keymask_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

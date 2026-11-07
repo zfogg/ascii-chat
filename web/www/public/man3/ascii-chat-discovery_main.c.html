@@ -1,163 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.c - ascii-chat Discovery Mode Entry Point</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>discovery_video_receiver_t</b>
-  <br/>
-  struct <b>discovery_host_audio_capture_t</b>
-  <br/>
-  struct <b>discovery_ui_state_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>DISCOVERY_MAIN_ERROR_BUFFER_SIZE</b> 512
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>discovery_main</b> (void)
-  <br/>
-  Discovery mode entry point for unified binary.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Discovery Mode Entry Point</p>
-<p class="Pp">Discovery mode enables zero-configuration video chat where
-    participants can dynamically become hosts based on NAT quality. This
-    implements the &quot;one command to start, one command to join&quot;
-    philosophy.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Discovery_Flow"><a class="permalink" href="#Discovery_Flow">Discovery
-  Flow</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Parse session string (word-word-word format)</dd>
-  <dt>2.</dt>
-  <dd>Query ACDS for session information</dd>
-  <dt>3.</dt>
-  <dd>Assess NAT quality (STUN test)</dd>
-  <dt>4.</dt>
-  <dd>Either: a. Connect to existing host as participant b. Become host if no
-      host exists or better NAT quality</dd>
-  <dt>5.</dt>
-  <dd>Handle dynamic role changes during session</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Architecture"><a class="permalink" href="#Implementation_Architecture">Implementation
-  Architecture</a></h2>
-<p class="Pp">Discovery mode uses lib/session APIs for media handling:</p>
-<ul class="Bl-bullet">
-  <li><b>session_host_t</b>: For rendering and broadcasting when elected
-    host</li>
-  <li><b>session_participant_t</b>: For capture and display when not host</li>
-  <li><b>discovery_session_t</b>: For ACDS connection and host negotiation</li>
-</ul>
-<p class="Pp">No network protocol code duplication - all media handling via
-    lib/session.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">1.0</div>
-<p class="Pp">Definition in file <b>discovery/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_DISCOVERY_MAIN_ERROR_BUFFER_SIZE___512"><a class="permalink" href="#_define_DISCOVERY_MAIN_ERROR_BUFFER_SIZE___512">#define
-  DISCOVERY_MAIN_ERROR_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>discovery/main.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_discovery_main_(void_)"><a class="permalink" href="#int_discovery_main_(void_)">int
-  discovery_main (void )</a></h2>
-<p class="Pp">Discovery mode entry point for unified binary. Run discovery mode
-    using the shared splash, media, and terminal lifecycle.</p>
-<p class="Pp"></p>
-<p class="Pp">This function implements the complete discovery mode
-  lifecycle:</p>
-<ul class="Bl-bullet">
-  <li>Session discovery via ACDS or LAN mDNS</li>
-  <li>NAT quality assessment for host selection</li>
-  <li>Dynamic role switching (participant &lt;-&gt; host)</li>
-  <li>Media streaming (video/audio capture and display)</li>
-  <li>Graceful shutdown and cleanup</li>
-</ul>
-<p class="Pp">Options are already parsed by the main dispatcher before this
-    function is called, so they are available via <b>GET_OPTION()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp"><b>Example</b></p>
-<div class="Bd-indent">
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Join a session (session string as positional argument):
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">main.c - ascii-chat Discovery Mode Entry Point</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>discovery_video_receiver_t</b>
+            <br />
+            struct <b>discovery_host_audio_capture_t</b>
+            <br />
+            struct <b>discovery_ui_state_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DISCOVERY_MAIN_ERROR_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>discovery_main</b> (void)
+            <br />
+            Discovery mode entry point for unified binary.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ascii-chat Discovery Mode Entry Point</p>
+        <p class="Pp">
+          Discovery mode enables zero-configuration video chat where
+          participants can dynamically become hosts based on NAT quality. This
+          implements the &quot;one command to start, one command to join&quot;
+          philosophy.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Discovery_Flow">
+            <a class="permalink" href="#Discovery_Flow">Discovery Flow</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Parse session string (word-word-word format)</dd>
+            <dt>2.</dt>
+            <dd>Query ACDS for session information</dd>
+            <dt>3.</dt>
+            <dd>Assess NAT quality (STUN test)</dd>
+            <dt>4.</dt>
+            <dd>
+              Either: a. Connect to existing host as participant b. Become host
+              if no host exists or better NAT quality
+            </dd>
+            <dt>5.</dt>
+            <dd>Handle dynamic role changes during session</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Architecture">
+            <a class="permalink" href="#Implementation_Architecture"
+              >Implementation Architecture</a
+            >
+          </h2>
+          <p class="Pp">
+            Discovery mode uses lib/session APIs for media handling:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>session_host_t</b>: For rendering and broadcasting when elected
+              host
+            </li>
+            <li>
+              <b>session_participant_t</b>: For capture and display when not
+              host
+            </li>
+            <li>
+              <b>discovery_session_t</b>: For ACDS connection and host
+              negotiation
+            </li>
+          </ul>
+          <p class="Pp">
+            No network protocol code duplication - all media handling via
+            lib/session.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Author</b></p>
+          <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+          <p class="Pp"><b>Date</b></p>
+          <div class="Bd-indent">January 2026</div>
+          <p class="Pp"><b>Version</b></p>
+          <div class="Bd-indent">1.0</div>
+          <p class="Pp">Definition in file <b>discovery/main.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DISCOVERY_MAIN_ERROR_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_MAIN_ERROR_BUFFER_SIZE___512"
+              >#define DISCOVERY_MAIN_ERROR_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>discovery/main.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_discovery_main_(void_)">
+            <a class="permalink" href="#int_discovery_main_(void_)"
+              >int discovery_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Discovery mode entry point for unified binary. Run discovery mode
+            using the shared splash, media, and terminal lifecycle.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This function implements the complete discovery mode lifecycle:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Session discovery via ACDS or LAN mDNS</li>
+            <li>NAT quality assessment for host selection</li>
+            <li>Dynamic role switching (participant &lt;-&gt; host)</li>
+            <li>Media streaming (video/audio capture and display)</li>
+            <li>Graceful shutdown and cleanup</li>
+          </ul>
+          <p class="Pp">
+            Options are already parsed by the main dispatcher before this
+            function is called, so they are available via <b>GET_OPTION()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, non-zero error code on failure
+          </div>
+          <p class="Pp"><b>Example</b></p>
+          <div class="Bd-indent">
+            <p class="Pp"></p>
+            <p class="Pp"></p>
+            <pre>
+# Join a session (session string as positional argument):
 ascii-chat discovery swift-river-mountain
 # Or more concisely (session strings are auto-detected):
 ascii-chat swift-river-mountain
 </pre>
-</div>
-<p class="Pp">Definition at line <b>841</b> of file <b>discovery/main.c</b>.</p>
-<pre>841                          {
+          </div>
+          <p class="Pp">
+            Definition at line <b>841</b> of file <b>discovery/main.c</b>.
+          </p>
+          <pre>
+841                          {
 842
 843   // Discovery-specific setup: initialize ACDS connection and session negotiation
 844   // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)
@@ -293,36 +381,43 @@ ascii-chat swift-river-mountain
 974   mutex_destroy(&amp;ui.mutex);
 975   return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
 976 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_DISCOVERY_DEFAULT_PORT</b>,
-    <b>acip_websocket_runtime_create()</b>,
-    <b>acip_websocket_runtime_destroy()</b>, <b>asciichat_error_format()</b>,
-    <b>ASCIICHAT_OK</b>, <b>discovery_main()</b>,
-    <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
-    <b>discovery_session_stop()</b>, <b>discovery_ui_state_t::error</b>,
-    <b>discovery_ui_state_t::error_code</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_USAGE</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_fatal</b>, <b>log_set_terminal_output()</b>,
-    <b>discovery_ui_state_t::mutex</b>, <b>mutex_destroy()</b>,
-    <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NOTICE</b>,
-    <b>platform_sleep_ms()</b>, <b>SAFE_STRNCPY</b>,
-    <b>SESSION_CLIENT_LIKE_KIND_DISCOVERY</b>, <b>session_client_like_run()</b>,
-    <b>set_interrupt_callback()</b>, <b>splash_clear_discovery_session()</b>,
-    and <b>splash_set_discovery_session()</b>.</p>
-<p class="Pp">Referenced by <b>discovery_main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_DISCOVERY_DEFAULT_PORT</b>,
+            <b>acip_websocket_runtime_create()</b>,
+            <b>acip_websocket_runtime_destroy()</b>,
+            <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>discovery_main()</b>, <b>discovery_session_create()</b>,
+            <b>discovery_session_destroy()</b>, <b>discovery_session_stop()</b>,
+            <b>discovery_ui_state_t::error</b>,
+            <b>discovery_ui_state_t::error_code</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_USAGE</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_fatal</b>,
+            <b>log_set_terminal_output()</b>,
+            <b>discovery_ui_state_t::mutex</b>, <b>mutex_destroy()</b>,
+            <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>NOTICE</b>, <b>platform_sleep_ms()</b>, <b>SAFE_STRNCPY</b>,
+            <b>SESSION_CLIENT_LIKE_KIND_DISCOVERY</b>,
+            <b>session_client_like_run()</b>, <b>set_interrupt_callback()</b>,
+            <b>splash_clear_discovery_session()</b>, and
+            <b>splash_set_discovery_session()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discovery_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

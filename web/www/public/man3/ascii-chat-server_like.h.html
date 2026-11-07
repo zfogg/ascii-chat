@@ -1,175 +1,295 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server_like.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server_like.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server_like.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server_like.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_server_like_config</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>asciichat_error_t</b>(*)
-    <b>session_server_like_init_fn</b>(void *user_data)
-  <br/>
-  typedef void(*) <b>session_server_like_interrupt_fn</b>(int sig)
-  <br/>
-  typedef void(*) <b>session_server_like_cleanup_fn</b>(void *user_data)
-  <br/>
-  typedef void(*) <b>session_server_like_status_fn</b>(void *user_data,
-    <b>ui_status_t</b> *out_status)
-  <br/>
-  typedef struct <b>session_server_like_config</b>
-    <b>session_server_like_config_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>session_server_like_run</b> (const
-    <b>session_server_like_config_t</b> *config)
-  <br/>
-  <b>network_server_t</b> * <b>session_server_like_get_network_server</b> (void)
-  <br/>
-  <b>asciichat_mdns_t</b> * <b>session_server_like_get_mdns_ctx</b> (void)
-  <br/>
-  <b>nat_upnp_context_t</b> * <b>session_server_like_get_upnp_ctx</b> (void)
-  <br/>
-  <b>asciichat_error_t</b> <b>session_server_like_mdns_advertise</b> (const char
-    *name, const char *type, <b>uint16_t</b> port, const char **txt, size_t
-    txt_count)
-  <br/>
-  <b>bool</b> <b>session_server_like_shutdown_requested</b> (void)
-  <br/>
-  void <b>session_server_like_request_shutdown</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_session_server_like_cleanup_fn(void_*user_data)"><a class="permalink" href="#typedef_void(*)_session_server_like_cleanup_fn(void_*user_data)">typedef
-  void(*) session_server_like_cleanup_fn(void *user_data)</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
-  struct <b>session_server_like_config</b>
-  <b>session_server_like_config_t</b></a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>asciichat_error_t</b>(*) session_server_like_init_fn(void
-  *user_data)</a></h2>
-<p class="Pp">Shared server-mode orchestration. Networking is owned by
-    <b>network_server_t</b>; modes supply one callback set for TCP, WebSocket,
-    and authenticated peers. Listeners are constructed before init_fn and
-    started only after it succeeds. All connections drain before cleanup_fn
-    releases mode dependencies. The interrupt callback only publishes atomic
-    shutdown requests.</p>
-<p class="Pp">Definition at line <b>19</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_session_server_like_interrupt_fn(int_sig)"><a class="permalink" href="#typedef_void(*)_session_server_like_interrupt_fn(int_sig)">typedef
-  void(*) session_server_like_interrupt_fn(int sig)</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>server_like.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*)_session_server_like_status_fn(void_*user_data,_"><a class="permalink" href="#typedef_void(*)_session_server_like_status_fn(void_*user_data,_">typedef
-  void(*) session_server_like_status_fn(void *user_data, <b>ui_status_t</b>
-  *out_status)</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>server_like.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_mdns_t</b> * session_server_like_get_mdns_ctx (void
-  )</h2>
-<p class="Pp">Definition at line <b>165</b> of file <b>server_like.c</b>.</p>
-<pre>165                                                          {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server_like.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server_like.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server_like.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server_like.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_server_like_config</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>asciichat_error_t</b>(*)
+            <b>session_server_like_init_fn</b>(void *user_data)
+            <br />
+            typedef void(*) <b>session_server_like_interrupt_fn</b>(int sig)
+            <br />
+            typedef void(*) <b>session_server_like_cleanup_fn</b>(void
+            *user_data)
+            <br />
+            typedef void(*) <b>session_server_like_status_fn</b>(void
+            *user_data, <b>ui_status_t</b> *out_status)
+            <br />
+            typedef struct <b>session_server_like_config</b>
+            <b>session_server_like_config_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>session_server_like_run</b> (const
+            <b>session_server_like_config_t</b> *config)
+            <br />
+            <b>network_server_t</b> *
+            <b>session_server_like_get_network_server</b> (void)
+            <br />
+            <b>asciichat_mdns_t</b> *
+            <b>session_server_like_get_mdns_ctx</b> (void)
+            <br />
+            <b>nat_upnp_context_t</b> *
+            <b>session_server_like_get_upnp_ctx</b> (void)
+            <br />
+            <b>asciichat_error_t</b>
+            <b>session_server_like_mdns_advertise</b> (const char *name, const
+            char *type, <b>uint16_t</b> port, const char **txt, size_t
+            txt_count)
+            <br />
+            <b>bool</b> <b>session_server_like_shutdown_requested</b> (void)
+            <br />
+            void <b>session_server_like_request_shutdown</b> (void)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_session_server_like_cleanup_fn(void_*user_data)"
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_session_server_like_cleanup_fn(void_*user_data)"
+              >typedef void(*) session_server_like_cleanup_fn(void
+              *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>server_like.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>session_server_like_config</b>
+              <b>session_server_like_config_t</b></a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_">
+            <a class="permalink" href="#typedef_"
+              >typedef <b>asciichat_error_t</b>(*)
+              session_server_like_init_fn(void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared server-mode orchestration. Networking is owned by
+            <b>network_server_t</b>; modes supply one callback set for TCP,
+            WebSocket, and authenticated peers. Listeners are constructed before
+            init_fn and started only after it succeeds. All connections drain
+            before cleanup_fn releases mode dependencies. The interrupt callback
+            only publishes atomic shutdown requests.
+          </p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>server_like.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_session_server_like_interrupt_fn(int_sig)"
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_session_server_like_interrupt_fn(int_sig)"
+              >typedef void(*) session_server_like_interrupt_fn(int sig)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>server_like.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_session_server_like_status_fn(void_*user_data,_"
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_session_server_like_status_fn(void_*user_data,_"
+              >typedef void(*) session_server_like_status_fn(void *user_data,
+              <b>ui_status_t</b> *out_status)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>server_like.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_mdns_t</b> * session_server_like_get_mdns_ctx (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>165</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+165                                                          {
 166   return g_mdns_ctx;
 167 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_server_like_get_mdns_ctx()</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_get_mdns_ctx()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>network_server_t</b> * session_server_like_get_network_server
-  (void )</h2>
-<p class="Pp">Definition at line <b>161</b> of file <b>server_like.c</b>.</p>
-<pre>161                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_server_like_get_mdns_ctx()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_server_like_get_mdns_ctx()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_server_t</b> * session_server_like_get_network_server
+            (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>161</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+161                                                                {
 162   return g_network_server;
 163 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_server_like_get_network_server()</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, and
-    <b>session_server_like_get_network_server()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>nat_upnp_context_t</b> * session_server_like_get_upnp_ctx
-  (void )</h2>
-<p class="Pp">Definition at line <b>169</b> of file <b>server_like.c</b>.</p>
-<pre>169                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_server_like_get_network_server()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_server_init()</b>,
+            <b>broadcast_server_state_to_all_clients()</b>, and
+            <b>session_server_like_get_network_server()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>nat_upnp_context_t</b> * session_server_like_get_upnp_ctx (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>169</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+169                                                            {
 170   return g_upnp_ctx;
 171 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_server_like_get_upnp_ctx()</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_get_upnp_ctx()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_server_like_mdns_advertise
-  (const char * name, const char * type, <b>uint16_t</b> port, const char **
-  txt, size_t txt_count)</h2>
-<p class="Pp">Definition at line <b>177</b> of file <b>server_like.c</b>.</p>
-<pre>178                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_server_like_get_upnp_ctx()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_server_like_get_upnp_ctx()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_server_like_mdns_advertise (const
+            char * name, const char * type, <b>uint16_t</b> port, const char **
+            txt, size_t txt_count)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>177</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+178                                                                                          {
 179   if (!g_mdns_ctx) {
 180     return SET_ERRNO(ERROR_INVALID_STATE, &quot;mDNS context not initialized&quot;);
 181   }
@@ -196,33 +316,54 @@
 202
 203   return result;
 204 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mdns_advertise()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>HOSTNAME_BUFFER_SIZE</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>session_server_like_mdns_advertise()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_mdns_advertise()</b>, and
-    <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_server_like_request_shutdown_(void_)"><a class="permalink" href="#void_session_server_like_request_shutdown_(void_)">void
-  session_server_like_request_shutdown (void )</a></h2>
-<p class="Pp">Definition at line <b>210</b> of file <b>server_like.c</b>.</p>
-<pre>210                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_advertise()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>HOSTNAME_BUFFER_SIZE</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>session_server_like_mdns_advertise()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_server_like_mdns_advertise()</b>, and
+            <b>session_server_like_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_server_like_request_shutdown_(void_)">
+            <a
+              class="permalink"
+              href="#void_session_server_like_request_shutdown_(void_)"
+              >void session_server_like_request_shutdown (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>210</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+210                                                 {
 211   server_like_signal_handler(SIGINT);
 212 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>session_server_like_request_shutdown()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and
-    <b>session_server_like_request_shutdown()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_server_like_run (const
-  <b>session_server_like_config_t</b> * config)</h2>
-<p class="Pp">Definition at line <b>222</b> of file <b>server_like.c</b>.</p>
-<pre>222                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_server_like_request_shutdown()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_main()</b>, and
+            <b>session_server_like_request_shutdown()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_server_like_run (const
+            <b>session_server_like_config_t</b> * config)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>222</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+222                                                                                       {
 223   if (!config) {
 224     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config is NULL&quot;);
 225   }
@@ -486,75 +627,97 @@
 483
 484   return result;
 485 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
-    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_load_u64()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>network_server_config_t::bind_ipv4</b>,
-    <b>session_server_like_config::cleanup_fn</b>,
-    <b>session_server_like_config::cleanup_user_data</b>,
-    <b>session_server_like_config::connection_user_data</b>,
-    <b>session_server_like_config::connections</b>,
-    <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
-    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
-    <b>session_server_like_config::fd_limit_target</b>, <b>GET_OPTION</b>,
-    <b>session_server_like_config::idle_timeout_ms</b>,
-    <b>session_server_like_config::init_fn</b>,
-    <b>session_server_like_config::init_user_data</b>,
-    <b>session_server_like_config::interrupt_fn</b>,
-    <b>network_server_config_t::ipv4_address</b>, <b>is_lan_ipv4()</b>,
-    <b>is_localhost_ipv4()</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>session_server_like_config::max_payload</b>,
-    <b>session_server_like_config::mdns</b>, <b>nat_upnp_close()</b>,
-    <b>nat_upnp_get_address()</b>, <b>nat_upnp_is_active()</b>,
-    <b>nat_upnp_matches_bind_address()</b>, <b>nat_upnp_open()</b>,
-    <b>network_server_create()</b>, <b>network_server_destroy()</b>,
-    <b>network_server_run()</b>, <b>network_server_start()</b>,
-    <b>network_server_stop()</b>, <b>network_server_websocket_enabled()</b>,
-    <b>NS_PER_MS_INT</b>, <b>network_connection_callbacks_t::packet</b>,
-    <b>session_server_like_config::partial_timeout_ms</b>,
-    <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
-    <b>platform_raise_fd_limit()</b>, <b>platform_signal()</b>,
-    <b>session_server_like_config::raise_fd_limit</b>,
-    <b>session_server_like_mdns_advertise()</b>,
-    <b>SESSION_SERVER_LIKE_PUBLIC_ADDR_BUFFER_SIZE</b>,
-    <b>session_server_like_run()</b>, <b>SET_ERRNO</b>,
-    <b>session_server_like_config::status_fn</b>,
-    <b>session_server_like_config::status_user_data</b>,
-    <b>terminal_is_interactive()</b>, <b>thread_join</b>,
-    <b>thread_join_timeout()</b>, <b>session_server_like_config::tick_fn</b>,
-    <b>session_server_like_config::tick_user_data</b>,
-    <b>ui_controller_title_ready()</b>, <b>ui_status_log_destroy()</b>,
-    <b>ui_status_log_init()</b>, <b>session_server_like_config::upnp</b>, and
-    <b>session_server_like_config::websocket_enabled</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>server_main()</b>, and
-    <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_server_like_shutdown_requested (void )</h2>
-<p class="Pp">Definition at line <b>214</b> of file <b>server_like.c</b>.</p>
-<pre>214                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
+            <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_load_u64()</b>,
+            <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+            <b>network_server_config_t::bind_ipv4</b>,
+            <b>session_server_like_config::cleanup_fn</b>,
+            <b>session_server_like_config::cleanup_user_data</b>,
+            <b>session_server_like_config::connection_user_data</b>,
+            <b>session_server_like_config::connections</b>,
+            <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>,
+            <b>session_server_like_config::fd_limit_target</b>,
+            <b>GET_OPTION</b>,
+            <b>session_server_like_config::idle_timeout_ms</b>,
+            <b>session_server_like_config::init_fn</b>,
+            <b>session_server_like_config::init_user_data</b>,
+            <b>session_server_like_config::interrupt_fn</b>,
+            <b>network_server_config_t::ipv4_address</b>, <b>is_lan_ipv4()</b>,
+            <b>is_localhost_ipv4()</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>session_server_like_config::max_payload</b>,
+            <b>session_server_like_config::mdns</b>, <b>nat_upnp_close()</b>,
+            <b>nat_upnp_get_address()</b>, <b>nat_upnp_is_active()</b>,
+            <b>nat_upnp_matches_bind_address()</b>, <b>nat_upnp_open()</b>,
+            <b>network_server_create()</b>, <b>network_server_destroy()</b>,
+            <b>network_server_run()</b>, <b>network_server_start()</b>,
+            <b>network_server_stop()</b>,
+            <b>network_server_websocket_enabled()</b>, <b>NS_PER_MS_INT</b>,
+            <b>network_connection_callbacks_t::packet</b>,
+            <b>session_server_like_config::partial_timeout_ms</b>,
+            <b>platform_disable_keepawake()</b>,
+            <b>platform_enable_keepawake()</b>,
+            <b>platform_raise_fd_limit()</b>, <b>platform_signal()</b>,
+            <b>session_server_like_config::raise_fd_limit</b>,
+            <b>session_server_like_mdns_advertise()</b>,
+            <b>SESSION_SERVER_LIKE_PUBLIC_ADDR_BUFFER_SIZE</b>,
+            <b>session_server_like_run()</b>, <b>SET_ERRNO</b>,
+            <b>session_server_like_config::status_fn</b>,
+            <b>session_server_like_config::status_user_data</b>,
+            <b>terminal_is_interactive()</b>, <b>thread_join</b>,
+            <b>thread_join_timeout()</b>,
+            <b>session_server_like_config::tick_fn</b>,
+            <b>session_server_like_config::tick_user_data</b>,
+            <b>ui_controller_title_ready()</b>, <b>ui_status_log_destroy()</b>,
+            <b>ui_status_log_init()</b>,
+            <b>session_server_like_config::upnp</b>, and
+            <b>session_server_like_config::websocket_enabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_main()</b>, <b>server_main()</b>, and
+            <b>session_server_like_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> session_server_like_shutdown_requested (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>214</b> of file <b>server_like.c</b>.
+          </p>
+          <pre>
+214                                                   {
 215   return (bool)atomic_load_u64(&amp;g_shutdown_requested);
 216 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, and
-    <b>session_server_like_shutdown_requested()</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_shutdown_requested()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>, and
+            <b>session_server_like_shutdown_requested()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_server_like_shutdown_requested()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

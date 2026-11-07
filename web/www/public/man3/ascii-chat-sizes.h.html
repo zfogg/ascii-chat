@@ -1,722 +1,1104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>sizes.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">sizes.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">sizes.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">sizes.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>GPG_SIGNATURE_PACKET_CAPACITY</b> 512
-  <br/>
-  #define <b>ED25519_SIGNATURE_PART_SIZE</b> (<b>ED25519_SIGNATURE_SIZE</b> / 2)
-  <br/>
-  #define <b>SERVER_AUTH_RESPONSE_SIZE</b> <b>AUTH_HMAC_SIZE</b>
-  <br/>
-  Server authentication response size (32 bytes). #define
-    <b>ED25519_SEED_SIZE</b> 32
-  <br/>
-  #define <b>GPG_FINGERPRINT_SIZE</b> 20
-  <br/>
-  #define <b>GPG_FINGERPRINT_HEX_BUFFER_SIZE</b> (<b>GPG_FINGERPRINT_SIZE</b> *
-    2 + 1)
-  <br/>
-  #define <b>GPG_KEY_ID_SIZE</b> 8
-  <br/>
-  #define <b>GPG_KEY_ID_HEX_BUFFER_SIZE</b> (<b>GPG_KEY_ID_SIZE</b> * 2 + 1)
-  <br/>
-  #define <b>MAX_COMMENT_LEN</b> 256
-  <br/>
-  #define <b>MAX_GPG_KEYGRIP_LEN</b> 64
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Password Requirements</b>
-  <br/>
-  Cryptographic storage and wire widths; usable without crypto context types or
-    libsodium.</p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>MIN_PASSWORD_LENGTH</b> 8
-  <br/>
-  Minimum password length (8 characters). #define <b>MAX_PASSWORD_LENGTH</b> 256
-  <br/>
-  Maximum password length (256 characters).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Algorithm-Specific Key Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>X25519_KEY_SIZE</b> 32
-  <br/>
-  X25519 key size in bytes. #define <b>ED25519_PUBLIC_KEY_SIZE</b> 32
-  <br/>
-  Ed25519 public key size in bytes. #define <b>ED25519_PRIVATE_KEY_SIZE</b> 64
-  <br/>
-  Ed25519 private key size (seed + public) in bytes. #define
-    <b>ED25519_SIGNATURE_SIZE</b> 64
-  <br/>
-  Ed25519 signature size in bytes. #define <b>XSALSA20_NONCE_SIZE</b> 24
-  <br/>
-  XSalsa20 nonce size in bytes. #define <b>POLY1305_MAC_SIZE</b> 16
-  <br/>
-  Poly1305 MAC size in bytes. #define <b>HMAC_SHA256_SIZE</b> 32
-  <br/>
-  HMAC-SHA256 output size in bytes. #define <b>HMAC_SHA256_KEY_SIZE</b> 32
-  <br/>
-  #define <b>ARGON2ID_SALT_SIZE</b> 32
-  <br/>
-  Argon2id salt size in bytes. #define <b>SECRETBOX_KEY_SIZE</b> 32
-  <br/>
-  Secretbox key size in bytes. #define <b>AES256_KEY_SIZE</b> 32
-  <br/>
-  AES-256 key size in bytes. #define <b>AES_IV_SIZE</b> 16
-  <br/>
-  AES initialization vector (IV) size in bytes. #define
-    <b>AES256_DERIVED_SIZE</b> (<b>AES256_KEY_SIZE</b> + <b>AES_IV_SIZE</b>)
-  <br/>
-  AES-256 key + IV derived size in bytes (for bcrypt_pbkdf).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Abstracted Cryptographic Constants</b>
-  <br/>
-  These constants abstract the underlying algorithms to allow future
-  changes.</p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>CRYPTO_PUBLIC_KEY_SIZE</b> <b>X25519_KEY_SIZE</b>
-  <br/>
-  Public key size (X25519). #define <b>CRYPTO_PRIVATE_KEY_SIZE</b>
-    <b>X25519_KEY_SIZE</b>
-  <br/>
-  Private key size (X25519). #define <b>CRYPTO_SHARED_KEY_SIZE</b>
-    <b>X25519_KEY_SIZE</b>
-  <br/>
-  Shared key size (X25519). #define <b>CRYPTO_ED25519_PUBLIC_KEY_SIZE</b>
-    <b>ED25519_PUBLIC_KEY_SIZE</b>
-  <br/>
-  Ed25519 public key size. #define <b>CRYPTO_ED25519_PRIVATE_KEY_SIZE</b>
-    <b>ED25519_PRIVATE_KEY_SIZE</b>
-  <br/>
-  Ed25519 private key size. #define <b>CRYPTO_ED25519_SIGNATURE_SIZE</b>
-    <b>ED25519_SIGNATURE_SIZE</b>
-  <br/>
-  Ed25519 signature size. #define <b>CRYPTO_NONCE_SIZE</b>
-    <b>XSALSA20_NONCE_SIZE</b>
-  <br/>
-  Nonce size (XSalsa20). #define <b>CRYPTO_SALT_SIZE</b>
-    <b>ARGON2ID_SALT_SIZE</b>
-  <br/>
-  Salt size (Argon2id). #define <b>CRYPTO_ENCRYPTION_KEY_SIZE</b>
-    <b>SECRETBOX_KEY_SIZE</b>
-  <br/>
-  Encryption key size (XSalsa20-Poly1305). #define <b>CRYPTO_MAC_SIZE</b>
-    <b>POLY1305_MAC_SIZE</b>
-  <br/>
-  MAC size (Poly1305). #define <b>CRYPTO_HMAC_SIZE</b> <b>HMAC_SHA256_SIZE</b>
-  <br/>
-  HMAC size (HMAC-SHA256).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Authentication Packet Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>AUTH_HMAC_SIZE</b> 32
-  <br/>
-  HMAC size in authentication packets (32 bytes). #define
-    <b>AUTH_CHALLENGE_SIZE</b> 32
-  <br/>
-  Challenge nonce size (32 bytes). #define <b>AUTH_COMBINED_SIZE</b>
-    (<b>AUTH_HMAC_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Combined authentication data size (HMAC + challenge, 64 bytes). #define
-    <b>AUTH_SIGNATURE_SIZE</b> 64
-  <br/>
-  Ed25519 signature size (64 bytes). #define <b>AUTH_SIGNATURE_COMBINED_SIZE</b>
-    (<b>AUTH_SIGNATURE_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Combined signature + challenge size (96 bytes).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Authentication Challenge Packet Structure</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>AUTH_CHALLENGE_FLAGS_SIZE</b> 1
-  <br/>
-  Authentication flags size (1 byte). #define <b>AUTH_CHALLENGE_PACKET_SIZE</b>
-    (<b>AUTH_CHALLENGE_FLAGS_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Complete authentication challenge packet size (1 + 32 = 33 bytes).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Authentication Response Packet Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>AUTH_RESPONSE_PASSWORD_SIZE</b> (<b>AUTH_HMAC_SIZE</b> +
-    <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Password-based authentication response size (HMAC + challenge, 64 bytes).
-    #define <b>AUTH_RESPONSE_SIGNATURE_SIZE</b> (<b>AUTH_SIGNATURE_SIZE</b> +
-    <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Signature-based authentication response size (signature + challenge, 96
-    bytes).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Packet Size Limits</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>MAX_AUTH_FAILED_PACKET_SIZE</b> 256
-  <br/>
-  Maximum AUTH_FAILED packet size (256 bytes). #define
-    <b>MAX_ENCRYPTED_PACKET_SIZE</b> 65536
-  <br/>
-  Maximum encrypted packet size (64KB).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Buffer Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>HEX_STRING_SIZE_32</b> (32 * 2 + 1)
-  <br/>
-  Hex string size for 32-byte values (64 hex chars + null terminator). #define
-    <b>HEX_STRING_SIZE_64</b> (64 * 2 + 1)
-  <br/>
-  Hex string size for 64-byte values (128 hex chars + null terminator). #define
-    <b>PASSWORD_BUFFER_SIZE</b> 256
-  <br/>
-  Password input buffer size (256 bytes). #define <b>ZERO_KEY_SIZE</b>
-    <b>X25519_KEY_SIZE</b>
-  <br/>
-  Zero key array size (32 bytes, used for no-identity entries).
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_AES256_DERIVED_SIZE___("><a class="permalink" href="#_define_AES256_DERIVED_SIZE___(">#define
-  AES256_DERIVED_SIZE (<b>AES256_KEY_SIZE</b> + <b>AES_IV_SIZE</b>)</a></h2>
-<p class="Pp">AES-256 key + IV derived size in bytes (for bcrypt_pbkdf).</p>
-<p class="Pp">Definition at line <b>55</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AES256_KEY_SIZE___32"><a class="permalink" href="#_define_AES256_KEY_SIZE___32">#define
-  AES256_KEY_SIZE 32</a></h2>
-<p class="Pp">AES-256 key size in bytes.</p>
-<p class="Pp">Definition at line <b>51</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AES_IV_SIZE___16"><a class="permalink" href="#_define_AES_IV_SIZE___16">#define
-  AES_IV_SIZE 16</a></h2>
-<p class="Pp">AES initialization vector (IV) size in bytes.</p>
-<p class="Pp">Definition at line <b>53</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ARGON2ID_SALT_SIZE___32"><a class="permalink" href="#_define_ARGON2ID_SALT_SIZE___32">#define
-  ARGON2ID_SALT_SIZE 32</a></h2>
-<p class="Pp">Argon2id salt size in bytes.</p>
-<p class="Pp">Definition at line <b>47</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_derive_password_encryption_key()</b>,
-    <b>crypto_handshake_set_parameters()</b>, <b>crypto_init()</b>, and
-    <b>crypto_verify_password()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_CHALLENGE_FLAGS_SIZE___1"><a class="permalink" href="#_define_AUTH_CHALLENGE_FLAGS_SIZE___1">#define
-  AUTH_CHALLENGE_FLAGS_SIZE 1</a></h2>
-<p class="Pp">Authentication flags size (1 byte).</p>
-<p class="Pp">Definition at line <b>115</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
-    <b>crypto_handshake_validate_packet_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_CHALLENGE_PACKET_SIZE___("><a class="permalink" href="#_define_AUTH_CHALLENGE_PACKET_SIZE___(">#define
-  AUTH_CHALLENGE_PACKET_SIZE (<b>AUTH_CHALLENGE_FLAGS_SIZE</b> +
-  <b>AUTH_CHALLENGE_SIZE</b>)</a></h2>
-<p class="Pp">Complete authentication challenge packet size (1 + 32 = 33
-  bytes).</p>
-<p class="Pp">Definition at line <b>117</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_CHALLENGE_SIZE___32"><a class="permalink" href="#_define_AUTH_CHALLENGE_SIZE___32">#define
-  AUTH_CHALLENGE_SIZE 32</a></h2>
-<p class="Pp">Challenge nonce size (32 bytes).</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_combine_auth_data()</b>,
-    <b>crypto_compute_auth_response()</b>, <b>crypto_compute_hmac()</b>,
-    <b>crypto_compute_password_hmac()</b>, <b>crypto_extract_auth_data()</b>,
-    <b>crypto_generate_nonce()</b>, <b>crypto_handshake_set_parameters()</b>,
-    <b>crypto_init()</b>, <b>crypto_verify_auth_response()</b>, and
-    <b>crypto_verify_hmac()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_COMBINED_SIZE___("><a class="permalink" href="#_define_AUTH_COMBINED_SIZE___(">#define
-  AUTH_COMBINED_SIZE (<b>AUTH_HMAC_SIZE</b> +
-  <b>AUTH_CHALLENGE_SIZE</b>)</a></h2>
-<p class="Pp">Combined authentication data size (HMAC + challenge, 64
-  bytes).</p>
-<p class="Pp">Definition at line <b>101</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_HMAC_SIZE___32"><a class="permalink" href="#_define_AUTH_HMAC_SIZE___32">#define
-  AUTH_HMAC_SIZE 32</a></h2>
-<p class="Pp">HMAC size in authentication packets (32 bytes).</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_combine_auth_data()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_RESPONSE_PASSWORD_SIZE___("><a class="permalink" href="#_define_AUTH_RESPONSE_PASSWORD_SIZE___(">#define
-  AUTH_RESPONSE_PASSWORD_SIZE (<b>AUTH_HMAC_SIZE</b> +
-  <b>AUTH_CHALLENGE_SIZE</b>)</a></h2>
-<p class="Pp">Password-based authentication response size (HMAC + challenge, 64
-    bytes).</p>
-<p class="Pp">Definition at line <b>127</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_RESPONSE_SIGNATURE_SIZE___("><a class="permalink" href="#_define_AUTH_RESPONSE_SIGNATURE_SIZE___(">#define
-  AUTH_RESPONSE_SIGNATURE_SIZE (<b>AUTH_SIGNATURE_SIZE</b> +
-  <b>AUTH_CHALLENGE_SIZE</b>)</a></h2>
-<p class="Pp">Signature-based authentication response size (signature +
-    challenge, 96 bytes).</p>
-<p class="Pp">Definition at line <b>129</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_SIGNATURE_COMBINED_SIZE___("><a class="permalink" href="#_define_AUTH_SIGNATURE_COMBINED_SIZE___(">#define
-  AUTH_SIGNATURE_COMBINED_SIZE (<b>AUTH_SIGNATURE_SIZE</b> +
-  <b>AUTH_CHALLENGE_SIZE</b>)</a></h2>
-<p class="Pp">Combined signature + challenge size (96 bytes).</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_AUTH_SIGNATURE_SIZE___64"><a class="permalink" href="#_define_AUTH_SIGNATURE_SIZE___64">#define
-  AUTH_SIGNATURE_SIZE 64</a></h2>
-<p class="Pp">Ed25519 signature size (64 bytes).</p>
-<p class="Pp">Definition at line <b>103</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_ED25519_PRIVATE_KEY_SIZE___"><a class="permalink" href="#_define_CRYPTO_ED25519_PRIVATE_KEY_SIZE___">#define
-  CRYPTO_ED25519_PRIVATE_KEY_SIZE <b>ED25519_PRIVATE_KEY_SIZE</b></a></h2>
-<p class="Pp">Ed25519 private key size.</p>
-<p class="Pp">Definition at line <b>75</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_ED25519_PUBLIC_KEY_SIZE___"><a class="permalink" href="#_define_CRYPTO_ED25519_PUBLIC_KEY_SIZE___">#define
-  CRYPTO_ED25519_PUBLIC_KEY_SIZE <b>ED25519_PUBLIC_KEY_SIZE</b></a></h2>
-<p class="Pp">Ed25519 public key size.</p>
-<p class="Pp">Definition at line <b>73</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_ED25519_SIGNATURE_SIZE___"><a class="permalink" href="#_define_CRYPTO_ED25519_SIGNATURE_SIZE___">#define
-  CRYPTO_ED25519_SIGNATURE_SIZE <b>ED25519_SIGNATURE_SIZE</b></a></h2>
-<p class="Pp">Ed25519 signature size.</p>
-<p class="Pp">Definition at line <b>77</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_ENCRYPTION_KEY_SIZE___"><a class="permalink" href="#_define_CRYPTO_ENCRYPTION_KEY_SIZE___">#define
-  CRYPTO_ENCRYPTION_KEY_SIZE <b>SECRETBOX_KEY_SIZE</b></a></h2>
-<p class="Pp">Encryption key size (XSalsa20-Poly1305).</p>
-<p class="Pp">Definition at line <b>83</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_HMAC_SIZE___"><a class="permalink" href="#_define_CRYPTO_HMAC_SIZE___">#define
-  CRYPTO_HMAC_SIZE <b>HMAC_SHA256_SIZE</b></a></h2>
-<p class="Pp">HMAC size (HMAC-SHA256).</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_MAC_SIZE___"><a class="permalink" href="#_define_CRYPTO_MAC_SIZE___">#define
-  CRYPTO_MAC_SIZE <b>POLY1305_MAC_SIZE</b></a></h2>
-<p class="Pp">MAC size (Poly1305).</p>
-<p class="Pp">Definition at line <b>85</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_packet_plan()</b>, and
-    <b>send_packet_secure()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_NONCE_SIZE___"><a class="permalink" href="#_define_CRYPTO_NONCE_SIZE___">#define
-  CRYPTO_NONCE_SIZE <b>XSALSA20_NONCE_SIZE</b></a></h2>
-<p class="Pp">Nonce size (XSalsa20).</p>
-<p class="Pp">Definition at line <b>79</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_packet_plan()</b>, and
-    <b>send_packet_secure()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_PRIVATE_KEY_SIZE___"><a class="permalink" href="#_define_CRYPTO_PRIVATE_KEY_SIZE___">#define
-  CRYPTO_PRIVATE_KEY_SIZE <b>X25519_KEY_SIZE</b></a></h2>
-<p class="Pp">Private key size (X25519).</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_PUBLIC_KEY_SIZE___"><a class="permalink" href="#_define_CRYPTO_PUBLIC_KEY_SIZE___">#define
-  CRYPTO_PUBLIC_KEY_SIZE <b>X25519_KEY_SIZE</b></a></h2>
-<p class="Pp">Public key size (X25519).</p>
-<p class="Pp">Definition at line <b>67</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_process_rekey_request()</b>,
-    <b>crypto_handshake_process_rekey_response()</b>,
-    <b>crypto_handshake_rekey_request()</b>,
-    <b>crypto_handshake_rekey_response()</b>, and <b>parse_public_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_SALT_SIZE___"><a class="permalink" href="#_define_CRYPTO_SALT_SIZE___">#define
-  CRYPTO_SALT_SIZE <b>ARGON2ID_SALT_SIZE</b></a></h2>
-<p class="Pp">Salt size (Argon2id).</p>
-<p class="Pp">Definition at line <b>81</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_SHARED_KEY_SIZE___"><a class="permalink" href="#_define_CRYPTO_SHARED_KEY_SIZE___">#define
-  CRYPTO_SHARED_KEY_SIZE <b>X25519_KEY_SIZE</b></a></h2>
-<p class="Pp">Shared key size (X25519).</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_compute_auth_response()</b>,
-    <b>crypto_compute_password_hmac()</b>,
-    <b>crypto_handshake_process_rekey_complete()</b>,
-    <b>crypto_handshake_rekey_complete()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>, and
-    <b>crypto_verify_auth_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ED25519_PRIVATE_KEY_SIZE___64"><a class="permalink" href="#_define_ED25519_PRIVATE_KEY_SIZE___64">#define
-  ED25519_PRIVATE_KEY_SIZE 64</a></h2>
-<p class="Pp">Ed25519 private key size (seed + public) in bytes.</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_generate()</b>,
-    <b>acds_identity_load()</b>, <b>acds_identity_save()</b>,
-    <b>acds_sign_session_create()</b>, <b>acds_sign_session_join()</b>,
-    <b>discovery_session_create()</b>, <b>discovery_session_start()</b>,
-    <b>ed25519_to_x25519_private()</b>, <b>ed25519_to_x25519_private()</b>,
-    <b>parse_private_key()</b>, <b>peer_crypto_create()</b>, and
-    <b>ssh_agent_add_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ED25519_PUBLIC_KEY_SIZE___32"><a class="permalink" href="#_define_ED25519_PUBLIC_KEY_SIZE___32">#define
-  ED25519_PUBLIC_KEY_SIZE 32</a></h2>
-<p class="Pp">Ed25519 public key size in bytes.</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_fingerprint()</b>,
-    <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
-    <b>acds_identity_save()</b>, <b>acds_verify_session_create()</b>,
-    <b>acds_verify_session_join()</b>, <b>acip_security_init_options()</b>,
-    <b>add_known_host()</b>, <b>add_known_host()</b>, <b>check_known_host()</b>,
-    <b>check_known_host()</b>, <b>check_known_host_with_key()</b>,
-    <b>check_known_host_with_key()</b>, <b>check_known_host_with_key()</b>,
-    <b>client_crypto_init()</b>, <b>compute_key_fingerprint()</b>,
-    <b>compute_key_fingerprint()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>,
-    <b>database_session_add_key()</b>, <b>database_session_get_keys()</b>,
-    <b>database_session_lookup()</b>, <b>database_session_revoke_key()</b>,
-    <b>database_session_verify_key()</b>,
-    <b>discovery_keys_download_https()</b>, <b>discovery_keys_load_cached()</b>,
-    <b>discovery_keys_load_file()</b>, <b>discovery_keys_save_cached()</b>,
-    <b>discovery_keys_verify()</b>, <b>discovery_keys_verify_change()</b>,
-    <b>discovery_session_create()</b>, <b>discovery_session_start()</b>,
-    <b>display_mitm_warning()</b>, <b>display_mitm_warning()</b>,
-    <b>ed25519_sign_message()</b>, <b>ed25519_to_x25519_private()</b>,
-    <b>ed25519_to_x25519_public()</b>, <b>ed25519_to_x25519_public()</b>,
-    <b>ed25519_verify_signature()</b>, <b>ed25519_verify_signature()</b>,
-    <b>extract_ed25519_from_gpg()</b>, <b>gpg_get_public_key()</b>,
-    <b>gpg_to_x25519_public()</b>, <b>hex_to_pubkey()</b>,
-    <b>key_fingerprint_digest()</b>, <b>key_fingerprint_digest()</b>,
-    <b>openpgp_extract_ed25519_from_mpi()</b>,
-    <b>openpgp_extract_ed25519_from_mpi()</b>,
-    <b>openpgp_parse_armored_pubkey()</b>,
-    <b>openpgp_parse_armored_pubkey()</b>,
-    <b>openpgp_parse_armored_seckey()</b>,
-    <b>openpgp_parse_armored_seckey()</b>, <b>openpgp_parse_binary_pubkey()</b>,
-    <b>openpgp_parse_binary_pubkey()</b>, <b>openpgp_parse_binary_seckey()</b>,
-    <b>openpgp_parse_binary_seckey()</b>,
-    <b>openpgp_parse_public_key_packet()</b>,
-    <b>openpgp_parse_secret_key_packet()</b>, <b>parse_gpg_key()</b>,
-    <b>parse_gpg_key_binary()</b>, <b>parse_private_key()</b>,
-    <b>parse_ssh_ed25519_line()</b>, <b>parse_ssh_ed25519_line()</b>,
-    <b>peer_crypto_create()</b>, <b>prompt_unknown_host()</b>,
-    <b>prompt_unknown_host()</b>, <b>pubkey_to_hex()</b>,
-    <b>ssh_agent_add_key()</b>, and <b>ssh_agent_sign()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ED25519_SEED_SIZE___32"><a class="permalink" href="#_define_ED25519_SEED_SIZE___32">#define
-  ED25519_SEED_SIZE 32</a></h2>
-<p class="Pp">Raw Ed25519 seeds used by OpenPGP, before expansion to a secret
-    key.</p>
-<p class="Pp">Definition at line <b>165</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>openpgp_parse_armored_seckey()</b>,
-    <b>openpgp_parse_armored_seckey()</b>, <b>openpgp_parse_binary_seckey()</b>,
-    <b>openpgp_parse_binary_seckey()</b>, <b>parse_private_key()</b>,
-    <b>peer_crypto_create()</b>, and <b>ssh_agent_add_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ED25519_SIGNATURE_PART_SIZE___("><a class="permalink" href="#_define_ED25519_SIGNATURE_PART_SIZE___(">#define
-  ED25519_SIGNATURE_PART_SIZE (<b>ED25519_SIGNATURE_SIZE</b> / 2)</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>gpg_agent_sign()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ED25519_SIGNATURE_SIZE___64"><a class="permalink" href="#_define_ED25519_SIGNATURE_SIZE___64">#define
-  ED25519_SIGNATURE_SIZE 64</a></h2>
-<p class="Pp">Ed25519 signature size in bytes.</p>
-<p class="Pp">Definition at line <b>37</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_sign_session_create()</b>,
-    <b>acds_sign_session_join()</b>, <b>acds_verify_session_create()</b>,
-    <b>acds_verify_session_join()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>,
-    <b>ed25519_sign_message()</b>, <b>ed25519_sign_message()</b>,
-    <b>ed25519_to_x25519_private()</b>, <b>ed25519_verify_signature()</b>,
-    <b>ed25519_verify_signature()</b>, <b>gpg_sign_detached_ed25519()</b>,
-    <b>gpg_verify_detached_ed25519()</b>, <b>ssh_agent_get_key()</b>, and
-    <b>ssh_agent_sign()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_GPG_FINGERPRINT_HEX_BUFFER_SIZE___("><a class="permalink" href="#_define_GPG_FINGERPRINT_HEX_BUFFER_SIZE___(">#define
-  GPG_FINGERPRINT_HEX_BUFFER_SIZE (<b>GPG_FINGERPRINT_SIZE</b> * 2 + 1)</a></h2>
-<p class="Pp">Definition at line <b>168</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_complete()</b>, and
-    <b>parse_gpg_keys_from_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_GPG_FINGERPRINT_SIZE___20"><a class="permalink" href="#_define_GPG_FINGERPRINT_SIZE___20">#define
-  GPG_FINGERPRINT_SIZE 20</a></h2>
-<p class="Pp">OpenPGP v4 fingerprint and long key ID widths.</p>
-<p class="Pp">Definition at line <b>167</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>get_gpg_fingerprint()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_GPG_KEY_ID_HEX_BUFFER_SIZE___("><a class="permalink" href="#_define_GPG_KEY_ID_HEX_BUFFER_SIZE___(">#define
-  GPG_KEY_ID_HEX_BUFFER_SIZE (<b>GPG_KEY_ID_SIZE</b> * 2 + 1)</a></h2>
-<p class="Pp">Definition at line <b>170</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_gpg_keys_from_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_GPG_KEY_ID_SIZE___8"><a class="permalink" href="#_define_GPG_KEY_ID_SIZE___8">#define
-  GPG_KEY_ID_SIZE 8</a></h2>
-<p class="Pp">Definition at line <b>169</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>format_gpg_key_display()</b>, and
-    <b>get_gpg_key_id()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_GPG_SIGNATURE_PACKET_CAPACITY___512"><a class="permalink" href="#_define_GPG_SIGNATURE_PACKET_CAPACITY___512">#define
-  GPG_SIGNATURE_PACKET_CAPACITY 512</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>gpg_sign_detached_ed25519()</b>, and
-    <b>gpg_verify_detached_ed25519()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HEX_STRING_SIZE_32___(32_*_2_+_1)"><a class="permalink" href="#_define_HEX_STRING_SIZE_32___(32_*_2_+_1)">#define
-  HEX_STRING_SIZE_32 (32 * 2 + 1)</a></h2>
-<p class="Pp">Hex string size for 32-byte values (64 hex chars + null
-    terminator).</p>
-<p class="Pp">Definition at line <b>154</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_fingerprint()</b>,
-    <b>client_crypto_init()</b>, <b>client_get_public_key_hex()</b>,
-    <b>compute_key_fingerprint()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>discovery_keys_verify_change()</b>, <b>discovery_session_create()</b>,
-    <b>format_public_key()</b>, <b>gpg_sign_detached_ed25519()</b>,
-    <b>gpg_verify_signature()</b>, <b>key_identity_format()</b>, and
-    <b>pubkey_to_hex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HEX_STRING_SIZE_64___(64_*_2_+_1)"><a class="permalink" href="#_define_HEX_STRING_SIZE_64___(64_*_2_+_1)">#define
-  HEX_STRING_SIZE_64 (64 * 2 + 1)</a></h2>
-<p class="Pp">Hex string size for 64-byte values (128 hex chars + null
-    terminator).</p>
-<p class="Pp">Definition at line <b>156</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>, and
-    <b>gpg_agent_sign()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HMAC_SHA256_KEY_SIZE___32"><a class="permalink" href="#_define_HMAC_SHA256_KEY_SIZE___32">#define
-  HMAC_SHA256_KEY_SIZE 32</a></h2>
-<p class="Pp">Fixed HMAC key width used by the authentication API.</p>
-<p class="Pp">Definition at line <b>45</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_compute_hmac()</b>,
-    <b>crypto_compute_hmac_ex()</b>, <b>crypto_verify_hmac()</b>, and
-    <b>crypto_verify_hmac_ex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HMAC_SHA256_SIZE___32"><a class="permalink" href="#_define_HMAC_SHA256_SIZE___32">#define
-  HMAC_SHA256_SIZE 32</a></h2>
-<p class="Pp">HMAC-SHA256 output size in bytes.</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>compute_key_fingerprint()</b>,
-    <b>crypto_combine_auth_data()</b>, <b>crypto_compute_auth_response()</b>,
-    <b>crypto_compute_hmac()</b>, <b>crypto_compute_hmac_ex()</b>,
-    <b>crypto_extract_auth_data()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_complete()</b>, <b>crypto_init()</b>,
-    <b>crypto_verify_auth_response()</b>, <b>crypto_verify_hmac()</b>, and
-    <b>crypto_verify_hmac_ex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_AUTH_FAILED_PACKET_SIZE___256"><a class="permalink" href="#_define_MAX_AUTH_FAILED_PACKET_SIZE___256">#define
-  MAX_AUTH_FAILED_PACKET_SIZE 256</a></h2>
-<p class="Pp">Maximum AUTH_FAILED packet size (256 bytes).</p>
-<p class="Pp">Definition at line <b>142</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_validate_packet_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_COMMENT_LEN___256"><a class="permalink" href="#_define_MAX_COMMENT_LEN___256">#define
-  MAX_COMMENT_LEN 256</a></h2>
-<p class="Pp">Existing text storage budgets, including NUL.</p>
-<p class="Pp">Definition at line <b>172</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>validate_private_key()</b>, and
-    <b>validate_public_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_ENCRYPTED_PACKET_SIZE___65536"><a class="permalink" href="#_define_MAX_ENCRYPTED_PACKET_SIZE___65536">#define
-  MAX_ENCRYPTED_PACKET_SIZE 65536</a></h2>
-<p class="Pp">Maximum encrypted packet size (64KB).</p>
-<p class="Pp">Definition at line <b>144</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_validate_packet_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_GPG_KEYGRIP_LEN___64"><a class="permalink" href="#_define_MAX_GPG_KEYGRIP_LEN___64">#define
-  MAX_GPG_KEYGRIP_LEN 64</a></h2>
-<p class="Pp">Definition at line <b>173</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>extract_ed25519_from_gpg()</b>, and
-    <b>parse_private_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAX_PASSWORD_LENGTH___256"><a class="permalink" href="#_define_MAX_PASSWORD_LENGTH___256">#define
-  MAX_PASSWORD_LENGTH 256</a></h2>
-<p class="Pp">Maximum password length (256 characters).</p>
-<p class="Pp">Definition at line <b>21</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_validate_password()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MIN_PASSWORD_LENGTH___8"><a class="permalink" href="#_define_MIN_PASSWORD_LENGTH___8">#define
-  MIN_PASSWORD_LENGTH 8</a></h2>
-<p class="Pp">Minimum password length (8 characters).</p>
-<p class="Pp">Definition at line <b>19</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_validate_password()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PASSWORD_BUFFER_SIZE___256"><a class="permalink" href="#_define_PASSWORD_BUFFER_SIZE___256">#define
-  PASSWORD_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Password input buffer size (256 bytes).</p>
-<p class="Pp">Definition at line <b>158</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>client_connection_start()</b>,
-    <b>crypto_handshake_client_auth_response()</b>,
-    <b>session_connection_establish()</b>, and
-    <b>session_participant_connect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_POLY1305_MAC_SIZE___16"><a class="permalink" href="#_define_POLY1305_MAC_SIZE___16">#define
-  POLY1305_MAC_SIZE 16</a></h2>
-<p class="Pp">Poly1305 MAC size in bytes.</p>
-<p class="Pp">Definition at line <b>41</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_send_parameters()</b>,
-    and <b>crypto_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SECRETBOX_KEY_SIZE___32"><a class="permalink" href="#_define_SECRETBOX_KEY_SIZE___32">#define
-  SECRETBOX_KEY_SIZE 32</a></h2>
-<p class="Pp">Secretbox key size in bytes.</p>
-<p class="Pp">Definition at line <b>49</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_derive_password_encryption_key()</b>,
-    <b>crypto_init()</b>, and <b>crypto_verify_password()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_AUTH_RESPONSE_SIZE___"><a class="permalink" href="#_define_SERVER_AUTH_RESPONSE_SIZE___">#define
-  SERVER_AUTH_RESPONSE_SIZE <b>AUTH_HMAC_SIZE</b></a></h2>
-<p class="Pp">Server authentication response size (32 bytes).</p>
-<p class="Pp">Definition at line <b>134</b> of file <b>sizes.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_X25519_KEY_SIZE___32"><a class="permalink" href="#_define_X25519_KEY_SIZE___32">#define
-  X25519_KEY_SIZE 32</a></h2>
-<p class="Pp">X25519 key size in bytes.</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_create_public_key_packet()</b>,
-    <b>crypto_get_public_key()</b>, <b>crypto_init()</b>,
-    <b>crypto_set_peer_public_key()</b>, <b>ed25519_to_x25519_private()</b>,
-    <b>ed25519_to_x25519_private()</b>, <b>ed25519_to_x25519_public()</b>,
-    <b>ed25519_to_x25519_public()</b>, <b>gpg_to_x25519_public()</b>,
-    <b>private_key_to_x25519()</b>, <b>private_key_to_x25519()</b>,
-    <b>public_key_to_x25519()</b>, and <b>public_key_to_x25519()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_XSALSA20_NONCE_SIZE___24"><a class="permalink" href="#_define_XSALSA20_NONCE_SIZE___24">#define
-  XSALSA20_NONCE_SIZE 24</a></h2>
-<p class="Pp">XSalsa20 nonce size in bytes.</p>
-<p class="Pp">Definition at line <b>39</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_encrypt()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>, and
-  <b>crypto_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ZERO_KEY_SIZE___"><a class="permalink" href="#_define_ZERO_KEY_SIZE___">#define
-  ZERO_KEY_SIZE <b>X25519_KEY_SIZE</b></a></h2>
-<p class="Pp">Zero key array size (32 bytes, used for no-identity entries).</p>
-<p class="Pp">Definition at line <b>160</b> of file <b>sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>sizes.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">sizes.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">sizes.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">sizes.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>GPG_SIGNATURE_PACKET_CAPACITY</b> 512
+            <br />
+            #define <b>ED25519_SIGNATURE_PART_SIZE</b> (<b
+              >ED25519_SIGNATURE_SIZE</b
+            >
+            / 2)
+            <br />
+            #define <b>SERVER_AUTH_RESPONSE_SIZE</b> <b>AUTH_HMAC_SIZE</b>
+            <br />
+            Server authentication response size (32 bytes). #define
+            <b>ED25519_SEED_SIZE</b> 32
+            <br />
+            #define <b>GPG_FINGERPRINT_SIZE</b> 20
+            <br />
+            #define <b>GPG_FINGERPRINT_HEX_BUFFER_SIZE</b> (<b
+              >GPG_FINGERPRINT_SIZE</b
+            >
+            * 2 + 1)
+            <br />
+            #define <b>GPG_KEY_ID_SIZE</b> 8
+            <br />
+            #define <b>GPG_KEY_ID_HEX_BUFFER_SIZE</b> (<b>GPG_KEY_ID_SIZE</b> *
+            2 + 1)
+            <br />
+            #define <b>MAX_COMMENT_LEN</b> 256
+            <br />
+            #define <b>MAX_GPG_KEYGRIP_LEN</b> 64
+            <br />
+            <br />
+          </p>
+          <p class="Pp">
+            <b>Password Requirements</b>
+            <br />
+            Cryptographic storage and wire widths; usable without crypto context
+            types or libsodium.
+          </p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>MIN_PASSWORD_LENGTH</b> 8
+            <br />
+            Minimum password length (8 characters). #define
+            <b>MAX_PASSWORD_LENGTH</b> 256
+            <br />
+            Maximum password length (256 characters).
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Algorithm-Specific Key Sizes</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>X25519_KEY_SIZE</b> 32
+            <br />
+            X25519 key size in bytes. #define <b>ED25519_PUBLIC_KEY_SIZE</b> 32
+            <br />
+            Ed25519 public key size in bytes. #define
+            <b>ED25519_PRIVATE_KEY_SIZE</b> 64
+            <br />
+            Ed25519 private key size (seed + public) in bytes. #define
+            <b>ED25519_SIGNATURE_SIZE</b> 64
+            <br />
+            Ed25519 signature size in bytes. #define
+            <b>XSALSA20_NONCE_SIZE</b> 24
+            <br />
+            XSalsa20 nonce size in bytes. #define <b>POLY1305_MAC_SIZE</b> 16
+            <br />
+            Poly1305 MAC size in bytes. #define <b>HMAC_SHA256_SIZE</b> 32
+            <br />
+            HMAC-SHA256 output size in bytes. #define
+            <b>HMAC_SHA256_KEY_SIZE</b> 32
+            <br />
+            #define <b>ARGON2ID_SALT_SIZE</b> 32
+            <br />
+            Argon2id salt size in bytes. #define <b>SECRETBOX_KEY_SIZE</b> 32
+            <br />
+            Secretbox key size in bytes. #define <b>AES256_KEY_SIZE</b> 32
+            <br />
+            AES-256 key size in bytes. #define <b>AES_IV_SIZE</b> 16
+            <br />
+            AES initialization vector (IV) size in bytes. #define
+            <b>AES256_DERIVED_SIZE</b> (<b>AES256_KEY_SIZE</b> +
+            <b>AES_IV_SIZE</b>)
+            <br />
+            AES-256 key + IV derived size in bytes (for bcrypt_pbkdf).
+            <br />
+            <br />
+          </p>
+          <p class="Pp">
+            <b>Abstracted Cryptographic Constants</b>
+            <br />
+            These constants abstract the underlying algorithms to allow future
+            changes.
+          </p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>CRYPTO_PUBLIC_KEY_SIZE</b> <b>X25519_KEY_SIZE</b>
+            <br />
+            Public key size (X25519). #define <b>CRYPTO_PRIVATE_KEY_SIZE</b>
+            <b>X25519_KEY_SIZE</b>
+            <br />
+            Private key size (X25519). #define <b>CRYPTO_SHARED_KEY_SIZE</b>
+            <b>X25519_KEY_SIZE</b>
+            <br />
+            Shared key size (X25519). #define
+            <b>CRYPTO_ED25519_PUBLIC_KEY_SIZE</b>
+            <b>ED25519_PUBLIC_KEY_SIZE</b>
+            <br />
+            Ed25519 public key size. #define
+            <b>CRYPTO_ED25519_PRIVATE_KEY_SIZE</b>
+            <b>ED25519_PRIVATE_KEY_SIZE</b>
+            <br />
+            Ed25519 private key size. #define
+            <b>CRYPTO_ED25519_SIGNATURE_SIZE</b>
+            <b>ED25519_SIGNATURE_SIZE</b>
+            <br />
+            Ed25519 signature size. #define <b>CRYPTO_NONCE_SIZE</b>
+            <b>XSALSA20_NONCE_SIZE</b>
+            <br />
+            Nonce size (XSalsa20). #define <b>CRYPTO_SALT_SIZE</b>
+            <b>ARGON2ID_SALT_SIZE</b>
+            <br />
+            Salt size (Argon2id). #define <b>CRYPTO_ENCRYPTION_KEY_SIZE</b>
+            <b>SECRETBOX_KEY_SIZE</b>
+            <br />
+            Encryption key size (XSalsa20-Poly1305). #define
+            <b>CRYPTO_MAC_SIZE</b>
+            <b>POLY1305_MAC_SIZE</b>
+            <br />
+            MAC size (Poly1305). #define <b>CRYPTO_HMAC_SIZE</b>
+            <b>HMAC_SHA256_SIZE</b>
+            <br />
+            HMAC size (HMAC-SHA256).
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Authentication Packet Sizes</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>AUTH_HMAC_SIZE</b> 32
+            <br />
+            HMAC size in authentication packets (32 bytes). #define
+            <b>AUTH_CHALLENGE_SIZE</b> 32
+            <br />
+            Challenge nonce size (32 bytes). #define
+            <b>AUTH_COMBINED_SIZE</b> (<b>AUTH_HMAC_SIZE</b> +
+            <b>AUTH_CHALLENGE_SIZE</b>)
+            <br />
+            Combined authentication data size (HMAC + challenge, 64 bytes).
+            #define
+            <b>AUTH_SIGNATURE_SIZE</b> 64
+            <br />
+            Ed25519 signature size (64 bytes). #define
+            <b>AUTH_SIGNATURE_COMBINED_SIZE</b> (<b>AUTH_SIGNATURE_SIZE</b> +
+            <b>AUTH_CHALLENGE_SIZE</b>)
+            <br />
+            Combined signature + challenge size (96 bytes).
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Authentication Challenge Packet Structure</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>AUTH_CHALLENGE_FLAGS_SIZE</b> 1
+            <br />
+            Authentication flags size (1 byte). #define
+            <b>AUTH_CHALLENGE_PACKET_SIZE</b> (<b>AUTH_CHALLENGE_FLAGS_SIZE</b>
+            + <b>AUTH_CHALLENGE_SIZE</b>)
+            <br />
+            Complete authentication challenge packet size (1 + 32 = 33 bytes).
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Authentication Response Packet Sizes</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>AUTH_RESPONSE_PASSWORD_SIZE</b> (<b>AUTH_HMAC_SIZE</b> +
+            <b>AUTH_CHALLENGE_SIZE</b>)
+            <br />
+            Password-based authentication response size (HMAC + challenge, 64
+            bytes). #define
+            <b>AUTH_RESPONSE_SIGNATURE_SIZE</b> (<b>AUTH_SIGNATURE_SIZE</b> +
+            <b>AUTH_CHALLENGE_SIZE</b>)
+            <br />
+            Signature-based authentication response size (signature + challenge,
+            96 bytes).
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Packet Size Limits</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>MAX_AUTH_FAILED_PACKET_SIZE</b> 256
+            <br />
+            Maximum AUTH_FAILED packet size (256 bytes). #define
+            <b>MAX_ENCRYPTED_PACKET_SIZE</b> 65536
+            <br />
+            Maximum encrypted packet size (64KB).
+            <br />
+            <br />
+          </p>
+          <p class="Pp"><b>Buffer Sizes</b></p>
+          <p class="Pp">
+            <br />
+            <br />
+            #define <b>HEX_STRING_SIZE_32</b> (32 * 2 + 1)
+            <br />
+            Hex string size for 32-byte values (64 hex chars + null terminator).
+            #define
+            <b>HEX_STRING_SIZE_64</b> (64 * 2 + 1)
+            <br />
+            Hex string size for 64-byte values (128 hex chars + null
+            terminator). #define
+            <b>PASSWORD_BUFFER_SIZE</b> 256
+            <br />
+            Password input buffer size (256 bytes). #define <b>ZERO_KEY_SIZE</b>
+            <b>X25519_KEY_SIZE</b>
+            <br />
+            Zero key array size (32 bytes, used for no-identity entries).
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AES256_DERIVED_SIZE___(">
+            <a class="permalink" href="#_define_AES256_DERIVED_SIZE___("
+              >#define AES256_DERIVED_SIZE (<b>AES256_KEY_SIZE</b> +
+              <b>AES_IV_SIZE</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            AES-256 key + IV derived size in bytes (for bcrypt_pbkdf).
+          </p>
+          <p class="Pp">Definition at line <b>55</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AES256_KEY_SIZE___32">
+            <a class="permalink" href="#_define_AES256_KEY_SIZE___32"
+              >#define AES256_KEY_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">AES-256 key size in bytes.</p>
+          <p class="Pp">Definition at line <b>51</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AES_IV_SIZE___16">
+            <a class="permalink" href="#_define_AES_IV_SIZE___16"
+              >#define AES_IV_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">AES initialization vector (IV) size in bytes.</p>
+          <p class="Pp">Definition at line <b>53</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ARGON2ID_SALT_SIZE___32">
+            <a class="permalink" href="#_define_ARGON2ID_SALT_SIZE___32"
+              >#define ARGON2ID_SALT_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">Argon2id salt size in bytes.</p>
+          <p class="Pp">Definition at line <b>47</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_derive_password_encryption_key()</b>,
+            <b>crypto_handshake_set_parameters()</b>, <b>crypto_init()</b>, and
+            <b>crypto_verify_password()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_CHALLENGE_FLAGS_SIZE___1">
+            <a class="permalink" href="#_define_AUTH_CHALLENGE_FLAGS_SIZE___1"
+              >#define AUTH_CHALLENGE_FLAGS_SIZE 1</a
+            >
+          </h2>
+          <p class="Pp">Authentication flags size (1 byte).</p>
+          <p class="Pp">
+            Definition at line <b>115</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
+            <b>crypto_handshake_validate_packet_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_CHALLENGE_PACKET_SIZE___(">
+            <a class="permalink" href="#_define_AUTH_CHALLENGE_PACKET_SIZE___("
+              >#define AUTH_CHALLENGE_PACKET_SIZE (<b
+                >AUTH_CHALLENGE_FLAGS_SIZE</b
+              >
+              + <b>AUTH_CHALLENGE_SIZE</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Complete authentication challenge packet size (1 + 32 = 33 bytes).
+          </p>
+          <p class="Pp">
+            Definition at line <b>117</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_CHALLENGE_SIZE___32">
+            <a class="permalink" href="#_define_AUTH_CHALLENGE_SIZE___32"
+              >#define AUTH_CHALLENGE_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">Challenge nonce size (32 bytes).</p>
+          <p class="Pp">Definition at line <b>99</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_combine_auth_data()</b>,
+            <b>crypto_compute_auth_response()</b>, <b>crypto_compute_hmac()</b>,
+            <b>crypto_compute_password_hmac()</b>,
+            <b>crypto_extract_auth_data()</b>, <b>crypto_generate_nonce()</b>,
+            <b>crypto_handshake_set_parameters()</b>, <b>crypto_init()</b>,
+            <b>crypto_verify_auth_response()</b>, and
+            <b>crypto_verify_hmac()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_COMBINED_SIZE___(">
+            <a class="permalink" href="#_define_AUTH_COMBINED_SIZE___("
+              >#define AUTH_COMBINED_SIZE (<b>AUTH_HMAC_SIZE</b> +
+              <b>AUTH_CHALLENGE_SIZE</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Combined authentication data size (HMAC + challenge, 64 bytes).
+          </p>
+          <p class="Pp">
+            Definition at line <b>101</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_HMAC_SIZE___32">
+            <a class="permalink" href="#_define_AUTH_HMAC_SIZE___32"
+              >#define AUTH_HMAC_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">HMAC size in authentication packets (32 bytes).</p>
+          <p class="Pp">Definition at line <b>97</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">Referenced by <b>crypto_combine_auth_data()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_RESPONSE_PASSWORD_SIZE___(">
+            <a class="permalink" href="#_define_AUTH_RESPONSE_PASSWORD_SIZE___("
+              >#define AUTH_RESPONSE_PASSWORD_SIZE (<b>AUTH_HMAC_SIZE</b> +
+              <b>AUTH_CHALLENGE_SIZE</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Password-based authentication response size (HMAC + challenge, 64
+            bytes).
+          </p>
+          <p class="Pp">
+            Definition at line <b>127</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_RESPONSE_SIGNATURE_SIZE___(">
+            <a
+              class="permalink"
+              href="#_define_AUTH_RESPONSE_SIGNATURE_SIZE___("
+              >#define AUTH_RESPONSE_SIGNATURE_SIZE (<b>AUTH_SIGNATURE_SIZE</b>
+              + <b>AUTH_CHALLENGE_SIZE</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Signature-based authentication response size (signature + challenge,
+            96 bytes).
+          </p>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_SIGNATURE_COMBINED_SIZE___(">
+            <a
+              class="permalink"
+              href="#_define_AUTH_SIGNATURE_COMBINED_SIZE___("
+              >#define AUTH_SIGNATURE_COMBINED_SIZE (<b>AUTH_SIGNATURE_SIZE</b>
+              + <b>AUTH_CHALLENGE_SIZE</b>)</a
+            >
+          </h2>
+          <p class="Pp">Combined signature + challenge size (96 bytes).</p>
+          <p class="Pp">
+            Definition at line <b>105</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUTH_SIGNATURE_SIZE___64">
+            <a class="permalink" href="#_define_AUTH_SIGNATURE_SIZE___64"
+              >#define AUTH_SIGNATURE_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Ed25519 signature size (64 bytes).</p>
+          <p class="Pp">
+            Definition at line <b>103</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_ED25519_PRIVATE_KEY_SIZE___">
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_ED25519_PRIVATE_KEY_SIZE___"
+              >#define CRYPTO_ED25519_PRIVATE_KEY_SIZE
+              <b>ED25519_PRIVATE_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Ed25519 private key size.</p>
+          <p class="Pp">Definition at line <b>75</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_ED25519_PUBLIC_KEY_SIZE___">
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_ED25519_PUBLIC_KEY_SIZE___"
+              >#define CRYPTO_ED25519_PUBLIC_KEY_SIZE
+              <b>ED25519_PUBLIC_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Ed25519 public key size.</p>
+          <p class="Pp">Definition at line <b>73</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_ED25519_SIGNATURE_SIZE___">
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_ED25519_SIGNATURE_SIZE___"
+              >#define CRYPTO_ED25519_SIGNATURE_SIZE
+              <b>ED25519_SIGNATURE_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Ed25519 signature size.</p>
+          <p class="Pp">Definition at line <b>77</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_ENCRYPTION_KEY_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_ENCRYPTION_KEY_SIZE___"
+              >#define CRYPTO_ENCRYPTION_KEY_SIZE <b>SECRETBOX_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Encryption key size (XSalsa20-Poly1305).</p>
+          <p class="Pp">Definition at line <b>83</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_HMAC_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_HMAC_SIZE___"
+              >#define CRYPTO_HMAC_SIZE <b>HMAC_SHA256_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">HMAC size (HMAC-SHA256).</p>
+          <p class="Pp">Definition at line <b>87</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_MAC_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_MAC_SIZE___"
+              >#define CRYPTO_MAC_SIZE <b>POLY1305_MAC_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">MAC size (Poly1305).</p>
+          <p class="Pp">Definition at line <b>85</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_packet_plan()</b>, and
+            <b>send_packet_secure()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_NONCE_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_NONCE_SIZE___"
+              >#define CRYPTO_NONCE_SIZE <b>XSALSA20_NONCE_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Nonce size (XSalsa20).</p>
+          <p class="Pp">Definition at line <b>79</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_packet_plan()</b>, and
+            <b>send_packet_secure()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_PRIVATE_KEY_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_PRIVATE_KEY_SIZE___"
+              >#define CRYPTO_PRIVATE_KEY_SIZE <b>X25519_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Private key size (X25519).</p>
+          <p class="Pp">Definition at line <b>69</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_PUBLIC_KEY_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_PUBLIC_KEY_SIZE___"
+              >#define CRYPTO_PUBLIC_KEY_SIZE <b>X25519_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Public key size (X25519).</p>
+          <p class="Pp">Definition at line <b>67</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_process_rekey_request()</b>,
+            <b>crypto_handshake_process_rekey_response()</b>,
+            <b>crypto_handshake_rekey_request()</b>,
+            <b>crypto_handshake_rekey_response()</b>, and
+            <b>parse_public_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_SALT_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_SALT_SIZE___"
+              >#define CRYPTO_SALT_SIZE <b>ARGON2ID_SALT_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Salt size (Argon2id).</p>
+          <p class="Pp">Definition at line <b>81</b> of file <b>sizes.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_SHARED_KEY_SIZE___">
+            <a class="permalink" href="#_define_CRYPTO_SHARED_KEY_SIZE___"
+              >#define CRYPTO_SHARED_KEY_SIZE <b>X25519_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Shared key size (X25519).</p>
+          <p class="Pp">Definition at line <b>71</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_compute_auth_response()</b>,
+            <b>crypto_compute_password_hmac()</b>,
+            <b>crypto_handshake_process_rekey_complete()</b>,
+            <b>crypto_handshake_rekey_complete()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>, and
+            <b>crypto_verify_auth_response()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ED25519_PRIVATE_KEY_SIZE___64">
+            <a class="permalink" href="#_define_ED25519_PRIVATE_KEY_SIZE___64"
+              >#define ED25519_PRIVATE_KEY_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Ed25519 private key size (seed + public) in bytes.</p>
+          <p class="Pp">Definition at line <b>35</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_generate()</b>,
+            <b>acds_identity_load()</b>, <b>acds_identity_save()</b>,
+            <b>acds_sign_session_create()</b>, <b>acds_sign_session_join()</b>,
+            <b>discovery_session_create()</b>, <b>discovery_session_start()</b>,
+            <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_to_x25519_private()</b>, <b>parse_private_key()</b>,
+            <b>peer_crypto_create()</b>, and <b>ssh_agent_add_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ED25519_PUBLIC_KEY_SIZE___32">
+            <a class="permalink" href="#_define_ED25519_PUBLIC_KEY_SIZE___32"
+              >#define ED25519_PUBLIC_KEY_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">Ed25519 public key size in bytes.</p>
+          <p class="Pp">Definition at line <b>33</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_fingerprint()</b>,
+            <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
+            <b>acds_identity_save()</b>, <b>acds_verify_session_create()</b>,
+            <b>acds_verify_session_join()</b>,
+            <b>acip_security_init_options()</b>, <b>add_known_host()</b>,
+            <b>add_known_host()</b>, <b>check_known_host()</b>,
+            <b>check_known_host()</b>, <b>check_known_host_with_key()</b>,
+            <b>check_known_host_with_key()</b>,
+            <b>check_known_host_with_key()</b>, <b>client_crypto_init()</b>,
+            <b>compute_key_fingerprint()</b>, <b>compute_key_fingerprint()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>crypto_handshake_validate_packet_size()</b>,
+            <b>database_session_add_key()</b>,
+            <b>database_session_get_keys()</b>,
+            <b>database_session_lookup()</b>,
+            <b>database_session_revoke_key()</b>,
+            <b>database_session_verify_key()</b>,
+            <b>discovery_keys_download_https()</b>,
+            <b>discovery_keys_load_cached()</b>,
+            <b>discovery_keys_load_file()</b>,
+            <b>discovery_keys_save_cached()</b>, <b>discovery_keys_verify()</b>,
+            <b>discovery_keys_verify_change()</b>,
+            <b>discovery_session_create()</b>, <b>discovery_session_start()</b>,
+            <b>display_mitm_warning()</b>, <b>display_mitm_warning()</b>,
+            <b>ed25519_sign_message()</b>, <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_to_x25519_public()</b>,
+            <b>ed25519_to_x25519_public()</b>,
+            <b>ed25519_verify_signature()</b>,
+            <b>ed25519_verify_signature()</b>,
+            <b>extract_ed25519_from_gpg()</b>, <b>gpg_get_public_key()</b>,
+            <b>gpg_to_x25519_public()</b>, <b>hex_to_pubkey()</b>,
+            <b>key_fingerprint_digest()</b>, <b>key_fingerprint_digest()</b>,
+            <b>openpgp_extract_ed25519_from_mpi()</b>,
+            <b>openpgp_extract_ed25519_from_mpi()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>,
+            <b>openpgp_parse_armored_seckey()</b>,
+            <b>openpgp_parse_armored_seckey()</b>,
+            <b>openpgp_parse_binary_pubkey()</b>,
+            <b>openpgp_parse_binary_pubkey()</b>,
+            <b>openpgp_parse_binary_seckey()</b>,
+            <b>openpgp_parse_binary_seckey()</b>,
+            <b>openpgp_parse_public_key_packet()</b>,
+            <b>openpgp_parse_secret_key_packet()</b>, <b>parse_gpg_key()</b>,
+            <b>parse_gpg_key_binary()</b>, <b>parse_private_key()</b>,
+            <b>parse_ssh_ed25519_line()</b>, <b>parse_ssh_ed25519_line()</b>,
+            <b>peer_crypto_create()</b>, <b>prompt_unknown_host()</b>,
+            <b>prompt_unknown_host()</b>, <b>pubkey_to_hex()</b>,
+            <b>ssh_agent_add_key()</b>, and <b>ssh_agent_sign()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ED25519_SEED_SIZE___32">
+            <a class="permalink" href="#_define_ED25519_SEED_SIZE___32"
+              >#define ED25519_SEED_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Raw Ed25519 seeds used by OpenPGP, before expansion to a secret key.
+          </p>
+          <p class="Pp">
+            Definition at line <b>165</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>openpgp_parse_armored_seckey()</b>,
+            <b>openpgp_parse_armored_seckey()</b>,
+            <b>openpgp_parse_binary_seckey()</b>,
+            <b>openpgp_parse_binary_seckey()</b>, <b>parse_private_key()</b>,
+            <b>peer_crypto_create()</b>, and <b>ssh_agent_add_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ED25519_SIGNATURE_PART_SIZE___(">
+            <a class="permalink" href="#_define_ED25519_SIGNATURE_PART_SIZE___("
+              >#define ED25519_SIGNATURE_PART_SIZE (<b
+                >ED25519_SIGNATURE_SIZE</b
+              >
+              / 2)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>7</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">Referenced by <b>gpg_agent_sign()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ED25519_SIGNATURE_SIZE___64">
+            <a class="permalink" href="#_define_ED25519_SIGNATURE_SIZE___64"
+              >#define ED25519_SIGNATURE_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Ed25519 signature size in bytes.</p>
+          <p class="Pp">Definition at line <b>37</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_sign_session_create()</b>,
+            <b>acds_sign_session_join()</b>,
+            <b>acds_verify_session_create()</b>,
+            <b>acds_verify_session_join()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>,
+            <b>crypto_handshake_validate_packet_size()</b>,
+            <b>ed25519_sign_message()</b>, <b>ed25519_sign_message()</b>,
+            <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_verify_signature()</b>,
+            <b>ed25519_verify_signature()</b>,
+            <b>gpg_sign_detached_ed25519()</b>,
+            <b>gpg_verify_detached_ed25519()</b>, <b>ssh_agent_get_key()</b>,
+            and <b>ssh_agent_sign()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_GPG_FINGERPRINT_HEX_BUFFER_SIZE___(">
+            <a
+              class="permalink"
+              href="#_define_GPG_FINGERPRINT_HEX_BUFFER_SIZE___("
+              >#define GPG_FINGERPRINT_HEX_BUFFER_SIZE (<b
+                >GPG_FINGERPRINT_SIZE</b
+              >
+              * 2 + 1)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>168</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>, and
+            <b>parse_gpg_keys_from_response()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_GPG_FINGERPRINT_SIZE___20">
+            <a class="permalink" href="#_define_GPG_FINGERPRINT_SIZE___20"
+              >#define GPG_FINGERPRINT_SIZE 20</a
+            >
+          </h2>
+          <p class="Pp">OpenPGP v4 fingerprint and long key ID widths.</p>
+          <p class="Pp">
+            Definition at line <b>167</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>get_gpg_fingerprint()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_GPG_KEY_ID_HEX_BUFFER_SIZE___(">
+            <a class="permalink" href="#_define_GPG_KEY_ID_HEX_BUFFER_SIZE___("
+              >#define GPG_KEY_ID_HEX_BUFFER_SIZE (<b>GPG_KEY_ID_SIZE</b> * 2 +
+              1)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>170</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>parse_gpg_keys_from_response()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_GPG_KEY_ID_SIZE___8">
+            <a class="permalink" href="#_define_GPG_KEY_ID_SIZE___8"
+              >#define GPG_KEY_ID_SIZE 8</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>169</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>format_gpg_key_display()</b>, and
+            <b>get_gpg_key_id()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_GPG_SIGNATURE_PACKET_CAPACITY___512">
+            <a
+              class="permalink"
+              href="#_define_GPG_SIGNATURE_PACKET_CAPACITY___512"
+              >#define GPG_SIGNATURE_PACKET_CAPACITY 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>gpg_sign_detached_ed25519()</b>, and
+            <b>gpg_verify_detached_ed25519()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HEX_STRING_SIZE_32___(32_*_2_+_1)">
+            <a
+              class="permalink"
+              href="#_define_HEX_STRING_SIZE_32___(32_*_2_+_1)"
+              >#define HEX_STRING_SIZE_32 (32 * 2 + 1)</a
+            >
+          </h2>
+          <p class="Pp">
+            Hex string size for 32-byte values (64 hex chars + null terminator).
+          </p>
+          <p class="Pp">
+            Definition at line <b>154</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_fingerprint()</b>,
+            <b>client_crypto_init()</b>, <b>client_get_public_key_hex()</b>,
+            <b>compute_key_fingerprint()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_start()</b>,
+            <b>discovery_keys_verify_change()</b>,
+            <b>discovery_session_create()</b>, <b>format_public_key()</b>,
+            <b>gpg_sign_detached_ed25519()</b>, <b>gpg_verify_signature()</b>,
+            <b>key_identity_format()</b>, and <b>pubkey_to_hex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HEX_STRING_SIZE_64___(64_*_2_+_1)">
+            <a
+              class="permalink"
+              href="#_define_HEX_STRING_SIZE_64___(64_*_2_+_1)"
+              >#define HEX_STRING_SIZE_64 (64 * 2 + 1)</a
+            >
+          </h2>
+          <p class="Pp">
+            Hex string size for 64-byte values (128 hex chars + null
+            terminator).
+          </p>
+          <p class="Pp">
+            Definition at line <b>156</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_client_key_exchange()</b>, and
+            <b>gpg_agent_sign()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HMAC_SHA256_KEY_SIZE___32">
+            <a class="permalink" href="#_define_HMAC_SHA256_KEY_SIZE___32"
+              >#define HMAC_SHA256_KEY_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">Fixed HMAC key width used by the authentication API.</p>
+          <p class="Pp">Definition at line <b>45</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_compute_hmac()</b>,
+            <b>crypto_compute_hmac_ex()</b>, <b>crypto_verify_hmac()</b>, and
+            <b>crypto_verify_hmac_ex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HMAC_SHA256_SIZE___32">
+            <a class="permalink" href="#_define_HMAC_SHA256_SIZE___32"
+              >#define HMAC_SHA256_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">HMAC-SHA256 output size in bytes.</p>
+          <p class="Pp">Definition at line <b>43</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>compute_key_fingerprint()</b>,
+            <b>crypto_combine_auth_data()</b>,
+            <b>crypto_compute_auth_response()</b>, <b>crypto_compute_hmac()</b>,
+            <b>crypto_compute_hmac_ex()</b>, <b>crypto_extract_auth_data()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>, <b>crypto_init()</b>,
+            <b>crypto_verify_auth_response()</b>, <b>crypto_verify_hmac()</b>,
+            and <b>crypto_verify_hmac_ex()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_AUTH_FAILED_PACKET_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_MAX_AUTH_FAILED_PACKET_SIZE___256"
+              >#define MAX_AUTH_FAILED_PACKET_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Maximum AUTH_FAILED packet size (256 bytes).</p>
+          <p class="Pp">
+            Definition at line <b>142</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_validate_packet_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_COMMENT_LEN___256">
+            <a class="permalink" href="#_define_MAX_COMMENT_LEN___256"
+              >#define MAX_COMMENT_LEN 256</a
+            >
+          </h2>
+          <p class="Pp">Existing text storage budgets, including NUL.</p>
+          <p class="Pp">
+            Definition at line <b>172</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>validate_private_key()</b>, and
+            <b>validate_public_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_ENCRYPTED_PACKET_SIZE___65536">
+            <a
+              class="permalink"
+              href="#_define_MAX_ENCRYPTED_PACKET_SIZE___65536"
+              >#define MAX_ENCRYPTED_PACKET_SIZE 65536</a
+            >
+          </h2>
+          <p class="Pp">Maximum encrypted packet size (64KB).</p>
+          <p class="Pp">
+            Definition at line <b>144</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_validate_packet_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_GPG_KEYGRIP_LEN___64">
+            <a class="permalink" href="#_define_MAX_GPG_KEYGRIP_LEN___64"
+              >#define MAX_GPG_KEYGRIP_LEN 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>173</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>extract_ed25519_from_gpg()</b>, and
+            <b>parse_private_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MAX_PASSWORD_LENGTH___256">
+            <a class="permalink" href="#_define_MAX_PASSWORD_LENGTH___256"
+              >#define MAX_PASSWORD_LENGTH 256</a
+            >
+          </h2>
+          <p class="Pp">Maximum password length (256 characters).</p>
+          <p class="Pp">Definition at line <b>21</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">Referenced by <b>crypto_validate_password()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MIN_PASSWORD_LENGTH___8">
+            <a class="permalink" href="#_define_MIN_PASSWORD_LENGTH___8"
+              >#define MIN_PASSWORD_LENGTH 8</a
+            >
+          </h2>
+          <p class="Pp">Minimum password length (8 characters).</p>
+          <p class="Pp">Definition at line <b>19</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">Referenced by <b>crypto_validate_password()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PASSWORD_BUFFER_SIZE___256">
+            <a class="permalink" href="#_define_PASSWORD_BUFFER_SIZE___256"
+              >#define PASSWORD_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Password input buffer size (256 bytes).</p>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>,
+            <b>crypto_handshake_client_auth_response()</b>,
+            <b>session_connection_establish()</b>, and
+            <b>session_participant_connect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_POLY1305_MAC_SIZE___16">
+            <a class="permalink" href="#_define_POLY1305_MAC_SIZE___16"
+              >#define POLY1305_MAC_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">Poly1305 MAC size in bytes.</p>
+          <p class="Pp">Definition at line <b>41</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_server_send_parameters()</b>, and
+            <b>crypto_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SECRETBOX_KEY_SIZE___32">
+            <a class="permalink" href="#_define_SECRETBOX_KEY_SIZE___32"
+              >#define SECRETBOX_KEY_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">Secretbox key size in bytes.</p>
+          <p class="Pp">Definition at line <b>49</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_derive_password_encryption_key()</b>,
+            <b>crypto_init()</b>, and <b>crypto_verify_password()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_AUTH_RESPONSE_SIZE___">
+            <a class="permalink" href="#_define_SERVER_AUTH_RESPONSE_SIZE___"
+              >#define SERVER_AUTH_RESPONSE_SIZE <b>AUTH_HMAC_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">Server authentication response size (32 bytes).</p>
+          <p class="Pp">
+            Definition at line <b>134</b> of file <b>sizes.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_X25519_KEY_SIZE___32">
+            <a class="permalink" href="#_define_X25519_KEY_SIZE___32"
+              >#define X25519_KEY_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">X25519 key size in bytes.</p>
+          <p class="Pp">Definition at line <b>31</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_create_public_key_packet()</b>,
+            <b>crypto_get_public_key()</b>, <b>crypto_init()</b>,
+            <b>crypto_set_peer_public_key()</b>,
+            <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_to_x25519_private()</b>,
+            <b>ed25519_to_x25519_public()</b>,
+            <b>ed25519_to_x25519_public()</b>, <b>gpg_to_x25519_public()</b>,
+            <b>private_key_to_x25519()</b>, <b>private_key_to_x25519()</b>,
+            <b>public_key_to_x25519()</b>, and <b>public_key_to_x25519()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_XSALSA20_NONCE_SIZE___24">
+            <a class="permalink" href="#_define_XSALSA20_NONCE_SIZE___24"
+              >#define XSALSA20_NONCE_SIZE 24</a
+            >
+          </h2>
+          <p class="Pp">XSalsa20 nonce size in bytes.</p>
+          <p class="Pp">Definition at line <b>39</b> of file <b>sizes.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>crypto_encrypt()</b>,
+            <b>crypto_handshake_server_send_parameters()</b>, and
+            <b>crypto_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ZERO_KEY_SIZE___">
+            <a class="permalink" href="#_define_ZERO_KEY_SIZE___"
+              >#define ZERO_KEY_SIZE <b>X25519_KEY_SIZE</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Zero key array size (32 bytes, used for no-identity entries).
+          </p>
+          <p class="Pp">
+            Definition at line <b>160</b> of file <b>sizes.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_client_key_exchange()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

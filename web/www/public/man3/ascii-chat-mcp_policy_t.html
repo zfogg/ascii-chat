@@ -1,151 +1,223 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mcp_policy_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mcp_policy_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mcp_policy_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mcp_policy_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;src/mcp-server/mcp.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>hosted</b>
-  <br/>
-  <b>bool</b> <b>restricted</b>
-  <br/>
-  const char * <b>address</b>
-  <br/>
-  const char * <b>address6</b>
-  <br/>
-  const char * <b>tls_cert</b>
-  <br/>
-  const char * <b>tls_key</b>
-  <br/>
-  const char * <b>tls_password</b>
-  <br/>
-  unsigned <b>max_jobs</b>
-  <br/>
-  const char * <b>origin</b>
-  <br/>
-  int <b>port</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>29</b> of file <b>mcp.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_mcp_policy_t::address"><a class="permalink" href="#const_char*_mcp_policy_t::address">const
-  char* mcp_policy_t::address</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_mcp_policy_t::address6"><a class="permalink" href="#const_char*_mcp_policy_t::address6">const
-  char* mcp_policy_t::address6</a></h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> mcp_policy_t::hosted</h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_jobs_reap()</b>, and
-    <b>mcp_server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_mcp_policy_t::max_jobs"><a class="permalink" href="#unsigned_mcp_policy_t::max_jobs">unsigned
-  mcp_policy_t::max_jobs</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
-    <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
-    <b>mcp_stdio_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_mcp_policy_t::origin"><a class="permalink" href="#const_char*_mcp_policy_t::origin">const
-  char* mcp_policy_t::origin</a></h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>mcp.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_mcp_policy_t::port"><a class="permalink" href="#int_mcp_policy_t::port">int
-  mcp_policy_t::port</a></h2>
-<p class="Pp">Definition at line <b>37</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> mcp_policy_t::restricted</h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_request_parse()</b>,
-    <b>mcp_server_main()</b>, and <b>mcp_tools_schema()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_mcp_policy_t::tls_cert"><a class="permalink" href="#const_char*_mcp_policy_t::tls_cert">const
-  char* mcp_policy_t::tls_cert</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>, and
-  <b>mcp_server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_mcp_policy_t::tls_key"><a class="permalink" href="#const_char_*_mcp_policy_t::tls_key">const
-  char * mcp_policy_t::tls_key</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>, and
-  <b>mcp_server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_mcp_policy_t::tls_password"><a class="permalink" href="#const_char_*_mcp_policy_t::tls_password">const
-  char * mcp_policy_t::tls_password</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>mcp.h</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mcp_policy_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mcp_policy_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mcp_policy_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">mcp_policy_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;src/mcp-server/mcp.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>hosted</b>
+            <br />
+            <b>bool</b> <b>restricted</b>
+            <br />
+            const char * <b>address</b>
+            <br />
+            const char * <b>address6</b>
+            <br />
+            const char * <b>tls_cert</b>
+            <br />
+            const char * <b>tls_key</b>
+            <br />
+            const char * <b>tls_password</b>
+            <br />
+            unsigned <b>max_jobs</b>
+            <br />
+            const char * <b>origin</b>
+            <br />
+            int <b>port</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Definition at line <b>29</b> of file <b>mcp.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_mcp_policy_t::address">
+            <a class="permalink" href="#const_char*_mcp_policy_t::address"
+              >const char* mcp_policy_t::address</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>32</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_mcp_policy_t::address6">
+            <a class="permalink" href="#const_char*_mcp_policy_t::address6"
+              >const char* mcp_policy_t::address6</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>33</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> mcp_policy_t::hosted</h2>
+          <p class="Pp">Definition at line <b>30</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_jobs_reap()</b>, and
+            <b>mcp_server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_mcp_policy_t::max_jobs">
+            <a class="permalink" href="#unsigned_mcp_policy_t::max_jobs"
+              >unsigned mcp_policy_t::max_jobs</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>35</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
+            <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
+            <b>mcp_stdio_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_mcp_policy_t::origin">
+            <a class="permalink" href="#const_char*_mcp_policy_t::origin"
+              >const char* mcp_policy_t::origin</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>36</b> of file <b>mcp.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_mcp_policy_t::port">
+            <a class="permalink" href="#int_mcp_policy_t::port"
+              >int mcp_policy_t::port</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>37</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> mcp_policy_t::restricted</h2>
+          <p class="Pp">Definition at line <b>31</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>mcp_dispatch()</b>, <b>mcp_request_parse()</b>,
+            <b>mcp_server_main()</b>, and <b>mcp_tools_schema()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_mcp_policy_t::tls_cert">
+            <a class="permalink" href="#const_char*_mcp_policy_t::tls_cert"
+              >const char* mcp_policy_t::tls_cert</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>34</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>mcp_http_run()</b>, and <b>mcp_server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_mcp_policy_t::tls_key">
+            <a class="permalink" href="#const_char_*_mcp_policy_t::tls_key"
+              >const char * mcp_policy_t::tls_key</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>34</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>mcp_http_run()</b>, and <b>mcp_server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_mcp_policy_t::tls_password">
+            <a class="permalink" href="#const_char_*_mcp_policy_t::tls_password"
+              >const char * mcp_policy_t::tls_password</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>34</b> of file <b>mcp.h</b>.</p>
+          <p class="Pp">Referenced by <b>mcp_http_run()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

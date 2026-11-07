@@ -1,62 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>key_set.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">key_set.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">key_set.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">key_set.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acds_create_key_set_collect</b>
-    (<b>acds_create_key_set_t</b> *set, const <b>acip_session_create_t</b> *req,
-    <b>bool</b> require_identity, <b>bool</b> *complete)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acds_create_key_set_collect
-  (<b>acds_create_key_set_t</b> * set, const <b>acip_session_create_t</b> * req,
-  <b>bool</b> require_identity, <b>bool</b> * complete)</h2>
-<p class="Pp">Validate order, bounds, deduplication and individual possession
-    proofs. Errors clear the sequence. complete is true only when every key is
-    present.</p>
-<p class="Pp">Definition at line <b>6</b> of file <b>key_set.c</b>.</p>
-<pre>7                                                                                      {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>key_set.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">key_set.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">key_set.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">key_set.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acds_create_key_set_collect</b> (<b
+              >acds_create_key_set_t</b
+            >
+            *set, const <b>acip_session_create_t</b> *req,
+            <b>bool</b> require_identity, <b>bool</b> *complete)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acds_create_key_set_collect (<b
+              >acds_create_key_set_t</b
+            >
+            * set, const <b>acip_session_create_t</b> * req,
+            <b>bool</b> require_identity, <b>bool</b> * complete)
+          </h2>
+          <p class="Pp">
+            Validate order, bounds, deduplication and individual possession
+            proofs. Errors clear the sequence. complete is true only when every
+            key is present.
+          </p>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>key_set.c</b>.
+          </p>
+          <pre>
+7                                                                                      {
 8   if (!set || !req || !complete)
 9     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing create sequence parameters&quot;);
 10   *complete = false;
@@ -96,29 +143,34 @@
 44   *complete = set-&gt;count == total;
 45   return ASCIICHAT_OK;
 46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_create_key_set_collect()</b>,
-    <b>acds_validate_timestamp()</b>, <b>acds_verify_session_create()</b>,
-    <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>acip_session_create_t</b>,
-    <b>ASCIICHAT_OK</b>, <b>acds_create_key_set_t::count</b>,
-    <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>acds_create_key_set_t::keys</b>, <b>MAX_SESSION_KEYS</b>,
-    <b>acds_create_key_set_t::request</b>,
-    <b>acds_create_key_set_t::reserved_string</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_create_key_set_collect()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_create_key_set_collect()</b>,
+            <b>acds_validate_timestamp()</b>,
+            <b>acds_verify_session_create()</b>,
+            <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>acip_session_create_t</b>,
+            <b>ASCIICHAT_OK</b>, <b>acds_create_key_set_t::count</b>,
+            <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>acds_create_key_set_t::keys</b>, <b>MAX_SESSION_KEYS</b>,
+            <b>acds_create_key_set_t::request</b>,
+            <b>acds_create_key_set_t::reserved_string</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_create_key_set_collect()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

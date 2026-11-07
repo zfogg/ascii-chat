@@ -1,156 +1,228 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>palette.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">palette.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">palette.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">palette.c - &#x1F3A8; Terminal color palette management with
-    Unicode character width detection</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE</b> 256
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">const <b>palette_def_t</b> * <b>get_builtin_palette</b>
-    (<b>palette_type_t</b> type)
-  <br/>
-  Get built-in palette definition. <b>bool</b>
-    <b>palette_requires_utf8_encoding</b> (const char *chars, size_t len)
-  <br/>
-  Check if palette requires UTF-8 encoding. <b>bool</b>
-    <b>validate_palette_chars</b> (const char *chars, size_t len)
-  <br/>
-  Validate palette character sequence. <b>bool</b>
-    <b>detect_client_utf8_support</b> (<b>utf8_capabilities_t</b> *caps)
-  <br/>
-  Detect client UTF-8 support capabilities. <b>palette_type_t</b>
-    <b>select_compatible_palette</b> (<b>palette_type_t</b> requested,
-    <b>bool</b> client_utf8)
-  <br/>
-  Select compatible palette based on client capabilities. int
-    <b>apply_palette_config</b> (<b>palette_type_t</b> type, const char
-    *custom_chars)
-  <br/>
-  Apply palette configuration (set global palette). int
-    <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
-    palette_len, char luminance_mapping[<b>ASCII_LUMINANCE_LEVELS</b>])
-  <br/>
-  Build luminance mapping table from palette characters. int
-    <b>initialize_client_palette</b> (<b>palette_type_t</b> palette_type, const
-    char *custom_chars, char
-    client_palette_chars[<b>ASCII_PALETTE_BUFFER_SIZE</b>], size_t
-    *client_palette_len, char
-    client_luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
-  <br/>
-  Initialize client palette with full configuration. <b>utf8_palette_t</b> *
-    <b>utf8_palette_create</b> (const char *palette_string)
-  <br/>
-  Create a UTF-8 palette from string. void <b>utf8_palette_destroy</b>
-    (<b>utf8_palette_t</b> *palette)
-  <br/>
-  Destroy a UTF-8 palette and free resources. const <b>utf8_char_info_t</b> *
-    <b>utf8_palette_get_char</b> (const <b>utf8_palette_t</b> *palette, size_t
-    index)
-  <br/>
-  Get UTF-8 character information at index. size_t
-    <b>utf8_palette_get_char_count</b> (const <b>utf8_palette_t</b> *palette)
-  <br/>
-  Get number of characters in UTF-8 palette. <b>bool</b>
-    <b>utf8_palette_contains_char</b> (const <b>utf8_palette_t</b> *palette,
-    const char *utf8_char, size_t char_bytes)
-  <br/>
-  Check if UTF-8 palette contains a specific character. size_t
-    <b>utf8_palette_find_char_index</b> (const <b>utf8_palette_t</b> *palette,
-    const char *utf8_char, size_t char_bytes)
-  <br/>
-  Find index of UTF-8 character in palette. size_t
-    <b>utf8_palette_find_all_char_indices</b> (const <b>utf8_palette_t</b>
-    *palette, const char *utf8_char, size_t char_bytes, size_t *indices, size_t
-    max_indices)
-  <br/>
-  Find all indices of UTF-8 character in palette.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">const char <b>DEFAULT_ASCII_PALETTE</b> [] =
-    <b>PALETTE_CHARS_STANDARD</b>
-  <br/>
-  Default ASCII palette for legacy functions. const size_t
-    <b>DEFAULT_ASCII_PALETTE_LEN</b> = 23
-  <br/>
-  Length of default ASCII palette.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3A8; Terminal color palette management with Unicode character
-    width detection</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>palette.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE___256"><a class="permalink" href="#_define_VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE___256">#define
-  VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>palette.c</b>.</p>
-<p class="Pp">Referenced by <b>utf8_palette_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>palette.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">palette.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">palette.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          palette.c - &#x1F3A8; Terminal color palette management with Unicode
+          character width detection
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE</b> 256
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>palette_def_t</b> * <b>get_builtin_palette</b> (<b
+              >palette_type_t</b
+            >
+            type)
+            <br />
+            Get built-in palette definition. <b>bool</b>
+            <b>palette_requires_utf8_encoding</b> (const char *chars, size_t
+            len)
+            <br />
+            Check if palette requires UTF-8 encoding. <b>bool</b>
+            <b>validate_palette_chars</b> (const char *chars, size_t len)
+            <br />
+            Validate palette character sequence. <b>bool</b>
+            <b>detect_client_utf8_support</b> (<b>utf8_capabilities_t</b>
+            *caps)
+            <br />
+            Detect client UTF-8 support capabilities. <b>palette_type_t</b>
+            <b>select_compatible_palette</b> (<b>palette_type_t</b> requested,
+            <b>bool</b> client_utf8)
+            <br />
+            Select compatible palette based on client capabilities. int
+            <b>apply_palette_config</b> (<b>palette_type_t</b> type, const char
+            *custom_chars)
+            <br />
+            Apply palette configuration (set global palette). int
+            <b>build_client_luminance_palette</b> (const char *palette_chars,
+            size_t palette_len, char
+            luminance_mapping[<b>ASCII_LUMINANCE_LEVELS</b>])
+            <br />
+            Build luminance mapping table from palette characters. int
+            <b>initialize_client_palette</b> (<b>palette_type_t</b>
+            palette_type, const char *custom_chars, char
+            client_palette_chars[<b>ASCII_PALETTE_BUFFER_SIZE</b>], size_t
+            *client_palette_len, char
+            client_luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
+            <br />
+            Initialize client palette with full configuration.
+            <b>utf8_palette_t</b> * <b>utf8_palette_create</b> (const char
+            *palette_string)
+            <br />
+            Create a UTF-8 palette from string. void
+            <b>utf8_palette_destroy</b> (<b>utf8_palette_t</b>
+            *palette)
+            <br />
+            Destroy a UTF-8 palette and free resources. const
+            <b>utf8_char_info_t</b> * <b>utf8_palette_get_char</b> (const
+            <b>utf8_palette_t</b> *palette, size_t index)
+            <br />
+            Get UTF-8 character information at index. size_t
+            <b>utf8_palette_get_char_count</b> (const
+            <b>utf8_palette_t</b> *palette)
+            <br />
+            Get number of characters in UTF-8 palette. <b>bool</b>
+            <b>utf8_palette_contains_char</b> (const
+            <b>utf8_palette_t</b> *palette, const char *utf8_char, size_t
+            char_bytes)
+            <br />
+            Check if UTF-8 palette contains a specific character. size_t
+            <b>utf8_palette_find_char_index</b> (const
+            <b>utf8_palette_t</b> *palette, const char *utf8_char, size_t
+            char_bytes)
+            <br />
+            Find index of UTF-8 character in palette. size_t
+            <b>utf8_palette_find_all_char_indices</b> (const
+            <b>utf8_palette_t</b>
+            *palette, const char *utf8_char, size_t char_bytes, size_t *indices,
+            size_t max_indices)
+            <br />
+            Find all indices of UTF-8 character in palette.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const char <b>DEFAULT_ASCII_PALETTE</b> [] =
+            <b>PALETTE_CHARS_STANDARD</b>
+            <br />
+            Default ASCII palette for legacy functions. const size_t
+            <b>DEFAULT_ASCII_PALETTE_LEN</b> = 23
+            <br />
+            Length of default ASCII palette.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F3A8; Terminal color palette management with Unicode character
+          width detection
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>palette.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE___256"
+              >#define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>palette.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>utf8_palette_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

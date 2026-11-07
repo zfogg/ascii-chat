@@ -1,199 +1,314 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>renderer.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">renderer.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">renderer.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">renderer.h - Terminal-to-pixel renderer and render-file output
-    (audio + video).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>term_renderer_config_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>terminal_renderer_s</b>
-    <b>terminal_renderer_t</b>
-  <br/>
-  typedef struct <b>render_file_ctx_s</b> <b>render_file_ctx_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>term_renderer_theme_t</b> {
-    <b>TERM_RENDERER_THEME_DARK</b> = 0, <b>TERM_RENDERER_THEME_LIGHT</b> = 1,
-    <b>TERM_RENDERER_THEME_AUTO</b> = 2 }
-  <br/>
-  Terminal rendering theme.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>term_renderer_create</b> (const
-    <b>term_renderer_config_t</b> *cfg, <b>terminal_renderer_t</b> **out)
-  <br/>
-  <b>asciichat_error_t</b> <b>term_renderer_set_zalgo</b>
-    (<b>terminal_renderer_t</b> *r, int level)
-  <br/>
-  <b>asciichat_error_t</b> <b>term_renderer_feed</b> (<b>terminal_renderer_t</b>
-    *r, const char *ansi_frame, size_t len)
-  <br/>
-  const <b>uint8_t</b> * <b>term_renderer_pixels</b> (<b>terminal_renderer_t</b>
-    *r)
-  <br/>
-  int <b>term_renderer_width_px</b> (<b>terminal_renderer_t</b> *r)
-  <br/>
-  int <b>term_renderer_height_px</b> (<b>terminal_renderer_t</b> *r)
-  <br/>
-  int <b>term_renderer_pitch</b> (<b>terminal_renderer_t</b> *r)
-  <br/>
-  void <b>term_renderer_destroy</b> (<b>terminal_renderer_t</b> *r)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_create</b> (const char *output_path,
-    int cols, int rows, int fps, int theme, <b>render_file_ctx_t</b> **out)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_write_frame</b>
-    (<b>render_file_ctx_t</b> *ctx, const char *ansi_frame, <b>uint64_t</b>
-    captured_ns)
-  <br/>
-  void <b>render_file_set_live_timing</b> (<b>render_file_ctx_t</b> *ctx)
-  <br/>
-  void <b>render_file_set_snapshot_actual_duration</b> (<b>render_file_ctx_t</b>
-    *ctx, double actual_duration_sec)
-  <br/>
-  void <b>render_file_begin_drain</b> (<b>render_file_ctx_t</b> *ctx,
-    <b>uint64_t</b> total, <b>bool</b> total_known)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b>render_file_ctx_t</b>
-    *ctx)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Terminal-to-pixel renderer and render-file output (audio +
-  video).</p>
-<p class="Pp">Supports theme-aware rendering that adapts colors based on the
-    terminal's background theme (dark or light) for optimal readability.</p>
-<p class="Pp">Definition in file <b>renderer.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>render_file_ctx_s</b>
-  <b>render_file_ctx_t</b></h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>renderer.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef struct <b>terminal_renderer_s</b>
-  <b>terminal_renderer_t</b></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>renderer.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>term_renderer_theme_t</b></a></h2>
-<p class="Pp">Terminal rendering theme. Determines color palette for pixel-based
-    ANSI text rendering. When TERM_RENDERER_THEME_AUTO is used, theme is
-    detected from <b>terminal_has_dark_background()</b> to adapt colors to
-    user's theme.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="TERM_RENDERER_THEME_DARK"><a class="permalink" href="#TERM_RENDERER_THEME_DARK"><b><i>TERM_RENDERER_THEME_DARK
-    </i></b></a></dt>
-  <dd>Dark theme: use light colors for dark background</dd>
-  <dt id="TERM_RENDERER_THEME_LIGHT"><a class="permalink" href="#TERM_RENDERER_THEME_LIGHT"><b><i>TERM_RENDERER_THEME_LIGHT
-    </i></b></a></dt>
-  <dd>Light theme: use dark colors for light background</dd>
-  <dt id="TERM_RENDERER_THEME_AUTO"><a class="permalink" href="#TERM_RENDERER_THEME_AUTO"><b><i>TERM_RENDERER_THEME_AUTO
-    </i></b></a></dt>
-  <dd>Auto-detect theme from terminal (default)</dd>
-</dl>
-<p class="Pp">Definition at line <b>27</b> of file <b>renderer.h</b>.</p>
-<pre>27              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>renderer.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">renderer.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">renderer.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          renderer.h - Terminal-to-pixel renderer and render-file output (audio
+          + video).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>term_renderer_config_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>terminal_renderer_s</b>
+            <b>terminal_renderer_t</b>
+            <br />
+            typedef struct <b>render_file_ctx_s</b> <b>render_file_ctx_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>term_renderer_theme_t</b> {
+            <b>TERM_RENDERER_THEME_DARK</b> = 0,
+            <b>TERM_RENDERER_THEME_LIGHT</b> = 1,
+            <b>TERM_RENDERER_THEME_AUTO</b> = 2 }
+            <br />
+            Terminal rendering theme.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>term_renderer_create</b> (const
+            <b>term_renderer_config_t</b> *cfg,
+            <b>terminal_renderer_t</b> **out)
+            <br />
+            <b>asciichat_error_t</b> <b>term_renderer_set_zalgo</b> (<b
+              >terminal_renderer_t</b
+            >
+            *r, int level)
+            <br />
+            <b>asciichat_error_t</b> <b>term_renderer_feed</b> (<b
+              >terminal_renderer_t</b
+            >
+            *r, const char *ansi_frame, size_t len)
+            <br />
+            const <b>uint8_t</b> * <b>term_renderer_pixels</b> (<b
+              >terminal_renderer_t</b
+            >
+            *r)
+            <br />
+            int <b>term_renderer_width_px</b> (<b>terminal_renderer_t</b> *r)
+            <br />
+            int <b>term_renderer_height_px</b> (<b>terminal_renderer_t</b> *r)
+            <br />
+            int <b>term_renderer_pitch</b> (<b>terminal_renderer_t</b> *r)
+            <br />
+            void <b>term_renderer_destroy</b> (<b>terminal_renderer_t</b> *r)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_create</b> (const char
+            *output_path, int cols, int rows, int fps, int theme,
+            <b>render_file_ctx_t</b> **out)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_write_frame</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx, const char *ansi_frame, <b>uint64_t</b>
+            captured_ns)
+            <br />
+            void <b>render_file_set_live_timing</b> (<b>render_file_ctx_t</b>
+            *ctx)
+            <br />
+            void <b>render_file_set_snapshot_actual_duration</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx, double actual_duration_sec)
+            <br />
+            void <b>render_file_begin_drain</b> (<b>render_file_ctx_t</b> *ctx,
+            <b>uint64_t</b> total, <b>bool</b> total_known)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Terminal-to-pixel renderer and render-file output (audio + video).
+        </p>
+        <p class="Pp">
+          Supports theme-aware rendering that adapts colors based on the
+          terminal's background theme (dark or light) for optimal readability.
+        </p>
+        <p class="Pp">Definition in file <b>renderer.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>render_file_ctx_s</b> <b>render_file_ctx_t</b>
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>renderer.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef struct <b>terminal_renderer_s</b> <b>terminal_renderer_t</b>
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>renderer.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_"
+              >enum <b>term_renderer_theme_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Terminal rendering theme. Determines color palette for pixel-based
+            ANSI text rendering. When TERM_RENDERER_THEME_AUTO is used, theme is
+            detected from
+            <b>terminal_has_dark_background()</b> to adapt colors to user's
+            theme.
+          </p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="TERM_RENDERER_THEME_DARK">
+              <a class="permalink" href="#TERM_RENDERER_THEME_DARK"
+                ><b><i>TERM_RENDERER_THEME_DARK </i></b></a
+              >
+            </dt>
+            <dd>Dark theme: use light colors for dark background</dd>
+            <dt id="TERM_RENDERER_THEME_LIGHT">
+              <a class="permalink" href="#TERM_RENDERER_THEME_LIGHT"
+                ><b><i>TERM_RENDERER_THEME_LIGHT </i></b></a
+              >
+            </dt>
+            <dd>Light theme: use dark colors for light background</dd>
+            <dt id="TERM_RENDERER_THEME_AUTO">
+              <a class="permalink" href="#TERM_RENDERER_THEME_AUTO"
+                ><b><i>TERM_RENDERER_THEME_AUTO </i></b></a
+              >
+            </dt>
+            <dd>Auto-detect theme from terminal (default)</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>renderer.h</b>.
+          </p>
+          <pre>
+27              {
 28   TERM_RENDERER_THEME_DARK = 0,
 29   TERM_RENDERER_THEME_LIGHT = 1,
 30   TERM_RENDERER_THEME_AUTO = 2,
 31 } term_renderer_theme_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_begin_drain_("><a class="permalink" href="#void_render_file_begin_drain_(">void
-  render_file_begin_drain (<b>render_file_ctx_t</b> * ctx, <b>uint64_t</b>
-  total, <b>bool</b> total_known)</a></h2>
-<p class="Pp">Definition at line <b>345</b> of file <b>renderer.c</b>.</p>
-<pre>345                                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_begin_drain_(">
+            <a class="permalink" href="#void_render_file_begin_drain_("
+              >void render_file_begin_drain (<b>render_file_ctx_t</b> * ctx,
+              <b>uint64_t</b> total, <b>bool</b> total_known)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>345</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+345                                                                                        {
 346   if (ctx)
 347     render_progress_begin(ctx-&gt;progress, total, total_known);
 348 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::progress</b>,
-    <b>render_file_begin_drain()</b>, and <b>render_progress_begin()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_begin_drain()</b>, and
-    <b>session_display_begin_drain()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_create (const char *
-  output_path, int cols, int rows, int fps, int theme, <b>render_file_ctx_t</b>
-  ** out)</h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>renderer.c</b>.</p>
-<pre>47                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::progress</b>,
+            <b>render_file_begin_drain()</b>, and
+            <b>render_progress_begin()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_begin_drain()</b>, and
+            <b>session_display_begin_drain()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_create (const char *
+            output_path, int cols, int rows, int fps, int theme,
+            <b>render_file_ctx_t</b> ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+47                                                               {
 48   if (!output_path || !out || cols &lt;= 0 || rows &lt;= 0)
 49     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing render output, grid, or context&quot;);
 50   *out = NULL;
@@ -394,43 +509,58 @@
 245   *out = ctx;
 246   return ASCIICHAT_OK;
 247 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_buf_size</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>,
-    <b>audio_recording_create_channels()</b>,
-    <b>render_file_ctx_s::audio_sample_rate</b>,
-    <b>colorscheme_current_background()</b>, <b>render_file_ctx_s::encoder</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>ffmpeg_encoder_create_scaled()</b>, <b>ffmpeg_encoder_destroy()</b>,
-    <b>term_renderer_config_t::font_size_pt</b>,
-    <b>term_renderer_config_t::font_spec</b>, <b>render_file_ctx_s::fps</b>,
-    <b>GET_OPTION</b>, <b>render_file_ctx_s::kitty</b>,
-    <b>render_file_ctx_s::kitty_only</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>log_info</b>, <b>log_warn</b>, <b>NAMED_REGISTER_CONTEXT</b>,
-    <b>platform_font_resolve()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>render_file_ctx_s::progress</b>, <b>render_file_ctx_s::recording</b>,
-    <b>RENDER_AUTO_FONT_SIZE_PT</b>, <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b>,
-    <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b>, <b>render_file_create()</b>,
-    <b>render_progress_create()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>TERM_BACKGROUND_DARK</b>, <b>term_renderer_create()</b>,
-    <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>,
-    <b>TERM_RENDERER_THEME_AUTO</b>, <b>TERM_RENDERER_THEME_DARK</b>,
-    <b>TERM_RENDERER_THEME_LIGHT</b>, <b>term_renderer_width_px()</b>,
-    <b>terminal_is_stdout_tty()</b>, <b>ui_controller_title_render()</b>, and
-    <b>UI_TITLE_RENDERING</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_create()</b>, and
-  <b>session_display_init_render_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_destroy
-  (<b>render_file_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>356</b> of file <b>renderer.c</b>.</p>
-<pre>356                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>render_file_ctx_s::audio_buf_size</b>,
+            <b>render_file_ctx_s::audio_read_buf</b>,
+            <b>audio_recording_create_channels()</b>,
+            <b>render_file_ctx_s::audio_sample_rate</b>,
+            <b>colorscheme_current_background()</b>,
+            <b>render_file_ctx_s::encoder</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NOT_SUPPORTED</b>, <b>ffmpeg_encoder_create_scaled()</b>,
+            <b>ffmpeg_encoder_destroy()</b>,
+            <b>term_renderer_config_t::font_size_pt</b>,
+            <b>term_renderer_config_t::font_spec</b>,
+            <b>render_file_ctx_s::fps</b>, <b>GET_OPTION</b>,
+            <b>render_file_ctx_s::kitty</b>,
+            <b>render_file_ctx_s::kitty_only</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>NAMED_REGISTER_CONTEXT</b>, <b>platform_font_resolve()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_ctx_s::recording</b>,
+            <b>RENDER_AUTO_FONT_SIZE_PT</b>,
+            <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b>,
+            <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b>, <b>render_file_create()</b>,
+            <b>render_progress_create()</b>, <b>render_file_ctx_s::renderer</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+            <b>TERM_BACKGROUND_DARK</b>, <b>term_renderer_create()</b>,
+            <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>,
+            <b>TERM_RENDERER_THEME_AUTO</b>, <b>TERM_RENDERER_THEME_DARK</b>,
+            <b>TERM_RENDERER_THEME_LIGHT</b>, <b>term_renderer_width_px()</b>,
+            <b>terminal_is_stdout_tty()</b>,
+            <b>ui_controller_title_render()</b>, and <b>UI_TITLE_RENDERING</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_file_create()</b>, and
+            <b>session_display_init_render_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_destroy (<b
+              >render_file_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>356</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+356                                                               {
 357   if (!ctx)
 358     return ASCIICHAT_OK;
 359   NAMED_UNREGISTER(ctx);
@@ -466,76 +596,113 @@
 389   SAFE_FREE(ctx);
 390   return err;
 391 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_buf_size</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>, <b>audio_recording_destroy()</b>,
-    <b>audio_recording_read()</b>,
-    <b>render_file_ctx_s::audio_samples_written</b>,
-    <b>render_file_ctx_s::audio_target</b>, <b>render_file_ctx_s::encoder</b>,
-    <b>render_file_ctx_s::error</b>, <b>ERROR_MEDIA_INIT</b>,
-    <b>ffmpeg_encoder_destroy()</b>, <b>ffmpeg_encoder_write_audio()</b>,
-    <b>render_file_ctx_s::frames_written</b>, <b>render_file_ctx_s::kitty</b>,
-    <b>kitty_image_write()</b>, <b>NAMED_UNREGISTER</b>,
-    <b>render_file_ctx_s::progress</b>, <b>render_file_ctx_s::recording</b>,
-    <b>render_file_destroy()</b>, <b>render_progress_destroy()</b>,
-    <b>render_progress_finalize()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>term_renderer_destroy()</b>,
-    <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
-    <b>term_renderer_pixels()</b>, <b>term_renderer_width_px()</b>,
-    <b>ui_controller_title_render()</b>, <b>UI_TITLE_FAILED</b>,
-    <b>UI_TITLE_FINALIZING</b>, and <b>UI_TITLE_IDLE</b>.</p>
-<p class="Pp">Referenced by <b>render_file_destroy()</b>,
-    <b>render_file_destroy()</b>, and
-    <b>session_display_finish_render_file()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_live_timing_("><a class="permalink" href="#void_render_file_set_live_timing_(">void
-  render_file_set_live_timing (<b>render_file_ctx_t</b> * ctx)</a></h2>
-<p class="Pp">Definition at line <b>249</b> of file <b>renderer.c</b>.</p>
-<pre>249                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>render_file_ctx_s::audio_buf_size</b>,
+            <b>render_file_ctx_s::audio_read_buf</b>,
+            <b>audio_recording_destroy()</b>, <b>audio_recording_read()</b>,
+            <b>render_file_ctx_s::audio_samples_written</b>,
+            <b>render_file_ctx_s::audio_target</b>,
+            <b>render_file_ctx_s::encoder</b>, <b>render_file_ctx_s::error</b>,
+            <b>ERROR_MEDIA_INIT</b>, <b>ffmpeg_encoder_destroy()</b>,
+            <b>ffmpeg_encoder_write_audio()</b>,
+            <b>render_file_ctx_s::frames_written</b>,
+            <b>render_file_ctx_s::kitty</b>, <b>kitty_image_write()</b>,
+            <b>NAMED_UNREGISTER</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_ctx_s::recording</b>, <b>render_file_destroy()</b>,
+            <b>render_progress_destroy()</b>, <b>render_progress_finalize()</b>,
+            <b>render_file_ctx_s::renderer</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, <b>term_renderer_destroy()</b>,
+            <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
+            <b>term_renderer_pixels()</b>, <b>term_renderer_width_px()</b>,
+            <b>ui_controller_title_render()</b>, <b>UI_TITLE_FAILED</b>,
+            <b>UI_TITLE_FINALIZING</b>, and <b>UI_TITLE_IDLE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_destroy()</b>,
+            <b>render_file_destroy()</b>, and
+            <b>session_display_finish_render_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_live_timing_(">
+            <a class="permalink" href="#void_render_file_set_live_timing_("
+              >void render_file_set_live_timing (<b>render_file_ctx_t</b> *
+              ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>249</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+249                                                          {
 250   if (ctx) {
 251     ctx-&gt;live_timing = true;
 252     if (ctx-&gt;encoder)
 253       ffmpeg_encoder_set_live_timing(ctx-&gt;encoder);
 254   }
 255 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::encoder</b>,
-    <b>ffmpeg_encoder_set_live_timing()</b>,
-    <b>render_file_ctx_s::live_timing</b>, and
-    <b>render_file_set_live_timing()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_set_live_timing()</b>,
-    <b>session_display_render_frame()</b>, and
-    <b>session_display_set_render_live_timing()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
-  render_file_set_snapshot_actual_duration (<b>render_file_ctx_t</b> * ctx,
-  double actual_duration_sec)</a></h2>
-<p class="Pp">Definition at line <b>350</b> of file <b>renderer.c</b>.</p>
-<pre>350                                                                                                   {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::encoder</b>,
+            <b>ffmpeg_encoder_set_live_timing()</b>,
+            <b>render_file_ctx_s::live_timing</b>, and
+            <b>render_file_set_live_timing()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_set_live_timing()</b>,
+            <b>session_display_render_frame()</b>, and
+            <b>session_display_set_render_live_timing()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_(">
+            <a
+              class="permalink"
+              href="#void_render_file_set_snapshot_actual_duration_("
+              >void render_file_set_snapshot_actual_duration (<b
+                >render_file_ctx_t</b
+              >
+              * ctx, double actual_duration_sec)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>350</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+350                                                                                                   {
 351   if (!ctx || !ctx-&gt;encoder)
 352     return;
 353   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
 354 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::encoder</b>,
-    <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>, and
-    <b>render_file_set_snapshot_actual_duration()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_set_snapshot_actual_duration()</b>,
-    <b>render_file_set_snapshot_actual_duration()</b>, and
-    <b>session_display_set_snapshot_actual_duration()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_write_frame
-  (<b>render_file_ctx_t</b> * ctx, const char * ansi_frame, <b>uint64_t</b>
-  captured_ns)</h2>
-<p class="Pp">Definition at line <b>331</b> of file <b>renderer.c</b>.</p>
-<pre>331                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::encoder</b>,
+            <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>, and
+            <b>render_file_set_snapshot_actual_duration()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_set_snapshot_actual_duration()</b>,
+            <b>render_file_set_snapshot_actual_duration()</b>, and
+            <b>session_display_set_snapshot_actual_duration()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_write_frame (<b
+              >render_file_ctx_t</b
+            >
+            * ctx, const char * ansi_frame, <b>uint64_t</b> captured_ns)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>331</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+331                                                                                                            {
 332   if (!ctx || !frame)
 333     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing render context or frame&quot;);
 334   if (ctx-&gt;error != ASCIICHAT_OK)
@@ -548,23 +715,34 @@
 341     ctx-&gt;error = err;
 342   return err;
 343 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>render_file_ctx_s::error</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>render_file_ctx_s::progress</b>,
-    <b>render_file_write_frame()</b>, <b>render_progress_frame()</b>,
-    <b>SET_ERRNO</b>, <b>ui_controller_title_render()</b>, and
-    <b>UI_TITLE_FAILED</b>.</p>
-<p class="Pp">Referenced by <b>render_file_write_frame()</b>,
-    <b>render_file_write_frame()</b>, <b>session_display_encode_frame()</b>, and
-    <b>session_display_render_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_create (const
-  <b>term_renderer_config_t</b> * cfg, <b>terminal_renderer_t</b> ** out)</h2>
-<p class="Pp">Definition at line <b>306</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>306                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>render_file_ctx_s::error</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_write_frame()</b>, <b>render_progress_frame()</b>,
+            <b>SET_ERRNO</b>, <b>ui_controller_title_render()</b>, and
+            <b>UI_TITLE_FAILED</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_write_frame()</b>,
+            <b>render_file_write_frame()</b>,
+            <b>session_display_encode_frame()</b>, and
+            <b>session_display_render_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> term_renderer_create (const
+            <b>term_renderer_config_t</b> * cfg, <b>terminal_renderer_t</b> **
+            out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>306</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+306                                                                                                      {
 307   if (!cfg || !out || cfg-&gt;cols &lt;= 0 || cfg-&gt;rows &lt;= 0)
 308     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing font renderer configuration or output&quot;);
 309   *out = NULL;
@@ -830,38 +1008,53 @@
 569   *out = r;
 570   return ASCIICHAT_OK;
 571 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>terminal_renderer_s::baseline</b>, <b>terminal_renderer_s::cell_h</b>,
-    <b>terminal_renderer_s::cell_w</b>, <b>term_renderer_config_t::cols</b>,
-    <b>terminal_renderer_s::cols</b>, <b>ERROR_INIT</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
-    <b>ERROR_NOT_SUPPORTED</b>, <b>term_renderer_config_t::font_data</b>,
-    <b>term_renderer_config_t::font_data_size</b>,
-    <b>term_renderer_config_t::font_size_pt</b>,
-    <b>term_renderer_config_t::font_spec</b>,
-    <b>terminal_renderer_s::framebuffer</b>,
-    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::ft_lib</b>,
-    <b>GET_OPTION</b>, <b>terminal_renderer_s::glyph_cache</b>,
-    <b>terminal_renderer_s::height_px</b>,
-    <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug</b>,
-    <b>log_warn</b>, <b>terminal_renderer_s::pitch</b>,
-    <b>term_renderer_config_t::rows</b>, <b>terminal_renderer_s::rows</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
-    <b>term_renderer_create()</b>, <b>term_renderer_config_t::theme</b>,
-    <b>terminal_renderer_s::theme</b>, <b>terminal_renderer_s::vt</b>,
-    <b>terminal_renderer_s::vts</b>, and
-  <b>terminal_renderer_s::width_px</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>, and
-    <b>term_renderer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_term_renderer_destroy_("><a class="permalink" href="#void_term_renderer_destroy_(">void
-  term_renderer_destroy (<b>terminal_renderer_t</b> * r)</a></h2>
-<p class="Pp">Definition at line <b>939</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>939                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>terminal_renderer_s::baseline</b>,
+            <b>terminal_renderer_s::cell_h</b>,
+            <b>terminal_renderer_s::cell_w</b>,
+            <b>term_renderer_config_t::cols</b>,
+            <b>terminal_renderer_s::cols</b>, <b>ERROR_INIT</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>ERROR_NOT_SUPPORTED</b>,
+            <b>term_renderer_config_t::font_data</b>,
+            <b>term_renderer_config_t::font_data_size</b>,
+            <b>term_renderer_config_t::font_size_pt</b>,
+            <b>term_renderer_config_t::font_spec</b>,
+            <b>terminal_renderer_s::framebuffer</b>,
+            <b>terminal_renderer_s::ft_face</b>,
+            <b>terminal_renderer_s::ft_lib</b>, <b>GET_OPTION</b>,
+            <b>terminal_renderer_s::glyph_cache</b>,
+            <b>terminal_renderer_s::height_px</b>,
+            <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>terminal_renderer_s::pitch</b>,
+            <b>term_renderer_config_t::rows</b>,
+            <b>terminal_renderer_s::rows</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>term_renderer_create()</b>, <b>term_renderer_config_t::theme</b>,
+            <b>terminal_renderer_s::theme</b>, <b>terminal_renderer_s::vt</b>,
+            <b>terminal_renderer_s::vts</b>, and
+            <b>terminal_renderer_s::width_px</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>, and
+            <b>term_renderer_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_term_renderer_destroy_(">
+            <a class="permalink" href="#void_term_renderer_destroy_("
+              >void term_renderer_destroy (<b>terminal_renderer_t</b> * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>939</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+939                                                    {
 940   if (!r)
 941     return;
 942   vterm_free(r-&gt;vt);
@@ -876,24 +1069,38 @@
 951     SAFE_FREE(r-&gt;cells[i].pixels);
 952   SAFE_FREE(r);
 953 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>CELL_CACHE_SIZE</b>,
-    <b>terminal_renderer_s::cells</b>, <b>terminal_renderer_s::framebuffer</b>,
-    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::ft_lib</b>,
-    <b>terminal_renderer_s::glyph_cache</b>, <b>rendered_cell_t::pixels</b>,
-    <b>SAFE_FREE</b>, <b>term_renderer_destroy()</b>,
-    <b>terminal_renderer_s::vt</b>, <b>terminal_renderer_s::zalgo_cache</b>, and
-    <b>terminal_renderer_s::zalgo_face</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_destroy()</b>, and <b>term_renderer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_feed
-  (<b>terminal_renderer_t</b> * r, const char * ansi_frame, size_t len)</h2>
-<p class="Pp">Definition at line <b>645</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>645                                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>CELL_CACHE_SIZE</b>,
+            <b>terminal_renderer_s::cells</b>,
+            <b>terminal_renderer_s::framebuffer</b>,
+            <b>terminal_renderer_s::ft_face</b>,
+            <b>terminal_renderer_s::ft_lib</b>,
+            <b>terminal_renderer_s::glyph_cache</b>,
+            <b>rendered_cell_t::pixels</b>, <b>SAFE_FREE</b>,
+            <b>term_renderer_destroy()</b>, <b>terminal_renderer_s::vt</b>,
+            <b>terminal_renderer_s::zalgo_cache</b>, and
+            <b>terminal_renderer_s::zalgo_face</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_file_destroy()</b>, and <b>term_renderer_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> term_renderer_feed (<b
+              >terminal_renderer_t</b
+            >
+            * r, const char * ansi_frame, size_t len)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>645</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+645                                                                                                  {
 646   if (!r || (!ansi_frame &amp;&amp; len &gt; 0)) {
 647     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;renderer or frame is invalid&quot;);
 648   }
@@ -1161,88 +1368,135 @@
 910
 911   return ASCIICHAT_OK;
 912 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_LUMINANCE_LEVELS</b>, <b>ASCIICHAT_OK</b>,
-    <b>rendered_cell_t::background</b>, <b>terminal_renderer_s::baseline</b>,
-    <b>glyph_cache_entry_t::bitmap_left</b>,
-    <b>glyph_cache_entry_t::bitmap_top</b>, <b>CELL_CACHE_SIZE</b>,
-    <b>terminal_renderer_s::cell_h</b>, <b>terminal_renderer_s::cell_w</b>,
-    <b>terminal_renderer_s::cells</b>, <b>rendered_cell_t::character</b>,
-    <b>terminal_renderer_s::cols</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_NOT_SUPPORTED</b>,
-    <b>rendered_cell_t::foreground</b>, <b>terminal_renderer_s::framebuffer</b>,
-    <b>terminal_renderer_s::ft_face</b>,
-    <b>terminal_renderer_s::glyph_cache</b>,
-    <b>terminal_renderer_s::height_px</b>,
-    <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug_every</b>,
-    <b>log_error</b>, <b>NS_PER_MS_INT</b>, <b>terminal_renderer_s::pitch</b>,
-    <b>rendered_cell_t::pixels</b>, <b>RENDER_DEBUG_SIGNATURE_BUFFER_SIZE</b>,
-    <b>RENDER_DEBUG_SIGNATURE_COLUMNS</b>, <b>RENDER_DEBUG_SIGNATURE_ROWS</b>,
-    <b>glyph_cache_entry_t::rows</b>, <b>terminal_renderer_s::rows</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
-    <b>term_renderer_feed()</b>, <b>terminal_get_default_background_color()</b>,
-    <b>terminal_get_default_foreground_color()</b>,
-    <b>terminal_renderer_s::theme</b>, <b>time_get_ns()</b>,
-    <b>US_PER_SEC_INT</b>, <b>rendered_cell_t::valid</b>,
-    <b>terminal_renderer_s::vt</b>, <b>terminal_renderer_s::vts</b>,
-    <b>glyph_cache_entry_t::width</b>, and
-  <b>terminal_renderer_s::width_px</b>.</p>
-<p class="Pp">Referenced by <b>term_renderer_feed()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_term_renderer_height_px_("><a class="permalink" href="#int_term_renderer_height_px_(">int
-  term_renderer_height_px (<b>terminal_renderer_t</b> * r)</a></h2>
-<p class="Pp">Definition at line <b>920</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>920                                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_LUMINANCE_LEVELS</b>, <b>ASCIICHAT_OK</b>,
+            <b>rendered_cell_t::background</b>,
+            <b>terminal_renderer_s::baseline</b>,
+            <b>glyph_cache_entry_t::bitmap_left</b>,
+            <b>glyph_cache_entry_t::bitmap_top</b>, <b>CELL_CACHE_SIZE</b>,
+            <b>terminal_renderer_s::cell_h</b>,
+            <b>terminal_renderer_s::cell_w</b>,
+            <b>terminal_renderer_s::cells</b>,
+            <b>rendered_cell_t::character</b>, <b>terminal_renderer_s::cols</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NOT_SUPPORTED</b>, <b>rendered_cell_t::foreground</b>,
+            <b>terminal_renderer_s::framebuffer</b>,
+            <b>terminal_renderer_s::ft_face</b>,
+            <b>terminal_renderer_s::glyph_cache</b>,
+            <b>terminal_renderer_s::height_px</b>,
+            <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug_every</b>,
+            <b>log_error</b>, <b>NS_PER_MS_INT</b>,
+            <b>terminal_renderer_s::pitch</b>, <b>rendered_cell_t::pixels</b>,
+            <b>RENDER_DEBUG_SIGNATURE_BUFFER_SIZE</b>,
+            <b>RENDER_DEBUG_SIGNATURE_COLUMNS</b>,
+            <b>RENDER_DEBUG_SIGNATURE_ROWS</b>,
+            <b>glyph_cache_entry_t::rows</b>, <b>terminal_renderer_s::rows</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>term_renderer_feed()</b>,
+            <b>terminal_get_default_background_color()</b>,
+            <b>terminal_get_default_foreground_color()</b>,
+            <b>terminal_renderer_s::theme</b>, <b>time_get_ns()</b>,
+            <b>US_PER_SEC_INT</b>, <b>rendered_cell_t::valid</b>,
+            <b>terminal_renderer_s::vt</b>, <b>terminal_renderer_s::vts</b>,
+            <b>glyph_cache_entry_t::width</b>, and
+            <b>terminal_renderer_s::width_px</b>.
+          </p>
+          <p class="Pp">Referenced by <b>term_renderer_feed()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_term_renderer_height_px_(">
+            <a class="permalink" href="#int_term_renderer_height_px_("
+              >int term_renderer_height_px (<b>terminal_renderer_t</b> * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>920</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+920                                                     {
 921   return r-&gt;height_px;
 922 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_renderer_s::height_px</b>, and
-    <b>term_renderer_height_px()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_destroy()</b>, and <b>term_renderer_height_px()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_term_renderer_pitch_("><a class="permalink" href="#int_term_renderer_pitch_(">int
-  term_renderer_pitch (<b>terminal_renderer_t</b> * r)</a></h2>
-<p class="Pp">Definition at line <b>923</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>923                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_renderer_s::height_px</b>, and
+            <b>term_renderer_height_px()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_file_destroy()</b>, and <b>term_renderer_height_px()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_term_renderer_pitch_(">
+            <a class="permalink" href="#int_term_renderer_pitch_("
+              >int term_renderer_pitch (<b>terminal_renderer_t</b> * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>923</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+923                                                 {
 924   return r-&gt;pitch;
 925 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_renderer_s::pitch</b>, and
-    <b>term_renderer_pitch()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_destroy()</b>, and
-    <b>term_renderer_pitch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>uint8_t</b> * term_renderer_pixels (<b>terminal_renderer_t</b> *
-  r)</a></h2>
-<p class="Pp">Definition at line <b>914</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>914                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_renderer_s::pitch</b>, and
+            <b>term_renderer_pitch()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_destroy()</b>, and
+            <b>term_renderer_pitch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>uint8_t</b> * term_renderer_pixels (<b
+                >terminal_renderer_t</b
+              >
+              * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>914</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+914                                                             {
 915   return r-&gt;framebuffer;
 916 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_renderer_s::framebuffer</b>, and
-    <b>term_renderer_pixels()</b>.</p>
-<p class="Pp">Referenced by <b>render_file_destroy()</b>, and
-    <b>term_renderer_pixels()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_set_zalgo
-  (<b>terminal_renderer_t</b> * r, int level)</h2>
-<p class="Pp">Enable raster Zalgo (1-10), or disable with zero.</p>
-<p class="Pp">Definition at line <b>573</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>573                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_renderer_s::framebuffer</b>, and
+            <b>term_renderer_pixels()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_destroy()</b>, and
+            <b>term_renderer_pixels()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> term_renderer_set_zalgo (<b
+              >terminal_renderer_t</b
+            >
+            * r, int level)
+          </h2>
+          <p class="Pp">Enable raster Zalgo (1-10), or disable with zero.</p>
+          <p class="Pp">
+            Definition at line <b>573</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+573                                                                              {
 574   if (!r || level &lt; 0 || level &gt; 10)
 575     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo raster level must be 0-10&quot;);
 576   if (level &amp;&amp; !r-&gt;zalgo_face) {
@@ -1257,42 +1511,57 @@
 585   r-&gt;zalgo_level = level;
 586   return ASCIICHAT_OK;
 587 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>terminal_renderer_s::cell_w</b>, <b>ERROR_INIT</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>terminal_renderer_s::ft_lib</b>,
-    <b>g_font_default</b>, <b>g_font_default_size</b>, <b>SET_ERRNO</b>,
-    <b>term_renderer_set_zalgo()</b>, <b>terminal_renderer_s::zalgo_face</b>,
-    and <b>terminal_renderer_s::zalgo_level</b>.</p>
-<p class="Pp">Referenced by <b>term_renderer_set_zalgo()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_term_renderer_width_px_("><a class="permalink" href="#int_term_renderer_width_px_(">int
-  term_renderer_width_px (<b>terminal_renderer_t</b> * r)</a></h2>
-<p class="Pp">Definition at line <b>917</b> of file
-    <b>media/render/terminal.c</b>.</p>
-<pre>917                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>terminal_renderer_s::cell_w</b>,
+            <b>ERROR_INIT</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>terminal_renderer_s::ft_lib</b>, <b>g_font_default</b>,
+            <b>g_font_default_size</b>, <b>SET_ERRNO</b>,
+            <b>term_renderer_set_zalgo()</b>,
+            <b>terminal_renderer_s::zalgo_face</b>, and
+            <b>terminal_renderer_s::zalgo_level</b>.
+          </p>
+          <p class="Pp">Referenced by <b>term_renderer_set_zalgo()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_term_renderer_width_px_(">
+            <a class="permalink" href="#int_term_renderer_width_px_("
+              >int term_renderer_width_px (<b>terminal_renderer_t</b> * r)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>917</b> of file
+            <b>media/render/terminal.c</b>.
+          </p>
+          <pre>
+917                                                    {
 918   return r-&gt;width_px;
 919 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>term_renderer_width_px()</b>, and
-    <b>terminal_renderer_s::width_px</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_destroy()</b>, and <b>term_renderer_width_px()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>term_renderer_width_px()</b>, and
+            <b>terminal_renderer_s::width_px</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_file_destroy()</b>, and <b>term_renderer_width_px()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

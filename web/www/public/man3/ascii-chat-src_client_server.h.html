@@ -1,268 +1,387 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server.h - ascii-chat Client Server Connection Management
-    Interface</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>connection_error_t</b> { <b>CONNECTION_SUCCESS</b> = 0,
-    <b>CONNECTION_WARNING_NO_CLIENT_AUTH</b> = 1,
-    <b>CONNECTION_ERROR_GENERIC</b> = -1, <b>CONNECTION_ERROR_AUTH_FAILED</b> =
-    -2, <b>CONNECTION_ERROR_HOST_KEY_FAILED</b> = -3 }
-  <br/>
-  Connection establishment error codes.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>server_connection_init</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  Initialize the server connection management subsystem. <b>bool</b>
-    <b>server_connection_is_active</b> (<b>client_connection_t</b> *connection)
-  <br/>
-  Establish connection to ascii-chat server. <b>acip_transport_t</b> *
-    <b>server_connection_get_transport</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  Get ACIP transport instance. void <b>server_connection_set_transport</b>
-    (<b>client_connection_t</b> *connection, struct <b>acip_transport</b>
-    *transport)
-  <br/>
-  Set ACIP transport instance from connection fallback. <b>uint32_t</b>
-    <b>server_connection_get_client_id</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  Get client ID assigned by server. const char * <b>server_connection_get_ip</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Get resolved server IP address. void <b>server_connection_set_ip</b>
-    (<b>client_connection_t</b> *connection, const char *ip)
-  <br/>
-  Set the server IP address. void <b>server_connection_set_port</b>
-    (<b>client_connection_t</b> *connection, int port)
-  <br/>
-  Set the server port. int <b>server_connection_get_port</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Get the server port. void <b>server_connection_shutdown</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Interrupt connection I/O from normal thread context. void
-    <b>server_connection_lost</b> (<b>client_connection_t</b> *connection)
-  <br/>
-  Signal that connection has been lost. void
-    <b>server_connection_pong_received</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  Signal that connection has been lost. void
-    <b>server_connection_set_remote_error</b> (<b>client_connection_t</b>
-    *connection, <b>asciichat_error_t</b> code)
-  <br/>
-  Atomic flag indicating if connection is currently active.
-    <b>asciichat_error_t</b> <b>server_connection_get_remote_error</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  <b>bool</b> <b>server_connection_is_lost</b> (<b>client_connection_t</b>
-    *connection)
-  <br/>
-  Check if connection loss has been detected. <b>asciichat_error_t</b>
-    <b>threaded_send_packet</b> (<b>client_connection_t</b> *connection,
-    <b>packet_type_t</b> type, const void *data, size_t len)
-  <br/>
-  Thread-safe packet transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_audio_batch_packet</b> (<b>client_connection_t</b>
-    *connection, const float *samples, int num_samples, int batch_count)
-  <br/>
-  Thread-safe batched audio packet transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_audio_opus</b> (<b>client_connection_t</b> *connection,
-    const <b>uint8_t</b> *opus_data, size_t opus_size, int sample_rate, int
-    frame_duration)
-  <br/>
-  Thread-safe Opus audio frame transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_audio_opus_batch</b> (<b>client_connection_t</b>
-    *connection, const <b>uint8_t</b> *opus_data, size_t opus_size, const
-    <b>uint16_t</b> *frame_sizes, int frame_count)
-  <br/>
-  Thread-safe Opus audio batch packet transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_image_frame</b> (<b>client_connection_t</b> *connection,
-    const void *pixel_data, <b>uint32_t</b> width, <b>uint32_t</b> height,
-    <b>uint32_t</b> pixel_format)
-  <br/>
-  Thread-safe image frame transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_image_frame_encoded</b> (<b>client_connection_t</b>
-    *connection, const void *pixel_data, <b>uint32_t</b> width, <b>uint32_t</b>
-    height, <b>video_codec_t</b> codec, <b>bool</b> *encoding_failed)
-  <br/>
-  Send H.265-encoded video frame to server (thread-safe).
-    <b>asciichat_error_t</b> <b>threaded_send_ping_packet</b>
-    (<b>client_connection_t</b> *connection)
-  <br/>
-  Thread-safe ping packet transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_pong_packet</b> (<b>client_connection_t</b> *connection)
-  <br/>
-  Thread-safe pong packet transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_stream_start_packet</b> (<b>client_connection_t</b>
-    *connection, <b>uint32_t</b> stream_type)
-  <br/>
-  Thread-safe stream start packet transmission. <b>asciichat_error_t</b>
-    <b>threaded_send_terminal_size_with_auto_detect</b>
-    (<b>client_connection_t</b> *connection, unsigned short width, unsigned
-    short height)
-  <br/>
-  Thread-safe terminal size packet transmission with auto-detection.
-    <b>asciichat_error_t</b> <b>threaded_send_client_join_packet</b>
-    (<b>client_connection_t</b> *connection, const char *display_name,
-    <b>uint32_t</b> capabilities)
-  <br/>
-  Thread-safe client join packet transmission. int <b>server_send_packet</b>
-    (<b>packet_type_t</b> type, const void *data, size_t len)
-  <br/>
-  Send general packet to server. int <b>server_send_audio</b> (const float
-    *samples, int num_samples)
-  <br/>
-  Send audio data to server. int <b>server_send_audio_batch</b> (const float
-    *samples, int num_samples, int batch_count)
-  <br/>
-  Send batched audio data to server. int
-    <b>server_send_terminal_capabilities</b> (unsigned short width, unsigned
-    short height)
-  <br/>
-  Send terminal capabilities to server. int <b>server_send_ping</b> ()
-  <br/>
-  Send ping keepalive packet. int <b>server_send_pong</b> ()
-  <br/>
-  Send pong response packet. int <b>server_send_stream_start</b>
-    (<b>uint32_t</b> stream_type)
-  <br/>
-  Send stream start notification. int <b>server_send_stream_stop</b>
-    (<b>uint32_t</b> stream_type)
-  <br/>
-  Send stream stop notification.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ascii-chat Client Server Connection Management Interface</p>
-<p class="Pp">Provides connection establishment, management, and thread-safe
-    packet transmission functions for communicating with ascii-chat servers.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">2025</div>
-<p class="Pp">Definition in file <b>src/client/server.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>connection_error_t</b></a></h2>
-<p class="Pp">Connection establishment error codes. These codes are returned by
-    server_connection_establish() to indicate different failure modes. Zero
-    indicates success.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="CONNECTION_SUCCESS"><a class="permalink" href="#CONNECTION_SUCCESS"><b><i>CONNECTION_SUCCESS
-    </i></b></a></dt>
-  <dd>Connection established successfully.</dd>
-  <dt id="CONNECTION_WARNING_NO_CLIENT_AUTH"><a class="permalink" href="#CONNECTION_WARNING_NO_CLIENT_AUTH"><b><i>CONNECTION_WARNING_NO_CLIENT_AUTH
-    </i></b></a></dt>
-  <dd>Server not using client verification (warning).</dd>
-  <dt id="CONNECTION_ERROR_GENERIC"><a class="permalink" href="#CONNECTION_ERROR_GENERIC"><b><i>CONNECTION_ERROR_GENERIC
-    </i></b></a></dt>
-  <dd>Generic error (retry allowed).</dd>
-  <dt id="CONNECTION_ERROR_AUTH_FAILED"><a class="permalink" href="#CONNECTION_ERROR_AUTH_FAILED"><b><i>CONNECTION_ERROR_AUTH_FAILED
-    </i></b></a></dt>
-  <dd>Authentication failure (no retry).</dd>
-  <dt id="CONNECTION_ERROR_HOST_KEY_FAILED"><a class="permalink" href="#CONNECTION_ERROR_HOST_KEY_FAILED"><b><i>CONNECTION_ERROR_HOST_KEY_FAILED
-    </i></b></a></dt>
-  <dd>Host key verification failed (no retry).</dd>
-</dl>
-<p class="Pp">Definition at line <b>34</b> of file
-  <b>src/client/server.h</b>.</p>
-<pre>34              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          server.h - ascii-chat Client Server Connection Management Interface
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>connection_error_t</b> { <b>CONNECTION_SUCCESS</b> = 0,
+            <b>CONNECTION_WARNING_NO_CLIENT_AUTH</b> = 1,
+            <b>CONNECTION_ERROR_GENERIC</b> = -1,
+            <b>CONNECTION_ERROR_AUTH_FAILED</b> = -2,
+            <b>CONNECTION_ERROR_HOST_KEY_FAILED</b> = -3 }
+            <br />
+            Connection establishment error codes.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>server_connection_init</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Initialize the server connection management subsystem. <b>bool</b>
+            <b>server_connection_is_active</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Establish connection to ascii-chat server. <b>acip_transport_t</b> *
+            <b>server_connection_get_transport</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Get ACIP transport instance. void
+            <b>server_connection_set_transport</b> (<b>client_connection_t</b>
+            *connection, struct <b>acip_transport</b>
+            *transport)
+            <br />
+            Set ACIP transport instance from connection fallback.
+            <b>uint32_t</b> <b>server_connection_get_client_id</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Get client ID assigned by server. const char *
+            <b>server_connection_get_ip</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Get resolved server IP address. void
+            <b>server_connection_set_ip</b> (<b>client_connection_t</b>
+            *connection, const char *ip)
+            <br />
+            Set the server IP address. void
+            <b>server_connection_set_port</b> (<b>client_connection_t</b>
+            *connection, int port)
+            <br />
+            Set the server port. int <b>server_connection_get_port</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Get the server port. void <b>server_connection_shutdown</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Interrupt connection I/O from normal thread context. void
+            <b>server_connection_lost</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Signal that connection has been lost. void
+            <b>server_connection_pong_received</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Signal that connection has been lost. void
+            <b>server_connection_set_remote_error</b> (<b
+              >client_connection_t</b
+            >
+            *connection, <b>asciichat_error_t</b> code)
+            <br />
+            Atomic flag indicating if connection is currently active.
+            <b>asciichat_error_t</b>
+            <b>server_connection_get_remote_error</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>bool</b> <b>server_connection_is_lost</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Check if connection loss has been detected. <b>asciichat_error_t</b>
+            <b>threaded_send_packet</b> (<b>client_connection_t</b> *connection,
+            <b>packet_type_t</b> type, const void *data, size_t len)
+            <br />
+            Thread-safe packet transmission. <b>asciichat_error_t</b>
+            <b>threaded_send_audio_batch_packet</b> (<b>client_connection_t</b>
+            *connection, const float *samples, int num_samples, int batch_count)
+            <br />
+            Thread-safe batched audio packet transmission.
+            <b>asciichat_error_t</b> <b>threaded_send_audio_opus</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const <b>uint8_t</b> *opus_data, size_t opus_size, int
+            sample_rate, int frame_duration)
+            <br />
+            Thread-safe Opus audio frame transmission. <b>asciichat_error_t</b>
+            <b>threaded_send_audio_opus_batch</b> (<b>client_connection_t</b>
+            *connection, const <b>uint8_t</b> *opus_data, size_t opus_size,
+            const <b>uint16_t</b> *frame_sizes, int frame_count)
+            <br />
+            Thread-safe Opus audio batch packet transmission.
+            <b>asciichat_error_t</b> <b>threaded_send_image_frame</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const void *pixel_data, <b>uint32_t</b> width,
+            <b>uint32_t</b> height, <b>uint32_t</b> pixel_format)
+            <br />
+            Thread-safe image frame transmission. <b>asciichat_error_t</b>
+            <b>threaded_send_image_frame_encoded</b> (<b>client_connection_t</b>
+            *connection, const void *pixel_data, <b>uint32_t</b> width,
+            <b>uint32_t</b> height, <b>video_codec_t</b> codec,
+            <b>bool</b> *encoding_failed)
+            <br />
+            Send H.265-encoded video frame to server (thread-safe).
+            <b>asciichat_error_t</b> <b>threaded_send_ping_packet</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Thread-safe ping packet transmission. <b>asciichat_error_t</b>
+            <b>threaded_send_pong_packet</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Thread-safe pong packet transmission. <b>asciichat_error_t</b>
+            <b>threaded_send_stream_start_packet</b> (<b>client_connection_t</b>
+            *connection, <b>uint32_t</b> stream_type)
+            <br />
+            Thread-safe stream start packet transmission.
+            <b>asciichat_error_t</b>
+            <b>threaded_send_terminal_size_with_auto_detect</b>
+            (<b>client_connection_t</b> *connection, unsigned short width,
+            unsigned short height)
+            <br />
+            Thread-safe terminal size packet transmission with auto-detection.
+            <b>asciichat_error_t</b> <b>threaded_send_client_join_packet</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const char *display_name, <b>uint32_t</b> capabilities)
+            <br />
+            Thread-safe client join packet transmission. int
+            <b>server_send_packet</b> (<b>packet_type_t</b>
+            type, const void *data, size_t len)
+            <br />
+            Send general packet to server. int <b>server_send_audio</b> (const
+            float *samples, int num_samples)
+            <br />
+            Send audio data to server. int <b>server_send_audio_batch</b> (const
+            float *samples, int num_samples, int batch_count)
+            <br />
+            Send batched audio data to server. int
+            <b>server_send_terminal_capabilities</b> (unsigned short width,
+            unsigned short height)
+            <br />
+            Send terminal capabilities to server. int <b>server_send_ping</b> ()
+            <br />
+            Send ping keepalive packet. int <b>server_send_pong</b> ()
+            <br />
+            Send pong response packet. int <b>server_send_stream_start</b> (<b
+              >uint32_t</b
+            >
+            stream_type)
+            <br />
+            Send stream start notification. int
+            <b>server_send_stream_stop</b> (<b>uint32_t</b>
+            stream_type)
+            <br />
+            Send stream stop notification.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          ascii-chat Client Server Connection Management Interface
+        </p>
+        <p class="Pp">
+          Provides connection establishment, management, and thread-safe packet
+          transmission functions for communicating with ascii-chat servers.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">2025</div>
+        <p class="Pp">Definition in file <b>src/client/server.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_"
+              >enum <b>connection_error_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Connection establishment error codes. These codes are returned by
+            server_connection_establish() to indicate different failure modes.
+            Zero indicates success.
+          </p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="CONNECTION_SUCCESS">
+              <a class="permalink" href="#CONNECTION_SUCCESS"
+                ><b><i>CONNECTION_SUCCESS </i></b></a
+              >
+            </dt>
+            <dd>Connection established successfully.</dd>
+            <dt id="CONNECTION_WARNING_NO_CLIENT_AUTH">
+              <a class="permalink" href="#CONNECTION_WARNING_NO_CLIENT_AUTH"
+                ><b><i>CONNECTION_WARNING_NO_CLIENT_AUTH </i></b></a
+              >
+            </dt>
+            <dd>Server not using client verification (warning).</dd>
+            <dt id="CONNECTION_ERROR_GENERIC">
+              <a class="permalink" href="#CONNECTION_ERROR_GENERIC"
+                ><b><i>CONNECTION_ERROR_GENERIC </i></b></a
+              >
+            </dt>
+            <dd>Generic error (retry allowed).</dd>
+            <dt id="CONNECTION_ERROR_AUTH_FAILED">
+              <a class="permalink" href="#CONNECTION_ERROR_AUTH_FAILED"
+                ><b><i>CONNECTION_ERROR_AUTH_FAILED </i></b></a
+              >
+            </dt>
+            <dd>Authentication failure (no retry).</dd>
+            <dt id="CONNECTION_ERROR_HOST_KEY_FAILED">
+              <a class="permalink" href="#CONNECTION_ERROR_HOST_KEY_FAILED"
+                ><b><i>CONNECTION_ERROR_HOST_KEY_FAILED </i></b></a
+              >
+            </dt>
+            <dd>Host key verification failed (no retry).</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>src/client/server.h</b>.
+          </p>
+          <pre>
+34              {
 35   CONNECTION_SUCCESS = 0,
 36   CONNECTION_WARNING_NO_CLIENT_AUTH = 1,
 37   CONNECTION_ERROR_GENERIC = -1,
 38   CONNECTION_ERROR_AUTH_FAILED = -2,
 39   CONNECTION_ERROR_HOST_KEY_FAILED = -3
 40 } connection_error_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> server_connection_get_remote_error
-  (<b>client_connection_t</b> * connection)</h2>
-<p class="Pp">Definition at line <b>128</b> of file
-  <b>src/client/server.c</b>.</p>
-<pre>128                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> server_connection_get_remote_error (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>128</b> of file <b>src/client/server.c</b>.
+          </p>
+          <pre>
+128                                                                                       {
 129   return (asciichat_error_t)atomic_load_int(&amp;connection-&gt;remote_error);
 130 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>,
-    <b>client_connection::remote_error</b>, and
-    <b>server_connection_get_remote_error()</b>.</p>
-<p class="Pp">Referenced by <b>server_connection_get_remote_error()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_int()</b>,
+            <b>client_connection::remote_error</b>, and
+            <b>server_connection_get_remote_error()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_get_remote_error()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

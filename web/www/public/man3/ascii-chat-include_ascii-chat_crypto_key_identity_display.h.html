@@ -1,111 +1,189 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>display.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">display.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">display.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">display.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>KEY_IDENTITY_BUFFER_SIZE</b> 2048
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>key_identity_format</b> (const
-    <b>public_key_t</b> *key, <b>bool</b> art, <b>bool</b> unicode, int cols,
-    char *out, size_t size)
-  <br/>
-  <b>asciichat_error_t</b> <b>key_identity_format_terminal</b> (const
-    <b>public_key_t</b> *key, char *out, size_t size)
-  <br/>
-  const char * <b>key_identity_art_end</b> (const char *text)
-  <br/>
-  void <b>key_identity_announce</b> (const char *label, const
-    <b>public_key_t</b> *key)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_KEY_IDENTITY_BUFFER_SIZE___2048"><a class="permalink" href="#_define_KEY_IDENTITY_BUFFER_SIZE___2048">#define
-  KEY_IDENTITY_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file
-    <b>include/ascii-chat/crypto/key_identity/display.h</b>.</p>
-<p class="Pp">Referenced by <b>display_mitm_warning()</b>,
-    <b>key_identity_announce()</b>, and <b>prompt_unknown_host()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_key_identity_announce_(const_char_*_label,_const_"><a class="permalink" href="#void_key_identity_announce_(const_char_*_label,_const_">void
-  key_identity_announce (const char * label, const <b>public_key_t</b> *
-  key)</a></h2>
-<p class="Pp">Announce a public identity using the existing notice/logging
-    policy.</p>
-<p class="Pp">Definition at line <b>83</b> of file
-    <b>lib/crypto/key_identity/display.c</b>.</p>
-<pre>83                                                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>display.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">display.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">display.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">display.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>KEY_IDENTITY_BUFFER_SIZE</b> 2048
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>key_identity_format</b> (const
+            <b>public_key_t</b> *key, <b>bool</b> art, <b>bool</b> unicode, int
+            cols, char *out, size_t size)
+            <br />
+            <b>asciichat_error_t</b> <b>key_identity_format_terminal</b> (const
+            <b>public_key_t</b> *key, char *out, size_t size)
+            <br />
+            const char * <b>key_identity_art_end</b> (const char *text)
+            <br />
+            void <b>key_identity_announce</b> (const char *label, const
+            <b>public_key_t</b> *key)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_KEY_IDENTITY_BUFFER_SIZE___2048">
+            <a class="permalink" href="#_define_KEY_IDENTITY_BUFFER_SIZE___2048"
+              >#define KEY_IDENTITY_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file
+            <b>include/ascii-chat/crypto/key_identity/display.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>display_mitm_warning()</b>,
+            <b>key_identity_announce()</b>, and <b>prompt_unknown_host()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_key_identity_announce_(const_char_*_label,_const_"
+          >
+            <a
+              class="permalink"
+              href="#void_key_identity_announce_(const_char_*_label,_const_"
+              >void key_identity_announce (const char * label, const
+              <b>public_key_t</b> * key)</a
+            >
+          </h2>
+          <p class="Pp">
+            Announce a public identity using the existing notice/logging policy.
+          </p>
+          <p class="Pp">
+            Definition at line <b>83</b> of file
+            <b>lib/crypto/key_identity/display.c</b>.
+          </p>
+          <pre>
+83                                                                        {
 84   char identity[KEY_IDENTITY_BUFFER_SIZE];
 85   if (key_identity_format_terminal(key, identity, sizeof(identity)) == ASCIICHAT_OK)
 86     NOTICE_ANNOUNCE(label, &quot;%s&quot;, identity);
 87 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>key_identity_announce()</b>,
-    <b>KEY_IDENTITY_BUFFER_SIZE</b>, <b>key_identity_format_terminal()</b>, and
-    <b>NOTICE_ANNOUNCE</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>, and
-    <b>key_identity_announce()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_key_identity_art_end_(const_char_*_text)"><a class="permalink" href="#const_char_*_key_identity_art_end_(const_char_*_text)">const
-  char * key_identity_art_end (const char * text)</a></h2>
-<p class="Pp">Return the end of a complete Keymask heading/art block, or NULL.
-    Allows notice renderers to use the terminal's default foreground for
-  art.</p>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>lib/crypto/key_identity/display.c</b>.</p>
-<pre>64                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>key_identity_announce()</b>,
+            <b>KEY_IDENTITY_BUFFER_SIZE</b>,
+            <b>key_identity_format_terminal()</b>, and <b>NOTICE_ANNOUNCE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>crypto_handshake_client_key_exchange()</b>, and
+            <b>key_identity_announce()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_char_*_key_identity_art_end_(const_char_*_text)"
+          >
+            <a
+              class="permalink"
+              href="#const_char_*_key_identity_art_end_(const_char_*_text)"
+              >const char * key_identity_art_end (const char * text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Return the end of a complete Keymask heading/art block, or NULL.
+            Allows notice renderers to use the terminal's default foreground for
+            art.
+          </p>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>lib/crypto/key_identity/display.c</b>.
+          </p>
+          <pre>
+64                                                    {
 65   static const char heading[] = &quot;Keymask v2 / SHA-256\n&quot;;
 66   static const char border[] = &quot;+--------------------------------+\n&quot;;
 67   if (!text || strncmp(text, heading, sizeof(heading) - 1) != 0)
@@ -123,23 +201,34 @@
 79   }
 80   return strncmp(row, border, sizeof(border) - 1) == 0 ? row + sizeof(border) - 1 : NULL;
 81 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>key_identity_art_end()</b>, <b>KEYMASK_ROWS</b>,
-    <b>KEYMASK_WIDTH</b>, and <b>utf8_display_width_n()</b>.</p>
-<p class="Pp">Referenced by <b>key_identity_art_end()</b>, and
-    <b>ui_notice_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> key_identity_format (const
-  <b>public_key_t</b> * key, <b>bool</b> art, <b>bool</b> unicode, int cols,
-  char * out, size_t size)</h2>
-<p class="Pp">Format public identity with full fingerprint and optional Keymask
-    v2. cols is the available content width; insufficient width suppresses the
-    art.</p>
-<p class="Pp">Definition at line <b>11</b> of file
-    <b>lib/crypto/key_identity/display.c</b>.</p>
-<pre>12                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>key_identity_art_end()</b>, <b>KEYMASK_ROWS</b>,
+            <b>KEYMASK_WIDTH</b>, and <b>utf8_display_width_n()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>key_identity_art_end()</b>, and
+            <b>ui_notice_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> key_identity_format (const
+            <b>public_key_t</b> * key, <b>bool</b> art, <b>bool</b> unicode, int
+            cols, char * out, size_t size)
+          </h2>
+          <p class="Pp">
+            Format public identity with full fingerprint and optional Keymask
+            v2. cols is the available content width; insufficient width
+            suppresses the art.
+          </p>
+          <p class="Pp">
+            Definition at line <b>11</b> of file
+            <b>lib/crypto/key_identity/display.c</b>.
+          </p>
+          <pre>
+12                                                    {
 13   if (!out || !size)
 14     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing identity output buffer&quot;);
 15   out[0] = '\0';
@@ -180,26 +269,38 @@
 50   safe_snprintf(out, size, &quot;%s public key\n%s%sSHA256:%s\n&quot;, type, heading, mask, hex);
 51   return ASCIICHAT_OK;
 52 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>public_key_t::key</b>,
-    <b>key_fingerprint_digest()</b>, <b>key_identity_format()</b>,
-    <b>KEY_TYPE_ED25519</b>, <b>KEY_TYPE_GPG</b>, <b>KEY_TYPE_X25519</b>,
-    <b>KEYMASK_BUFFER_SIZE</b>, <b>KEYMASK_DIGEST_SIZE</b>,
-    <b>keymask_render()</b>, <b>KEYMASK_WIDTH</b>, <b>safe_snprintf()</b>,
-    <b>SET_ERRNO</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>key_identity_format()</b>,
-    <b>key_identity_format_terminal()</b>, and <b>prompt_unknown_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> key_identity_format_terminal (const
-  <b>public_key_t</b> * key, char * out, size_t size)</h2>
-<p class="Pp">Format using the current terminal capabilities and snapshot
-    policy.</p>
-<p class="Pp">Definition at line <b>54</b> of file
-    <b>lib/crypto/key_identity/display.c</b>.</p>
-<pre>54                                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>HEX_STRING_SIZE_32</b>, <b>public_key_t::key</b>,
+            <b>key_fingerprint_digest()</b>, <b>key_identity_format()</b>,
+            <b>KEY_TYPE_ED25519</b>, <b>KEY_TYPE_GPG</b>,
+            <b>KEY_TYPE_X25519</b>, <b>KEYMASK_BUFFER_SIZE</b>,
+            <b>KEYMASK_DIGEST_SIZE</b>, <b>keymask_render()</b>,
+            <b>KEYMASK_WIDTH</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, and
+            <b>public_key_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>key_identity_format()</b>,
+            <b>key_identity_format_terminal()</b>, and
+            <b>prompt_unknown_host()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> key_identity_format_terminal (const
+            <b>public_key_t</b> * key, char * out, size_t size)
+          </h2>
+          <p class="Pp">
+            Format using the current terminal capabilities and snapshot policy.
+          </p>
+          <p class="Pp">
+            Definition at line <b>54</b> of file
+            <b>lib/crypto/key_identity/display.c</b>.
+          </p>
+          <pre>
+54                                                                                                 {
 55   bool tty = platform_isatty(STDERR_FILENO);
 56   bool art = tty &amp;&amp; !GET_OPTION(snapshot_mode);
 57   int cols = tty ? ui_controller_size().cols : 80;
@@ -208,27 +309,34 @@
 60   bool unicode = terminal_should_use_utf8();
 61   return key_identity_format(key, art, unicode, cols, out, size);
 62 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_size_t::cols</b>, <b>GET_OPTION</b>,
-    <b>key_identity_format()</b>, <b>key_identity_format_terminal()</b>,
-    <b>platform_isatty()</b>, <b>terminal_should_use_utf8()</b>, and
-    <b>ui_controller_size()</b>.</p>
-<p class="Pp">Referenced by <b>display_mitm_warning()</b>,
-    <b>key_identity_announce()</b>, <b>key_identity_format_terminal()</b>, and
-    <b>prompt_unknown_host()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>, <b>GET_OPTION</b>,
+            <b>key_identity_format()</b>, <b>key_identity_format_terminal()</b>,
+            <b>platform_isatty()</b>, <b>terminal_should_use_utf8()</b>, and
+            <b>ui_controller_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>display_mitm_warning()</b>,
+            <b>key_identity_announce()</b>,
+            <b>key_identity_format_terminal()</b>, and
+            <b>prompt_unknown_host()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

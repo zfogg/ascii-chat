@@ -70,7 +70,6 @@ legacy CTest cases retain their explicit serialization. Add pytest coverage
 incrementally; many remaining harnesses are executable scripts with import-time
 work. Do not collect the entire legacy tree or run a migrated case twice.
 
-
 ```sh
 cmake --build build --target ascii-chat
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat

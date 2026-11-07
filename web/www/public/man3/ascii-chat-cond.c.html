@@ -1,157 +1,241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>cond.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">cond.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">cond.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">cond.c - Platform-agnostic condition variable hooks and
-  utilities.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>PLATFORM_COND_WAIT_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>PLATFORM_COND_SIGNAL_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>PLATFORM_COND_BROADCAST_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>PLATFORM_COND_WAITING_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>PLATFORM_COND_COUNT_BUFFER_SIZE</b> 256
-  <br/>
-  #define <b>PLATFORM_COND_ELAPSED_BUFFER_SIZE</b> 64
-  <br/>
-  #define <b>PLATFORM_COND_BUF_BUFFER_SIZE</b> 512
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>cond_on_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *mutex, const char *file, int line, const char *func)
-  <br/>
-  Hook called when a thread waits on a condition variable. void
-    <b>cond_on_wait_end</b> (<b>cond_t</b> *cond)
-  <br/>
-  <b>bool</b> <b>cond_total_wait_ns</b> (const <b>cond_t</b> *cond,
-    <b>uint64_t</b> now_ns, <b>uint64_t</b> *total_ns)
-  <br/>
-  void <b>cond_on_signal</b> (<b>cond_t</b> *cond)
-  <br/>
-  Hook called when a condition variable is signaled. void
-    <b>cond_on_broadcast</b> (<b>cond_t</b> *cond)
-  <br/>
-  Hook called when a condition variable is broadcast. int
-    <b>cond_format_state</b> (const <b>cond_t</b> *cond, char *buffer, size_t
-    size)
-  <br/>
-  Format condition variable timing and state info into buffer. void
-    <b>cond_log_state</b> (const <b>cond_t</b> *cond, const char *file, int
-    line, const char *func)
-  <br/>
-  Log the state of a condition variable.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Platform-agnostic condition variable hooks and utilities.</p>
-<p class="Pp">This file provides hook functions that can be called from
-    platform-specific condition variable implementations to record events and
-    debug information. All hooks are debug-only and disabled in release
-  builds.</p>
-<p class="Pp">Definition in file <b>cond.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_BROADCAST_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_COND_BROADCAST_BUFFER_SIZE___64">#define
-  PLATFORM_COND_BROADCAST_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_BUF_BUFFER_SIZE___512"><a class="permalink" href="#_define_PLATFORM_COND_BUF_BUFFER_SIZE___512">#define
-  PLATFORM_COND_BUF_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_log_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_COUNT_BUFFER_SIZE___256"><a class="permalink" href="#_define_PLATFORM_COND_COUNT_BUFFER_SIZE___256">#define
-  PLATFORM_COND_COUNT_BUFFER_SIZE 256</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_ELAPSED_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_COND_ELAPSED_BUFFER_SIZE___64">#define
-  PLATFORM_COND_ELAPSED_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_SIGNAL_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_COND_SIGNAL_BUFFER_SIZE___64">#define
-  PLATFORM_COND_SIGNAL_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_WAIT_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_COND_WAIT_BUFFER_SIZE___64">#define
-  PLATFORM_COND_WAIT_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>12</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_COND_WAITING_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_COND_WAITING_BUFFER_SIZE___64">#define
-  PLATFORM_COND_WAITING_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file <b>cond.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>cond.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">cond.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">cond.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          cond.c - Platform-agnostic condition variable hooks and utilities.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>PLATFORM_COND_WAIT_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>PLATFORM_COND_SIGNAL_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>PLATFORM_COND_BROADCAST_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>PLATFORM_COND_WAITING_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>PLATFORM_COND_COUNT_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>PLATFORM_COND_ELAPSED_BUFFER_SIZE</b> 64
+            <br />
+            #define <b>PLATFORM_COND_BUF_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>cond_on_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+            *mutex, const char *file, int line, const char *func)
+            <br />
+            Hook called when a thread waits on a condition variable. void
+            <b>cond_on_wait_end</b> (<b>cond_t</b> *cond)
+            <br />
+            <b>bool</b> <b>cond_total_wait_ns</b> (const <b>cond_t</b> *cond,
+            <b>uint64_t</b> now_ns, <b>uint64_t</b> *total_ns)
+            <br />
+            void <b>cond_on_signal</b> (<b>cond_t</b> *cond)
+            <br />
+            Hook called when a condition variable is signaled. void
+            <b>cond_on_broadcast</b> (<b>cond_t</b> *cond)
+            <br />
+            Hook called when a condition variable is broadcast. int
+            <b>cond_format_state</b> (const <b>cond_t</b> *cond, char *buffer,
+            size_t size)
+            <br />
+            Format condition variable timing and state info into buffer. void
+            <b>cond_log_state</b> (const <b>cond_t</b> *cond, const char *file,
+            int line, const char *func)
+            <br />
+            Log the state of a condition variable.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Platform-agnostic condition variable hooks and utilities.
+        </p>
+        <p class="Pp">
+          This file provides hook functions that can be called from
+          platform-specific condition variable implementations to record events
+          and debug information. All hooks are debug-only and disabled in
+          release builds.
+        </p>
+        <p class="Pp">Definition in file <b>cond.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_BROADCAST_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_BROADCAST_BUFFER_SIZE___64"
+              >#define PLATFORM_COND_BROADCAST_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>14</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_BUF_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_BUF_BUFFER_SIZE___512"
+              >#define PLATFORM_COND_BUF_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_log_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_COUNT_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_COUNT_BUFFER_SIZE___256"
+              >#define PLATFORM_COND_COUNT_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>16</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_ELAPSED_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_ELAPSED_BUFFER_SIZE___64"
+              >#define PLATFORM_COND_ELAPSED_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>17</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_SIGNAL_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_SIGNAL_BUFFER_SIZE___64"
+              >#define PLATFORM_COND_SIGNAL_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>13</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_WAIT_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_WAIT_BUFFER_SIZE___64"
+              >#define PLATFORM_COND_WAIT_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>12</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_COND_WAITING_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_COND_WAITING_BUFFER_SIZE___64"
+              >#define PLATFORM_COND_WAITING_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>15</b> of file <b>cond.c</b>.</p>
+          <p class="Pp">Referenced by <b>cond_format_state()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,66 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_h264_streaming(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_h264_streaming(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_h264_streaming(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_h264_streaming - H.264 Streaming Architecture for
-    ascii-chat</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="H"><a class="permalink" href="#H">H.264 Streaming
-  Architecture for ascii-chat</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Problem_Statement"><a class="permalink" href="#Problem_Statement">Problem
-  Statement</a></h2>
-<p class="Pp">Current implementation sends raw RGB frames (~6.2MB at
-    1920&#x00D7;1080) over WebSocket, fragmenting into 1,500+ pieces per frame.
-    This causes:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>WebSocket recv_queue to fill immediately (4096 slot limit)</li>
-  <li>Fragment reassembly timeout (2 second) &#x2192; client disconnect</li>
-  <li>Complete frame loss and transmission failure</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Solution:_H"><a class="permalink" href="#Solution:_H">Solution:
-  H.264 Video Streaming</a></h2>
-<p class="Pp">Instead of sending raw frames, clients encode frames as H.264
-    video (42KB per frame) before transmission, reducing fragmentation by
-    <b>147&#x00D7;</b>.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Architecture_Changes"><a class="permalink" href="#Architecture_Changes">Architecture
-  Changes</a></h2>
-<pre>Current:
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_h264_streaming(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_h264_streaming(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_h264_streaming(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_h264_streaming - H.264 Streaming Architecture for ascii-chat
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="H">
+          <a class="permalink" href="#H"
+            >H.264 Streaming Architecture for ascii-chat</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Problem_Statement">
+            <a class="permalink" href="#Problem_Statement">Problem Statement</a>
+          </h2>
+          <p class="Pp">
+            Current implementation sends raw RGB frames (~6.2MB at
+            1920&#x00D7;1080) over WebSocket, fragmenting into 1,500+ pieces per
+            frame. This causes:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>WebSocket recv_queue to fill immediately (4096 slot limit)</li>
+            <li>
+              Fragment reassembly timeout (2 second) &#x2192; client disconnect
+            </li>
+            <li>Complete frame loss and transmission failure</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Solution:_H">
+            <a class="permalink" href="#Solution:_H"
+              >Solution: H.264 Video Streaming</a
+            >
+          </h2>
+          <p class="Pp">
+            Instead of sending raw frames, clients encode frames as H.264 video
+            (42KB per frame) before transmission, reducing fragmentation by
+            <b>147&#x00D7;</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture_Changes">
+            <a class="permalink" href="#Architecture_Changes"
+              >Architecture Changes</a
+            >
+          </h2>
+          <pre>Current:
 <br/>
   Client: Capture RGB (6.2MB)
 <br/>
@@ -90,288 +135,360 @@ New (H.264):
     &#x2193;
 <br/>
   ASCII conversion + audio mixing</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Why_H"><a class="permalink" href="#Why_H">Why H.264?</a></h2>
-<p class="Pp"><b>Compression:</b> 147&#x00D7; reduction (6.2MB &#x2192;
-  42KB)</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>At 1080p@60fps = 2.5 Mbps bitrate</li>
-  <li>Fits on 10 Mbps connection with 4.7&#x00D7; overhead</li>
-</ul>
-<p class="Pp"><b>Latency:</b> 32-74ms end-to-end (with hardware
-  acceleration)</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Encoding: 1-3ms (GPU-accelerated)</li>
-  <li>Network: 20-50ms</li>
-  <li>Decoding: 2-4ms (GPU-accelerated)</li>
-  <li>Acceptable for real-time video chat</li>
-</ul>
-<p class="Pp"><b>Hardware Support:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>NVIDIA: NVENC (native H.264 support)</li>
-  <li>Intel: QuickSync</li>
-  <li>AMD: VCE</li>
-  <li>Mobile: iOS/Android native</li>
-  <li>Browser: WebRTC already uses H.264</li>
-</ul>
-<p class="Pp"><b>Bitrate vs Quality:</b> Bitrate Quality CPU Load 1 Mbps Fair
-    (6-7/10) Low 2 Mbps Good (7.5-8/10) Low-Medium 4 Mbps Very Good (8.5-9/10)
-    Medium</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Using_FFmpeg"><a class="permalink" href="#Implementation_Using_FFmpeg">Implementation
-  Using FFmpeg</a></h2>
-<p class="Pp">FFmpeg is <b>already integrated</b> into ascii-chat as a
-    dependency. Current status:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>&#x2705; Decoders enabled (h264, hevc, vp8, vp9, etc.)</li>
-  <li>&#x274C; Encoders <b>not</b> enabled</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_Steps"><a class="permalink" href="#Implementation_Steps">Implementation
-  Steps</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Enable H.264 encoder in FFmpeg build</b> (FFmpeg.cmake)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Add --enable-encoder=libx264 to FFmpeg configure</dd>
-  <dt> &#x2022;</dt>
-  <dd>Or use built-in --enable-encoder=h264 (software fallback)</dd>
-  <dt>2.</dt>
-  <dd><b>Create </b><b>lib/media/ffmpeg_encoder.c</b><b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Mirror <b>lib/media/ffmpeg_decoder.c</b><b> pattern</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Initialize encoder context</dd>
-  <dt> &#x2022;</dt>
-  <dd>Encode raw frames to H.264 bitstream</dd>
-  <dt>3.</dt>
-  <dd><b>Integrate into client capture loop</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>After webcam frame capture &#x2192; Encode H.264</dd>
-  <dt> &#x2022;</dt>
-  <dd>Send encoded bitstream instead of raw RGB</dd>
-  <dt> &#x2022;</dt>
-  <dd>Send PACKET_TYPE_VIDEO_FRAME (new packet type) or IMAGE_FRAME with H.264
-      format</dd>
-  <dt>4.</dt>
-  <dd><b>Integrate into server receive</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>On receiving H.264 data &#x2192; Decode using ffmpeg_decoder</dd>
-  <dt> &#x2022;</dt>
-  <dd>Feed decoded RGB to ASCII conversion pipeline</dd>
-  <dt> &#x2022;</dt>
-  <dd>Audio mixing unchanged</dd>
-  <dt>5.</dt>
-  <dd><b>Add format field to packets</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Update IMAGE_FRAME/VIDEO_FRAME packet types</dd>
-  <dt> &#x2022;</dt>
-  <dd>Add format enum: RGB24 (current), H264 (new), HEVC (future)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Estimated_Effort"><a class="permalink" href="#Estimated_Effort">Estimated
-  Effort</a></h2>
-<p class="Pp">Task Time Notes Enable H.264 in CMake 30 mins 2-3 line change
-    Create ffmpeg_encoder module 1.5-2 hrs Copy decoder template, adapt Client
-    integration 1-2 hrs Modify capture loop Server integration 1 hr Modify
-    packet handling Testing &amp; debugging 1-2 hrs Verify compression, latency
-    <b>Total</b> <b>5-7 hours</b> Much faster than custom codec</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Comparison:_FFmpeg_vs_Custom_Implementation"><a class="permalink" href="#Comparison:_FFmpeg_vs_Custom_Implementation">Comparison:
-  FFmpeg vs Custom Implementation</a></h2>
-<p class="Pp">Aspect FFmpeg Custom H.264 External deps Already have Would add
-    libx264/libx265 Development time 5-7 hours 45-65 hours Code size ~500 lines
-    2000+ lines Hardware accel Built-in support Custom implementation needed
-    Maintainability Proven, stable Custom, fragile Quality Proven quality
-    Unknown tuning Testing Existing patterns Must develop</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Alternative_Approaches_Considered"><a class="permalink" href="#Alternative_Approaches_Considered">Alternative
-  Approaches Considered</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Compression_at_Transport_Layer"><a class="permalink" href="#Compression_at_Transport_Layer">Compression
-  at Transport Layer</a></h2>
-<ul class="Bl-bullet">
-  <li>Enable WebSocket permessage-deflate</li>
-  <li><b>Status:</b> Disabled due to LWS buffer underflow bug (4.5.2)</li>
-  <li><b>Issue:</b> Compression overhead, doesn't solve fundamental 6.2MB
-      problem</li>
-  <li><b>Verdict:</b> Band-aid, not solution</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Reduce_Resolution"><a class="permalink" href="#Reduce_Resolution">Reduce
-  Resolution</a></h2>
-<ul class="Bl-bullet">
-  <li>1920&#x00D7;1080 &#x2192; 1280&#x00D7;720</li>
-  <li><b>Impact:</b> 2.8MB &#x2192; still requires 700+ fragments</li>
-  <li><b>Verdict:</b> Insufficient alone</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="JPEG_Encoding"><a class="permalink" href="#JPEG_Encoding">JPEG
-  Encoding</a></h2>
-<ul class="Bl-bullet">
-  <li>Reduce to 200-500KB per frame</li>
-  <li><b>Issue:</b> Still 50-125 fragments per frame</li>
-  <li><b>Quality:</b> Lossy, visible compression artifacts</li>
-  <li><b>Verdict:</b> Insufficient vs H.264</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Future_Enhancements"><a class="permalink" href="#Future_Enhancements">Future
-  Enhancements</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Adaptive bitrate</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Monitor network conditions</dd>
-  <dt> &#x2022;</dt>
-  <dd>Dynamically adjust encoding quality</dd>
-  <dt> &#x2022;</dt>
-  <dd>FFmpeg supports this natively</dd>
-  <dt>2.</dt>
-  <dd><b>VP8/VP9 codec option</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Already enabled in FFmpeg</dd>
-  <dt> &#x2022;</dt>
-  <dd>Software-only (slower encoding)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Better for royalty-free deployments</dd>
-  <dt>3.</dt>
-  <dd><b>HEVC/H.265</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Better compression (2&#x00D7; better than H.264)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Slower encoding (2-4&#x00D7;)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Future-proofing option</dd>
-  <dt>4.</dt>
-  <dd><b>Selective frame encoding</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>I-frames only on connection/motion</dd>
-  <dt> &#x2022;</dt>
-  <dd>P-frames for smooth streaming</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reduces bitrate further</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Testing_Plan"><a class="permalink" href="#Testing_Plan">Testing
-  Plan</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Unit_Tests"><a class="permalink" href="#Unit_Tests">Unit
-  Tests</a></h2>
-<pre># Test encoder creation/destruction
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Why_H">
+            <a class="permalink" href="#Why_H">Why H.264?</a>
+          </h2>
+          <p class="Pp">
+            <b>Compression:</b> 147&#x00D7; reduction (6.2MB &#x2192; 42KB)
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>At 1080p@60fps = 2.5 Mbps bitrate</li>
+            <li>Fits on 10 Mbps connection with 4.7&#x00D7; overhead</li>
+          </ul>
+          <p class="Pp">
+            <b>Latency:</b> 32-74ms end-to-end (with hardware acceleration)
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Encoding: 1-3ms (GPU-accelerated)</li>
+            <li>Network: 20-50ms</li>
+            <li>Decoding: 2-4ms (GPU-accelerated)</li>
+            <li>Acceptable for real-time video chat</li>
+          </ul>
+          <p class="Pp"><b>Hardware Support:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>NVIDIA: NVENC (native H.264 support)</li>
+            <li>Intel: QuickSync</li>
+            <li>AMD: VCE</li>
+            <li>Mobile: iOS/Android native</li>
+            <li>Browser: WebRTC already uses H.264</li>
+          </ul>
+          <p class="Pp">
+            <b>Bitrate vs Quality:</b> Bitrate Quality CPU Load 1 Mbps Fair
+            (6-7/10) Low 2 Mbps Good (7.5-8/10) Low-Medium 4 Mbps Very Good
+            (8.5-9/10) Medium
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Using_FFmpeg">
+            <a class="permalink" href="#Implementation_Using_FFmpeg"
+              >Implementation Using FFmpeg</a
+            >
+          </h2>
+          <p class="Pp">
+            FFmpeg is <b>already integrated</b> into ascii-chat as a dependency.
+            Current status:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>&#x2705; Decoders enabled (h264, hevc, vp8, vp9, etc.)</li>
+            <li>&#x274C; Encoders <b>not</b> enabled</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Steps">
+            <a class="permalink" href="#Implementation_Steps"
+              >Implementation Steps</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Enable H.264 encoder in FFmpeg build</b> (FFmpeg.cmake)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Add --enable-encoder=libx264 to FFmpeg configure</dd>
+            <dt>&#x2022;</dt>
+            <dd>Or use built-in --enable-encoder=h264 (software fallback)</dd>
+            <dt>2.</dt>
+            <dd><b>Create </b><b>lib/media/ffmpeg_encoder.c</b><b></b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Mirror <b>lib/media/ffmpeg_decoder.c</b><b> pattern</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Initialize encoder context</dd>
+            <dt>&#x2022;</dt>
+            <dd>Encode raw frames to H.264 bitstream</dd>
+            <dt>3.</dt>
+            <dd><b>Integrate into client capture loop</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>After webcam frame capture &#x2192; Encode H.264</dd>
+            <dt>&#x2022;</dt>
+            <dd>Send encoded bitstream instead of raw RGB</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Send PACKET_TYPE_VIDEO_FRAME (new packet type) or IMAGE_FRAME with
+              H.264 format
+            </dd>
+            <dt>4.</dt>
+            <dd><b>Integrate into server receive</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              On receiving H.264 data &#x2192; Decode using ffmpeg_decoder
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Feed decoded RGB to ASCII conversion pipeline</dd>
+            <dt>&#x2022;</dt>
+            <dd>Audio mixing unchanged</dd>
+            <dt>5.</dt>
+            <dd><b>Add format field to packets</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Update IMAGE_FRAME/VIDEO_FRAME packet types</dd>
+            <dt>&#x2022;</dt>
+            <dd>Add format enum: RGB24 (current), H264 (new), HEVC (future)</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Estimated_Effort">
+            <a class="permalink" href="#Estimated_Effort">Estimated Effort</a>
+          </h2>
+          <p class="Pp">
+            Task Time Notes Enable H.264 in CMake 30 mins 2-3 line change Create
+            ffmpeg_encoder module 1.5-2 hrs Copy decoder template, adapt Client
+            integration 1-2 hrs Modify capture loop Server integration 1 hr
+            Modify packet handling Testing &amp; debugging 1-2 hrs Verify
+            compression, latency <b>Total</b> <b>5-7 hours</b> Much faster than
+            custom codec
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Comparison:_FFmpeg_vs_Custom_Implementation">
+            <a
+              class="permalink"
+              href="#Comparison:_FFmpeg_vs_Custom_Implementation"
+              >Comparison: FFmpeg vs Custom Implementation</a
+            >
+          </h2>
+          <p class="Pp">
+            Aspect FFmpeg Custom H.264 External deps Already have Would add
+            libx264/libx265 Development time 5-7 hours 45-65 hours Code size
+            ~500 lines 2000+ lines Hardware accel Built-in support Custom
+            implementation needed Maintainability Proven, stable Custom, fragile
+            Quality Proven quality Unknown tuning Testing Existing patterns Must
+            develop
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Alternative_Approaches_Considered">
+            <a class="permalink" href="#Alternative_Approaches_Considered"
+              >Alternative Approaches Considered</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Compression_at_Transport_Layer">
+            <a class="permalink" href="#Compression_at_Transport_Layer"
+              >Compression at Transport Layer</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Enable WebSocket permessage-deflate</li>
+            <li>
+              <b>Status:</b> Disabled due to LWS buffer underflow bug (4.5.2)
+            </li>
+            <li>
+              <b>Issue:</b> Compression overhead, doesn't solve fundamental
+              6.2MB problem
+            </li>
+            <li><b>Verdict:</b> Band-aid, not solution</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Reduce_Resolution">
+            <a class="permalink" href="#Reduce_Resolution">Reduce Resolution</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>1920&#x00D7;1080 &#x2192; 1280&#x00D7;720</li>
+            <li><b>Impact:</b> 2.8MB &#x2192; still requires 700+ fragments</li>
+            <li><b>Verdict:</b> Insufficient alone</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="JPEG_Encoding">
+            <a class="permalink" href="#JPEG_Encoding">JPEG Encoding</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Reduce to 200-500KB per frame</li>
+            <li><b>Issue:</b> Still 50-125 fragments per frame</li>
+            <li><b>Quality:</b> Lossy, visible compression artifacts</li>
+            <li><b>Verdict:</b> Insufficient vs H.264</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Enhancements">
+            <a class="permalink" href="#Future_Enhancements"
+              >Future Enhancements</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Adaptive bitrate</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Monitor network conditions</dd>
+            <dt>&#x2022;</dt>
+            <dd>Dynamically adjust encoding quality</dd>
+            <dt>&#x2022;</dt>
+            <dd>FFmpeg supports this natively</dd>
+            <dt>2.</dt>
+            <dd><b>VP8/VP9 codec option</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Already enabled in FFmpeg</dd>
+            <dt>&#x2022;</dt>
+            <dd>Software-only (slower encoding)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Better for royalty-free deployments</dd>
+            <dt>3.</dt>
+            <dd><b>HEVC/H.265</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Better compression (2&#x00D7; better than H.264)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Slower encoding (2-4&#x00D7;)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Future-proofing option</dd>
+            <dt>4.</dt>
+            <dd><b>Selective frame encoding</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>I-frames only on connection/motion</dd>
+            <dt>&#x2022;</dt>
+            <dd>P-frames for smooth streaming</dd>
+            <dt>&#x2022;</dt>
+            <dd>Reduces bitrate further</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Testing_Plan">
+            <a class="permalink" href="#Testing_Plan">Testing Plan</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Unit_Tests">
+            <a class="permalink" href="#Unit_Tests">Unit Tests</a>
+          </h2>
+          <pre>
+# Test encoder creation/destruction
 TEST(ffmpeg_encoder, create_destroy)
 # Test frame encoding quality
 TEST(ffmpeg_encoder, encode_frame_quality)
 # Test bitrate control
 TEST(ffmpeg_encoder, bitrate_settings)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Integration_Tests"><a class="permalink" href="#Integration_Tests">Integration
-  Tests</a></h2>
-<pre># End-to-end with H.264
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Integration_Tests">
+            <a class="permalink" href="#Integration_Tests">Integration Tests</a>
+          </h2>
+          <pre>
+# End-to-end with H.264
 ./build/bin/ascii-chat server --snapshot 0
 ./build/bin/ascii-chat client --snapshot 0 --use-h264
 # Check fragmentation reduction
 ./build/bin/ascii-chat --log-level debug server --grep &quot;fragment|packet_size&quot;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Manual_Testing"><a class="permalink" href="#Manual_Testing">Manual
-  Testing</a></h2>
-<pre># Mirror mode (local testing, no networking)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Manual_Testing">
+            <a class="permalink" href="#Manual_Testing">Manual Testing</a>
+          </h2>
+          <pre>
+# Mirror mode (local testing, no networking)
 ./build/bin/ascii-chat mirror --use-h264 --snapshot 5
 # Server + client with H.264
 ./build/bin/ascii-chat server --use-h264
 ./build/bin/ascii-chat client --use-h264</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Configuration_Options"><a class="permalink" href="#Configuration_Options">Configuration
-  Options</a></h2>
-<p class="Pp">Add to CLI options:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>--h264                    Enable H.264 encoding (default: on)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Configuration_Options">
+            <a class="permalink" href="#Configuration_Options"
+              >Configuration Options</a
+            >
+          </h2>
+          <p class="Pp">Add to CLI options:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+--h264                    Enable H.264 encoding (default: on)
 --h264-bitrate &lt;kbps&gt;    Target bitrate (default: 2000)
 --h264-preset &lt;preset&gt;   Encoding preset: fast/medium/slow (default: medium)
 --h264-crf &lt;0-51&gt;        Quality (0=lossless, 51=worst, default: 28)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Performance_Expectations"><a class="permalink" href="#Performance_Expectations">Performance
-  Expectations</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Before_(Raw_RGB)"><a class="permalink" href="#Before_(Raw_RGB)">Before
-  (Raw RGB)</a></h2>
-<ul class="Bl-bullet">
-  <li>Frame size: 6.2 MB</li>
-  <li>Fragments per frame: 1500+</li>
-  <li>Queue fill time: 45ms (at 60fps)</li>
-  <li>Result: Frame loss, disconnects</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="After_(H"><a class="permalink" href="#After_(H">After
-  (H.264)</a></h2>
-<ul class="Bl-bullet">
-  <li>Frame size: 42-50 KB</li>
-  <li>Fragments per frame: 1-2</li>
-  <li>Queue fill time: 28 seconds (at 60fps)</li>
-  <li>Result: Smooth 60fps streaming</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Bandwidth_Savings"><a class="permalink" href="#Bandwidth_Savings">Bandwidth
-  Savings</a></h2>
-<ul class="Bl-bullet">
-  <li>Monthly data: 1.06 GB (vs 1,656 GB raw)</li>
-  <li>Network requirement: 2.5 Mbps (vs 2,984 Mbps)</li>
-  <li>Reduction: <b>99.9%</b></li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="References"><a class="permalink" href="#References">References</a></h2>
-<ul class="Bl-bullet">
-  <li><b>FFmpeg Documentation:</b> https://ffmpeg.org/documentation.html</li>
-  <li><b>H.264 Specification:</b> ITU-T H.264</li>
-  <li><b>libx264 Options:</b> http://x264.nl/x264_32bit.exe -h</li>
-  <li><b>Current decoder code:</b> <b>lib/media/ffmpeg_decoder.c</b><b></b></li>
-  <li><b>FFmpeg build config:</b> cmake/dependencies/FFmpeg.cmake</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Related_Issues"><a class="permalink" href="#Related_Issues">Related
-  Issues</a></h2>
-<ul class="Bl-bullet">
-  <li>WebSocket fragmentation timeout causes disconnects</li>
-  <li>recv_queue fills immediately with large frames</li>
-  <li>Fragment reassembly fails after 2 seconds</li>
-  <li>Terminal resizes during frame transmission cause desynchronization</li>
-</ul>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Performance_Expectations">
+            <a class="permalink" href="#Performance_Expectations"
+              >Performance Expectations</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Before_(Raw_RGB)">
+            <a class="permalink" href="#Before_(Raw_RGB)">Before (Raw RGB)</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Frame size: 6.2 MB</li>
+            <li>Fragments per frame: 1500+</li>
+            <li>Queue fill time: 45ms (at 60fps)</li>
+            <li>Result: Frame loss, disconnects</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="After_(H">
+            <a class="permalink" href="#After_(H">After (H.264)</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Frame size: 42-50 KB</li>
+            <li>Fragments per frame: 1-2</li>
+            <li>Queue fill time: 28 seconds (at 60fps)</li>
+            <li>Result: Smooth 60fps streaming</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Bandwidth_Savings">
+            <a class="permalink" href="#Bandwidth_Savings">Bandwidth Savings</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Monthly data: 1.06 GB (vs 1,656 GB raw)</li>
+            <li>Network requirement: 2.5 Mbps (vs 2,984 Mbps)</li>
+            <li>Reduction: <b>99.9%</b></li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="References">
+            <a class="permalink" href="#References">References</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>FFmpeg Documentation:</b> https://ffmpeg.org/documentation.html
+            </li>
+            <li><b>H.264 Specification:</b> ITU-T H.264</li>
+            <li><b>libx264 Options:</b> http://x264.nl/x264_32bit.exe -h</li>
+            <li>
+              <b>Current decoder code:</b> <b>lib/media/ffmpeg_decoder.c</b
+              ><b></b>
+            </li>
+            <li><b>FFmpeg build config:</b> cmake/dependencies/FFmpeg.cmake</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Related_Issues">
+            <a class="permalink" href="#Related_Issues">Related Issues</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>WebSocket fragmentation timeout causes disconnects</li>
+            <li>recv_queue fills immediately with large frames</li>
+            <li>Fragment reassembly fails after 2 seconds</li>
+            <li>
+              Terminal resizes during frame transmission cause desynchronization
+            </li>
+          </ul>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

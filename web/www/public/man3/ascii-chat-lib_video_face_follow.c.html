@@ -1,80 +1,132 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>face_follow.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">face_follow.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">face_follow.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">face_follow.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>face_follow_init</b> (<b>face_follow_state_t</b> *state)
-  <br/>
-  void <b>face_follow_observe</b> (<b>face_follow_state_t</b> *state, const
-    <b>face_follow_detection_t</b> *faces, size_t count, double now)
-  <br/>
-  void <b>face_follow_tick</b> (<b>face_follow_state_t</b> *state, double now,
-    <b>bool</b> enabled)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_init_("><a class="permalink" href="#void_face_follow_init_(">void
-  face_follow_init (<b>face_follow_state_t</b> * state)</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file
-    <b>lib/video/face_follow.c</b>.</p>
-<pre>13                                                   {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>face_follow.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">face_follow.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">face_follow.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">face_follow.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>face_follow_init</b> (<b>face_follow_state_t</b> *state)
+            <br />
+            void <b>face_follow_observe</b> (<b>face_follow_state_t</b> *state,
+            const <b>face_follow_detection_t</b> *faces, size_t count, double
+            now)
+            <br />
+            void <b>face_follow_tick</b> (<b>face_follow_state_t</b> *state,
+            double now, <b>bool</b> enabled)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_init_(">
+            <a class="permalink" href="#void_face_follow_init_("
+              >void face_follow_init (<b>face_follow_state_t</b> * state)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>lib/video/face_follow.c</b>.
+          </p>
+          <pre>
+13                                                   {
 14   memset(state, 0, sizeof(*state));
 15   state-&gt;crop = state-&gt;target = full_frame();
 16 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_state_t::crop</b>,
-    <b>face_follow_init()</b>, and <b>face_follow_state_t::target</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
-    <b>face_follow_init()</b>, and <b>face_web_reset()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_observe_("><a class="permalink" href="#void_face_follow_observe_(">void
-  face_follow_observe (<b>face_follow_state_t</b> * state, const
-  <b>face_follow_detection_t</b> * faces, size_t count, double now)</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file
-    <b>lib/video/face_follow.c</b>.</p>
-<pre>25                                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_state_t::crop</b>,
+            <b>face_follow_init()</b>, and <b>face_follow_state_t::target</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>,
+            <b>face_follow_init()</b>, and <b>face_web_reset()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_observe_(">
+            <a class="permalink" href="#void_face_follow_observe_("
+              >void face_follow_observe (<b>face_follow_state_t</b> * state,
+              const <b>face_follow_detection_t</b> * faces, size_t count, double
+              now)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>lib/video/face_follow.c</b>.
+          </p>
+          <pre>
+25                                                                                                                      {
 26   int selected = -1;
 27   float best = -1;
 28   bool retain = state-&gt;tracking &amp;&amp; now - state-&gt;last_seen &lt; 1.5;
@@ -163,33 +215,46 @@
 111     state-&gt;target.y = clampf(state-&gt;anchor_y - state-&gt;target.h * 0.5f, 0, 1 - state-&gt;target.h);
 112   }
 113 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_state_t::anchor_x</b>,
-    <b>face_follow_state_t::anchor_y</b>, <b>face_follow_detection_t::box</b>,
-    <b>face_follow_detection_t::confidence</b>,
-    <b>face_follow_state_t::detected</b>, <b>face_follow_state_t::face</b>,
-    <b>face_follow_observe()</b>, <b>face_follow_rect_t::h</b>,
-    <b>face_follow_state_t::last_seen</b>, <b>face_follow_state_t::misses</b>,
-    <b>face_follow_state_t::pan_direction_x</b>,
-    <b>face_follow_state_t::pan_direction_y</b>,
-    <b>face_follow_state_t::pan_outside_since</b>,
-    <b>face_follow_state_t::pan_pending</b>, <b>face_follow_state_t::target</b>,
-    <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
-    <b>face_follow_rect_t::x</b>, <b>face_follow_rect_t::y</b>,
-    <b>face_follow_state_t::zoom_direction</b>,
-    <b>face_follow_state_t::zoom_outside_since</b>, and
-    <b>face_follow_state_t::zoom_pending</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
-    <b>face_follow_observe()</b>, and <b>face_web_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_face_follow_tick_("><a class="permalink" href="#void_face_follow_tick_(">void
-  face_follow_tick (<b>face_follow_state_t</b> * state, double now, <b>bool</b>
-  enabled)</a></h2>
-<p class="Pp">Definition at line <b>115</b> of file
-    <b>lib/video/face_follow.c</b>.</p>
-<pre>115                                                                             {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_state_t::anchor_x</b>,
+            <b>face_follow_state_t::anchor_y</b>,
+            <b>face_follow_detection_t::box</b>,
+            <b>face_follow_detection_t::confidence</b>,
+            <b>face_follow_state_t::detected</b>,
+            <b>face_follow_state_t::face</b>, <b>face_follow_observe()</b>,
+            <b>face_follow_rect_t::h</b>, <b>face_follow_state_t::last_seen</b>,
+            <b>face_follow_state_t::misses</b>,
+            <b>face_follow_state_t::pan_direction_x</b>,
+            <b>face_follow_state_t::pan_direction_y</b>,
+            <b>face_follow_state_t::pan_outside_since</b>,
+            <b>face_follow_state_t::pan_pending</b>,
+            <b>face_follow_state_t::target</b>,
+            <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
+            <b>face_follow_rect_t::x</b>, <b>face_follow_rect_t::y</b>,
+            <b>face_follow_state_t::zoom_direction</b>,
+            <b>face_follow_state_t::zoom_outside_since</b>, and
+            <b>face_follow_state_t::zoom_pending</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>,
+            <b>face_follow_observe()</b>, and <b>face_web_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_face_follow_tick_(">
+            <a class="permalink" href="#void_face_follow_tick_("
+              >void face_follow_tick (<b>face_follow_state_t</b> * state, double
+              now, <b>bool</b> enabled)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>115</b> of file
+            <b>lib/video/face_follow.c</b>.
+          </p>
+          <pre>
+115                                                                             {
 116   if (!state-&gt;initialized) {
 117     if (enabled &amp;&amp; state-&gt;tracking &amp;&amp; now - state-&gt;last_seen &lt;= 0.7)
 118       state-&gt;crop = state-&gt;target;
@@ -218,29 +283,36 @@
 141   state-&gt;crop =
 142       (face_follow_rect_t){clampf(cx - size * 0.5f, 0, 1 - size), clampf(cy - size * 0.5f, 0, 1 - size), size, size};
 143 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>face_follow_state_t::crop</b>,
-    <b>face_follow_tick()</b>, <b>face_follow_rect_t::h</b>,
-    <b>face_follow_state_t::initialized</b>,
-    <b>face_follow_state_t::last_seen</b>,
-    <b>face_follow_state_t::last_tick</b>, <b>face_follow_state_t::target</b>,
-    <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
-    <b>face_follow_rect_t::x</b>, and <b>face_follow_rect_t::y</b>.</p>
-<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
-    <b>face_follow_tick()</b>, and <b>face_web_tick()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>face_follow_state_t::crop</b>,
+            <b>face_follow_tick()</b>, <b>face_follow_rect_t::h</b>,
+            <b>face_follow_state_t::initialized</b>,
+            <b>face_follow_state_t::last_seen</b>,
+            <b>face_follow_state_t::last_tick</b>,
+            <b>face_follow_state_t::target</b>,
+            <b>face_follow_state_t::tracking</b>, <b>face_follow_rect_t::w</b>,
+            <b>face_follow_rect_t::x</b>, and <b>face_follow_rect_t::y</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>face_follow_image_process()</b>,
+            <b>face_follow_tick()</b>, and <b>face_web_tick()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

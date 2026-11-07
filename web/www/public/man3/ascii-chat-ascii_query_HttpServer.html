@@ -1,93 +1,148 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ascii_query::HttpServer(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ascii_query::HttpServer(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ascii_query::HttpServer(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ascii_query::HttpServer - Simple single-threaded HTTP server.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;src/tooling/query/http_server.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
-  Member Functions</a></h2>
-<br/>
-<p class="Pp"><b>HttpServer</b> ()
-  <br/>
-  <b>~HttpServer</b> ()
-  <br/>
-  <b>HttpServer</b> (const HttpServer &amp;)=delete
-  <br/>
-  <b>HttpServer</b> &amp; <b>operator=</b> (const <b>HttpServer</b>
-    &amp;)=delete
-  <br/>
-  void <b>addRoute</b> (const std::string &amp;method, const std::string
-    &amp;path, <b>RouteHandler</b> handler)
-  <br/>
-  Add a route handler. void <b>setDefaultHandler</b> (<b>RouteHandler</b>
-    handler)
-  <br/>
-  Set a default handler for unmatched routes. <b>bool</b> <b>start</b>
-    (<b>uint16_t</b> port)
-  <br/>
-  Start the server. void <b>stop</b> ()
-  <br/>
-  Stop the server. <b>bool</b> <b>isRunning</b> () const
-  <br/>
-  Check if server is running. <b>uint16_t</b> <b>port</b> () const
-  <br/>
-  Get the port the server is listening on. const std::string &amp;
-    <b>lastError</b> () const
-  <br/>
-  Get the last error message. <b>bool</b> <b>processOneRequest</b> ()
-  <br/>
-  Process one request (blocking).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Simple single-threaded HTTP server.</p>
-<p class="Pp">Definition at line <b>162</b> of file <b>http_server.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Constructor_&amp;_Destructor_Documentation"><a class="permalink" href="#Constructor_&amp;_Destructor_Documentation">Constructor
-  &amp; Destructor Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="ascii_query::HttpServer::HttpServer_()"><a class="permalink" href="#ascii_query::HttpServer::HttpServer_()">ascii_query::HttpServer::HttpServer
-  ()</a></h2>
-<p class="Pp">Definition at line <b>114</b> of file <b>http_server.cpp</b>.</p>
-<pre>114                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ascii_query::HttpServer(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ascii_query::HttpServer(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ascii_query::HttpServer(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          ascii_query::HttpServer - Simple single-threaded HTTP server.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;src/tooling/query/http_server.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Public_Member_Functions">
+            <a class="permalink" href="#Public_Member_Functions"
+              >Public Member Functions</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>HttpServer</b> ()
+            <br />
+            <b>~HttpServer</b> ()
+            <br />
+            <b>HttpServer</b> (const HttpServer &amp;)=delete
+            <br />
+            <b>HttpServer</b> &amp; <b>operator=</b> (const <b>HttpServer</b>
+            &amp;)=delete
+            <br />
+            void <b>addRoute</b> (const std::string &amp;method, const
+            std::string &amp;path, <b>RouteHandler</b> handler)
+            <br />
+            Add a route handler. void <b>setDefaultHandler</b> (<b
+              >RouteHandler</b
+            >
+            handler)
+            <br />
+            Set a default handler for unmatched routes. <b>bool</b>
+            <b>start</b> (<b>uint16_t</b>
+            port)
+            <br />
+            Start the server. void <b>stop</b> ()
+            <br />
+            Stop the server. <b>bool</b> <b>isRunning</b> () const
+            <br />
+            Check if server is running. <b>uint16_t</b> <b>port</b> () const
+            <br />
+            Get the port the server is listening on. const std::string &amp;
+            <b>lastError</b> () const
+            <br />
+            Get the last error message. <b>bool</b> <b>processOneRequest</b> ()
+            <br />
+            Process one request (blocking).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Simple single-threaded HTTP server.</p>
+        <p class="Pp">
+          Definition at line <b>162</b> of file <b>http_server.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Constructor_&amp;_Destructor_Documentation">
+          <a
+            class="permalink"
+            href="#Constructor_&amp;_Destructor_Documentation"
+            >Constructor &amp; Destructor Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="ascii_query::HttpServer::HttpServer_()">
+            <a class="permalink" href="#ascii_query::HttpServer::HttpServer_()"
+              >ascii_query::HttpServer::HttpServer ()</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>114</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+114                        {
 115 #if defined(_WIN32)
 116   // Initialize Winsock
 117   WSADATA wsa_data;
@@ -97,104 +152,177 @@
 121   // Default 404 handler
 122   default_handler_ = [](const HttpRequest &amp;) { return HttpResponse::notFound(); };
 123 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_query::HttpResponse::notFound()</b>.</p>
-<p class="Pp">Referenced by <b>HttpServer()</b>, and <b>operator=()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ascii_query::HttpServer::_HttpServer_()"><a class="permalink" href="#ascii_query::HttpServer::_HttpServer_()">ascii_query::HttpServer::~HttpServer
-  ()</a></h2>
-<p class="Pp">Definition at line <b>125</b> of file <b>http_server.cpp</b>.</p>
-<pre>125                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_query::HttpResponse::notFound()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>HttpServer()</b>, and <b>operator=()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ascii_query::HttpServer::_HttpServer_()">
+            <a class="permalink" href="#ascii_query::HttpServer::_HttpServer_()"
+              >ascii_query::HttpServer::~HttpServer ()</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>125</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+125                         {
 126   stop();
 127
 128 #if defined(_WIN32)
 129   WSACleanup();
 130 #endif
 131 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ascii_query::HttpServer::HttpServer_(const_HttpServer_&amp;_)"><a class="permalink" href="#ascii_query::HttpServer::HttpServer_(const_HttpServer_&amp;_)">ascii_query::HttpServer::HttpServer
-  (const HttpServer &amp; ) [delete]</a></h2>
-<p class="Pp">References <b>HttpServer()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
-  Function Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ascii_query::HttpServer::addRoute_(const_std::string_&amp;_method,_const_std::string_&amp;_path,_"><a class="permalink" href="#void_ascii_query::HttpServer::addRoute_(const_std::string_&amp;_method,_const_std::string_&amp;_path,_">void
-  ascii_query::HttpServer::addRoute (const std::string &amp; method, const
-  std::string &amp; path, <b>RouteHandler</b> handler)</a></h2>
-<p class="Pp">Add a route handler.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>method</i> HTTP method (GET, POST, etc.)
-<br/>
-<i>path</i> URL path (exact match)
-<br/>
-<i>handler</i> Handler function</div>
-<p class="Pp">Definition at line <b>133</b> of file <b>http_server.cpp</b>.</p>
-<pre>133                                                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>stop()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="ascii_query::HttpServer::HttpServer_(const_HttpServer_&amp;_)"
+          >
+            <a
+              class="permalink"
+              href="#ascii_query::HttpServer::HttpServer_(const_HttpServer_&amp;_)"
+              >ascii_query::HttpServer::HttpServer (const HttpServer &amp; )
+              [delete]</a
+            >
+          </h2>
+          <p class="Pp">References <b>HttpServer()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Member_Function_Documentation">
+          <a class="permalink" href="#Member_Function_Documentation"
+            >Member Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_query::HttpServer::addRoute_(const_std::string_&amp;_method,_const_std::string_&amp;_path,_"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_query::HttpServer::addRoute_(const_std::string_&amp;_method,_const_std::string_&amp;_path,_"
+              >void ascii_query::HttpServer::addRoute (const std::string &amp;
+              method, const std::string &amp; path,
+              <b>RouteHandler</b> handler)</a
+            >
+          </h2>
+          <p class="Pp">Add a route handler.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>method</i> HTTP method (GET, POST, etc.)
+            <br />
+            <i>path</i> URL path (exact match)
+            <br />
+            <i>handler</i> Handler function
+          </div>
+          <p class="Pp">
+            Definition at line <b>133</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+133                                                                                               {
 134   routes_.push_back({method, path, std::move(handler)});
 135 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>operator=()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ascii_query::HttpServer::isRunning () const [inline],
-  [nodiscard]</h2>
-<p class="Pp">Check if server is running.</p>
-<p class="Pp">Definition at line <b>200</b> of file <b>http_server.h</b>.</p>
-<pre>200                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>operator=()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ascii_query::HttpServer::isRunning () const [inline],
+            [nodiscard]
+          </h2>
+          <p class="Pp">Check if server is running.</p>
+          <p class="Pp">
+            Definition at line <b>200</b> of file <b>http_server.h</b>.
+          </p>
+          <pre>
+200                                        {
 201     return running_;
 202   }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_std::string_&amp;_ascii_query::HttpServer::lastError_()_const"><a class="permalink" href="#const_std::string_&amp;_ascii_query::HttpServer::lastError_()_const">const
-  std::string &amp; ascii_query::HttpServer::lastError () const [inline],
-  [nodiscard]</a></h2>
-<p class="Pp">Get the last error message.</p>
-<p class="Pp">Definition at line <b>214</b> of file <b>http_server.h</b>.</p>
-<pre>214                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="const_std::string_&amp;_ascii_query::HttpServer::lastError_()_const"
+          >
+            <a
+              class="permalink"
+              href="#const_std::string_&amp;_ascii_query::HttpServer::lastError_()_const"
+              >const std::string &amp; ascii_query::HttpServer::lastError ()
+              const [inline], [nodiscard]</a
+            >
+          </h2>
+          <p class="Pp">Get the last error message.</p>
+          <p class="Pp">
+            Definition at line <b>214</b> of file <b>http_server.h</b>.
+          </p>
+          <pre>
+214                                                    {
 215     return last_error_;
 216   }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>HttpServer</b> &amp; ascii_query::HttpServer::operator= (const
-  <b>HttpServer</b> &amp; ) [delete]</h2>
-<p class="Pp">References <b>addRoute()</b>, <b>HttpServer()</b>, <b>port()</b>,
-    <b>setDefaultHandler()</b>, <b>start()</b>, and <b>stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint16_t</b> ascii_query::HttpServer::port () const [inline],
-  [nodiscard]</h2>
-<p class="Pp">Get the port the server is listening on.</p>
-<p class="Pp">Definition at line <b>207</b> of file <b>http_server.h</b>.</p>
-<pre>207                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>HttpServer</b> &amp; ascii_query::HttpServer::operator= (const
+            <b>HttpServer</b> &amp; ) [delete]
+          </h2>
+          <p class="Pp">
+            References <b>addRoute()</b>, <b>HttpServer()</b>, <b>port()</b>,
+            <b>setDefaultHandler()</b>, <b>start()</b>, and <b>stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint16_t</b> ascii_query::HttpServer::port () const [inline],
+            [nodiscard]
+          </h2>
+          <p class="Pp">Get the port the server is listening on.</p>
+          <p class="Pp">
+            Definition at line <b>207</b> of file <b>http_server.h</b>.
+          </p>
+          <pre>
+207                                       {
 208     return port_;
 209   }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>operator=()</b>, and <b>start()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ascii_query::HttpServer::processOneRequest ()</h2>
-<p class="Pp">Process one request (blocking). Used for testing or manual
-    control. Normally you'd call <b>start()</b> instead.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if a request was processed, false on error</div>
-<p class="Pp">Definition at line <b>235</b> of file <b>http_server.cpp</b>.</p>
-<pre>235                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>operator=()</b>, and <b>start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ascii_query::HttpServer::processOneRequest ()
+          </h2>
+          <p class="Pp">
+            Process one request (blocking). Used for testing or manual control.
+            Normally you'd call
+            <b>start()</b> instead.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if a request was processed, false on error
+          </div>
+          <p class="Pp">
+            Definition at line <b>235</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+235                                    {
 236   if (server_socket_ &lt; 0) {
 237     return false;
 238   }
@@ -211,35 +339,49 @@
 249   handleClient(static_cast&lt;int&gt;(client_socket));
 250   return true;
 251 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>INVALID_SOCKET_VAL</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ascii_query::HttpServer::setDefaultHandler_("><a class="permalink" href="#void_ascii_query::HttpServer::setDefaultHandler_(">void
-  ascii_query::HttpServer::setDefaultHandler (<b>RouteHandler</b>
-  handler)</a></h2>
-<p class="Pp">Set a default handler for unmatched routes.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>handler</i> Handler function</div>
-<p class="Pp">Definition at line <b>137</b> of file <b>http_server.cpp</b>.</p>
-<pre>137                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>INVALID_SOCKET_VAL</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_query::HttpServer::setDefaultHandler_(">
+            <a
+              class="permalink"
+              href="#void_ascii_query::HttpServer::setDefaultHandler_("
+              >void ascii_query::HttpServer::setDefaultHandler (<b
+                >RouteHandler</b
+              >
+              handler)</a
+            >
+          </h2>
+          <p class="Pp">Set a default handler for unmatched routes.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>handler</i> Handler function</div>
+          <p class="Pp">
+            Definition at line <b>137</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+137                                                        {
 138   default_handler_ = std::move(handler);
 139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>operator=()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ascii_query::HttpServer::start (<b>uint16_t</b>
-  port)</h2>
-<p class="Pp">Start the server.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>port</i> Port to listen on</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if server started successfully</div>
-<p class="Pp">Definition at line <b>141</b> of file <b>http_server.cpp</b>.</p>
-<pre>141                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>operator=()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ascii_query::HttpServer::start (<b>uint16_t</b> port)
+          </h2>
+          <p class="Pp">Start the server.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>port</i> Port to listen on</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if server started successfully</div>
+          <p class="Pp">
+            Definition at line <b>141</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+141                                     {
 142   if (running_) {
 143     last_error_ = &quot;Server already running&quot;;
 144     return false;
@@ -289,18 +431,26 @@
 188
 189   return true;
 190 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>close_socket</b>, <b>INVALID_SOCKET_VAL</b>, and
-    <b>port()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, and <b>operator=()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ascii_query::HttpServer::stop_()"><a class="permalink" href="#void_ascii_query::HttpServer::stop_()">void
-  ascii_query::HttpServer::stop ()</a></h2>
-<p class="Pp">Stop the server.</p>
-<p class="Pp">Definition at line <b>192</b> of file <b>http_server.cpp</b>.</p>
-<pre>192                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>close_socket</b>, <b>INVALID_SOCKET_VAL</b>, and
+            <b>port()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>main()</b>, and <b>operator=()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_query::HttpServer::stop_()">
+            <a class="permalink" href="#void_ascii_query::HttpServer::stop_()"
+              >void ascii_query::HttpServer::stop ()</a
+            >
+          </h2>
+          <p class="Pp">Stop the server.</p>
+          <p class="Pp">
+            Definition at line <b>192</b> of file <b>http_server.cpp</b>.
+          </p>
+          <pre>
+192                       {
 193   if (!running_) {
 194     return;
 195   }
@@ -323,24 +473,28 @@
 212     server_thread_.join();
 213   }
 214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>close_socket</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>operator=()</b>, and
-    <b>~HttpServer()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>close_socket</b>.</p>
+          <p class="Pp">
+            Referenced by <b>main()</b>, <b>operator=()</b>, and
+            <b>~HttpServer()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

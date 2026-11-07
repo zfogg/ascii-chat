@@ -30,12 +30,12 @@ owner without repeating the peer's cryptographic negotiation.
 
 ## Application callbacks
 
-| Callback | Ownership contract |
-| --- | --- |
-| `open` | Allocate application state and attach it to the connection. A failure still enters teardown. |
-| `packet` | Borrow the decoded payload until return. Return a terminal protocol/application error to close. |
+| Callback  | Ownership contract                                                                                       |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| `open`    | Allocate application state and attach it to the connection. A failure still enters teardown.             |
+| `packet`  | Borrow the decoded payload until return. Return a terminal protocol/application error to close.          |
 | `closing` | Stop and join application producers before transport destruction. Must permit retry after a failed join. |
-| `closed` | Release application state after transport callbacks have drained. Called once. |
+| `closed`  | Release application state after transport callbacks have drained. Called once.                           |
 
 Hooks for one connection execute serially, outside backend event loops. A failed
 join retains the connection, transport, application state, and owning server so

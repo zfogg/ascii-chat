@@ -1,100 +1,157 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>md_docs_2keyboard-input(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">md_docs_2keyboard-input(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">md_docs_2keyboard-input(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">md_docs_2keyboard-input - Keyboard input</p>
-<p class="Pp">Native keyboard input has four boundaries:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>lib/platform/{posix,windows}/keyboard.c owns terminal/console access and
-      restoration.</li>
-  <li><b>lib/platform/keyboard.c</b><b> frames terminal escape sequences and
-      replies, buffers fragmented text and delegates UTF-8 decoding, scalar
-      validation, and encoding to utf8proc. Windows UTF-16 surrogate pairs
-      become the same normalized keys; console repeats apply to complete
-      characters.</b></li>
-  <li><b>lib/tui/input.c</b><b> collects bracketed paste and queues decoded
-      events in order. The media screen supplies the policy for recognizing
-      dropped path/URL bursts. Paste bytes are validated before insertion and
-      never execute shortcuts.</b></li>
-  <li><b>lib/ui/input.c</b><b> edits caller-owned UTF-8 storage without terminal
-      I/O or rendering. Prompts and log search share this implementation;
-      callers decide when to submit, cancel, mask, or insert newlines.
-      </b><b>lib/tui/input.c</b><b> retains screen ownership and modal routing,
-      and </b><b>shortcuts.c</b><b> owns shortcut aliases/help.</b></li>
-</ul>
-<p class="Pp">Text and control keys use their Unicode code points directly.
-    Special keys start at 0x110000, above the Unicode range, so no text tagging
-    is needed. The browser SessionUi adapter uses the same representation,
-    including supplementary characters. Bracketed POSIX paste payloads remain
-    bytes until whole-paste validation. Malformed and truncated typed sequences
-    cannot mutate a field; new starters or special keys discard incomplete text.
-    Buffer exhaustion rejects a whole inserted character or paste without
-    truncating it.</p>
-<p class="Pp"></p>
-<p class="Pp">Editing operates on Unicode code points. Combining marks and emoji
-    joiners remain valid UTF-8 but are separate editing units; this is not
-    grapheme-cluster editing.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Validation"><a class="permalink" href="#Validation">Validation</a></h1>
-<p class="Pp">The normal Criterion suites exercise the production library with
-    the configured sanitizers: platform keyboard text/editing, UI text
-    editing/event collection, terminal replies, log search, and UTF-8 utilities.
-    The password PTY regression also types and deletes accented characters, CJK,
-    and supplementary emoji.</p>
-<p class="Pp"></p>
-<p class="Pp">On a configured Linux/macOS Clang build with Criterion and
-    pkg-config, run:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>python tests/scripts/keyboard_text_coverage.py --build build</pre>
-<p class="Pp">This runs the same exhaustive Criterion tests for every non-NUL
-    Unicode scalar, malformed UTF-8, fragmented input, and UTF-16 recovery. It
-    requires <b>100% line and branch coverage of the three
-    </b>keyboard_text_*<b> Unicode functions in
-    </b><b>lib/platform/keyboard.c</b><b></b> and writes its counters, gcov
-    listing, and summary under the sibling build-keyboard-text-coverage/
-    directory. The focused measurement excludes sanitizer-generated branches and
-    vendored utf8proc internals; the ordinary integrated tests retain
-    sanitizers. This percentage does not describe all Unicode utilities or the
-    whole application.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2keyboard-input(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2keyboard-input(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2keyboard-input(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">md_docs_2keyboard-input - Keyboard input</p>
+        <p class="Pp">Native keyboard input has four boundaries:</p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            lib/platform/{posix,windows}/keyboard.c owns terminal/console access
+            and restoration.
+          </li>
+          <li>
+            <b>lib/platform/keyboard.c</b
+            ><b>
+              frames terminal escape sequences and replies, buffers fragmented
+              text and delegates UTF-8 decoding, scalar validation, and encoding
+              to utf8proc. Windows UTF-16 surrogate pairs become the same
+              normalized keys; console repeats apply to complete characters.</b
+            >
+          </li>
+          <li>
+            <b>lib/tui/input.c</b
+            ><b>
+              collects bracketed paste and queues decoded events in order. The
+              media screen supplies the policy for recognizing dropped path/URL
+              bursts. Paste bytes are validated before insertion and never
+              execute shortcuts.</b
+            >
+          </li>
+          <li>
+            <b>lib/ui/input.c</b
+            ><b>
+              edits caller-owned UTF-8 storage without terminal I/O or
+              rendering. Prompts and log search share this implementation;
+              callers decide when to submit, cancel, mask, or insert newlines. </b
+            ><b>lib/tui/input.c</b
+            ><b> retains screen ownership and modal routing, and </b
+            ><b>shortcuts.c</b><b> owns shortcut aliases/help.</b>
+          </li>
+        </ul>
+        <p class="Pp">
+          Text and control keys use their Unicode code points directly. Special
+          keys start at 0x110000, above the Unicode range, so no text tagging is
+          needed. The browser SessionUi adapter uses the same representation,
+          including supplementary characters. Bracketed POSIX paste payloads
+          remain bytes until whole-paste validation. Malformed and truncated
+          typed sequences cannot mutate a field; new starters or special keys
+          discard incomplete text. Buffer exhaustion rejects a whole inserted
+          character or paste without truncating it.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Editing operates on Unicode code points. Combining marks and emoji
+          joiners remain valid UTF-8 but are separate editing units; this is not
+          grapheme-cluster editing.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Validation">
+          <a class="permalink" href="#Validation">Validation</a>
+        </h1>
+        <p class="Pp">
+          The normal Criterion suites exercise the production library with the
+          configured sanitizers: platform keyboard text/editing, UI text
+          editing/event collection, terminal replies, log search, and UTF-8
+          utilities. The password PTY regression also types and deletes accented
+          characters, CJK, and supplementary emoji.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          On a configured Linux/macOS Clang build with Criterion and pkg-config,
+          run:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>python tests/scripts/keyboard_text_coverage.py --build build</pre>
+        <p class="Pp">
+          This runs the same exhaustive Criterion tests for every non-NUL
+          Unicode scalar, malformed UTF-8, fragmented input, and UTF-16
+          recovery. It requires
+          <b>100% line and branch coverage of the three </b>keyboard_text_*<b>
+            Unicode functions in </b
+          ><b>lib/platform/keyboard.c</b><b></b> and writes its counters, gcov
+          listing, and summary under the sibling build-keyboard-text-coverage/
+          directory. The focused measurement excludes sanitizer-generated
+          branches and vendored utf8proc internals; the ordinary integrated
+          tests retain sanitizers. This percentage does not describe all Unicode
+          utilities or the whole application.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

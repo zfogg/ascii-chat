@@ -1,76 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>tool.cpp(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">tool.cpp(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">tool.cpp(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">tool.cpp</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">std::mutex &amp; <b>outputRegistryMutex</b> ()
-  <br/>
-  std::unordered_set&lt; std::string &gt; &amp; <b>outputRegistry</b> ()
-  <br/>
-  <b>bool</b> <b>registerOutputPath</b> (const std::string &amp;path)
-  <br/>
-  void <b>unregisterOutputPath</b> (const std::string &amp;path)
-  <br/>
-  int <b>main</b> (int argc, const char **argv)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">constexpr unsigned <b>kMacroFlagNone</b> = 0U
-  <br/>
-  constexpr unsigned <b>kMacroFlagExpansion</b> = 1U
-  <br/>
-  constexpr unsigned <b>kMacroFlagInvocation</b> = 2U
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_main_(int_argc,_const_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_const_char_**_argv)">int
-  main (int argc, const char ** argv)</a></h2>
-<p class="Pp">Definition at line <b>676</b> of file <b>panic/tool.cpp</b>.</p>
-<pre>676                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>tool.cpp(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">tool.cpp(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">tool.cpp(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">tool.cpp</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            std::mutex &amp; <b>outputRegistryMutex</b> ()
+            <br />
+            std::unordered_set&lt; std::string &gt; &amp;
+            <b>outputRegistry</b> ()
+            <br />
+            <b>bool</b> <b>registerOutputPath</b> (const std::string &amp;path)
+            <br />
+            void <b>unregisterOutputPath</b> (const std::string &amp;path)
+            <br />
+            int <b>main</b> (int argc, const char **argv)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables">
+            <a class="permalink" href="#Variables">Variables</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            constexpr unsigned <b>kMacroFlagNone</b> = 0U
+            <br />
+            constexpr unsigned <b>kMacroFlagExpansion</b> = 1U
+            <br />
+            constexpr unsigned <b>kMacroFlagInvocation</b> = 2U
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_main_(int_argc,_const_char_**_argv)">
+            <a class="permalink" href="#int_main_(int_argc,_const_char_**_argv)"
+              >int main (int argc, const char ** argv)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>676</b> of file <b>panic/tool.cpp</b>.
+          </p>
+          <pre>
+676                                       {
 677   // Initialize LLVM infrastructure (this triggers command-line option registration!)
 678   llvm::InitLLVM InitLLVM(argc, argv);
 679
@@ -317,92 +363,149 @@
 920   }
 921   return executionResult;
 922 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="std::unordered_set__std::string___&amp;_outputRegistry_()"><a class="permalink" href="#std::unordered_set__std::string___&amp;_outputRegistry_()">std::unordered_set&lt;
-  std::string &gt; &amp; outputRegistry ()</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>panic/tool.cpp</b>.</p>
-<pre>40                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="std::unordered_set__std::string___&amp;_outputRegistry_()"
+          >
+            <a
+              class="permalink"
+              href="#std::unordered_set__std::string___&amp;_outputRegistry_()"
+              >std::unordered_set&lt; std::string &gt; &amp; outputRegistry
+              ()</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file <b>panic/tool.cpp</b>.
+          </p>
+          <pre>
+40                                               {
 41   static std::unordered_set&lt;std::string&gt; registry;
 42   return registry;
 43 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="std::mutex_&amp;_outputRegistryMutex_()"><a class="permalink" href="#std::mutex_&amp;_outputRegistryMutex_()">std::mutex
-  &amp; outputRegistryMutex ()</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>panic/tool.cpp</b>.</p>
-<pre>35                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>outputRegistry()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="std::mutex_&amp;_outputRegistryMutex_()">
+            <a class="permalink" href="#std::mutex_&amp;_outputRegistryMutex_()"
+              >std::mutex &amp; outputRegistryMutex ()</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>panic/tool.cpp</b>.
+          </p>
+          <pre>
+35                                 {
 36   static std::mutex mutex;
 37   return mutex;
 38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistryMutex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> registerOutputPath (const std::string &amp;
-  path)</h2>
-<p class="Pp">Definition at line <b>45</b> of file <b>panic/tool.cpp</b>.</p>
-<pre>45                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>outputRegistryMutex()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> registerOutputPath (const std::string &amp; path)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>panic/tool.cpp</b>.
+          </p>
+          <pre>
+45                                                {
 46   std::lock_guard&lt;std::mutex&gt; guard(outputRegistryMutex());
 47   auto &amp;registry = outputRegistry();
 48   auto [_, inserted] = registry.insert(path);
 49   return inserted;
 50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
-    and <b>registerOutputPath()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_unregisterOutputPath_(const_std::string_&amp;_path)"><a class="permalink" href="#void_unregisterOutputPath_(const_std::string_&amp;_path)">void
-  unregisterOutputPath (const std::string &amp; path)</a></h2>
-<p class="Pp">Definition at line <b>52</b> of file <b>panic/tool.cpp</b>.</p>
-<pre>52                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
+            and <b>registerOutputPath()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_unregisterOutputPath_(const_std::string_&amp;_path)"
+          >
+            <a
+              class="permalink"
+              href="#void_unregisterOutputPath_(const_std::string_&amp;_path)"
+              >void unregisterOutputPath (const std::string &amp; path)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>panic/tool.cpp</b>.
+          </p>
+          <pre>
+52                                                  {
 53   std::lock_guard&lt;std::mutex&gt; guard(outputRegistryMutex());
 54   outputRegistry().erase(path);
 55 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
-    and <b>unregisterOutputPath()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_kMacroFlagExpansion_=_1U"><a class="permalink" href="#unsigned_kMacroFlagExpansion_=_1U">unsigned
-  kMacroFlagExpansion = 1U [constexpr]</a></h2>
-<p class="Pp">Definition at line <b>112</b> of file <b>panic/tool.cpp</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_kMacroFlagInvocation_=_2U"><a class="permalink" href="#unsigned_kMacroFlagInvocation_=_2U">unsigned
-  kMacroFlagInvocation = 2U [constexpr]</a></h2>
-<p class="Pp">Definition at line <b>113</b> of file <b>panic/tool.cpp</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_kMacroFlagNone_=_0U"><a class="permalink" href="#unsigned_kMacroFlagNone_=_0U">unsigned
-  kMacroFlagNone = 0U [constexpr]</a></h2>
-<p class="Pp">Definition at line <b>111</b> of file <b>panic/tool.cpp</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
+            and <b>unregisterOutputPath()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation"
+            >Variable Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_kMacroFlagExpansion_=_1U">
+            <a class="permalink" href="#unsigned_kMacroFlagExpansion_=_1U"
+              >unsigned kMacroFlagExpansion = 1U [constexpr]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>112</b> of file <b>panic/tool.cpp</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_kMacroFlagInvocation_=_2U">
+            <a class="permalink" href="#unsigned_kMacroFlagInvocation_=_2U"
+              >unsigned kMacroFlagInvocation = 2U [constexpr]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>panic/tool.cpp</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_kMacroFlagNone_=_0U">
+            <a class="permalink" href="#unsigned_kMacroFlagNone_=_0U"
+              >unsigned kMacroFlagNone = 0U [constexpr]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>111</b> of file <b>panic/tool.cpp</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

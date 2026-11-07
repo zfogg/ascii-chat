@@ -66,7 +66,9 @@ it("filters unsupported codecs and defaults to H.264 then raw", async () => {
   }));
   const { result, rerender } = renderHook(
     ({ fps }) => useVideoEncodings({ fps }),
-    { initialProps: { fps: 30 } },
+    {
+      initialProps: { fps: 30 },
+    },
   );
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.supportedEncodings).toEqual(["h264", "raw"]);

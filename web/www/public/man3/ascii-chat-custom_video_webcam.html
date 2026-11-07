@@ -1,62 +1,105 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_video_webcam(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_video_webcam(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_video_webcam(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_video_webcam - Video Webcam Module</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Video_Webcam_Module"><a class="permalink" href="#Video_Webcam_Module">Video
-  Webcam Module</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
-<p class="Pp">The webcam module provides unified, cross-platform APIs for webcam
-    capture across Windows, Linux, and macOS. This layer abstracts
-    platform-specific webcam APIs into a common interface, enabling ascii-chat
-    to seamlessly capture video across all supported platforms.</p>
-<p class="Pp"></p>
-<p class="Pp">This module is part of the video subsystem (lib/video/) and
-    focuses specifically on webcam hardware interaction and video capture.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b>: Audio I/O is handled directly by PortAudio throughout
-    the codebase since PortAudio already provides excellent cross-platform
-    support without requiring additional abstraction.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="File_Structure"><a class="permalink" href="#File_Structure">File
-  Structure</a></h2>
-<pre>lib/video/webcam/
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_video_webcam(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_video_webcam(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_video_webcam(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">custom_video_webcam - Video Webcam Module</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Video_Webcam_Module">
+          <a class="permalink" href="#Video_Webcam_Module"
+            >Video Webcam Module</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+          <p class="Pp">
+            The webcam module provides unified, cross-platform APIs for webcam
+            capture across Windows, Linux, and macOS. This layer abstracts
+            platform-specific webcam APIs into a common interface, enabling
+            ascii-chat to seamlessly capture video across all supported
+            platforms.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            This module is part of the video subsystem (lib/video/) and focuses
+            specifically on webcam hardware interaction and video capture.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Note</b>: Audio I/O is handled directly by PortAudio throughout
+            the codebase since PortAudio already provides excellent
+            cross-platform support without requiring additional abstraction.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="File_Structure">
+            <a class="permalink" href="#File_Structure">File Structure</a>
+          </h2>
+          <pre>lib/video/webcam/
 &#x251C;&#x2500;&#x2500; README.md              # This file
 &#x251C;&#x2500;&#x2500; webcam.h               # Webcam capture interface
 &#x251C;&#x2500;&#x2500; webcam.c               # Common webcam abstraction layer
@@ -67,146 +110,173 @@
 &#x2514;&#x2500;&#x2500; windows/               # Windows-specific implementations
 <br/>
     &#x2514;&#x2500;&#x2500; webcam_mediafoundation.c  # Media Foundation webcam implementation</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Key_Components"><a class="permalink" href="#Key_Components">Key
-  Components</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Core_Headers"><a class="permalink" href="#Core_Headers">Core
-  Headers</a></h2>
-<p class="Pp"><b></b><b>webcam.h</b><b></b><b> - Webcam capture
-  interface</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Unified API for video capture across platforms</li>
-  <li>Platform-specific backend selection at compile time</li>
-  <li>Image format conversion to common RGB format</li>
-  <li>Device enumeration and selection</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Platform_Implementations"><a class="permalink" href="#Platform_Implementations">Platform
-  Implementations</a></h2>
-<p class="Pp"><b>Linux Implementation (linux/)</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b></b><b>webcam_v4l2.c</b><b></b><b>: Uses Video4Linux2 API for webcam
-      access</b></dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Direct kernel interface for video capture</dd>
-  <dt> &#x2022;</dt>
-  <dd>YUYV to RGB conversion</dd>
-  <dt> &#x2022;</dt>
-  <dd>Memory-mapped I/O for efficient frame capture</dd>
-  <dt> &#x2022;</dt>
-  <dd>Device capability querying</dd>
-</dl>
-<p class="Pp"><b>macOS Implementation (macos/)</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b></b><b>webcam_avfoundation.m</b><b></b><b>: Uses AVFoundation
-      framework</b></dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Objective-C implementation for native macOS support</dd>
-  <dt> &#x2022;</dt>
-  <dd>Hardware-accelerated video capture</dd>
-  <dt> &#x2022;</dt>
-  <dd>Automatic format conversion</dd>
-  <dt> &#x2022;</dt>
-  <dd>Permission handling for camera access</dd>
-</dl>
-<p class="Pp"><b>Windows Implementation (windows/)</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b></b><b>webcam_mediafoundation.c</b><b></b><b>: Uses Windows Media
-      Foundation</b></dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>COM-based video capture</dd>
-  <dt> &#x2022;</dt>
-  <dd>Format negotiation and conversion</dd>
-  <dt> &#x2022;</dt>
-  <dd>Device enumeration through Windows APIs</dd>
-  <dt> &#x2022;</dt>
-  <dd>Fallback test pattern generation</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="API_Reference"><a class="permalink" href="#API_Reference">API
-  Reference</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Webcam_Capture_("><a class="permalink" href="#Webcam_Capture_(">Webcam
-  Capture (<b>webcam.h</b><b>)</b></a></h2>
-<p class="Pp"><b>Platform-Specific Interface:</b></p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>typedef struct webcam_context_t webcam_context_t;  // Opaque handle
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Key_Components">
+            <a class="permalink" href="#Key_Components">Key Components</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Core_Headers">
+            <a class="permalink" href="#Core_Headers">Core Headers</a>
+          </h2>
+          <p class="Pp">
+            <b></b><b>webcam.h</b><b></b><b> - Webcam capture interface</b>
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Unified API for video capture across platforms</li>
+            <li>Platform-specific backend selection at compile time</li>
+            <li>Image format conversion to common RGB format</li>
+            <li>Device enumeration and selection</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform_Implementations">
+            <a class="permalink" href="#Platform_Implementations"
+              >Platform Implementations</a
+            >
+          </h2>
+          <p class="Pp"><b>Linux Implementation (linux/)</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b></b><b>webcam_v4l2.c</b><b></b
+              ><b>: Uses Video4Linux2 API for webcam access</b>
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Direct kernel interface for video capture</dd>
+            <dt>&#x2022;</dt>
+            <dd>YUYV to RGB conversion</dd>
+            <dt>&#x2022;</dt>
+            <dd>Memory-mapped I/O for efficient frame capture</dd>
+            <dt>&#x2022;</dt>
+            <dd>Device capability querying</dd>
+          </dl>
+          <p class="Pp"><b>macOS Implementation (macos/)</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b></b><b>webcam_avfoundation.m</b><b></b
+              ><b>: Uses AVFoundation framework</b>
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Objective-C implementation for native macOS support</dd>
+            <dt>&#x2022;</dt>
+            <dd>Hardware-accelerated video capture</dd>
+            <dt>&#x2022;</dt>
+            <dd>Automatic format conversion</dd>
+            <dt>&#x2022;</dt>
+            <dd>Permission handling for camera access</dd>
+          </dl>
+          <p class="Pp"><b>Windows Implementation (windows/)</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b></b><b>webcam_mediafoundation.c</b><b></b
+              ><b>: Uses Windows Media Foundation</b>
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>COM-based video capture</dd>
+            <dt>&#x2022;</dt>
+            <dd>Format negotiation and conversion</dd>
+            <dt>&#x2022;</dt>
+            <dd>Device enumeration through Windows APIs</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fallback test pattern generation</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="API_Reference">
+            <a class="permalink" href="#API_Reference">API Reference</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Webcam_Capture_(">
+            <a class="permalink" href="#Webcam_Capture_("
+              >Webcam Capture (<b>webcam.h</b><b>)</b></a
+            >
+          </h2>
+          <p class="Pp"><b>Platform-Specific Interface:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+typedef struct webcam_context_t webcam_context_t;  // Opaque handle
 asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index);
 void webcam_cleanup_context(webcam_context_t *ctx);
 image_t *webcam_read_context(webcam_context_t *ctx);
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Platform-Specific_Features"><a class="permalink" href="#Platform-Specific_Features">Platform-Specific
-  Features</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Linux_Specifics"><a class="permalink" href="#Linux_Specifics">Linux
-  Specifics</a></h2>
-<p class="Pp"><b>V4L2 Webcam Support:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Direct kernel interface through /dev/video* devices</li>
-  <li>Memory-mapped I/O for zero-copy frame capture</li>
-  <li>YUYV format with software RGB conversion</li>
-  <li>Requires user to be in 'video' group</li>
-  <li>Multiple device support through enumeration</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="macOS_Specifics"><a class="permalink" href="#macOS_Specifics">macOS
-  Specifics</a></h2>
-<p class="Pp"><b>AVFoundation Webcam Support:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Native Objective-C implementation</li>
-  <li>Automatic format conversion</li>
-  <li>Hardware acceleration when available</li>
-  <li>System permission dialogs for camera access</li>
-  <li>Retina display awareness</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Windows_Specifics"><a class="permalink" href="#Windows_Specifics">Windows
-  Specifics</a></h2>
-<p class="Pp"><b>Media Foundation Webcam Support:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>COM-based initialization</li>
-  <li>Automatic format negotiation</li>
-  <li>YUY2/RGB conversion</li>
-  <li>Fallback test pattern for missing cameras</li>
-  <li>Device enumeration through Windows APIs</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
-  Examples</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Basic_Webcam_Capture"><a class="permalink" href="#Basic_Webcam_Capture">Basic
-  Webcam Capture</a></h2>
-<pre>#include &quot;video/webcam/webcam.h&quot;
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform-Specific_Features">
+            <a class="permalink" href="#Platform-Specific_Features"
+              >Platform-Specific Features</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Linux_Specifics">
+            <a class="permalink" href="#Linux_Specifics">Linux Specifics</a>
+          </h2>
+          <p class="Pp"><b>V4L2 Webcam Support:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Direct kernel interface through /dev/video* devices</li>
+            <li>Memory-mapped I/O for zero-copy frame capture</li>
+            <li>YUYV format with software RGB conversion</li>
+            <li>Requires user to be in 'video' group</li>
+            <li>Multiple device support through enumeration</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="macOS_Specifics">
+            <a class="permalink" href="#macOS_Specifics">macOS Specifics</a>
+          </h2>
+          <p class="Pp"><b>AVFoundation Webcam Support:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Native Objective-C implementation</li>
+            <li>Automatic format conversion</li>
+            <li>Hardware acceleration when available</li>
+            <li>System permission dialogs for camera access</li>
+            <li>Retina display awareness</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Windows_Specifics">
+            <a class="permalink" href="#Windows_Specifics">Windows Specifics</a>
+          </h2>
+          <p class="Pp"><b>Media Foundation Webcam Support:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>COM-based initialization</li>
+            <li>Automatic format negotiation</li>
+            <li>YUY2/RGB conversion</li>
+            <li>Fallback test pattern for missing cameras</li>
+            <li>Device enumeration through Windows APIs</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage_Examples">
+            <a class="permalink" href="#Usage_Examples">Usage Examples</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Basic_Webcam_Capture">
+            <a class="permalink" href="#Basic_Webcam_Capture"
+              >Basic Webcam Capture</a
+            >
+          </h2>
+          <pre>#include &quot;video/webcam/webcam.h&quot;
 #include &quot;video/image.h&quot;
 int main() {
 <br/>
@@ -252,18 +322,23 @@ int main() {
 <br/>
     return 0;
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Build_Integration"><a class="permalink" href="#Build_Integration">Build
-  Integration</a></h2>
-<p class="Pp">The OS abstraction layer is integrated into the CMake build
-    system:</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="CMake_Configuration"><a class="permalink" href="#CMake_Configuration">CMake
-  Configuration</a></h2>
-<pre># Platform-specific webcam sources are automatically selected
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Integration">
+            <a class="permalink" href="#Build_Integration">Build Integration</a>
+          </h2>
+          <p class="Pp">
+            The OS abstraction layer is integrated into the CMake build system:
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="CMake_Configuration">
+            <a class="permalink" href="#CMake_Configuration"
+              >CMake Configuration</a
+            >
+          </h2>
+          <pre># Platform-specific webcam sources are automatically selected
 if(APPLE)
 <br/>
     set(WEBCAM_SOURCES lib/video/webcam/macos/webcam_avfoundation.m)
@@ -275,211 +350,268 @@ elseif(WIN32)
     set(WEBCAM_SOURCES lib/video/webcam/windows/webcam_mediafoundation.c)
 endif()
 # Audio is handled directly by PortAudio without additional abstraction</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Dependencies"><a class="permalink" href="#Dependencies">Dependencies</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Linux</b>: V4L2 development headers (libv4l-dev)</li>
-  <li><b>macOS</b>: AVFoundation framework (built-in)</li>
-  <li><b>Windows</b>: Media Foundation (built-in)</li>
-</ul>
-<p class="Pp"><b>Note</b>: Audio dependencies (PortAudio) are managed at the
-    main project level, not in this webcam module.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Error_Handling"><a class="permalink" href="#Error_Handling">Error
-  Handling</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Webcam_Errors"><a class="permalink" href="#Webcam_Errors">Webcam
-  Errors</a></h2>
-<p class="Pp">The webcam subsystem provides detailed platform-specific error
-    messages:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Linux:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Permission errors (user not in 'video' group)</li>
-  <li>Device busy (camera in use by another application)</li>
-  <li>Device not found (no /dev/video* devices)</li>
-</ul>
-<p class="Pp"><b>macOS:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Permission denied (camera access not granted)</li>
-  <li>Device not found (no cameras available)</li>
-  <li>Format negotiation failures</li>
-</ul>
-<p class="Pp"><b>Windows:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>COM initialization failures</li>
-  <li>Device enumeration errors</li>
-  <li>Format conversion failures</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Testing"><a class="permalink" href="#Testing">Testing</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Unit_Tests"><a class="permalink" href="#Unit_Tests">Unit
-  Tests</a></h2>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>tests/unit/webcam_test.c - Webcam interface tests (planned)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Integration_Tests"><a class="permalink" href="#Integration_Tests">Integration
-  Tests</a></h2>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>tests/integration/video_pipeline_test.c - End-to-end video capture</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Platform_Coverage"><a class="permalink" href="#Platform_Coverage">Platform
-  Coverage</a></h2>
-<ul class="Bl-bullet">
-  <li>CI/CD tests on Linux, macOS, and Windows</li>
-  <li>Fallback test patterns for headless environments</li>
-  <li>Mock devices for automated testing</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Known_Limitations"><a class="permalink" href="#Known_Limitations">Known
-  Limitations</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Linux"><a class="permalink" href="#Linux">Linux</a></h2>
-<ul class="Bl-bullet">
-  <li>V4L2 requires specific pixel formats (YUYV preferred)</li>
-  <li>Some USB cameras may have compatibility issues</li>
-  <li>User must be in 'video' group for device access</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="macOS"><a class="permalink" href="#macOS">macOS</a></h2>
-<ul class="Bl-bullet">
-  <li>Requires user permission for camera access</li>
-  <li>First-time permission dialog may interrupt flow</li>
-  <li>Some virtual cameras may not be detected</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Windows"><a class="permalink" href="#Windows">Windows</a></h2>
-<ul class="Bl-bullet">
-  <li>Media Foundation requires Windows 7 or later</li>
-  <li>Some older webcams may not support required formats</li>
-  <li>COM initialization required before use</li>
-  <li>Currently uses test pattern fallback (full implementation pending)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Future_Enhancements"><a class="permalink" href="#Future_Enhancements">Future
-  Enhancements</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Planned_Features"><a class="permalink" href="#Planned_Features">Planned
-  Features</a></h2>
-<dl class="Bl-tag">
-  <dt>[ ]</dt>
-  <dd>Hardware video encoding/decoding</dd>
-  <dt>[ ]</dt>
-  <dd>Camera hot-plug detection</dd>
-  <dt>[ ]</dt>
-  <dd>Video resolution selection</dd>
-  <dt>[ ]</dt>
-  <dd>Frame rate control</dd>
-  <dt>[ ]</dt>
-  <dd>Multiple camera support</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Platform-Specific_Plans"><a class="permalink" href="#Platform-Specific_Plans">Platform-Specific
-  Plans</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Linux</b>: PipeWire webcam support for modern distributions</li>
-  <li><b>macOS</b>: Metal Performance Shaders for GPU-accelerated
-    processing</li>
-  <li><b>Windows</b>: DirectShow fallback for older systems</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Migration_from_Direct_Platform_Calls"><a class="permalink" href="#Migration_from_Direct_Platform_Calls">Migration
-  from Direct Platform Calls</a></h2>
-<p class="Pp">When migrating code to use the OS abstraction:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Replace OpenCV calls:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>cv::VideoCapture &#x2192; <b>webcam_init_context()</b><b> /
-      </b><b>webcam_read_context()</b><b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Direct V4L2 calls &#x2192; webcam_* functions</dd>
-  <dt>2.</dt>
-  <dd><b>Replace webcam platform calls:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>webcam_platform_* functions &#x2192; webcam_* functions</dd>
-  <dt>3.</dt>
-  <dd><b>Update error handling:</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Check return codes from init functions</dd>
-  <dt> &#x2022;</dt>
-  <dd>Handle platform-specific error messages</dd>
-  <dt> &#x2022;</dt>
-  <dd>Implement graceful fallbacks</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Contributing"><a class="permalink" href="#Contributing">Contributing</a></h2>
-<p class="Pp">When adding new webcam platform implementations:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Define the interface in the appropriate header file</dd>
-  <dt>2.</dt>
-  <dd>Implement platform-specific versions in linux/, macos/, windows/</dd>
-  <dt>3.</dt>
-  <dd>Add fallback implementations for unsupported platforms</dd>
-  <dt>4.</dt>
-  <dd>Write tests for all platforms</dd>
-  <dt>5.</dt>
-  <dd>Update this README with new functionality</dd>
-  <dt>6.</dt>
-  <dd>Ensure thread-safety for multi-threaded access</dd>
-  <dt>7.</dt>
-  <dd>Document platform-specific requirements and limitations</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Dependencies~2"><a class="permalink" href="#Dependencies~2">Dependencies</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Required_Libraries"><a class="permalink" href="#Required_Libraries">Required
-  Libraries</a></h2>
-<ul class="Bl-bullet">
-  <li><b>PortAudio</b>: Cross-platform audio I/O (all platforms)</li>
-  <li><b>libv4l2</b>: Video4Linux2 (Linux only)</li>
-  <li><b>AVFoundation</b>: Apple's media framework (macOS only, built-in)</li>
-  <li><b>Media Foundation</b>: Windows media framework (Windows only,
-    built-in)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Author"><a class="permalink" href="#Author">Author</a></h2>
-<p class="Pp">Webcam module developed by Zachary Fogg me@zfo.gg September
-  2025</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Dependencies">
+            <a class="permalink" href="#Dependencies">Dependencies</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>Linux</b>: V4L2 development headers (libv4l-dev)</li>
+            <li><b>macOS</b>: AVFoundation framework (built-in)</li>
+            <li><b>Windows</b>: Media Foundation (built-in)</li>
+          </ul>
+          <p class="Pp">
+            <b>Note</b>: Audio dependencies (PortAudio) are managed at the main
+            project level, not in this webcam module.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Error_Handling">
+            <a class="permalink" href="#Error_Handling">Error Handling</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Webcam_Errors">
+            <a class="permalink" href="#Webcam_Errors">Webcam Errors</a>
+          </h2>
+          <p class="Pp">
+            The webcam subsystem provides detailed platform-specific error
+            messages:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Linux:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Permission errors (user not in 'video' group)</li>
+            <li>Device busy (camera in use by another application)</li>
+            <li>Device not found (no /dev/video* devices)</li>
+          </ul>
+          <p class="Pp"><b>macOS:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Permission denied (camera access not granted)</li>
+            <li>Device not found (no cameras available)</li>
+            <li>Format negotiation failures</li>
+          </ul>
+          <p class="Pp"><b>Windows:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>COM initialization failures</li>
+            <li>Device enumeration errors</li>
+            <li>Format conversion failures</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Testing">
+            <a class="permalink" href="#Testing">Testing</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Unit_Tests">
+            <a class="permalink" href="#Unit_Tests">Unit Tests</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>tests/unit/webcam_test.c - Webcam interface tests (planned)</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Integration_Tests">
+            <a class="permalink" href="#Integration_Tests">Integration Tests</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              tests/integration/video_pipeline_test.c - End-to-end video capture
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform_Coverage">
+            <a class="permalink" href="#Platform_Coverage">Platform Coverage</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>CI/CD tests on Linux, macOS, and Windows</li>
+            <li>Fallback test patterns for headless environments</li>
+            <li>Mock devices for automated testing</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Known_Limitations">
+            <a class="permalink" href="#Known_Limitations">Known Limitations</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Linux">
+            <a class="permalink" href="#Linux">Linux</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>V4L2 requires specific pixel formats (YUYV preferred)</li>
+            <li>Some USB cameras may have compatibility issues</li>
+            <li>User must be in 'video' group for device access</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="macOS">
+            <a class="permalink" href="#macOS">macOS</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Requires user permission for camera access</li>
+            <li>First-time permission dialog may interrupt flow</li>
+            <li>Some virtual cameras may not be detected</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Windows">
+            <a class="permalink" href="#Windows">Windows</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Media Foundation requires Windows 7 or later</li>
+            <li>Some older webcams may not support required formats</li>
+            <li>COM initialization required before use</li>
+            <li>
+              Currently uses test pattern fallback (full implementation pending)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Enhancements">
+            <a class="permalink" href="#Future_Enhancements"
+              >Future Enhancements</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Planned_Features">
+            <a class="permalink" href="#Planned_Features">Planned Features</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd>Hardware video encoding/decoding</dd>
+            <dt>[ ]</dt>
+            <dd>Camera hot-plug detection</dd>
+            <dt>[ ]</dt>
+            <dd>Video resolution selection</dd>
+            <dt>[ ]</dt>
+            <dd>Frame rate control</dd>
+            <dt>[ ]</dt>
+            <dd>Multiple camera support</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform-Specific_Plans">
+            <a class="permalink" href="#Platform-Specific_Plans"
+              >Platform-Specific Plans</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Linux</b>: PipeWire webcam support for modern distributions
+            </li>
+            <li>
+              <b>macOS</b>: Metal Performance Shaders for GPU-accelerated
+              processing
+            </li>
+            <li><b>Windows</b>: DirectShow fallback for older systems</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Migration_from_Direct_Platform_Calls">
+            <a class="permalink" href="#Migration_from_Direct_Platform_Calls"
+              >Migration from Direct Platform Calls</a
+            >
+          </h2>
+          <p class="Pp">When migrating code to use the OS abstraction:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Replace OpenCV calls:</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              cv::VideoCapture &#x2192; <b>webcam_init_context()</b><b> / </b
+              ><b>webcam_read_context()</b><b></b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Direct V4L2 calls &#x2192; webcam_* functions</dd>
+            <dt>2.</dt>
+            <dd><b>Replace webcam platform calls:</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>webcam_platform_* functions &#x2192; webcam_* functions</dd>
+            <dt>3.</dt>
+            <dd><b>Update error handling:</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Check return codes from init functions</dd>
+            <dt>&#x2022;</dt>
+            <dd>Handle platform-specific error messages</dd>
+            <dt>&#x2022;</dt>
+            <dd>Implement graceful fallbacks</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Contributing">
+            <a class="permalink" href="#Contributing">Contributing</a>
+          </h2>
+          <p class="Pp">When adding new webcam platform implementations:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Define the interface in the appropriate header file</dd>
+            <dt>2.</dt>
+            <dd>
+              Implement platform-specific versions in linux/, macos/, windows/
+            </dd>
+            <dt>3.</dt>
+            <dd>Add fallback implementations for unsupported platforms</dd>
+            <dt>4.</dt>
+            <dd>Write tests for all platforms</dd>
+            <dt>5.</dt>
+            <dd>Update this README with new functionality</dd>
+            <dt>6.</dt>
+            <dd>Ensure thread-safety for multi-threaded access</dd>
+            <dt>7.</dt>
+            <dd>Document platform-specific requirements and limitations</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Dependencies~2">
+            <a class="permalink" href="#Dependencies~2">Dependencies</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Required_Libraries">
+            <a class="permalink" href="#Required_Libraries"
+              >Required Libraries</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>PortAudio</b>: Cross-platform audio I/O (all platforms)</li>
+            <li><b>libv4l2</b>: Video4Linux2 (Linux only)</li>
+            <li>
+              <b>AVFoundation</b>: Apple's media framework (macOS only,
+              built-in)
+            </li>
+            <li>
+              <b>Media Foundation</b>: Windows media framework (Windows only,
+              built-in)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Author">
+            <a class="permalink" href="#Author">Author</a>
+          </h2>
+          <p class="Pp">
+            Webcam module developed by Zachary Fogg me@zfo.gg September 2025
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

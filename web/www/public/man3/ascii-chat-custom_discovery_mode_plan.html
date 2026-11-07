@@ -1,183 +1,291 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>custom_discovery_mode_plan(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">custom_discovery_mode_plan(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">custom_discovery_mode_plan(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">custom_discovery_mode_plan - Discovery Mode: Direct P2P Calling
-    for ascii-chat</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Discovery_Mode:_Direct_P2P_Calling_for_ascii-chat"><a class="permalink" href="#Discovery_Mode:_Direct_P2P_Calling_for_ascii-chat">Discovery
-  Mode: Direct P2P Calling for ascii-chat</a></h1>
-<p class="Pp">This document preserves the original design exploration. The
-    implemented election and recovery contract is <b>measured host handoff</b>.
-    Passive media byte rates are achieved throughput, not available capacity; a
-    sender timestamp alone does not establish RTT, and gaps on a reliable
-    transport do not measure UDP loss. Earlier examples using those
-    interpretations are superseded.</p>
-<p class="Pp"></p>
-<p class="Pp">Runtime rendering settings now follow <b>runtime settings</b>. The
-    original broadcast-settings proposal below is historical: rendering is
-    scoped to each viewer, and all live updates use the shared settings
-    request/result API.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Philosophy"><a class="permalink" href="#Philosophy">Philosophy</a></h2>
-<p class="Pp">ascii-chat should be as simple as making a phone call. Today,
-    users need to understand server/client architecture, port forwarding, and
-    NAT traversal to have a video call. The new <b>Discovery Mode</b> changes
-    this:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre># Alice starts a call
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_discovery_mode_plan(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_discovery_mode_plan(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_discovery_mode_plan(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_discovery_mode_plan - Discovery Mode: Direct P2P Calling for
+          ascii-chat
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Discovery_Mode:_Direct_P2P_Calling_for_ascii-chat">
+          <a
+            class="permalink"
+            href="#Discovery_Mode:_Direct_P2P_Calling_for_ascii-chat"
+            >Discovery Mode: Direct P2P Calling for ascii-chat</a
+          >
+        </h1>
+        <p class="Pp">
+          This document preserves the original design exploration. The
+          implemented election and recovery contract is
+          <b>measured host handoff</b>. Passive media byte rates are achieved
+          throughput, not available capacity; a sender timestamp alone does not
+          establish RTT, and gaps on a reliable transport do not measure UDP
+          loss. Earlier examples using those interpretations are superseded.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Runtime rendering settings now follow <b>runtime settings</b>. The
+          original broadcast-settings proposal below is historical: rendering is
+          scoped to each viewer, and all live updates use the shared settings
+          request/result API.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Philosophy">
+            <a class="permalink" href="#Philosophy">Philosophy</a>
+          </h2>
+          <p class="Pp">
+            ascii-chat should be as simple as making a phone call. Today, users
+            need to understand server/client architecture, port forwarding, and
+            NAT traversal to have a video call. The new
+            <b>Discovery Mode</b> changes this:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Alice starts a call
 $ ascii-chat
 Session: swift-river-mountain
 Waiting for others to join...
 # Bob joins
 $ ascii-chat swift-river-mountain
 Connecting to Alice...</pre>
-<p class="Pp">That's it. No servers to configure, no ports to forward, no
-    technical knowledge required.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Core_Principles"><a class="permalink" href="#Core_Principles">Core
-  Principles</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>One command to start, one command to join</b> - The default ascii-chat
-      invocation starts a session</dd>
-  <dt>2.</dt>
-  <dd><b>Best connection wins</b> - Automatically negotiate who hosts based on
-      NAT quality</dd>
-  <dt>3.</dt>
-  <dd><b>Settings travel with the session</b> - The person who starts sets the
-      options (mutable mid-session)</dd>
-  <dt>4.</dt>
-  <dd><b>Graceful degradation</b> - Try direct connection first, fall back
-      through STUN/TURN</dd>
-  <dt>5.</dt>
-  <dd><b>Server mode still exists</b> - Power users can still run dedicated
-      servers</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Current_Architecture"><a class="permalink" href="#Current_Architecture">Current
-  Architecture</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="What_We_Have"><a class="permalink" href="#What_We_Have">What
-  We Have</a></h2>
-<pre>src/
+          <p class="Pp">
+            That's it. No servers to configure, no ports to forward, no
+            technical knowledge required.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Core_Principles">
+            <a class="permalink" href="#Core_Principles">Core Principles</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>One command to start, one command to join</b> - The default
+              ascii-chat invocation starts a session
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Best connection wins</b> - Automatically negotiate who hosts
+              based on NAT quality
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Settings travel with the session</b> - The person who starts
+              sets the options (mutable mid-session)
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Graceful degradation</b> - Try direct connection first, fall
+              back through STUN/TURN
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>Server mode still exists</b> - Power users can still run
+              dedicated servers
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Current_Architecture">
+            <a class="permalink" href="#Current_Architecture"
+              >Current Architecture</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="What_We_Have">
+            <a class="permalink" href="#What_We_Have">What We Have</a>
+          </h2>
+          <pre>
+src/
 &#x251C;&#x2500;&#x2500; server/      # Multi-client video server (runs on host)
 &#x251C;&#x2500;&#x2500; client/      # Video client (connects to server)
 &#x251C;&#x2500;&#x2500; mirror/      # Local webcam preview (no network)
 &#x2514;&#x2500;&#x2500; discovery-server/  # ACDS session management</pre>
-<p class="Pp"><b>Key insight</b>: The server and client code are tightly coupled
-    to their modes. To call someone, you currently need:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>One person runs ascii-chat server --<b>Acds</b><b> to register with
-      ACDS</b></dd>
-  <dt>2.</dt>
-  <dd>Other person runs ascii-chat swift-river-mountain to connect</dd>
-</dl>
-<p class="Pp">This works, but requires users to decide who's the
-    &quot;server&quot; upfront.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="What_We_Need"><a class="permalink" href="#What_We_Need">What
-  We Need</a></h2>
-<p class="Pp">A new <b>Discovery Mode</b> where:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Both users run essentially the same command</dd>
-  <dt>2.</dt>
-  <dd>NAT quality determines who becomes the host</dd>
-  <dt>3.</dt>
-  <dd>The &quot;loser&quot; of NAT negotiation runs client software</dd>
-  <dt>4.</dt>
-  <dd>The &quot;winner&quot; runs server software AND participates as a
-    client</dd>
-  <dt>5.</dt>
-  <dd>Options set by session creator propagate to all participants (and are
-      mutable)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Connection_Flow:_Instant_Host_Election_+_Background_Migration"><a class="permalink" href="#Connection_Flow:_Instant_Host_Election_+_Background_Migration">Connection
-  Flow: Instant Host Election + Background Migration</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Two-Packet_Architecture"><a class="permalink" href="#Two-Packet_Architecture">Two-Packet
-  Architecture</a></h2>
-<p class="Pp">Discovery mode uses <b>two distinct packet types</b> sent over the
-    WebRTC DataChannel:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>NAT_STATE Packet</b> - Fast path to instant host election</dd>
-  <dt> &#x2022;</dt>
-  <dd>Sent immediately after DataChannel opens</dd>
-  <dt> &#x2022;</dt>
-  <dd>Contains: NAT tier (public IP, UPnP, STUN, TURN), ICE candidates</dd>
-  <dt> &#x2022;</dt>
-  <dd>NO bandwidth data (unknown yet)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Both sides run deterministic comparison &#x2192; HOST ELECTED IN
-    &lt;100ms</dd>
-  <dt> &#x2022;</dt>
-  <dd>Media starts flowing immediately</dd>
-  <dt>2.</dt>
-  <dd><b>NETWORK_QUALITY Packet</b> - Background bandwidth measurement</dd>
-  <dt> &#x2022;</dt>
-  <dd>Sent after 10-60 seconds of media flow</dd>
-  <dt> &#x2022;</dt>
-  <dd>Contains: Measured upload/download Kbps, packet loss %, RTT, jitter</dd>
-  <dt> &#x2022;</dt>
-  <dd>Measured from actual media frames, not synthetic tests</dd>
-  <dt> &#x2022;</dt>
-  <dd>Used to check if we should migrate to a better host</dd>
-  <dt> &#x2022;</dt>
-  <dd>If better host found (within first 60 seconds): MIGRATE packet</dd>
-  <dt> &#x2022;</dt>
-  <dd>Migration happens entirely over DataChannel, NO ACDS involvement</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Instant_Host_Election_(NAT_STATE_Phase)"><a class="permalink" href="#Instant_Host_Election_(NAT_STATE_Phase)">Instant
-  Host Election (NAT_STATE Phase)</a></h2>
-<pre>WebRTC DataChannel OPENS
+          <p class="Pp">
+            <b>Key insight</b>: The server and client code are tightly coupled
+            to their modes. To call someone, you currently need:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              One person runs ascii-chat server --<b>Acds</b
+              ><b> to register with ACDS</b>
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              Other person runs ascii-chat swift-river-mountain to connect
+            </dd>
+          </dl>
+          <p class="Pp">
+            This works, but requires users to decide who's the
+            &quot;server&quot; upfront.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="What_We_Need">
+            <a class="permalink" href="#What_We_Need">What We Need</a>
+          </h2>
+          <p class="Pp">A new <b>Discovery Mode</b> where:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Both users run essentially the same command</dd>
+            <dt>2.</dt>
+            <dd>NAT quality determines who becomes the host</dd>
+            <dt>3.</dt>
+            <dd>
+              The &quot;loser&quot; of NAT negotiation runs client software
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              The &quot;winner&quot; runs server software AND participates as a
+              client
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              Options set by session creator propagate to all participants (and
+              are mutable)
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Connection_Flow:_Instant_Host_Election_+_Background_Migration"
+          >
+            <a
+              class="permalink"
+              href="#Connection_Flow:_Instant_Host_Election_+_Background_Migration"
+              >Connection Flow: Instant Host Election + Background Migration</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Two-Packet_Architecture">
+            <a class="permalink" href="#Two-Packet_Architecture"
+              >Two-Packet Architecture</a
+            >
+          </h2>
+          <p class="Pp">
+            Discovery mode uses <b>two distinct packet types</b> sent over the
+            WebRTC DataChannel:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>NAT_STATE Packet</b> - Fast path to instant host election
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Sent immediately after DataChannel opens</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Contains: NAT tier (public IP, UPnP, STUN, TURN), ICE candidates
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>NO bandwidth data (unknown yet)</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Both sides run deterministic comparison &#x2192; HOST ELECTED IN
+              &lt;100ms
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Media starts flowing immediately</dd>
+            <dt>2.</dt>
+            <dd>
+              <b>NETWORK_QUALITY Packet</b> - Background bandwidth measurement
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Sent after 10-60 seconds of media flow</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Contains: Measured upload/download Kbps, packet loss %, RTT,
+              jitter
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Measured from actual media frames, not synthetic tests</dd>
+            <dt>&#x2022;</dt>
+            <dd>Used to check if we should migrate to a better host</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If better host found (within first 60 seconds): MIGRATE packet
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Migration happens entirely over DataChannel, NO ACDS involvement
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Instant_Host_Election_(NAT_STATE_Phase)">
+            <a class="permalink" href="#Instant_Host_Election_(NAT_STATE_Phase)"
+              >Instant Host Election (NAT_STATE Phase)</a
+            >
+          </h2>
+          <pre>WebRTC DataChannel OPENS
 <br/>
   &#x2193;
 Both gather NAT tier (100-200ms parallel):
@@ -207,53 +315,72 @@ Alice (tier 1) vs Bob (tier 2) &#x2192; Alice hosts
 <br/>
   &#x2193;
 Media starts IMMEDIATELY over DataChannel</pre>
-<p class="Pp"><b>Time to media start</b>: ~500ms total (WebRTC setup + NAT_STATE
-    exchange + decision)</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Background_Bandwidth_Measurement_(NETWORK_QUALITY_Phase)"><a class="permalink" href="#Background_Bandwidth_Measurement_(NETWORK_QUALITY_Phase)">Background
-  Bandwidth Measurement (NETWORK_QUALITY Phase)</a></h2>
-<p class="Pp">Bandwidth is measured from <b>actual media stream</b>, not
-    synthetic tests:</p>
-<p class="Pp"></p>
-<p class="Pp"><b>How it works:</b></p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Media flows for 10-60 seconds</dd>
-  <dt>2.</dt>
-  <dd>Each frame carries sequence number and optional timestamp</dd>
-  <dt>3.</dt>
-  <dd>Track accumulation:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Bytes received (frame sizes)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Frames received vs expected (detect loss)</dd>
-  <dt> &#x2022;</dt>
-  <dd>RTT from frame timestamps (if available)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Jitter (variance in RTT)</dd>
-  <dt>4.</dt>
-  <dd>After measurement window:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Calculate upload_kbps = (bytes_received * 8) / window_duration</dd>
-  <dt> &#x2022;</dt>
-  <dd>Calculate loss% from missing sequence numbers</dd>
-  <dt> &#x2022;</dt>
-  <dd>Send NETWORK_QUALITY packet with results</dd>
-  <dt>5.</dt>
-  <dd>Host receives NETWORK_QUALITY from all participants:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Score each: (upload_kbps / 10) + (100 - loss%) + (100 - rtt_ms)</dd>
-  <dt> &#x2022;</dt>
-  <dd>If anyone scores 20%+ higher than current host: MIGRATE</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Early_Migration_(First_Minute_Decision)"><a class="permalink" href="#Early_Migration_(First_Minute_Decision)">Early
-  Migration (First Minute Decision)</a></h2>
-<pre>Host elected (Alice)
+          <p class="Pp">
+            <b>Time to media start</b>: ~500ms total (WebRTC setup + NAT_STATE
+            exchange + decision)
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Background_Bandwidth_Measurement_(NETWORK_QUALITY_Phase)"
+          >
+            <a
+              class="permalink"
+              href="#Background_Bandwidth_Measurement_(NETWORK_QUALITY_Phase)"
+              >Background Bandwidth Measurement (NETWORK_QUALITY Phase)</a
+            >
+          </h2>
+          <p class="Pp">
+            Bandwidth is measured from <b>actual media stream</b>, not synthetic
+            tests:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>How it works:</b></p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Media flows for 10-60 seconds</dd>
+            <dt>2.</dt>
+            <dd>Each frame carries sequence number and optional timestamp</dd>
+            <dt>3.</dt>
+            <dd>Track accumulation:</dd>
+            <dt>&#x2022;</dt>
+            <dd>Bytes received (frame sizes)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Frames received vs expected (detect loss)</dd>
+            <dt>&#x2022;</dt>
+            <dd>RTT from frame timestamps (if available)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Jitter (variance in RTT)</dd>
+            <dt>4.</dt>
+            <dd>After measurement window:</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Calculate upload_kbps = (bytes_received * 8) / window_duration
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Calculate loss% from missing sequence numbers</dd>
+            <dt>&#x2022;</dt>
+            <dd>Send NETWORK_QUALITY packet with results</dd>
+            <dt>5.</dt>
+            <dd>Host receives NETWORK_QUALITY from all participants:</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Score each: (upload_kbps / 10) + (100 - loss%) + (100 - rtt_ms)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>If anyone scores 20%+ higher than current host: MIGRATE</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Early_Migration_(First_Minute_Decision)">
+            <a class="permalink" href="#Early_Migration_(First_Minute_Decision)"
+              >Early Migration (First Minute Decision)</a
+            >
+          </h2>
+          <pre>Host elected (Alice)
 <br/>
   &#x2193; (media flows for 30 seconds)
 <br/>
@@ -280,69 +407,109 @@ Alice switches to participant mode
 <br/>
   &#x2193;
 Media resumes with Bob as host (within same DataChannel)</pre>
-<p class="Pp"><b>Key: No ACDS involvement, no new connections, same
-    DataChannel</b></p>
-<p class="Pp"></p>
-<p class="Pp"><b>Host-side evaluation:</b></p>
-<p class="Pp"></p>
-<p class="Pp">Host collects MEDIA_QUALITY_REPORT from all participants every
-    30-60 seconds:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Scores each participant: score = quality*1000 + (upload_kbps/1000)*10 +
-      (100-rtt_ms) + initiator_bonus</dd>
-  <dt>2.</dt>
-  <dd>Elects best candidate as (new) host, second-best as backup</dd>
-  <dt>3.</dt>
-  <dd>Broadcasts HOST_QUALITY_UPDATE to all participants</dd>
-  <dt>4.</dt>
-  <dd>If current host is no longer best: triggers migration to new host</dd>
-</dl>
-<p class="Pp"><b>Why upload speed matters:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Host sends video frames to ALL clients (upload-bound)</li>
-  <li>Host must sustain N &#x00D7; frame_size Kbps (N = number of clients)</li>
-  <li>Someone with 100Mbps down / 5Mbps up cannot host for 5+ people</li>
-  <li>Network can be asymmetric: 1000 Mbps down / 10 Mbps up (fiber home)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Priority_Order_(Best_to_Worst)"><a class="permalink" href="#Priority_Order_(Best_to_Worst)">Priority
-  Order (Best to Worst)</a></h2>
-<p class="Pp">Priority Connection Type Detection Method Who Hosts 0
-    Localhost/LAN mDNS discovery, same subnet Either (prefer initiator) 1 Public
-    IP STUN reflexive == local IP User with public IP 2 UPnP/NAT-PMP Port
-    mapping success User who can map ports 3 STUN (hole-punch) ICE connectivity
-    check Better NAT type 4 TURN relay Always works Initiator (tiebreaker)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Bandwidth as Tiebreaker and Override:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Within same NAT priority tier: higher upload bandwidth wins</li>
-  <li><b>Override rule</b>: If bandwidth difference is &gt;10x, lower NAT tier
-      can win</li>
-</ul>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Example: Public IP with 2 Mbps upload loses to UPnP with 50 Mbps
-    upload</dd>
-  <dt> &#x2022;</dt>
-  <dd>Prevents terrible hosting experience from &quot;better&quot; NAT type</dd>
-</dl>
-<p class="Pp"><b>Note on UPnP</b>: ~70% of home routers support it, and we
-    already have it implemented. It stays at priority 2.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Timing_&amp;_Timeouts"><a class="permalink" href="#Timing_&amp;_Timeouts">Timing
-  &amp; Timeouts</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Initial_Connection_Timeline_(Instant_Media_Start)"><a class="permalink" href="#Initial_Connection_Timeline_(Instant_Media_Start)">Initial
-  Connection Timeline (Instant Media Start)</a></h2>
-<pre>Alice starts session                              Bob joins
+          <p class="Pp">
+            <b
+              >Key: No ACDS involvement, no new connections, same DataChannel</b
+            >
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Host-side evaluation:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Host collects MEDIA_QUALITY_REPORT from all participants every 30-60
+            seconds:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Scores each participant: score = quality*1000 +
+              (upload_kbps/1000)*10 + (100-rtt_ms) + initiator_bonus
+            </dd>
+            <dt>2.</dt>
+            <dd>Elects best candidate as (new) host, second-best as backup</dd>
+            <dt>3.</dt>
+            <dd>Broadcasts HOST_QUALITY_UPDATE to all participants</dd>
+            <dt>4.</dt>
+            <dd>
+              If current host is no longer best: triggers migration to new host
+            </dd>
+          </dl>
+          <p class="Pp"><b>Why upload speed matters:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Host sends video frames to ALL clients (upload-bound)</li>
+            <li>
+              Host must sustain N &#x00D7; frame_size Kbps (N = number of
+              clients)
+            </li>
+            <li>
+              Someone with 100Mbps down / 5Mbps up cannot host for 5+ people
+            </li>
+            <li>
+              Network can be asymmetric: 1000 Mbps down / 10 Mbps up (fiber
+              home)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Priority_Order_(Best_to_Worst)">
+            <a class="permalink" href="#Priority_Order_(Best_to_Worst)"
+              >Priority Order (Best to Worst)</a
+            >
+          </h2>
+          <p class="Pp">
+            Priority Connection Type Detection Method Who Hosts 0 Localhost/LAN
+            mDNS discovery, same subnet Either (prefer initiator) 1 Public IP
+            STUN reflexive == local IP User with public IP 2 UPnP/NAT-PMP Port
+            mapping success User who can map ports 3 STUN (hole-punch) ICE
+            connectivity check Better NAT type 4 TURN relay Always works
+            Initiator (tiebreaker)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Bandwidth as Tiebreaker and Override:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Within same NAT priority tier: higher upload bandwidth wins</li>
+            <li>
+              <b>Override rule</b>: If bandwidth difference is &gt;10x, lower
+              NAT tier can win
+            </li>
+          </ul>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Example: Public IP with 2 Mbps upload loses to UPnP with 50 Mbps
+              upload
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Prevents terrible hosting experience from &quot;better&quot; NAT
+              type
+            </dd>
+          </dl>
+          <p class="Pp">
+            <b>Note on UPnP</b>: ~70% of home routers support it, and we already
+            have it implemented. It stays at priority 2.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timing_&amp;_Timeouts">
+            <a class="permalink" href="#Timing_&amp;_Timeouts"
+              >Timing &amp; Timeouts</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Initial_Connection_Timeline_(Instant_Media_Start)">
+            <a
+              class="permalink"
+              href="#Initial_Connection_Timeline_(Instant_Media_Start)"
+              >Initial Connection Timeline (Instant Media Start)</a
+            >
+          </h2>
+          <pre>Alice starts session                              Bob joins
 <br/>
     |                                                 |
 <br/>
@@ -426,11 +593,19 @@ Media resumes with Bob as host (within same DataChannel)</pre>
 TOTAL: ~0.8-1.2 seconds from Bob pressing enter to call starting
 <br/>
        + 30-60 seconds for bandwidth measurements to accumulate</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Migration_Timeline_(Instant_Failover_with_Pre-Elected_Backup)"><a class="permalink" href="#Migration_Timeline_(Instant_Failover_with_Pre-Elected_Backup)">Migration
-  Timeline (Instant Failover with Pre-Elected Backup)</a></h2>
-<pre>T=0s:   Call in progress
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Migration_Timeline_(Instant_Failover_with_Pre-Elected_Backup)"
+          >
+            <a
+              class="permalink"
+              href="#Migration_Timeline_(Instant_Failover_with_Pre-Elected_Backup)"
+              >Migration Timeline (Instant Failover with Pre-Elected Backup)</a
+            >
+          </h2>
+          <pre>T=0s:   Call in progress
 <br/>
         Host (Alice) broadcasts HOST_QUALITY_UPDATE every 30-60s:
 <br/>
@@ -476,15 +651,19 @@ T=90.3s: Media resumes
 TOTAL: ~200-500ms from detection to call resume
 <br/>
        (host detection immediate, participant reconnect ~100ms)</pre>
-<p class="Pp"><b>Key insight</b>: Future host is PRE-ELECTED every 30-60 seconds
-    via HOST_QUALITY_UPDATE. When current host dies, everyone already knows
-    where to connect. No ACDS election needed.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Timeout_Constants"><a class="permalink" href="#Timeout_Constants">Timeout
-  Constants</a></h2>
-<pre>// Connection timeouts
+          <p class="Pp">
+            <b>Key insight</b>: Future host is PRE-ELECTED every 30-60 seconds
+            via HOST_QUALITY_UPDATE. When current host dies, everyone already
+            knows where to connect. No ACDS election needed.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timeout_Constants">
+            <a class="permalink" href="#Timeout_Constants">Timeout Constants</a>
+          </h2>
+          <pre>
+// Connection timeouts
 #define ACDS_CONNECT_TIMEOUT_MS      5000    // TCP connect to ACDS
 #define ACDS_HANDSHAKE_TIMEOUT_MS    3000    // Complete handshake after connect
 // NAT probing timeouts (no bandwidth test - measured from media)
@@ -506,65 +685,110 @@ TOTAL: ~200-500ms from detection to call resume
 #define KEEPALIVE_INTERVAL_MS        5000    // Ping frequency
 #define KEEPALIVE_TIMEOUT_MS         15000   // Miss 3 pings = disconnect
 #define TCP_USER_TIMEOUT_MS          30000   // TCP-level timeout (RFC 5482)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="User-Visible_Latency_Summary"><a class="permalink" href="#User-Visible_Latency_Summary">User-Visible
-  Latency Summary</a></h2>
-<p class="Pp">Scenario Best Case Typical Worst Case Start session (to string
-    shown) 200ms 500ms 1.5s Join session (to media starts) 800ms 1.0s 2.0s
-    Bandwidth measurement (quality accumulated) 30s 45s 60s Host re-election
-    (after quality measurement) Instant 1s 5s Host migration (to call resumes)
-    200ms 500ms 1.5s Disconnect detection 0ms (RST) 5s 30s (timeout)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key improvement</b>: Call starts in ~1 second without bandwidth
-    test blocking. Bandwidth measurements happen in background while media
-    flows. Migration detection and failover is ~500ms using pre-stored backup
-    address.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Optimizations_for_Speed"><a class="permalink" href="#Optimizations_for_Speed">Optimizations
-  for Speed</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>No blocking bandwidth test</b> - Measured from actual media stream</dd>
-  <dt>2.</dt>
-  <dd><b>Parallel NAT probing</b> - STUN, UPnP run concurrently during
-    handshake</dd>
-  <dt>3.</dt>
-  <dd><b>Instant media start</b> - Call begins immediately after host
-      negotiation</dd>
-  <dt>4.</dt>
-  <dd><b>Optimistic UI</b> - Show media while quality measurements
-    accumulate</dd>
-  <dt>5.</dt>
-  <dd><b>Pre-elected backup</b> - Host_QUALITY_UPDATE sent every 30-60s with
-      backup address</dd>
-  <dt>6.</dt>
-  <dd><b>Instant failover</b> - Backup address already stored locally, no ACDS
-      query on failure</dd>
-  <dt>7.</dt>
-  <dd><b>Cached NAT info</b> - Remember NAT type from previous sessions (valid
-      ~5 min)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Session_Flow_&amp;_Order_of_Operations"><a class="permalink" href="#Session_Flow_&amp;_Order_of_Operations">Session
-  Flow &amp; Order of Operations</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_1:_Instant_Host_Election_(via_WebRTC_DataChannel)"><a class="permalink" href="#Phase_1:_Instant_Host_Election_(via_WebRTC_DataChannel)">Phase
-  1: Instant Host Election (via WebRTC DataChannel)</a></h2>
-<p class="Pp">When two peers connect, they immediately determine who hosts
-    through a <b>quick NAT state exchange</b> over the WebRTC DataChannel. No
-    ACDS involvement. No bandwidth measurement delay. Media starts within
-    ~500ms.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="First_Two_Participants_(Instant_Host_Negotiation)"><a class="permalink" href="#First_Two_Participants_(Instant_Host_Negotiation)">First
-  Two Participants (Instant Host Negotiation)</a></h2>
-<pre>Alice                          ACDS                           Bob
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="User-Visible_Latency_Summary">
+            <a class="permalink" href="#User-Visible_Latency_Summary"
+              >User-Visible Latency Summary</a
+            >
+          </h2>
+          <p class="Pp">
+            Scenario Best Case Typical Worst Case Start session (to string
+            shown) 200ms 500ms 1.5s Join session (to media starts) 800ms 1.0s
+            2.0s Bandwidth measurement (quality accumulated) 30s 45s 60s Host
+            re-election (after quality measurement) Instant 1s 5s Host migration
+            (to call resumes) 200ms 500ms 1.5s Disconnect detection 0ms (RST) 5s
+            30s (timeout)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Key improvement</b>: Call starts in ~1 second without bandwidth
+            test blocking. Bandwidth measurements happen in background while
+            media flows. Migration detection and failover is ~500ms using
+            pre-stored backup address.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Optimizations_for_Speed">
+            <a class="permalink" href="#Optimizations_for_Speed"
+              >Optimizations for Speed</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>No blocking bandwidth test</b> - Measured from actual media
+              stream
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Parallel NAT probing</b> - STUN, UPnP run concurrently during
+              handshake
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Instant media start</b> - Call begins immediately after host
+              negotiation
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Optimistic UI</b> - Show media while quality measurements
+              accumulate
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              <b>Pre-elected backup</b> - Host_QUALITY_UPDATE sent every 30-60s
+              with backup address
+            </dd>
+            <dt>6.</dt>
+            <dd>
+              <b>Instant failover</b> - Backup address already stored locally,
+              no ACDS query on failure
+            </dd>
+            <dt>7.</dt>
+            <dd>
+              <b>Cached NAT info</b> - Remember NAT type from previous sessions
+              (valid ~5 min)
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Session_Flow_&amp;_Order_of_Operations">
+            <a class="permalink" href="#Session_Flow_&amp;_Order_of_Operations"
+              >Session Flow &amp; Order of Operations</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Phase_1:_Instant_Host_Election_(via_WebRTC_DataChannel)"
+          >
+            <a
+              class="permalink"
+              href="#Phase_1:_Instant_Host_Election_(via_WebRTC_DataChannel)"
+              >Phase 1: Instant Host Election (via WebRTC DataChannel)</a
+            >
+          </h2>
+          <p class="Pp">
+            When two peers connect, they immediately determine who hosts through
+            a
+            <b>quick NAT state exchange</b> over the WebRTC DataChannel. No ACDS
+            involvement. No bandwidth measurement delay. Media starts within
+            ~500ms.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="First_Two_Participants_(Instant_Host_Negotiation)">
+            <a
+              class="permalink"
+              href="#First_Two_Participants_(Instant_Host_Negotiation)"
+              >First Two Participants (Instant Host Negotiation)</a
+            >
+          </h2>
+          <pre>Alice                          ACDS                           Bob
 <br/>
   |                              |                              |
 <br/>
@@ -693,59 +917,90 @@ TOTAL: ~200-500ms from detection to call resume
   |    within first 60 seconds, send MIGRATE packet]          |
 <br/>
   |                              |                              |</pre>
-<p class="Pp"><b>Key timings</b>:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>Initial connection</b>: ~500ms (WebRTC setup + NAT_STATE +
-    decision)</li>
-  <li><b>Media starts</b>: Immediately after host election</li>
-  <li><b>Bandwidth measurement</b>: 30-60 seconds of actual media flow</li>
-  <li><b>Potential migration</b>: Decision within first 60 seconds</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_2:_Background_Bandwidth_Measurement_+_Early_Migration_(Optional)"><a class="permalink" href="#Phase_2:_Background_Bandwidth_Measurement_+_Early_Migration_(Optional)">Phase
-  2: Background Bandwidth Measurement + Early Migration (Optional)</a></h2>
-<p class="Pp">After media starts, bandwidth is measured from <b>actual
-    frames</b> (not synthetic tests). If a significantly better host is detected
-    within the first minute, roles swap over the same DataChannel.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Background_Quality_Measurement"><a class="permalink" href="#Background_Quality_Measurement">Background
-  Quality Measurement</a></h2>
-<p class="Pp">Participants track:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Frames received vs expected (detect loss from sequence numbers)</li>
-  <li>Frame sizes (bytes_received) over measurement window</li>
-  <li>RTT from frame timestamps</li>
-  <li>Jitter (variance in RTT)</li>
-</ul>
-<p class="Pp">After 30-60 seconds:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>Participant A: &quot;I measured 50 Mbps upload, 10ms RTT, 0.5% loss&quot;
+          <p class="Pp"><b>Key timings</b>:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Initial connection</b>: ~500ms (WebRTC setup + NAT_STATE +
+              decision)
+            </li>
+            <li><b>Media starts</b>: Immediately after host election</li>
+            <li>
+              <b>Bandwidth measurement</b>: 30-60 seconds of actual media flow
+            </li>
+            <li>
+              <b>Potential migration</b>: Decision within first 60 seconds
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Phase_2:_Background_Bandwidth_Measurement_+_Early_Migration_(Optional)"
+          >
+            <a
+              class="permalink"
+              href="#Phase_2:_Background_Bandwidth_Measurement_+_Early_Migration_(Optional)"
+              >Phase 2: Background Bandwidth Measurement + Early Migration
+              (Optional)</a
+            >
+          </h2>
+          <p class="Pp">
+            After media starts, bandwidth is measured from
+            <b>actual frames</b> (not synthetic tests). If a significantly
+            better host is detected within the first minute, roles swap over the
+            same DataChannel.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Background_Quality_Measurement">
+            <a class="permalink" href="#Background_Quality_Measurement"
+              >Background Quality Measurement</a
+            >
+          </h2>
+          <p class="Pp">Participants track:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              Frames received vs expected (detect loss from sequence numbers)
+            </li>
+            <li>Frame sizes (bytes_received) over measurement window</li>
+            <li>RTT from frame timestamps</li>
+            <li>Jitter (variance in RTT)</li>
+          </ul>
+          <p class="Pp">After 30-60 seconds:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+Participant A: &quot;I measured 50 Mbps upload, 10ms RTT, 0.5% loss&quot;
 Participant B: &quot;I measured 5 Mbps upload, 15ms RTT, 2% loss&quot;
 Participant C: &quot;I measured 80 Mbps upload, 8ms RTT, 0.2% loss&quot;</pre>
-<p class="Pp">Host scores each: score = upload_kbps/10 + (100-loss%) +
-    (100-rtt_ms)</p>
-<p class="Pp"></p>
-<p class="Pp">Example scores:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>A: 5000 + 99.5 + 90 = 5189.5</li>
-  <li>B: 500 + 98 + 85 = 683</li>
-  <li>C: 8000 + 99.8 + 92 = 8191.8</li>
-</ul>
-<p class="Pp">If score difference &gt;20%, trigger migration: current_score &lt;
-    better_score * 0.8</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Early_Migration_(Within_First_Minute)"><a class="permalink" href="#Early_Migration_(Within_First_Minute)">Early
-  Migration (Within First Minute)</a></h2>
-<pre>Host (Alice, score 683)              Bob (score 5189)              Carol (score 8191)
+          <p class="Pp">
+            Host scores each: score = upload_kbps/10 + (100-loss%) +
+            (100-rtt_ms)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Example scores:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>A: 5000 + 99.5 + 90 = 5189.5</li>
+            <li>B: 500 + 98 + 85 = 683</li>
+            <li>C: 8000 + 99.8 + 92 = 8191.8</li>
+          </ul>
+          <p class="Pp">
+            If score difference &gt;20%, trigger migration: current_score &lt;
+            better_score * 0.8
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Early_Migration_(Within_First_Minute)">
+            <a class="permalink" href="#Early_Migration_(Within_First_Minute)"
+              >Early Migration (Within First Minute)</a
+            >
+          </h2>
+          <pre>Host (Alice, score 683)              Bob (score 5189)              Carol (score 8191)
 <br/>
     |                                   |                            |
 <br/>
@@ -796,14 +1051,26 @@ Participant C: &quot;I measured 80 Mbps upload, 8ms RTT, 0.2% loss&quot;</pre>
     | [If needed, another migration can happen (but rare)]         |
 <br/>
     |                                   |                            |</pre>
-<p class="Pp"><b>Key: All over same DataChannel, no new connection, ACDS has no
-    involvement</b></p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Third+_Participant_(Simple_Join_-_Host_Already_Established)"><a class="permalink" href="#Third+_Participant_(Simple_Join_-_Host_Already_Established)">Third+
-  Participant (Simple Join - Host Already Established)</a></h2>
-<pre>Carol                          ACDS                     Host (Alice)
+          <p class="Pp">
+            <b
+              >Key: All over same DataChannel, no new connection, ACDS has no
+              involvement</b
+            >
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="Third+_Participant_(Simple_Join_-_Host_Already_Established)"
+          >
+            <a
+              class="permalink"
+              href="#Third+_Participant_(Simple_Join_-_Host_Already_Established)"
+              >Third+ Participant (Simple Join - Host Already Established)</a
+            >
+          </h2>
+          <pre>Carol                          ACDS                     Host (Alice)
 <br/>
   |                              |                              |
 <br/>
@@ -842,18 +1109,31 @@ Participant C: &quot;I measured 80 Mbps upload, 8ms RTT, 0.2% loss&quot;</pre>
   |                              |                              |
 <br/>
   |&lt;=============== Video call in progress ===================&gt;|</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Host_Disconnect_+_Failover_(Instant_Recovery)"><a class="permalink" href="#Host_Disconnect_+_Failover_(Instant_Recovery)">Host
-  Disconnect + Failover (Instant Recovery)</a></h2>
-<p class="Pp">When the current host dies, <b>remaining participants already know
-    exactly who should become the new host and where to connect</b> because
-    bandwidth measurements have been happening in the background.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Timeline"><a class="permalink" href="#Timeline">Timeline</a></h2>
-<pre>Call in progress (Alice hosting)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Host_Disconnect_+_Failover_(Instant_Recovery)">
+            <a
+              class="permalink"
+              href="#Host_Disconnect_+_Failover_(Instant_Recovery)"
+              >Host Disconnect + Failover (Instant Recovery)</a
+            >
+          </h2>
+          <p class="Pp">
+            When the current host dies,
+            <b
+              >remaining participants already know exactly who should become the
+              new host and where to connect</b
+            >
+            because bandwidth measurements have been happening in the
+            background.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timeline">
+            <a class="permalink" href="#Timeline">Timeline</a>
+          </h2>
+          <pre>Call in progress (Alice hosting)
 <br/>
     |
 <br/>
@@ -902,44 +1182,59 @@ Participant C: &quot;I measured 80 Mbps upload, 8ms RTT, 0.2% loss&quot;</pre>
     |
 <br/>
     | Total recovery: ~300-500ms</pre>
-<p class="Pp"><b>No ACDS involvement in failover decision</b>. Host knows who's
-    next because bandwidth measurement is continuous and stored locally.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Key_Details"><a class="permalink" href="#Key_Details">Key
-  Details</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Who becomes the new host?</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>The participant with highest score from last NETWORK_QUALITY
-    measurement</dd>
-  <dt> &#x2022;</dt>
-  <dd>Already determined, no computation needed</dd>
-  <dt> &#x2022;</dt>
-  <dd>Pre-stored on all participants</dd>
-  <dt>2.</dt>
-  <dd><b>Where do they listen?</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Address/port already stored from last measurement update</dd>
-  <dt> &#x2022;</dt>
-  <dd>No ACDS query needed</dd>
-  <dt>3.</dt>
-  <dd><b>What about ACDS?</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>New host sends HOST_ANNOUNCEMENT to update ACDS (allows new joiners to
-      find them)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Existing participants use pre-stored address (no ACDS involvement)</dd>
-  <dt> &#x2022;</dt>
-  <dd>ACDS kept in sync for new participants joining during/after migration</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Migration_State_Machine_(Simplified)"><a class="permalink" href="#Migration_State_Machine_(Simplified)">Migration
-  State Machine (Simplified)</a></h2>
-<pre>CALL_ACTIVE (connected to Alice)
+          <p class="Pp">
+            <b>No ACDS involvement in failover decision</b>. Host knows who's
+            next because bandwidth measurement is continuous and stored locally.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Key_Details">
+            <a class="permalink" href="#Key_Details">Key Details</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Who becomes the new host?</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              The participant with highest score from last NETWORK_QUALITY
+              measurement
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Already determined, no computation needed</dd>
+            <dt>&#x2022;</dt>
+            <dd>Pre-stored on all participants</dd>
+            <dt>2.</dt>
+            <dd><b>Where do they listen?</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Address/port already stored from last measurement update</dd>
+            <dt>&#x2022;</dt>
+            <dd>No ACDS query needed</dd>
+            <dt>3.</dt>
+            <dd><b>What about ACDS?</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              New host sends HOST_ANNOUNCEMENT to update ACDS (allows new
+              joiners to find them)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Existing participants use pre-stored address (no ACDS involvement)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              ACDS kept in sync for new participants joining during/after
+              migration
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Migration_State_Machine_(Simplified)">
+            <a class="permalink" href="#Migration_State_Machine_(Simplified)"
+              >Migration State Machine (Simplified)</a
+            >
+          </h2>
+          <pre>CALL_ACTIVE (connected to Alice)
 <br/>
     |
 <br/>
@@ -973,41 +1268,61 @@ HOST_DIED
              [Exchange WebRTC SDP/ICE]
 <br/>
              &#x2192; CALL_ACTIVE (as participant)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">Settings Synchronization</h2>
-<p class="Pp">The session initiator's options (color, palette, dimensions, audio
-    settings) are:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Sent to host in SETTINGS_SYNC after host election</dd>
-  <dt>2.</dt>
-  <dd>Broadcast by host to all participants</dd>
-  <dt>3.</dt>
-  <dd>Applied by each participant (or rejected if incompatible)</dd>
-  <dt>4.</dt>
-  <dd>Can be changed mid-call by initiator (sent as SETTINGS_SYNC update)</dd>
-</dl>
-<p class="Pp">Settings are serialized as compact binary and transmitted over the
-    DataChannel.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACIP_Protocol_Extensions"><a class="permalink" href="#ACIP_Protocol_Extensions">ACIP
-  Protocol Extensions</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="New_Packet_Types_(Over_WebRTC_DataChannel)"><a class="permalink" href="#New_Packet_Types_(Over_WebRTC_DataChannel)">New
-  Packet Types (Over WebRTC DataChannel)</a></h2>
-<p class="Pp">Discovery mode defines <b>3 new packet types</b> sent exclusively
-    over the WebRTC DataChannel (peer-to-peer):</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="1"><a class="permalink" href="#1">1. NAT_STATE Packet (Type
-  140) - Fast Path Host Election</a></h2>
-<pre>// Sent immediately after DataChannel opens
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Settings Synchronization</h2>
+          <p class="Pp">
+            The session initiator's options (color, palette, dimensions, audio
+            settings) are:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Sent to host in SETTINGS_SYNC after host election</dd>
+            <dt>2.</dt>
+            <dd>Broadcast by host to all participants</dd>
+            <dt>3.</dt>
+            <dd>Applied by each participant (or rejected if incompatible)</dd>
+            <dt>4.</dt>
+            <dd>
+              Can be changed mid-call by initiator (sent as SETTINGS_SYNC
+              update)
+            </dd>
+          </dl>
+          <p class="Pp">
+            Settings are serialized as compact binary and transmitted over the
+            DataChannel.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACIP_Protocol_Extensions">
+            <a class="permalink" href="#ACIP_Protocol_Extensions"
+              >ACIP Protocol Extensions</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="New_Packet_Types_(Over_WebRTC_DataChannel)">
+            <a
+              class="permalink"
+              href="#New_Packet_Types_(Over_WebRTC_DataChannel)"
+              >New Packet Types (Over WebRTC DataChannel)</a
+            >
+          </h2>
+          <p class="Pp">
+            Discovery mode defines <b>3 new packet types</b> sent exclusively
+            over the WebRTC DataChannel (peer-to-peer):
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="1">
+            <a class="permalink" href="#1"
+              >1. NAT_STATE Packet (Type 140) - Fast Path Host Election</a
+            >
+          </h2>
+          <pre>// Sent immediately after DataChannel opens
 // Used to determine host in &lt;100ms
 // NO bandwidth data, only NAT tier information
 PACKET_TYPE_ACIP_NAT_STATE = 140,
@@ -1047,11 +1362,15 @@ typedef struct {
 // result == -1: WE host, result == 1: THEY host
 // NO additional packets needed, decision is instant
 // Host can optionally send HOST_ELECTED packet for confirmation</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="2"><a class="permalink" href="#2">2. NETWORK_QUALITY Packet
-  (Type 141) - Background Bandwidth Measurement</a></h2>
-<pre>// Sent after 10-60 seconds of media flow
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="2">
+            <a class="permalink" href="#2"
+              >2. NETWORK_QUALITY Packet (Type 141) - Background Bandwidth
+              Measurement</a
+            >
+          </h2>
+          <pre>// Sent after 10-60 seconds of media flow
 // Contains measured bandwidth from actual media frames
 // Used to check if we should migrate to a better host
 // Sent once every 60 seconds (or on-demand by host)
@@ -1099,11 +1418,14 @@ typedef struct {
 // Host scores all (including self):
 //   score = (upload_kbps / 10) + (100 - loss%) + (100 - rtt_avg_ms)
 // If anyone scores 20% better: Send MIGRATE packet to elect them</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="3"><a class="permalink" href="#3">3. MIGRATE Packet (Type
-  142) - Early Migration Decision</a></h2>
-<pre>// Sent by current host if a better host is found (within first 60 seconds)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="3">
+            <a class="permalink" href="#3"
+              >3. MIGRATE Packet (Type 142) - Early Migration Decision</a
+            >
+          </h2>
+          <pre>// Sent by current host if a better host is found (within first 60 seconds)
 // Informs all participants that a new host is taking over
 // Happens entirely over DataChannel, NO ACDS involvement
 PACKET_TYPE_ACIP_MIGRATE = 142,
@@ -1133,183 +1455,255 @@ typedef struct {
 // When host receives this: Stop rendering/collecting frames, start sending them instead
 // When participant receives this: Redirect IMAGE_FRAME packets to new host
 // Media resumes within same DataChannel immediately</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Existing_Packets_(Unchanged)"><a class="permalink" href="#Existing_Packets_(Unchanged)">Existing
-  Packets (Unchanged)</a></h2>
-<p class="Pp">These continue to work as before, handled by ACDS:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>PACKET_TYPE_ACIP_WEBRTC_SDP</b><b> (109) - SDP offer/answer
-    relay</b></li>
-  <li><b>PACKET_TYPE_ACIP_WEBRTC_ICE</b><b> (110) - ICE candidate relay</b></li>
-</ul>
-<p class="Pp">No new ACDS packet types needed. Migration and negotiation happen
-    entirely peer-to-peer over DataChannel.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Protocol Summary</b>:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>NETWORK_QUALITY</b> (130): NAT type/UPnP/ICE info for initial host
-      negotiation</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Sent during first two participants handshake to determine who hosts</dd>
-  <dt> &#x2022;</dt>
-  <dd>Light-weight (no bandwidth data, only connectivity info)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>HOST_ANNOUNCEMENT</b> (131): Winner announces they're hosting</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Sent to ACDS and other participants after negotiation</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>HOST_DESIGNATED</b> (132): ACDS confirms to all</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Broadcast confirmation of elected host</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>SETTINGS_SYNC</b> (133): Initiator changes settings</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Session-wide settings synchronization</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>SETTINGS_ACK</b> (134): Participants acknowledge settings</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Confirmation that settings were applied</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>HOST_LOST</b> (135): Notification that host disconnected
-    (lightweight)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Informational only, sent to ACDS for logging</dd>
-  <dt> &#x2022;</dt>
-  <dd>Does NOT trigger election (backup already known)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>MEDIA_QUALITY_REPORT</b> (146): Participant reports measured
-      bandwidth/RTT/jitter</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Sent to host every 30-60 seconds</dd>
-  <dt> &#x2022;</dt>
-  <dd>Measured from actual media frames (not synthetic test)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Includes: upload Kbps, RTT min/max/avg, jitter, packet loss %, network
-      quality</dd>
-  <dt> &#x2022;</dt>
-  <dd>Host collects these reports from all participants</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>HOST_QUALITY_UPDATE</b> (147): Host announces host/backup and
-    metrics</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Sent by host to all participants every 30-60 seconds</dd>
-  <dt> &#x2022;</dt>
-  <dd>Includes: current host address, backup host address, election metrics,
-      re-eval interval</dd>
-  <dt> &#x2022;</dt>
-  <dd>All participants store backup address locally for instant failover</dd>
-  <dt> &#x2022;</dt>
-  <dd>Replaces FUTURE_HOST_ELECTED with richer data and more frequent
-    updates</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>WEBRTC_SDP</b> (110): Bidirectional WebRTC SDP exchange
-    (offer/answer)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Originally designed for ACDS-relayed signaling</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reused for direct P2P signaling during failover</dd>
-  <dt> &#x2022;</dt>
-  <dd>Participant &#x2192; new host, or bidirectional during failover
-      negotiation</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd><b>WEBRTC_ICE</b> (111): Bidirectional ICE candidate exchange</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Originally designed for ACDS-relayed signaling</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reused for direct P2P signaling during failover</dd>
-  <dt> &#x2022;</dt>
-  <dd>NAT traversal candidates for P2P connection</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Instant_Failover_with_Pre-Stored_Backup_Address"><a class="permalink" href="#Instant_Failover_with_Pre-Stored_Backup_Address">Instant
-  Failover with Pre-Stored Backup Address</a></h2>
-<p class="Pp"><b>Key Insight</b>: Backup host address is broadcast via
-    HOST_QUALITY_UPDATE every 30-60 seconds. When current host dies,
-    participants immediately know where backup is listening (no ACDS query
-    needed).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Failover Flow</b>:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Host broadcasts HOST_QUALITY_UPDATE with backup address/port stored
-      locally by all participants</dd>
-  <dt>2.</dt>
-  <dd>If current host dies (TCP connection drops), all participants instantly
-      know:</dd>
-  <dt> &#x2022;</dt>
-  <dd>Who the backup is: backup_host_id from stored HOST_QUALITY_UPDATE</dd>
-  <dt> &#x2022;</dt>
-  <dd>Where to connect: backup_host_address:backup_host_port (already
-    stored)</dd>
-  <dt>3.</dt>
-  <dd>Backup participant (who was elected) immediately starts listening on that
-      address/port</dd>
-  <dt>4.</dt>
-  <dd>Other participants connect directly to backup using stored address</dd>
-  <dt>5.</dt>
-  <dd>Once connected, WebRTC SDP/ICE exchange negotiates P2P media</dd>
-  <dt>6.</dt>
-  <dd>Media resumes within ~200-500ms (no ACDS lookup, no election delay)</dd>
-</dl>
-<p class="Pp"><b>Advantages</b>:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li><b>No ACDS dependency during failover</b>: Everyone already knows backup
-      address</li>
-  <li><b>Instant failover</b>: ~200-500ms from detection to call resume</li>
-  <li><b>Deterministic</b>: No election needed, backup was pre-chosen and
-    stored</li>
-  <li><b>No network partition</b>: Pre-election means same result all sides</li>
-  <li><b>Scales better</b>: No central ACDS election bottleneck</li>
-</ul>
-<p class="Pp"><b>Failover Timeline</b>:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>Host dies (T=0ms)
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Existing_Packets_(Unchanged)">
+            <a class="permalink" href="#Existing_Packets_(Unchanged)"
+              >Existing Packets (Unchanged)</a
+            >
+          </h2>
+          <p class="Pp">These continue to work as before, handled by ACDS:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b
+              ><b> (109) - SDP offer/answer relay</b>
+            </li>
+            <li>
+              <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b
+              ><b> (110) - ICE candidate relay</b>
+            </li>
+          </ul>
+          <p class="Pp">
+            No new ACDS packet types needed. Migration and negotiation happen
+            entirely peer-to-peer over DataChannel.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Protocol Summary</b>:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>NETWORK_QUALITY</b> (130): NAT type/UPnP/ICE info for initial
+              host negotiation
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              Sent during first two participants handshake to determine who
+              hosts
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Light-weight (no bandwidth data, only connectivity info)</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>HOST_ANNOUNCEMENT</b> (131): Winner announces they're hosting
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Sent to ACDS and other participants after negotiation</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd><b>HOST_DESIGNATED</b> (132): ACDS confirms to all</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Broadcast confirmation of elected host</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd><b>SETTINGS_SYNC</b> (133): Initiator changes settings</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Session-wide settings synchronization</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>SETTINGS_ACK</b> (134): Participants acknowledge settings
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Confirmation that settings were applied</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>HOST_LOST</b> (135): Notification that host disconnected
+              (lightweight)
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Informational only, sent to ACDS for logging</dd>
+            <dt>&#x2022;</dt>
+            <dd>Does NOT trigger election (backup already known)</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>MEDIA_QUALITY_REPORT</b> (146): Participant reports measured
+              bandwidth/RTT/jitter
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Sent to host every 30-60 seconds</dd>
+            <dt>&#x2022;</dt>
+            <dd>Measured from actual media frames (not synthetic test)</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Includes: upload Kbps, RTT min/max/avg, jitter, packet loss %,
+              network quality
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Host collects these reports from all participants</dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>HOST_QUALITY_UPDATE</b> (147): Host announces host/backup and
+              metrics
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Sent by host to all participants every 30-60 seconds</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Includes: current host address, backup host address, election
+              metrics, re-eval interval
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              All participants store backup address locally for instant failover
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Replaces FUTURE_HOST_ELECTED with richer data and more frequent
+              updates
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>WEBRTC_SDP</b> (110): Bidirectional WebRTC SDP exchange
+              (offer/answer)
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Originally designed for ACDS-relayed signaling</dd>
+            <dt>&#x2022;</dt>
+            <dd>Reused for direct P2P signaling during failover</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Participant &#x2192; new host, or bidirectional during failover
+              negotiation
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>WEBRTC_ICE</b> (111): Bidirectional ICE candidate exchange
+            </dd>
+          </dl>
+          <dl class="Bl-tag">
+            <dt>&#x2022;</dt>
+            <dd>Originally designed for ACDS-relayed signaling</dd>
+            <dt>&#x2022;</dt>
+            <dd>Reused for direct P2P signaling during failover</dd>
+            <dt>&#x2022;</dt>
+            <dd>NAT traversal candidates for P2P connection</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Instant_Failover_with_Pre-Stored_Backup_Address">
+            <a
+              class="permalink"
+              href="#Instant_Failover_with_Pre-Stored_Backup_Address"
+              >Instant Failover with Pre-Stored Backup Address</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Key Insight</b>: Backup host address is broadcast via
+            HOST_QUALITY_UPDATE every 30-60 seconds. When current host dies,
+            participants immediately know where backup is listening (no ACDS
+            query needed).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Failover Flow</b>:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Host broadcasts HOST_QUALITY_UPDATE with backup address/port
+              stored locally by all participants
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              If current host dies (TCP connection drops), all participants
+              instantly know:
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Who the backup is: backup_host_id from stored HOST_QUALITY_UPDATE
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Where to connect: backup_host_address:backup_host_port (already
+              stored)
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              Backup participant (who was elected) immediately starts listening
+              on that address/port
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              Other participants connect directly to backup using stored address
+            </dd>
+            <dt>5.</dt>
+            <dd>
+              Once connected, WebRTC SDP/ICE exchange negotiates P2P media
+            </dd>
+            <dt>6.</dt>
+            <dd>
+              Media resumes within ~200-500ms (no ACDS lookup, no election
+              delay)
+            </dd>
+          </dl>
+          <p class="Pp"><b>Advantages</b>:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>No ACDS dependency during failover</b>: Everyone already knows
+              backup address
+            </li>
+            <li>
+              <b>Instant failover</b>: ~200-500ms from detection to call resume
+            </li>
+            <li>
+              <b>Deterministic</b>: No election needed, backup was pre-chosen
+              and stored
+            </li>
+            <li>
+              <b>No network partition</b>: Pre-election means same result all
+              sides
+            </li>
+            <li><b>Scales better</b>: No central ACDS election bottleneck</li>
+          </ul>
+          <p class="Pp"><b>Failover Timeline</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>Host dies (T=0ms)
 <br/>
   &#x2193;
 Participants detect TCP disconnect (T=0-100ms)
@@ -1325,11 +1719,14 @@ WebRTC negotiation (T=200-300ms)
 <br/>
   &#x2193;
 Media resumes (T=300-500ms)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Modified_Existing_Packets"><a class="permalink" href="#Modified_Existing_Packets">Modified
-  Existing Packets</a></h2>
-<pre>// SESSION_JOINED response now includes host info
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Modified_Existing_Packets">
+            <a class="permalink" href="#Modified_Existing_Packets"
+              >Modified Existing Packets</a
+            >
+          </h2>
+          <pre>// SESSION_JOINED response now includes host info
 typedef struct {
 <br/>
   uint8_t session_id[16];
@@ -1364,36 +1761,46 @@ typedef struct {
 <br/>
   // Followed by: stun_server_t[], turn_server_t[]
 } acip_session_joined_t;</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss">Settings Synchronization</h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Mutable_Settings"><a class="permalink" href="#Mutable_Settings">Mutable
-  Settings</a></h2>
-<p class="Pp">Settings can change mid-session (for future TUI support). The
-    flow:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Initiator changes a setting</b> (e.g., color mode)</dd>
-  <dt>2.</dt>
-  <dd><b>Initiator sends SETTINGS_SYNC</b> with incremented version</dd>
-  <dt>3.</dt>
-  <dd><b>Host receives and applies</b> (host may or may not be initiator)</dd>
-  <dt>4.</dt>
-  <dd><b>Host broadcasts to all participants</b></dd>
-  <dt>5.</dt>
-  <dd><b>Each participant applies and sends SETTINGS_ACK</b></dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Serialization_Format"><a class="permalink" href="#Serialization_Format">Serialization
-  Format</a></h2>
-<p class="Pp">Settings are serialized as a compact binary format:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>// lib/session/settings.h
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Settings Synchronization</h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Mutable_Settings">
+            <a class="permalink" href="#Mutable_Settings">Mutable Settings</a>
+          </h2>
+          <p class="Pp">
+            Settings can change mid-session (for future TUI support). The flow:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Initiator changes a setting</b> (e.g., color mode)</dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Initiator sends SETTINGS_SYNC</b> with incremented version
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Host receives and applies</b> (host may or may not be
+              initiator)
+            </dd>
+            <dt>4.</dt>
+            <dd><b>Host broadcasts to all participants</b></dd>
+            <dt>5.</dt>
+            <dd><b>Each participant applies and sends SETTINGS_ACK</b></dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Serialization_Format">
+            <a class="permalink" href="#Serialization_Format"
+              >Serialization Format</a
+            >
+          </h2>
+          <p class="Pp">Settings are serialized as a compact binary format:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>// lib/session/settings.h
 typedef struct {
 <br/>
   uint32_t version;               // For conflict detection
@@ -1432,22 +1839,33 @@ asciichat_error_t settings_serialize(const options_t *opts, uint8_t *buf, size_t
 asciichat_error_t settings_deserialize(const uint8_t *buf, size_t len, options_t *opts);
 // Compare versions, detect conflicts
 bool settings_needs_update(uint32_t local_version, uint32_t remote_version);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Code_Refactoring_Plan"><a class="permalink" href="#Code_Refactoring_Plan">Code
-  Refactoring Plan</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_1:_Abstract_Server/Client_Core"><a class="permalink" href="#Phase_1:_Abstract_Server/Client_Core">Phase
-  1: Abstract Server/Client Core</a></h2>
-<p class="Pp"><b>Goal</b>: Extract reusable components from src/server/ and
-    src/client/ into lib/session/.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="New_Library:_lib/session/"><a class="permalink" href="#New_Library:_lib/session/">New
-  Library: lib/session/</a></h2>
-<pre>lib/session/
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Code_Refactoring_Plan">
+            <a class="permalink" href="#Code_Refactoring_Plan"
+              >Code Refactoring Plan</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_1:_Abstract_Server/Client_Core">
+            <a class="permalink" href="#Phase_1:_Abstract_Server/Client_Core"
+              >Phase 1: Abstract Server/Client Core</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Goal</b>: Extract reusable components from src/server/ and
+            src/client/ into lib/session/.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="New_Library:_lib/session/">
+            <a class="permalink" href="#New_Library:_lib/session/"
+              >New Library: lib/session/</a
+            >
+          </h2>
+          <pre>lib/session/
 &#x251C;&#x2500;&#x2500; host.h/c           # Server-side session management (extracted from src/server/)
 &#x2502;   - session_host_t struct
 &#x2502;   - session_host_create()
@@ -1492,11 +1910,14 @@ bool settings_needs_update(uint32_t local_version, uint32_t remote_version);</pr
     - settings_needs_update()
 <br/>
     - settings_apply()</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Refactored_src/_Structure"><a class="permalink" href="#Refactored_src/_Structure">Refactored
-  src/ Structure</a></h2>
-<pre>src/
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Refactored_src/_Structure">
+            <a class="permalink" href="#Refactored_src/_Structure"
+              >Refactored src/ Structure</a
+            >
+          </h2>
+          <pre>src/
 &#x251C;&#x2500;&#x2500; main.c                    # Mode dispatcher (unchanged)
 &#x251C;&#x2500;&#x2500; server/
 &#x2502;   &#x2514;&#x2500;&#x2500; main.c                # Thin wrapper around lib/session/host
@@ -1515,15 +1936,21 @@ bool settings_needs_update(uint32_t local_version, uint32_t remote_version);</pr
     &#x251C;&#x2500;&#x2500; negotiate.c           # Host negotiation logic
 <br/>
     &#x2514;&#x2500;&#x2500; session.c             # Combined host+participant management</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_2:_Discovery_Mode_Implementation"><a class="permalink" href="#Phase_2:_Discovery_Mode_Implementation">Phase
-  2: Discovery Mode Implementation</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Entry_Point:_"><a class="permalink" href="#Entry_Point:_">Entry
-  Point: <b>src/discovery/main.c</b></a></h2>
-<pre>int discovery_main(void) {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_2:_Discovery_Mode_Implementation">
+            <a class="permalink" href="#Phase_2:_Discovery_Mode_Implementation"
+              >Phase 2: Discovery Mode Implementation</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Entry_Point:_">
+            <a class="permalink" href="#Entry_Point:_"
+              >Entry Point: <b>src/discovery/main.c</b></a
+            >
+          </h2>
+          <pre>int discovery_main(void) {
 <br/>
   const options_t *opts = options_get();
 <br/>
@@ -1613,11 +2040,14 @@ static int discovery_join_session(const char *session_string) {
 <br/>
   // 6. Run until session ends
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="NAT_Detection:_"><a class="permalink" href="#NAT_Detection:_">NAT
-  Detection: <b>src/discovery/nat.c</b></a></h2>
-<pre>typedef struct {
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="NAT_Detection:_">
+            <a class="permalink" href="#NAT_Detection:_"
+              >NAT Detection: <b>src/discovery/nat.c</b></a
+            >
+          </h2>
+          <pre>typedef struct {
 <br/>
   // From explicit checks
 <br/>
@@ -1667,11 +2097,14 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *out, int acds_socket);
 int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs,
 <br/>
                         bool we_are_initiator);</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="NAT_Comparison_Algorithm"><a class="permalink" href="#NAT_Comparison_Algorithm">NAT
-  Comparison Algorithm</a></h2>
-<pre>// Bandwidth override threshold: 10x difference can override NAT priority
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="NAT_Comparison_Algorithm">
+            <a class="permalink" href="#NAT_Comparison_Algorithm"
+              >NAT Comparison Algorithm</a
+            >
+          </h2>
+          <pre>// Bandwidth override threshold: 10x difference can override NAT priority
 #define BANDWIDTH_OVERRIDE_RATIO 10
 int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs,
 <br/>
@@ -1741,30 +2174,41 @@ static int compute_nat_tier(const nat_quality_t *q) {
 <br/>
   return 4;                                  // TURN relay required
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_3:_Options_Refactoring"><a class="permalink" href="#Phase_3:_Options_Refactoring">Phase
-  3: Options Refactoring</a></h2>
-<p class="Pp"><b>Goal</b>: Define each option once, with groups and presets for
-    sharing.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Current_Problem"><a class="permalink" href="#Current_Problem">Current
-  Problem</a></h2>
-<p class="Pp">Options are defined multiple times across files:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>lib/options/server.c defines server options</li>
-  <li>lib/options/client.c defines client options (some overlap)</li>
-  <li>lib/options/mirror.c defines mirror options (mostly subset)</li>
-  <li>lib/options/discovery_server.c defines ACDS options</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Solution:_Centralized_Option_Definitions"><a class="permalink" href="#Solution:_Centralized_Option_Definitions">Solution:
-  Centralized Option Definitions</a></h2>
-<pre>// lib/options/definitions.h - Single source of truth
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_3:_Options_Refactoring">
+            <a class="permalink" href="#Phase_3:_Options_Refactoring"
+              >Phase 3: Options Refactoring</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Goal</b>: Define each option once, with groups and presets for
+            sharing.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Current_Problem">
+            <a class="permalink" href="#Current_Problem">Current Problem</a>
+          </h2>
+          <p class="Pp">Options are defined multiple times across files:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>lib/options/server.c defines server options</li>
+            <li>lib/options/client.c defines client options (some overlap)</li>
+            <li>lib/options/mirror.c defines mirror options (mostly subset)</li>
+            <li>lib/options/discovery_server.c defines ACDS options</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Solution:_Centralized_Option_Definitions">
+            <a
+              class="permalink"
+              href="#Solution:_Centralized_Option_Definitions"
+              >Solution: Centralized Option Definitions</a
+            >
+          </h2>
+          <pre>// lib/options/definitions.h - Single source of truth
 // Option groups (bit flags)
 #define OPT_GROUP_DISPLAY     (1 &lt;&lt; 0)   // width, height, color, palette
 #define OPT_GROUP_NETWORK     (1 &lt;&lt; 1)   // address, port
@@ -1834,11 +2278,14 @@ static const option_def_t ALL_OPTIONS[] = {
 <br/>
   // ... etc
 };</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Mode-Specific_Parsers_Become_Thin"><a class="permalink" href="#Mode-Specific_Parsers_Become_Thin">Mode-Specific
-  Parsers Become Thin</a></h2>
-<pre>// lib/options/server.c - Now just a filter
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Mode-Specific_Parsers_Become_Thin">
+            <a class="permalink" href="#Mode-Specific_Parsers_Become_Thin"
+              >Mode-Specific Parsers Become Thin</a
+            >
+          </h2>
+          <pre>// lib/options/server.c - Now just a filter
 asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
 <br/>
   return parse_options_with_groups(argc, argv, opts, MODE_SERVER_GROUPS);
@@ -1848,402 +2295,591 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
 <br/>
   return parse_options_with_groups(argc, argv, opts, MODE_DISCOVERY_GROUPS);
 }</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Implementation_TODOs"><a class="permalink" href="#Implementation_TODOs">Implementation
-  TODOs</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_1:_Library_Abstraction_(Foundation)"><a class="permalink" href="#Phase_1:_Library_Abstraction_(Foundation)">Phase
-  1: Library Abstraction (Foundation)</a></h2>
-<dl class="Bl-tag">
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.1</b>: Create lib/session/ directory structure</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.2</b>: Extract <b>session_host_t</b><b> from </b>src/server/<b>
-      into </b>lib/session/host.c<b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Identify server state that can be abstracted</dd>
-  <dt> &#x2022;</dt>
-  <dd>Keep TCP accept loop, packet routing, frame broadcasting</dd>
-  <dt> &#x2022;</dt>
-  <dd>Remove <b>main()</b> specific code</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.3</b>: Extract <b>session_participant_t</b><b> from
-      </b>src/client/<b> into </b>lib/session/participant.c<b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Identify client state that can be abstracted</dd>
-  <dt> &#x2022;</dt>
-  <dd>Keep connection, frame send/receive, audio handling</dd>
-  <dt> &#x2022;</dt>
-  <dd>Remove <b>main()</b> specific code</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.4</b>: Create lib/session/capture.c - unified webcam
-    capture</dd>
-  <dt> &#x2022;</dt>
-  <dd>Currently duplicated between <b>src/client/capture.c</b><b> and
-      </b><b>src/mirror/main.c</b><b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Single API for starting capture, getting frames, stopping</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.5</b>: Create lib/session/display.c - unified terminal
-    display</dd>
-  <dt> &#x2022;</dt>
-  <dd>Currently duplicated between <b>src/client/display.c</b><b> and
-      </b><b>src/mirror/main.c</b><b></b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Single API for rendering frames to terminal</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.6</b>: Create lib/session/settings.c - settings
-    serialization</dd>
-  <dt> &#x2022;</dt>
-  <dd>Serialize <b>options_t</b><b> subset to binary for network
-      transmission</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Deserialize and merge with local options</dd>
-  <dt> &#x2022;</dt>
-  <dd>Version tracking for mid-session changes</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.7</b>: Update <b>src/server/main.c</b><b> to use
-      </b>lib/session/host<b></b></dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.8</b>: Update <b>src/client/main.c</b><b> to use
-      </b>lib/session/participant<b></b></dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.9</b>: Update <b>src/mirror/main.c</b><b> to use
-      </b>lib/session/capture<b> + </b>display<b></b></dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 1.10</b>: Add tests for new library components</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_2:_Discovery_Mode_(Core_Feature)"><a class="permalink" href="#Phase_2:_Discovery_Mode_(Core_Feature)">Phase
-  2: Discovery Mode (Core Feature)</a></h2>
-<dl class="Bl-tag">
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.1</b>: Add <b>MODE_DISCOVERY</b><b> to
-      </b><b>asciichat_mode_t</b><b> enum</b></dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.2</b>: Create src/discovery/ directory with main.c, main.h</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.3</b>: Register discovery mode in <b>src/main.c</b><b> mode
-      table</b></dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.4</b>: Implement NAT quality detection
-      (<b>src/discovery/nat.c</b><b>)</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Public IP detection via STUN (reflexive == local)</dd>
-  <dt> &#x2022;</dt>
-  <dd>UPnP/NAT-PMP availability check</dd>
-  <dt> &#x2022;</dt>
-  <dd>STUN NAT type classification</dd>
-  <dt> &#x2022;</dt>
-  <dd>LAN reachability via mDNS/subnet check</dd>
-  <dt> &#x2022;</dt>
-  <dd>ICE candidate type collection</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.4.1</b>: Implement per-frame RTT and quality tracking in
-      participant code</dd>
-  <dt> &#x2022;</dt>
-  <dd>Track frame sequence numbers to detect loss (missing sequence = lost
-      frame)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Extract timestamp from each frame, calculate RTT = now -
-    frame_timestamp</dd>
-  <dt> &#x2022;</dt>
-  <dd>Accumulate bytes_received, frames_received per 30-60 second window</dd>
-  <dt> &#x2022;</dt>
-  <dd>Calculate bandwidth: (bytes_received * 8) / window_duration_ms</dd>
-  <dt> &#x2022;</dt>
-  <dd>Collect RTT samples, compute min/max/avg/jitter</dd>
-  <dt> &#x2022;</dt>
-  <dd>Compute network quality assessment (0-3 scale based on
-    loss/jitter/rtt)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.4.2</b>: Implement background quality reporting (every
-    30-60s)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Create MEDIA_QUALITY_REPORT after each measurement window</dd>
-  <dt> &#x2022;</dt>
-  <dd>Send to host with accumulated bandwidth/RTT/jitter metrics</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reset measurement window, start accumulating again</dd>
-  <dt> &#x2022;</dt>
-  <dd>Do NOT block call, send in background</dd>
-  <dt> &#x2022;</dt>
-  <dd>Handle gracefully if host doesn't receive report</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.5</b>: Add new ACIP packet types (most already exist, just add
-      two new ones)</dd>
-  <dt> &#x2022;</dt>
-  <dd><b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b><b> (130) - &#x2713; already exists
-      (NAT info for negotiation)</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b><b> (131) - &#x2713; already
-      exists</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b><b> (132) - &#x2713; already
-      exists</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b><b> (133) - &#x2713; already
-      exists</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>PACKET_TYPE_ACIP_SETTINGS_ACK</b><b> (134) - &#x2713; already
-      exists</b></dd>
-  <dt> &#x2022;</dt>
-  <dd><b>PACKET_TYPE_ACIP_HOST_LOST</b><b> (135) - &#x2713; already
-    exists</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>PACKET_TYPE_ACIP_MEDIA_QUALITY_REPORT (146) - NEW: participant &#x2192;
-      host, bandwidth/RTT/jitter</dd>
-  <dt> &#x2022;</dt>
-  <dd>PACKET_TYPE_ACIP_HOST_QUALITY_UPDATE (147) - NEW: host &#x2192; all,
-      announce host/backup with metrics</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.6</b>: Extend <b>acip_session_joined_t</b><b> with host
-    info</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>host_established flag</dd>
-  <dt> &#x2022;</dt>
-  <dd>host_id, host_address, host_port when established</dd>
-  <dt> &#x2022;</dt>
-  <dd>peer_count + peer IDs when not established</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.7</b>: Update ACDS to track host per session</dd>
-  <dt> &#x2022;</dt>
-  <dd>Store host info in SQLite after HOST_ANNOUNCEMENT</dd>
-  <dt> &#x2022;</dt>
-  <dd>Include host info in SESSION_JOINED responses</dd>
-  <dt> &#x2022;</dt>
-  <dd>Broadcast HOST_DESIGNATED to all participants</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.8</b>: Implement host negotiation logic
-      (<b>src/discovery/negotiate.c</b><b>)</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Deterministic comparison algorithm</dd>
-  <dt> &#x2022;</dt>
-  <dd>Both sides compute same result</dd>
-  <dt> &#x2022;</dt>
-  <dd>Initiator wins ties</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.9</b>: Implement discovery session flow
-      (<b>src/discovery/session.c</b><b>)</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Start session (create + wait for joiner)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Join session (check host_established, negotiate or connect)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Transition to host or participant role</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.10</b>: Implement dual-role for host (server + participant)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Host runs server AND participates in call</dd>
-  <dt> &#x2022;</dt>
-  <dd>Uses lib/session/host + lib/session/participant together</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.11</b>: Implement mutable settings propagation</dd>
-  <dt> &#x2022;</dt>
-  <dd>Initiator sends SETTINGS_SYNC on change</dd>
-  <dt> &#x2022;</dt>
-  <dd>Host broadcasts to all participants</dd>
-  <dt> &#x2022;</dt>
-  <dd>Participants apply and ACK</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.12</b>: Implement host-side quality evaluation and election</dd>
-  <dt> &#x2022;</dt>
-  <dd>Collect MEDIA_QUALITY_REPORT from all participants every 30-60s</dd>
-  <dt> &#x2022;</dt>
-  <dd>Score each participant: quality*1000 + bandwidth*10 + (100-rtt) +
-      initiator_bonus</dd>
-  <dt> &#x2022;</dt>
-  <dd>Elect best as (new) host, second-best as backup</dd>
-  <dt> &#x2022;</dt>
-  <dd>If current host is no longer best: trigger host migration</dd>
-  <dt> &#x2022;</dt>
-  <dd>If host stays same but backup changed: just send new
-    HOST_QUALITY_UPDATE</dd>
-  <dt> &#x2022;</dt>
-  <dd>Broadcast HOST_QUALITY_UPDATE with metrics, current host, backup host,
-      addresses</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.13</b>: Implement CLIENT-side backup address storage</dd>
-  <dt> &#x2022;</dt>
-  <dd>On receiving HOST_QUALITY_UPDATE: store backup_host_address,
-      backup_host_port locally</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use stored address immediately when TCP disconnect detected (no ACDS
-      query)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 2.14</b>: Update CLI to make discovery mode the default</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat (no args) = start discovery session</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat &lt;session-string&gt; = join discovery session</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat server = explicit server mode (unchanged)</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat client = explicit client mode (unchanged)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_3:_Options_Refactoring_(Quality_of_Life)"><a class="permalink" href="#Phase_3:_Options_Refactoring_(Quality_of_Life)">Phase
-  3: Options Refactoring (Quality of Life)</a></h2>
-<dl class="Bl-tag">
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.1</b>: Create lib/options/definitions.h with centralized option
-      definitions</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.2</b>: Define option groups (display, network, webcam, audio,
-      crypto, etc.)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.3</b>: Define mode presets (which groups each mode uses)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.4</b>: Implement parse_options_with_groups() that filters by
-      group</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.5</b>: Refactor lib/options/server.c to use group filtering</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.6</b>: Refactor lib/options/client.c to use group filtering</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.7</b>: Refactor lib/options/mirror.c to use group filtering</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.8</b>: Refactor lib/options/discovery_server.c to use group
-      filtering</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.9</b>: Create lib/options/discovery.c for discovery mode</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.10</b>: Update help output to show options by group</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 3.11</b>: Add tests for option group filtering</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Phase_4:_Instant_Failover_&amp;_Polish"><a class="permalink" href="#Phase_4:_Instant_Failover_&amp;_Polish">Phase
-  4: Instant Failover &amp; Polish</a></h2>
-<dl class="Bl-tag">
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.1</b>: Implement instant failover using pre-stored backup
-      address</dd>
-  <dt> &#x2022;</dt>
-  <dd>Detect host disconnect (TCP RST or timeout)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Check if we are the backup (compare our ID with backup_host_id from
-      HOST_QUALITY_UPDATE)</dd>
-  <dt> &#x2022;</dt>
-  <dd>If we're backup: start server on stored
-      backup_host_address:backup_host_port</dd>
-  <dt> &#x2022;</dt>
-  <dd>If we're not backup: connect to stored backup address using TCP
-    socket</dd>
-  <dt> &#x2022;</dt>
-  <dd>No ACDS query, no election, no NETWORK_QUALITY exchange needed</dd>
-  <dt> &#x2022;</dt>
-  <dd>Media resumes within ~500ms total</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.2</b>: Send HOST_LOST notification to ACDS (optional,
-      informational only)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Notify ACDS that host died (for logging/analytics)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Include participant_id, host_id, disconnect_reason, timestamp</dd>
-  <dt> &#x2022;</dt>
-  <dd>Does NOT require ACDS response or action</dd>
-  <dt> &#x2022;</dt>
-  <dd>ACDS can update in_migration flag for bookkeeping</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.3</b>: Handle edge cases in failover</dd>
-  <dt> &#x2022;</dt>
-  <dd>Only one participant left &#x2192; call ends (session becomes
-    invalid)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Backup can't listen on stored address &#x2192; log error, try TURN
-    relay</dd>
-  <dt> &#x2022;</dt>
-  <dd>New joiner during migration &#x2192; use current host from ACDS (may be
-      transitional)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Network partition &#x2192; both sides may try to become host</dd>
-  <dt> &#x2022;</dt>
-  <dd>Resolution: first one to establish connection wins</dd>
-  <dt> &#x2022;</dt>
-  <dd>Loser detects conflict, reconnects to winner</dd>
-  <dt> &#x2022;</dt>
-  <dd>Participant offline during migration &#x2192; skipped (no impact on
-      others)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.4</b>: Implement WebRTC P2P SDP/ICE exchange for failover</dd>
-  <dt> &#x2022;</dt>
-  <dd>After backup starts listening and others connect to it</dd>
-  <dt> &#x2022;</dt>
-  <dd>Exchange SDP offers/answers directly over TCP (not via ACDS)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Exchange ICE candidates for NAT traversal</dd>
-  <dt> &#x2022;</dt>
-  <dd>Establish WebRTC connection for actual media flow</dd>
-  <dt> &#x2022;</dt>
-  <dd>Media can be P2P (if NAT allows) or through TURN relay (fallback)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Reduces host CPU load once P2P established (no media relay needed)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.5</b>: Add session persistence (nice-to-have)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Remember recent sessions and their bandwidth metrics</dd>
-  <dt> &#x2022;</dt>
-  <dd>Allow quick rejoin: ascii-chat swift-river-mountain reconnects
-    instantly</dd>
-  <dt> &#x2022;</dt>
-  <dd>Use cached bandwidth data on rejoin</dd>
-  <dt> &#x2022;</dt>
-  <dd>Invalidate cache after session expires (24 hours)</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.6</b>: Add session security features (nice-to-have)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Optional password protection for sessions</dd>
-  <dt> &#x2022;</dt>
-  <dd>Session-specific credentials or tokens</dd>
-  <dt> &#x2022;</dt>
-  <dd>Key fingerprint verification UI</dd>
-  <dt> &#x2022;</dt>
-  <dd>Trust-on-first-use (TOFU) for session participants</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.7</b>: Comprehensive testing</dd>
-  <dt> &#x2022;</dt>
-  <dd>Unit tests: quality scoring algorithm, backup election logic</dd>
-  <dt> &#x2022;</dt>
-  <dd>Integration test: start session &#x2192; join &#x2192; media flows
-      &#x2192; measurement window &#x2192; re-election</dd>
-  <dt> &#x2022;</dt>
-  <dd>Integration test: host dies &#x2192; backup detected &#x2192; media
-      resumes on backup</dd>
-  <dt> &#x2022;</dt>
-  <dd>Load test: 5+ participants, verify all get correct bandwidth
-    measurements</dd>
-  <dt> &#x2022;</dt>
-  <dd>Edge case: new joiner while migration in progress</dd>
-  <dt>[ ]</dt>
-  <dd><b>TODO 4.8</b>: Documentation updates</dd>
-  <dt> &#x2022;</dt>
-  <dd>Update README with discovery mode examples and timings</dd>
-  <dt> &#x2022;</dt>
-  <dd>Explain instant failover model (vs old ACDS election)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Document MEDIA_QUALITY_REPORT and HOST_QUALITY_UPDATE flow</dd>
-  <dt> &#x2022;</dt>
-  <dd>Add troubleshooting guide for bandwidth/migration issues</dd>
-  <dt> &#x2022;</dt>
-  <dd>Update man pages with new packet types</dd>
-  <dt> &#x2022;</dt>
-  <dd>Add architecture diagrams for clarity</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="File_Changes_Summary"><a class="permalink" href="#File_Changes_Summary">File
-  Changes Summary</a></h2>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="New_Files"><a class="permalink" href="#New_Files">New
-  Files</a></h2>
-<pre>lib/session/
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_TODOs">
+            <a class="permalink" href="#Implementation_TODOs"
+              >Implementation TODOs</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_1:_Library_Abstraction_(Foundation)">
+            <a
+              class="permalink"
+              href="#Phase_1:_Library_Abstraction_(Foundation)"
+              >Phase 1: Library Abstraction (Foundation)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd><b>TODO 1.1</b>: Create lib/session/ directory structure</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.2</b>: Extract <b>session_host_t</b
+              ><b> from </b>src/server/<b> into </b>lib/session/host.c<b></b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Identify server state that can be abstracted</dd>
+            <dt>&#x2022;</dt>
+            <dd>Keep TCP accept loop, packet routing, frame broadcasting</dd>
+            <dt>&#x2022;</dt>
+            <dd>Remove <b>main()</b> specific code</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.3</b>: Extract <b>session_participant_t</b
+              ><b> from </b>src/client/<b> into </b>lib/session/participant.c<b
+              ></b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Identify client state that can be abstracted</dd>
+            <dt>&#x2022;</dt>
+            <dd>Keep connection, frame send/receive, audio handling</dd>
+            <dt>&#x2022;</dt>
+            <dd>Remove <b>main()</b> specific code</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.4</b>: Create lib/session/capture.c - unified webcam
+              capture
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Currently duplicated between <b>src/client/capture.c</b
+              ><b> and </b><b>src/mirror/main.c</b><b></b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Single API for starting capture, getting frames, stopping</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.5</b>: Create lib/session/display.c - unified terminal
+              display
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Currently duplicated between <b>src/client/display.c</b
+              ><b> and </b><b>src/mirror/main.c</b><b></b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Single API for rendering frames to terminal</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.6</b>: Create lib/session/settings.c - settings
+              serialization
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Serialize <b>options_t</b
+              ><b> subset to binary for network transmission</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Deserialize and merge with local options</dd>
+            <dt>&#x2022;</dt>
+            <dd>Version tracking for mid-session changes</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.7</b>: Update <b>src/server/main.c</b
+              ><b> to use </b>lib/session/host<b></b>
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.8</b>: Update <b>src/client/main.c</b
+              ><b> to use </b>lib/session/participant<b></b>
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 1.9</b>: Update <b>src/mirror/main.c</b
+              ><b> to use </b>lib/session/capture<b> + </b>display<b></b>
+            </dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 1.10</b>: Add tests for new library components</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_2:_Discovery_Mode_(Core_Feature)">
+            <a class="permalink" href="#Phase_2:_Discovery_Mode_(Core_Feature)"
+              >Phase 2: Discovery Mode (Core Feature)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.1</b>: Add <b>MODE_DISCOVERY</b><b> to </b
+              ><b>asciichat_mode_t</b><b> enum</b>
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.2</b>: Create src/discovery/ directory with main.c,
+              main.h
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.3</b>: Register discovery mode in <b>src/main.c</b
+              ><b> mode table</b>
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.4</b>: Implement NAT quality detection (<b
+                >src/discovery/nat.c</b
+              ><b>)</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Public IP detection via STUN (reflexive == local)</dd>
+            <dt>&#x2022;</dt>
+            <dd>UPnP/NAT-PMP availability check</dd>
+            <dt>&#x2022;</dt>
+            <dd>STUN NAT type classification</dd>
+            <dt>&#x2022;</dt>
+            <dd>LAN reachability via mDNS/subnet check</dd>
+            <dt>&#x2022;</dt>
+            <dd>ICE candidate type collection</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.4.1</b>: Implement per-frame RTT and quality tracking in
+              participant code
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Track frame sequence numbers to detect loss (missing sequence =
+              lost frame)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Extract timestamp from each frame, calculate RTT = now -
+              frame_timestamp
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Accumulate bytes_received, frames_received per 30-60 second window
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Calculate bandwidth: (bytes_received * 8) / window_duration_ms
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Collect RTT samples, compute min/max/avg/jitter</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Compute network quality assessment (0-3 scale based on
+              loss/jitter/rtt)
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.4.2</b>: Implement background quality reporting (every
+              30-60s)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Create MEDIA_QUALITY_REPORT after each measurement window</dd>
+            <dt>&#x2022;</dt>
+            <dd>Send to host with accumulated bandwidth/RTT/jitter metrics</dd>
+            <dt>&#x2022;</dt>
+            <dd>Reset measurement window, start accumulating again</dd>
+            <dt>&#x2022;</dt>
+            <dd>Do NOT block call, send in background</dd>
+            <dt>&#x2022;</dt>
+            <dd>Handle gracefully if host doesn't receive report</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.5</b>: Add new ACIP packet types (most already exist,
+              just add two new ones)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b
+              ><b>
+                (130) - &#x2713; already exists (NAT info for negotiation)</b
+              >
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b
+              ><b> (131) - &#x2713; already exists</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b
+              ><b> (132) - &#x2713; already exists</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b
+              ><b> (133) - &#x2713; already exists</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b
+              ><b> (134) - &#x2713; already exists</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <b>PACKET_TYPE_ACIP_HOST_LOST</b
+              ><b> (135) - &#x2713; already exists</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              PACKET_TYPE_ACIP_MEDIA_QUALITY_REPORT (146) - NEW: participant
+              &#x2192; host, bandwidth/RTT/jitter
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              PACKET_TYPE_ACIP_HOST_QUALITY_UPDATE (147) - NEW: host &#x2192;
+              all, announce host/backup with metrics
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.6</b>: Extend <b>acip_session_joined_t</b
+              ><b> with host info</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>host_established flag</dd>
+            <dt>&#x2022;</dt>
+            <dd>host_id, host_address, host_port when established</dd>
+            <dt>&#x2022;</dt>
+            <dd>peer_count + peer IDs when not established</dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 2.7</b>: Update ACDS to track host per session</dd>
+            <dt>&#x2022;</dt>
+            <dd>Store host info in SQLite after HOST_ANNOUNCEMENT</dd>
+            <dt>&#x2022;</dt>
+            <dd>Include host info in SESSION_JOINED responses</dd>
+            <dt>&#x2022;</dt>
+            <dd>Broadcast HOST_DESIGNATED to all participants</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.8</b>: Implement host negotiation logic (<b
+                >src/discovery/negotiate.c</b
+              ><b>)</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Deterministic comparison algorithm</dd>
+            <dt>&#x2022;</dt>
+            <dd>Both sides compute same result</dd>
+            <dt>&#x2022;</dt>
+            <dd>Initiator wins ties</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.9</b>: Implement discovery session flow (<b
+                >src/discovery/session.c</b
+              ><b>)</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Start session (create + wait for joiner)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Join session (check host_established, negotiate or connect)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Transition to host or participant role</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.10</b>: Implement dual-role for host (server +
+              participant)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Host runs server AND participates in call</dd>
+            <dt>&#x2022;</dt>
+            <dd>Uses lib/session/host + lib/session/participant together</dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 2.11</b>: Implement mutable settings propagation</dd>
+            <dt>&#x2022;</dt>
+            <dd>Initiator sends SETTINGS_SYNC on change</dd>
+            <dt>&#x2022;</dt>
+            <dd>Host broadcasts to all participants</dd>
+            <dt>&#x2022;</dt>
+            <dd>Participants apply and ACK</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.12</b>: Implement host-side quality evaluation and
+              election
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Collect MEDIA_QUALITY_REPORT from all participants every 30-60s
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Score each participant: quality*1000 + bandwidth*10 + (100-rtt) +
+              initiator_bonus
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Elect best as (new) host, second-best as backup</dd>
+            <dt>&#x2022;</dt>
+            <dd>If current host is no longer best: trigger host migration</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If host stays same but backup changed: just send new
+              HOST_QUALITY_UPDATE
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Broadcast HOST_QUALITY_UPDATE with metrics, current host, backup
+              host, addresses
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.13</b>: Implement CLIENT-side backup address storage
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              On receiving HOST_QUALITY_UPDATE: store backup_host_address,
+              backup_host_port locally
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Use stored address immediately when TCP disconnect detected (no
+              ACDS query)
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 2.14</b>: Update CLI to make discovery mode the default
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat (no args) = start discovery session</dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat &lt;session-string&gt; = join discovery session</dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat server = explicit server mode (unchanged)</dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat client = explicit client mode (unchanged)</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_3:_Options_Refactoring_(Quality_of_Life)">
+            <a
+              class="permalink"
+              href="#Phase_3:_Options_Refactoring_(Quality_of_Life)"
+              >Phase 3: Options Refactoring (Quality of Life)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.1</b>: Create lib/options/definitions.h with centralized
+              option definitions
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.2</b>: Define option groups (display, network, webcam,
+              audio, crypto, etc.)
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.3</b>: Define mode presets (which groups each mode uses)
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.4</b>: Implement parse_options_with_groups() that
+              filters by group
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.5</b>: Refactor lib/options/server.c to use group
+              filtering
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.6</b>: Refactor lib/options/client.c to use group
+              filtering
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.7</b>: Refactor lib/options/mirror.c to use group
+              filtering
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.8</b>: Refactor lib/options/discovery_server.c to use
+              group filtering
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.9</b>: Create lib/options/discovery.c for discovery mode
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 3.10</b>: Update help output to show options by group
+            </dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 3.11</b>: Add tests for option group filtering</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Phase_4:_Instant_Failover_&amp;_Polish">
+            <a class="permalink" href="#Phase_4:_Instant_Failover_&amp;_Polish"
+              >Phase 4: Instant Failover &amp; Polish</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 4.1</b>: Implement instant failover using pre-stored
+              backup address
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Detect host disconnect (TCP RST or timeout)</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Check if we are the backup (compare our ID with backup_host_id
+              from HOST_QUALITY_UPDATE)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If we're backup: start server on stored
+              backup_host_address:backup_host_port
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              If we're not backup: connect to stored backup address using TCP
+              socket
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              No ACDS query, no election, no NETWORK_QUALITY exchange needed
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Media resumes within ~500ms total</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 4.2</b>: Send HOST_LOST notification to ACDS (optional,
+              informational only)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Notify ACDS that host died (for logging/analytics)</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Include participant_id, host_id, disconnect_reason, timestamp
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Does NOT require ACDS response or action</dd>
+            <dt>&#x2022;</dt>
+            <dd>ACDS can update in_migration flag for bookkeeping</dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 4.3</b>: Handle edge cases in failover</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Only one participant left &#x2192; call ends (session becomes
+              invalid)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Backup can't listen on stored address &#x2192; log error, try TURN
+              relay
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              New joiner during migration &#x2192; use current host from ACDS
+              (may be transitional)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Network partition &#x2192; both sides may try to become host
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Resolution: first one to establish connection wins</dd>
+            <dt>&#x2022;</dt>
+            <dd>Loser detects conflict, reconnects to winner</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Participant offline during migration &#x2192; skipped (no impact
+              on others)
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 4.4</b>: Implement WebRTC P2P SDP/ICE exchange for
+              failover
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>After backup starts listening and others connect to it</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Exchange SDP offers/answers directly over TCP (not via ACDS)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Exchange ICE candidates for NAT traversal</dd>
+            <dt>&#x2022;</dt>
+            <dd>Establish WebRTC connection for actual media flow</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Media can be P2P (if NAT allows) or through TURN relay (fallback)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Reduces host CPU load once P2P established (no media relay needed)
+            </dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 4.5</b>: Add session persistence (nice-to-have)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Remember recent sessions and their bandwidth metrics</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Allow quick rejoin: ascii-chat swift-river-mountain reconnects
+              instantly
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Use cached bandwidth data on rejoin</dd>
+            <dt>&#x2022;</dt>
+            <dd>Invalidate cache after session expires (24 hours)</dd>
+            <dt>[ ]</dt>
+            <dd>
+              <b>TODO 4.6</b>: Add session security features (nice-to-have)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Optional password protection for sessions</dd>
+            <dt>&#x2022;</dt>
+            <dd>Session-specific credentials or tokens</dd>
+            <dt>&#x2022;</dt>
+            <dd>Key fingerprint verification UI</dd>
+            <dt>&#x2022;</dt>
+            <dd>Trust-on-first-use (TOFU) for session participants</dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 4.7</b>: Comprehensive testing</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Unit tests: quality scoring algorithm, backup election logic
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Integration test: start session &#x2192; join &#x2192; media flows
+              &#x2192; measurement window &#x2192; re-election
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Integration test: host dies &#x2192; backup detected &#x2192;
+              media resumes on backup
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Load test: 5+ participants, verify all get correct bandwidth
+              measurements
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Edge case: new joiner while migration in progress</dd>
+            <dt>[ ]</dt>
+            <dd><b>TODO 4.8</b>: Documentation updates</dd>
+            <dt>&#x2022;</dt>
+            <dd>Update README with discovery mode examples and timings</dd>
+            <dt>&#x2022;</dt>
+            <dd>Explain instant failover model (vs old ACDS election)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Document MEDIA_QUALITY_REPORT and HOST_QUALITY_UPDATE flow</dd>
+            <dt>&#x2022;</dt>
+            <dd>Add troubleshooting guide for bandwidth/migration issues</dd>
+            <dt>&#x2022;</dt>
+            <dd>Update man pages with new packet types</dd>
+            <dt>&#x2022;</dt>
+            <dd>Add architecture diagrams for clarity</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="File_Changes_Summary">
+            <a class="permalink" href="#File_Changes_Summary"
+              >File Changes Summary</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="New_Files">
+            <a class="permalink" href="#New_Files">New Files</a>
+          </h2>
+          <pre>
+lib/session/
 &#x251C;&#x2500;&#x2500; host.h
 &#x251C;&#x2500;&#x2500; host.c
 &#x251C;&#x2500;&#x2500; participant.h
@@ -2270,11 +2906,13 @@ src/discovery/
 &#x251C;&#x2500;&#x2500; session.c
 &#x251C;&#x2500;&#x2500; webrtc.h
 &#x2514;&#x2500;&#x2500; webrtc.c</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Modified_Files"><a class="permalink" href="#Modified_Files">Modified
-  Files</a></h2>
-<pre>src/main.c                    # Add MODE_DISCOVERY to dispatcher
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Modified_Files">
+            <a class="permalink" href="#Modified_Files">Modified Files</a>
+          </h2>
+          <pre>
+src/main.c                    # Add MODE_DISCOVERY to dispatcher
 lib/options/options.h         # Add MODE_DISCOVERY enum, option groups
 lib/options/options.c         # Handle discovery mode detection
 lib/options/builder.c         # Support option group filtering
@@ -2294,94 +2932,112 @@ src/discovery-server/server.c # Updated for migration tracking
 lib/session/participant.c     # Add per-frame RTT tracking, quality window accumulation
 lib/session/host.c            # Add quality metrics collection and election logic
 CMakeLists.txt                # Add new source files (webrtc.c, media_quality metrics)</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Success_Criteria"><a class="permalink" href="#Success_Criteria">Success
-  Criteria</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>User Experience</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat prints a session string and waits</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat swift-river-mountain joins and call starts</dd>
-  <dt> &#x2022;</dt>
-  <dd>No user action needed to determine host</dd>
-  <dt> &#x2022;</dt>
-  <dd>3rd+ participants just connect (no re-negotiation)</dd>
-  <dt>2.</dt>
-  <dd><b>Connection Quality</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Direct connections used when possible (public IP, UPnP)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Automatic fallback through STUN/TURN</dd>
-  <dt> &#x2022;</dt>
-  <dd>Connection type logged for debugging</dd>
-  <dt> &#x2022;</dt>
-  <dd>Host selection is optimal for network topology</dd>
-  <dt>3.</dt>
-  <dd><b>Settings Sync</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Initiator's display settings apply to all</dd>
-  <dt> &#x2022;</dt>
-  <dd>Settings changes propagate mid-session</dd>
-  <dt> &#x2022;</dt>
-  <dd>Participants see consistent experience</dd>
-  <dt> &#x2022;</dt>
-  <dd>Invalid settings rejected gracefully</dd>
-  <dt>4.</dt>
-  <dd><b>Robustness</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Host disconnect triggers automatic migration using pre-stored backup
-      address</dd>
-  <dt> &#x2022;</dt>
-  <dd>Backup host address learned from HOST_QUALITY_UPDATE (sent every
-    30-60s)</dd>
-  <dt> &#x2022;</dt>
-  <dd>All participants know backup address locally, no ACDS query needed</dd>
-  <dt> &#x2022;</dt>
-  <dd>Backup participant starts server immediately on known address/port</dd>
-  <dt> &#x2022;</dt>
-  <dd>Other participants connect to backup within ~500ms total</dd>
-  <dt> &#x2022;</dt>
-  <dd>Call resumes automatically (no user action required)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Single participant left &#x2192; session ends cleanly</dd>
-  <dt> &#x2022;</dt>
-  <dd>No ACDS dependency for failover (ACDS only receives notification)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Bandwidth measurements continue in background, re-election may occur after
-      30-60s</dd>
-  <dt>5.</dt>
-  <dd><b>Backward Compatibility</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat server still works</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat client still works</dd>
-  <dt> &#x2022;</dt>
-  <dd>ascii-chat mirror still works</dd>
-  <dt> &#x2022;</dt>
-  <dd>Existing ACDS deployments unaffected</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Timeline_Estimate"><a class="permalink" href="#Timeline_Estimate">Timeline
-  Estimate</a></h2>
-<p class="Pp">Phase Description Complexity 1 Library Abstraction Large - touches
-    most of src/ 2 Discovery Mode Large - new feature, protocol changes 3
-    Options Refactoring Medium - mostly mechanical 4 Polish &amp; Edge Cases
-    Medium - important for UX</p>
-<p class="Pp"></p>
-<p class="Pp">Recommended order: Phase 1 first (enables 2), then Phase 2 (core
-    feature), Phase 3 can happen in parallel, Phase 4 last.</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Success_Criteria">
+            <a class="permalink" href="#Success_Criteria">Success Criteria</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>User Experience</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat prints a session string and waits</dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat swift-river-mountain joins and call starts</dd>
+            <dt>&#x2022;</dt>
+            <dd>No user action needed to determine host</dd>
+            <dt>&#x2022;</dt>
+            <dd>3rd+ participants just connect (no re-negotiation)</dd>
+            <dt>2.</dt>
+            <dd><b>Connection Quality</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Direct connections used when possible (public IP, UPnP)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Automatic fallback through STUN/TURN</dd>
+            <dt>&#x2022;</dt>
+            <dd>Connection type logged for debugging</dd>
+            <dt>&#x2022;</dt>
+            <dd>Host selection is optimal for network topology</dd>
+            <dt>3.</dt>
+            <dd><b>Settings Sync</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Initiator's display settings apply to all</dd>
+            <dt>&#x2022;</dt>
+            <dd>Settings changes propagate mid-session</dd>
+            <dt>&#x2022;</dt>
+            <dd>Participants see consistent experience</dd>
+            <dt>&#x2022;</dt>
+            <dd>Invalid settings rejected gracefully</dd>
+            <dt>4.</dt>
+            <dd><b>Robustness</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Host disconnect triggers automatic migration using pre-stored
+              backup address
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Backup host address learned from HOST_QUALITY_UPDATE (sent every
+              30-60s)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              All participants know backup address locally, no ACDS query needed
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Backup participant starts server immediately on known address/port
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Other participants connect to backup within ~500ms total</dd>
+            <dt>&#x2022;</dt>
+            <dd>Call resumes automatically (no user action required)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Single participant left &#x2192; session ends cleanly</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              No ACDS dependency for failover (ACDS only receives notification)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Bandwidth measurements continue in background, re-election may
+              occur after 30-60s
+            </dd>
+            <dt>5.</dt>
+            <dd><b>Backward Compatibility</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat server still works</dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat client still works</dd>
+            <dt>&#x2022;</dt>
+            <dd>ascii-chat mirror still works</dd>
+            <dt>&#x2022;</dt>
+            <dd>Existing ACDS deployments unaffected</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timeline_Estimate">
+            <a class="permalink" href="#Timeline_Estimate">Timeline Estimate</a>
+          </h2>
+          <p class="Pp">
+            Phase Description Complexity 1 Library Abstraction Large - touches
+            most of src/ 2 Discovery Mode Large - new feature, protocol changes
+            3 Options Refactoring Medium - mostly mechanical 4 Polish &amp; Edge
+            Cases Medium - important for UX
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Recommended order: Phase 1 first (enables 2), then Phase 2 (core
+            feature), Phase 3 can happen in parallel, Phase 4 last.
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

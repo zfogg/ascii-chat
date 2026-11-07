@@ -1,187 +1,272 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>database.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">database.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">database.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">database.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>database_session_stats_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE</b> 64
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef sqlite3 <b>discovery_database_t</b>
-  <br/>
-  Discovery database handle (sqlite3 wrapper).
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>database_init</b> (const char
-    *db_path, sqlite3 **db)
-  <br/>
-  Initialize database and create schema. void <b>database_close</b> (sqlite3
-    *db)
-  <br/>
-  Close database. <b>asciichat_error_t</b> <b>database_session_create</b>
-    (sqlite3 *db, const <b>acip_session_create_t</b> *req, const
-    <b>acds_config_t</b> *config, <b>acip_session_created_t</b> *resp)
-  <br/>
-  Create new session. <b>asciichat_error_t</b>
-    <b>database_session_create_keys</b> (sqlite3 *db, const
-    <b>acip_session_create_t</b> *req, const <b>uint8_t</b>(*keys)[32], size_t
-    count, const <b>acds_config_t</b> *config, <b>acip_session_created_t</b>
-    *resp)
-  <br/>
-  <b>asciichat_error_t</b> <b>database_session_lookup</b> (sqlite3 *db, const
-    char *session_string, const <b>acds_config_t</b> *config,
-    <b>acip_session_info_t</b> *resp)
-  <br/>
-  Lookup session by string. <b>asciichat_error_t</b>
-    <b>database_session_join</b> (sqlite3 *db, const <b>acip_session_join_t</b>
-    *req, const <b>acds_config_t</b> *config, <b>acip_session_joined_t</b>
-    *resp)
-  <br/>
-  Join existing session. <b>asciichat_error_t</b> <b>database_session_leave</b>
-    (sqlite3 *db, const <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
-    participant_id[16])
-  <br/>
-  Leave session. <b>session_entry_t</b> * <b>database_session_find_by_id</b>
-    (sqlite3 *db, const <b>uint8_t</b> session_id[16])
-  <br/>
-  Find session by session_id. <b>session_entry_t</b> *
-    <b>database_session_find_by_string</b> (sqlite3 *db, const char
-    *session_string)
-  <br/>
-  Find session by session_string. void <b>database_session_cleanup_expired</b>
-    (sqlite3 *db)
-  <br/>
-  Clean up inactive sessions. <b>asciichat_error_t</b>
-    <b>database_session_update_host</b> (sqlite3 *db, const <b>uint8_t</b>
-    session_id[16], const <b>uint8_t</b> host_participant_id[16], const char
-    *host_address, <b>uint16_t</b> host_port, <b>uint8_t</b> connection_type)
-  <br/>
-  Update session host (discovery mode). <b>asciichat_error_t</b>
-    <b>database_session_clear_host</b> (sqlite3 *db, const <b>uint8_t</b>
-    session_id[16])
-  <br/>
-  Clear session host (discovery mode - host migration). <b>asciichat_error_t</b>
-    <b>database_session_start_migration</b> (sqlite3 *db, const <b>uint8_t</b>
-    session_id[16])
-  <br/>
-  Start host migration (discovery mode). <b>bool</b>
-    <b>database_session_is_migration_ready</b> (sqlite3 *db, const
-    <b>uint8_t</b> session_id[16], <b>uint64_t</b> migration_window_ms)
-  <br/>
-  Check if migration window has completed. <b>asciichat_error_t</b>
-    <b>database_session_add_key</b> (sqlite3 *db, const char *session_string,
-    const <b>uint8_t</b> identity_pubkey[32], <b>uint32_t</b> key_version)
-  <br/>
-  Add a key to a session. <b>asciichat_error_t</b>
-    <b>database_session_revoke_key</b> (sqlite3 *db, const char *session_string,
-    const <b>uint8_t</b> identity_pubkey[32])
-  <br/>
-  Revoke a key from a session. <b>bool</b> <b>database_session_verify_key</b>
-    (sqlite3 *db, const char *session_string, const <b>uint8_t</b>
-    identity_pubkey[32])
-  <br/>
-  Check if a key is valid for a session (exists and not revoked).
-    <b>asciichat_error_t</b> <b>database_session_get_keys</b> (sqlite3 *db,
-    const char *session_string, <b>uint8_t</b>(*keys_out)[32], size_t max_keys,
-    size_t *count_out)
-  <br/>
-  Get all active keys for a session. <b>asciichat_error_t</b>
-    <b>database_stats_session_count</b> (sqlite3 *db, int64_t *count_out)
-  <br/>
-  Get total number of active sessions. <b>asciichat_error_t</b>
-    <b>database_stats_unique_clients</b> (sqlite3 *db, int64_t *count_out)
-  <br/>
-  Get total number of unique clients/participants. <b>asciichat_error_t</b>
-    <b>database_stats_snapshot</b> (sqlite3 *db, <b>database_session_stats_t</b>
-    *rows, size_t capacity, size_t *row_count, <b>uint64_t</b> *sessions,
-    <b>uint64_t</b> *participants)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE___64"><a class="permalink" href="#_define_DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE___64">#define
-  DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>database.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_sqlite3_"><a class="permalink" href="#typedef_sqlite3_">typedef
-  sqlite3 <b>discovery_database_t</b></a></h2>
-<p class="Pp">Discovery database handle (sqlite3 wrapper).</p>
-<p class="Pp">Definition at line <b>28</b> of file <b>database.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_database_close_(sqlite3_*_db)"><a class="permalink" href="#void_database_close_(sqlite3_*_db)">void
-  database_close (sqlite3 * db)</a></h2>
-<p class="Pp">Close database.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle to close</div>
-<p class="Pp">Definition at line <b>280</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>280                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>database.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">database.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">database.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">database.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>database_session_stats_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef sqlite3 <b>discovery_database_t</b>
+            <br />
+            Discovery database handle (sqlite3 wrapper).
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>database_init</b> (const char *db_path,
+            sqlite3 **db)
+            <br />
+            Initialize database and create schema. void
+            <b>database_close</b> (sqlite3 *db)
+            <br />
+            Close database. <b>asciichat_error_t</b>
+            <b>database_session_create</b> (sqlite3 *db, const
+            <b>acip_session_create_t</b> *req, const
+            <b>acds_config_t</b> *config, <b>acip_session_created_t</b> *resp)
+            <br />
+            Create new session. <b>asciichat_error_t</b>
+            <b>database_session_create_keys</b> (sqlite3 *db, const
+            <b>acip_session_create_t</b> *req, const <b>uint8_t</b>(*keys)[32],
+            size_t count, const <b>acds_config_t</b> *config,
+            <b>acip_session_created_t</b>
+            *resp)
+            <br />
+            <b>asciichat_error_t</b> <b>database_session_lookup</b> (sqlite3
+            *db, const char *session_string, const <b>acds_config_t</b> *config,
+            <b>acip_session_info_t</b> *resp)
+            <br />
+            Lookup session by string. <b>asciichat_error_t</b>
+            <b>database_session_join</b> (sqlite3 *db, const
+            <b>acip_session_join_t</b> *req, const <b>acds_config_t</b> *config,
+            <b>acip_session_joined_t</b>
+            *resp)
+            <br />
+            Join existing session. <b>asciichat_error_t</b>
+            <b>database_session_leave</b> (sqlite3 *db, const
+            <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
+            participant_id[16])
+            <br />
+            Leave session. <b>session_entry_t</b> *
+            <b>database_session_find_by_id</b> (sqlite3 *db, const
+            <b>uint8_t</b> session_id[16])
+            <br />
+            Find session by session_id. <b>session_entry_t</b> *
+            <b>database_session_find_by_string</b> (sqlite3 *db, const char
+            *session_string)
+            <br />
+            Find session by session_string. void
+            <b>database_session_cleanup_expired</b>
+            (sqlite3 *db)
+            <br />
+            Clean up inactive sessions. <b>asciichat_error_t</b>
+            <b>database_session_update_host</b> (sqlite3 *db, const
+            <b>uint8_t</b> session_id[16], const
+            <b>uint8_t</b> host_participant_id[16], const char *host_address,
+            <b>uint16_t</b> host_port, <b>uint8_t</b> connection_type)
+            <br />
+            Update session host (discovery mode). <b>asciichat_error_t</b>
+            <b>database_session_clear_host</b> (sqlite3 *db, const
+            <b>uint8_t</b>
+            session_id[16])
+            <br />
+            Clear session host (discovery mode - host migration).
+            <b>asciichat_error_t</b>
+            <b>database_session_start_migration</b> (sqlite3 *db, const
+            <b>uint8_t</b>
+            session_id[16])
+            <br />
+            Start host migration (discovery mode). <b>bool</b>
+            <b>database_session_is_migration_ready</b> (sqlite3 *db, const
+            <b>uint8_t</b> session_id[16], <b>uint64_t</b> migration_window_ms)
+            <br />
+            Check if migration window has completed. <b>asciichat_error_t</b>
+            <b>database_session_add_key</b> (sqlite3 *db, const char
+            *session_string, const <b>uint8_t</b> identity_pubkey[32],
+            <b>uint32_t</b> key_version)
+            <br />
+            Add a key to a session. <b>asciichat_error_t</b>
+            <b>database_session_revoke_key</b> (sqlite3 *db, const char
+            *session_string, const <b>uint8_t</b> identity_pubkey[32])
+            <br />
+            Revoke a key from a session. <b>bool</b>
+            <b>database_session_verify_key</b> (sqlite3 *db, const char
+            *session_string, const <b>uint8_t</b>
+            identity_pubkey[32])
+            <br />
+            Check if a key is valid for a session (exists and not revoked).
+            <b>asciichat_error_t</b> <b>database_session_get_keys</b> (sqlite3
+            *db, const char *session_string, <b>uint8_t</b>(*keys_out)[32],
+            size_t max_keys, size_t *count_out)
+            <br />
+            Get all active keys for a session. <b>asciichat_error_t</b>
+            <b>database_stats_session_count</b> (sqlite3 *db, int64_t
+            *count_out)
+            <br />
+            Get total number of active sessions. <b>asciichat_error_t</b>
+            <b>database_stats_unique_clients</b> (sqlite3 *db, int64_t
+            *count_out)
+            <br />
+            Get total number of unique clients/participants.
+            <b>asciichat_error_t</b> <b>database_stats_snapshot</b> (sqlite3
+            *db, <b>database_session_stats_t</b> *rows, size_t capacity, size_t
+            *row_count, <b>uint64_t</b> *sessions,
+            <b>uint64_t</b> *participants)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE___64"
+          >
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE___64"
+              >#define DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>database.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_sqlite3_">
+            <a class="permalink" href="#typedef_sqlite3_"
+              >typedef sqlite3 <b>discovery_database_t</b></a
+            >
+          </h2>
+          <p class="Pp">Discovery database handle (sqlite3 wrapper).</p>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>database.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_database_close_(sqlite3_*_db)">
+            <a class="permalink" href="#void_database_close_(sqlite3_*_db)"
+              >void database_close (sqlite3 * db)</a
+            >
+          </h2>
+          <p class="Pp">Close database.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>db</i> Database handle to close</div>
+          <p class="Pp">
+            Definition at line <b>280</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+280                                  {
 281   ASCII_OTEL_SCOPE(DATABASE_CLOSE);
 282   if (!db) {
 283     return;
@@ -189,26 +274,38 @@
 285   sqlite3_close(db);
 286   log_debug(&quot;Database closed&quot;);
 287 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>database_close()</b>, and
-    <b>log_debug</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_shutdown()</b>, and
-    <b>database_close()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_init (const char * db_path,
-  sqlite3 ** db)</h2>
-<p class="Pp">Initialize database and create schema.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db_path</i> Path to SQLite database file
-<br/>
-<i>db</i> Output database handle</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>183</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>183                                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>, <b>database_close()</b>, and
+            <b>log_debug</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_server_shutdown()</b>, and
+            <b>database_close()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_init (const char * db_path,
+            sqlite3 ** db)
+          </h2>
+          <p class="Pp">Initialize database and create schema.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db_path</i> Path to SQLite database file
+            <br />
+            <i>db</i> Output database handle
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>183</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+183                                                                    {
 184   ASCII_OTEL_SCOPE(DATABASE_INIT);
 185   if (!db_path || !db) {
 186     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db_path or db is NULL&quot;);
@@ -304,41 +401,53 @@
 276   log_info(&quot;Database initialized successfully (SQLite as single source of truth)&quot;);
 277   return ASCIICHAT_OK;
 278 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite()</b>, <b>ascii_otel_sqlite_prepare()</b>,
-    <b>ASCIICHAT_OK</b>, <b>database_init()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>QUERY_BackfillSessionIdentityKeys</b>,
-    <b>QUERY_BackfillSessionKeyPolicy</b>, <b>QUERY_BeginTransaction</b>,
-    <b>QUERY_CommitTransaction</b>, <b>QUERY_EnableForeignKeys</b>,
-    <b>QUERY_EnableWAL</b>, <b>QUERY_HasLegacySessionKeys</b>,
-    <b>QUERY_ImportLegacySessionKeys</b>, <b>QUERY_RollbackTransaction</b>,
-    <b>QUERY_SchemaIdentityKeys</b>, <b>QUERY_SchemaIdxRateEvents</b>,
-    <b>QUERY_SchemaKeyPolicy</b>, <b>QUERY_SchemaSessions</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>, and
-    <b>database_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_add_key (sqlite3 * db,
-  const char * session_string, const <b>uint8_t</b> identity_pubkey[32],
-  <b>uint32_t</b> key_version)</h2>
-<p class="Pp">Add a key to a session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_string</i> Session string
-<br/>
-<i>identity_pubkey</i> Ed25519 public key (32 bytes)
-<br/>
-<i>key_version</i> Key version for tracking rotation</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1239</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1241                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite()</b>, <b>ascii_otel_sqlite_prepare()</b>,
+            <b>ASCIICHAT_OK</b>, <b>database_init()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_error</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>QUERY_BackfillSessionIdentityKeys</b>,
+            <b>QUERY_BackfillSessionKeyPolicy</b>,
+            <b>QUERY_BeginTransaction</b>, <b>QUERY_CommitTransaction</b>,
+            <b>QUERY_EnableForeignKeys</b>, <b>QUERY_EnableWAL</b>,
+            <b>QUERY_HasLegacySessionKeys</b>,
+            <b>QUERY_ImportLegacySessionKeys</b>,
+            <b>QUERY_RollbackTransaction</b>, <b>QUERY_SchemaIdentityKeys</b>,
+            <b>QUERY_SchemaIdxRateEvents</b>, <b>QUERY_SchemaKeyPolicy</b>,
+            <b>QUERY_SchemaSessions</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_server_init()</b>, and <b>database_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_add_key (sqlite3 * db,
+            const char * session_string, const
+            <b>uint8_t</b> identity_pubkey[32], <b>uint32_t</b> key_version)
+          </h2>
+          <p class="Pp">Add a key to a session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_string</i> Session string
+            <br />
+            <i>identity_pubkey</i> Ed25519 public key (32 bytes)
+            <br />
+            <i>key_version</i> Key version for tracking rotation
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1239</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1241                                                                  {
 1242   ASCII_OTEL_SCOPE(DATABASE_ADD_KEY);
 1243   if (!db || !session_string || !identity_pubkey || sodium_is_zero(identity_pubkey, 32)) {
 1244     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for add_key&quot;);
@@ -368,28 +477,42 @@
 1268   log_debug(&quot;Added key to session %s (version=%u)&quot;, session_string, key_version);
 1269   return ASCIICHAT_OK;
 1270 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_add_key()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>QUERY_AddSessionKey</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_add_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_database_session_cleanup_expired_(sqlite3_*_db)"><a class="permalink" href="#void_database_session_cleanup_expired_(sqlite3_*_db)">void
-  database_session_cleanup_expired (sqlite3 * db)</a></h2>
-<p class="Pp">Clean up inactive sessions. Removes sessions that have been
-    inactive for more than 3 hours. Inactivity is measured by last_activity_at
-    (updated on join/leave/host updates). Called periodically by background
-    cleanup thread.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle</div>
-<p class="Pp">Definition at line <b>1022</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1022                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_add_key()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>QUERY_AddSessionKey</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_add_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_database_session_cleanup_expired_(sqlite3_*_db)"
+          >
+            <a
+              class="permalink"
+              href="#void_database_session_cleanup_expired_(sqlite3_*_db)"
+              >void database_session_cleanup_expired (sqlite3 * db)</a
+            >
+          </h2>
+          <p class="Pp">
+            Clean up inactive sessions. Removes sessions that have been inactive
+            for more than 3 hours. Inactivity is measured by last_activity_at
+            (updated on join/leave/host updates). Called periodically by
+            background cleanup thread.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>db</i> Database handle</div>
+          <p class="Pp">
+            Definition at line <b>1022</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1022                                                    {
 1023   ASCII_OTEL_SCOPE(DATABASE_SESSION_CLEANUP_EXPIRED);
 1024   if (!db) {
 1025     return;
@@ -430,33 +553,48 @@
 1060     }
 1061   }
 1062 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>,
-    <b>database_session_cleanup_expired()</b>, <b>log_info</b>,
-    <b>MS_PER_SEC_INT</b>, <b>QUERY_DeleteExpiredSessions</b>,
-    <b>QUERY_FindExpiredSessions</b>, <b>SEC_PER_HOUR</b>,
-    <b>stats_counter_add()</b>, <b>STATS_COUNTER_SESSION_EXPIRATIONS</b>, and
-    <b>stats_runtime_scope()</b>.</p>
-<p class="Pp">Referenced by <b>database_session_cleanup_expired()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_clear_host (sqlite3 *
-  db, const <b>uint8_t</b> session_id[16])</h2>
-<p class="Pp">Clear session host (discovery mode - host migration). Called when
-    the current host disconnects or fails. Clears host fields so remaining
-    participants can negotiate a new host.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_id</i> Session UUID</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1116</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1116                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>,
+            <b>database_session_cleanup_expired()</b>, <b>log_info</b>,
+            <b>MS_PER_SEC_INT</b>, <b>QUERY_DeleteExpiredSessions</b>,
+            <b>QUERY_FindExpiredSessions</b>, <b>SEC_PER_HOUR</b>,
+            <b>stats_counter_add()</b>,
+            <b>STATS_COUNTER_SESSION_EXPIRATIONS</b>, and
+            <b>stats_runtime_scope()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>database_session_cleanup_expired()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_clear_host (sqlite3 * db,
+            const <b>uint8_t</b> session_id[16])
+          </h2>
+          <p class="Pp">
+            Clear session host (discovery mode - host migration). Called when
+            the current host disconnects or fails. Clears host fields so
+            remaining participants can negotiate a new host.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_id</i> Session UUID
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1116</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1116                                                                                                       {
 1117   ASCII_OTEL_SCOPE(DATABASE_SESSION_CLEAR_HOST);
 1118   if (!db || !session_id) {
 1119     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or session_id is NULL&quot;);
@@ -494,57 +632,76 @@
 1151
 1152   return ASCIICHAT_OK;
 1153 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_clear_host()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_info</b>,
-    <b>QUERY_ClearHost</b>, <b>SESSION_ID_SIZE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_clear_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_create (sqlite3 * db,
-  const <b>acip_session_create_t</b> * req, const <b>acds_config_t</b> * config,
-  <b>acip_session_created_t</b> * resp)</h2>
-<p class="Pp">Create new session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>req</i> Session creation request
-<br/>
-<i>config</i> ACDS server configuration
-<br/>
-<i>resp</i> Session creation response (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>395</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>396                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_clear_host()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_info</b>, <b>QUERY_ClearHost</b>, <b>SESSION_ID_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_clear_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_create (sqlite3 * db,
+            const <b>acip_session_create_t</b> * req, const
+            <b>acds_config_t</b> * config, <b>acip_session_created_t</b> * resp)
+          </h2>
+          <p class="Pp">Create new session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>req</i> Session creation request
+            <br />
+            <i>config</i> ACDS server configuration
+            <br />
+            <i>resp</i> Session creation response (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>395</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+396                                                                         {
 397   if (!req)
 398     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing create request&quot;);
 399   return database_session_create_keys(db, req, (const uint8_t (*)[32]) &amp; req-&gt;identity_pubkey, 1, config, resp);
 400 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_session_create_t</b>,
-    <b>acip_session_created_t</b>, <b>database_session_create()</b>,
-    <b>database_session_create_keys()</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_create_keys (sqlite3 *
-  db, const <b>acip_session_create_t</b> * req, const <b>uint8_t</b>(*)
-  keys[32], size_t count, const <b>acds_config_t</b> * config,
-  <b>acip_session_created_t</b> * resp)</h2>
-<p class="Pp">Create an explicit Ed25519 key set atomically. More than one key
-    opts into allowlisted joins; count=1 preserves the legacy admission policy.
-    The caller must verify each create proof before calling this persistence
-    API.</p>
-<p class="Pp">Definition at line <b>452</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>454                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_session_create_t</b>,
+            <b>acip_session_created_t</b>, <b>database_session_create()</b>,
+            <b>database_session_create_keys()</b>, <b>ERROR_INVALID_PARAM</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_create_keys (sqlite3 * db,
+            const <b>acip_session_create_t</b> * req, const <b>uint8_t</b>(*)
+            keys[32], size_t count, const <b>acds_config_t</b> * config,
+            <b>acip_session_created_t</b> * resp)
+          </h2>
+          <p class="Pp">
+            Create an explicit Ed25519 key set atomically. More than one key
+            opts into allowlisted joins; count=1 preserves the legacy admission
+            policy. The caller must verify each create proof before calling this
+            persistence API.
+          </p>
+          <p class="Pp">
+            Definition at line <b>452</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+454                                                                              {
 455   if (!db)
 456     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing database&quot;);
 457   // SQLite serializes statements, but a shared connection also needs to keep
@@ -555,31 +712,45 @@
 462   sqlite3_mutex_leave(mutex);
 463   return result;
 464 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_session_create_t</b>,
-    <b>acip_session_created_t</b>, <b>database_session_create_keys()</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_create()</b>, and
-    <b>database_session_create_keys()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_entry_t</b> * database_session_find_by_id (sqlite3 *
-  db, const <b>uint8_t</b> session_id[16])</h2>
-<p class="Pp">Find session by session_id. Allocates and returns a
-    <b>session_entry_t</b>. Caller must free with
-    <b>session_entry_destroy()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_id</i> Session UUID to find</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated session entry (caller owns), or NULL if not
-  found</div>
-<p class="Pp">Definition at line <b>970</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>970                                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_session_create_t</b>,
+            <b>acip_session_created_t</b>,
+            <b>database_session_create_keys()</b>, <b>ERROR_INVALID_PARAM</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>database_session_create()</b>, and
+            <b>database_session_create_keys()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_entry_t</b> * database_session_find_by_id (sqlite3 * db,
+            const <b>uint8_t</b> session_id[16])
+          </h2>
+          <p class="Pp">
+            Find session by session_id. Allocates and returns a
+            <b>session_entry_t</b>. Caller must free with
+            <b>session_entry_destroy()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_id</i> Session UUID to find
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated session entry (caller owns), or NULL if not found
+          </div>
+          <p class="Pp">
+            Definition at line <b>970</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+970                                                                                                      {
 971   if (!db || !session_id) {
 972     return NULL;
 973   }
@@ -604,32 +775,45 @@
 992   sqlite3_finalize(stmt);
 993   return session;
 994 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_sqlite_prepare()</b>,
-    <b>database_session_find_by_id()</b>, <b>QUERY_GetSessionById</b>, and
-    <b>SESSION_ID_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>acds_send_current_host()</b>,
-    <b>database_session_find_by_id()</b>, <b>signaling_broadcast()</b>,
-    <b>signaling_relay_ice()</b>, and <b>signaling_relay_sdp()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_entry_t</b> * database_session_find_by_string (sqlite3
-  * db, const char * session_string)</h2>
-<p class="Pp">Find session by session_string. Allocates and returns a
-    <b>session_entry_t</b>. Caller must free with
-    <b>session_entry_destroy()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_string</i> Session string to find</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Allocated session entry (caller owns), or NULL if not
-  found</div>
-<p class="Pp">Definition at line <b>996</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>996                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_sqlite_prepare()</b>,
+            <b>database_session_find_by_id()</b>, <b>QUERY_GetSessionById</b>,
+            and <b>SESSION_ID_SIZE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_send_current_host()</b>,
+            <b>database_session_find_by_id()</b>, <b>signaling_broadcast()</b>,
+            <b>signaling_relay_ice()</b>, and <b>signaling_relay_sdp()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_entry_t</b> * database_session_find_by_string (sqlite3 *
+            db, const char * session_string)
+          </h2>
+          <p class="Pp">
+            Find session by session_string. Allocates and returns a
+            <b>session_entry_t</b>. Caller must free with
+            <b>session_entry_destroy()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_string</i> Session string to find
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Allocated session entry (caller owns), or NULL if not found
+          </div>
+          <p class="Pp">
+            Definition at line <b>996</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+996                                                                                           {
 997   if (!db || !session_string) {
 998     return NULL;
 999   }
@@ -654,34 +838,46 @@
 1018   sqlite3_finalize(stmt);
 1019   return session;
 1020 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_sqlite_prepare()</b>,
-    <b>database_session_find_by_string()</b>, and
-    <b>QUERY_GetSessionByString</b>.</p>
-<p class="Pp">Referenced by <b>database_session_find_by_string()</b>, and
-    <b>database_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_get_keys (sqlite3 * db,
-  const char * session_string, <b>uint8_t</b>(*) keys_out[32], size_t max_keys,
-  size_t * count_out)</h2>
-<p class="Pp">Get all active keys for a session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_string</i> Session string
-<br/>
-<i>keys_out</i> Output array for keys (caller must provide buffer)
-<br/>
-<i>max_keys</i> Maximum number of keys to retrieve
-<br/>
-<i>count_out</i> Output: number of keys retrieved</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1325</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1326                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_sqlite_prepare()</b>,
+            <b>database_session_find_by_string()</b>, and
+            <b>QUERY_GetSessionByString</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>database_session_find_by_string()</b>, and
+            <b>database_session_join()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_get_keys (sqlite3 * db,
+            const char * session_string, <b>uint8_t</b>(*) keys_out[32], size_t
+            max_keys, size_t * count_out)
+          </h2>
+          <p class="Pp">Get all active keys for a session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_string</i> Session string
+            <br />
+            <i>keys_out</i> Output array for keys (caller must provide buffer)
+            <br />
+            <i>max_keys</i> Maximum number of keys to retrieve
+            <br />
+            <i>count_out</i> Output: number of keys retrieved
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1325</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1326                                                                                 {
 1327   ASCII_OTEL_SCOPE(DATABASE_GET_KEYS);
 1328   if (!db || !session_string || !keys_out || !count_out) {
 1329     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for get_keys&quot;);
@@ -711,34 +907,46 @@
 1353   log_debug(&quot;Retrieved %zu keys for session %s&quot;, count, session_string);
 1354   return ASCIICHAT_OK;
 1355 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_get_keys()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>QUERY_GetSessionKeys</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_get_keys()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> database_session_is_migration_ready (sqlite3 * db,
-  const <b>uint8_t</b> session_id[16], <b>uint64_t</b> migration_window_ms)</h2>
-<p class="Pp">Check if migration window has completed. Called periodically to
-    check if migration collection window timeout has expired. Returns the
-    session if migration is ready for host election.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_id</i> Session UUID
-<br/>
-<i>migration_window_ms</i> Collection window duration in milliseconds</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if collection window has completed, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>1198</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1199                                                                        {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_get_keys()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>QUERY_GetSessionKeys</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_get_keys()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> database_session_is_migration_ready (sqlite3 * db, const
+            <b>uint8_t</b> session_id[16], <b>uint64_t</b> migration_window_ms)
+          </h2>
+          <p class="Pp">
+            Check if migration window has completed. Called periodically to
+            check if migration collection window timeout has expired. Returns
+            the session if migration is ready for host election.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_id</i> Session UUID
+            <br />
+            <i>migration_window_ms</i> Collection window duration in
+            milliseconds
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if collection window has completed, false otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1198</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1199                                                                        {
 1200   ASCII_OTEL_SCOPE(DATABASE_MIGRATION_READY);
 1201   if (!db || !session_id) {
 1202     return false;
@@ -773,34 +981,46 @@
 1231   sqlite3_finalize(stmt);
 1232   return ready;
 1233 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>,
-    <b>database_session_is_migration_ready()</b>, <b>log_debug</b>,
-    <b>NS_PER_MS_INT</b>, <b>QUERY_GetMigrationState</b>,
-    <b>SESSION_ID_SIZE</b>, and <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>database_session_is_migration_ready()</b>, and
-    <b>database_session_update_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_join (sqlite3 * db,
-  const <b>acip_session_join_t</b> * req, const <b>acds_config_t</b> * config,
-  <b>acip_session_joined_t</b> * resp)</h2>
-<p class="Pp">Join existing session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>req</i> Join request
-<br/>
-<i>config</i> ACDS server configuration (for TURN credentials)
-<br/>
-<i>resp</i> Join response (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>754</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>755                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>,
+            <b>database_session_is_migration_ready()</b>, <b>log_debug</b>,
+            <b>NS_PER_MS_INT</b>, <b>QUERY_GetMigrationState</b>,
+            <b>SESSION_ID_SIZE</b>, and <b>time_get_realtime_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>database_session_is_migration_ready()</b>, and
+            <b>database_session_update_host()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_join (sqlite3 * db, const
+            <b>acip_session_join_t</b> * req, const <b>acds_config_t</b> *
+            config, <b>acip_session_joined_t</b> * resp)
+          </h2>
+          <p class="Pp">Join existing session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>req</i> Join request
+            <br />
+            <i>config</i> ACDS server configuration (for TURN credentials)
+            <br />
+            <i>resp</i> Join response (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>754</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+755                                                                      {
 756   ASCII_OTEL_SCOPE(DATABASE_SESSION_JOIN);
 757   if (!db || !req || !config || !resp) {
 758     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, req, config, or resp is NULL&quot;);
@@ -880,37 +1100,49 @@
 832     database_session_join_response(db, joined, config, resp);
 833   return result;
 834 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ACIP_ERROR_INVALID_PASSWORD</b>,
-    <b>ACIP_ERROR_NONE</b>, <b>ACIP_ERROR_SESSION_FULL</b>,
-    <b>ACIP_ERROR_SESSION_NOT_FOUND</b>, <b>ACIP_MAX_SESSION_STRING_LEN</b>,
-    <b>acip_session_join_t</b>, <b>acip_session_joined_t</b>,
-    <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>session_entry::current_participants</b>,
-    <b>database_session_find_by_string()</b>, <b>database_session_join()</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>session_entry::has_password</b>,
-    <b>log_warn</b>, <b>session_entry::max_participants</b>,
-    <b>session_entry::password_hash</b>, <b>SAFE_STRNCPY</b>,
-    <b>session_entry_destroy()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_leave (sqlite3 * db,
-  const <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
-  participant_id[16])</h2>
-<p class="Pp">Leave session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_id</i> Session UUID
-<br/>
-<i>participant_id</i> Participant UUID</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>836</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>837                                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_ERROR_INVALID_PASSWORD</b>,
+            <b>ACIP_ERROR_NONE</b>, <b>ACIP_ERROR_SESSION_FULL</b>,
+            <b>ACIP_ERROR_SESSION_NOT_FOUND</b>,
+            <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>acip_session_join_t</b>,
+            <b>acip_session_joined_t</b>, <b>ascii_otel_metric()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_entry::current_participants</b>,
+            <b>database_session_find_by_string()</b>,
+            <b>database_session_join()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_entry::has_password</b>, <b>log_warn</b>,
+            <b>session_entry::max_participants</b>,
+            <b>session_entry::password_hash</b>, <b>SAFE_STRNCPY</b>,
+            <b>session_entry_destroy()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_join()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_leave (sqlite3 * db, const
+            <b>uint8_t</b> session_id[16], const
+            <b>uint8_t</b> participant_id[16])
+          </h2>
+          <p class="Pp">Leave session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_id</i> Session UUID
+            <br />
+            <i>participant_id</i> Participant UUID
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>836</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+837                                                                                         {
 838   ASCII_OTEL_SCOPE(DATABASE_SESSION_LEAVE);
 839   if (!db || !session_id || !participant_id) {
 840     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, session_id, or participant_id is NULL&quot;);
@@ -1042,39 +1274,49 @@
 966
 967   return ASCIICHAT_OK;
 968 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_leave()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_error</b>,
-    <b>log_info</b>, <b>QUERY_BeginTransaction</b>,
-    <b>QUERY_CommitTransaction</b>, <b>QUERY_DecrementParticipants</b>,
-    <b>QUERY_DeleteParticipant</b>, <b>QUERY_DeleteSession</b>,
-    <b>QUERY_GetParticipantCount</b>, <b>QUERY_LookupSessionString</b>,
-    <b>QUERY_RollbackTransaction</b>, <b>SAFE_STRNCPY</b>,
-    <b>SESSION_ID_SIZE</b>, <b>SESSION_STRING_BUFFER_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_leave()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_lookup (sqlite3 * db,
-  const char * session_string, const <b>acds_config_t</b> * config,
-  <b>acip_session_info_t</b> * resp)</h2>
-<p class="Pp">Lookup session by string.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_string</i> Session string to look up
-<br/>
-<i>config</i> ACDS server configuration (for policy flags)
-<br/>
-<i>resp</i> Session info response (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>466</b> of file
-  <b>discovery/database.c</b>.</p>
-<pre>467                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_leave()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>QUERY_BeginTransaction</b>,
+            <b>QUERY_CommitTransaction</b>, <b>QUERY_DecrementParticipants</b>,
+            <b>QUERY_DeleteParticipant</b>, <b>QUERY_DeleteSession</b>,
+            <b>QUERY_GetParticipantCount</b>, <b>QUERY_LookupSessionString</b>,
+            <b>QUERY_RollbackTransaction</b>, <b>SAFE_STRNCPY</b>,
+            <b>SESSION_ID_SIZE</b>, <b>SESSION_STRING_BUFFER_SIZE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_leave()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_lookup (sqlite3 * db,
+            const char * session_string, const <b>acds_config_t</b> * config,
+            <b>acip_session_info_t</b> * resp)
+          </h2>
+          <p class="Pp">Lookup session by string.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_string</i> Session string to look up
+            <br />
+            <i>config</i> ACDS server configuration (for policy flags)
+            <br />
+            <i>resp</i> Session info response (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>466</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+467                                                                      {
 468   ASCII_OTEL_SCOPE(DATABASE_SESSION_LOOKUP);
 469   if (!db || !session_string || !config || !resp) {
 470     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, session_string, config, or resp is NULL&quot;);
@@ -1136,34 +1378,45 @@
 526
 527   return ASCIICHAT_OK;
 528 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_session_info_t</b>, <b>ascii_otel_metric()</b>,
-    <b>ASCII_OTEL_SCOPE</b>, <b>ascii_otel_sqlite_prepare()</b>,
-    <b>ASCIICHAT_OK</b>, <b>database_session_lookup()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>QUERY_LookupSession</b>,
-    <b>acds_config_t::require_client_verify</b>,
-    <b>acds_config_t::require_server_verify</b>, <b>SESSION_ID_SIZE</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_lookup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_revoke_key (sqlite3 *
-  db, const char * session_string, const <b>uint8_t</b>
-  identity_pubkey[32])</h2>
-<p class="Pp">Revoke a key from a session.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_string</i> Session string
-<br/>
-<i>identity_pubkey</i> Ed25519 public key to revoke (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1272</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1273                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_session_info_t</b>, <b>ascii_otel_metric()</b>,
+            <b>ASCII_OTEL_SCOPE</b>, <b>ascii_otel_sqlite_prepare()</b>,
+            <b>ASCIICHAT_OK</b>, <b>database_session_lookup()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>QUERY_LookupSession</b>,
+            <b>acds_config_t::require_client_verify</b>,
+            <b>acds_config_t::require_server_verify</b>, <b>SESSION_ID_SIZE</b>,
+            and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_lookup()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_revoke_key (sqlite3 * db,
+            const char * session_string, const
+            <b>uint8_t</b> identity_pubkey[32])
+          </h2>
+          <p class="Pp">Revoke a key from a session.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_string</i> Session string
+            <br />
+            <i>identity_pubkey</i> Ed25519 public key to revoke (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1272</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1273                                                                                                       {
 1274   ASCII_OTEL_SCOPE(DATABASE_REVOKE_KEY);
 1275   if (!db || !session_string || !identity_pubkey) {
 1276     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for revoke_key&quot;);
@@ -1191,31 +1444,44 @@
 1298   log_debug(&quot;Revoked key from session %s&quot;, session_string);
 1299   return ASCIICHAT_OK;
 1300 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_revoke_key()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>QUERY_RevokeSessionKey</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_session_revoke_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_start_migration
-  (sqlite3 * db, const <b>uint8_t</b> session_id[16])</h2>
-<p class="Pp">Start host migration (discovery mode). Called when the current
-    host disconnects. Marks session as in_migration and starts a collection
-    window for HOST_LOST candidates.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_id</i> Session UUID</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1155</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1155                                                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_revoke_key()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>QUERY_RevokeSessionKey</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_revoke_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_start_migration (sqlite3 *
+            db, const <b>uint8_t</b> session_id[16])
+          </h2>
+          <p class="Pp">
+            Start host migration (discovery mode). Called when the current host
+            disconnects. Marks session as in_migration and starts a collection
+            window for HOST_LOST candidates.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_id</i> Session UUID
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1155</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1155                                                                                                            {
 1156   ASCII_OTEL_SCOPE(DATABASE_SESSION_START_MIGRATION);
 1157   if (!db || !session_id) {
 1158     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or session_id is NULL&quot;);
@@ -1257,42 +1523,57 @@
 1194
 1195   return ASCIICHAT_OK;
 1196 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_start_migration()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_info</b>,
-    <b>QUERY_StartMigration</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>, and
-    <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>database_session_start_migration()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_session_update_host (sqlite3 *
-  db, const <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
-  host_participant_id[16], const char * host_address, <b>uint16_t</b> host_port,
-  <b>uint8_t</b> connection_type)</h2>
-<p class="Pp">Update session host (discovery mode). Called when a participant
-    announces they are hosting. Updates the session's host fields so new joiners
-    know where to connect.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_id</i> Session UUID
-<br/>
-<i>host_participant_id</i> Host's participant UUID
-<br/>
-<i>host_address</i> Host's reachable address
-<br/>
-<i>host_port</i> Host's port
-<br/>
-<i>connection_type</i> How to reach host (ACIP_CONNECTION_TYPE_*)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1064</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1066                                                                                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_start_migration()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_info</b>, <b>QUERY_StartMigration</b>,
+            <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>, and
+            <b>time_get_realtime_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>database_session_start_migration()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_session_update_host (sqlite3 * db,
+            const <b>uint8_t</b> session_id[16], const
+            <b>uint8_t</b> host_participant_id[16], const char * host_address,
+            <b>uint16_t</b> host_port, <b>uint8_t</b> connection_type)
+          </h2>
+          <p class="Pp">
+            Update session host (discovery mode). Called when a participant
+            announces they are hosting. Updates the session's host fields so new
+            joiners know where to connect.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_id</i> Session UUID
+            <br />
+            <i>host_participant_id</i> Host's participant UUID
+            <br />
+            <i>host_address</i> Host's reachable address
+            <br />
+            <i>host_port</i> Host's port
+            <br />
+            <i>connection_type</i> How to reach host (ACIP_CONNECTION_TYPE_*)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1064</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1066                                                                                                                       {
 1067   ASCII_OTEL_SCOPE(DATABASE_SESSION_UPDATE_HOST);
 1068   if (!db || !session_id || !host_participant_id) {
 1069     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, session_id, or host_participant_id is NULL&quot;);
@@ -1341,34 +1622,44 @@
 1112     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
 1113   return ASCIICHAT_OK;
 1114 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_session_is_migration_ready()</b>,
-    <b>database_session_update_host()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_info</b>,
-    <b>QUERY_UpdateHost</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
-    <b>stats_counter_add()</b>, <b>STATS_COUNTER_HOST_MIGRATIONS</b>, and
-    <b>stats_runtime_scope()</b>.</p>
-<p class="Pp">Referenced by <b>database_session_update_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> database_session_verify_key (sqlite3 * db, const char
-  * session_string, const <b>uint8_t</b> identity_pubkey[32])</h2>
-<p class="Pp">Check if a key is valid for a session (exists and not
-  revoked).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>session_string</i> Session string
-<br/>
-<i>identity_pubkey</i> Ed25519 public key to check (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if key is valid, false otherwise</div>
-<p class="Pp">Definition at line <b>1302</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1303                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_session_is_migration_ready()</b>,
+            <b>database_session_update_host()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>log_info</b>, <b>QUERY_UpdateHost</b>, <b>SESSION_ID_SIZE</b>,
+            <b>SET_ERRNO</b>, <b>stats_counter_add()</b>,
+            <b>STATS_COUNTER_HOST_MIGRATIONS</b>, and
+            <b>stats_runtime_scope()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_update_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> database_session_verify_key (sqlite3 * db, const char *
+            session_string, const <b>uint8_t</b> identity_pubkey[32])
+          </h2>
+          <p class="Pp">
+            Check if a key is valid for a session (exists and not revoked).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>session_string</i> Session string
+            <br />
+            <i>identity_pubkey</i> Ed25519 public key to check (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if key is valid, false otherwise</div>
+          <p class="Pp">
+            Definition at line <b>1302</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1303                                                                                          {
 1304   ASCII_OTEL_SCOPE(DATABASE_VERIFY_KEY);
 1305   if (!db || !session_string || !identity_pubkey) {
 1306     return false;
@@ -1389,26 +1680,37 @@
 1321
 1322   return valid;
 1323 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>database_session_verify_key()</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, and <b>QUERY_VerifySessionKey</b>.</p>
-<p class="Pp">Referenced by <b>database_session_verify_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_stats_session_count (sqlite3 *
-  db, int64_t * count_out)</h2>
-<p class="Pp">Get total number of active sessions.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>count_out</i> Output: number of active sessions</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1361</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1361                                                                                 {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>,
+            <b>database_session_verify_key()</b>,
+            <b>ED25519_PUBLIC_KEY_SIZE</b>, and <b>QUERY_VerifySessionKey</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_session_verify_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_stats_session_count (sqlite3 * db,
+            int64_t * count_out)
+          </h2>
+          <p class="Pp">Get total number of active sessions.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>count_out</i> Output: number of active sessions
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1361</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1361                                                                                 {
 1362   ASCII_OTEL_SCOPE(DATABASE_SESSION_COUNT);
 1363   if (!db || !count_out) {
 1364     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or count_out is NULL&quot;);
@@ -1443,22 +1745,29 @@
 1393   log_debug(&quot;Active session count: %lld&quot;, (long long)count);
 1394   return ASCIICHAT_OK;
 1395 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_stats_session_count()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>QUERY_CountSessions</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_stats_session_count()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_stats_snapshot (sqlite3 * db,
-  <b>database_session_stats_t</b> * rows, size_t capacity, size_t * row_count,
-  <b>uint64_t</b> * sessions, <b>uint64_t</b> * participants)</h2>
-<p class="Pp">Definition at line <b>1430</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1431                                                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_stats_session_count()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>QUERY_CountSessions</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_stats_session_count()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_stats_snapshot (sqlite3 * db,
+            <b>database_session_stats_t</b> * rows, size_t capacity, size_t *
+            row_count, <b>uint64_t</b> * sessions, <b>uint64_t</b> *
+            participants)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1430</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1431                                                                                                          {
 1432   ASCII_OTEL_SCOPE(DATABASE_STATS_SNAPSHOT);
 1433   if (!db || (!rows &amp;&amp; capacity) || !row_count || !sessions || !participants)
 1434     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid database stats snapshot&quot;);
@@ -1490,34 +1799,45 @@
 1460   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, *participants);
 1461   return ASCIICHAT_OK;
 1462 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_stats_snapshot()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>database_session_stats_t::host_ready</b>,
-    <b>database_session_stats_t::migrating</b>, <b>NS_PER_MS_INT</b>,
-    <b>database_session_stats_t::participants</b>,
-    <b>QUERY_GetStatsSnapshot</b>,
-    <b>database_session_stats_t::session_string</b>, <b>SET_ERRNO</b>,
-    <b>STATS_GAUGE_PARTICIPANTS_ACTIVE</b>, <b>STATS_GAUGE_SESSIONS_ACTIVE</b>,
-    <b>stats_gauge_set()</b>, <b>stats_runtime_scope()</b>, and
-    <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>database_stats_snapshot()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> database_stats_unique_clients (sqlite3 *
-  db, int64_t * count_out)</h2>
-<p class="Pp">Get total number of unique clients/participants.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>db</i> Database handle
-<br/>
-<i>count_out</i> Output: number of unique participants</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>1397</b> of file
-    <b>discovery/database.c</b>.</p>
-<pre>1397                                                                                  {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_stats_snapshot()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>database_session_stats_t::host_ready</b>,
+            <b>database_session_stats_t::migrating</b>, <b>NS_PER_MS_INT</b>,
+            <b>database_session_stats_t::participants</b>,
+            <b>QUERY_GetStatsSnapshot</b>,
+            <b>database_session_stats_t::session_string</b>, <b>SET_ERRNO</b>,
+            <b>STATS_GAUGE_PARTICIPANTS_ACTIVE</b>,
+            <b>STATS_GAUGE_SESSIONS_ACTIVE</b>, <b>stats_gauge_set()</b>,
+            <b>stats_runtime_scope()</b>, and <b>time_get_realtime_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>database_stats_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> database_stats_unique_clients (sqlite3 *
+            db, int64_t * count_out)
+          </h2>
+          <p class="Pp">Get total number of unique clients/participants.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>db</i> Database handle
+            <br />
+            <i>count_out</i> Output: number of unique participants
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>1397</b> of file <b>discovery/database.c</b>.
+          </p>
+          <pre>
+1397                                                                                  {
 1398   ASCII_OTEL_SCOPE(DATABASE_UNIQUE_CLIENTS);
 1399   if (!db || !count_out) {
 1400     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or count_out is NULL&quot;);
@@ -1549,26 +1869,32 @@
 1426   log_debug(&quot;Unique clients count: %lld&quot;, (long long)count);
 1427   return ASCIICHAT_OK;
 1428 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
-    <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
-    <b>database_stats_unique_clients()</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>QUERY_CountUniqueClients</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>database_stats_unique_clients()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_metric()</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ascii_otel_sqlite_prepare()</b>, <b>ASCIICHAT_OK</b>,
+            <b>database_stats_unique_clients()</b>, <b>ERROR_CONFIG</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+            <b>QUERY_CountUniqueClients</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>database_stats_unique_clients()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

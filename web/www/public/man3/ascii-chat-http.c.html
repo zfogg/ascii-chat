@@ -1,107 +1,174 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>http.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">http.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">http.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">http.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>http_session_t</b>
-  <br/>
-  struct <b>http_pulse_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE</b> 2048
-  <br/>
-  #define <b>MCP_SERVER_HTTP_TYPE_BUFFER_SIZE</b> 128
-  <br/>
-  #define <b>MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE</b> 512
-  <br/>
-  #define <b>MCP_SERVER_HTTP_VERSION_BUFFER_SIZE</b> 64
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>mcp_http_wake</b> (<b>mcp_server_t</b> *s)
-  <br/>
-  <b>asciichat_error_t</b> <b>mcp_http_run</b> (<b>mcp_server_t</b> *s)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE___512"><a class="permalink" href="#_define_MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE___512">#define
-  MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE 512</a></h2>
-<p class="Pp">Definition at line <b>5</b> of file <b>http.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE___2048"><a class="permalink" href="#_define_MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE___2048">#define
-  MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE 2048</a></h2>
-<p class="Pp">Definition at line <b>3</b> of file <b>http.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_HTTP_TYPE_BUFFER_SIZE___128"><a class="permalink" href="#_define_MCP_SERVER_HTTP_TYPE_BUFFER_SIZE___128">#define
-  MCP_SERVER_HTTP_TYPE_BUFFER_SIZE 128</a></h2>
-<p class="Pp">Definition at line <b>4</b> of file <b>http.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MCP_SERVER_HTTP_VERSION_BUFFER_SIZE___64"><a class="permalink" href="#_define_MCP_SERVER_HTTP_VERSION_BUFFER_SIZE___64">#define
-  MCP_SERVER_HTTP_VERSION_BUFFER_SIZE 64</a></h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>http.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> mcp_http_run (<b>mcp_server_t</b> *
-  s)</h2>
-<p class="Pp">Definition at line <b>206</b> of file <b>http.c</b>.</p>
-<pre>206                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>http.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">http.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">http.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">http.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>http_session_t</b>
+            <br />
+            struct <b>http_pulse_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE</b> 2048
+            <br />
+            #define <b>MCP_SERVER_HTTP_TYPE_BUFFER_SIZE</b> 128
+            <br />
+            #define <b>MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>MCP_SERVER_HTTP_VERSION_BUFFER_SIZE</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>mcp_http_wake</b> (<b>mcp_server_t</b> *s)
+            <br />
+            <b>asciichat_error_t</b> <b>mcp_http_run</b> (<b>mcp_server_t</b>
+            *s)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE___512"
+              >#define MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>5</b> of file <b>http.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE___2048">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE___2048"
+              >#define MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE 2048</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>http.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_HTTP_TYPE_BUFFER_SIZE___128">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_HTTP_TYPE_BUFFER_SIZE___128"
+              >#define MCP_SERVER_HTTP_TYPE_BUFFER_SIZE 128</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>http.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_SERVER_HTTP_VERSION_BUFFER_SIZE___64">
+            <a
+              class="permalink"
+              href="#_define_MCP_SERVER_HTTP_VERSION_BUFFER_SIZE___64"
+              >#define MCP_SERVER_HTTP_VERSION_BUFFER_SIZE 64</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>6</b> of file <b>http.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> mcp_http_run (<b>mcp_server_t</b> * s)
+          </h2>
+          <p class="Pp">Definition at line <b>206</b> of file <b>http.c</b>.</p>
+          <pre>
+206                                                 {
 207   static const struct lws_protocols protocols[] = {{&quot;http&quot;, callback, sizeof(http_session_t), 16384, 0, NULL, 0},
 208                                                    {NULL, NULL, 0, 0, 0, NULL, 0}};
 209   struct lws_context_creation_info info = {0};
@@ -190,56 +257,69 @@
 292   s-&gt;http_context = NULL;
 293   return ASCIICHAT_OK;
 294 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_policy_t::address</b>,
-    <b>mcp_policy_t::address6</b>, <b>APP_CALLBACK_BOOL</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>mcp_job::cancelled</b>, <b>ui_status_t::connected_count</b>,
-    <b>mcp_job::done</b>, <b>ERROR_NETWORK</b>, <b>GET_OPTION</b>,
-    <b>mcp_server::http_context</b>, <b>ui_status_t::ipv4_address</b>,
-    <b>ui_status_t::ipv4_bound</b>, <b>ui_status_t::ipv6_address</b>,
-    <b>ui_status_t::ipv6_bound</b>, <b>mcp_server::jobs</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>, <b>mcp_policy_t::max_jobs</b>,
-    <b>mcp_http_run()</b>, <b>mcp_jobs_reap()</b>, <b>nat_upnp_close()</b>,
-    <b>nat_upnp_open()</b>, <b>nat_upnp_refresh()</b>,
-    <b>mcp_server::policy</b>, <b>mcp_policy_t::port</b>,
-    <b>nat_upnp_context::refresh_at_ns</b>, <b>SAFE_SNPRINTF</b>,
-    <b>SET_ERRNO</b>, <b>should_exit()</b>, <b>mcp_job::started</b>,
-    <b>mcp_server::stopping</b>, <b>terminal_is_interactive()</b>,
-    <b>time_get_ns()</b>, <b>http_pulse_t::timer</b>,
-    <b>mcp_policy_t::tls_cert</b>, <b>mcp_policy_t::tls_key</b>,
-    <b>mcp_policy_t::tls_password</b>, <b>ui_controller_remove()</b>,
-    <b>UI_SCREEN_STATUS</b>, <b>ui_status_display_interactive()</b>,
-    <b>ui_status_log_destroy()</b>, and <b>ui_status_log_init()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_run()</b>, and
-  <b>mcp_server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_mcp_http_wake_("><a class="permalink" href="#void_mcp_http_wake_(">void
-  mcp_http_wake (<b>mcp_server_t</b> * s)</a></h2>
-<p class="Pp">Definition at line <b>192</b> of file <b>http.c</b>.</p>
-<pre>192                                     {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_policy_t::address</b>,
+            <b>mcp_policy_t::address6</b>, <b>APP_CALLBACK_BOOL</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+            <b>ui_status_t::connected_count</b>, <b>mcp_job::done</b>,
+            <b>ERROR_NETWORK</b>, <b>GET_OPTION</b>,
+            <b>mcp_server::http_context</b>, <b>ui_status_t::ipv4_address</b>,
+            <b>ui_status_t::ipv4_bound</b>, <b>ui_status_t::ipv6_address</b>,
+            <b>ui_status_t::ipv6_bound</b>, <b>mcp_server::jobs</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>,
+            <b>mcp_policy_t::max_jobs</b>, <b>mcp_http_run()</b>,
+            <b>mcp_jobs_reap()</b>, <b>nat_upnp_close()</b>,
+            <b>nat_upnp_open()</b>, <b>nat_upnp_refresh()</b>,
+            <b>mcp_server::policy</b>, <b>mcp_policy_t::port</b>,
+            <b>nat_upnp_context::refresh_at_ns</b>, <b>SAFE_SNPRINTF</b>,
+            <b>SET_ERRNO</b>, <b>should_exit()</b>, <b>mcp_job::started</b>,
+            <b>mcp_server::stopping</b>, <b>terminal_is_interactive()</b>,
+            <b>time_get_ns()</b>, <b>http_pulse_t::timer</b>,
+            <b>mcp_policy_t::tls_cert</b>, <b>mcp_policy_t::tls_key</b>,
+            <b>mcp_policy_t::tls_password</b>, <b>ui_controller_remove()</b>,
+            <b>UI_SCREEN_STATUS</b>, <b>ui_status_display_interactive()</b>,
+            <b>ui_status_log_destroy()</b>, and <b>ui_status_log_init()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>mcp_http_run()</b>, and <b>mcp_server_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_http_wake_(">
+            <a class="permalink" href="#void_mcp_http_wake_("
+              >void mcp_http_wake (<b>mcp_server_t</b> * s)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>192</b> of file <b>http.c</b>.</p>
+          <pre>
+192                                     {
 193   if (s-&gt;http_context)
 194     lws_cancel_service(s-&gt;http_context);
 195 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mcp_server::http_context</b>, and
-    <b>mcp_http_wake()</b>.</p>
-<p class="Pp">Referenced by <b>mcp_http_wake()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.14.7</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_server::http_context</b>, and
+            <b>mcp_http_wake()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_http_wake()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>
