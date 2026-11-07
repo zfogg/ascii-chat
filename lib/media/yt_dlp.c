@@ -393,10 +393,6 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     return ASCIICHAT_OK;
   }
 
-  if (!yt_dlp_is_available_interruptible(cancel, data)) {
-    return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp is not installed. Please install it with: "
-                                                   "pip install yt-dlp (or: brew install yt-dlp on macOS)");
-  }
   ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_MISS, 1);
   ASCII_OTEL_ATTR_STRING("cache.result", "miss");
 
@@ -441,9 +437,14 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
       video_request->proxy_specified = audio_request->proxy_specified = true;
     }
   }
-  if (video_request->proxy_specified && video_request->proxy[0] && strncmp(video_request->proxy, "http://", 7))
+  if (video_request->proxy_specified && video_request->proxy[0] &&
+      strncmp(video_request->proxy, "http://", sizeof("http://") - 1))
     return SET_ERRNO(ERROR_NOT_SUPPORTED,
                      "FFmpeg media requests require an HTTP proxy; the yt-dlp proxy is unsupported");
+  if (!yt_dlp_is_available_interruptible(cancel, data)) {
+    return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp is not installed. Please install it with: "
+                                                   "pip install yt-dlp (or: brew install yt-dlp on macOS)");
+  }
   argv[argc++] = "--print";
   argv[argc++] =
       "{\"base\":%(.{url,http_headers,cookies})j,\"formats\":%(requested_formats.:.{url,http_headers,cookies}|null)j}";
@@ -454,7 +455,13 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   // Two URLs can each occupy the full stream URL capacity, plus diagnostics.
   char output[MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE + MEDIA_STREAM_URL_SIZE] = {0};
   int status = 0;
-  LOG_IO("yt-dlp", { status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output), cancel, data); });
+#ifndef _WIN32
+  // Interactive extractors need their prompts visible on the real terminal.
+  if (platform_isatty(STDIN_FILENO))
+    status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output), cancel, data);
+  else
+#endif
+    LOG_IO("yt-dlp", { status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output), cancel, data); });
   if (cancel && cancel(data)) {
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
@@ -487,6 +494,13 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     size_t capacity = i == 0 ? output_size : audio_size;
     yt_dlp_request_options_t *request = i == 0 ? video_request : audio_request;
     const size_t stream_length = stream ? strlen(stream) : 0;
+    if (stream && request->proxy_specified && request->proxy[0] &&
+        platform_strncasecmp(stream, "http://", sizeof("http://") - 1) &&
+        platform_strncasecmp(stream, "https://", sizeof("https://") - 1)) {
+      yyjson_doc_free(doc);
+      output_url[0] = audio_url[0] = '\0';
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "The selected proxy cannot be used with this media protocol");
+    }
     if (!stream || stream_length != yyjson_get_len(stream_value) || !yt_dlp_is_stream_url(stream) ||
         stream_length >= capacity || !yt_dlp_parse_request(format, base, stream, request)) {
       yyjson_doc_free(doc);

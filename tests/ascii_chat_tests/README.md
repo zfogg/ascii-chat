@@ -3,17 +3,16 @@
 Reusable Python fixtures for the native integration and smoke tests. Scripts under
 `tests/` add that directory to `sys.path` before loading `_environment`, so they
 can import the package directly. For use outside the repository, install it with
-`uv sync --project tests/ascii_chat_tests --extra terminal` and run scripts with
-`uv run --project tests/ascii_chat_tests --extra terminal python <script>`.
+`uv sync --project tests/ascii_chat_tests` and run scripts with
+`uv run --project tests/ascii_chat_tests python <script>`.
 For CMake, point `Python3_EXECUTABLE` at that project’s `.venv` interpreter.
 
 - `ascii_chat_tests.process`: `Service`, `running`, `interrupt`, `free_port`,
   `server_options`, and `check_client` for loopback processes and CLI fixtures.
-- `ascii_chat_tests.terminal`: `Terminal`, `CaptureScreen`, `CaptureStream`, and
+- `ascii_chat_tests.terminal`: `Terminal`, `TerminalProcess`, `CaptureScreen`, `CaptureStream`,
   `TitleTerminal`, `capture`, and `load_terminal_font` for PTY/ConPTY interaction and screen capture.
 - `ascii_chat_tests.tmux`: `Pane` and `tmux` for tmux-driven scenarios.
 
-The `terminal` extra supplies the PTY and screen-capture dependencies.
 The process fixtures expect an explicit built binary path. `free_port()` releases
 the port immediately, so callers must still handle the normal bind race.
 

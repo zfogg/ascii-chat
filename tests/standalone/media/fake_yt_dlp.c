@@ -35,6 +35,8 @@ int main(int argc, char **argv) {
 #endif
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--version") == 0) {
+      if (getenv("FAKE_YTDLP_VERSION_FAIL"))
+        return 1;
       puts("fixture");
       return 0;
     }
@@ -50,6 +52,40 @@ int main(int argc, char **argv) {
     fclose(file);
   }
   const char *mode = getenv("FAKE_YTDLP_MODE");
+#ifndef _WIN32
+  if (mode && (strcmp(mode, "interactive") == 0 || strcmp(mode, "interactive-hang") == 0)) {
+    char answer[64];
+    const char *extractor_pid_path = getenv("FAKE_YTDLP_EXTRACTOR_PID");
+    if (extractor_pid_path) {
+      FILE *pid_file = fopen(extractor_pid_path, "w");
+      if (!pid_file)
+        return 9;
+      fprintf(pid_file, "%ld\n", (long)getpid());
+      fclose(pid_file);
+    }
+    fputs("fixture prompt: ", stderr);
+    fflush(stderr);
+    if (!fgets(answer, sizeof(answer), stdin) || strcmp(answer, "yes\n") != 0)
+      return 6;
+    if (strcmp(mode, "interactive-hang") == 0) {
+      pid_t child = fork();
+      if (child < 0)
+        return 7;
+      if (child == 0) {
+        for (;;)
+          pause();
+      }
+      const char *pid_path = getenv("FAKE_YTDLP_CHILD_PID");
+      FILE *pid_file = pid_path ? fopen(pid_path, "w") : NULL;
+      if (!pid_file)
+        return 8;
+      fprintf(pid_file, "%ld\n", (long)child);
+      fclose(pid_file);
+      for (;;)
+        pause();
+    }
+  }
+#endif
 #ifdef _WIN32
   if (mode && strcmp(mode, "delayed") == 0 && !delayed_child) {
     char executable[MAX_PATH], command[MAX_PATH + 32];

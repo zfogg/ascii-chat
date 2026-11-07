@@ -1,20 +1,6 @@
 # Prefer package targets; source builds use the same upstream target graph.
-option(ASCIICHAT_TEST_WEBRTC_LOCALHOST "Enable localhost ICE candidates in a test-only libdatachannel build" OFF)
-if(ASCIICHAT_TEST_WEBRTC_LOCALHOST)
-    if(NOT BUILD_TESTS)
-        message(FATAL_ERROR "ASCIICHAT_TEST_WEBRTC_LOCALHOST requires BUILD_TESTS=ON")
-    endif()
-    # libjuice excludes loopback by default. Its upstream test option makes
-    # same-host ICE tests independent of routing to local LAN addresses.
-    set(ENABLE_LOCALHOST_ADDRESS ON CACHE BOOL "List localhost addresses in ICE candidates" FORCE)
-    set(ASCIICHAT_MANAGED_WEBRTC_LOCALHOST ON CACHE INTERNAL "Test build owns the libjuice localhost setting" FORCE)
-elseif(ASCIICHAT_MANAGED_WEBRTC_LOCALHOST)
-    # Don't leave test-only candidates enabled if this build is reconfigured.
-    unset(ENABLE_LOCALHOST_ADDRESS CACHE)
-    unset(ASCIICHAT_MANAGED_WEBRTC_LOCALHOST CACHE)
-endif()
 set(ASCIICHAT_WEBRTC_RUNTIME_DLLS "" CACHE INTERNAL "WebRTC sanitizer runtime" FORCE)
-if(NOT (USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_TEST_WEBRTC_LOCALHOST))
+if(NOT (USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE))
     find_package(LibDataChannel QUIET CONFIG)
     if(TARGET LibDataChannel::LibDataChannel)
         # ASan uses the release CRT; do not load the debug C++ CRT via WebRTC.

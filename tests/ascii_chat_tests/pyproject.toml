@@ -7,10 +7,10 @@ name = "ascii-chat-tests"
 version = "0.1.0"
 description = "Shared Python fixtures for ascii-chat integration tests"
 requires-python = ">=3.11"
+dependencies = ["pyte==0.8.2", "pexpect==4.9.0; sys_platform != 'win32'", "pywinpty; sys_platform == 'win32'", "Pillow==11.3.0", "wcwidth"]
 
 [project.optional-dependencies]
 audio = ["numpy", "scipy", "matplotlib", "sounddevice", "soundfile"]
-terminal = ["pyte==0.8.2", "pexpect==4.9.0; sys_platform != 'win32'", "pywinpty; sys_platform == 'win32'", "Pillow==11.3.0", "wcwidth"]
 telemetry = ["gotel @ git+https://github.com/zfogg/gotel.git@6fedf902c7e2cfd15bd0bc4e9c868e3f84e0f2d5#subdirectory=python"]
 
 [tool.setuptools]

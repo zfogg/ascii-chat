@@ -193,9 +193,11 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
   }
   if (yt_dlp_result == ERROR_NOT_SUPPORTED)
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "The selected yt-dlp proxy cannot be used for media requests");
+  if (yt_dlp_result == ERROR_INVALID_PARAM)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid yt-dlp options");
   audio_url[0] = '\0';
-  memset(video_request, 0, sizeof(*video_request));
-  memset(audio_request, 0, sizeof(*audio_request));
+  video_request->headers[0] = video_request->cookies[0] = '\0';
+  audio_request->headers[0] = audio_request->cookies[0] = '\0';
 
   log_debug("URL extraction failed; trying the native decoder");
 

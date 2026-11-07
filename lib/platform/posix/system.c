@@ -38,6 +38,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <termios.h>
 // execinfo.h provides backtrace functions - available in glibc
 // For musl, libexecinfo provides it but may not be available during compile
 #ifndef USE_MUSL
@@ -1133,6 +1134,51 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 /**
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
+// Serialize foreground ownership checks and changes across concurrent loaders.
+static pthread_mutex_t subprocess_terminal_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pid_t subprocess_terminal_owner = -1;
+
+void platform_terminal_input_lock(void) {
+  pthread_mutex_lock(&subprocess_terminal_mutex);
+}
+
+void platform_terminal_input_unlock(void) {
+  pthread_mutex_unlock(&subprocess_terminal_mutex);
+}
+
+static int subprocess_set_foreground(int fd, pid_t group) {
+  sigset_t block, previous;
+  sigemptyset(&block);
+  sigaddset(&block, SIGTTOU);
+  if (pthread_sigmask(SIG_BLOCK, &block, &previous) != 0)
+    return -1;
+  int result = tcsetpgrp(fd, group);
+  pthread_sigmask(SIG_SETMASK, &previous, NULL);
+  return result;
+}
+
+// A child may exit before its start gate is released. Do not let a broken
+// gate deliver SIGPIPE to the application, and preserve any pre-existing one.
+static bool subprocess_release_gate(int fd) {
+  sigset_t blocked, previous, pending;
+  sigemptyset(&blocked);
+  sigaddset(&blocked, SIGPIPE);
+  if (pthread_sigmask(SIG_BLOCK, &blocked, &previous) != 0)
+    return false;
+  sigpending(&pending);
+  bool already_pending = sigismember(&pending, SIGPIPE) == 1;
+  ssize_t written;
+  do {
+    written = write(fd, "x", 1);
+  } while (written < 0 && errno == EINTR);
+  if (written < 0 && errno == EPIPE && !already_pending) {
+    int received;
+    sigwait(&blocked, &received);
+  }
+  pthread_sigmask(SIG_SETMASK, &previous, NULL);
+  return written == 1;
+}
+
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
                                 bool (*cancel)(void *), void *data) {
   if (!executable || !argv || !argv[0]) {
@@ -1151,18 +1197,59 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       return -1;
     }
   }
+  int tty = cancel ? open("/dev/tty", O_RDWR | O_CLOEXEC) : -1;
+  int start_pipe[2] = {-1, -1};
+  bool gate_open = false;
+  if (tty >= 0 && isatty(STDIN_FILENO)) {
+    pthread_mutex_lock(&subprocess_terminal_mutex);
+    pid_t foreground = tcgetpgrp(tty);
+    gate_open = foreground == getpgrp() || (subprocess_terminal_owner > 0 && foreground == subprocess_terminal_owner);
+    pthread_mutex_unlock(&subprocess_terminal_mutex);
+  }
+  if (gate_open && (pipe(start_pipe) != 0 || fcntl(start_pipe[0], F_SETFD, FD_CLOEXEC) < 0 ||
+                    fcntl(start_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
+    if (start_pipe[0] >= 0)
+      close(start_pipe[0]);
+    if (start_pipe[1] >= 0)
+      close(start_pipe[1]);
+    if (capture) {
+      close(output_pipe[0]);
+      close(output_pipe[1]);
+    }
+    close(tty);
+    return -1;
+  }
   pid_t pid = fork();
   if (pid < 0) {
     if (capture) {
       close(output_pipe[0]);
       close(output_pipe[1]);
     }
+    if (gate_open) {
+      close(start_pipe[0]);
+      close(start_pipe[1]);
+    }
+    if (tty >= 0)
+      close(tty);
     log_error("Failed to fork process: %s", SAFE_STRERROR(errno));
     return -1;
   }
   if (pid == 0) {
+    if (tty >= 0)
+      close(tty);
     if (cancel && setpgid(0, 0) != 0)
       _exit(126);
+    if (gate_open) {
+      close(start_pipe[1]);
+      char ignored;
+      ssize_t count;
+      do {
+        count = read(start_pipe[0], &ignored, 1);
+      } while (count < 0 && errno == EINTR);
+      close(start_pipe[0]);
+      if (count != 1)
+        _exit(126);
+    }
     if (capture) {
       close(output_pipe[0]);
       if (output_pipe[1] == STDOUT_FILENO) {
@@ -1180,11 +1267,17 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   }
   if (cancel)
     (void)setpgid(pid, pid);
+  if (gate_open)
+    close(start_pipe[0]);
   bool capture_failed = false;
   size_t position = 0;
   int status = 0;
   bool exited = false;
   bool pipe_open = capture;
+  bool terminal_stopped = false;
+  bool terminal_owned = false;
+  struct termios terminal_attributes;
+  bool have_terminal_attributes = false;
   if (capture)
     close(output_pipe[1]);
   while (!exited || pipe_open) {
@@ -1197,9 +1290,13 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       }
       if (pipe_open)
         close(output_pipe[0]);
+      if (gate_open) {
+        close(start_pipe[1]);
+        gate_open = false;
+      }
       if (capture)
         output_buffer[position] = '\0';
-      return -1;
+      goto cancelled_exit;
     }
     if (pipe_open) {
       struct pollfd fd = {.fd = output_pipe[0], .events = POLLIN | POLLHUP};
@@ -1229,17 +1326,81 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       poll(NULL, 0, 50);
     }
     if (!exited) {
-      pid_t waited = waitpid(pid, &status, WNOHANG);
-      if (waited == pid)
-        exited = true;
-      else if (waited < 0 && errno != EINTR) {
+      pid_t waited = waitpid(pid, &status, WNOHANG | WUNTRACED);
+      if (waited == pid) {
+        if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTTIN && tty >= 0)
+          terminal_stopped = true;
+        else if (!WIFSTOPPED(status))
+          exited = true;
+      } else if (waited < 0 && errno != EINTR) {
         exited = true;
         capture_failed = true;
       }
     }
+    if ((gate_open || terminal_stopped) && !exited) {
+      pthread_mutex_lock(&subprocess_terminal_mutex);
+      if (tcgetpgrp(tty) == getpgrp()) {
+        have_terminal_attributes = tcgetattr(tty, &terminal_attributes) == 0;
+        // The application still renders while the child owns input. Prevent a
+        // terminal configured with TOSTOP from suspending those writes.
+        bool cleared_tostop = false;
+        if (have_terminal_attributes && (terminal_attributes.c_lflag & TOSTOP)) {
+          struct termios foreground_attributes = terminal_attributes;
+          foreground_attributes.c_lflag &= ~(tcflag_t)TOSTOP;
+          cleared_tostop = tcsetattr(tty, TCSANOW, &foreground_attributes) == 0;
+        }
+        if (have_terminal_attributes && (!(terminal_attributes.c_lflag & TOSTOP) || cleared_tostop) &&
+            subprocess_set_foreground(tty, pid) == 0) {
+          terminal_owned = true;
+          subprocess_terminal_owner = pid;
+          if (gate_open) {
+            bool released = subprocess_release_gate(start_pipe[1]);
+            close(start_pipe[1]);
+            gate_open = false;
+            if (!released) {
+              capture_failed = true;
+              kill(-pid, SIGKILL);
+            }
+          }
+          if (terminal_stopped) {
+            terminal_stopped = false;
+            kill(-pid, SIGCONT);
+          }
+        } else {
+          if (cleared_tostop)
+            tcsetattr(tty, TCSANOW, &terminal_attributes);
+          capture_failed = true;
+          kill(-pid, SIGKILL);
+          if (gate_open) {
+            close(start_pipe[1]);
+            gate_open = false;
+          }
+          terminal_stopped = false;
+        }
+      }
+      pthread_mutex_unlock(&subprocess_terminal_mutex);
+    }
   }
   if (capture)
     output_buffer[position] = '\0';
-  return !capture_failed && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+  int result = !capture_failed && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+  goto restore_terminal;
+
+cancelled_exit:
+  result = -1;
+restore_terminal:
+  if (gate_open)
+    close(start_pipe[1]);
+  if (terminal_owned) {
+    pthread_mutex_lock(&subprocess_terminal_mutex);
+    if (tcgetpgrp(tty) == pid && subprocess_set_foreground(tty, getpgrp()) == 0 && have_terminal_attributes)
+      tcsetattr(tty, TCSANOW, &terminal_attributes);
+    if (subprocess_terminal_owner == pid)
+      subprocess_terminal_owner = -1;
+    pthread_mutex_unlock(&subprocess_terminal_mutex);
+  }
+  if (tty >= 0)
+    close(tty);
+  return result;
 }
 #endif // !_WIN32

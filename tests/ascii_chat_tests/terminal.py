@@ -1,18 +1,16 @@
 """PTY and ConPTY screen capture helpers."""
-import importlib.util
 import os
 from pathlib import Path
 import queue
 import re
+import select
+import signal
 import shlex
 import subprocess
+import sys
 import threading
 import time
 
-missing = [name for name in ["pyte"] + ([] if os.name == "nt" else ["pexpect"]) if importlib.util.find_spec(name) is None]
-if missing:
-    print("SKIP: terminal tests need " + ", ".join(missing) + "; run uv sync --project tests/ascii_chat_tests --extra terminal")
-    raise SystemExit(77)
 import pyte
 
 def load_terminal_font(size):
@@ -261,3 +259,69 @@ def capture(term, directory, name):
             draw.rectangle((x, y, x + cell_width - 1, y + line_height - 1), fill=bg)
             draw.text((x, y), character, font=font, fill=fg)
     image.save(directory / f"{name}.png")
+
+
+class TerminalProcess:
+    """Run a command with a controlling PTY and separately captured output."""
+
+    def __init__(self, argv, *, environment, cwd, tostop=False, child_group_file=None):
+        import pty
+        import termios
+
+        self.master, slave = pty.openpty()
+        settings = termios.tcgetattr(slave)
+        settings[3] &= ~termios.ECHO
+        if tostop:
+            settings[3] |= termios.TOSTOP
+        termios.tcsetattr(slave, termios.TCSANOW, settings)
+        self.child_group_file = child_group_file
+        launcher = ("import fcntl, os, sys, termios; "
+                    "fcntl.ioctl(0, termios.TIOCSCTTY, 0); os.execv(sys.argv[1], sys.argv[1:])")
+        try:
+            self.process = subprocess.Popen([sys.executable, "-c", launcher, *argv],
+                                            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            env=environment, cwd=cwd, start_new_session=True)
+        except BaseException:
+            os.close(self.master)
+            raise
+        finally:
+            os.close(slave)
+
+    def reply_when_prompted(self, prompt, reply, timeout=25):
+        output = b""
+        deadline = time.monotonic() + timeout
+        while prompt not in output:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([self.process.stderr], [], [], remaining)[0]:
+                raise AssertionError(f"terminal prompt not received: {output!r}")
+            chunk = os.read(self.process.stderr.fileno(), 4096)
+            if not chunk:
+                raise AssertionError(f"process exited before terminal prompt: {output!r}")
+            output += chunk
+        os.write(self.master, reply)
+
+    def wait(self, timeout=30):
+        stdout, stderr = self.process.communicate(timeout=timeout)
+        return self.process.returncode, stdout, stderr
+
+    def close(self):
+        if self.process.poll() is None:
+            if self.child_group_file and self.child_group_file.exists():
+                try:
+                    group = int(self.child_group_file.read_text())
+                    if os.tcgetpgrp(self.master) == group:
+                        os.killpg(group, signal.SIGKILL)
+                except (OSError, ValueError):
+                    pass
+            self.process.kill()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        os.close(self.master)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        self.close()

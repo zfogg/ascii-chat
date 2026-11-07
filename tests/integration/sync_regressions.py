@@ -11,7 +11,6 @@ import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
 
-import importlib.util
 import os
 import re
 import subprocess
@@ -19,13 +18,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-
-prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
-missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
-if missing:
-    print("SKIP: sync terminal tests need " + ", ".join(missing) +
-          "; run uv sync --project tests/ascii_chat_tests --extra terminal")
-    raise SystemExit(77)
 
 from ascii_chat_tests.terminal import Terminal
 

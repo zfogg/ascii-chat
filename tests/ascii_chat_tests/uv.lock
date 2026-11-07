@@ -10,6 +10,13 @@ resolution-markers = [
 name = "ascii-chat-tests"
 version = "0.1.0"
 source = { editable = "." }
+dependencies = [
+    { name = "pexpect", marker = "sys_platform != 'win32'" },
+    { name = "pillow" },
+    { name = "pyte" },
+    { name = "pywinpty", marker = "sys_platform == 'win32'" },
+    { name = "wcwidth" },
+]
 
 [package.optional-dependencies]
 audio = [
@@ -24,29 +31,22 @@ audio = [
 telemetry = [
     { name = "gotel" },
 ]
-terminal = [
-    { name = "pexpect", marker = "sys_platform != 'win32'" },
-    { name = "pillow" },
-    { name = "pyte" },
-    { name = "pywinpty", marker = "sys_platform == 'win32'" },
-    { name = "wcwidth" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "gotel", marker = "extra == 'telemetry'", git = "https://github.com/zfogg/gotel.git?subdirectory=python&rev=6fedf902c7e2cfd15bd0bc4e9c868e3f84e0f2d5" },
     { name = "matplotlib", marker = "extra == 'audio'" },
     { name = "numpy", marker = "extra == 'audio'" },
-    { name = "pexpect", marker = "sys_platform != 'win32' and extra == 'terminal'", specifier = "==4.9.0" },
-    { name = "pillow", marker = "extra == 'terminal'", specifier = "==11.3.0" },
-    { name = "pyte", marker = "extra == 'terminal'", specifier = "==0.8.2" },
-    { name = "pywinpty", marker = "sys_platform == 'win32' and extra == 'terminal'" },
+    { name = "pexpect", marker = "sys_platform != 'win32'", specifier = "==4.9.0" },
+    { name = "pillow", specifier = "==11.3.0" },
+    { name = "pyte", specifier = "==0.8.2" },
+    { name = "pywinpty", marker = "sys_platform == 'win32'" },
     { name = "scipy", marker = "extra == 'audio'" },
     { name = "sounddevice", marker = "extra == 'audio'" },
     { name = "soundfile", marker = "extra == 'audio'" },
-    { name = "wcwidth", marker = "extra == 'terminal'" },
+    { name = "wcwidth" },
 ]
-provides-extras = ["audio", "terminal", "telemetry"]
+provides-extras = ["audio", "telemetry"]
 
 [[package]]
 name = "certifi"

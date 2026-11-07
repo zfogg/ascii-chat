@@ -6,6 +6,7 @@ import _environment  # noqa: F401
 from ascii_chat_tests.media import ppm_image, write_pcm_wav
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
+from ascii_chat_tests.terminal import TerminalProcess
 
 import argparse
 import functools
@@ -204,6 +205,28 @@ class MediaExtractor(unittest.TestCase):
         self.assertNotIn("/video.ppm", self.requests)
         self.assertNotIn("/audio.wav", self.requests)
 
+    def test_http_proxy_is_retained_for_fallback(self):
+        self.env["no_proxy"] = ""
+        result = self.run_mirror("error", f"--proxy {self.base}")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(any(path.startswith("http://") and "/watch" in path for path in self.requests), self.requests)
+
+    def test_http_proxy_is_retained_when_extractor_is_unavailable(self):
+        self.env.update(no_proxy="", FAKE_YTDLP_VERSION_FAIL="1")
+        cmd = [BINARY, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
+               "--splash-screen=false", "--audio=false", f"--yt-dlp-options=--proxy {self.base}"]
+        result = subprocess.run(cmd, env=self.env, cwd=self.root, capture_output=True, timeout=45)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(any(path.startswith("http://") and "/watch" in path for path in self.requests), self.requests)
+
+    def test_http_proxy_rejects_non_http_extracted_stream(self):
+        self.env.update(FAKE_YTDLP_VIDEO="rtmp://127.0.0.1/live/test", FAKE_YTDLP_COOKIE="")
+        cmd = [BINARY, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
+               "--splash-screen=false", "--audio=false", f"--yt-dlp-options=--proxy {self.base}"]
+        result = subprocess.run(cmd, env=self.env, cwd=self.root, capture_output=True, timeout=45)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.requests, [])
+
     def test_unrelated_extraction_failure_does_not_retry(self):
         """Do not retry extraction after an unrelated failure."""
         result = self.run_mirror("error")
@@ -217,6 +240,45 @@ class MediaExtractor(unittest.TestCase):
         result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-cancel"],
                                 env=env, cwd=self.root, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
+    @unittest.skipIf(os.name == "nt", "POSIX terminal job control")
+    def test_cancellable_extractor_can_read_foreground_terminal(self):
+        import termios
+
+        extractor_pid = self.root / "extractor.pid"
+        env = dict(self.env, FAKE_YTDLP_MODE="interactive", FAKE_YTDLP_EXPECT_TERMINAL="1",
+                   FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid))
+        with TerminalProcess([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+                             environment=env, cwd=self.root, tostop=True, child_group_file=extractor_pid) as terminal:
+            terminal.reply_when_prompted(b"fixture prompt:", b"yes\n")
+            code, stdout, stderr = terminal.wait()
+            self.assertEqual(code, 0, (stdout, stderr[-4000:]))
+            self.assertTrue(termios.tcgetattr(terminal.master)[3] & termios.TOSTOP)
+
+    @unittest.skipIf(os.name == "nt", "POSIX terminal job control")
+    def test_cancelling_interactive_extractor_kills_descendants_and_restores_terminal(self):
+        import time
+
+        pid_file = self.root / "descendant.pid"
+        extractor_pid = self.root / "extractor.pid"
+        env = dict(self.env, FAKE_YTDLP_MODE="interactive-hang", FAKE_YTDLP_EXPECT_TERMINAL="1",
+                   FAKE_YTDLP_CHILD_PID=str(pid_file), FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid))
+        with TerminalProcess([AUDIO_PROBE, self.base + "/watch", "--expect-cancel"],
+                             environment=env, cwd=self.root, child_group_file=extractor_pid) as terminal:
+            terminal.reply_when_prompted(b"fixture prompt:", b"yes\n")
+            code, stdout, stderr = terminal.wait()
+            self.assertEqual(code, 0, (stdout, stderr[-4000:]))
+            self.assertTrue(pid_file.exists(), "extractor did not start its descendant")
+            child = int(pid_file.read_text())
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(child, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail(f"extractor descendant {child} survived cancellation")
 
     def test_capture_initialization_honors_configured_cancellation(self):
         """A caller's exit callback interrupts initial media extraction."""

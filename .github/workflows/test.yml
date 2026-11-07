@@ -148,7 +148,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Install Python test dependencies
-        run: uv sync --project tests/ascii_chat_tests --extra terminal --frozen --python "${{ steps.unit-python.outputs.python-path }}"
+        run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.unit-python.outputs.python-path }}"
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -394,7 +394,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Install terminal test dependencies
-        run: uv sync --project tests/ascii_chat_tests --extra terminal --frozen --python "${{ steps.integration-python.outputs.python-path }}"
+        run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.integration-python.outputs.python-path }}"
 
       - name: Configure integration tests with coverage
         run: |

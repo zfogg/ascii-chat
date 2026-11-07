@@ -68,17 +68,6 @@
       }
     },
     {
-      "name": "webrtc-local-tests",
-      "displayName": "WebRTC localhost tests",
-      "description": "Test-only build with localhost ICE candidates for same-host WebRTC tests; do not use for real sessions",
-      "inherits": "base-debug",
-      "binaryDir": "${sourceDir}/build-webrtc-local-tests",
-      "cacheVariables": {
-        "BUILD_TESTS": "ON",
-        "ASCIICHAT_TEST_WEBRTC_LOCALHOST": "ON"
-      }
-    },
-    {
       "name": "debug",
       "displayName": "Debug",
       "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",

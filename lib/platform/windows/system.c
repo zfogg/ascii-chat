@@ -1661,7 +1661,18 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
         CloseHandle(stdout_write);
       return -1;
     }
-    ResumeThread(process_info.hThread);
+    if (ResumeThread(process_info.hThread) == (DWORD)-1) {
+      TerminateJobObject(job, 1);
+      WaitForSingleObject(process_info.hProcess, INFINITE);
+      CloseHandle(job);
+      CloseHandle(process_info.hProcess);
+      CloseHandle(process_info.hThread);
+      if (stdout_read)
+        CloseHandle(stdout_read);
+      if (stdout_write)
+        CloseHandle(stdout_write);
+      return -1;
+    }
   }
 
   // Close the write end of the pipe in the parent so ReadFile can detect EOF
