@@ -150,13 +150,11 @@ it("shows an encoded-frame transport error once until sending recovers", async (
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
     value: {
-      getUserMedia: vi
-        .fn()
-        .mockResolvedValue({
-          getTracks: () => [track],
-          getVideoTracks: () => [track],
-          getAudioTracks: () => [],
-        }),
+      getUserMedia: vi.fn().mockResolvedValue({
+        getTracks: () => [track],
+        getVideoTracks: () => [track],
+        getAudioTracks: () => [],
+      }),
     },
   });
   await act(async () => expect(await result.current.startWebcam()).toBe(true));

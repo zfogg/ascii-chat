@@ -524,17 +524,21 @@ export function BinarySettings({
                   if (paletteTimerRef.current !== null) {
                     clearTimeout(paletteTimerRef.current);
                     paletteTimerRef.current = null;
-                    setPaletteDraft(config.paletteChars ?? DEFAULT_PALETTE_CHARS);
+                    setPaletteDraft(
+                      config.paletteChars ?? DEFAULT_PALETTE_CHARS,
+                    );
                   }
-                  e.target.value === "glyph-default"
-                    ? updateConfig({
-                        palette: "standard",
-                        paletteExplicit: false,
-                      })
-                    : updateConfig({
-                        palette: e.target.value as Palette,
-                        paletteExplicit: true,
-                      });
+                  if (e.target.value === "glyph-default") {
+                    updateConfig({
+                      palette: "standard",
+                      paletteExplicit: false,
+                    });
+                  } else {
+                    updateConfig({
+                      palette: e.target.value as Palette,
+                      paletteExplicit: true,
+                    });
+                  }
                 }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
