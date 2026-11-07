@@ -79,6 +79,11 @@ if(BUILD_TESTS)
     # sources directly. The shared wrapper retains their profiles under the
     # active build tree when coverage is enabled.
     set(standalone_includes --native-include=${CMAKE_BINARY_DIR}/generated)
+    foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS PORTAUDIO_INCLUDE_DIRS OPUS_INCLUDE_DIRS)
+        if(IS_ABSOLUTE "${include_dir}")
+            list(APPEND standalone_includes --native-include=${include_dir})
+        endif()
+    endforeach()
     if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
         list(APPEND standalone_includes --native-include=${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
     endif()

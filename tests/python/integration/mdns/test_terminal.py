@@ -53,6 +53,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
                 monkeypatch.delenv(key, raising=False)
         for key, value in dict(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
                                XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
+                               ASCII_CHAT_DISABLE_FIRST_USE="1",
                                ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1",
                                ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none").items():
             monkeypatch.setenv(key, value)
