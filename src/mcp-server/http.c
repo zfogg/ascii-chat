@@ -23,10 +23,17 @@
 typedef struct {
   char *body, *response;
   size_t length, response_size, sent;
-  bool pending;
+  bool pending, file_open;
+  uv_file file;
+  const char *mime;
   unsigned status;
 } http_session_t;
 static void clear_session(http_session_t *session) {
+  if (session->file_open) {
+    uv_fs_t close_request;
+    uv_fs_close(NULL, &close_request, session->file, NULL);
+    uv_fs_req_cleanup(&close_request);
+  }
   SAFE_FREE(session->body);
   free(session->response);
   memset(session, 0, sizeof(*session));
@@ -66,27 +73,44 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       int n = safe_snprintf(path, sizeof(path), "%s/%s", s->policy.downloads_dir, name);
       if (n < 0 || (size_t)n >= sizeof(path))
         return respond(wsi, h, 404, NULL);
-      uv_fs_t fs;
+      uv_fs_t fs = {0};
       if (expires <= (int64_t)time(NULL)) {
         uv_fs_unlink(NULL, &fs, path, NULL);
         uv_fs_req_cleanup(&fs);
         return respond(wsi, h, 404, NULL);
       }
       int rc = uv_fs_lstat(NULL, &fs, path, NULL);
-      bool regular = rc == 0 && S_ISREG(fs.statbuf.st_mode);
+      uv_stat_t before = fs.statbuf;
+      bool regular = rc == 0 && S_ISREG(before.st_mode);
       uv_fs_req_cleanup(&fs);
       if (!regular)
         return respond(wsi, h, 404, NULL);
+      rc = uv_fs_open(NULL, &fs, path, UV_FS_O_RDONLY | UV_FS_O_NOFOLLOW, 0, NULL);
+      uv_fs_req_cleanup(&fs);
+      if (rc < 0)
+        return respond(wsi, h, 404, NULL);
+      h->file = rc;
+      h->file_open = true;
+      rc = uv_fs_fstat(NULL, &fs, h->file, NULL);
+      regular = rc == 0 && S_ISREG(fs.statbuf.st_mode) && before.st_dev == fs.statbuf.st_dev &&
+                before.st_ino == fs.statbuf.st_ino;
+      if (regular)
+        h->response_size = (size_t)fs.statbuf.st_size;
+      uv_fs_req_cleanup(&fs);
+      if (!regular) {
+        clear_session(h);
+        return respond(wsi, h, 404, NULL);
+      }
       const char *ext = strrchr(name, '.');
-      const char *mime = !strcmp(ext, ".png")    ? "image/png"
-                         : !strcmp(ext, ".jpg")  ? "image/jpeg"
-                         : !strcmp(ext, ".gif")  ? "image/gif"
-                         : !strcmp(ext, ".mp4")  ? "video/mp4"
-                         : !strcmp(ext, ".webm") ? "video/webm"
-                                                 : "video/x-matroska";
-      static const char headers[] = "cache-control: no-store\r\n";
-      rc = lws_serve_http_file(wsi, path, mime, headers, (int)strlen(headers));
-      return rc < 0 ? -1 : 0;
+      h->mime = !strcmp(ext, ".png")    ? "image/png"
+                : !strcmp(ext, ".jpg")  ? "image/jpeg"
+                : !strcmp(ext, ".gif")  ? "image/gif"
+                : !strcmp(ext, ".mp4")  ? "video/mp4"
+                : !strcmp(ext, ".webm") ? "video/webm"
+                                        : "video/x-matroska";
+      h->status = 200;
+      lws_callback_on_writable(wsi);
+      return 0;
     }
     if (!origin_allowed(wsi, &s->policy))
       return respond(wsi, h, 403, NULL);
@@ -172,7 +196,10 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       ASCII_OTEL_ATTR_INT("http.response.body.size", (int64_t)h->response_size);
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_HTTP_RESPONSES, 1);
       unsigned char buffer[LWS_PRE + 1024], *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer);
-      if (lws_add_http_common_headers(wsi, h->status, "application/json", (lws_filepos_t)h->response_size, &p, end) ||
+      if (lws_add_http_common_headers(wsi, h->status, h->mime ? h->mime : "application/json",
+                                      (lws_filepos_t)h->response_size, &p, end) ||
+          (h->file_open && lws_add_http_header_by_name(wsi, (const unsigned char *)"cache-control:",
+                                                       (const unsigned char *)"no-store", 8, &p, end)) ||
           lws_finalize_write_http_header(wsi, buffer + LWS_PRE, &p, end))
         return -1;
       if (!h->response_size) {
@@ -184,7 +211,17 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     if (n > 16384)
       n = 16384;
     unsigned char buffer[LWS_PRE + 16384];
-    memcpy(buffer + LWS_PRE, h->response + h->sent, n);
+    if (h->file_open) {
+      uv_buf_t chunk = uv_buf_init((char *)buffer + LWS_PRE, (unsigned int)n);
+      uv_fs_t read_request;
+      int read_size = uv_fs_read(NULL, &read_request, h->file, &chunk, 1, (int64_t)h->sent, NULL);
+      uv_fs_req_cleanup(&read_request);
+      if (read_size <= 0)
+        return -1;
+      n = (size_t)read_size;
+    } else {
+      memcpy(buffer + LWS_PRE, h->response + h->sent, n);
+    }
     bool final = h->sent + n == h->response_size;
     int wrote = lws_write(wsi, buffer + LWS_PRE, n, final ? LWS_WRITE_HTTP_FINAL : LWS_WRITE_HTTP);
     if (wrote < 0 || (size_t)wrote != n)

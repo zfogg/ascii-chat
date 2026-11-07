@@ -372,6 +372,23 @@ class Protocol(unittest.TestCase):
         self.assertEqual(response.status, 404)
         conn.close()
         self.assertFalse(expired.exists())
+        stale = downloads / ("1000000000-" + "b" * 32 + ".png")
+        stale.write_bytes(b"stale")
+        deadline = time.monotonic() + 5
+        while stale.exists() and time.monotonic() < deadline:
+            time.sleep(.05)
+        self.assertFalse(stale.exists(), "periodic cleanup did not remove expired file")
+
+        if sys.platform != "win32":
+            secret = self.directory / "secret"
+            secret.write_bytes(b"private")
+            symlink = downloads / ("9999999999-" + "c" * 32 + ".png")
+            symlink.symlink_to(secret)
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            conn.request("GET", "/downloads/" + symlink.name)
+            response = conn.getresponse(); response.read()
+            self.assertEqual(response.status, 404)
+            conn.close()
 
         # A URL provided by the caller is consumed by the renderer, without granting
         # the hosted MCP process access to caller-selected local paths.
