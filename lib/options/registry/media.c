@@ -10,6 +10,7 @@
  * @date January 2026
  */
 
+#include <math.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
 
@@ -53,8 +54,8 @@ static bool validate_video_codec(const void *opts_struct) {
 static bool validate_render_font_size(const void *opts_struct) {
   (void)opts_struct;
   const options_t *opts = (const options_t *)opts_struct;
-  if (opts->render_font_size <= 0.0) {
-    SET_ERRNO(ERROR_USAGE, "--render-font-size must be > 0");
+  if (!isfinite(opts->render_font_size) || opts->render_font_size < 0.0) {
+    SET_ERRNO(ERROR_USAGE, "--render-font-size must be 0 (auto) or a positive finite size");
     return false;
   }
   return true;
@@ -312,7 +313,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_font_size),
      &default_render_font_size_value,
      sizeof(double),
-     "Font size in points for render-file output (default: 12.0, must be > 0, fractional sizes supported e.g. 10.5).",
+     "Font size in points for render-file output (default: 0, auto-scales video; positive fractional sizes supported).",
      "MEDIA",
      "SIZE",
      false,

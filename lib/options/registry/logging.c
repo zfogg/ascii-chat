@@ -159,7 +159,7 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, otel_timeout),
      &default_otel_timeout,
      sizeof(((options_t *)0)->otel_timeout),
-     "Export and shutdown flush timeout in milliseconds.",
+     "Export timeout in milliseconds; shutdown flush is capped at 400 ms.",
      "OTEL",
      "VALUE",
      false,

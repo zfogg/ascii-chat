@@ -20,7 +20,6 @@ import ctypes as C
 import hashlib
 import os
 from pathlib import Path
-import socket
 import struct
 import subprocess
 import sys

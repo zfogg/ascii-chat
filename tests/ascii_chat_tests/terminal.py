@@ -30,6 +30,11 @@ def load_terminal_font(size):
 class CaptureScreen(pyte.Screen):
     """Handle REP, used by the renderer and ConPTY to compress repeated cells."""
 
+    media_leaks: list[str]
+    forbid_media: bool
+    preserved: list[tuple[int, int, str]]
+    preservation_failures: list[tuple[int, str, str]]
+
     def reset(self):
         self.last_character = ""
         super().reset()
@@ -331,3 +336,57 @@ class TerminalProcess:
 
     def __exit__(self, *_args):
         self.close()
+
+def capture_sync(term, root, name):
+    root.mkdir(parents=True, exist_ok=True)
+    (root / f"{name}.txt").write_text("\n".join(term.screen.display), encoding="utf-8")
+    (root / f"{name}.ansi").write_text("".join(term.raw), encoding="utf-8")
+    from PIL import Image, ImageDraw, ImageFont
+    font = load_terminal_font(16)
+    symbol_paths = ("C:/Windows/Fonts/seguisym.ttf",
+                    "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf")
+    symbol_font = next((ImageFont.truetype(path, 16) for path in symbol_paths if Path(path).exists()), font)
+    cw, ch = round(font.getlength("M")), 21
+    image = Image.new("RGB", (term.screen.columns * cw + 24, term.screen.lines * ch + 24), "#0d141a")
+    draw = ImageDraw.Draw(image)
+    palette = {"default": "#dedbd0", "black": "#000000", "red": "#e85d6f", "green": "#90e070",
+               "brown": "#f0cc91", "blue": "#65ace1", "magenta": "#c8a0d8", "cyan": "#65ace1",
+               "white": "#dedbd0"}
+    def color(value):
+        return palette.get(value, "#" + value if len(value) == 6 else "#dedbd0")
+    for y in range(term.screen.lines):
+        for x in range(term.screen.columns):
+            cell = term.screen.buffer[y][x]
+            fg, bg = color(cell.fg), "#0d141a" if cell.bg == "default" else color(cell.bg)
+            if cell.reverse:
+                fg, bg = bg, fg
+            if bg != "#0d141a":
+                draw.rectangle((12+x*cw, 12+y*ch, 12+(x+1)*cw, 12+(y+1)*ch), fill=bg)
+            draw.text((12+x*cw, 12+y*ch), cell.data,
+                      font=symbol_font if "❌" in cell.data else font, fill=fg)
+    image.save(root / f"{name}.png")
+
+
+def capture_mdns(term, directory, name):
+    if directory is None:
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{name}.txt").write_text("\n".join(term.screen.display), encoding="utf-8")
+    (directory / f"{name}.ansi").write_text("".join(term.raw), encoding="utf-8")
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        return
+    configured_font = os.environ.get("TERMINAL_CAPTURE_FONT")
+    font = ImageFont.truetype(configured_font, 16) if configured_font else load_terminal_font(16)
+    divider_mask = font.getmask("━")
+    if not divider_mask.getbbox():
+        raise AssertionError("Terminal capture font does not contain the UTF-8 divider glyph")
+    image = Image.new("RGB", (term.screen.columns * 10 + 24, term.screen.lines * 21 + 24), "#10151c")
+    draw = ImageDraw.Draw(image)
+    for row, text in enumerate(term.screen.display):
+        for column, character in enumerate(text):
+            foreground = term.screen.buffer[row][column].fg
+            color = f"#{foreground}" if re.fullmatch(r"[0-9a-fA-F]{6}", foreground) else "#e1e8ed"
+            draw.text((12 + column * 10, 12 + row * 21), character, font=font, fill=color)
+    image.save(directory / f"{name}.png")

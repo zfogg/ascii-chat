@@ -809,13 +809,13 @@ static void *presentation_main(void *unused) {
       reply_support = 1;
       if (awaiting_reply) {
         fps_counter_frame_end(g_fps, replied_ns);
-        log_debug("TERMINAL_ACK: id=%llu response_ms=%.2f capture_to_terminal_ms=%.2f",
-                  (unsigned long long)reply_frame_id, (double)(replied_ns - reply_requested_ns) / NS_PER_MS_INT,
-                  reply_frame_ns ? (double)(replied_ns - reply_frame_ns) / NS_PER_MS_INT : 0);
+        log_debug_every(US_PER_SEC_INT, "TERMINAL_ACK: id=%llu response_ms=%.2f capture_to_terminal_ms=%.2f",
+                        (unsigned long long)reply_frame_id, (double)(replied_ns - reply_requested_ns) / NS_PER_MS_INT,
+                        reply_frame_ns ? (double)(replied_ns - reply_frame_ns) / NS_PER_MS_INT : 0);
       }
       awaiting_reply = false;
     }
-    if (awaiting_reply && reply_support == 0 && iteration_started_ns - reply_requested_ns > 500 * NS_PER_MS_INT) {
+    if (awaiting_reply && iteration_started_ns - reply_requested_ns > 500 * NS_PER_MS_INT) {
       // Classic consoles need no remote acknowledgement and may not answer OSC.
       reply_support = -1;
       awaiting_reply = false;
@@ -1058,7 +1058,8 @@ static void *presentation_main(void *unused) {
             CLEAR_ERRNO();
           else {
             uint64_t completed_ns = time_get_ns();
-            log_debug(
+            log_debug_every(
+                US_PER_SEC_INT,
                 "FRAME_PRESENT: id=%llu submit_to_stdout_ms=%.2f acquired_ns=%llu submitted_ns=%llu "
                 "completed_ns=%llu capture_to_stdout_ms=%.2f mailbox_ms=%.2f geometry_ms=%.2f "
                 "compose_ms=%.2f write_ms=%.2f drain_ms=%.2f max_chunk_ms=%.2f chunks=%llu bytes=%zu cols=%d rows=%d",

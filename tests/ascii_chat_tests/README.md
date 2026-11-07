@@ -47,7 +47,7 @@ legacy harnesses elsewhere may execute at import time. From the repository root:
 uv sync --project tests/ascii_chat_tests --frozen
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty --lifecycle-probe build/bin/test-client-like-lifecycle --media-capture-probe build/bin/test-media-capture-open
-ctest --test-dir build -R '^python-(unit|cli|media|network|discovery|mcp|terminal|telemetry|lifecycle|capture)$' --no-tests=error --output-on-failure --parallel
+ctest --test-dir build -L '^python$' --no-tests=error --output-on-failure --parallel
 ```
 
 On Windows use `build/bin/ascii-chat.exe`. Pytest defaults to all logical cores

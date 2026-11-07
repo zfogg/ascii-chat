@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 """Synthetic FFmpeg media fixtures used by integration tests."""
 import base64
 import re
@@ -41,8 +42,8 @@ def reconstruct(data):
             assert packet[1] in (b"m=0", b"m=1")
         else:
             assert b"a=T,f=32" in packet[1] and b"t=d,q=2" in packet[1]
-    width = int(re.search(rb"s=(\d+)", packets[0][1])[1])
-    height = int(re.search(rb"v=(\d+)", packets[0][1])[1])
+    width = int(require_match(rb"s=(\d+)", packets[0][1])[1])
+    height = int(require_match(rb"v=(\d+)", packets[0][1])[1])
     raw = base64.b64decode(b"".join(p[2] for p in packets), validate=True)
     assert len(raw) == width * height * 4
     return width, height, raw, len(packets)

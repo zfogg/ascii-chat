@@ -109,6 +109,7 @@ export function useEngineSettings(
     if (changed("render_mode")) next.renderMode = numeric("render_mode");
     if (changed("renderer"))
       next.renderer = numeric("renderer") === 1 ? "glyph" : "luminance";
+    if (changed("stabilize")) next.stabilize = !!values["stabilize"];
     if (changed("palette_type"))
       next.palette = palettes[numeric("palette_type")] ?? "standard";
     if (changed("palette_explicit"))
@@ -157,6 +158,7 @@ export function renderPreferences(cols: number, rows: number): RuntimeValues {
     color_filter: values["color_filter"]!,
     render_mode: values["render_mode"]!,
     renderer: values["renderer"]!,
+    stabilize: values["stabilize"]!,
     palette_type: values["palette_type"]!,
     palette_custom: values["palette_custom"]!,
     palette_explicit: values["palette_explicit"]!,

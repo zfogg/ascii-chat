@@ -27,6 +27,7 @@ interface AsciiChatWasmExports {
 interface MirrorModuleExports {
   _mirror_init_with_args(args_string: number): number;
   _mirror_cleanup(): void;
+  _mirror_reset_stabilizer(): void;
   _mirror_convert_frame(
     rgba_data_ptr: number,
     src_width: number,
@@ -97,6 +98,7 @@ export interface MirrorModule extends WasmModule, SessionUiModule {
   canvas?: HTMLCanvasElement;
   _mirror_init_with_args?: MirrorModuleExports["_mirror_init_with_args"];
   _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];
+  _mirror_reset_stabilizer: MirrorModuleExports["_mirror_reset_stabilizer"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
   _mirror_submit_audio_samples: MirrorModuleExports["_mirror_submit_audio_samples"];
@@ -251,6 +253,10 @@ export function cleanupMirrorWasm(): void {
     wasmModule = null;
     cleanupOptions();
   }
+}
+
+export function resetMirrorStabilizer(): void {
+  wasmModule?._mirror_reset_stabilizer();
 }
 
 /**

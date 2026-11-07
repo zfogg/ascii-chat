@@ -39,6 +39,7 @@ struct render_progress {
   mutex_t mutex;
   progress_snapshot_t *snapshot;
   int fd;
+  uint64_t last_preview_ns;
   bool active;
 };
 
@@ -59,7 +60,10 @@ static void progress_render(terminal_size_t size, const void *data) {
       size_t length = (size_t)((newline ? newline : end) - cursor);
       memcpy(line, cursor, length);
       line[length] = '\0';
-      truncate_with_ellipsis(line, clipped, snapshot->length + UI_CLIPPED_TEXT_OVERHEAD, size.cols - 1);
+      char *expanded = ansi_expand_rle(line, length);
+      truncate_with_ellipsis(expanded ? expanded : line, clipped, snapshot->length + UI_CLIPPED_TEXT_OVERHEAD,
+                             size.cols - 1);
+      SAFE_FREE(expanded);
       frame_buffer_append(buffer, clipped, strlen(clipped));
       cursor += length + (newline ? 1 : 0);
     }
@@ -144,9 +148,17 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
   if (!progress)
     return;
   mutex_lock(&progress->mutex);
-  char *expanded = ansi_expand_rle(frame, strlen(frame));
-  const char *preview = expanded ? expanded : frame;
-  size_t length = strnlen(preview, PREVIEW_MAX_BYTES + 1);
+  uint64_t now = time_get_ns();
+  // The overlay refreshes at most eight times per second. Expanding and copying
+  // every full-resolution frame only slows the encoder and cannot be displayed.
+  if (succeeded && !progress->snapshot->failed && progress->last_preview_ns && now >= progress->last_preview_ns &&
+      now - progress->last_preview_ns < 125 * NS_PER_MS_INT) {
+    ++progress->snapshot->completed;
+    mutex_unlock(&progress->mutex);
+    return;
+  }
+  progress->last_preview_ns = now;
+  size_t length = strnlen(frame, (size_t)PREVIEW_MAX_BYTES + 1u);
   // Oversized frames still encode normally; omit their terminal preview.
   if (length > PREVIEW_MAX_BYTES)
     length = 0;
@@ -154,10 +166,9 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
       SAFE_CALLOC(1, sizeof(*next) + length + progress->snapshot->destination_length + 2, progress_snapshot_t *);
   memcpy(next, progress->snapshot, sizeof(*next));
   next->length = length;
-  memcpy(next->frame, preview, length);
+  memcpy(next->frame, frame, length);
   memcpy(next->frame + length + 1, progress->snapshot->frame + progress->snapshot->length + 1,
          next->destination_length + 1);
-  SAFE_FREE(expanded);
   if (!next->started_ns)
     next->started_ns = time_get_ns();
   if (succeeded)

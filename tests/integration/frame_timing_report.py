@@ -7,11 +7,8 @@ _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().paren
 import _environment  # noqa: F401
 
 import argparse
-from bisect import bisect_left
 import json
 from pathlib import Path
-import re
-import statistics
 
 
 from ascii_chat_tests.timing import summarize

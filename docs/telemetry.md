@@ -129,7 +129,7 @@ fixtures, sends no OTLP, switches to an empty session, checks all panels/rules,
 and restores the original session in a finally block:
 
 ```sh
-python tests/integration/test_spaniel_alert_pack.py
+python tests/manual/probe_spaniel_alert_pack.py
 ```
 
 
@@ -259,7 +259,8 @@ The exporter batches protobuf requests; it does not call the application's HTTP
 client, so export requests cannot recursively generate HTTP spans.
 
 Normal shutdown disables new producers, ends the CLI span, waits for retained
-scopes, joins the worker, and flushes within the configured deadline. An exit
+scopes, and flushes within the smaller of the configured timeout and 400 ms.
+Pending telemetry can be lost if the collector does not respond in that time. An exit
 that bypasses scope cleanup retains a still-borrowed host until process exit
 rather than freeing memory in use. Exporter diagnostics go only to local debug
 logs; the OTLP sink suppresses them to prevent recursion. Collector failure does
@@ -392,7 +393,7 @@ attributes. Loader and commit spans are independent control-operation roots:
 the loader crosses a thread boundary, and commit must not inherit a discarded
 frame's sampling decision.
 
-`tests/integration/test_otel.py BINARY` runs a synthetic mirror snapshot against
+`tests/manual/disabled_otel_export.py BINARY` runs a synthetic mirror snapshot against
 a loopback OTLP receiver, verifies each signal mask, sampling and metric
 independence, CLI/config/environment precedence, invalid configuration, and a
 bounded collector outage, encrypted client/server delivery and named ACDS SQL. With `BUILD_TESTS=ON` it is registered as CTest
@@ -415,7 +416,7 @@ unhealthy; successful delivery produces a recovery message. These health message
 do not enter the export queue. Snapshot/rendering can suppress terminal logs;
 use `--log-file` to retain them. The socket integration checks abrupt disconnects,
 stalled HTTP headers, and stalled response bodies while synthetic frames continue
-rendering, including shutdown with the default five-second exporter timeout.
+rendering, including shutdown with the default exporter timeout.
 The worker also owns the final flush, keeping synchronous DNS resolution off the
 exit thread; the shutdown join deadline retains a stuck exporter until process exit.
 

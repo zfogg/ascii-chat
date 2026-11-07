@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   colorFilter: "none",
   palette: "standard",
   renderer: "luminance",
+  stabilize: false,
   paletteExplicit: false,
   paletteChars: DEFAULT_PALETTE_CHARS,
   matrixRain: false,

@@ -48,6 +48,13 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 
+  // The bundled browser font does not contain the emoji used in native status titles.
+#ifdef __EMSCRIPTEN__
+  bool status_icons = false;
+#else
+  bool status_icons = unicode;
+#endif
+
   // Line 2: Title + Stats (centered)
   char status_line[TUI_SESSION_STATUS_STATUS_LINE_BUFFER_SIZE];
   char status_line_truncated[TUI_SESSION_STATUS_STATUS_LINE_TRUNCATED_BUFFER_SIZE];
@@ -55,12 +62,12 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   char uptime_str[TUI_SESSION_STATUS_UPTIME_BUFFER_SIZE];
   format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
   if (status->detail)
-    snprintf(status_line, sizeof(status_line), unicode ? "ascii-chat %s | ⏱️ %s" : "ascii-chat %s | uptime %s",
+    snprintf(status_line, sizeof(status_line), status_icons ? "ascii-chat %s | ⏱️ %s" : "ascii-chat %s | uptime %s",
              status->mode_name, uptime_str);
   else
     snprintf(status_line, sizeof(status_line),
-             unicode ? "ascii-chat %s | 👥 %zu | ⏱️ %s" : "ascii-chat %s | clients %zu | uptime %s", status->mode_name,
-             status->connected_count, uptime_str);
+             status_icons ? "ascii-chat %s | 👥 %zu | ⏱️ %s" : "ascii-chat %s | clients %zu | uptime %s",
+             status->mode_name, status->connected_count, uptime_str);
 
   // Truncate if needed (ANSI-aware)
   truncate_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);

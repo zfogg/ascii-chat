@@ -12,7 +12,6 @@ import argparse
 import os
 from pathlib import Path
 import re
-import subprocess
 import tempfile
 
 from ascii_chat_tests.terminal import Terminal
