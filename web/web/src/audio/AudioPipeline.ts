@@ -45,6 +45,7 @@ export class AudioPipeline {
   private processor: AudioCapture | null = null;
   private processorInit: Promise<void> | null = null;
   private processorGeneration = 0;
+  private processorSequence = 0;
   private displayStream: MediaStream | null = null;
   private displaySource: MediaStreamAudioSourceNode | null = null;
   private displayGeneration = 0;
@@ -286,6 +287,7 @@ export class AudioPipeline {
     if (!this.avState.current(generation)) return;
 
     const microphoneId = getMediaDevicePreferences().microphoneId;
+    const requestedLayout = getMicrophoneLayout();
     const stream = isTestMode()
       ? (() => {
           this.testPatternSource = createTestPatternAudioSource(this.context!);
@@ -296,8 +298,7 @@ export class AudioPipeline {
             channelCount: {
               ideal: Math.max(
                 1,
-                getMicrophoneLayout().firstChannel +
-                  getMicrophoneLayout().channels,
+                requestedLayout.firstChannel + requestedLayout.channels,
               ),
             },
             sampleRate: 48000,
@@ -322,8 +323,7 @@ export class AudioPipeline {
                 channelCount: {
                   ideal: Math.max(
                     1,
-                    getMicrophoneLayout().firstChannel +
-                      getMicrophoneLayout().channels,
+                    requestedLayout.firstChannel + requestedLayout.channels,
                   ),
                 },
                 sampleRate: 48000,
@@ -341,6 +341,17 @@ export class AudioPipeline {
       this.testPatternSource = null;
       return;
     }
+    const layoutChanged = () => {
+      const current = getMicrophoneLayout();
+      return (
+        current.firstChannel !== requestedLayout.firstChannel ||
+        current.channels !== requestedLayout.channels
+      );
+    };
+    if (!this.testPatternSource && layoutChanged()) {
+      stream.getTracks().forEach((track) => track.stop());
+      return this.startCaptureHost(generation);
+    }
     this.stream = stream;
     this.source = this.context.createMediaStreamSource(stream);
     // A display transition may retire an in-flight processor. Rejoin the
@@ -349,15 +360,20 @@ export class AudioPipeline {
       await this.ensureCaptureGraph();
       if (!this.avState.current(generation) || this.closed) return;
     } while (!this.processor);
+    if (!this.testPatternSource && layoutChanged()) {
+      this.source?.disconnect();
+      this.source = null;
+      this.stream = null;
+      stream.getTracks().forEach((track) => track.stop());
+      this.releaseCaptureGraph();
+      return this.startCaptureHost(generation);
+    }
     this.source!.connect(this.processor.node);
     this.avState.complete(generation);
   }
 
-  private ensureCaptureGraph(): Promise<void> {
-    if (this.processor) return Promise.resolve();
-    if (this.processorInit) return this.processorInit;
-    const generation = ++this.processorGeneration;
-    const pending = AudioCapture.create(this.context!, {
+  private createCaptureGraph(generation: number): Promise<AudioCapture> {
+    return AudioCapture.create(this.context!, {
       bypass: isTestMode(),
       microphoneChannels: getMicrophoneLayout().channels,
       firstChannel: getMicrophoneLayout().firstChannel,
@@ -379,7 +395,15 @@ export class AudioPipeline {
         console.error("[Audio] Capture processing failed", error);
         this.options.onError?.(error);
       },
-    })
+    });
+  }
+
+  private ensureCaptureGraph(): Promise<void> {
+    if (this.processor) return Promise.resolve();
+    if (this.processorInit) return this.processorInit;
+    const generation = ++this.processorSequence;
+    this.processorGeneration = generation;
+    const pending = this.createCaptureGraph(generation)
       .then((processor) => {
         if (generation !== this.processorGeneration || this.closed)
           processor.close();
@@ -397,7 +421,7 @@ export class AudioPipeline {
 
   private releaseCaptureGraph(): void {
     this.displaySource?.disconnect();
-    ++this.processorGeneration;
+    this.processorGeneration = ++this.processorSequence;
     this.processor?.close();
     this.processor = null;
     this.processorInit = null;
@@ -516,24 +540,54 @@ export class AudioPipeline {
       return;
     }
 
-    this.releaseCaptureGraph();
-    await this.ensureCaptureGraph();
+    const previousProcessor = this.processor;
+    const previousGeneration = this.processorGeneration;
+    const nextGeneration = ++this.processorSequence;
+    const displayGeneration = this.displayGeneration;
+    let nextProcessor: AudioCapture;
+    try {
+      nextProcessor = await this.createCaptureGraph(nextGeneration);
+    } catch (error) {
+      nextStream.getTracks().forEach((track) => track.stop());
+      throw error;
+    }
     if (
       !this.avState.current(generation) ||
       requestGeneration !== this.microphoneChangeGeneration ||
-      !this.processor
+      previousGeneration !== this.processorGeneration ||
+      displayGeneration !== this.displayGeneration ||
+      this.processor !== previousProcessor ||
+      !this.context
     ) {
+      nextProcessor.close();
       nextStream.getTracks().forEach((track) => track.stop());
       return;
     }
-    this.displaySource?.connect(this.processor.node, 0, 1);
-    const nextSource = this.context.createMediaStreamSource(nextStream);
-    nextSource.connect(this.processor.node);
+    let nextSource: MediaStreamAudioSourceNode | null = null;
+    let displayConnected = false;
+    try {
+      nextSource = this.context.createMediaStreamSource(nextStream);
+      nextSource.connect(nextProcessor.node);
+      this.displaySource?.connect(nextProcessor.node, 0, 1);
+      displayConnected = !!this.displaySource;
+      if (this.recording) nextProcessor.node.connect(this.recording, 1);
+    } catch (error) {
+      nextSource?.disconnect();
+      if (displayConnected)
+        this.displaySource?.disconnect(nextProcessor.node, 0, 1);
+      nextProcessor.close();
+      nextStream.getTracks().forEach((track) => track.stop());
+      throw error;
+    }
     const previousSource = this.source;
     const previousStream = this.stream;
+    this.processorGeneration = nextGeneration;
+    this.processor = nextProcessor;
     this.source = nextSource;
     this.stream = nextStream;
     previousSource?.disconnect();
+    this.displaySource?.disconnect(previousProcessor.node, 0, 1);
+    previousProcessor.close();
     previousStream.getTracks().forEach((track) => track.stop());
   }
   async setSpeakerDevice(deviceId: string): Promise<void> {
