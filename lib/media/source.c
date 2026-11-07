@@ -184,6 +184,7 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
     return ASCIICHAT_OK;
   }
 
+  ASCII_OTEL_ATTR_STRING("media.resolver", "ffmpeg");
   log_debug("URL extraction failed; trying the native decoder");
 
   // For complex sites, try FFmpeg as last resort
