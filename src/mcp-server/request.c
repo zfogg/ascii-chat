@@ -144,9 +144,9 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     yyjson_mut_obj_add_val(d, props, "options", options_schema(d, p));
     property(d, s, "timeout_ms", "integer", "Maximum job time, 1000–60000 ms; default 45000.");
     if (p->restricted && p->hosted) {
-      property(
-          d, s, "output_format", "string",
-          "Output format: png, jpg, gif, mp4, webm or mkv. Defaults to png for a single frame or mp4 for a timed or continuous render.");
+      property(d, s, "output_format", "string",
+               "Output format: png, jpg, gif, mp4, webm or mkv. Defaults to png for a single frame or mp4 for a timed "
+               "or continuous render.");
       const char *formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
       enum_strings(d, yyjson_mut_obj_get(props, "output_format"), formats);
     }
@@ -566,10 +566,10 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (format && (!p->restricted || !p->hosted))
     return SET_ERRNO(ERROR_INVALID_PARAM, "output_format is available only in HTTP server mode");
   if (p->restricted && p->hosted) {
-    const char *ext = format && yyjson_is_str(format)                       ? yyjson_get_str(format)
-                      : (yyjson_is_false(mcp_get(opts, "snapshot")) ||
-                         yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4"
-                                                                            : "png";
+    const char *ext =
+        format && yyjson_is_str(format) ? yyjson_get_str(format)
+        : (yyjson_is_false(mcp_get(opts, "snapshot")) || yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4"
+                                                                                                              : "png";
     static const char *const formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
     if ((format && !yyjson_is_str(format)) || !in_names(ext, formats))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output_format");
