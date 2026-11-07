@@ -369,14 +369,14 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
   uint8_t decrypted[256];
   size_t ciphertext_len, decrypted_len;
 
-  cr_assert_eq(crypto_handshake_encrypt_packet(&server_ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext,
-                                               sizeof(ciphertext), &ciphertext_len),
+  cr_assert_eq(crypto_encrypt(&server_ctx.crypto_ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext,
+                              sizeof(ciphertext), &ciphertext_len),
                0);
   cr_assert_gt(ciphertext_len, 0);
 
-  cr_assert_eq(crypto_handshake_decrypt_packet(&client_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted),
-                                               &decrypted_len),
-               0);
+  cr_assert_eq(
+      crypto_decrypt(&client_ctx.crypto_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len),
+      0);
   cr_assert_eq(decrypted_len, strlen(plaintext));
   cr_assert_eq(memcmp(decrypted, plaintext, strlen(plaintext)), 0);
 

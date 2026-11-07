@@ -3,6 +3,7 @@
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/security.h>
 #ifndef __EMSCRIPTEN__
 #include <ascii-chat/network/acip/quic.h>
 #endif
@@ -26,7 +27,10 @@ static bool is_quic(acip_transport_t *transport) {
 #endif
 }
 
-static asciichat_error_t finish_quic_security(acip_transport_t *transport, crypto_handshake_context_t *handshake) {
+static asciichat_error_t finish_transport_security(acip_transport_t *transport, crypto_handshake_context_t *handshake) {
+  asciichat_error_t activated = acip_security_activate(transport);
+  if (activated != ASCIICHAT_OK)
+    return activated;
 #ifdef __EMSCRIPTEN__
   (void)transport;
   (void)handshake;
@@ -207,7 +211,7 @@ asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_tra
   if (n->protocol == NETWORK_PROTOCOL_MEDIA) {
     asciichat_error_t result = media_receive(n, transport, type, payload, length);
     if (result == ASCIICHAT_OK && n->ready) {
-      result = finish_quic_security(transport, n->handshake);
+      result = finish_transport_security(transport, n->handshake);
       if (result != ASCIICHAT_OK)
         n->ready = false;
     }
@@ -254,7 +258,7 @@ asciichat_error_t network_negotiation_receive(network_negotiation_t *n, acip_tra
   if (n->ready)
     transport->crypto_ctx = &ctx->crypto_ctx;
   if (n->ready) {
-    result = finish_quic_security(transport, ctx);
+    result = finish_transport_security(transport, ctx);
     if (result != ASCIICHAT_OK)
       n->ready = false;
   }
@@ -418,6 +422,6 @@ asciichat_error_t network_client_negotiate(acip_transport_t *transport, crypto_h
                                                                     : client_negotiate(transport, ctx, mode);
   transport->receive_timeout_ns = timeout;
   if (result == ASCIICHAT_OK)
-    result = finish_quic_security(transport, ctx);
+    result = finish_transport_security(transport, ctx);
   return result;
 }

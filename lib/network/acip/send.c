@@ -17,6 +17,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/buffer.h>
@@ -47,8 +48,8 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                              const acip_send_options_t *options) {
+static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                            const acip_send_options_t *options) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport vectors");
   size_t total = 0;
@@ -86,6 +87,18 @@ static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const
   asciichat_error_t result = transport->methods->send(transport, packet, total);
   buffer_release(packet);
   return result;
+}
+
+static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
+                                              const acip_send_options_t *options) {
+  if (transport && transport->crypto_ctx && transport->crypto_ctx->handshake_complete &&
+      transport->crypto_ctx->encrypt_data && !atomic_load_bool(&transport->packet_security_active)) {
+    asciichat_error_t result = acip_security_activate(transport);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  asciichat_error_t result = acip_security_flush(transport);
+  return result == ASCIICHAT_OK ? backend_sendv_impl(transport, buffers, count, options) : result;
 }
 
 asciichat_error_t acip_transport_get_capabilities(acip_transport_t *transport, acip_transport_capabilities_t *out) {
@@ -144,19 +157,11 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
   ASCII_OTEL_SCOPE(PACKET_SEND_VIA_TRANSPORTV);
   if (!transport || !payload || !count || count >= SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet vectors");
-  size_t len = 0;
-  uint32_t crc = 0;
-  for (size_t i = 0; i < count; ++i) {
-    if ((payload[i].len && !payload[i].data) || payload[i].len > MAX_PACKET_SIZE - len)
-      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid packet payload size");
-    len += payload[i].len;
-    crc = asciichat_crc32_update(crc, payload[i].data, payload[i].len);
-  }
-  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                            .type = HOST_TO_NET_U16(type),
-                            .length = HOST_TO_NET_U32((uint32_t)len),
-                            .crc32 = HOST_TO_NET_U32(crc),
-                            .client_id = client_id};
+  packet_header_t header;
+  asciichat_error_t result = packet_header_build(&header, type, payload, count, client_id);
+  if (result != ASCIICHAT_OK)
+    return result;
+  size_t len = NET_TO_HOST_U32(header.length);
   socket_buffer_t slices[SOCKET_IOV_MAX] = {{&header, sizeof(header)}};
   memcpy(slices + 1, payload, count * sizeof(*payload));
   acip_send_options_t options = {.traffic_class = acip_packet_traffic_class(type), .delivery = ACIP_DELIVERY_RELIABLE};
@@ -174,7 +179,7 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
       options.deadline_ns = time_get_ns() + 100 * NS_PER_MS_INT;
     }
   }
-  asciichat_error_t result = acip_transport_sendv_ex(transport, slices, count + 1, &options);
+  result = acip_transport_sendv_ex(transport, slices, count + 1, &options);
   stats_runtime_packet(transport->stats_peer, type, len, true, result == ASCIICHAT_OK);
 #ifndef __EMSCRIPTEN__
   ASCII_OTEL_PACKET(type, len, "send", acip_transport_get_type(transport));
@@ -204,10 +209,13 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
   *payload_len = 0;
   *alloc_buffer = NULL;
 
+receive_again:;
   // Receive raw bytes via transport
   void *recv_buffer = NULL;
   size_t recv_len = 0;
   asciichat_error_t result = acip_transport_recv(transport, &recv_buffer, &recv_len, alloc_buffer);
+  if (result == ERROR_NETWORK_INCOMPLETE)
+    goto receive_again;
   if (result != ASCIICHAT_OK) {
     if (result != ERROR_NETWORK_TIMEOUT)
       stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
@@ -225,6 +233,31 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Received packet smaller than header");
   }
 
+  packet_header_t wire_header;
+  result = packet_validate(recv_buffer, recv_len, 0, &wire_header);
+  if (result != ASCIICHAT_OK) {
+    buffer_release(*alloc_buffer);
+    *alloc_buffer = NULL;
+    return result;
+  }
+  if (NET_TO_HOST_U16(wire_header.type) == PACKET_TYPE_ENCRYPTED) {
+    packet_envelope_t envelope = {.type = PACKET_TYPE_ENCRYPTED,
+                                  .data = (uint8_t *)recv_buffer + sizeof(wire_header),
+                                  .len = recv_len - sizeof(wire_header),
+                                  .allocated_buffer = *alloc_buffer,
+                                  .allocated_size = *alloc_buffer ? buffer_capacity(*alloc_buffer) : 0};
+    result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
+    *alloc_buffer = envelope.allocated_buffer;
+    if (result != ASCIICHAT_OK || envelope.consumed) {
+      buffer_release(*alloc_buffer);
+      *alloc_buffer = NULL;
+      if (result == ASCIICHAT_OK)
+        goto receive_again;
+      return result;
+    }
+    recv_buffer = envelope.allocated_buffer;
+    recv_len = sizeof(packet_header_t) + envelope.len;
+  }
   const packet_header_t *header = (const packet_header_t *)recv_buffer;
   *type = (packet_type_t)NET_TO_HOST_U16(header->type);
   size_t plen = NET_TO_HOST_U32(header->length);

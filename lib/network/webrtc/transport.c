@@ -248,8 +248,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
-    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ENCRYPTED &&
-        asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
+    if (packet_validate(msg.data, packet_len, 0, NULL) != ASCIICHAT_OK) {
       buffer_release(msg.data);
       mutex_unlock(&wrtc->queue_mutex);
       log_error("WebRTC packet checksum failed");
@@ -286,15 +285,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
         result = SET_ERRNO(ERROR_CRYPTO, "Unexpected encrypted WebRTC packet");
       else
         result = packet_decrypt_envelope(&envelope, crypto);
-      if (result == ASCIICHAT_OK) {
-        packet_header_t inner;
-        memcpy(&inner, envelope.allocated_buffer, sizeof(inner));
-        if (NET_TO_HOST_U64(inner.magic) != PACKET_MAGIC ||
-            asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner.crc32) ||
-            envelope.type == PACKET_TYPE_ENCRYPTED || packet_is_handshake_type(envelope.type))
-          result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid decrypted WebRTC packet");
-      }
-    } else if (crypto && crypto->encrypt_data && crypto_is_ready(crypto) && !packet_is_handshake_type(envelope.type)) {
+    } else if (crypto && crypto->encrypt_data && crypto_is_ready(crypto) &&
+               !packet_is_initial_handshake_type(envelope.type)) {
       result = SET_ERRNO(ERROR_CRYPTO, "Plaintext application packet on encrypted WebRTC connection");
     }
     if (result != ASCIICHAT_OK) {
@@ -303,6 +295,11 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
       log_error("WebRTC packet rejected: %s", asciichat_error_format(NULL, result));
       webrtc_abort(wrtc);
       return;
+    }
+    if (envelope.consumed) {
+      buffer_release(envelope.allocated_buffer);
+      offset += packet_len;
+      continue;
     }
     msg.data = envelope.allocated_buffer;
     msg.len = sizeof(packet_header_t) + envelope.len;

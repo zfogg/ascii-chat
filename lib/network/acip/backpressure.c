@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -12,7 +13,7 @@
 
 #define OUTBOUND_MAX_PACKETS 512
 #define OUTBOUND_MAX_STREAMS 64
-#define WIRE_OVERHEAD (sizeof(packet_header_t) + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE)
+#define WIRE_OVERHEAD (sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE)
 
 typedef struct outbound_packet {
   struct outbound_packet *next;
@@ -232,12 +233,21 @@ static void *outbound_worker(void *arg) {
   acip_outbound_t *out = arg;
   mutex_lock(&out->mutex);
   while (!out->stopping && !out->failed) {
+    // Rotation uses this same serialized writer for every transport. Never
+    // call the backend while holding the plaintext admission mutex.
+    mutex_unlock(&out->mutex);
+    asciichat_error_t security_result = acip_security_flush(out->transport);
+    mutex_lock(&out->mutex);
+    if (security_result != ASCIICHAT_OK) {
+      outbound_record_failure_and_fail_pending(out, security_result, NULL, NULL);
+      break;
+    }
     uint64_t now = time_get_ns();
     expire_video(out, now);
     expire_datagrams(out, now);
     outbound_packet_t *p = out->head;
     if (!p) {
-      cond_wait(&out->changed, &out->mutex);
+      cond_timedwait(&out->changed, &out->mutex, 100 * NS_PER_MS_INT);
       continue;
     }
     /* Admitted reliable traffic expires by closing the connection, never by
@@ -256,7 +266,13 @@ static void *outbound_worker(void *arg) {
     size_t backend = backend_bytes(out);
     // Keep scheduling decisions in the plaintext queue. Even tiny reliable
     // packets must not accumulate behind video in a backend's opaque FIFO.
-    if (backend != 0) {
+    acip_transport_capabilities_t capabilities = {0};
+    asciichat_error_t capability_result = acip_transport_get_capabilities(out->transport, &capabilities);
+    if (capability_result != ASCIICHAT_OK) {
+      outbound_record_failure_and_fail_pending(out, capability_result, NULL, NULL);
+      break;
+    }
+    if (backend != 0 && !capabilities.independent_streams) {
       cond_timedwait(&out->changed, &out->mutex, 2 * NS_PER_MS_INT);
       continue;
     }

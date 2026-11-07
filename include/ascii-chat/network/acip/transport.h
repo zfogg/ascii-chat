@@ -79,6 +79,7 @@
 #include <ascii-chat/network/acip/traffic.h>
 
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/atomic.h>
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../crypto/crypto.h"
@@ -243,7 +244,6 @@ typedef struct {
   /** Consume a peer request to restart an encoded stream with a keyframe. */
   bool (*consume_keyframe_request)(acip_transport_t *transport, uint16_t type, uint32_t stream_id);
   /** Schedule a key rotation on the transport crypto lane. */
-  asciichat_error_t (*request_rekey)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
 /**
@@ -257,6 +257,7 @@ struct acip_transport {
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
+  atomic_t packet_security_active;         ///< Publishes the stable post-handshake crypto owner.
   uint64_t receive_timeout_ns;  ///< Optional TCP receive timeout override; zero uses the normal polling timeout
   bool prefer_visual_datagrams; ///< Select negotiated visual datagrams when supported.
   bool prefer_audio_datagrams;  ///< Select negotiated datagrams for audio, otherwise reliable delivery.

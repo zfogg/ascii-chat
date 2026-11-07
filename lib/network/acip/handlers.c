@@ -156,10 +156,6 @@ static asciichat_error_t handle_client_pong(const void *payload, size_t payload_
                                             const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_clear_console(const void *payload, size_t payload_len,
                                                      const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_rekey_request(const void *payload, size_t payload_len,
-                                                            const acip_client_callbacks_t *callbacks);
-static asciichat_error_t handle_client_crypto_rekey_response(const void *payload, size_t payload_len,
-                                                             const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len,
                                                   const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len,
@@ -190,8 +186,8 @@ static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] 
     handle_client_ping,                      // 6
     handle_client_pong,                      // 7
     handle_client_clear_console,             // 8
-    handle_client_crypto_rekey_request,      // 9
-    handle_client_crypto_rekey_response,     // 10
+    NULL,                                    // 9
+    NULL,                                    // 10
     handle_client_webrtc_sdp,                // 11
     handle_client_webrtc_ice,                // 12
     handle_client_session_joined,            // 13
@@ -452,22 +448,6 @@ static asciichat_error_t handle_client_clear_console(const void *payload, size_t
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_client_crypto_rekey_request(const void *payload, size_t payload_len,
-                                                            const acip_client_callbacks_t *callbacks) {
-  if (callbacks->on_crypto_rekey_request) {
-    callbacks->on_crypto_rekey_request(payload, payload_len, callbacks->app_ctx);
-  }
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t handle_client_crypto_rekey_response(const void *payload, size_t payload_len,
-                                                             const acip_client_callbacks_t *callbacks) {
-  if (callbacks->on_crypto_rekey_response) {
-    callbacks->on_crypto_rekey_response(payload, payload_len, callbacks->app_ctx);
-  }
-  return ASCIICHAT_OK;
-}
-
 static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len,
                                                   const acip_client_callbacks_t *callbacks) {
   if (!callbacks->on_webrtc_sdp) {
@@ -629,12 +609,6 @@ static asciichat_error_t handle_server_pong(const void *payload, size_t payload_
                                             const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_error_message(const void *payload, size_t payload_len, void *client_ctx,
                                                      const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
-                                                            const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                             const acip_server_callbacks_t *callbacks);
-static asciichat_error_t handle_server_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
-                                                             const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len,
                                                                 void *client_ctx,
                                                                 const acip_server_callbacks_t *callbacks);
@@ -659,9 +633,9 @@ static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] 
     handle_server_stream_stop,              // 11
     handle_server_remote_log,               // 12
     handle_server_error_message,            // 13
-    handle_server_crypto_rekey_request,     // 14
-    handle_server_crypto_rekey_response,    // 15
-    handle_server_crypto_rekey_complete,    // 16
+    NULL,                                   // 14
+    NULL,                                   // 15
+    NULL,                                   // 16
     handle_server_crypto_key_exchange_resp, // 17
     handle_server_crypto_auth_response,     // 18
     handle_server_crypto_no_encryption,     // 19
@@ -1221,30 +1195,6 @@ static asciichat_error_t handle_server_error_message(const void *payload, size_t
   msg_buffer[copy_len] = '\0';
 
   callbacks->on_error(header, msg_buffer, client_ctx, callbacks->app_ctx);
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t handle_server_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
-                                                            const acip_server_callbacks_t *callbacks) {
-  if (callbacks->on_crypto_rekey_request) {
-    callbacks->on_crypto_rekey_request(payload, payload_len, client_ctx, callbacks->app_ctx);
-  }
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t handle_server_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                             const acip_server_callbacks_t *callbacks) {
-  if (callbacks->on_crypto_rekey_response) {
-    callbacks->on_crypto_rekey_response(payload, payload_len, client_ctx, callbacks->app_ctx);
-  }
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t handle_server_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
-                                                             const acip_server_callbacks_t *callbacks) {
-  if (callbacks->on_crypto_rekey_complete) {
-    callbacks->on_crypto_rekey_complete(payload, payload_len, client_ctx, callbacks->app_ctx);
-  }
   return ASCIICHAT_OK;
 }
 

@@ -285,7 +285,7 @@ static asciichat_error_t connection_packet(const void *data, size_t length, void
   ASCII_OTEL_ATTR_INT("acip.wire.packet.type", NET_TO_HOST_U16(header.type));
   ASCII_OTEL_ATTR_INT("acip.wire.packet.size", (int64_t)length);
   c->last_packet = time_get_ns();
-  if (result == ASCIICHAT_OK)
+  if (result == ASCIICHAT_OK && !envelope.consumed)
     result = c->callbacks.packet(c, envelope.type, envelope.data, envelope.len, c->callback_context);
   buffer_release(envelope.allocated_buffer);
   return result;

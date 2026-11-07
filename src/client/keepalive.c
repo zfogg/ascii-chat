@@ -149,15 +149,6 @@ static void *ping_thread_func(void *arg) {
       break;
     }
 
-    // Check if session rekeying should be triggered
-    if (crypto_client_should_rekey(connection)) {
-      log_debug("Rekey threshold reached, initiating session rekey");
-      if (crypto_client_initiate_rekey(connection) != ASCIICHAT_OK) {
-        log_error("Failed to initiate rekey");
-        // Don't break - continue with keepalive, rekey will be retried
-      }
-    }
-
     // Send ping packet every PING_INTERVAL_SECONDS to keep connection alive
     // Server timeout is 5 seconds, so 3-second pings provide safety margin
     if (threaded_send_ping_packet(connection) != ASCIICHAT_OK) {

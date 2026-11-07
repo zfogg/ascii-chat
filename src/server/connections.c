@@ -110,9 +110,6 @@ void server_send_video(client_info_t *client, acip_frame_workspace_t *workspace,
   mutex_lock(&client->send_mutex);
   acip_transport_t *transport = client->transport;
   if (transport && !atomic_load_bool(&client->shutting_down) && atomic_load_bool(&client->event_ready)) {
-    if (acip_transport_get_type(transport) != ACIP_TRANSPORT_QUIC && client->crypto_initialized &&
-        crypto_handshake_should_rekey(client->crypto_handshake_ctx))
-      crypto_handshake_rekey_request(client->crypto_handshake_ctx, transport);
     if (sources > 0 && atomic_load_u64(&client->last_sent_grid_sources) != (uint64_t)sources) {
       acip_send_clear_console(transport);
       atomic_store_u64(&client->last_sent_grid_sources, (uint64_t)sources);

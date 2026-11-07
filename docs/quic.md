@@ -328,74 +328,10 @@ must be serialized, and callers stop transport users before release. Public
 hostname resolution, wildcard destination selection, graceful close, production
 admission policy, and native client selection remain open.
 
-## ACIP encryption audit
+## ACIP packet security
 
-The current ACIP `crypto_encrypt` uses a random 16-byte sender prefix followed
-by a big-endian counter. Its counter, keys, rekey state, and accounting fields
-are mutable and have no internal lock, so an integrating transport must
-serialize access to a shared context, including rekey operations. The prefix
-and counter avoid reuse when used correctly; they do not by themselves prevent
-replay. `crypto_decrypt` authenticates the supplied nonce and ciphertext but
-does not remember received nonces or validate a sender prefix. Replaying the
-same valid encrypted ACIP packet can therefore succeed at this layer.
-
-QUIC packet protection rejects QUIC-level replay between its endpoints, but a
-QUIC terminator that forwards ACIP ciphertext is a different trust boundary.
-The current ACIP encryption must be retained where end-to-end policy requires
-it. The QUIC security codec supplies independent authenticated replay state so
-bulk media cannot displace a delayed reliable control packet from its replay
-window. Other application state transitions still need ordering barriers.
-
-The private security codec uses the `ACQ2` encrypted envelope. The outer ACIP
-ENCRYPTED payload begins with an eight-byte network-order key epoch, followed
-by the existing ACIP nonce and authenticated ciphertext. Its encrypted prefix
-is 24 bytes: `ACQ2`, sender direction, traffic class, delivery mode, one reserved
-zero byte, a network-order 64-bit sequence, and the same 64-bit epoch. The
-selector outside encryption is therefore checked against authenticated metadata.
-Reliable flows track their own monotonic receive sequence; media datagrams use
-separate 64-packet replay windows. Sequence and replay state span key changes.
-
-The codec can prepare a next epoch only after the owner completes an
-authenticated DH exchange. An authenticated next-epoch packet proves possession
-of that prepared key even when its media flow overtakes control confirmation.
-The codec retains one previous receive context so delayed packets in other
-flows can still authenticate. The owner retires the previous key separately for
-each flow after an in-order retirement marker; late old-epoch datagrams on that
-flow are then stale. A second transition is rejected until all three flows
-retire, bounding retained key material. Retired contexts and all codec-owned key
-copies are wiped. A direct uncoordinated mutation of the borrowed key epoch is
-still rejected.
-
-Native connections and browser WASM use the same private rekey coordinator after
-READY/ACK. The native endpoint lane owns all crypto mutation; the browser event
-loop owns each global or per-peer WASM context. A 250 ms timer also checks idle
-connections. Packet and time thresholds use the existing crypto configuration
-(default one million packets or one hour; explicit test environments use one
-thousand packets or thirty seconds).
-
-Only the server initiates the ephemeral DH exchange. A client reaching its
-threshold sends an encrypted, empty QUIC_REKEY_NEEDED (1113) control message.
-REKEY_REQUEST (1201) and REKEY_RESPONSE (1202) carry the existing 32-byte X25519
-public keys under the old epoch. The server commits the prepared key and sends
-REKEY_COMPLETE (1203), containing one zero byte, under the new epoch. The client
-can authenticate media using its prepared key before COMPLETE arrives.
-
-Each side queues QUIC_EPOCH_MARKER (1112) reliably on all three flows before
-later application packets. Its payload is the current epoch as a network-order
-64-bit integer. Markers retire old receive keys independently; only after all
-three retire does a side send QUIC_EPOCH_ACK (1114), with the same epoch payload,
-on control. Another exchange requires both local retirement and the peer ACK.
-Internal packets never reach application dispatch, and application callers cannot
-submit them as media or control.
-
-The coordinator preserves the minimum crypto and request intervals. It retains
-at most one authenticated incoming request until the receive-side interval
-expires, accommodating changed network delay without bypassing rate limiting.
-An exchange, including flow retirement, has a thirty-second timeout. Invalid
-roles, epochs, messages, output queue failures, and timeouts fail the connection.
-The browser bounds internal output to sixteen sealed reliable packets, drains
-it before later application sends, and cancels its timer before crypto cleanup.
-Cleanup aborts pending DH and wipes retained keys.
+QUIC uses the shared [authenticated records and rotation](crypto-records.md)
+implementation used by the other ascii-chat transports.
 
 The private connection engine can enable it after TLS and a caller-confirmed ACIP handshake.
 It accepts only initial handshake and error control packets before that point,

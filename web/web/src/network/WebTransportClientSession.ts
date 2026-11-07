@@ -1,4 +1,4 @@
-import { getQuicEpoch } from "../wasm/client";
+import { getSecurityEpoch } from "../wasm/client";
 import { serializeClientInitialization } from "./ClientInitialization";
 import { OutboundQueue } from "./OutboundQueue";
 import type { ClientSession } from "./Transport";
@@ -232,7 +232,7 @@ export class WebTransportClientSession implements ClientSession {
     );
   }
   getCryptoEpoch(): number {
-    return this.peerCrypto ? this.peerCrypto.quicEpoch : getQuicEpoch();
+    return this.peerCrypto ? this.peerCrypto.quicEpoch : getSecurityEpoch();
   }
 
   getUploadFeedback() {

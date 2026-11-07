@@ -4423,8 +4423,8 @@ async function ClientModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1908574: () => Module.getRandomValue(),
-    1908610: () => {
+    1907694: () => Module.getRandomValue(),
+    1907730: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -4790,15 +4790,6 @@ async function ClientModule(moduleArg = {}) {
   Module["_client_decrypt_packet"] = makeInvalidEarlyAccess(
     "_client_decrypt_packet",
   );
-  Module["_client_quic_security_init"] = makeInvalidEarlyAccess(
-    "_client_quic_security_init",
-  );
-  Module["_client_quic_security_seal"] = makeInvalidEarlyAccess(
-    "_client_quic_security_seal",
-  );
-  Module["_client_quic_security_open"] = makeInvalidEarlyAccess(
-    "_client_quic_security_open",
-  );
   Module["_client_parse_packet"] = makeInvalidEarlyAccess(
     "_client_parse_packet",
   );
@@ -4847,8 +4838,8 @@ async function ClientModule(moduleArg = {}) {
   Module["_client_decode_frame_data"] = makeInvalidEarlyAccess(
     "_client_decode_frame_data",
   );
-  Module["_client_quic_context"] = makeInvalidEarlyAccess(
-    "_client_quic_context",
+  Module["_client_security_context"] = makeInvalidEarlyAccess(
+    "_client_security_context",
   );
   Module["_peer_crypto_error"] = makeInvalidEarlyAccess("_peer_crypto_error");
   Module["_peer_crypto_output_pop"] = makeInvalidEarlyAccess(
@@ -4875,16 +4866,13 @@ async function ClientModule(moduleArg = {}) {
   Module["_peer_crypto_receive"] = makeInvalidEarlyAccess(
     "_peer_crypto_receive",
   );
-  Module["_peer_crypto_quic_init"] = makeInvalidEarlyAccess(
-    "_peer_crypto_quic_init",
+  Module["_peer_security_context"] = makeInvalidEarlyAccess(
+    "_peer_security_context",
   );
-  Module["_peer_crypto_quic_packet"] = makeInvalidEarlyAccess(
-    "_peer_crypto_quic_packet",
-  );
+  Module["_peer_crypto_tick"] = makeInvalidEarlyAccess("_peer_crypto_tick");
   Module["_peer_crypto_quic_begin"] = makeInvalidEarlyAccess(
     "_peer_crypto_quic_begin",
   );
-  Module["_peer_quic_context"] = makeInvalidEarlyAccess("_peer_quic_context");
   Module["_browser_host_destroy"] = makeInvalidEarlyAccess(
     "_browser_host_destroy",
   );
@@ -4936,11 +4924,21 @@ async function ClientModule(moduleArg = {}) {
   Module["_network_error_action"] = makeInvalidEarlyAccess(
     "_network_error_action",
   );
-  Module["_browser_quic_tick"] = makeInvalidEarlyAccess("_browser_quic_tick");
-  Module["_browser_quic_output"] = makeInvalidEarlyAccess(
-    "_browser_quic_output",
+  Module["_browser_security_init"] = makeInvalidEarlyAccess(
+    "_browser_security_init",
   );
-  Module["_browser_quic_epoch"] = makeInvalidEarlyAccess("_browser_quic_epoch");
+  Module["_browser_security_packet"] = makeInvalidEarlyAccess(
+    "_browser_security_packet",
+  );
+  Module["_browser_security_tick"] = makeInvalidEarlyAccess(
+    "_browser_security_tick",
+  );
+  Module["_browser_security_output"] = makeInvalidEarlyAccess(
+    "_browser_security_output",
+  );
+  Module["_browser_security_epoch"] = makeInvalidEarlyAccess(
+    "_browser_security_epoch",
+  );
   Module["_face_web_reset"] = makeInvalidEarlyAccess("_face_web_reset");
   Module["_face_web_input"] = makeInvalidEarlyAccess("_face_web_input");
   Module["_face_web_detect"] = makeInvalidEarlyAccess("_face_web_detect");
@@ -5494,18 +5492,6 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: client_decrypt_packet",
     );
     assert(
-      typeof wasmExports["client_quic_security_init"] !== "undefined",
-      "missing Wasm export: client_quic_security_init",
-    );
-    assert(
-      typeof wasmExports["client_quic_security_seal"] !== "undefined",
-      "missing Wasm export: client_quic_security_seal",
-    );
-    assert(
-      typeof wasmExports["client_quic_security_open"] !== "undefined",
-      "missing Wasm export: client_quic_security_open",
-    );
-    assert(
       typeof wasmExports["client_parse_packet"] !== "undefined",
       "missing Wasm export: client_parse_packet",
     );
@@ -5578,8 +5564,8 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: client_decode_frame_data",
     );
     assert(
-      typeof wasmExports["client_quic_context"] !== "undefined",
-      "missing Wasm export: client_quic_context",
+      typeof wasmExports["client_security_context"] !== "undefined",
+      "missing Wasm export: client_security_context",
     );
     assert(
       typeof wasmExports["peer_crypto_error"] !== "undefined",
@@ -5626,20 +5612,16 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: peer_crypto_receive",
     );
     assert(
-      typeof wasmExports["peer_crypto_quic_init"] !== "undefined",
-      "missing Wasm export: peer_crypto_quic_init",
+      typeof wasmExports["peer_security_context"] !== "undefined",
+      "missing Wasm export: peer_security_context",
     );
     assert(
-      typeof wasmExports["peer_crypto_quic_packet"] !== "undefined",
-      "missing Wasm export: peer_crypto_quic_packet",
+      typeof wasmExports["peer_crypto_tick"] !== "undefined",
+      "missing Wasm export: peer_crypto_tick",
     );
     assert(
       typeof wasmExports["peer_crypto_quic_begin"] !== "undefined",
       "missing Wasm export: peer_crypto_quic_begin",
-    );
-    assert(
-      typeof wasmExports["peer_quic_context"] !== "undefined",
-      "missing Wasm export: peer_quic_context",
     );
     assert(
       typeof wasmExports["browser_host_destroy"] !== "undefined",
@@ -5710,16 +5692,24 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: network_error_action",
     );
     assert(
-      typeof wasmExports["browser_quic_tick"] !== "undefined",
-      "missing Wasm export: browser_quic_tick",
+      typeof wasmExports["browser_security_init"] !== "undefined",
+      "missing Wasm export: browser_security_init",
     );
     assert(
-      typeof wasmExports["browser_quic_output"] !== "undefined",
-      "missing Wasm export: browser_quic_output",
+      typeof wasmExports["browser_security_packet"] !== "undefined",
+      "missing Wasm export: browser_security_packet",
     );
     assert(
-      typeof wasmExports["browser_quic_epoch"] !== "undefined",
-      "missing Wasm export: browser_quic_epoch",
+      typeof wasmExports["browser_security_tick"] !== "undefined",
+      "missing Wasm export: browser_security_tick",
+    );
+    assert(
+      typeof wasmExports["browser_security_output"] !== "undefined",
+      "missing Wasm export: browser_security_output",
+    );
+    assert(
+      typeof wasmExports["browser_security_epoch"] !== "undefined",
+      "missing Wasm export: browser_security_epoch",
     );
     assert(
       typeof wasmExports["face_web_reset"] !== "undefined",
@@ -6415,21 +6405,6 @@ async function ClientModule(moduleArg = {}) {
       wasmExports["client_decrypt_packet"],
       5,
     );
-    Module["_client_quic_security_init"] = createExportWrapper(
-      "client_quic_security_init",
-      wasmExports["client_quic_security_init"],
-      0,
-    );
-    Module["_client_quic_security_seal"] = createExportWrapper(
-      "client_quic_security_seal",
-      wasmExports["client_quic_security_seal"],
-      7,
-    );
-    Module["_client_quic_security_open"] = createExportWrapper(
-      "client_quic_security_open",
-      wasmExports["client_quic_security_open"],
-      8,
-    );
     Module["_client_parse_packet"] = createExportWrapper(
       "client_parse_packet",
       wasmExports["client_parse_packet"],
@@ -6520,9 +6495,9 @@ async function ClientModule(moduleArg = {}) {
       wasmExports["client_decode_frame_data"],
       4,
     );
-    Module["_client_quic_context"] = createExportWrapper(
-      "client_quic_context",
-      wasmExports["client_quic_context"],
+    Module["_client_security_context"] = createExportWrapper(
+      "client_security_context",
+      wasmExports["client_security_context"],
       0,
     );
     Module["_peer_crypto_error"] = createExportWrapper(
@@ -6580,24 +6555,19 @@ async function ClientModule(moduleArg = {}) {
       wasmExports["peer_crypto_receive"],
       3,
     );
-    Module["_peer_crypto_quic_init"] = createExportWrapper(
-      "peer_crypto_quic_init",
-      wasmExports["peer_crypto_quic_init"],
+    Module["_peer_security_context"] = createExportWrapper(
+      "peer_security_context",
+      wasmExports["peer_security_context"],
       1,
     );
-    Module["_peer_crypto_quic_packet"] = createExportWrapper(
-      "peer_crypto_quic_packet",
-      wasmExports["peer_crypto_quic_packet"],
-      10,
+    Module["_peer_crypto_tick"] = createExportWrapper(
+      "peer_crypto_tick",
+      wasmExports["peer_crypto_tick"],
+      1,
     );
     Module["_peer_crypto_quic_begin"] = createExportWrapper(
       "peer_crypto_quic_begin",
       wasmExports["peer_crypto_quic_begin"],
-      1,
-    );
-    Module["_peer_quic_context"] = createExportWrapper(
-      "peer_quic_context",
-      wasmExports["peer_quic_context"],
       1,
     );
     Module["_browser_host_destroy"] = createExportWrapper(
@@ -6685,19 +6655,29 @@ async function ClientModule(moduleArg = {}) {
       wasmExports["network_error_action"],
       1,
     );
-    Module["_browser_quic_tick"] = createExportWrapper(
-      "browser_quic_tick",
-      wasmExports["browser_quic_tick"],
+    Module["_browser_security_init"] = createExportWrapper(
+      "browser_security_init",
+      wasmExports["browser_security_init"],
       1,
     );
-    Module["_browser_quic_output"] = createExportWrapper(
-      "browser_quic_output",
-      wasmExports["browser_quic_output"],
+    Module["_browser_security_packet"] = createExportWrapper(
+      "browser_security_packet",
+      wasmExports["browser_security_packet"],
+      10,
+    );
+    Module["_browser_security_tick"] = createExportWrapper(
+      "browser_security_tick",
+      wasmExports["browser_security_tick"],
+      1,
+    );
+    Module["_browser_security_output"] = createExportWrapper(
+      "browser_security_output",
+      wasmExports["browser_security_output"],
       5,
     );
-    Module["_browser_quic_epoch"] = createExportWrapper(
-      "browser_quic_epoch",
-      wasmExports["browser_quic_epoch"],
+    Module["_browser_security_epoch"] = createExportWrapper(
+      "browser_security_epoch",
+      wasmExports["browser_security_epoch"],
       1,
     );
     Module["_face_web_reset"] = createExportWrapper(

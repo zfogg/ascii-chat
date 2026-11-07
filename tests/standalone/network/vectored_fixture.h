@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/network/acip/security.h>
 
 #ifndef CHECK_WORKER
 #define CHECK_WORKER CHECK
@@ -51,6 +52,7 @@ static inline void crypto_pair(crypto_context_t *a, crypto_context_t *b) {
   CHECK(crypto_init(b) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(a, b->public_key) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(b, a->public_key) == CRYPTO_OK);
+  a->handshake_complete = b->handshake_complete = true;
 }
 
 // These cases exercise complete packet writes and encryption, independent of
@@ -105,25 +107,18 @@ static inline asciichat_error_t assembled_send(socket_t sock, crypto_context_t *
     socket_buffer_t slice = {data, len};
     return socket_sendv_all(sock, &slice, 1, BUDGET);
   }
-  size_t capacity = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  uint8_t *ciphertext = buffer_alloc(NULL, capacity);
-  CHECK(ciphertext);
-  size_t encrypted_len = 0;
-  CHECK(crypto_encrypt(crypto, data, len, ciphertext, capacity, &encrypted_len) == CRYPTO_OK);
-  packet_header_t outer = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                           .type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED),
-                           .length = HOST_TO_NET_U32((uint32_t)encrypted_len),
-                           .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, encrypted_len)),
-                           .client_id = 0};
-  size_t wire_size = sizeof(outer) + encrypted_len;
-  uint8_t *wire = buffer_alloc(NULL, wire_size);
-  CHECK(wire);
-  memcpy(wire, &outer, sizeof(outer));
-  memcpy(wire + sizeof(outer), ciphertext, encrypted_len);
-  socket_buffer_t slice = {wire, wire_size};
-  asciichat_error_t result = socket_sendv_all(sock, &slice, 1, BUDGET);
+  uint8_t *wire = NULL;
+  size_t wire_size = 0;
+  packet_header_t header;
+  CHECK(len >= sizeof(header));
+  memcpy(&header, data, sizeof(header));
+  asciichat_error_t result = acip_security_seal(crypto, acip_packet_traffic_class(NET_TO_HOST_U16(header.type)),
+                                                ACIP_DELIVERY_RELIABLE, data, len, &wire, &wire_size);
+  if (result == ASCIICHAT_OK) {
+    socket_buffer_t slice = {wire, wire_size};
+    result = socket_sendv_all(sock, &slice, 1, BUDGET);
+  }
   buffer_release(wire);
-  buffer_release(ciphertext);
   return result;
 }
 

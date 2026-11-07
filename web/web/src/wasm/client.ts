@@ -85,19 +85,7 @@ interface ClientModuleExports {
   _peer_crypto_destroy(peer: number): void;
   _peer_crypto_ready(peer: number): number;
   _peer_crypto_quic_begin(peer: number): number;
-  _peer_crypto_quic_init(peer: number): number;
-  _peer_crypto_quic_packet(
-    peer: number,
-    seal: number,
-    flow: number,
-    delivery: number,
-    input: number,
-    size: number,
-    output: number,
-    capacity: number,
-    length: number,
-    sequence: number,
-  ): number;
+  _peer_crypto_tick(peer: number): number;
   _peer_crypto_error(): number;
   _peer_crypto_send(peer: number, data: number, length: number): number;
   _peer_crypto_receive(peer: number, data: number, length: number): number;
@@ -154,28 +142,21 @@ interface ClientModuleExports {
     pt_size: number,
     out_len_ptr: number,
   ): number;
-  _client_quic_context(): number;
-  _peer_quic_context(peer: number): number;
-  _browser_quic_tick(context: number): number;
-  _browser_quic_epoch(context: number): number;
-  _browser_quic_output(
+  _client_security_context(): number;
+  _peer_security_context(peer: number): number;
+  _browser_security_tick(context: number): number;
+  _browser_security_epoch(context: number): number;
+  _browser_security_output(
     context: number,
     output: number,
     capacity: number,
     length: number,
     flow: number,
   ): number;
-  _client_quic_security_init(): number;
-  _client_quic_security_seal(
-    flow: number,
-    delivery: number,
-    input: number,
-    inputLength: number,
-    output: number,
-    capacity: number,
-    length: number,
-  ): number;
-  _client_quic_security_open(
+  _browser_security_init(context: number): number;
+  _browser_security_packet(
+    context: number,
+    seal: number,
     flow: number,
     delivery: number,
     input: number,
@@ -286,14 +267,13 @@ interface ClientModule extends ClientModuleExports, RuntimeOptionsModule {
   _client_handle_handshake_complete: ClientModuleExports["_client_handle_handshake_complete"];
   _client_encrypt_packet: ClientModuleExports["_client_encrypt_packet"];
   _client_decrypt_packet: ClientModuleExports["_client_decrypt_packet"];
-  _client_quic_context: ClientModuleExports["_client_quic_context"];
-  _peer_quic_context: ClientModuleExports["_peer_quic_context"];
-  _browser_quic_epoch: ClientModuleExports["_browser_quic_epoch"];
-  _browser_quic_tick: ClientModuleExports["_browser_quic_tick"];
-  _browser_quic_output: ClientModuleExports["_browser_quic_output"];
-  _client_quic_security_init: ClientModuleExports["_client_quic_security_init"];
-  _client_quic_security_seal: ClientModuleExports["_client_quic_security_seal"];
-  _client_quic_security_open: ClientModuleExports["_client_quic_security_open"];
+  _client_security_context: ClientModuleExports["_client_security_context"];
+  _peer_security_context: ClientModuleExports["_peer_security_context"];
+  _browser_security_epoch: ClientModuleExports["_browser_security_epoch"];
+  _browser_security_tick: ClientModuleExports["_browser_security_tick"];
+  _browser_security_output: ClientModuleExports["_browser_security_output"];
+  _browser_security_init: ClientModuleExports["_browser_security_init"];
+  _browser_security_packet: ClientModuleExports["_browser_security_packet"];
   _client_parse_packet: ClientModuleExports["_client_parse_packet"];
   _client_serialize_packet: ClientModuleExports["_client_serialize_packet"];
   _client_send_video_frame: ClientModuleExports["_client_send_video_frame"];
@@ -1087,7 +1067,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
 
   // Allocate buffers
   const ptPtr = wasmModule._malloc(plaintext.length);
-  const ctPtr = wasmModule._malloc(plaintext.length + 48); // Room for AEAD overhead (24-byte nonce + 16-byte MAC + padding)
+  const ctPtr = wasmModule._malloc(plaintext.length + 72); // Authenticated record metadata, nonce, and MAC.
   const outLenPtr = wasmModule._malloc(4); // 32-bit size_t
 
   if (!ptPtr || !ctPtr || !outLenPtr) {
@@ -1107,7 +1087,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
       ptPtr,
       plaintext.length,
       ctPtr,
-      plaintext.length + 48,
+      plaintext.length + 72,
       outLenPtr,
     );
 
@@ -1184,30 +1164,32 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
 }
 
 /** Initialize per-connection QUIC security after the authenticated handshake. */
-export function initQuicSecurity(): void {
+export function initPacketSecurity(): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule._client_quic_security_init();
+  const result = wasmModule._browser_security_init(
+    wasmModule._client_security_context(),
+  );
   if (result !== 0)
     throwWasmError(result, "QUIC security initialization failed");
 }
 
-export function getQuicEpoch(peer = 0): number {
+export function getSecurityEpoch(peer = 0): number {
   if (!wasmModule) return -1;
   const context = peer
-    ? wasmModule._peer_quic_context(peer)
-    : wasmModule._client_quic_context();
-  return wasmModule._browser_quic_epoch(context);
+    ? wasmModule._peer_security_context(peer)
+    : wasmModule._client_security_context();
+  return wasmModule._browser_security_epoch(context);
 }
 
 /** Runs the shared C rekey coordinator and drains its bounded reliable output. */
-export function tickQuicSecurity(
+export function tickPacketSecurity(
   peer = 0,
 ): { flow: 0 | 1 | 2; packet: Uint8Array }[] {
   if (!wasmModule) throw new Error("WASM module not initialized");
   const context = peer
-    ? wasmModule._peer_quic_context(peer)
-    : wasmModule._client_quic_context();
-  const result = wasmModule._browser_quic_tick(context);
+    ? wasmModule._peer_security_context(peer)
+    : wasmModule._client_security_context();
+  const result = wasmModule._browser_security_tick(context);
   if (result) throwWasmError(result, "QUIC rekey failed");
   const output = wasmModule._malloc(256);
   const length = wasmModule._malloc(4);
@@ -1217,7 +1199,7 @@ export function tickQuicSecurity(
       throw new Error("Cannot allocate QUIC rekey output");
     const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
     for (let i = 0; i <= 16; ++i) {
-      const status = wasmModule._browser_quic_output(
+      const status = wasmModule._browser_security_output(
         context,
         output,
         256,
@@ -1244,7 +1226,7 @@ export function tickQuicSecurity(
 }
 
 /** Authenticate a complete packet and its QUIC flow and delivery metadata. */
-export function processQuicPacket(
+export function processSecurePacket(
   operation: "seal" | "open",
   flow: 0 | 1 | 2,
   delivery: 0 | 1,
@@ -1267,39 +1249,21 @@ export function processQuicPacket(
   }
   try {
     wasmModule.HEAPU8.set(packet, input);
-    const result = peer
-      ? wasmModule._peer_crypto_quic_packet(
-          peer,
-          operation === "seal" ? 1 : 0,
-          flow,
-          delivery,
-          input,
-          packet.length,
-          output,
-          capacity,
-          length,
-          sequence,
-        )
-      : operation === "seal"
-        ? wasmModule._client_quic_security_seal(
-            flow,
-            delivery,
-            input,
-            packet.length,
-            output,
-            capacity,
-            length,
-          )
-        : wasmModule._client_quic_security_open(
-            flow,
-            delivery,
-            input,
-            packet.length,
-            output,
-            capacity,
-            length,
-            sequence,
-          );
+    const context = peer
+      ? wasmModule._peer_security_context(peer)
+      : wasmModule._client_security_context();
+    const result = wasmModule._browser_security_packet(
+      context,
+      operation === "seal" ? 1 : 0,
+      flow,
+      delivery,
+      input,
+      packet.length,
+      output,
+      capacity,
+      length,
+      sequence,
+    );
     if (result !== 0) {
       if (quietFailure && operation === "open" && delivery === 1)
         throw new Error(`QUIC packet ${operation} failed (${result})`);
@@ -1675,6 +1639,8 @@ export function resolveCryptoPolicy(
 
 /** Separate ACIP context for one media peer; signaling retains its own context. */
 export class PeerCryptoSession {
+  private securityTimer: ReturnType<typeof setInterval> | null = null;
+  private independentChannels = false;
   private constructor(
     private handle: number,
     private send: (packet: Uint8Array) => void,
@@ -1709,23 +1675,26 @@ export class PeerCryptoSession {
 
   beginQuic(): void {
     if (!this.handle) throw new Error("Peer crypto session is closed");
+    this.independentChannels = true;
     const result = wasmModule!._peer_crypto_quic_begin(this.handle);
     if (result) throwWasmError(result, "Cannot start peer QUIC handshake");
   }
 
   initQuic(): void {
     if (!this.handle) throw new Error("Peer crypto session is closed");
-    const result = wasmModule!._peer_crypto_quic_init(this.handle);
+    const result = wasmModule!._browser_security_init(
+      wasmModule!._peer_security_context(this.handle),
+    );
     if (result) throwWasmError(result, "Peer QUIC initialization failed");
   }
 
   get quicEpoch() {
-    return this.handle ? getQuicEpoch(this.handle) : -1;
+    return this.handle ? getSecurityEpoch(this.handle) : -1;
   }
 
   tickQuic() {
     if (!this.handle) throw new Error("Peer crypto session is closed");
-    return tickQuicSecurity(this.handle);
+    return tickPacketSecurity(this.handle);
   }
 
   quicPacket(
@@ -1735,7 +1704,7 @@ export class PeerCryptoSession {
     packet: Uint8Array,
   ) {
     if (!this.handle) throw new Error("Peer crypto session is closed");
-    return processQuicPacket(
+    return processSecurePacket(
       operation,
       flow,
       delivery,
@@ -1750,6 +1719,24 @@ export class PeerCryptoSession {
   }
 
   flush(): void {
+    if (this.ready && !this.independentChannels && !this.securityTimer) {
+      this.securityTimer = setInterval(() => {
+        try {
+          this.flush();
+        } catch (error) {
+          this.close();
+          publishBrowserError({
+            source: "C/WASM",
+            title: "Peer security failed",
+            frames: [{ message: String(error) }],
+          });
+        }
+      }, 100);
+    }
+    if (this.handle) {
+      const result = wasmModule!._peer_crypto_tick(this.handle);
+      if (result) throwWasmError(result, "Peer rekey failed");
+    }
     while (this.handle) {
       const pointer = wasmModule!._peer_crypto_output_data(this.handle);
       if (!pointer) break;
@@ -1794,6 +1781,8 @@ export class PeerCryptoSession {
   }
 
   close(): void {
+    if (this.securityTimer) clearInterval(this.securityTimer);
+    this.securityTimer = null;
     if (this.handle) wasmModule!._peer_crypto_destroy(this.handle);
     this.handle = 0;
   }

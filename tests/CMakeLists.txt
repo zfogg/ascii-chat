@@ -1734,16 +1734,16 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(signaling test-signaling)
     set_property(TEST signaling APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-rekey contracts/crypto/client_rekey_test.c)
-    asciichat_configure_contract(test-client-rekey)
-    target_link_libraries(test-client-rekey PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
-    target_include_directories(test-client-rekey PRIVATE ${CMAKE_SOURCE_DIR}/src
+    add_executable(test-client-crypto contracts/crypto/client_crypto_test.c)
+    asciichat_configure_contract(test-client-crypto)
+    target_link_libraries(test-client-crypto PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-client-crypto PRIVATE ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
-    apply_sanitizers_to_target(test-client-rekey)
-    set_target_properties(test-client-rekey PROPERTIES LINKER_LANGUAGE CXX
+    apply_sanitizers_to_target(test-client-crypto)
+    set_target_properties(test-client-crypto PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    asciichat_add_contract_test(client-rekey test-client-rekey)
-    set_property(TEST client-rekey APPEND PROPERTY LABELS unit)
+    asciichat_add_contract_test(client-crypto test-client-crypto)
+    set_property(TEST client-crypto APPEND PROPERTY LABELS unit)
 
     add_executable(test-server-stream contracts/network/server_stream_test.c
         ${CMAKE_SOURCE_DIR}/src/server/stream.c)

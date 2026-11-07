@@ -906,6 +906,7 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
   // Handle no-auth flow: server sends HANDSHAKE_COMPLETE directly
   if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
     ctx->state = CRYPTO_HANDSHAKE_READY;
+    ctx->crypto_ctx.handshake_complete = true;
     log_info("Handshake complete (no authentication required)");
     return ASCIICHAT_OK;
   }

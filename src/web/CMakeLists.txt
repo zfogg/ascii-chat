@@ -240,6 +240,9 @@ set(LIB_SRC_COMMON
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
+    ${LIB_ROOT}/crypto/record.c
+    ${LIB_ROOT}/crypto/rekey.c
+    ${LIB_ROOT}/crypto/session.c
     ${LIB_ROOT}/crypto/policy.c
 
     # Video processing (needed by logging and config systems)
@@ -386,9 +389,7 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/acip/traffic.c
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
-    ${LIB_ROOT}/network/quic/security.c
-    ${LIB_ROOT}/network/quic/rekey.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/quic_security.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/security.c
 )
 
 # Common WASM abstraction layer (shared between mirror and client)
@@ -408,7 +409,6 @@ add_library(wasm-common OBJECT
     ${TOML_SRC}
     ${GENERATED_FONT_SRC}
 )
-
 
 # Ensure font generation happens before compiling wasm-common
 if(TARGET generate_fonts)
@@ -650,9 +650,8 @@ set(EXPORTED_FUNCTIONS_CLIENT
     "_client_decode_frame_data"
     _wasm_capture_transform_required _wasm_capture_transform_rgba
     _client_settings_receive _client_settings_values
-    _peer_crypto_quic_begin
-    _peer_crypto_quic_init
-    _peer_crypto_quic_packet
+    _browser_security_init _browser_security_packet _browser_security_tick _browser_security_output _browser_security_epoch _client_security_context _peer_security_context _peer_crypto_tick _peer_crypto_quic_begin
+
     _peer_crypto_error
     _peer_crypto_create
     _peer_crypto_destroy
@@ -671,8 +670,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _browser_host_set_local_client _browser_host_render_audio
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
     _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
-    _client_quic_security_init _client_quic_security_seal _client_quic_security_open
-    _client_quic_context _peer_quic_context _browser_quic_tick _browser_quic_output _browser_quic_epoch
+
     _client_acds_handshake_begin _client_acds_handshake_receive
     _client_configure_crypto_options
     _client_parse_ssh_private_key
@@ -809,7 +807,6 @@ if(BUILD_WEB)
         COMMENT "All WASM modules built"
     )
 endif()
-
 
 # Enable SIMD at compilation, not only linking, for the pixel compositor.
 set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"

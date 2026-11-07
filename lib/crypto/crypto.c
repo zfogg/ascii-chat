@@ -10,6 +10,7 @@
 
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/session.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -160,7 +161,7 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
-  return CRYPTO_OK;
+  return crypto_session_create(ctx) == ASCIICHAT_OK ? CRYPTO_OK : CRYPTO_ERROR_MEMORY;
 }
 
 crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *password) {
@@ -197,6 +198,8 @@ void crypto_destroy(crypto_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
     return;
   }
+
+  crypto_session_destroy(ctx);
 
   // Securely wipe sensitive data
   secure_memzero(ctx->private_key, sizeof(ctx->private_key));

@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
@@ -29,6 +30,61 @@
 #include <string.h>
 
 // Network timeout constants are defined in packet_types.h
+
+asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
+                                      size_t count, uint32_t client_id) {
+  if (!header || (!payload && count) || count > SOCKET_IOV_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet header arguments");
+  size_t length = 0;
+  uint32_t crc = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if ((!payload[i].data && payload[i].len) || payload[i].len > MAX_PACKET_SIZE - length)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid packet payload size");
+    length += payload[i].len;
+    crc = asciichat_crc32_update(crc, payload[i].data, payload[i].len);
+  }
+  *header = (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                              .type = HOST_TO_NET_U16(type),
+                              .length = HOST_TO_NET_U32((uint32_t)length),
+                              .crc32 = HOST_TO_NET_U32(crc),
+                              .client_id = HOST_TO_NET_U32(client_id)};
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id,
+                                void *output, size_t capacity, size_t *written) {
+  if (!output || !written)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet output");
+  *written = 0;
+  if (capacity < sizeof(packet_header_t) || length > capacity - sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet output is too small");
+  socket_buffer_t slice = {payload, length};
+  packet_header_t header;
+  asciichat_error_t result = packet_header_build(&header, type, &slice, 1, client_id);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (length)
+    memmove((uint8_t *)output + sizeof(header), payload, length);
+  memcpy(output, &header, sizeof(header));
+  *written = sizeof(header) + length;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_validate(const void *packet, size_t length, size_t limit, packet_header_t *output) {
+  if (!packet || length < sizeof(packet_header_t))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incomplete packet header");
+  packet_header_t header;
+  memcpy(&header, packet, sizeof(header));
+  size_t payload = length - sizeof(header);
+  if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload ||
+      payload > (limit ? limit : MAX_PACKET_SIZE))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet framing or size");
+  if (asciichat_crc32((const uint8_t *)packet + sizeof(header), payload) != NET_TO_HOST_U32(header.crc32))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Packet CRC mismatch");
+  if (output)
+    *output = header;
+  return ASCIICHAT_OK;
+}
 
 /* ============================================================================
  * Packet Protocol Implementation
@@ -423,6 +479,8 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  */
 asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len,
                                      crypto_context_t *crypto_ctx) {
+  if (sockfd == INVALID_SOCKET_VALUE)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet socket");
   if (len > MAX_PACKET_SIZE) {
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
@@ -432,7 +490,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   }
 
   // Handshake packets are ALWAYS sent unencrypted
-  if (packet_is_handshake_type(type)) {
+  if (packet_is_initial_handshake_type(type)) {
     return packet_send(sockfd, type, data, len);
   }
 
@@ -479,78 +537,31 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
     return result;
   }
 
-  // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
-  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                            .type = HOST_TO_NET_U16((uint16_t)type),
-                            .length = HOST_TO_NET_U32((uint32_t)final_len),
-                            .crc32 = HOST_TO_NET_U32(final_len > 0 ? asciichat_crc32(final_data, final_len) : 0),
-                            .client_id = HOST_TO_NET_U32(0)}; // Always 0 - client_id is not used in practice
-
-  // Combine header + payload for encryption
-  // Check for integer overflow before addition
-  if (final_len > SIZE_MAX - sizeof(header)) {
-    if (compressed_data) {
-      buffer_release(compressed_data);
+  socket_buffer_t payload = {final_data, final_len};
+  packet_header_t header;
+  asciichat_error_t result = packet_header_build(&header, type, &payload, 1, 0);
+  socket_buffer_t slices[] = {{&header, sizeof(header)}, payload};
+  acip_packet_plan_t plan;
+  if (result == ASCIICHAT_OK)
+    result = acip_packet_plan(crypto_ctx, slices, 2, &plan);
+  uint8_t *ciphertext = NULL;
+  if (result == ASCIICHAT_OK) {
+    ciphertext = buffer_alloc(plan.domain, plan.ciphertext_capacity);
+    if (!ciphertext)
+      result = SET_ERRNO(ERROR_MEMORY, "Cannot allocate packet ciphertext");
+  }
+  if (result == ASCIICHAT_OK) {
+    packet_header_t outer;
+    size_t length = 0;
+    result = acip_packet_encrypt(crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity, &outer, &length);
+    if (result == ASCIICHAT_OK) {
+      socket_buffer_t wire[] = {{&outer, sizeof(outer)}, {ciphertext, length}};
+      result = socket_sendv_all(sockfd, wire, 2, packet_send_timeout_ns(sizeof(outer) + length));
     }
-    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow plaintext buffer size");
   }
-  size_t plaintext_len = sizeof(header) + final_len;
-  uint8_t *plaintext = buffer_alloc(NULL, plaintext_len);
-  if (!plaintext) {
-    if (compressed_data) {
-      buffer_release(compressed_data);
-    }
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext packet");
-  }
-
-  memcpy(plaintext, &header, sizeof(header));
-  if (final_len > 0 && final_data) {
-    memcpy(plaintext + sizeof(header), final_data, final_len);
-  }
-
-  // Encrypt
-  // Check for integer overflow before calculating ciphertext size
-  if (plaintext_len > SIZE_MAX - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
-    buffer_release(plaintext);
-    if (compressed_data) {
-      buffer_release(compressed_data);
-    }
-    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
-  }
-  size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  uint8_t *ciphertext = buffer_alloc(NULL, ciphertext_size);
-  if (!ciphertext) {
-    buffer_release(plaintext);
-    if (compressed_data) {
-      buffer_release(compressed_data);
-    }
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
-  }
-
-  size_t ciphertext_len;
-  crypto_result_t result =
-      crypto_encrypt(crypto_ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, &ciphertext_len);
-  buffer_release(plaintext);
-
-  if (result != CRYPTO_OK) {
-    buffer_release(ciphertext);
-    if (compressed_data) {
-      buffer_release(compressed_data);
-    }
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
-  }
-
-  // Send as PACKET_TYPE_ENCRYPTED
-  log_debug_every(LOG_RATE_SLOW, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)",
-                  type);
-  asciichat_error_t send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
   buffer_release(ciphertext);
-
-  if (compressed_data) {
-    buffer_release(compressed_data);
-  }
-
-  return send_result;
+  buffer_release(compressed_data);
+  return result;
 }
 
 /**
@@ -565,198 +576,6 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
                                            packet_envelope_t *envelope) {
   return receive_packet_secure_with_timeout(sockfd, crypto_ctx, enforce_encryption, envelope,
                                             RECV_TIMEOUT * NS_PER_SEC_INT);
-}
-
-packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
-                                                        packet_envelope_t *envelope, uint64_t timeout_ns) {
-
-  if (!envelope) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: envelope=%p", envelope);
-    return PACKET_RECV_ERROR;
-  }
-
-  // Initialize envelope
-  memset(envelope, 0, sizeof(*envelope));
-
-  // Receive packet header
-  packet_header_t header;
-  asciichat_errno_scope_t receive_scope = errno_checkpoint();
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), timeout_ns);
-
-  // Check for errors first (before comparing signed with unsigned)
-  if (received < 0) {
-    /* Preserve a poll timeout so callers can wait for the next signaling packet
-     * without treating an idle connection as a receive failure. */
-    if (GET_ERRNO() == ERROR_NETWORK_TIMEOUT && HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
-      return PACKET_RECV_ERROR;
-    }
-    SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));
-    return PACKET_RECV_ERROR;
-  }
-
-  if (received == 0) {
-    return PACKET_RECV_EOF;
-  }
-
-  if ((size_t)received != sizeof(header)) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));
-    return PACKET_RECV_ERROR;
-  }
-
-  // Convert from network byte order
-  uint64_t magic = NET_TO_HOST_U64(header.magic);
-  uint16_t pkt_type = NET_TO_HOST_U16(header.type);
-  uint32_t pkt_len = NET_TO_HOST_U32(header.length);
-  uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
-
-  log_debug_every(US_PER_SEC_INT, "Received packet: type=%u len=%u client_id=%u", pkt_type, pkt_len,
-                  NET_TO_HOST_U32(header.client_id));
-
-  // Validate magic number
-  if (magic != PACKET_MAGIC) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet magic: 0x%llx (expected 0x%llx)", magic, PACKET_MAGIC);
-    return PACKET_RECV_ERROR;
-  }
-
-  // Validate packet size
-  if (pkt_len > MAX_PACKET_SIZE) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %u > %d", pkt_len, MAX_PACKET_SIZE);
-    return PACKET_RECV_ERROR;
-  }
-
-  // Handle encrypted packets
-  if (pkt_type == PACKET_TYPE_ENCRYPTED) {
-    if (!crypto_ctx) {
-      SET_ERRNO(ERROR_CRYPTO, "Received encrypted packet but no crypto context");
-      return PACKET_RECV_ERROR;
-    }
-
-    // Read encrypted payload
-    uint8_t *ciphertext = buffer_alloc(NULL, pkt_len);
-    if (!ciphertext) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
-      return PACKET_RECV_ERROR;
-    }
-
-    uint64_t recv_timeout = MAX(timeout_ns, packet_send_timeout_ns(pkt_len));
-    received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
-    if (received != (ssize_t)pkt_len) {
-      SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);
-      buffer_release(ciphertext);
-      return PACKET_RECV_ERROR;
-    }
-
-    // Decrypt - allocate plaintext buffer with extra space
-    // pkt_len is already validated to be <= MAX_PACKET_SIZE, so adding 1024 cannot overflow
-    size_t plaintext_size = (size_t)pkt_len + 1024;
-    uint8_t *plaintext = buffer_alloc(NULL, plaintext_size);
-    if (!plaintext) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext");
-      buffer_release(ciphertext);
-      return PACKET_RECV_ERROR;
-    }
-
-    size_t plaintext_len;
-    crypto_result_t result = crypto_decrypt(crypto_ctx, ciphertext, pkt_len, plaintext, plaintext_size, &plaintext_len);
-    buffer_release(ciphertext);
-
-    if (result != CRYPTO_OK) {
-      SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
-      buffer_release(plaintext);
-      return PACKET_RECV_ERROR;
-    }
-
-    if (plaintext_len < sizeof(packet_header_t)) {
-      SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
-      buffer_release(plaintext);
-      return PACKET_RECV_ERROR;
-    }
-
-    // Parse decrypted header
-    packet_header_t *decrypted_header = (packet_header_t *)plaintext;
-    if (NET_TO_HOST_U64(decrypted_header->magic) != PACKET_MAGIC) {
-      SET_ERRNO(ERROR_CRYPTO, "Decrypted packet has invalid magic");
-      buffer_release(plaintext);
-      return PACKET_RECV_ERROR;
-    }
-    pkt_type = NET_TO_HOST_U16(decrypted_header->type);
-
-    // DEBUG: Log decrypted packet type
-    log_debug_every(US_PER_SEC_INT, "[RECV_PKT_DECRYPTED] 🔐 After decryption: actual_type=%u (0x%04x), len=%u",
-                    pkt_type, pkt_type, NET_TO_HOST_U32(decrypted_header->length));
-    pkt_len = NET_TO_HOST_U32(decrypted_header->length);
-    expected_crc = NET_TO_HOST_U32(decrypted_header->crc32);
-
-    // Extract payload
-    size_t payload_len = plaintext_len - sizeof(packet_header_t);
-    if (payload_len != pkt_len) {
-      SET_ERRNO(ERROR_CRYPTO, "Decrypted payload size mismatch: %zu != %u", payload_len, pkt_len);
-      buffer_release(plaintext);
-      return PACKET_RECV_ERROR;
-    }
-
-    // Verify CRC
-    if (pkt_len > 0) {
-      uint32_t actual_crc = asciichat_crc32(plaintext + sizeof(packet_header_t), pkt_len);
-      if (actual_crc != expected_crc) {
-        SET_ERRNO(ERROR_CRYPTO, "Decrypted packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-        buffer_release(plaintext);
-        return PACKET_RECV_ERROR;
-      }
-    }
-
-    // Set envelope
-    envelope->type = (packet_type_t)pkt_type;
-    envelope->data = plaintext + sizeof(packet_header_t);
-    envelope->len = pkt_len;
-    envelope->allocated_buffer = plaintext;
-    envelope->allocated_size = plaintext_size;
-
-    return PACKET_RECV_SUCCESS;
-  }
-
-  // Handle unencrypted packets
-  if (enforce_encryption && !packet_is_handshake_type(pkt_type)) {
-    SET_ERRNO(ERROR_CRYPTO, "Received unencrypted packet type %d but encryption is required", pkt_type);
-    return PACKET_RECV_ERROR;
-  }
-
-  // Read payload and return header+payload in envelope (matching encrypted path format)
-  size_t total_size = sizeof(packet_header_t) + pkt_len;
-  uint8_t *packet_buf = buffer_alloc(NULL, total_size);
-  if (!packet_buf) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for packet");
-    return PACKET_RECV_ERROR;
-  }
-
-  // Copy header into buffer
-  memcpy(packet_buf, &header, sizeof(packet_header_t));
-
-  if (pkt_len > 0) {
-    uint64_t recv_timeout = packet_send_timeout_ns(pkt_len);
-    received = recv_with_timeout(sockfd, packet_buf + sizeof(packet_header_t), pkt_len, recv_timeout);
-    if (received != (ssize_t)pkt_len) {
-      SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);
-      buffer_release(packet_buf);
-      return PACKET_RECV_ERROR;
-    }
-
-    // Verify CRC
-    uint32_t actual_crc = asciichat_crc32(packet_buf + sizeof(packet_header_t), pkt_len);
-    if (actual_crc != expected_crc) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-      buffer_release(packet_buf);
-      return PACKET_RECV_ERROR;
-    }
-  }
-
-  envelope->data = packet_buf;
-  envelope->allocated_buffer = packet_buf;
-  envelope->allocated_size = total_size;
-  envelope->type = (packet_type_t)pkt_type;
-  envelope->len = total_size;
-
-  return PACKET_RECV_SUCCESS;
 }
 
 /* ============================================================================
@@ -845,71 +664,31 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
     return SET_ERRNO(ERROR_CRYPTO, "Received encrypted packet but no crypto context");
   }
 
-  uint8_t *ciphertext = (uint8_t *)envelope->data;
-  size_t ciphertext_len = envelope->len;
-
-  crypto_context_t *crypto = crypto_ctx;
-  // Secretbox supports overlapping ciphertext/plaintext. Keep the nonce ahead
-  // of the destination until authentication and decryption have finished.
-  bool reuse = envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) &&
-               ciphertext == (uint8_t *)envelope->allocated_buffer + sizeof(packet_header_t) &&
-               ciphertext_len >= crypto->nonce_size + crypto->mac_size &&
-               envelope->allocated_size >= sizeof(packet_header_t) + ciphertext_len;
-  size_t plaintext_size = reuse ? ciphertext_len - crypto->nonce_size : ciphertext_len + 1024;
-  uint8_t *plaintext = reuse ? ciphertext + crypto->nonce_size : buffer_alloc(NULL, plaintext_size);
-  if (!plaintext) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate plaintext buffer for decryption");
-  }
-
-  size_t plaintext_len;
-  crypto_result_t result =
-      crypto_decrypt(crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
-
-  if (result != CRYPTO_OK) {
-    if (!reuse)
-      buffer_release(plaintext);
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
-  }
-
-  if (plaintext_len < sizeof(packet_header_t)) {
-    if (!reuse)
-      buffer_release(plaintext);
-    return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
-  }
-
-  // Parse inner packet header
-  const packet_header_t *inner_header = (const packet_header_t *)plaintext;
-  packet_type_t inner_type = NET_TO_HOST_U16(inner_header->type);
-  uint32_t inner_len = NET_TO_HOST_U32(inner_header->length);
-
-  // Validate inner packet length
-  if (inner_len != plaintext_len - sizeof(packet_header_t)) {
-    if (!reuse)
-      buffer_release(plaintext);
-    return SET_ERRNO(ERROR_CRYPTO, "Inner packet length mismatch: header=%u, actual=%zu", inner_len,
-                     plaintext_len - sizeof(packet_header_t));
-  }
-
-  if (reuse) {
-    memmove(envelope->allocated_buffer, plaintext, plaintext_len);
+  uint8_t *plaintext = NULL;
+  size_t plaintext_length = 0;
+  bool consumed = false;
+  asciichat_error_t result =
+      acip_security_decrypt(crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, CRYPTO_RECORD_RELIABLE, envelope->data,
+                            envelope->len, &plaintext, &plaintext_length, NULL, &consumed);
+  if (result != ASCIICHAT_OK)
+    return result;
+  packet_header_t header;
+  memcpy(&header, plaintext, sizeof(header));
+  if (envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) &&
+      envelope->allocated_size >= plaintext_length) {
+    memcpy(envelope->allocated_buffer, plaintext, plaintext_length);
+    buffer_release(plaintext);
     plaintext = envelope->allocated_buffer;
-    plaintext_size = envelope->allocated_size;
-  }
-  // Free the original encrypted buffer if it's different from plaintext
-  if (envelope->allocated_buffer && envelope->allocated_buffer != plaintext) {
+  } else {
     buffer_release(envelope->allocated_buffer);
+    envelope->allocated_size = buffer_capacity(plaintext);
   }
-
-  // Update envelope with decrypted packet info
-  envelope->type = inner_type;
-  envelope->data = (uint8_t *)plaintext + sizeof(packet_header_t);
-  envelope->len = inner_len;
+  envelope->type = NET_TO_HOST_U16(header.type);
+  envelope->data = plaintext + sizeof(header);
+  envelope->len = plaintext_length - sizeof(header);
   envelope->allocated_buffer = plaintext;
-  envelope->allocated_size = plaintext_size;
-
-  log_debug_every(US_PER_SEC_INT, "[PACKET_DECRYPT] 🔐 Decrypted PACKET_TYPE_ENCRYPTED: inner_type=%u (0x%04x), len=%u",
-                  inner_type, inner_type, inner_len);
-
+  envelope->was_encrypted = true;
+  envelope->consumed = consumed;
   return ASCIICHAT_OK;
 }
 
@@ -1318,4 +1097,59 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
   buffer_release(packet_data);
 
   return result;
+}
+
+packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
+                                                        packet_envelope_t *envelope, uint64_t timeout_ns) {
+  if (!envelope) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Missing packet envelope");
+    return PACKET_RECV_ERROR;
+  }
+  *envelope = (packet_envelope_t){0};
+  packet_header_t header;
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), timeout_ns);
+  if (!received)
+    return PACKET_RECV_EOF;
+  if (received != (ssize_t)sizeof(header))
+    return PACKET_RECV_ERROR;
+  size_t payload_length = NET_TO_HOST_U32(header.length);
+  if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || payload_length > MAX_PACKET_SIZE) {
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet header");
+    return PACKET_RECV_ERROR;
+  }
+  size_t length = sizeof(header) + payload_length;
+  uint8_t *packet = buffer_alloc(NULL, length);
+  if (!packet) {
+    SET_ERRNO(ERROR_MEMORY, "Cannot allocate received packet");
+    return PACKET_RECV_ERROR;
+  }
+  memcpy(packet, &header, sizeof(header));
+  if (payload_length &&
+      recv_with_timeout(sockfd, packet + sizeof(header), payload_length,
+                        MAX(timeout_ns, packet_send_timeout_ns(payload_length))) != (ssize_t)payload_length) {
+    buffer_release(packet);
+    return PACKET_RECV_ERROR;
+  }
+  asciichat_error_t result = packet_validate(packet, length, MAX_PACKET_SIZE, NULL);
+  packet_type_t type = NET_TO_HOST_U16(header.type);
+  if (result == ASCIICHAT_OK && enforce_encryption && type != PACKET_TYPE_ENCRYPTED &&
+      !packet_is_initial_handshake_type(type))
+    result = SET_ERRNO(ERROR_CRYPTO, "Unencrypted packet in encrypted session");
+  if (result != ASCIICHAT_OK) {
+    buffer_release(packet);
+    return PACKET_RECV_ERROR;
+  }
+  *envelope = (packet_envelope_t){
+      .type = type, .data = packet, .len = length, .allocated_buffer = packet, .allocated_size = length};
+  if (type == PACKET_TYPE_ENCRYPTED) {
+    envelope->data = packet + sizeof(header);
+    envelope->len = payload_length;
+    result = packet_decrypt_envelope(envelope, crypto_ctx);
+    if (result != ASCIICHAT_OK) {
+      buffer_release(envelope->allocated_buffer);
+      *envelope = (packet_envelope_t){0};
+      return PACKET_RECV_ERROR;
+    }
+  }
+  return PACKET_RECV_SUCCESS;
 }

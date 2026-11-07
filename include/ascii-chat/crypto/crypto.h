@@ -172,6 +172,10 @@ typedef struct crypto_context_t {
   uint64_t bytes_encrypted; /**< Total bytes encrypted */
   uint64_t bytes_decrypted; /**< Total bytes decrypted */
   uint64_t rekey_count;     /**< Number of successful rekeys performed */
+
+  struct crypto_session *session; /**< Owned shared record/rekey state; contexts are not copyable owners. */
+  bool server_role, server_role_known;
+
 } crypto_context_t;
 
 /**

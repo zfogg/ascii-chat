@@ -91,7 +91,7 @@ Test(vectored, plain_maximum_plaintext) {
 }
 
 Test(vectored, encrypted_maximum_plaintext) {
-  roundtrip(CRYPTO_MAX_PLAINTEXT_SIZE - sizeof(packet_header_t), true, 3, false);
+  roundtrip(CRYPTO_MAX_PLAINTEXT_SIZE - 24 - sizeof(packet_header_t), true, 3, false);
 }
 
 Test(vectored, maximum_packet) {

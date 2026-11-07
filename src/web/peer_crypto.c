@@ -2,10 +2,9 @@
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/acip/send.h>
-#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/util/endian.h>
-#include "quic_security.h"
+#include "security.h"
 #include <emscripten.h>
 #include <string.h>
 
@@ -17,7 +16,6 @@ typedef struct peer_output {
 
 typedef struct {
   acip_security_t security;
-  browser_quic_security_t quic;
   bool quic_handshake;
   acip_transport_t transport;
   peer_output_t *output, *tail;
@@ -94,7 +92,6 @@ EMSCRIPTEN_KEEPALIVE void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   while (peer->output)
     peer_crypto_output_pop(peer);
   buffer_release(peer->received);
-  browser_quic_cleanup(&peer->quic);
   acip_security_cleanup(&peer->security);
   SAFE_FREE(peer);
 }
@@ -192,9 +189,9 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
   size_t payload_length = length - sizeof(header);
   const void *payload = (const uint8_t *)data + sizeof(header);
   packet_type_t type = NET_TO_HOST_U16(header.type);
-  if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload_length ||
-      asciichat_crc32(payload, payload_length) != NET_TO_HOST_U32(header.crc32))
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid peer packet framing");
+  asciichat_error_t validation = packet_validate(data, length, 0, NULL);
+  if (validation != ASCIICHAT_OK)
+    return validation;
   if (!peer->security.ready) {
     asciichat_error_t result = acip_security_receive(&peer->security, &peer->transport, type, payload, payload_length);
     if (result != ASCIICHAT_OK || !peer->quic_handshake || type != PACKET_TYPE_PROTOCOL_VERSION)
@@ -213,92 +210,38 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
     return packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO,
                                      peer->security.handshake.expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE, 0);
   }
-  // Legacy WebRTC rotates its application key on the authenticated peer context.
-  // QUIC uses its separate per-flow epoch protocol after this initial handshake.
-  if (!peer->quic_handshake) {
-    crypto_handshake_context_t *ctx = &peer->security.handshake;
-    asciichat_error_t result;
-    switch (type) {
-    case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
-      result = crypto_handshake_process_rekey_request(ctx, payload, payload_length);
-      return result == ASCIICHAT_OK ? crypto_handshake_rekey_response(ctx, &peer->transport) : result;
-    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
-      result = crypto_handshake_process_rekey_response(ctx, payload, payload_length);
-      return result == ASCIICHAT_OK ? crypto_handshake_rekey_complete(ctx, &peer->transport) : result;
-    case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
-      return crypto_handshake_process_rekey_complete(ctx, payload, payload_length);
-    default:
-      break;
-    }
-  }
   bool encrypt = ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode);
-  if (packet_is_handshake_type(type) || (encrypt != (type == PACKET_TYPE_ENCRYPTED)))
+  if (packet_is_initial_handshake_type(type) || (encrypt != (type == PACKET_TYPE_ENCRYPTED)))
     return SET_ERRNO(ERROR_CRYPTO, "Peer packet does not match negotiated security");
-  size_t capacity = length;
-  peer->received = buffer_alloc(NULL, capacity);
-  if (!peer->received)
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer input");
   if (!encrypt) {
+    peer->received = buffer_alloc(NULL, length);
+    if (!peer->received)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer input");
     memcpy(peer->received, data, length);
     peer->received_length = length;
     return ASCIICHAT_OK;
   }
-  crypto_result_t result = crypto_decrypt(&peer->security.handshake.crypto_ctx, payload, payload_length, peer->received,
-                                          capacity, &peer->received_length);
-  if (result != CRYPTO_OK)
-    return SET_ERRNO(ERROR_CRYPTO, "Cannot decrypt peer packet");
-  if (peer->received_length < sizeof(header))
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incomplete decrypted peer packet");
-  memcpy(&header, peer->received, sizeof(header));
-  type = NET_TO_HOST_U16(header.type);
-  payload_length = peer->received_length - sizeof(header);
-  if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload_length ||
-      asciichat_crc32((uint8_t *)peer->received + sizeof(header), payload_length) != NET_TO_HOST_U32(header.crc32) ||
-      type == PACKET_TYPE_ENCRYPTED || packet_is_handshake_type(type))
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid decrypted peer packet");
-  return ASCIICHAT_OK;
-}
-
-EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_init(browser_peer_crypto_t *peer) {
-  if (!peer || !peer->security.ready || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
-    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC requires an authenticated encrypted peer");
-  return quic_security_init(&peer->quic.security, &peer->security.handshake.crypto_ctx, false);
-}
-
-EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_crypto_t *peer, bool seal, uint32_t flow,
-                                                               uint32_t delivery, const uint8_t *packet, size_t length,
-                                                               uint8_t *output, size_t capacity, size_t *out_length,
-                                                               uint64_t *sequence) {
-  const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  if (!peer || !packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead ||
-      capacity < length + (seal ? overhead : 0))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer QUIC packet buffer");
-  *out_length = 0;
-  *sequence = 0;
-  uint8_t *result_packet = NULL;
-  size_t result_length = 0;
-  bool quiet = !seal && delivery == ACIP_DELIVERY_DATAGRAM;
-  asciichat_errno_scope_t scope;
-  if (quiet)
-    scope = errno_scope_begin();
-  asciichat_error_t result =
-      seal ? quic_security_seal(&peer->quic.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
-                                     packet, length, &result_packet, &result_length)
-           : quic_security_open_sequence(&peer->quic.security, (acip_traffic_class_t)flow,
-                                              (acip_delivery_t)delivery, packet, length, &result_packet, &result_length,
-                                              sequence);
   bool consumed = false;
-  if (!seal && result == ASCIICHAT_OK)
-    result = browser_quic_receive(&peer->quic, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, result_packet,
-                                  result_length, &consumed);
-  if (quiet)
-    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
-  if (result == ASCIICHAT_OK && !consumed) {
-    memcpy(output, result_packet, result_length);
-    *out_length = result_length;
+  uint64_t sequence;
+  asciichat_error_t result =
+      acip_security_open(&peer->security.handshake.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, data,
+                         length, (uint8_t **)&peer->received, &peer->received_length, &sequence, &consumed);
+  if (consumed) {
+    buffer_release(peer->received);
+    peer->received = NULL;
+    peer->received_length = 0;
   }
-  buffer_release(result_packet);
   return result;
+}
+
+EMSCRIPTEN_KEEPALIVE crypto_context_t *peer_security_context(browser_peer_crypto_t *peer) {
+  return peer ? &peer->security.handshake.crypto_ctx : NULL;
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_tick(browser_peer_crypto_t *peer) {
+  if (!peer || !peer->security.ready || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
+    return ASCIICHAT_OK;
+  return acip_security_flush(&peer->transport);
 }
 
 EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_begin(browser_peer_crypto_t *peer) {
@@ -306,8 +249,4 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_begin(browser_peer_crypt
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer QUIC handshake transition");
   peer->quic_handshake = true;
   return ASCIICHAT_OK;
-}
-
-EMSCRIPTEN_KEEPALIVE browser_quic_security_t *peer_quic_context(browser_peer_crypto_t *peer) {
-  return peer ? &peer->quic : NULL;
 }

@@ -1,7 +1,7 @@
 import {
-  initQuicSecurity,
-  tickQuicSecurity,
-  processQuicPacket,
+  initPacketSecurity,
+  tickPacketSecurity,
+  processSecurePacket,
   serializePacket,
   getClientModule,
   getConnectionState,
@@ -47,17 +47,17 @@ export class WebTransportAcipChannel {
   ) {
     this.protocol = new AcipQuicProtocol(
       security ?? {
-        init: initQuicSecurity,
-        tick: () => tickQuicSecurity(),
+        init: initPacketSecurity,
+        tick: () => tickPacketSecurity(),
         seal: (flow, delivery, packet) =>
-          processQuicPacket(
+          processSecurePacket(
             "seal",
             flow,
             delivery === "datagram" ? 1 : 0,
             packet,
           ).packet,
         open: (flow, delivery, packet) =>
-          processQuicPacket(
+          processSecurePacket(
             "open",
             flow,
             delivery === "datagram" ? 1 : 0,

@@ -22,8 +22,8 @@ function wrap(inner: Uint8Array): Uint8Array {
   return packet(1200, inner);
 }
 vi.mock("../../src/wasm/client", () => ({
-  initQuicSecurity: state.init,
-  tickQuicSecurity: () => [],
+  initPacketSecurity: state.init,
+  tickPacketSecurity: () => [],
   getClientModule: () => ({
     _client_handshake_begin: state.begin,
     _client_handshake_receive: state.receive,
@@ -44,7 +44,7 @@ vi.mock("../../src/wasm/client", () => ({
     throw new Error("WASM failure");
   },
   serializePacket: packet,
-  processQuicPacket: (
+  processSecurePacket: (
     operation: string,
     _flow: number,
     _delivery: number,
