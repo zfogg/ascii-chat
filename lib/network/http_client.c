@@ -161,9 +161,9 @@ static char *extract_http_body(const char *response, size_t response_len) {
  */
 static asciichat_error_t check_http_status(const char *response) {
   // Look for "HTTP/1.x 200 OK"
-  if (strlen(response) < 12 || strncmp(response, "HTTP/1.", 7) != 0 || response[8] != ' ' || response[9] < '0' ||
-      response[9] > '9' || response[10] < '0' || response[10] > '9' || response[11] < '0' || response[11] > '9' ||
-      (response[12] != ' ' && response[12] != '\r')) {
+  if (strlen(response) < 12 || strncmp(response, "HTTP/1.", sizeof("HTTP/1.") - 1) != 0 || response[8] != ' ' ||
+      response[9] < '0' || response[9] > '9' || response[10] < '0' || response[10] > '9' || response[11] < '0' ||
+      response[11] > '9' || (response[12] != ' ' && response[12] != '\r')) {
     return SET_ERRNO(ERROR_NETWORK, "Invalid HTTP response: %s", response);
   }
 
@@ -367,7 +367,7 @@ char *https_get(const char *hostname, const char *path) {
   socket_close(sock);
 
   // Parse HTTP response
-  if (response_len >= 12 && strncmp(response_buf, "HTTP/1.", 7) == 0 && response_buf[8] == ' ' &&
+  if (response_len >= 12 && strncmp(response_buf, "HTTP/1.", sizeof("HTTP/1.") - 1) == 0 && response_buf[8] == ' ' &&
       response_buf[9] >= '0' && response_buf[9] <= '9' && response_buf[10] >= '0' && response_buf[10] <= '9' &&
       response_buf[11] >= '0' && response_buf[11] <= '9' && otel_scope.retained) {
     int code = (response_buf[9] - '0') * 100 + (response_buf[10] - '0') * 10 + response_buf[11] - '0';
