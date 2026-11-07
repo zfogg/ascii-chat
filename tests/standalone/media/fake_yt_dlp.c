@@ -3,6 +3,21 @@
  * ascii-chat invokes the extractor, handles prompts and cancellation, and
  * consumes stream metadata. It does not run real yt-dlp or verify its output,
  * authentication behavior, or YouTube extraction end to end.
+ *
+ * From the repository root, with BUILD_TESTS enabled:
+ *   cmake --build build --target ascii-chat test-yt-dlp-fixture test-extractor-audio
+ *   ctest --test-dir build -R "^media-extractor$" --output-on-failure
+ *   uv run --project tests/ascii_chat_tests python tests/integration/media_extractor.py `
+ *     --binary build/bin/ascii-chat.exe --fixture build/test-fixtures/yt-dlp.exe `
+ *     --audio-probe build/bin/test-extractor-audio.exe MediaExtractor.test_combined_stream_is_used_for_both_decoders
+ *
+ * Run the fixture directly in PowerShell to inspect its combined-stream JSON:
+ *   $env:FAKE_YTDLP_VIDEO = 'http://127.0.0.1/video.mp4'
+ *   .\build\test-fixtures\yt-dlp.exe --print json https://example.com/watch
+ *   Remove-Item Env:FAKE_YTDLP_VIDEO
+ *
+ * Set FAKE_YTDLP_MODE=split and FAKE_YTDLP_AUDIO to a second URL to emit
+ * separate video and audio streams. The fixture does not fetch either URL.
  */
 #include <stdio.h>
 #include <stdbool.h>
