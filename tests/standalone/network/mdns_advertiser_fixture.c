@@ -16,7 +16,10 @@ int main(int argc, char **argv) {
     snprintf(name, sizeof(name), "ascii-chat-picker-%d", i);
     unsigned long port = strtoul(argv[i], NULL, 10);
     asciichat_mdns_service_t service = {
-        .name = name, .type = "_ascii-chat._tcp", .host = "localhost", .port = (uint16_t)port,
+        .name = name,
+        .type = "_ascii-chat._tcp",
+        .host = "localhost",
+        .port = (uint16_t)port,
     };
     contexts[i - 1] = asciichat_mdns_init();
     if (!contexts[i - 1] || port == 0 || port > 65535 ||

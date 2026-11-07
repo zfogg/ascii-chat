@@ -30,9 +30,9 @@
 #include <string.h>
 
 bool backtrace_filter_error_internal(const char *frame) {
-  return frame && (strstr(frame, " set_formatted()") || strstr(frame, " errno_set(") ||
-                   strstr(frame, " errno_set_with_") || strstr(frame, " set_wsa()") ||
-                   strstr(frame, " backtrace_capture()"));
+  return frame &&
+         (strstr(frame, " set_formatted()") || strstr(frame, " errno_set(") || strstr(frame, " errno_set_with_") ||
+          strstr(frame, " set_wsa()") || strstr(frame, " backtrace_capture()"));
 }
 
 void backtrace_capture(backtrace_t *bt) {

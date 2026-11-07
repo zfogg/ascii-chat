@@ -379,7 +379,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     display_poll_keyboard(connection);
     terminal_size_t previous = connection->advertised_dimensions;
     settings_error = session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision,
-                                                       client_send_settings, connection);
+                                                      client_send_settings, connection);
     if (settings_error != ASCIICHAT_OK)
       break;
     if (previous.cols != connection->advertised_dimensions.cols ||

@@ -94,13 +94,18 @@ Test(path_contract, xdg_paths_override_home_and_empty_environment_falls_back_wit
 }
 
 Test(path_contract, role_specific_rejections_clear_output_for_invalid_protected_and_outside_paths) {
-  const path_role_t roles[] = {PATH_ROLE_CONFIG_FILE, PATH_ROLE_LOG_FILE, PATH_ROLE_KEY_PRIVATE,
-                               PATH_ROLE_KEY_PUBLIC, PATH_ROLE_CLIENT_KEYS};
-  const asciichat_error_t errors[] = {ERROR_CONFIG, ERROR_LOGGING_INIT, ERROR_CRYPTO_KEY,
-                                     ERROR_CRYPTO_KEY, ERROR_CRYPTO_KEY};
+  const path_role_t roles[] = {PATH_ROLE_CONFIG_FILE, PATH_ROLE_LOG_FILE, PATH_ROLE_KEY_PRIVATE, PATH_ROLE_KEY_PUBLIC,
+                               PATH_ROLE_CLIENT_KEYS};
+  const asciichat_error_t errors[] = {ERROR_CONFIG, ERROR_LOGGING_INIT, ERROR_CRYPTO_KEY, ERROR_CRYPTO_KEY,
+                                      ERROR_CRYPTO_KEY};
   for (size_t i = 0; i < 5; ++i) {
-    const char *invalid[] = {NULL, "", "/etc", "/etc/passwd", "/etc/../etc/shadow",
-                             "/var/lib/ascii-chat-policy-test", "/ascii-chat-outside-policy/file"};
+    const char *invalid[] = {NULL,
+                             "",
+                             "/etc",
+                             "/etc/passwd",
+                             "/etc/../etc/shadow",
+                             "/var/lib/ascii-chat-policy-test",
+                             "/ascii-chat-outside-policy/file"};
     for (size_t j = 0; j < sizeof(invalid) / sizeof(invalid[0]); ++j) {
       char *output = (char *)"must be cleared";
       cr_assert_eq(path_validate_user_path(invalid[j], roles[i], &output), errors[i]);
