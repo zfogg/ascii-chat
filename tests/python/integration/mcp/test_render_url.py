@@ -12,7 +12,6 @@ import functools
 import http.server
 import json
 import re
-import shutil
 import subprocess
 import threading
 

@@ -77,7 +77,7 @@ class Protocol(unittest.TestCase):
                                      *extra, "mcp-server"], input=b"", capture_output=True, env=env, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             match = re.search(r"MCP server started .*\b(\d+) render jobs\)", log_path.read_text(errors="replace"))
-            self.assertIsNotNone(match)
+            assert match is not None, "MCP server did not report its concurrency limit"
             return int(match.group(1))
         available = capacity()
         self.assertGreaterEqual(available, 1)
@@ -97,7 +97,7 @@ class Protocol(unittest.TestCase):
                 if match:
                     break
             time.sleep(.05)
-        self.assertIsNotNone(match, "MCP server did not report its concurrency limit")
+        assert match is not None, "MCP server did not report its concurrency limit"
         if int(match.group(1)) < 5:
             self.skipTest("Fewer than five CPUs available")
         arguments = {"options": {"test-pattern": True, "snapshot-delay": 8}}
