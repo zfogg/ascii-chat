@@ -29,8 +29,13 @@ int main(int argc, char **argv) {
   const char *audio = getenv("FAKE_YTDLP_AUDIO");
   if (!video)
     return 3;
-  puts(video);
-  if (mode && strcmp(mode, "split") == 0 && audio)
+  if (mode && strcmp(mode, "reversed") == 0 && audio) {
     puts(audio);
+    puts(video);
+  } else {
+    puts(video);
+    if (mode && strcmp(mode, "split") == 0 && audio)
+      puts(audio);
+  }
   return 0;
 }

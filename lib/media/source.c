@@ -340,24 +340,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
     ASSERT_NO_ERRNO_SINCE(decoder_scope);
 
-    // Start prefetch only when a video stream exists.
-    // This thread continuously reads frames into a buffer so the render loop never blocks
-    asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
-    asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
-                                         ? ffmpeg_decoder_start_prefetch(source->video_decoder)
-                                         : ASCIICHAT_OK;
-    if (prefetch_err != ASCIICHAT_OK) {
-      log_error("Failed to start video prefetch thread: %s", asciichat_error_format(NULL, prefetch_err));
-      ffmpeg_decoder_destroy(source->video_decoder);
-      SAFE_FREE(source->file_path);
-      SAFE_FREE(source->original_youtube_url);
-      mutex_destroy(&source->decoder_mutex);
-      SAFE_FREE(source);
-      return NULL;
-    }
-
-    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
-    errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     decoder_scope = errno_checkpoint();
     const char *audio_path = resolved_audio_url[0] ? resolved_audio_url : effective_path;
     source->audio_decoder = ffmpeg_decoder_create_interruptible(audio_path, cancel, data);
@@ -376,6 +358,31 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     source->is_shared_decoder = false;
 
     ASSERT_NO_ERRNO_SINCE(decoder_scope);
+    // yt-dlp emits selected formats in selector order, which may be audio first.
+    if (resolved_audio_url[0] && !ffmpeg_decoder_has_video(source->video_decoder) &&
+        ffmpeg_decoder_has_video(source->audio_decoder) && ffmpeg_decoder_has_audio(source->video_decoder)) {
+      ffmpeg_decoder_t *audio = source->video_decoder;
+      source->video_decoder = source->audio_decoder;
+      source->audio_decoder = audio;
+    }
+
+    // Start prefetch after choosing the decoder that actually contains video.
+    asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
+    asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
+                                         ? ffmpeg_decoder_start_prefetch(source->video_decoder)
+                                         : ASCIICHAT_OK;
+    if (prefetch_err != ASCIICHAT_OK) {
+      log_error("Failed to start video prefetch thread: %s", asciichat_error_format(NULL, prefetch_err));
+      ffmpeg_decoder_destroy(source->video_decoder);
+      ffmpeg_decoder_destroy(source->audio_decoder);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      mutex_destroy(&source->decoder_mutex);
+      SAFE_FREE(source);
+      return NULL;
+    }
+    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+    errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     // Both decoders succeeded: failed extraction/prefetch attempts are resolved.
     errno_scope_end(media_scope, ASCIICHAT_ERRNO_DISMISSED);
     ASSERT_NO_ERRNO_SINCE(media_scope);

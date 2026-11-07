@@ -112,6 +112,14 @@ class MediaExtractor(unittest.TestCase):
                 result = self.run_mirror("combined", options)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
+    def test_audio_first_selector_plays_video_and_audio(self):
+        """Support selectors that return the audio URL before the video URL."""
+        result = self.run_mirror("reversed", "--format ba+bv")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+        self.assertIn("/video.ppm", self.requests)
+        self.assertIn("/audio.wav", self.requests)
+        self.assertGreater(len(result.stdout), 20, repr(result.stdout))
+
     def test_extracted_rtmp_stream_is_returned(self):
         """Accept RTMP streams supplied by the extractor."""
         stream = "rtmp://stream.example.test/live/example"
