@@ -293,12 +293,14 @@ class TerminalProcess:
 
     def reply_when_prompted(self, prompt, reply, timeout=25):
         output = b""
+        stderr = self.process.stderr
+        assert stderr is not None
         deadline = time.monotonic() + timeout
         while prompt not in output:
             remaining = deadline - time.monotonic()
-            if remaining <= 0 or not select.select([self.process.stderr], [], [], remaining)[0]:
+            if remaining <= 0 or not select.select([stderr], [], [], remaining)[0]:
                 raise AssertionError(f"terminal prompt not received: {output!r}")
-            chunk = os.read(self.process.stderr.fileno(), 4096)
+            chunk = os.read(stderr.fileno(), 4096)
             if not chunk:
                 raise AssertionError(f"process exited before terminal prompt: {output!r}")
             output += chunk
@@ -326,8 +328,10 @@ class TerminalProcess:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 pass
-        self.process.stdout.close()
-        self.process.stderr.close()
+        if self.process.stdout is not None:
+            self.process.stdout.close()
+        if self.process.stderr is not None:
+            self.process.stderr.close()
         os.close(self.master)
 
     def __enter__(self):
