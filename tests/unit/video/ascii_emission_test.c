@@ -710,6 +710,26 @@ Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
 }
 #endif
 
+Test(ascii_emission, glyph_indexed_dither_is_stable_and_spatial) {
+  rgb_pixel_t pixels[32 * 32];
+  for (size_t i = 0; i < 32 * 32; ++i)
+    pixels[i] = (rgb_pixel_t){100, 100, 100};
+  image_t image = {.w = 32, .h = 32, .pixels = pixels};
+  char *first = ascii_render_glyph_match(&image, ASCII_COLOR_256, &simd_cells_scalar, "@");
+  char *second = ascii_render_glyph_match(&image, ASCII_COLOR_256, &simd_cells_scalar, "@");
+  cr_assert_not_null(first);
+  cr_assert_not_null(second);
+  cr_assert_str_eq(first, second, "stationary frames must use the same dither pattern");
+  terminal_cell_t cells[16] = {0};
+  decode(first, cells, 4, 4, true);
+  bool varied = false;
+  for (int i = 1; i < 16; ++i)
+    varied |= cells[i].fg != cells[0].fg;
+  cr_assert(varied, "ordered dithering must distribute quantization levels spatially");
+  SAFE_FREE(first);
+  SAFE_FREE(second);
+}
+
 Test(ascii_emission, glyph_dark_detail_is_opt_in) {
   rgb_pixel_t pixels[64];
   image_t image = {.w = 8, .h = 8, .pixels = pixels};

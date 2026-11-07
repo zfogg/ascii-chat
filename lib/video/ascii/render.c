@@ -587,6 +587,25 @@ static int glyph_lift_luma(int luma, bool enhance) {
   return enhance ? luma + (luma * (255 - luma) + 256) / 512 : luma;
 }
 
+static uint32_t glyph_ordered_dither(uint32_t rgb, int x, int y, ascii_color_t mode) {
+  static const uint8_t bayer[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+  int amplitude = mode == ASCII_COLOR_16 ? 32 : 16;
+  int offset = ((int)bayer[y & 3][x & 3] * 2 - 15) * amplitude / 16;
+  uint32_t result = 0;
+  for (int shift = 0; shift <= 16; shift += 8) {
+    int channel = (int)((rgb >> shift) & 255);
+    if (channel > 0 && channel < 255) {
+      channel += offset;
+      if (channel < 0)
+        channel = 0;
+      if (channel > 255)
+        channel = 255;
+    }
+    result |= (uint32_t)channel << shift;
+  }
+  return result;
+}
+
 char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t mode, const simd_cells_t *ops,
                                         const char *palette, bool background, bool enhance) {
   if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
@@ -816,6 +835,15 @@ char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t mode
       frame.packed[x] = rgb;
       frame.index[x] = bg_rgb;
       frame.luma[x] = (uint8_t)((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
+    }
+    // Anchor the ordered pattern to terminal cells so stationary video does
+    // not shimmer; truecolor and monochrome output remain unchanged.
+    if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256) {
+      for (int x = 0; x < cells.w; ++x) {
+        frame.packed[x] = glyph_ordered_dither(frame.packed[x], x, y, mode);
+        if (background)
+          frame.index[x] = glyph_ordered_dither(frame.index[x], x, y, mode);
+      }
     }
     if (background && mode != ASCII_COLOR_NONE) {
       if (mode == ASCII_COLOR_TRUE) {
