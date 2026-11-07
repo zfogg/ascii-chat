@@ -596,7 +596,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     platform_write_all(STDERR_FILENO, enable, strlen(enable));
   }
   ui_buttons_t buttons = {0};
-  ui_button_t actions[] = {{"[ Confirm ]", 0, false}, {"[ Cancel ]", 0, false}};
+  ui_button_t actions[] = {{"[ Confirm ]", 0, false, 0}, {"[ Cancel ]", 0, false, 0}};
   while (!shutdown_is_requested()) {
     if (ui_input_expired(deadline)) {
       result = ERROR_PROMPT_TIMEOUT;

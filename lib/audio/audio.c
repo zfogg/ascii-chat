@@ -1255,9 +1255,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   if (underrun && to_read > 0) {
-    size_t fade_samples = to_read < (AUDIO_CROSSFADE_SAMPLES * (int)rb->channels)
-                              ? to_read
-                              : (AUDIO_CROSSFADE_SAMPLES * (int)rb->channels);
+    size_t max_fade_samples = (size_t)AUDIO_CROSSFADE_SAMPLES * rb->channels;
+    size_t fade_samples = to_read < max_fade_samples ? to_read : max_fade_samples;
     for (size_t i = 0; i < fade_samples; ++i)
       data[to_read - fade_samples + i] *=
           (float)((fade_samples - i - 1) / rb->channels) / (float)(fade_samples / rb->channels);
@@ -1643,6 +1642,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (pa_result != ASCIICHAT_OK) {
     ctx->sample_rate = AUDIO_SAMPLE_RATE;
     log_warn("PortAudio unavailable; continuing media-only audio without an audio device");
+    errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
     goto start_worker;
   }
 
@@ -2024,8 +2024,6 @@ start_worker:
   ctx->running = true;
   ctx->sample_rate = AUDIO_SAMPLE_RATE;
   mutex_unlock(&ctx->state_mutex);
-  if (pa_result != ASCIICHAT_OK)
-    errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
   return ASCIICHAT_OK;
 }
 
