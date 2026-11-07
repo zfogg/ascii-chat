@@ -1,4 +1,9 @@
-/* A deterministic yt-dlp stand-in for media integration tests. */
+/*
+ * Deterministic yt-dlp stand-in for media integration tests. It exercises how
+ * ascii-chat invokes the extractor, handles prompts and cancellation, and
+ * consumes stream metadata. It does not run real yt-dlp or verify its output,
+ * authentication behavior, or YouTube extraction end to end.
+ */
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
