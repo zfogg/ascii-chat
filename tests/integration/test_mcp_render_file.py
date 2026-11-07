@@ -10,6 +10,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401,E402
+from ascii_chat_tests.jsonrpc import JsonRpcProcess
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import base64
@@ -37,58 +40,22 @@ def plain(text):
 class MCP:
     def __init__(self, binary, directory, env):
         self.directory = directory
-        self.log = (directory / "mcp.stderr.txt").open("wb")
-        self.process = subprocess.Popen(
-            [str(binary), "mcp-server"], stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=self.log, env=env, cwd=directory,
-        )
-        self.responses = queue.Queue()
-        self.next_id = 0
         self.transcript = []
-        threading.Thread(target=self.read, daemon=True).start()
-
-    def read(self):
-        for line in self.process.stdout:
-            try:
-                self.responses.put(json.loads(line))
-            except ValueError:
-                self.responses.put(RuntimeError(f"Non-JSON stdout: {line!r}"))
-        self.responses.put(EOFError("MCP stdout closed"))
+        self.rpc = JsonRpcProcess([str(binary), "mcp-server"], directory / "mcp.stderr.txt", cwd=directory, env=env, count_notifications=False)
 
     def send(self, method, params, notification=False):
-        request = {"jsonrpc": "2.0", "method": method, "params": params}
-        if not notification:
-            self.next_id += 1
-            request["id"] = self.next_id
-        self.transcript.append({"request": request})
-        self.process.stdin.write((json.dumps(request) + "\n").encode())
-        self.process.stdin.flush()
-        if notification:
-            return None
-        deadline = time.monotonic() + 90
-        while True:
-            response = self.responses.get(timeout=max(0.01, deadline - time.monotonic()))
-            if isinstance(response, Exception):
-                raise response
-            self.transcript.append({"response": response})
-            if response.get("id") == request["id"]:
-                assert response.get("jsonrpc") == "2.0", response
-                return response
+        response = self.rpc.request(method, params, notification=notification, timeout=90,
+                                    on_message=lambda direction, message: self.transcript.append({direction: message}))
+        if response is not None:
+            assert response.get("jsonrpc") == "2.0", response
+        return response
 
     def call(self, arguments):
         return self.send("tools/call", {"name": "render_file", "arguments": arguments})
 
     def close(self):
-        self.process.stdin.close()
-        try:
-            self.process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self.process.kill()
-            self.process.wait(timeout=10)
-        self.process.stdout.close()
-        self.log.close()
-        (self.directory / "protocol.json").write_text(
-            json.dumps(self.transcript, indent=2), encoding="utf-8")
+        self.rpc.close()
+        (self.directory / "protocol.json").write_text(json.dumps(self.transcript, indent=2), encoding="utf-8")
 
 
 def successful(response):
@@ -110,7 +77,7 @@ def run(binary, evidence):
     evidence.mkdir(parents=True, exist_ok=False)
     config = evidence / "config"
     config.mkdir()
-    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(TESTING="1", ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", CLAUDECODE="1",
                XDG_CONFIG_HOME=str(config), APPDATA=str(config))
     # An asymmetric gradient makes empty frames, orientation, and source drift visible.
@@ -144,7 +111,7 @@ def run(binary, evidence):
         text = ascii_text(local)
         (evidence / "mcp-ascii.txt").write_text(text, encoding="utf-8")
         assert len(plain(text)) > 100 and len(set(plain(text))) > 3, "Missing ASCII image"
-        command = [str(binary), "--no-check-update", "--log-level", "error", "mirror", "--file", str(image)]
+        command = cli_command(str(binary), "--log-level", "error", "mirror", "--file", str(image))
         for key, value in options.items():
             command.append(f"--{key}={str(value).lower() if isinstance(value, bool) else value}")
         commands.append(command)

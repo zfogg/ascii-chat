@@ -11,8 +11,8 @@ import ctypes as c
 from pathlib import Path
 import subprocess
 import sys
-from pipeline_ctypes import Config
-from test_spectral import load
+from ascii_chat_tests.pipeline_ctypes import Config
+from ascii_chat_tests.audio_spectral import load
 
 library = Path(sys.argv[1]).resolve()
 if len(sys.argv) == 2:

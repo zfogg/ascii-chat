@@ -9,6 +9,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
@@ -20,7 +23,7 @@ import sys
 import tempfile
 import time
 
-from server_lifecycle import Service, check_client, free_port, interrupt, running, server_options
+from ascii_chat_tests.process import Service, check_client, free_port, interrupt, running, server_options
 
 STAGES = ("send-mutex", "worker-pool", "crypto", "transport", "receive", "capture",
           "audio-pipeline", "audio-duplex", "audio-queue-mutex", "audio-queue", "audio-sender",
@@ -46,14 +49,13 @@ def client_options(destination):
 def failures(binary, directory, destination, prefix):
     for stage in STAGES:
         name = f"{prefix}-fail-{stage}"
-        env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+        env = clean_environment()
         env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                    APPDATA=str(directory), XDG_CONFIG_HOME=str(directory),
                    ASCII_CHAT_TEST_CLIENT_FAIL_STAGE=stage)
         log = directory / f"{name}.log"
-        result = subprocess.run(
-            [str(binary), "--no-check-update", "--log-file", str(log), "--log-level", "debug", "client",
-             *client_options(destination), "--reconnect-attempts", "0"],
+        result = run_cli(str(binary), "--log-file", str(log), "--log-level", "debug", "client",
+             *client_options(destination), "--reconnect-attempts", "0",
             env=env, cwd=directory, capture_output=True, timeout=25)
         text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
         assert result.returncode != 0, f"{name}: failure injection did not fire (use a Debug binary)"
@@ -67,9 +69,8 @@ def failures(binary, directory, destination, prefix):
     # on process exit to clear state between injected failures.
     env["ASCII_CHAT_TEST_CLIENT_FAIL_STAGE"] = "audio-sender"
     log = directory / f"{prefix}-repeated-failure.log"
-    result = subprocess.run(
-        [str(binary), "--no-check-update", "--log-file", str(log), "--log-level", "debug", "client",
-         *client_options(destination), "--reconnect-attempts", "3"],
+    result = run_cli(str(binary), "--log-file", str(log), "--log-level", "debug", "client",
+         *client_options(destination), "--reconnect-attempts", "3",
         env=env, cwd=directory, capture_output=True, timeout=30)
     text = log.read_text(encoding="utf-8", errors="replace")
     assert result.returncode != 0, text[-5000:]

@@ -13,6 +13,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401,E402
+from ascii_chat_tests.media import write_pcm_wav
+from ascii_chat_tests.jsonrpc import JsonRpcProcess
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import base64
@@ -35,57 +38,20 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class Client:
-    """Newline-delimited JSON-RPC with bounded reads on Windows and Unix."""
-
     def __init__(self, binary, artifacts, extra=()):
         self.transcript = []
-        self.serial = 0
-        self.lines = queue.Queue()
-        self.stderr = (artifacts / "server.stderr.txt").open("w", encoding="utf-8")
-        self.process = subprocess.Popen(
-            [str(binary), "mcp-server", *extra], stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=self.stderr, text=True,
-            encoding="utf-8", errors="replace", cwd=ROOT,
-        )
-        threading.Thread(target=self._read, daemon=True).start()
-
-    def _read(self):
-        for line in self.process.stdout:
-            self.lines.put(line)
-        self.lines.put(None)
+        self.rpc = JsonRpcProcess([str(binary), "mcp-server", *extra], artifacts / "server.stderr.txt", cwd=ROOT, count_notifications=False)
 
     def send(self, method, params, notification=False):
-        message = {"jsonrpc": "2.0", "method": method, "params": params}
-        if not notification:
-            self.serial += 1
-            message["id"] = self.serial
-        self.transcript.append({"direction": "request", "message": message})
-        self.process.stdin.write(json.dumps(message) + "\n")
-        self.process.stdin.flush()
-        if notification:
-            return None
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            line = self.lines.get(timeout=max(.01, deadline - time.monotonic()))
-            assert line is not None, f"MCP closed stdout (exit {self.process.poll()})"
-            response = json.loads(line)
-            self.transcript.append({"direction": "response", "message": response})
-            if response.get("id") == message["id"]:
-                return response
-        raise TimeoutError(method)
+        def record(direction, message):
+            self.transcript.append({"direction": direction, "message": message})
+        return self.rpc.request(method, params, notification=notification, timeout=60, on_message=record)
 
     def call(self, arguments):
         return self.send("tools/call", {"name": "render_visualization", "arguments": arguments})
 
     def close(self, artifacts):
-        self.process.stdin.close()
-        try:
-            self.process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self.process.kill()
-            self.process.wait(timeout=10)
-        self.process.stdout.close()
-        self.stderr.close()
+        self.rpc.close()
         (artifacts / "protocol.json").write_text(json.dumps(self.transcript, indent=2), encoding="utf-8")
 
 
@@ -132,10 +98,8 @@ def main():
     args.artifacts.mkdir(parents=True, exist_ok=True)
     artifacts = Path(tempfile.mkdtemp(prefix="run-", dir=args.artifacts.resolve()))
     tone = artifacts / "tone.wav"
-    with wave.open(str(tone), "wb") as output:
-        output.setparams((1, 2, 48000, 0, "NONE", "not compressed"))
-        output.writeframes(b"".join(struct.pack("<h", int(18000 * math.sin(2 * math.pi * 440 * i / 48000)))
-                                    for i in range(48000 * 3)))
+    write_pcm_wav(tone, b"".join(struct.pack("<h", int(18000 * math.sin(2 * math.pi * 440 * i / 48000)))
+                                 for i in range(48000 * 3)), sample_rate=48000)
     class QuietHandler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *unused):
             pass
@@ -173,9 +137,9 @@ def main():
                     rendered = text_result(response)
                     (artifacts / f"{case}-mcp.txt").write_text(rendered, encoding="utf-8")
                     mcp_stats = validate_visual(rendered, kind)
-                    command = [str(binary), "--no-check-update", "mirror", f"--{kind}", *cli_source,
+                    command = cli_command(str(binary), "mirror", f"--{kind}", *cli_source,
                                "--no-audio-playback", "--snapshot", "--snapshot-delay", str(case_options["snapshot-delay"]),
-                               "--width", "64", "--height", "20", "--color-mode", "none", "--strip-ansi=true", "--splash-screen=false"]
+                               "--width", "64", "--height", "20", "--color-mode", "none", "--strip-ansi=true", "--splash-screen=false")
                     (artifacts / f"{case}-command.json").write_text(json.dumps(command), encoding="utf-8")
                     cli = subprocess.run(command, capture_output=True, timeout=45, cwd=ROOT)
                     (artifacts / f"{case}-cli.txt").write_bytes(cli.stdout)

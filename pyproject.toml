@@ -12,3 +12,16 @@ dependencies = [
   "pygments-base16>=1.0.3",
   "pygobject>=3.54.5",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+addopts = ["--strict-markers", "-n", "logical"]
+markers = [
+  "unit: fast isolated Python tests",
+  "integration: tests exercising native executables",
+  "cli: native command-line contracts",
+  "network: loopback networking tests",
+  "media: media processing tests",
+  "terminal: PTY and terminal behavior",
+  "mcp: MCP protocol tests",
+]

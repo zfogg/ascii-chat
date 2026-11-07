@@ -1,7 +1,7 @@
 """Windows live TCP/WebSocket/WebRTC FPS regression using pywinpty.
 
 Run: python tests/integration/network_fps_windows.py --binary build/bin/ascii-chat.exe --output build/network-fps
-Requires: python -m pip install pywinpty
+Requires: uv sync --project tests/ascii_chat_tests
 Measures the application's completed-presentation FPS overlay, with normal logging.
 """
 
@@ -10,6 +10,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import hashlib
@@ -83,10 +84,7 @@ def stop_client(client):
         kernel.CloseHandle(handle)
 
 
-def unused_port():
-    with socket.socket() as sock:
-        sock.bind(('127.0.0.1', 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port as unused_port
 
 
 def run(options, transport):
@@ -109,8 +107,8 @@ def run(options, transport):
     def command(name, flags, level='warn'):
         level = os.environ.get('ASCII_CHAT_TEST_LOG_LEVEL', level)
         (output / (name + '.log')).write_text('', encoding='utf-8')
-        argv = [str(options.binary), '--no-check-update', '--log-level', level,
-                '--log-file', str(output / (name + '.log'))] + flags
+        argv = cli_command(str(options.binary), '--log-level', level,
+                '--log-file', str(output / (name + '.log'))) + flags
         commands.append(argv)
         return argv
 

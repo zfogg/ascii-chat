@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import re
@@ -12,7 +13,9 @@ import struct
 import subprocess
 import tempfile
 import time
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.protocol import crc32c
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 
 
 HEADER = struct.Struct("!QHIII")
@@ -22,15 +25,6 @@ VERSION = struct.pack("!HHBBB H7x", 1, 0, 0, 0, 0, 4)
 CAPABILITIES = struct.pack("!IIIIHH32s32sBII64sBBBII", 0, 0, 2, 0, 40, 12,
                            b"xterm", b"", 1, 1, 0, b"", 1, 0, 0, 0, 0)
 UNTRUSTED = b"REMOTE_PRIVATE_DETAIL\x1b[2J"
-
-
-def crc32c(data):
-    crc = 0xffffffff
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ (0x82f63b78 if crc & 1 else 0)
-    return crc ^ 0xffffffff
 
 
 def send(sock, kind, payload=b""):
@@ -90,8 +84,8 @@ def main():
     print(f"Protocol test logs: {directory}", flush=True)
 
     def command(name, *options):
-        arguments = [binary, "--no-check-update", "--log-file", str(directory / f"{name}.log"),
-                     *options, "--no-encrypt", "--no-auth"]
+        arguments = cli_command(binary, "--log-file", str(directory / f"{name}.log"),
+                     *options, "--no-encrypt", "--no-auth")
         if options[0] != "server":
             arguments.extend(["--audio=false", "--fps", "1", "--width", "40", "--height", "12"])
         if options[0] == "client":

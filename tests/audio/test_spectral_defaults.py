@@ -14,8 +14,8 @@ import sys
 import tempfile
 import subprocess
 import numpy as np
-from test_spectral import load
-from pipeline_ctypes import Config, Flags
+from ascii_chat_tests.audio_spectral import load
+from ascii_chat_tests.pipeline_ctypes import Config, Flags
 
 library = Path(sys.argv[1]).resolve()
 if len(sys.argv) == 2:

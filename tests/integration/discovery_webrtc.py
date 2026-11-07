@@ -12,7 +12,7 @@ import contextlib
 import re
 import tempfile
 import time
-from server_lifecycle import Service, free_port
+from ascii_chat_tests.process import Service, free_port
 
 
 def exercise(binary, directory, audio=False, debug_ice=False, ipv6=False):

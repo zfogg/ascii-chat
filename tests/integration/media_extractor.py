@@ -3,6 +3,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image, write_pcm_wav
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import functools
@@ -28,12 +31,8 @@ class MediaExtractor(unittest.TestCase):
         self.tools.mkdir()
         shutil.copy2(FIXTURE, self.tools / ("yt-dlp.exe" if os.name == "nt" else "yt-dlp"))
         image = self.root / "video.ppm"
-        image.write_bytes(b"P6\n64 32\n255\n" + bytes([50, 140, 220]) * (64 * 32))
-        with wave.open(str(self.root / "audio.wav"), "wb") as audio:
-            audio.setnchannels(1)
-            audio.setsampwidth(2)
-            audio.setframerate(48000)
-            audio.writeframes(b"\x00\x10" * 48000)
+        image.write_bytes(ppm_image(64, 32, bytes([50, 140, 220]) * (64 * 32)))
+        write_pcm_wav(self.root / "audio.wav", b"\x00\x10" * 48000, sample_rate=48000)
         self.requests = []
         requests = self.requests
         class Handler(http.server.SimpleHTTPRequestHandler):
@@ -50,7 +49,7 @@ class MediaExtractor(unittest.TestCase):
         self.thread.start()
         self.base = f"http://127.0.0.1:{self.server.server_port}"
         self.trace = self.root / "trace.txt"
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+        self.env = clean_environment()
         self.env.update(PATH=str(self.tools) + os.pathsep + os.environ.get("PATH", ""),
                         ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", ASCII_CHAT_DISABLE_FIRST_USE="1",
                         FAKE_YTDLP_TRACE=str(self.trace), FAKE_YTDLP_VIDEO=self.base + "/video.ppm",
@@ -67,10 +66,10 @@ class MediaExtractor(unittest.TestCase):
         """Run a snapshot and inspect the extractor arguments."""
         source = self.base + "/watch?first=1&second=2"
         env = dict(self.env, FAKE_YTDLP_MODE=mode)
-        cmd = [BINARY, "--no-check-update", "--log-file", str(self.root / "log.txt"),
+        cmd = cli_command(BINARY, "--log-file", str(self.root / "log.txt"),
                "mirror", source, "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
                "--audio=false", "--width", "40", "--height", "12",
-               "--yt-dlp-options=--add-header 'X-Test: \"quoted\" value' --paths 'C:\\some path\\' " + extra_options]
+               "--yt-dlp-options=--add-header 'X-Test: \"quoted\" value' --paths 'C:\\some path\\' " + extra_options)
         result = subprocess.run(cmd, env=env, cwd=self.root, capture_output=True, timeout=45)
         calls = self.trace.read_text().split("--END--\n") if self.trace.exists() else []
         calls = [c.splitlines() for c in calls if c.strip()]

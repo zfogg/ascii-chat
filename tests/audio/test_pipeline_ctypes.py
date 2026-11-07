@@ -13,9 +13,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from pipeline_ctypes import Config, Flags
-from processor_ctypes import Config as ProcessorConfig, Flags as ProcessorFlags
-from test_spectral import Config as SpectralConfig
+from ascii_chat_tests.pipeline_ctypes import Config, Flags
+from ascii_chat_tests.processor_ctypes import Config as ProcessorConfig, Flags as ProcessorFlags
+from ascii_chat_tests.audio_spectral import Config as SpectralConfig
 
 
 def main():

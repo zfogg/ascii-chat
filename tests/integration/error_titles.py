@@ -11,7 +11,7 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401
 
-from terminal_titles import TitleTerminal
+from ascii_chat_tests.terminal import TitleTerminal
 
 
 def check(binary, unicode):

@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
 
 from pathlib import Path
 import subprocess
@@ -22,9 +23,5 @@ if not all(name in encoders.stdout for name in ("libx264", "aac")):
 
 with tempfile.TemporaryDirectory(prefix="ascii-chat-media-") as directory:
     media = Path(directory) / "movie with spaces.mp4"
-    subprocess.run([
-        "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=64x48:r=30",
-        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "1",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(media),
-    ], check=True, timeout=30)
+    lavfi_fixture(["color=c=red:s=64x48:r=30", "sine=frequency=440:sample_rate=48000"], str(media), ffmpeg_options=["-v", "error", "-y"], output_options=["-t", "1", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac"], timeout=30)
     subprocess.run([sys.argv[1], str(media)], check=True, timeout=60)

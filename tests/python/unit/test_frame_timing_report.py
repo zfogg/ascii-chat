@@ -1,14 +1,8 @@
-"""Check frame associations and latency boundaries in diagnostic reports."""
-
-# Apply the shared test policy before importing helpers or starting native children.
-from pathlib import Path as _TestPath
-import sys as _test_sys
-_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
-import _environment  # noqa: F401
+"""Check frame associations and latency boundaries."""
 
 import unittest
 
-from frame_timing_report import summarize
+from ascii_chat_tests.timing import summarize
 
 
 class FrameTimingReportTest(unittest.TestCase):
@@ -33,7 +27,3 @@ class FrameTimingReportTest(unittest.TestCase):
         ]))
         self.assertEqual(report["joined.sample_arrival_to_terminal_ms"]["count"], 1)
         self.assertNotIn("joined.device_timestamp_to_terminal_ms", report)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -14,8 +14,10 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
-from terminal_titles import TitleTerminal
+from ascii_chat_tests.terminal import TitleTerminal
 
 
 def main():
@@ -31,11 +33,9 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="url-title-") as temporary:
         media = Path(temporary) / "stream.mkv"
-        subprocess.run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
-                        "-f", "lavfi", "-i", "testsrc2=size=96x64:rate=10",
-                        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
-                        "-t", "20", "-c:v", "mpeg4", "-c:a", "pcm_s16le", str(media)],
-                       check=True, timeout=30)
+        lavfi_fixture(['testsrc2=size=96x64:rate=10', 'sine=frequency=440:sample_rate=48000'],
+                      media, ffmpeg=args.ffmpeg, ffmpeg_options=['-hide_banner', '-loglevel', 'error', '-y'],
+                      output_options=['-t', '20', '-c:v', 'mpeg4', '-c:a', 'pcm_s16le'], timeout=30)
         gate = threading.Event()
         requested = threading.Event()
 
@@ -56,9 +56,9 @@ def main():
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         url = f"http://127.0.0.1:{server.server_port}/stream.mkv"
-        term = TitleTerminal([str(args.binary.resolve()), "--no-check-update", "--color=false", "mirror", url,
+        term = TitleTerminal(cli_command(str(args.binary.resolve()), "--color=false", "mirror", url,
                               "--utf8=true", "--splash-screen=false", "--fps=10",
-                              "--no-audio-playback"], rows=20, cols=60, terminal_replies=True,
+                              "--no-audio-playback"), rows=20, cols=60, terminal_replies=True,
                              environment={"TERM": "xterm-256color", "ASCII_CHAT_DISABLE_FIRST_USE": "1"})
         try:
             pattern = re.compile(r"[⠋⠙⠴⠦]  ascii-chat • mirror")

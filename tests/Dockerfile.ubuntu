@@ -84,6 +84,9 @@ RUN LLVM_VERSION=$(ls /usr/lib/llvm-* -d 2>/dev/null | sort -V | tail -1 | grep 
 # Verify installation
 RUN clang --version && cmake --version
 
+# uv manages the locked Python test environment in the build tree.
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
+
 # Set working directory
 WORKDIR /app
 
@@ -91,4 +94,4 @@ WORKDIR /app
 COPY .git /app/.git
 
 # Default command builds and runs tests with ctest
-CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel 0"]
+CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel"]

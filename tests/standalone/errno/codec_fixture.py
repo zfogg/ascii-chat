@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
 
 import argparse
 from pathlib import Path
@@ -16,9 +17,7 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--broken-video", action="store_true")
     args = parser.parse_args()
-    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x64:rate=10",
-                    "-f", "lavfi", "-i", "sine=frequency=440", "-t", "1", "-c:v", "ffv1",
-                    "-c:a", "pcm_s16le", "-y", str(args.output)], check=True)
+    lavfi_fixture(["testsrc=size=64x64:rate=10", "sine=frequency=440"], str(args.output), ffmpeg_options=["-v", "error"], output_options=["-t", "1", "-c:v", "ffv1", "-c:a", "pcm_s16le", "-y"])
     data = args.output.read_bytes()
     if args.broken_video:
         offset = data.index(b"00dc", data.index(b"movi") + 4)

@@ -6,6 +6,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image, reconstruct
 
 import argparse
 import base64
@@ -15,23 +16,6 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
-
-
-def reconstruct(data):
-    packets = list(re.finditer(rb"\x1b_G([^;]*);([A-Za-z0-9+/=]*)\x1b\\", data))
-    assert packets and b"".join(p.group() for p in packets) == data, repr(data[:200])
-    for i, packet in enumerate(packets):
-        assert len(packet[2]) <= 4096
-        assert (b"m=0" if i == len(packets) - 1 else b"m=1") in packet[1]
-        if i:
-            assert packet[1] in (b"m=0", b"m=1")
-        else:
-            assert b"a=T,f=32" in packet[1] and b"t=d,q=2" in packet[1]
-    width = int(re.search(rb"s=(\d+)", packets[0][1])[1])
-    height = int(re.search(rb"v=(\d+)", packets[0][1])[1])
-    raw = base64.b64decode(b"".join(p[2] for p in packets), validate=True)
-    assert len(raw) == width * height * 4
-    return width, height, raw, len(packets)
 
 
 def check_mp4_boxes(data):
@@ -59,7 +43,7 @@ def main():
     env = dict(os.environ, TERM="dumb", TESTING="1", ASAN_OPTIONS="detect_leaks=0")
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
-        ppm = b"P6\n8 8\n255\n" + bytes([220, 100, 35]) * 64
+        ppm = ppm_image(8, 8, bytes([220, 100, 35]) * 64)
         common = [binary, "--log-file", os.devnull, "mirror", "--file", "-", "--snapshot", "--snapshot-delay", "0",
                   "--width", "20", "--height", "10", "--color-mode", "truecolor"]
 

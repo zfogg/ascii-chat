@@ -45,6 +45,27 @@ if(BUILD_TESTS)
             ${Python3_EXECUTABLE} ${script} ${ARGN})
     endfunction()
 
+    # Pytest suites use a build-local uv environment so native and Docker builds
+    # never replace one another's virtual environment. CTest reserves all cores
+    # for each xdist batch rather than oversubscribing concurrent batches.
+    find_program(ASCIICHAT_UV_EXECUTABLE uv REQUIRED)
+    function(asciichat_add_pytest name suite)
+        set(_coverage_args)
+        if(ASCIICHAT_ENABLE_COVERAGE)
+            list(APPEND _coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
+        endif()
+        add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
+            ${CMAKE_COMMAND} -E env "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
+            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}/tests/ascii_chat_tests
+            --frozen --python ${Python3_EXECUTABLE} -m pytest
+            ${CMAKE_SOURCE_DIR}/tests/python/${suite}
+            --junitxml=${CMAKE_BINARY_DIR}/Testing/${name}.xml ${ARGN})
+        set_tests_properties(${name} PROPERTIES PROCESSORS ${CPU_CORES} TIMEOUT 300)
+    endfunction()
+    asciichat_add_pytest(python-unit unit)
+    set_tests_properties(python-unit PROPERTIES LABELS "unit;python")
+
     # These dependency-isolated build matrices compile selected production
     # sources directly. The shared wrapper retains their profiles under the
     # active build tree when coverage is enabled.
@@ -79,13 +100,13 @@ if(IS_COVERAGE_BUILD OR ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=")
     set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
     set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
     set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
-    set(CTEST_PARALLEL_JOBS 2)     # Limit parallel tests to prevent resource exhaustion during coverage
+    set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 else()
     set(CRITERION_TIMEOUT 25)      # Default timeout
     set(CTEST_TEST_TIMEOUT 30)     # Tests must complete in 30 seconds or less
-    # Use all CPU cores minus 1 to prevent system saturation
-    math(EXPR CRITERION_JOBS "${CPU_CORES} - 1")
-    set(CTEST_PARALLEL_JOBS "${CPU_CORES} - 1")
+    # CTest distributes executables across cores; do not multiply Criterion workers.
+    set(CRITERION_JOBS 1)
+    set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 endif()
 
 # XML output directory for Criterion test results
@@ -709,7 +730,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
-    # Use CTEST_PARALLEL_JOBS which is limited to prevent resource exhaustion
+    # CTest distributes test executables over all detected cores.
     add_custom_target(test_debug
         DEPENDS tests-criterion-build
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
@@ -1278,12 +1299,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
-    asciichat_add_python_test(glyph-match-mirror
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/glyph_match.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(glyph-match-mirror PROPERTIES LABELS "integration" TIMEOUT 100)
-    asciichat_add_python_test(render-font-formats
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_font_formats.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(render-font-formats PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-media integration/media --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
     asciichat_add_python_test(discovery-direct-tcp
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/discovery_direct_tcp.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(discovery-direct-tcp PROPERTIES LABELS "integration" TIMEOUT 90)
@@ -1295,10 +1312,8 @@ if(BUILD_TESTS AND TARGET ascii-chat)
             add_dependencies(${test_build_target} ascii-chat)
         endif()
     endforeach()
-    asciichat_add_python_test(server-lifecycle
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
-            $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+    asciichat_add_pytest(python-network integration/network --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-network PROPERTIES LABELS "integration;python;network")
     asciichat_add_python_test(identity-sessions
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/identity_sessions.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(identity-sessions PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
@@ -1590,9 +1605,6 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MAT
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
-    asciichat_add_python_test(render-file-sizing
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_file_sizing.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(render-file-sizing PROPERTIES LABELS "integration;media" TIMEOUT 180 SKIP_RETURN_CODE 77)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
@@ -1955,10 +1967,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
             add_dependencies(${test_build_target} test-terminal-pty)
         endif()
     endforeach()
-    asciichat_add_python_test(tui-modal-lifecycle
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/tui_modal_lifecycle.py --binary $<TARGET_FILE:test-terminal-pty>)
-    set_tests_properties(tui-modal-lifecycle PROPERTIES LABELS "integration;tui;terminal" TIMEOUT 120
-        SKIP_RETURN_CODE 77)
+    asciichat_add_pytest(python-terminal integration/terminal --terminal-probe=$<TARGET_FILE:test-terminal-pty>)
+    set_tests_properties(python-terminal PROPERTIES LABELS "integration;python;tui;terminal")
     if(UNIX)
         add_test(NAME terminal-pty COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_pty.py $<TARGET_FILE:test-terminal-pty>)
@@ -2238,13 +2248,16 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
-    asciichat_add_python_test(options-init
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_init.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(options-init PROPERTIES LABELS "unit" TIMEOUT 180)
+    asciichat_add_pytest(python-cli integration/cli --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-cli PROPERTIES LABELS "integration;python;cli")
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat-shared)
     set(shared_api_tests options-metadata)
+    asciichat_add_python_test(audio-test-pattern-native
+        ${CMAKE_CURRENT_SOURCE_DIR}/audio/test_audio_pattern_native.py $<TARGET_FILE:ascii-chat-shared>)
+    set_tests_properties(audio-test-pattern-native PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+    list(APPEND shared_api_tests audio-test-pattern-native)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         asciichat_add_python_test(symbolizer-offline
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/symbolizer_offline.py
@@ -2451,9 +2464,8 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
-    asciichat_add_python_test(mcp-protocol
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_protocol.py --binary $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(mcp-protocol PROPERTIES LABELS "integration;mcp" TIMEOUT 180 RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-mcp integration/mcp --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-mcp PROPERTIES LABELS "integration;python;mcp")
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")
@@ -2461,12 +2473,6 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|R
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_tui.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/Testing/mcp-tui)
     set_tests_properties(mcp-tui PROPERTIES LABELS "integration;mcp;tui" TIMEOUT 90 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
-endif()
-
-if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
-    asciichat_add_python_test(cli-logging-contract
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_logging_contract.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(cli-logging-contract PROPERTIES LABELS "integration" TIMEOUT 120)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-panic-report AND NOT EMSCRIPTEN)

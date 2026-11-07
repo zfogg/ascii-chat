@@ -380,9 +380,14 @@ static void *nat_detection_thread_fn(void *arg) {
 
   discovery_session_t *session = (discovery_session_t *)arg;
 
-  const char *probe_host = OPT_ENDPOINT_STUN_FALLBACK;
-  if (strncmp(probe_host, "stun:", 5) == 0)
-    probe_host += 5;
+  stun_server_t probe = {0};
+  const char *probe_host = NULL;
+  if (!GET_OPTION(webrtc_skip_stun) &&
+      stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, &probe, 1) > 0) {
+    probe_host = probe.host;
+    if (strncmp(probe_host, "stun:", 5) == 0)
+      probe_host += 5;
+  }
 
   // Run blocking NAT detection in this thread (not main thread)
   nat_quality_t quality;

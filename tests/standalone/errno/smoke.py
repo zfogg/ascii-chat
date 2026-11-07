@@ -5,6 +5,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -16,10 +18,11 @@ import tempfile
 import time
 
 
+from ascii_chat_tests.process import free_port
+
+
 def unused_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return str(sock.getsockname()[1])
+    return str(free_port())
 
 
 def main():
@@ -36,7 +39,7 @@ def main():
     env = dict(os.environ, ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
 
     def command(name, options):
-        return [binary, "--no-check-update", "--log-file", str(logs / f"{name}.log"), *options]
+        return cli_command(binary, "--log-file", str(logs / f"{name}.log"), *options)
 
     def run(name, options, expected):
         with (logs / f"{name}-output.log").open("wb") as output:
@@ -91,7 +94,7 @@ def main():
         assert "Failure chain" in failure
 
     frame = logs / "extensionless-frame"
-    frame.write_bytes(b"P6\n2 2\n255\n" + bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0]))
+    frame.write_bytes(ppm_image(2, 2, bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])))
     run("media-fallback", ["mirror", "--file", str(frame), *snapshot], 0)
     if args.codec_fixture:
         fallback = run("optional-codec", ["mirror", "--file", str(args.codec_fixture.resolve()), *snapshot], 0)
