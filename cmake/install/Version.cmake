@@ -489,9 +489,16 @@ configure_file(
             execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --path-format=absolute --git-path "${_git_ref}"
                 WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
                 OUTPUT_VARIABLE _git_ref_path OUTPUT_STRIP_TRAILING_WHITESPACE)
-            if(EXISTS "${_git_ref_path}")
-                list(APPEND VERSION_DEPENDENCIES "${_git_ref_path}")
-            endif()
+            # Loose refs can disappear when Git packs refs, and reappear on
+            # the next commit. Have Ninja reconfigure when that happens before
+            # it evaluates the version header's file dependencies.
+            file(GLOB _git_loose_ref CONFIGURE_DEPENDS "${_git_ref_path}")
+            list(APPEND VERSION_DEPENDENCIES ${_git_loose_ref})
+            execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --path-format=absolute --git-path packed-refs
+                WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
+                OUTPUT_VARIABLE _git_packed_refs_path OUTPUT_STRIP_TRAILING_WHITESPACE)
+            file(GLOB _git_packed_refs CONFIGURE_DEPENDS "${_git_packed_refs_path}")
+            list(APPEND VERSION_DEPENDENCIES ${_git_packed_refs})
         endif()
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_GIT_DIR}/HEAD")
     endif()
