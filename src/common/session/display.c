@@ -798,7 +798,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   // Wide palettes use the existing cell composer before the rectangular check.
   bool explicit_palette = caps_copy.palette_explicit;
   bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH &&
-                     caps_copy.render_mode == RENDER_MODE_FOREGROUND && width > 0 && height > 0 &&
+                     caps_copy.render_mode != RENDER_MODE_HALF_BLOCK && width > 0 && height > 0 &&
                      width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8 &&
                      (!explicit_palette || ascii_glyph_palette_supported(ctx->palette_chars));
   if (result && !glyph_match && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {

@@ -516,7 +516,92 @@ bool ascii_glyph_palette_supported(const char *palette) {
   return true;
 }
 
+typedef struct {
+  int16_t mask[16];
+  int sum, energy, determinant;
+  uint32_t key;
+  double foreground_scale, inverse_determinant;
+} glyph_candidate_t;
+
+static uint8_t glyph_clamp_channel(double value) {
+  if (value <= 0)
+    return 0;
+  if (value >= 255)
+    return 255;
+  return (uint8_t)(value + 0.5);
+}
+
+static uint32_t glyph_quantized_rgb(uint32_t color, ascii_color_t mode) {
+  uint8_t r = (uint8_t)(color >> 16), g = (uint8_t)(color >> 8), b = (uint8_t)color;
+  if (mode == ASCII_COLOR_16)
+    get_16color_rgb(rgb_to_16color(r, g, b), &r, &g, &b);
+  else if (mode == ASCII_COLOR_256)
+    get_256color_rgb(rgb_to_256color(r, g, b), &r, &g, &b);
+  return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+}
+
+static int64_t glyph_channel_error(const glyph_candidate_t *glyph, int sum, int energy, int dot, int fg, int bg) {
+  int delta = fg - bg;
+  return (int64_t)65025 * energy + (int64_t)16 * 65025 * bg * bg + (int64_t)glyph->energy * delta * delta +
+         (int64_t)510 * bg * delta * glyph->sum - (int64_t)130050 * bg * sum - (int64_t)510 * delta * dot;
+}
+
+// Solve the least-squares foreground and, when requested, background for a
+// glyph's coverage. Score the colors the terminal can actually display.
+static uint64_t glyph_fit(const glyph_candidate_t *glyph, const int16_t samples[3][16], const int sums[3],
+                          const int energies[3], ascii_color_t mode, bool background,
+                          int (*correlate)(const int16_t[16], const int16_t[16]), uint64_t limit, uint32_t *foreground,
+                          uint32_t *background_out) {
+  int dots[3] = {0}, fg[3] = {255, 255, 255}, bg[3] = {0};
+  int channels = mode == ASCII_COLOR_NONE ? 1 : 3;
+  int64_t error = 0;
+  for (int c = 0; c < channels; ++c) {
+    dots[c] = correlate(samples[c], glyph->mask);
+    if (mode == ASCII_COLOR_NONE)
+      continue;
+    if (background) {
+      if (!glyph->determinant) {
+        fg[c] = bg[c] = glyph_clamp_channel((double)sums[c] / 16);
+      } else {
+        double slope = (double)(16 * dots[c] - glyph->sum * sums[c]) * glyph->inverse_determinant;
+        double intercept = ((double)sums[c] - glyph->sum * slope) / 16;
+        bg[c] = glyph_clamp_channel(intercept);
+        fg[c] = glyph_clamp_channel(intercept + 255 * slope);
+      }
+    } else if (glyph->energy) {
+      fg[c] = glyph_clamp_channel(dots[c] * glyph->foreground_scale);
+    } else {
+      fg[c] = 0;
+    }
+    if (mode == ASCII_COLOR_TRUE) {
+      error += glyph_channel_error(glyph, sums[c], energies[c], dots[c], fg[c], bg[c]);
+      // Channel errors are nonnegative, so later channels cannot improve this score.
+      if ((uint64_t)(error / 65025) >= limit)
+        return UINT64_MAX;
+    }
+  }
+  uint32_t foreground_rgb = ((uint32_t)fg[0] << 16) | ((uint32_t)fg[1] << 8) | (uint32_t)fg[2];
+  uint32_t background_rgb = ((uint32_t)bg[0] << 16) | ((uint32_t)bg[1] << 8) | (uint32_t)bg[2];
+  foreground_rgb = glyph_quantized_rgb(foreground_rgb, mode);
+  background_rgb = glyph_quantized_rgb(background_rgb, mode);
+  if (mode != ASCII_COLOR_TRUE) {
+    for (int c = 0; c < channels; ++c) {
+      int shift = 16 - 8 * c;
+      int f = (foreground_rgb >> shift) & 255, b = (background_rgb >> shift) & 255;
+      error += glyph_channel_error(glyph, sums[c], energies[c], dots[c], f, b);
+    }
+  }
+  *foreground = foreground_rgb;
+  *background_out = background_rgb;
+  return (uint64_t)(error / 65025);
+}
+
 char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette) {
+  return ascii_render_glyph_match_mode(image, mode, ops, palette, false);
+}
+
+char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, const simd_cells_t *ops,
+                                    const char *palette, bool background) {
   if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
       mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
@@ -547,30 +632,25 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       candidates[candidate_count++] = i;
     }
   }
-  // Glyph masks do not change between cells. Prepare their tone and centered
-  // shape once per frame instead of recomputing them for every candidate.
-  int glyph_tone[GLYPH_COUNT];
-  int glyph_energy[GLYPH_COUNT];
-  int16_t centered_masks[GLYPH_COUNT][16];
-  uint32_t glyph_keys[GLYPH_COUNT];
+  // Prepare coverage and its sufficient statistics once per frame.
+  glyph_candidate_t glyphs[GLYPH_COUNT];
   for (size_t c = 0; c < candidate_count; ++c) {
     int g = candidates[c];
-    glyph_keys[g] = glyph_key(g);
+    glyph_candidate_t *glyph = &glyphs[c];
+    glyph->key = glyph_key(g);
     uint8_t block_mask[16];
     const uint8_t *mask = g < GLYPH_ASCII_COUNT ? glyph_masks[g] : block_mask;
     if (g >= GLYPH_ASCII_COUNT)
       glyph_block_mask(g - GLYPH_ASCII_COUNT, block_mask);
-    int sum = 0;
-    for (int i = 0; i < 16; ++i)
-      sum += mask[i];
-    int mean = sum / 16;
-    glyph_tone[g] = sum * 255 / (g < GLYPH_ASCII_COUNT ? GLYPH_MASK_MAX_SUM : 16 * 255);
-    glyph_energy[g] = 0;
+    glyph->sum = glyph->energy = 0;
     for (int i = 0; i < 16; ++i) {
-      int centered = (int)mask[i] - mean;
-      centered_masks[g][i] = (int16_t)centered;
-      glyph_energy[g] += centered * centered;
+      glyph->mask[i] = mask[i];
+      glyph->sum += mask[i];
+      glyph->energy += mask[i] * mask[i];
     }
+    glyph->determinant = 16 * glyph->energy - glyph->sum * glyph->sum;
+    glyph->foreground_scale = glyph->energy ? 255.0 / glyph->energy : 0;
+    glyph->inverse_determinant = glyph->determinant ? 1.0 / glyph->determinant : 0;
   }
   image_t cells = *image;
   cells.w /= 8;
@@ -581,9 +661,9 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
   frame.temporal_preselected = true;
   for (int y = 0; y < cells.h; ++y) {
     for (int x = 0; x < cells.w; ++x) {
-      int luminance[16];
-      int sample_mean = 0;
-      unsigned color_sum[3] = {0, 0, 0};
+      int16_t samples[3][16] = {{0}};
+      int sums[3] = {0}, energies[3] = {0};
+      uint8_t patch[16];
       for (int sy = 0; sy < 4; ++sy) {
         const rgb_pixel_t *top = image->pixels + (size_t)(y * 8 + sy * 2) * (size_t)image->w + (size_t)(x * 8);
         const rgb_pixel_t *bottom = top + image->w;
@@ -594,63 +674,81 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
           int red = (a.r + b.r + c.r + d.r) / 4;
           int green = (a.g + b.g + c.g + d.g) / 4;
           int blue = (a.b + b.b + c.b + d.b) / 4;
-          color_sum[0] += (unsigned)(a.r + b.r + c.r + d.r);
-          color_sum[1] += (unsigned)(a.g + b.g + c.g + d.g);
-          color_sum[2] += (unsigned)(a.b + b.b + c.b + d.b);
-          luminance[i] = (77 * red + 150 * green + 29 * blue) >> 8;
-          sample_mean += luminance[i];
+          patch[i] = (uint8_t)((77 * red + 150 * green + 29 * blue) >> 8);
+          samples[0][i] = (int16_t)(mode == ASCII_COLOR_NONE ? patch[i] : red);
+          samples[1][i] = (int16_t)green;
+          samples[2][i] = (int16_t)blue;
+          for (int channel = 0; channel < (mode == ASCII_COLOR_NONE ? 1 : 3); ++channel) {
+            int value = samples[channel][i];
+            sums[channel] += value;
+            energies[channel] += value * value;
+          }
         }
       }
-      sample_mean /= 16;
-      int16_t centered_samples[16];
-      int sample_energy = 0;
-      for (int i = 0; i < 16; ++i) {
-        int centered = luminance[i] - sample_mean;
-        centered_samples[i] = (int16_t)centered;
-        sample_energy += centered * centered;
-      }
-      int best = -1;
-      int64_t best_error = INT64_MAX;
+      size_t best = 0;
+      uint64_t best_error = UINT64_MAX;
+      uint32_t rgb = 0, bg_rgb = 0, previous_rgb = 0, previous_bg = 0;
       uint64_t previous_error = UINT64_MAX;
       ascii_temporal_cell_t *previous = frame.stabilizer ? &frame.stabilizer->cells[(size_t)y * frame.width + x] : NULL;
       for (size_t c = 0; c < candidate_count; ++c) {
-        int g = candidates[c];
-        // Normalize glyph density and compare local deviations around each mean.
-        int tone_error = sample_mean - glyph_tone[g];
-        int tone_cost = 16 * tone_error * tone_error;
-        bool is_previous = previous && previous->valid && previous->glyph == glyph_keys[g];
-        // Shape error is nonnegative, so this candidate cannot improve the
-        // current best if its tone term already exceeds the whole score.
-        // The previous glyph still needs a score for temporal hysteresis.
-        if (!is_previous && tone_cost > best_error)
-          continue;
-        int dot = shape_correlation(centered_samples, centered_masks[g]);
-        int64_t error = tone_cost + sample_energy + glyph_energy[g] - 2 * dot;
-        if (is_previous)
-          previous_error = (uint64_t)error;
+        uint32_t candidate_rgb, candidate_bg;
+        bool is_previous = previous && previous->valid && previous->glyph == glyphs[c].key;
+        uint64_t error = glyph_fit(&glyphs[c], samples, sums, energies, mode, background, shape_correlation,
+                                   is_previous ? UINT64_MAX : best_error, &candidate_rgb, &candidate_bg);
+        if (is_previous) {
+          previous_error = error;
+          previous_rgb = candidate_rgb;
+          previous_bg = candidate_bg;
+        }
         if (error < best_error) {
           best_error = error;
-          best = g;
+          best = c;
+          rgb = candidate_rgb;
+          bg_rgb = candidate_bg;
         }
       }
-      // Average the cell rather than sampling one corner, which can change
-      // abruptly when a small feature moves across the cell boundary.
-      uint32_t rgb = ((color_sum[0] + 32) / 64 << 16) | ((color_sum[1] + 32) / 64 << 8) | ((color_sum[2] + 32) / 64);
-      uint32_t selected = glyph_keys[best];
+      uint32_t selected = glyphs[best].key;
       if (previous) {
-        uint8_t patch[16];
+        ascii_temporal_cell_t old = *previous;
+        unsigned motion = 0;
         for (int i = 0; i < 16; ++i)
-          patch[i] = (uint8_t)luminance[i];
-        selected = ascii_stabilizer_choose(previous, patch, selected, (uint64_t)best_error, previous_error, rgb,
+          motion += (unsigned)abs((int)patch[i] - (int)old.samples[i]);
+        selected = ascii_stabilizer_choose(previous, patch, selected, best_error, previous_error, rgb,
                                            frame.stabilizer->elapsed_ns, &rgb);
+        if (selected != glyphs[best].key) {
+          *previous = old;
+          bg_rgb = previous_bg;
+          selected = ascii_stabilizer_choose(previous, patch, glyphs[best].key, best_error, previous_error,
+                                             previous_rgb, frame.stabilizer->elapsed_ns, &rgb);
+        }
+        uint64_t elapsed = frame.stabilizer->elapsed_ns;
+        if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+          unsigned weight = (unsigned)(elapsed * 256 / (elapsed + ASCII_TEMPORAL_COLOR_TIME_NS));
+          bg_rgb = temporal_blend_color(old.background, bg_rgb, weight);
+        }
+        previous->background = bg_rgb;
       }
       frame.glyph[x] = selected;
       frame.packed[x] = rgb;
+      frame.index[x] = bg_rgb;
       frame.luma[x] = (uint8_t)((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
     }
-    if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256)
-      ops->quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
-    ascii_frame_emit_row(&frame, mode, false, y + 1 < cells.h, ops);
+    if (background && mode != ASCII_COLOR_NONE) {
+      if (mode == ASCII_COLOR_TRUE) {
+        memcpy(frame.fg, frame.packed, frame.width * sizeof(uint32_t));
+        memcpy(frame.bg, frame.index, frame.width * sizeof(uint32_t));
+      } else {
+        ops->quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+        ops->quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+      }
+      emit_prepared_row(&frame.output, mode, ops, frame.glyph, frame.fg, frame.bg, frame.width);
+      emit_row_end(&frame.output, true, y + 1 < cells.h);
+      ++frame.row;
+    } else {
+      if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256)
+        ops->quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+      ascii_frame_emit_row(&frame, mode, false, y + 1 < cells.h, ops);
+    }
   }
   return ascii_frame_finish(&frame);
 }

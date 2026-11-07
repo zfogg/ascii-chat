@@ -314,7 +314,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
     SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
     return NULL;
   }
-  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode == RENDER_MODE_FOREGROUND &&
+  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode != RENDER_MODE_HALF_BLOCK &&
                      resized_width > 0 && resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
                      resized_height <= IMAGE_MAX_HEIGHT / 8;
   if (glyph_match) {
@@ -472,8 +472,9 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                               : caps->color_level == TERM_COLOR_256     ? ASCII_COLOR_256
                               : caps->color_level == TERM_COLOR_16      ? ASCII_COLOR_16
                                                                         : ASCII_COLOR_NONE;
-  char *ascii = glyph_match ? ascii_render_glyph_match(resized, glyph_color, simd_cells_backend(),
-                                                       explicit_palette ? palette_chars : NULL)
+  char *ascii = glyph_match ? ascii_render_glyph_match_mode(resized, glyph_color, simd_cells_backend(),
+                                                            explicit_palette ? palette_chars : NULL,
+                                                            caps->render_mode == RENDER_MODE_BACKGROUND)
                             : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
   ascii_stabilizer_set_target(previous_stabilizer);

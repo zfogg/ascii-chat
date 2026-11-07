@@ -211,7 +211,7 @@ const registry_entry_t g_display_entries[] = {
      .default_value = &default_renderer,
      .default_value_size = sizeof(ascii_renderer_t),
      .help_text = "Character selection: luminance (default) or experimental glyph matching. Glyph supports printable "
-                  "ASCII palettes; Unicode palettes use luminance.",
+                  "ASCII and Unicode block elements; unsupported palette characters are rejected.",
      .group = "DISPLAY",
      .arg_placeholder = "luminance|glyph",
      .env_var_name = "ASCII_CHAT_RENDERER",

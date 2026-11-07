@@ -35,6 +35,11 @@ def test_glyph_match(binary, test_environment):
         assert default == capture(["--renderer=luminance"]), "default must be luminance"
         glyph = capture(["--renderer=glyph"])
         assert glyph != default, "glyph mode did not change the frame"
+        background_args = [arg for arg in common if arg != "--color-mode=none"]
+        background = subprocess.run(background_args + ["--renderer=glyph", "--render-mode=background",
+                                                         "--color-mode=truecolor"], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, env=test_environment, timeout=40, check=True)
+        assert b"\x1b[48;2;" in background.stdout, "glyph background colors were not emitted"
         standard_chars = set(b"   ...',;:clodxkO0KXNWM")
         glyph_chars = set(b"".join(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line) for line in glyph))
         assert glyph_chars - standard_chars, "default glyph mode should use the 95-glyph atlas"

@@ -724,24 +724,18 @@ Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
         sums[(y / 2) * 4 + x / 2] += v;
       }
     }
-    int luminance[16], mean = 0;
+    int luminance[16];
     for (int i = 0; i < 16; ++i) {
       // The renderer averages each channel before computing luminance.
       int v = sums[i] / 4;
       luminance[i] = (77 * v + 150 * v + 29 * v) >> 8;
-      mean += luminance[i];
     }
-    mean /= 16;
     int best = -1;
     int64_t best_error = INT64_MAX;
     for (int g = 0; g < 95; ++g) {
-      int mask_sum = 0;
-      for (int i = 0; i < 16; ++i)
-        mask_sum += glyph_masks[g][i];
-      int tone = mean - mask_sum * 255 / GLYPH_MASK_MAX_SUM;
-      int64_t error = (int64_t)16 * tone * tone;
+      int64_t error = 0;
       for (int i = 0; i < 16; ++i) {
-        int delta = (luminance[i] - mean) - ((int)glyph_masks[g][i] - mask_sum / 16);
+        int delta = luminance[i] - (int)glyph_masks[g][i];
         error += (int64_t)delta * delta;
       }
       if (error < best_error) {
@@ -933,12 +927,68 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
     for (int x = 3; x <= 4; ++x)
       pixels[y * 16 + x] = (rgb_pixel_t){255, 255, 255};
   pixels[0] = (rgb_pixel_t){80, 110, 140};
-  char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL);
+  char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x88");
   cr_assert_not_null(color);
   terminal_cell_t cells[2] = {0};
   decode(color, cells, 2, 1, true);
   cr_assert_eq(cells[0].fg, 0x414142, "glyph color must reflect the entire cell, not its first pixel");
   SAFE_FREE(color);
+
+  rgb_pixel_t split_pixels[64];
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 8; ++x)
+      split_pixels[y * 8 + x] = x < 4 ? (rgb_pixel_t){255, 0, 0} : (rgb_pixel_t){0, 0, 255};
+  image_t split = {.w = 8, .h = 8, .pixels = split_pixels};
+  const ascii_color_t fitted_modes[] = {ASCII_COLOR_TRUE, ASCII_COLOR_256, ASCII_COLOR_16};
+  for (size_t i = 0; i < sizeof(fitted_modes) / sizeof(fitted_modes[0]); ++i) {
+    ascii_color_t mode = fitted_modes[i];
+    char *fitted = ascii_render_glyph_match_mode(&split, mode, &simd_cells_scalar, " \xe2\x96\x8c\xe2\x96\x80", true);
+    cr_assert_not_null(fitted);
+    terminal_cell_t fitted_cell[1] = {0};
+    decode(fitted, fitted_cell, 1, 1, true);
+    cr_assert_str_eq(fitted_cell[0].glyph, "\xe2\x96\x8c");
+    int red = mode == ASCII_COLOR_TRUE  ? 0xff0000
+              : mode == ASCII_COLOR_256 ? rgb_to_256color(255, 0, 0)
+                                        : rgb_to_16color(255, 0, 0);
+    int blue = mode == ASCII_COLOR_TRUE  ? 0x0000ff
+               : mode == ASCII_COLOR_256 ? rgb_to_256color(0, 0, 255)
+                                         : rgb_to_16color(0, 0, 255);
+    cr_assert_eq(fitted_cell[0].fg, red);
+    cr_assert_eq(fitted_cell[0].bg, blue);
+    SAFE_FREE(fitted);
+  }
+  char *scalar_fitted = ascii_render_glyph_match_mode(&varied_image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL, true);
+  cr_assert_not_null(scalar_fitted);
+  for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
+    if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
+      continue;
+    char *other_fitted = ascii_render_glyph_match_mode(&varied_image, ASCII_COLOR_TRUE, backends[b].luma, NULL, true);
+    cr_assert_not_null(other_fitted);
+    cr_assert_str_eq(other_fitted, scalar_fitted, "fitted glyph output differs for backend %s", backends[b].name);
+    SAFE_FREE(other_fitted);
+  }
+  SAFE_FREE(scalar_fitted);
+
+  ascii_stabilizer_t fitted_history = {0};
+  cr_assert_eq(ascii_stabilizer_prepare(&fitted_history, 1, 1, 7), ASCIICHAT_OK);
+  fitted_history.elapsed_ns = 16000000;
+  ascii_stabilizer_t *old_target = ascii_stabilizer_set_target(&fitted_history);
+  char *first_fitted =
+      ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
+  cr_assert_not_null(first_fitted);
+  SAFE_FREE(first_fitted);
+  for (int y = 0; y < 8; ++y)
+    for (int x = 4; x < 8; ++x)
+      split_pixels[y * 8 + x].b = 235;
+  char *next_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
+  cr_assert_not_null(next_fitted);
+  terminal_cell_t stable_cell[1] = {0};
+  decode(next_fitted, stable_cell, 1, 1, true);
+  cr_assert((stable_cell[0].bg & 255) > 235);
+  cr_assert_lt(stable_cell[0].bg & 255, 255);
+  SAFE_FREE(next_fitted);
+  ascii_stabilizer_set_target(old_target);
+  ascii_stabilizer_reset(&fitted_history);
 
   rgb_pixel_t colored_pixels[16 * 16];
   const rgb_pixel_t colors[4] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}};
