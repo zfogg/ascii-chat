@@ -1,3 +1,5 @@
+include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
+
 # =============================================================================
 # Tests Module (Criterion-based tests)
 # =============================================================================
@@ -169,6 +171,7 @@ function(asciichat_add_contract_test name target)
     set_property(DIRECTORY APPEND PROPERTY ASCIICHAT_CONTRACT_TESTS ${name})
     add_test(NAME ${name} COMMAND ${target} --jobs 1 --timeout 60
         --xml=${CRITERION_XML_DIR}/${name}.xml)
+    asciichat_fail_on_lsan_report(${name})
     set_tests_properties(${name} PROPERTIES LABELS "criterion;contract"
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
         TIMEOUT 180 RUN_SERIAL TRUE)
@@ -666,6 +669,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 add_test(NAME ${_case_test_name}
                     COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
                 )
+                asciichat_fail_on_lsan_report(${_case_test_name})
                 set_tests_properties(${_case_test_name} PROPERTIES
                     ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
@@ -680,6 +684,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
 
             # Set test properties
+            asciichat_fail_on_lsan_report(${test_exe_name})
             set_tests_properties(${test_exe_name} PROPERTIES
                 ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
@@ -1494,6 +1499,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
         --xml=${CRITERION_XML_DIR}/discovery-nat-refresh.xml)
+    asciichat_fail_on_lsan_report(discovery-nat-refresh)
     set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;criterion;contract" TIMEOUT 60
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 endif()

@@ -39,12 +39,12 @@ Compose persists build/dependency/ccache named volumes. Inspect `docker compose 
 docker build -f tests/Dockerfile -t zfogg/ascii-chat:latest .
 # Check $LASTEXITCODE before continuing after native commands.
 docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests
-docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -lc 'sh tests/scripts/verify-lsan.sh && cmake --preset docker && cmake --build build_docker --target tests-criterion-build && ctest --test-dir build_docker -L "^unit$" --no-tests=error --output-on-failure'
+docker compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -lc 'sh tests/scripts/verify-lsan.sh && cmake --preset docker && cmake --build build_docker --target all tests-criterion-build && ctest --test-dir build_docker -L "^unit$" --no-tests=error --output-on-failure'
 ```
 
 The Ubuntu service uses `tests/Dockerfile.ubuntu` but hardcodes `DOCKER_OS=arm64`; align the cache namespace with actual architecture. Preserve volumes and reuse the same Compose project name. For direct Docker mounts read the cross-platform skill: retain `build_docker/`, `.deps-cache-docker/` mapped to `/app/.deps-cache`, and ccache. Separate native/Linux/architecture caches.
 
-Compose and non-interactive wrapper runs enable LeakSanitizer and run `tests/scripts/verify-lsan.sh` as a positive control before building tests. The probe must report its deliberately leaked allocation and return the expected error code; do not treat a failed probe or a run with leak detection disabled as leak-freedom evidence. Compose retains `SYS_PTRACE` for hosts that require it. Criterion process isolation and test selection still limit what a passing run can prove.
+Compose and non-interactive wrapper runs enable LeakSanitizer and run `tests/scripts/verify-lsan.sh` as a positive control before building tests. The probe must report its deliberately leaked allocation and return the expected error code; do not treat a failed probe or a run with leak detection disabled as leak-freedom evidence. Compose retains `SYS_PTRACE` for hosts that require it. CTest fails registered Criterion tests when a worker prints a LeakSanitizer report, even if Criterion exits successfully. Direct Criterion invocations can still exit successfully after reporting leaks, so inspect their output or use CTest. Test selection still limits what a passing run can prove.
 
 ## Python integration and standalone fixtures
 
