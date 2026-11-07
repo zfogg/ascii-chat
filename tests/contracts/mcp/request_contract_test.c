@@ -337,7 +337,7 @@ Test(mcp_requests, hosted_download_names_are_strict_and_expiration_is_anchored_a
   cr_assert_not_null(f);
   cr_assert_eq(fwrite("image", 1, 5, f), 5);
   cr_assert_eq(fclose(f), 0);
-  mcp_policy_t policy = {.downloads_url_prefix = "https://example.test/assets/"};
+  mcp_policy_t policy = {.downloads_url_prefix = "https://example.test/"};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
   yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
   yyjson_mut_val *root = yyjson_mut_obj(doc), *result = yyjson_mut_obj(doc), *data = yyjson_mut_obj(doc),
@@ -353,7 +353,7 @@ Test(mcp_requests, hosted_download_names_are_strict_and_expiration_is_anchored_a
   cr_assert_eq(mcp_download_finalize(&policy, doc, 1700000100), ASCIICHAT_OK);
   cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "expires_at")), "2023-11-14T22:45:00Z");
   cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "download_url")),
-                   "https://example.test/assets/1700001900-0123456789abcdef0123456789abcdef.png");
+                   "https://example.test/downloads/1700001900-0123456789abcdef0123456789abcdef.png");
   cr_assert_neq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
   SAFE_SNPRINTF(path, sizeof(path), "%s/1700001900-0123456789abcdef0123456789abcdef.png", directory);
   cr_assert_eq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);

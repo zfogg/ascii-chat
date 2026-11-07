@@ -404,7 +404,7 @@ class Protocol(unittest.TestCase):
         port = free_port()
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
         downloads = self.directory / "downloads"
-        prefix = f"http://127.0.0.1:{port}/downloads"
+        prefix = f"http://127.0.0.1:{port}"
         hosted_options = ["--server", "--downloads-dir", os.path.relpath(downloads), "--downloads-url-prefix", prefix] if restricted else []
         p = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", *hosted_options, "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)
