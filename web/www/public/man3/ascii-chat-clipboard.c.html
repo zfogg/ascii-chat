@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>clipboard.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">clipboard.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">clipboard.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">clipboard.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>platform_clipboard_read</b> (char
+            *output, size_t capacity)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> platform_clipboard_read (char * output,
+            size_t capacity)
+          </h2>
+          <p class="Pp">
+            Read one copied file or UTF-8 text. Clipboard access is always user
+            initiated.
+          </p>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>clipboard.c</b>.
+          </p>
+          <pre>
+6                                                                          {
+7   if (!output || capacity &lt; 2)
+8     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid clipboard buffer&quot;);
+9   const char *wayland_files[] = {&quot;wl-paste&quot;, &quot;--no-newline&quot;, &quot;--type&quot;, &quot;text/uri-list&quot;, NULL};
+10   const char *wayland_text[] = {&quot;wl-paste&quot;, &quot;--no-newline&quot;, NULL};
+11   const char *x11_files[] = {&quot;xclip&quot;, &quot;-selection&quot;, &quot;clipboard&quot;, &quot;-out&quot;, &quot;-target&quot;, &quot;text/uri-list&quot;, NULL};
+12   const char *x11_text[] = {&quot;xclip&quot;, &quot;-selection&quot;, &quot;clipboard&quot;, &quot;-out&quot;, NULL};
+13   const char **commands[] = {wayland_files, wayland_text, x11_files, x11_text};
+14   asciichat_errno_scope_t scope = errno_scope_begin();
+15   for (size_t i = 0; i &lt; 4; ++i) {
+16     output[0] = '\0';
+17     if (platform_execute_subprocess(commands[i][0], commands[i], output, capacity, NULL, NULL) == 0 &amp;&amp; output[0]) {
+18       errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+19       return ASCIICHAT_OK;
+20     }
+21   }
+22   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+23   return SET_ERRNO(ERROR_GENERAL, &quot;Cannot read clipboard; install wl-clipboard or xclip, or paste into Open media&quot;);
+24 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
+            <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>,
+            <b>ERROR_GENERAL</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>platform_clipboard_read()</b>,
+            <b>platform_execute_subprocess()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>platform_clipboard_read()</b>, and
+            <b>session_handle_keyboard_input()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

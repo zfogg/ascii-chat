@@ -645,9 +645,19 @@ $ curl -X POST 'localhost:9999/continue'
     "address": "0x7fff5fbff800",
     "members": [
       { "name": "id", "type": "uint32_t", "value": "42", "offset": 0 },
-      { "name": "socket", "type": "socket_info_t", "value": "{...}", "offset": 8 },
+      {
+        "name": "socket",
+        "type": "socket_info_t",
+        "value": "{...}",
+        "offset": 8
+      },
       { "name": "socket.fd", "type": "int", "value": "7", "offset": 8 },
-      { "name": "socket.address", "type": "char[64]", "value": "\"127.0.0.1\"", "offset": 12 }
+      {
+        "name": "socket.address",
+        "type": "char[64]",
+        "value": "\"127.0.0.1\"",
+        "offset": 12
+      }
     ]
   }
 }
@@ -669,24 +679,26 @@ Returns HTML status page showing:
 ### `GET /query` - Query Variable
 
 **When target is RUNNING:**
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `file` | Yes | - | Source file path (relative to project root) |
-| `line` | Yes | - | Line number |
-| `name` | Yes | - | Variable name (supports dot/arrow notation) |
-| `break` | No | - | If present, stop at breakpoint and stay stopped |
-| `timeout` | No | `5000` | Timeout in ms waiting for breakpoint |
-| `expand` | No | `false` | Expand struct members recursively |
-| `depth` | No | `3` | Max recursion depth for expansion |
+
+| Parameter | Required | Default | Description                                     |
+| --------- | -------- | ------- | ----------------------------------------------- |
+| `file`    | Yes      | -       | Source file path (relative to project root)     |
+| `line`    | Yes      | -       | Line number                                     |
+| `name`    | Yes      | -       | Variable name (supports dot/arrow notation)     |
+| `break`   | No       | -       | If present, stop at breakpoint and stay stopped |
+| `timeout` | No       | `5000`  | Timeout in ms waiting for breakpoint            |
+| `expand`  | No       | `false` | Expand struct members recursively               |
+| `depth`   | No       | `3`     | Max recursion depth for expansion               |
 
 **When target is STOPPED (after `&break`):**
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `name` | Yes | - | Variable name (no file:line needed!) |
-| `frame` | No | `0` | Stack frame index or function name |
-| `thread` | No | current | Thread ID to query |
-| `expand` | No | `false` | Expand struct members |
-| `list` | No | - | Set to `scope` to list all variables in scope |
+
+| Parameter | Required | Default | Description                                   |
+| --------- | -------- | ------- | --------------------------------------------- |
+| `name`    | Yes      | -       | Variable name (no file:line needed!)          |
+| `frame`   | No       | `0`     | Stack frame index or function name            |
+| `thread`  | No       | current | Thread ID to query                            |
+| `expand`  | No       | `false` | Expand struct members                         |
+| `list`    | No       | -       | Set to `scope` to list all variables in scope |
 
 ### `GET /threads` - List Threads
 

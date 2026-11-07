@@ -42,7 +42,6 @@ typedef struct {
  * ============================================================================ */
 
 static void cleanup(void) {
-  asciichat_pcre2_cleanup_all();
 }
 
 // Keep each category isolated without spawning a process for every table row.

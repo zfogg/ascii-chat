@@ -74,13 +74,13 @@ only send capability updates cannot change rendering after initialization.
 
 Each payload begins with five network-order 32-bit integers:
 
-| Offset | Field | Meaning |
-| --- | --- | --- |
-| 0 | schema | 1 |
-| 4 | request | Connection-local correlation ID; 0 for initial host state |
-| 8 | expected_revision | Host revision to compare, or `UINT32_MAX` |
-| 12 | revision | Committed host revision in replies |
-| 16 | status | `ASCIICHAT_OK` or an `asciichat_error_t` |
+| Offset | Field             | Meaning                                                   |
+| ------ | ----------------- | --------------------------------------------------------- |
+| 0      | schema            | 1                                                         |
+| 4      | request           | Connection-local correlation ID; 0 for initial host state |
+| 8      | expected_revision | Host revision to compare, or `UINT32_MAX`                 |
+| 12     | revision          | Committed host revision in replies                        |
+| 16     | status            | `ASCIICHAT_OK` or an `asciichat_error_t`                  |
 
 The remaining bytes contain a JSON object, limited to 4096 bytes. A header-only
 request queries effective settings. Allowed fields are `width`, `height`, `fps`,

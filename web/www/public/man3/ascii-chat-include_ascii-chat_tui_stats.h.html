@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>stats.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">stats.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">stats.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">stats.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>terminal_size_t</b> <b>tui_stats_minimum</b> (const
+            <b>stats_view_t</b> *view)
+            <br />
+            void <b>tui_stats_render</b> (<b>terminal_size_t</b> size, const
+            void *data)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> tui_stats_minimum (const
+            <b>stats_view_t</b> * view)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>lib/tui/stats.c</b>.
+          </p>
+          <pre>
+48                                                             {
+49   char title[TUI_STATS_TITLE_BUFFER_SIZE], footer[TUI_STATS_FOOTER_BUFFER_SIZE];
+50   snprintf(title, sizeof(title), &quot;  ASCII-CHAT / %-20s  LIVE STATS&quot;, view-&gt;mode);
+51   stats_footer(view, footer, sizeof(footer));
+52   size_t width = stats_body_width(view) + 4;
+53   if (strlen(title) + 1 &gt; width)
+54     width = strlen(title) + 1;
+55   if (strlen(footer) + 3 &gt; width)
+56     width = strlen(footer) + 3;
+57   // Both subtitles are shorter than the title. Keep one spare row and column
+58   // to avoid terminal auto-wrap/scroll, in addition to the fixed header/footer.
+59   return (terminal_size_t){.cols = (int)width, .rows = 10};
+60 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>stats_view_t::mode</b>,
+            <b>TUI_STATS_FOOTER_BUFFER_SIZE</b>, <b>tui_stats_minimum()</b>, and
+            <b>TUI_STATS_TITLE_BUFFER_SIZE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_stats_minimum()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_tui_stats_render_(">
+            <a class="permalink" href="#void_tui_stats_render_("
+              >void tui_stats_render (<b>terminal_size_t</b> size, const void *
+              data)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>lib/tui/stats.c</b>.
+          </p>
+          <pre>
+76                                                               {
+77   const stats_view_t *view = data;
+78   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols + 64);
+79   if (!buffer)
+80     return;
+81   terminal_capabilities_t caps = detect_terminal_capabilities();
+82   terminal_color_mode_t mode = GET_OPTION(color_mode);
+83   bool color = mode != TERM_COLOR_NONE &amp;&amp; GET_OPTION(color) != COLOR_SETTING_FALSE &amp;&amp; !GET_OPTION(strip_ansi) &amp;&amp;
+84                (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
+85   const char *blue = color ? ui_text_color_prefix(LOG_COLOR_DEBUG) : &quot;&quot;;
+86   frame_buffer_cursor_home(buffer);
+87   frame_buffer_printf(buffer, &quot;\033[1m%s  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n&quot;, blue, view-&gt;mode);
+88   frame_buffer_printf(buffer, &quot;  &quot;);
+89   frame_buffer_printf(buffer, &quot;%s&quot;, blue);
+90   ui_text_render_values(buffer, view-&gt;page ? &quot;CONNECTIONS &amp; MODE DETAILS&quot; : &quot;OVERVIEW / rates over ~1 second&quot;);
+91   frame_buffer_printf(buffer, &quot;\033[K\n&quot;);
+92   frame_buffer_render_border(buffer, size.cols, blue);
+93   ui_layout_t layout;
+94   if (ui_layout_measure(size, 3, 1, 2, &amp;layout) != ASCIICHAT_OK) {
+95     frame_buffer_destroy(buffer);
+96     return;
+97   }
+98   int available = layout.body_rows &gt; 0 ? layout.body_rows : 1;
+99   const ui_table_column_t column = {.heading = &quot;Statistics&quot;, .width = size.cols - 4};
+100   stats_table_context_t context = {.view = view};
+101   ui_table_t table = {.columns = &amp;column,
+102                       .column_count = 1,
+103                       .row_count = view-&gt;count,
+104                       .viewport = {.selected = view-&gt;selected, .first_visible = view-&gt;offset},
+105                       .cells = stats_cells,
+106                       .data = &amp;context,
+107                       .selectable = true};
+108   ui_table_render(buffer, &amp;table, 4, 2, size.cols - 2, available);
+109   frame_buffer_printf(buffer, &quot;\033[%d;1H&quot;, size.rows - 2);
+110   frame_buffer_render_border(buffer, size.cols, blue);
+111   char footer[TUI_STATS_FOOTER_BUFFER_SIZE];
+112   stats_footer(view, footer, sizeof(footer));
+113   frame_buffer_printf(buffer, &quot;  &quot;);
+114   ui_text_render_values(buffer, footer);
+115   frame_buffer_printf(buffer, &quot;\033[K&quot;);
+116   ui_controller_write(ui_controller_active_fd(), frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+117   frame_buffer_destroy(buffer);
+118 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ui_layout_t::body_rows</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>COLOR_SETTING_FALSE</b>, <b>terminal_size_t::cols</b>,
+            <b>stats_view_t::count</b>, <b>detect_terminal_capabilities()</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_cursor_home()</b>,
+            <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
+            <b>frame_buffer_get_length()</b>, <b>frame_buffer_printf()</b>,
+            <b>frame_buffer_render_border()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_DEBUG</b>, <b>stats_view_t::mode</b>,
+            <b>stats_view_t::offset</b>, <b>stats_view_t::page</b>,
+            <b>terminal_size_t::rows</b>, <b>stats_view_t::selected</b>,
+            <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
+            <b>TUI_STATS_FOOTER_BUFFER_SIZE</b>, <b>tui_stats_render()</b>,
+            <b>ui_controller_active_fd()</b>, <b>ui_controller_write()</b>,
+            <b>ui_layout_measure()</b>, <b>ui_table_render()</b>,
+            <b>ui_text_color_prefix()</b>, and <b>ui_text_render_values()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>tui_stats_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

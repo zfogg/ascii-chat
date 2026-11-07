@@ -162,7 +162,10 @@
                 candidateCount.host++;
               } else if (candidate.includes("typ srflx")) {
                 candidateCount.srflx++;
-                log("  ✅ STUN is working! (Server Reflexive candidate)", "success");
+                log(
+                  "  ✅ STUN is working! (Server Reflexive candidate)",
+                  "success",
+                );
               } else if (candidate.includes("typ relay")) {
                 candidateCount.relay++;
                 log("  ✅ TURN is working! (Relay candidate)", "success");
@@ -188,13 +191,28 @@
 
               // Interpret results
               if (candidateCount.srflx > 0 && candidateCount.relay > 0) {
-                log("✅ TEST PASSED: Both STUN and TURN are working!", "success");
+                log(
+                  "✅ TEST PASSED: Both STUN and TURN are working!",
+                  "success",
+                );
               } else if (candidateCount.srflx > 0) {
-                log("⚠️  PARTIAL: STUN is working, but no TURN relay candidates", "warning");
-                log("   This might be OK - TURN is only used as fallback", "warning");
+                log(
+                  "⚠️  PARTIAL: STUN is working, but no TURN relay candidates",
+                  "warning",
+                );
+                log(
+                  "   This might be OK - TURN is only used as fallback",
+                  "warning",
+                );
               } else {
-                log("❌ TEST FAILED: No STUN or TURN candidates found", "error");
-                log("   Check firewall, DNS, and server configuration", "error");
+                log(
+                  "❌ TEST FAILED: No STUN or TURN candidates found",
+                  "error",
+                );
+                log(
+                  "   Check firewall, DNS, and server configuration",
+                  "error",
+                );
               }
               log("");
 

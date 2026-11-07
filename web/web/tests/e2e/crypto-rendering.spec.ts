@@ -108,7 +108,10 @@ class LoggedProcess {
     this.child = spawn(
       binaryPath(),
       ["--log-level", "debug", "--log-file", logPath, ...args],
-      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
+      {
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
     );
     for (const stream of [this.child.stdout, this.child.stderr]) {
       stream?.on("data", (chunk: Buffer) => {

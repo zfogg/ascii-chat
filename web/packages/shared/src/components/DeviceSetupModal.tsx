@@ -171,7 +171,9 @@ export function DeviceSetupModal({
   const [level, setLevel] = useState(0);
   const [microphoneLayout, setMicrophoneLayout] = useState(getMicrophoneLayout);
   const microphoneLayoutRef = useRef(microphoneLayout);
-  microphoneLayoutRef.current = microphoneLayout;
+  useEffect(() => {
+    microphoneLayoutRef.current = microphoneLayout;
+  }, [microphoneLayout]);
   const [testingMicrophone, setTestingMicrophone] = useState(false);
   const [testingSpeakers, setTestingSpeakers] = useState(false);
   const [audioReady, setAudioReady] = useState(false);

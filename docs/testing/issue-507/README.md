@@ -33,12 +33,12 @@ High priority alone also failed stability at 120×40 (median 60, range 45–66).
 The accepted measurements below use the standard 80×24 terminal size and establish
 performance only for that configuration. The 120×40 failures remain in the JSON.
 
-| Transport | Median FPS | Minimum–maximum | One-second samples |
-| --- | ---: | ---: | ---: |
-| tcp | 60 | 47–62 | 60 |
-| websocket | 60 | 55–79 | 60 |
-| webrtc | 60 | 53–63 | 60 |
-| discovery-tcp | 60 | 53–62 | 60 |
+| Transport     | Median FPS | Minimum–maximum | One-second samples |
+| ------------- | ---------: | --------------: | -----------------: |
+| tcp           |         60 |           47–62 |                 60 |
+| websocket     |         60 |           55–79 |                 60 |
+| webrtc        |         60 |           53–63 |                 60 |
+| discovery-tcp |         60 |           53–62 |                 60 |
 
 Acceptance requires median ≥58.8 FPS, at least 90% of readings ≥57 FPS, and at
 least 80% of the expected one-second samples. All four measurements pass.

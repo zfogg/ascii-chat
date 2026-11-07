@@ -13,7 +13,7 @@ pnpm run type-check
 echo "Formatting check..."
 pnpm run format:check
 
-echo "Linting with eslint..."
+echo "Linting with Oxlint..."
 pnpm run lint
 
 echo "Building with vite..."

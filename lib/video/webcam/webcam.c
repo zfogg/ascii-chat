@@ -111,6 +111,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   return NULL;
 }
 
+double webcam_get_fps(webcam_context_t *ctx) { (void)ctx; return 0.0; }
+
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   (void)ctx;
   (void)width;

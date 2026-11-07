@@ -34,6 +34,7 @@ struct webcam_context_t {
   IMFSourceReader *reader;
   int width;
   int height;
+  double fps;
   BOOL mf_initialized;
   BOOL com_initialized;
   image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
@@ -374,7 +375,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_info("Media Foundation webcam opened: %dx%d stride=%d", cam->width, cam->height, cam->stride);
       UINT64 actualRate = 0;
       if (SUCCEEDED(IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_RATE, &actualRate)) && (UINT32)actualRate) {
-        log_info("Negotiated webcam capture rate: %.3f FPS", (double)(actualRate >> 32) / (UINT32)actualRate);
+        cam->fps = (double)(actualRate >> 32) / (UINT32)actualRate;
+        log_info("Negotiated webcam capture rate: %.3f FPS", cam->fps);
       }
     } else {
       // Default resolution if we can't get the actual size
@@ -742,6 +744,8 @@ read_latest:
   }
   return img;
 }
+
+double webcam_get_fps(webcam_context_t *ctx) { return ctx ? ctx->fps : 0.0; }
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height) {

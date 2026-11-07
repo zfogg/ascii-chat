@@ -61,10 +61,10 @@ query: |
     service_name
 condition:
   kind: threshold
-  operator: '>='
+  operator: ">="
   threshold: 1
 group_by:
-- service_name
+  - service_name
 pending_for: 0s
 cooldown: 10m0s
 repeat_interval: 1h0m0s
@@ -73,6 +73,7 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-  runbook: Inspect exporter diagnostics and Spaniel ingestion health. Check queue capacity, collector availability and storage. Counts combine dropped records and
+  runbook:
+    Inspect exporter diagnostics and Spaniel ingestion health. Check queue capacity, collector availability and storage. Counts combine dropped records and
     rejected spans; a total collector outage cannot report itself through this collector.
   summary: Exporter loss/rejection counters increased during the last five minutes.

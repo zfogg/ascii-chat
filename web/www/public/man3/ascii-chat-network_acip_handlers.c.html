@@ -1,278 +1,695 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>handlers.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">handlers.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">handlers.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">handlers.c - ACIP protocol packet handlers implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>handler_hash_entry_t</b>
-  <br/>
-  Hash table entry for packet type to handler mapping.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>HANDLER_HASH_SIZE</b> 32
-  <br/>
-  #define <b>CLIENT_HANDLER_COUNT</b> 20
-  <br/>
-  #define <b>SERVER_HANDLER_COUNT</b> 20
-  <br/>
-  #define <b>HANDLER_HASH</b>(type)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef <b>asciichat_error_t</b>(*
-    <b>acip_client_handler_func_t</b>) (const void *payload, size_t payload_len,
-    const <b>acip_client_callbacks_t</b> *callbacks)
-  <br/>
-  typedef <b>asciichat_error_t</b>(* <b>acip_server_handler_func_t</b>) (const
-    void *payload, size_t payload_len, void *client_ctx, const
-    <b>acip_server_callbacks_t</b> *callbacks)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>acip_handle_client_packet</b>
-    (<b>acip_transport_t</b> *transport, <b>packet_type_t</b> type, const void
-    *payload, size_t payload_len, const <b>acip_client_callbacks_t</b>
-    *callbacks)
-  <br/>
-  Handle incoming packet on client side. <b>asciichat_error_t</b>
-    <b>acip_handle_server_packet</b> (<b>acip_transport_t</b> *transport,
-    <b>packet_type_t</b> type, const void *payload, size_t payload_len, void
-    *client_ctx, const <b>acip_server_callbacks_t</b> *callbacks)
-  <br/>
-  Handle incoming packet on server side.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">ACIP protocol packet handlers implementation.</p>
-<p class="Pp">Implements packet dispatching for both client and server sides.
-    Uses O(1) array-based dispatch instead of O(n) switch statements. Parses
-    packet payloads and dispatches to registered callbacks.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp">Definition in file <b>network/acip/handlers.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CLIENT_HANDLER_COUNT___20"><a class="permalink" href="#_define_CLIENT_HANDLER_COUNT___20">#define
-  CLIENT_HANDLER_COUNT 20</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HANDLER_HASH(_type)"><a class="permalink" href="#_define_HANDLER_HASH(_type)">#define
-  HANDLER_HASH( type)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((type) % HANDLER_HASH_SIZE)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>54</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_HANDLER_HASH_SIZE___32"><a class="permalink" href="#_define_HANDLER_HASH_SIZE___32">#define
-  HANDLER_HASH_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SERVER_HANDLER_COUNT___20"><a class="permalink" href="#_define_SERVER_HANDLER_COUNT___20">#define
-  SERVER_HANDLER_COUNT 20</a></h2>
-<p class="Pp">Definition at line <b>43</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(* acip_client_handler_func_t)
-  (const void *payload, size_t payload_len, const <b>acip_client_callbacks_t</b>
-  *callbacks)</h2>
-<p class="Pp">Definition at line <b>29</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(* acip_server_handler_func_t)
-  (const void *payload, size_t payload_len, void *client_ctx, const
-  <b>acip_server_callbacks_t</b> *callbacks)</h2>
-<p class="Pp">Definition at line <b>32</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_handle_client_packet
-  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
-  payload, size_t payload_len, const <b>acip_client_callbacks_t</b> *
-  callbacks)</h2>
-<p class="Pp">Handle incoming packet on client side. Dispatches packet to
-    appropriate callback based on type. Transport-agnostic - works with TCP,
-    WebSocket, etc.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>type</i> Packet type
-<br/>
-<i>payload</i> Packet payload
-<br/>
-<i>payload_len</i> Payload length
-<br/>
-<i>callbacks</i> Application callbacks</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>200</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-<pre>201                                                                                                           {
-202   if (!transport || !callbacks) {
-203     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
-204   }
-205   (void)transport;
-206 
-207   // O(1) dispatch via hash table lookup
-208   int idx = handler_hash_lookup(g_client_handler_hash, type);
-209   if (idx &lt; 0) {
-210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled client packet type: %d&quot;, type);
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>handlers.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">handlers.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">handlers.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          handlers.c - ACIP protocol packet handlers implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>handler_hash_entry_t</b>
+            <br />
+            Hash table entry for packet type to handler mapping.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>NETWORK_ACIP_HANDLERS_HEX_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>HANDLER_HASH_SIZE</b> 32
+            <br />
+            #define <b>CLIENT_HANDLER_COUNT</b> 20
+            <br />
+            #define <b>SERVER_HANDLER_COUNT</b> 21
+            <br />
+            #define <b>HANDLER_HASH</b>(type)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef <b>asciichat_error_t</b>(*)
+            <b>acip_client_handler_func_t</b>(const void *payload, size_t
+            payload_len, const <b>acip_client_callbacks_t</b> *callbacks)
+            <br />
+            typedef <b>asciichat_error_t</b>(*)
+            <b>acip_server_handler_func_t</b>(const void *payload, size_t
+            payload_len, void *client_ctx, const
+            <b>acip_server_callbacks_t</b> *callbacks)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_handle_client_packet</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>packet_type_t</b> type, const void *payload, size_t
+            payload_len, const
+            <b>acip_client_callbacks_t</b>
+            *callbacks)
+            <br />
+            Handle incoming packet on client side. const char *
+            <b>acip_packet_type_name</b> (<b>uint16_t</b> type)
+            <br />
+            Get human-readable name for packet type. <b>asciichat_error_t</b>
+            <b>acip_handle_server_packet</b> (<b>acip_transport_t</b>
+            *transport, <b>packet_type_t</b> type, const void *payload, size_t
+            payload_len, void *client_ctx, const
+            <b>acip_server_callbacks_t</b> *callbacks)
+            <br />
+            Handle incoming packet on server side.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">ACIP protocol packet handlers implementation.</p>
+        <p class="Pp">
+          Implements packet dispatching for both client and server sides. Uses
+          O(1) array-based dispatch instead of O(n) switch statements. Parses
+          packet payloads and dispatches to registered callbacks.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp">Definition in file <b>network/acip/handlers.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_HANDLER_COUNT___20">
+            <a class="permalink" href="#_define_CLIENT_HANDLER_COUNT___20"
+              >#define CLIENT_HANDLER_COUNT 20</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HANDLER_HASH(_type)">
+            <a class="permalink" href="#_define_HANDLER_HASH(_type)"
+              >#define HANDLER_HASH( type)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>((type) % HANDLER_HASH_SIZE)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_HANDLER_HASH_SIZE___32">
+            <a class="permalink" href="#_define_HANDLER_HASH_SIZE___32"
+              >#define HANDLER_HASH_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_ACIP_HANDLERS_HEX_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_ACIP_HANDLERS_HEX_BUFFER_SIZE___512"
+              >#define NETWORK_ACIP_HANDLERS_HEX_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE___512"
+              >#define NETWORK_ACIP_HANDLERS_MSG_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SERVER_HANDLER_COUNT___21">
+            <a class="permalink" href="#_define_SERVER_HANDLER_COUNT___21"
+              >#define SERVER_HANDLER_COUNT 21</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef <b>asciichat_error_t</b>(*) acip_client_handler_func_t(const
+            void *payload, size_t payload_len, const
+            <b>acip_client_callbacks_t</b> *callbacks)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            typedef <b>asciichat_error_t</b>(*) acip_server_handler_func_t(const
+            void *payload, size_t payload_len, void *client_ctx, const
+            <b>acip_server_callbacks_t</b> *callbacks)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file <b>network/acip/handlers.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_handle_client_packet (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>packet_type_t</b> type, const void * payload, size_t
+            payload_len, const <b>acip_client_callbacks_t</b> * callbacks)
+          </h2>
+          <p class="Pp">
+            Handle incoming packet on client side. Dispatches packet to
+            appropriate callback based on type. Transport-agnostic - works with
+            TCP, WebSocket, etc.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>type</i> Packet type
+            <br />
+            <i>payload</i> Packet payload
+            <br />
+            <i>payload_len</i> Payload length
+            <br />
+            <i>callbacks</i> Application callbacks
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>206</b> of file
+            <b>network/acip/handlers.c</b>.
+          </p>
+          <pre>
+207                                                                                                           {
+208   stats_runtime_packet(transport ? transport-&gt;stats_peer : NULL, type, payload_len, false, true);
+209   if (!transport || !callbacks) {
+210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
 211   }
-212 
-213   return g_client_handlers[idx](payload, payload_len, callbacks);
-214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> acip_handle_server_packet
-  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
-  payload, size_t payload_len, void * client_ctx, const
-  <b>acip_server_callbacks_t</b> * callbacks)</h2>
-<p class="Pp">Handle incoming packet on server side. Dispatches packet to
-    appropriate callback based on type. Transport-agnostic - works with TCP,
-    WebSocket, etc.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance
-<br/>
-<i>type</i> Packet type
-<br/>
-<i>payload</i> Packet payload
-<br/>
-<i>payload_len</i> Payload length
-<br/>
-<i>client_ctx</i> Per-client context (e.g., client_info_t*)
-<br/>
-<i>callbacks</i> Application callbacks</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>702</b> of file
-    <b>network/acip/handlers.c</b>.</p>
-<pre>704                                                                                       {
-705   if (!transport || !callbacks) {
-706     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
-707   }
-708   (void)transport;
-709 
-710   // DEBUG: Log all packet types received
-711   log_info(&quot;ACIP_HANDLE: Received packet type=%d (0x%04x), payload_len=%zu&quot;, type, type, payload_len);
-712 
-713   // O(1) dispatch via hash table lookup
-714   int idx = handler_hash_lookup(g_server_handler_hash, type);
-715   if (idx &lt; 0) {
-716     log_error(&quot;ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)&quot;, type, type,
-717               g_packet_type_name(type));
-718     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled server packet type: %d&quot;, type);
-719   }
-720 
-721   log_info(&quot;&#x1F4E5; [HANDLER_DISPATCH] Calling handler: type=%d (%s), handler_idx=%d, payload=%zu bytes, client_ctx=%p&quot;,
-722            type, g_packet_type_name(type), idx, payload_len, client_ctx);
-723   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
-724 
-725   if (result != ASCIICHAT_OK) {
-726     log_error(&quot;&#x274C; [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d&quot;, type, g_packet_type_name(type), result);
-727   } else {
-728     log_info(&quot;&#x2705; [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed&quot;, type,
-729              g_packet_type_name(type), payload_len);
-730   }
-731 
-732   return result;
-733 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_error</b>, <b>log_info</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>, and
-    <b>client_dispatch_thread()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+212   (void)transport;
+213
+214   // ACDS broadcasts participant lifecycle notifications to peers. The generic
+215   // client callback set does not expose them, so ignore them while keeping the
+216   // signaling receive loop alive for subsequent SDP and ICE packets.
+217   if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED || type == PACKET_TYPE_ACIP_PARTICIPANT_LEFT) {
+218     return ASCIICHAT_OK;
+219   }
+220
+221   // O(1) dispatch via hash table lookup
+222   int idx = handler_hash_lookup(g_client_handler_hash, type);
+223   if (idx &lt; 0) {
+224     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled client packet type: %d&quot;, type);
+225   }
+226
+227   return g_client_handlers[idx](payload, payload_len, callbacks);
+228 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_client_packet()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b>, <b>SET_ERRNO</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_packet()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_client_receive_and_dispatch()</b>,
+            <b>acip_handle_client_packet()</b>, and
+            <b>session_protocol_dispatch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_handle_server_packet (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>packet_type_t</b> type, const void * payload, size_t
+            payload_len, void * client_ctx, const
+            <b>acip_server_callbacks_t</b> * callbacks)
+          </h2>
+          <p class="Pp">
+            Handle incoming packet on server side. Dispatches packet to
+            appropriate callback based on type. Transport-agnostic - works with
+            TCP, WebSocket, etc.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport instance
+            <br />
+            <i>type</i> Packet type
+            <br />
+            <i>payload</i> Packet payload
+            <br />
+            <i>payload_len</i> Payload length
+            <br />
+            <i>client_ctx</i> Per-client context (e.g., client_info_t*)
+            <br />
+            <i>callbacks</i> Application callbacks
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>823</b> of file
+            <b>network/acip/handlers.c</b>.
+          </p>
+          <pre>
+825                                                                                       {
+826   stats_runtime_packet(transport ? transport-&gt;stats_peer : NULL, type, payload_len, false, true);
+827   if (!transport || !callbacks) {
+828     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
+829   }
+830   (void)transport;
+831
+832   // DEBUG: Log all packet types received
+833   log_dev(&quot;ACIP_HANDLE: type=%d payload_len=%zu&quot;, type, payload_len);
+834
+835   // O(1) dispatch via hash table lookup
+836   int idx = handler_hash_lookup(g_server_handler_hash, type);
+837   if (idx &lt; 0) {
+838     log_error(&quot;ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)&quot;, type, type,
+839               acip_packet_type_name(type));
+840     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled server packet type: %d&quot;, type);
+841   }
+842
+843   log_dev(&quot;HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes&quot;, type, acip_packet_type_name(type), idx,
+844           payload_len);
+845   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
+846
+847   if (result != ASCIICHAT_OK) {
+848     log_error(&quot;&#x274C; [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s&quot;, type, acip_packet_type_name(type),
+849               asciichat_error_format(NULL, result));
+850   } else {
+851     log_dev(&quot;HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes&quot;, type, acip_packet_type_name(type), payload_len);
+852   }
+853
+854   return result;
+855 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_handle_server_packet()</b>,
+            <b>acip_packet_type_name()</b>, <b>asciichat_error_format()</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_dev</b>,
+            <b>log_error</b>, <b>SET_ERRNO</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_packet()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_handle_server_packet()</b>,
+            <b>acip_server_receive_and_dispatch()</b>,
+            <b>handle_image_frame_h264_packet()</b>, and
+            <b>server_dispatch_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_acip_packet_type_name_(">
+            <a class="permalink" href="#const_char_*_acip_packet_type_name_("
+              >const char * acip_packet_type_name (<b>uint16_t</b> type)</a
+            >
+          </h2>
+          <p class="Pp">Get human-readable name for packet type.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>type</i> Packet type from <b>packet_type_t</b> enum
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">String name or &quot;UNKNOWN&quot;</div>
+          <p class="Pp">
+            Definition at line <b>672</b> of file
+            <b>network/acip/handlers.c</b>.
+          </p>
+          <pre>
+672                                                  {
+673   switch (type) {
+674   case PACKET_TYPE_PROTOCOL_VERSION:
+675     return &quot;PROTOCOL_VERSION&quot;;
+676   case PACKET_TYPE_CRYPTO_CLIENT_HELLO:
+677     return &quot;CRYPTO_CLIENT_HELLO&quot;;
+678   case PACKET_TYPE_CRYPTO_CAPABILITIES:
+679     return &quot;CRYPTO_CAPABILITIES&quot;;
+680   case PACKET_TYPE_CRYPTO_PARAMETERS:
+681     return &quot;CRYPTO_PARAMETERS&quot;;
+682   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
+683     return &quot;CRYPTO_KEY_EXCHANGE_INIT&quot;;
+684   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
+685     return &quot;CRYPTO_KEY_EXCHANGE_RESP&quot;;
+686   case PACKET_TYPE_CRYPTO_AUTH_CHALLENGE:
+687     return &quot;CRYPTO_AUTH_CHALLENGE&quot;;
+688   case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
+689     return &quot;CRYPTO_AUTH_RESPONSE&quot;;
+690   case PACKET_TYPE_CRYPTO_AUTH_FAILED:
+691     return &quot;CRYPTO_AUTH_FAILED&quot;;
+692   case PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP:
+693     return &quot;CRYPTO_SERVER_AUTH_RESP&quot;;
+694   case PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE:
+695     return &quot;CRYPTO_HANDSHAKE_COMPLETE&quot;;
+696   case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
+697     return &quot;CRYPTO_NO_ENCRYPTION&quot;;
+698   case PACKET_TYPE_ENCRYPTED:
+699     return &quot;ENCRYPTED&quot;;
+700   case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
+701     return &quot;CRYPTO_REKEY_REQUEST&quot;;
+702   case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
+703     return &quot;CRYPTO_REKEY_RESPONSE&quot;;
+704   case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
+705     return &quot;CRYPTO_REKEY_COMPLETE&quot;;
+706   case PACKET_TYPE_SIZE_MESSAGE:
+707     return &quot;SIZE_MESSAGE&quot;;
+708   case PACKET_TYPE_AUDIO_MESSAGE:
+709     return &quot;AUDIO_MESSAGE&quot;;
+710   case PACKET_TYPE_TEXT_MESSAGE:
+711     return &quot;TEXT_MESSAGE&quot;;
+712   case PACKET_TYPE_ERROR_MESSAGE:
+713     return &quot;ERROR_MESSAGE&quot;;
+714   case PACKET_TYPE_REMOTE_LOG:
+715     return &quot;REMOTE_LOG&quot;;
+716   case PACKET_TYPE_ASCII_FRAME:
+717     return &quot;ASCII_FRAME&quot;;
+718   case PACKET_TYPE_IMAGE_FRAME:
+719     return &quot;IMAGE_FRAME&quot;;
+720   case PACKET_TYPE_IMAGE_FRAME_H265:
+721     return &quot;IMAGE_FRAME_H265&quot;;
+722   case PACKET_TYPE_IMAGE_FRAME_H264:
+723     return &quot;IMAGE_FRAME_H264&quot;;
+724   case PACKET_TYPE_AUDIO_BATCH:
+725     return &quot;AUDIO_BATCH&quot;;
+726   case PACKET_TYPE_AUDIO_OPUS_BATCH:
+727     return &quot;AUDIO_OPUS_BATCH&quot;;
+728   case PACKET_TYPE_CLIENT_CAPABILITIES:
+729     return &quot;CLIENT_CAPABILITIES&quot;;
+730   case PACKET_TYPE_PING:
+731     return &quot;PING&quot;;
+732   case PACKET_TYPE_PONG:
+733     return &quot;PONG&quot;;
+734   case PACKET_TYPE_CLIENT_JOIN:
+735     return &quot;CLIENT_JOIN&quot;;
+736   case PACKET_TYPE_CLIENT_LEAVE:
+737     return &quot;CLIENT_LEAVE&quot;;
+738   case PACKET_TYPE_STREAM_START:
+739     return &quot;STREAM_START&quot;;
+740   case PACKET_TYPE_STREAM_STOP:
+741     return &quot;STREAM_STOP&quot;;
+742   case PACKET_TYPE_CLEAR_CONSOLE:
+743     return &quot;CLEAR_CONSOLE&quot;;
+744   case PACKET_TYPE_SERVER_STATE:
+745     return &quot;SERVER_STATE&quot;;
+746   case PACKET_TYPE_ACIP_SESSION_CREATE:
+747     return &quot;ACIP_SESSION_CREATE&quot;;
+748   case PACKET_TYPE_ACIP_SESSION_CREATED:
+749     return &quot;ACIP_SESSION_CREATED&quot;;
+750   case PACKET_TYPE_ACIP_SESSION_LOOKUP:
+751     return &quot;ACIP_SESSION_LOOKUP&quot;;
+752   case PACKET_TYPE_ACIP_SESSION_INFO:
+753     return &quot;ACIP_SESSION_INFO&quot;;
+754   case PACKET_TYPE_ACIP_SESSION_JOIN:
+755     return &quot;ACIP_SESSION_JOIN&quot;;
+756   case PACKET_TYPE_ACIP_SESSION_JOINED:
+757     return &quot;ACIP_SESSION_JOINED&quot;;
+758   case PACKET_TYPE_ACIP_SESSION_LEAVE:
+759     return &quot;ACIP_SESSION_LEAVE&quot;;
+760   case PACKET_TYPE_ACIP_SESSION_END:
+761     return &quot;ACIP_SESSION_END&quot;;
+762   case PACKET_TYPE_ACIP_SESSION_RECONNECT:
+763     return &quot;ACIP_SESSION_RECONNECT&quot;;
+764   case PACKET_TYPE_ACIP_WEBRTC_SDP:
+765     return &quot;ACIP_WEBRTC_SDP&quot;;
+766   case PACKET_TYPE_ACIP_WEBRTC_ICE:
+767     return &quot;ACIP_WEBRTC_ICE&quot;;
+768   case PACKET_TYPE_ACIP_STRING_RESERVE:
+769     return &quot;ACIP_STRING_RESERVE&quot;;
+770   case PACKET_TYPE_ACIP_STRING_RESERVED:
+771     return &quot;ACIP_STRING_RESERVED&quot;;
+772   case PACKET_TYPE_ACIP_STRING_RENEW:
+773     return &quot;ACIP_STRING_RENEW&quot;;
+774   case PACKET_TYPE_ACIP_STRING_RELEASE:
+775     return &quot;ACIP_STRING_RELEASE&quot;;
+776   case PACKET_TYPE_ACIP_PARTICIPANT_LIST:
+777     return &quot;ACIP_PARTICIPANT_LIST&quot;;
+778   case PACKET_TYPE_ACIP_RING_COLLECT:
+779     return &quot;ACIP_RING_COLLECT&quot;;
+780   case PACKET_TYPE_ACIP_NETWORK_QUALITY:
+781     return &quot;ACIP_NETWORK_QUALITY&quot;;
+782   case PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT:
+783     return &quot;ACIP_HOST_ANNOUNCEMENT&quot;;
+784   case PACKET_TYPE_ACIP_HOST_DESIGNATED:
+785     return &quot;ACIP_HOST_DESIGNATED&quot;;
+786   case PACKET_TYPE_ACIP_SETTINGS_SYNC:
+787     return &quot;ACIP_SETTINGS_SYNC&quot;;
+788   case PACKET_TYPE_ACIP_SETTINGS_ACK:
+789     return &quot;ACIP_SETTINGS_ACK&quot;;
+790   case PACKET_TYPE_ACIP_HOST_LOST:
+791     return &quot;ACIP_HOST_LOST&quot;;
+792   case PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED:
+793     return &quot;ACIP_FUTURE_HOST_ELECTED&quot;;
+794   case PACKET_TYPE_ACIP_PARTICIPANT_JOINED:
+795     return &quot;ACIP_PARTICIPANT_JOINED&quot;;
+796   case PACKET_TYPE_ACIP_PARTICIPANT_LEFT:
+797     return &quot;ACIP_PARTICIPANT_LEFT&quot;;
+798   case PACKET_TYPE_ACIP_BANDWIDTH_TEST:
+799     return &quot;ACIP_BANDWIDTH_TEST&quot;;
+800   case PACKET_TYPE_ACIP_BANDWIDTH_RESULT:
+801     return &quot;ACIP_BANDWIDTH_RESULT&quot;;
+802   case PACKET_TYPE_ACIP_BROADCAST_ACK:
+803     return &quot;ACIP_BROADCAST_ACK&quot;;
+804   case PACKET_TYPE_RING_MEMBERS:
+805     return &quot;RING_MEMBERS&quot;;
+806   case PACKET_TYPE_STATS_COLLECTION_START:
+807     return &quot;STATS_COLLECTION_START&quot;;
+808   case PACKET_TYPE_STATS_UPDATE:
+809     return &quot;STATS_UPDATE&quot;;
+810   case PACKET_TYPE_RING_ELECTION_RESULT:
+811     return &quot;RING_ELECTION_RESULT&quot;;
+812   case PACKET_TYPE_STATS_ACK:
+813     return &quot;STATS_ACK&quot;;
+814   case PACKET_TYPE_ACIP_DISCOVERY_PING:
+815     return &quot;ACIP_DISCOVERY_PING&quot;;
+816   case PACKET_TYPE_ACIP_ERROR:
+817     return &quot;ACIP_ERROR&quot;;
+818   default:
+819     return &quot;UNKNOWN&quot;;
+820   }
+821 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_packet_type_name()</b>,
+            <b>PACKET_TYPE_ACIP_BANDWIDTH_RESULT</b>,
+            <b>PACKET_TYPE_ACIP_BANDWIDTH_TEST</b>,
+            <b>PACKET_TYPE_ACIP_BROADCAST_ACK</b>,
+            <b>PACKET_TYPE_ACIP_DISCOVERY_PING</b>,
+            <b>PACKET_TYPE_ACIP_ERROR</b>,
+            <b>PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED</b>,
+            <b>PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT</b>,
+            <b>PACKET_TYPE_ACIP_HOST_DESIGNATED</b>,
+            <b>PACKET_TYPE_ACIP_HOST_LOST</b>,
+            <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_JOINED</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LEFT</b>,
+            <b>PACKET_TYPE_ACIP_PARTICIPANT_LIST</b>,
+            <b>PACKET_TYPE_ACIP_RING_COLLECT</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATE</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_CREATED</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_END</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_INFO</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOIN</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LEAVE</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b>,
+            <b>PACKET_TYPE_ACIP_SESSION_RECONNECT</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RELEASE</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RENEW</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RESERVE</b>,
+            <b>PACKET_TYPE_ACIP_STRING_RESERVED</b>,
+            <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>,
+            <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b>, <b>PACKET_TYPE_ASCII_FRAME</b>,
+            <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_MESSAGE</b>,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+            <b>PACKET_TYPE_CLEAR_CONSOLE</b>,
+            <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CLIENT_JOIN</b>, <b>PACKET_TYPE_CLIENT_LEAVE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+            <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b>,
+            <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
+            <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
+            <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b>,
+            <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b>,
+            <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
+            <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b>,
+            <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b>,
+            <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b>,
+            <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
+            <b>PACKET_TYPE_ENCRYPTED</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME</b>, <b>PACKET_TYPE_IMAGE_FRAME_H264</b>,
+            <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, <b>PACKET_TYPE_PING</b>,
+            <b>PACKET_TYPE_PONG</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+            <b>PACKET_TYPE_REMOTE_LOG</b>,
+            <b>PACKET_TYPE_RING_ELECTION_RESULT</b>,
+            <b>PACKET_TYPE_RING_MEMBERS</b>, <b>PACKET_TYPE_SERVER_STATE</b>,
+            <b>PACKET_TYPE_SIZE_MESSAGE</b>, <b>PACKET_TYPE_STATS_ACK</b>,
+            <b>PACKET_TYPE_STATS_COLLECTION_START</b>,
+            <b>PACKET_TYPE_STATS_UPDATE</b>, <b>PACKET_TYPE_STREAM_START</b>,
+            <b>PACKET_TYPE_STREAM_STOP</b>, and <b>PACKET_TYPE_TEXT_MESSAGE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_handle_server_packet()</b>,
+            <b>acip_packet_type_name()</b>, and <b>ascii_otel_packet()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

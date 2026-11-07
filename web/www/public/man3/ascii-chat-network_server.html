@@ -1,0 +1,294 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>network_server(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">network_server(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">network_server(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">network_server</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>network_server_config_t</b> <b>config</b>
+            <br />
+            <b>tcp_server_t</b> <b>listener</b>
+            <br />
+            <b>websocket_server_t</b> <b>websocket</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>websocket_thread</b>
+            <br />
+            <b>thread_pool_t</b> * <b>peers</b>
+            <br />
+            <b>mutex_t</b> <b>registry_mutex</b>
+            <br />
+            <b>network_connection_t</b> * <b>connections</b>
+            <br />
+            size_t <b>count</b>
+            <br />
+            <b>atomic_t</b> <b>stopping</b>
+            <br />
+            <b>atomic_t</b> <b>executing</b>
+            <br />
+            <b>bool</b> <b>listener_initialized</b>
+            <br />
+            <b>bool</b> <b>websocket_initialized</b>
+            <br />
+            <b>bool</b> <b>websocket_started</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>35</b> of file <b>lib/network/connection.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_server_config_t</b> network_server::config
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_config()</b>,
+            <b>network_server_create()</b>, and
+            <b>network_server_websocket_enabled()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_t</b>* network_server::connections
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_foreach()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_network_server::count">
+            <a class="permalink" href="#size_t_network_server::count"
+              >size_t network_server::count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_connection_count()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> network_server::executing</h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_destroy()</b>,
+            <b>network_server_run()</b>, and <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>tcp_server_t</b> network_server::listener</h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_create()</b>,
+            <b>network_server_destroy()</b>, and <b>network_server_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_server::listener_initialized</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_create()</b>, and
+            <b>network_server_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>thread_pool_t</b>* network_server::peers</h2>
+          <p class="Pp">
+            Definition at line <b>40</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_adopt()</b>,
+            <b>network_server_create()</b>, <b>network_server_destroy()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> network_server::registry_mutex</h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_connection_count()</b>,
+            <b>network_server_create()</b>, <b>network_server_destroy()</b>, and
+            <b>network_server_foreach()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> network_server::stopping</h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_destroy()</b>,
+            <b>network_server_request_stop()</b>, and
+            <b>network_server_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>websocket_server_t</b> network_server::websocket
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_create()</b>,
+            <b>network_server_start()</b>, and <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_server::websocket_initialized</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_create()</b>,
+            <b>network_server_start()</b>, and <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> network_server::websocket_started</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_start()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> network_server::websocket_thread
+          </h2>
+          <p class="Pp">
+            Definition at line <b>39</b> of file
+            <b>lib/network/connection.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>network_server_start()</b>, and
+            <b>network_server_stop()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

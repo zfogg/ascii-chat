@@ -1,123 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>string.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">string.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">string.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">string.c - String utility functions for WASM/Emscripten.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">size_t <b>platform_strlcpy</b> (char *dst, const char *src, size_t
-    size)
-  <br/>
-  Safe string copy with size tracking (strlcpy). size_t <b>platform_strlcat</b>
-    (char *dst, const char *src, size_t size)
-  <br/>
-  int <b>platform_strcasecmp</b> (const char *s1, const char *s2)
-  <br/>
-  Case-insensitive string comparison. int <b>platform_asprintf</b> (char **strp,
-    const char *fmt,...)
-  <br/>
-  Allocate formatted string (asprintf replacement). char *
-    <b>platform_strdup</b> (const char *s)
-  <br/>
-  Duplicate string (strdup replacement). <b>asciichat_error_t</b>
-    <b>platform_memcpy</b> (void *dest, size_t dest_size, const void *src,
-    size_t count)
-  <br/>
-  Platform-safe memcpy wrapper. <b>asciichat_error_t</b> <b>platform_memset</b>
-    (void *dest, size_t dest_size, int ch, size_t count)
-  <br/>
-  Platform-safe memset wrapper. int <b>platform_vsnprintf</b> (char *str, size_t
-    size, const char *format, va_list ap)
-  <br/>
-  Safe variable-argument string formatting. int <b>platform_strncasecmp</b>
-    (const char *s1, const char *s2, size_t n)
-  <br/>
-  Case-insensitive string comparison with length limit. <b>asciichat_error_t</b>
-    <b>platform_strcpy</b> (char *dest, size_t dest_size, const char *src)
-  <br/>
-  Platform-safe strcpy wrapper.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">String utility functions for WASM/Emscripten.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/string.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="size_t_platform_strlcat_(char_*_dst,_const_char_*_src,_size_t_size)"><a class="permalink" href="#size_t_platform_strlcat_(char_*_dst,_const_char_*_src,_size_t_size)">size_t
-  platform_strlcat (char * dst, const char * src, size_t size)</a></h2>
-<p class="Pp">Definition at line <b>27</b> of file
-    <b>platform/wasm/string.c</b>.</p>
-<pre>27                                                                  {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>string.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">string.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">string.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          string.c - String utility functions for WASM/Emscripten.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>platform_strlcpy</b> (char *dst, const char *src, size_t
+            size)
+            <br />
+            Safe string copy with size tracking (strlcpy). size_t
+            <b>platform_strlcat</b>
+            (char *dst, const char *src, size_t size)
+            <br />
+            int <b>platform_strcasecmp</b> (const char *s1, const char *s2)
+            <br />
+            Case-insensitive string comparison. int
+            <b>platform_asprintf</b> (char **strp, const char *fmt,...)
+            <br />
+            Allocate formatted string (asprintf replacement). char *
+            <b>platform_strdup</b> (const char *s)
+            <br />
+            Duplicate string (strdup replacement). <b>asciichat_error_t</b>
+            <b>platform_memcpy</b> (void *dest, size_t dest_size, const void
+            *src, size_t count)
+            <br />
+            Platform-safe memcpy wrapper. <b>asciichat_error_t</b>
+            <b>platform_memset</b>
+            (void *dest, size_t dest_size, int ch, size_t count)
+            <br />
+            Platform-safe memset wrapper. int <b>platform_vsnprintf</b> (char
+            *str, size_t size, const char *format, va_list ap)
+            <br />
+            Safe variable-argument string formatting. int
+            <b>platform_strncasecmp</b>
+            (const char *s1, const char *s2, size_t n)
+            <br />
+            Case-insensitive string comparison with length limit.
+            <b>asciichat_error_t</b> <b>platform_strcpy</b> (char *dest, size_t
+            dest_size, const char *src)
+            <br />
+            Platform-safe strcpy wrapper.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">String utility functions for WASM/Emscripten.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>platform/wasm/string.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_platform_strlcat_(char_*_dst,_const_char_*_src,_size_t_size)"
+          >
+            <a
+              class="permalink"
+              href="#size_t_platform_strlcat_(char_*_dst,_const_char_*_src,_size_t_size)"
+              >size_t platform_strlcat (char * dst, const char * src, size_t
+              size)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>platform/wasm/string.c</b>.
+          </p>
+          <pre>
+27                                                                  {
 28   size_t dst_len = strlen(dst);
 29   size_t src_len = strlen(src);
-30 
+30
 31   if (dst_len &gt;= size) {
 32     return dst_len + src_len;
 33   }
-34 
+34
 35   size_t remaining = size - dst_len;
 36   size_t copy_len = (src_len &gt;= remaining) ? remaining - 1 : src_len;
 37   memcpy(dst + dst_len, src, copy_len);
 38   dst[dst_len + copy_len] = '\0';
-39 
+39
 40   return dst_len + src_len;
 41 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>platform_strlcat()</b>.</p>
+          <p class="Pp">Referenced by <b>platform_strlcat()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

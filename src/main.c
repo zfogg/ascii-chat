@@ -797,13 +797,8 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
-  // IMPORTANT: atexit handlers run in LIFO order - last registered runs first
-  // So register order (top to bottom) = execution order (bottom to top):
-  // 1. PCRE2 cleanup (runs last) - frees compiled regexes after all code stops using them
-  // 2. Path cleanup (runs 3rd) - now a no-op but kept for API compatibility
-  // 3. Shared destroy (runs 2nd) - frees all shared resources
-  // 4. Cursor show (runs 1st) - shows cursor before exit
-  (void)atexit(asciichat_pcre2_cleanup_all);
+  // Handlers run in reverse registration order: restore the cursor, destroy
+  // shared subsystems, then run the compatibility path cleanup.
   (void)atexit(path_cleanup_thread_locals);
   (void)atexit(asciichat_shared_destroy);
   (void)atexit(on_exit_show_cursor);

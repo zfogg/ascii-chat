@@ -99,7 +99,6 @@ process logs, and screenshots are written to the artifact directory. The test us
 changing synthetic video, disables native audio devices, and does not claim audio
 continuity or TURN-route coverage.
 
-
 ## Audio and forced relay experiment
 
 Run `web/web/tests/e2e/run-handoff-audio.mjs` with the same binary,
@@ -147,7 +146,6 @@ SERVER_STATE emitted before the C participant ID is registered. The worker
 now retains the logical admission recipient during that call; the focused
 worker regression checks delivery and rejection of unknown recipients.
 
-
 Validation on Windows x64, Clang/Ninja and Chrome 155 executed all six rows
 below with three real host process losses per session and 30-second dwell
 periods. Four invocations ran concurrently on one Windows host, sharing CPU,
@@ -161,14 +159,14 @@ audio after every commit. Mixed runs first proved native host audio while
 only one browser receiver was connected. Every forced-relay measurement
 verified selected relay-to-relay pairs carrying bytes before and after loss.
 
-| Scenario | Host losses | Callback interruption upper bound | Recovery observation |
-| --- | ---: | ---: | ---: |
-| browser-audio-direct | 3 | 2.81–4.19 s | 3.50–4.85 s |
-| browser-audio-relay | 3 | 1.44–2.55 s | 2.28–3.17 s |
-| mixed-audio-direct | 3 | 0.41–1.83 s | 1.31–2.42 s |
-| mixed-audio-relay | 3 | 0.16–1.33 s | 0.86–1.92 s |
-| native-audio-direct | 3 | 1.56–2.12 s | 2.42–2.83 s |
-| mixed-audio-relay-slow-video-and-promotion | 3 | 7.14–9.11 s | 7.91–9.70 s |
+| Scenario                                   | Host losses | Callback interruption upper bound | Recovery observation |
+| ------------------------------------------ | ----------: | --------------------------------: | -------------------: |
+| browser-audio-direct                       |           3 |                       2.81–4.19 s |          3.50–4.85 s |
+| browser-audio-relay                        |           3 |                       1.44–2.55 s |          2.28–3.17 s |
+| mixed-audio-direct                         |           3 |                       0.41–1.83 s |          1.31–2.42 s |
+| mixed-audio-relay                          |           3 |                       0.16–1.33 s |          0.86–1.92 s |
+| native-audio-direct                        |           3 |                       1.56–2.12 s |          2.42–2.83 s |
+| mixed-audio-relay-slow-video-and-promotion |           3 |                       7.14–9.11 s |          7.91–9.70 s |
 
 Raw result JSON records counters, selected pairs, timestamps, binary hashes and
 the WASM manifest. Logs, screenshots and process exit evidence remain local

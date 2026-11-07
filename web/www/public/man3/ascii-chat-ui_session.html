@@ -1,0 +1,361 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ui_session(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ui_session(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ui_session(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ui_session</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>terminal_size_t</b> <b>size</b>
+            <br />
+            <b>frame_buffer_t</b> * <b>frame</b>
+            <br />
+            <b>frame_buffer_t</b> * <b>media</b>
+            <br />
+            <b>session_log_buffer_t</b> * <b>logs</b>
+            <br />
+            <b>animation_t</b> <b>animation</b>
+            <br />
+            <b>ui_splash_view_t</b> <b>splash</b>
+            <br />
+            <b>bool</b> <b>loading</b>
+            <br />
+            <b>bool</b> <b>help</b>
+            <br />
+            <b>bool</b> <b>show_logs</b>
+            <br />
+            <b>bool</b> <b>dirty</b>
+            <br />
+            <b>bool</b> <b>owns_logs</b>
+            <br />
+            time_t <b>started</b>
+            <br />
+            int <b>active</b>
+            <br />
+            <b>bool</b> <b>covered</b>
+            <br />
+            <b>terminal_size_t</b> <b>presented_size</b>
+            <br />
+            <b>terminal_size_t</b> <b>minimum</b>
+            <br />
+            <b>uint64_t</b> <b>last_render_ns</b>
+            <br />
+            double <b>saved_volume</b>
+            <br />
+            <b>uint64_t</b> <b>presentation_times</b> [120]
+            <br />
+            unsigned <b>presentation_index</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>23</b> of file <b>lib/tui/session.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_session::active">
+            <a class="permalink" href="#int_ui_session::active"
+              >int ui_session::active</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>32</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>,
+            <b>ui_session_render()</b>, and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>animation_t</b> ui_session::animation</h2>
+          <p class="Pp">
+            Definition at line <b>28</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>,
+            <b>ui_session_destroy()</b>, <b>ui_session_loading()</b>,
+            <b>ui_session_next_frame_ns()</b>, and <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session::covered</h2>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_is_covered()</b>, and
+            <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session::dirty</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_clear()</b>, <b>ui_session_create()</b>,
+            <b>ui_session_input()</b>, <b>ui_session_loading()</b>,
+            <b>ui_session_log()</b>, <b>ui_session_media()</b>,
+            <b>ui_session_redraw()</b>, <b>ui_session_render()</b>,
+            <b>ui_session_resize()</b>, and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>frame_buffer_t</b>* ui_session::frame</h2>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>,
+            <b>ui_session_destroy()</b>, <b>ui_session_frame_length()</b>, and
+            <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session::help</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_clear()</b>, <b>ui_session_input()</b>,
+            and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> ui_session::last_render_ns</h2>
+          <p class="Pp">
+            Definition at line <b>35</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session::loading</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_loading()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>session_log_buffer_t</b>* ui_session::logs</h2>
+          <p class="Pp">
+            Definition at line <b>27</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_capture_logs()</b>,
+            <b>ui_session_create()</b>, <b>ui_session_destroy()</b>,
+            <b>ui_session_log()</b>, and <b>ui_session_logs_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>frame_buffer_t</b>* ui_session::media</h2>
+          <p class="Pp">
+            Definition at line <b>26</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_clear()</b>, <b>ui_session_create()</b>,
+            <b>ui_session_destroy()</b>, <b>ui_session_media()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>terminal_size_t</b> ui_session::minimum</h2>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session::owns_logs</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>, and
+            <b>ui_session_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_ui_session::presentation_index">
+            <a class="permalink" href="#unsigned_ui_session::presentation_index"
+              >unsigned ui_session::presentation_index</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> ui_session::presentation_times[120]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>37</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_tick()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>terminal_size_t</b> ui_session::presented_size</h2>
+          <p class="Pp">
+            Definition at line <b>34</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_ui_session::saved_volume">
+            <a class="permalink" href="#double_ui_session::saved_volume"
+              >double ui_session::saved_volume</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>, and
+            <b>ui_session_input()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ui_session::show_logs</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_clear()</b>, <b>ui_session_input()</b>,
+            and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>terminal_size_t</b> ui_session::size</h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>,
+            <b>ui_session_render()</b>, <b>ui_session_resize()</b>,
+            <b>ui_session_size()</b>, and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_splash_view_t</b> ui_session::splash</h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>,
+            <b>ui_session_loading()</b>, <b>ui_session_next_frame_ns()</b>, and
+            <b>ui_session_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="time_t_ui_session::started">
+            <a class="permalink" href="#time_t_ui_session::started"
+              >time_t ui_session::started</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>31</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>, and
+            <b>ui_session_logs_render()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

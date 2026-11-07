@@ -21,12 +21,12 @@
     "build": "echo 'Shared package (no build needed)'"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "prismjs": "^1.30.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
-    "react-syntax-highlighter": "^16.1.0",
-    "@headlessui/react": "^2.2.9"
+    "react-syntax-highlighter": "^16.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

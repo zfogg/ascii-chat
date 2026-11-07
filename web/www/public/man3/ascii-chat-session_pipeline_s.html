@@ -1,138 +1,368 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_pipeline_s(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_pipeline_s(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_pipeline_s(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_pipeline_s</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_thread_t</b> <b>capture_tid</b>
-  <br/>
-  <b>asciichat_thread_t</b> <b>encode_tid</b>
-  <br/>
-  <b>frame_queue_t</b> * <b>display_queue</b>
-  <br/>
-  <b>frame_queue_t</b> * <b>encode_queue</b>
-  <br/>
-  <b>session_capture_ctx_t</b> * <b>capture</b>
-  <br/>
-  <b>session_display_ctx_t</b> * <b>display</b>
-  <br/>
-  <b>atomic_t</b> <b>stop</b>
-  <br/>
-  <b>atomic_t</b> <b>first_frame_ns</b>
-  <br/>
-  <b>bool</b> <b>has_render_file</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>187</b> of file <b>pipeline.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>session_capture_ctx_t</b>* session_pipeline_s::capture</h2>
-<p class="Pp">Definition at line <b>194</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b> session_pipeline_s::capture_tid</h2>
-<p class="Pp">Definition at line <b>188</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
-    <b>session_pipeline_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_display_ctx_t</b>* session_pipeline_s::display</h2>
-<p class="Pp">Definition at line <b>195</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
-    <b>session_pipeline_run_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>frame_queue_t</b>* session_pipeline_s::display_queue</h2>
-<p class="Pp">Definition at line <b>191</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>,
-    <b>session_pipeline_destroy()</b>, and
-  <b>session_pipeline_run_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>frame_queue_t</b>* session_pipeline_s::encode_queue</h2>
-<p class="Pp">Definition at line <b>192</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
-    <b>session_pipeline_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_thread_t</b> session_pipeline_s::encode_tid</h2>
-<p class="Pp">Definition at line <b>189</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
-    <b>session_pipeline_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_pipeline_s::first_frame_ns</h2>
-<p class="Pp">Definition at line <b>198</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_pipeline_s::has_render_file</h2>
-<p class="Pp">Definition at line <b>199</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>atomic_t</b> session_pipeline_s::stop</h2>
-<p class="Pp">Definition at line <b>197</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>,
-    <b>session_pipeline_destroy()</b>, and
-  <b>session_pipeline_run_main()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_pipeline_s(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_pipeline_s(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_pipeline_s(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session_pipeline_s</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_thread_t</b> <b>capture_tid</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>encode_tid</b>
+            <br />
+            <b>asciichat_thread_t</b> <b>input_tid</b>
+            <br />
+            atomic_int <b>input_start_status</b>
+            <br />
+            <b>session_keyboard_handler_fn</b> <b>keyboard_handler</b>
+            <br />
+            <b>session_should_exit_fn</b> <b>should_exit</b>
+            <br />
+            void * <b>input_data</b>
+            <br />
+            <b>frame_slot_t</b> <b>frame_slots</b> [3]
+            <br />
+            <b>atomic_ptr_t</b> <b>display_pending</b>
+            <br />
+            <b>platform_wakeup_t</b> * <b>display_ready</b>
+            <br />
+            <b>frame_queue_t</b> * <b>encode_queue</b>
+            <br />
+            <b>session_capture_ctx_t</b> * <b>capture</b>
+            <br />
+            <b>session_display_ctx_t</b> * <b>display</b>
+            <br />
+            <b>atomic_t</b> <b>stop</b>
+            <br />
+            <b>atomic_t</b> <b>capture_finished</b>
+            <br />
+            <b>atomic_t</b> <b>first_frame_ns</b>
+            <br />
+            <b>asciichat_error_context_t</b> <b>capture_failure</b>
+            <br />
+            <b>asciichat_error_t</b> <b>encode_error</b>
+            <br />
+            <b>uint64_t</b> <b>frames_accepted</b>
+            <br />
+            <b>bool</b> <b>has_render_file</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>268</b> of file <b>pipeline.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_capture_ctx_t</b>* session_pipeline_s::capture
+          </h2>
+          <p class="Pp">
+            Definition at line <b>282</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_context_t</b> session_pipeline_s::capture_failure
+          </h2>
+          <p class="Pp">
+            Definition at line <b>288</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> session_pipeline_s::capture_finished
+          </h2>
+          <p class="Pp">
+            Definition at line <b>286</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>,
+            <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> session_pipeline_s::capture_tid
+          </h2>
+          <p class="Pp">
+            Definition at line <b>269</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>, and
+            <b>session_pipeline_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_display_ctx_t</b>* session_pipeline_s::display
+          </h2>
+          <p class="Pp">
+            Definition at line <b>283</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>,
+            <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_ptr_t</b> session_pipeline_s::display_pending
+          </h2>
+          <p class="Pp">
+            Definition at line <b>278</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>,
+            <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>platform_wakeup_t</b>* session_pipeline_s::display_ready
+          </h2>
+          <p class="Pp">
+            Definition at line <b>279</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>,
+            <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_pipeline_s::encode_error
+          </h2>
+          <p class="Pp">
+            Definition at line <b>289</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>frame_queue_t</b>* session_pipeline_s::encode_queue
+          </h2>
+          <p class="Pp">
+            Definition at line <b>280</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>, and
+            <b>session_pipeline_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> session_pipeline_s::encode_tid
+          </h2>
+          <p class="Pp">
+            Definition at line <b>270</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>, and
+            <b>session_pipeline_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_pipeline_s::first_frame_ns</h2>
+          <p class="Pp">
+            Definition at line <b>287</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>frame_slot_t</b> session_pipeline_s::frame_slots[3]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>277</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>, and
+            <b>session_pipeline_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> session_pipeline_s::frames_accepted
+          </h2>
+          <p class="Pp">
+            Definition at line <b>290</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> session_pipeline_s::has_render_file</h2>
+          <p class="Pp">
+            Definition at line <b>291</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_session_pipeline_s::input_data">
+            <a class="permalink" href="#void*_session_pipeline_s::input_data"
+              >void* session_pipeline_s::input_data</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>275</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="atomic_int_session_pipeline_s::input_start_status">
+            <a
+              class="permalink"
+              href="#atomic_int_session_pipeline_s::input_start_status"
+              >atomic_int session_pipeline_s::input_start_status</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>272</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_thread_t</b> session_pipeline_s::input_tid
+          </h2>
+          <p class="Pp">
+            Definition at line <b>271</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_keyboard_handler_fn</b>
+            session_pipeline_s::keyboard_handler
+          </h2>
+          <p class="Pp">
+            Definition at line <b>273</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_should_exit_fn</b> session_pipeline_s::should_exit
+          </h2>
+          <p class="Pp">
+            Definition at line <b>274</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> session_pipeline_s::stop</h2>
+          <p class="Pp">
+            Definition at line <b>285</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_pipeline_create()</b>,
+            <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

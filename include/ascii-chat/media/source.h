@@ -438,7 +438,7 @@ double media_source_get_position(media_source_t *source);
  * - Positive value: Frame rate in FPS (e.g., 30.0, 60.0)
  * - 0.0: Frame rate unknown or not applicable
  *
- * @note WEBCAM sources return 0.0 (variable rate)
+ * @note WEBCAM sources return the negotiated capture rate when available
  * @note TEST sources return 0.0
  * @note FILE/STDIN sources return the video stream's fps from FFmpeg
  *

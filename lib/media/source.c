@@ -1047,8 +1047,9 @@ double media_source_get_video_fps(media_source_t *source) {
 
   switch (source->type) {
   case MEDIA_SOURCE_WEBCAM:
+    return source->webcam_ctx ? webcam_get_fps(source->webcam_ctx) : 0.0;
   case MEDIA_SOURCE_TEST:
-    return 0.0; // Variable rate, no fixed FPS
+    return 0.0;
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:

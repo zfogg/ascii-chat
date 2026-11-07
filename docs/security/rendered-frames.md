@@ -18,14 +18,14 @@ Decoded text is limited to 16 MiB before allocation/decompression, and dimension
 
 Flag 0x10 explicitly adds a versioned render-contract prefix after the original header and before the encoded text. All prefix integers are network-order uint32 values:
 
-| Offset | Meaning |
-| --- | --- |
-| 0 | Schema, currently 1 |
-| 4 | Effective render settings revision used to generate this frame |
-| 8 | Render mode: foreground 0, background 1, half-block 2 |
-| 12 | Effects: matrix rain 1, grid separators 2 |
-| 16 | Palette byte count, 1..255 |
-| 20 | Exact UTF-8 palette bytes, without NUL |
+| Offset | Meaning                                                        |
+| ------ | -------------------------------------------------------------- |
+| 0      | Schema, currently 1                                            |
+| 4      | Effective render settings revision used to generate this frame |
+| 8      | Render mode: foreground 0, background 1, half-block 2          |
+| 12     | Effects: matrix rain 1, grid separators 2                      |
+| 16     | Palette byte count, 1..255                                     |
+| 20     | Exact UTF-8 palette bytes, without NUL                         |
 
 The original header's text sizes, compression flag and CRC continue to describe only text. Unknown schemas/effects/flags, malformed metadata, and trailing/missing text bytes are errors; an invalid new-format contract never falls back to legacy interpretation. The native server and shared discovery/browser host capture this metadata from the same immutable settings snapshot as the rendered frame. Header dimensions also come from that snapshot rather than a later settings read.
 

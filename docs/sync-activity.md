@@ -81,15 +81,15 @@ capture/AEC or local monitoring.
 
 ## Connected media ownership and names
 
-| Inspector name | Protected state or notification |
-| --- | --- |
-| shared_media_buffer_pool | Shared media buffer free lists, allocation budgets and accounting |
-| reserved_control_buffer_pool | Buffer capacity reserved for handshake/error/control traffic |
-| audio_processing_wait_guard | Device-driven audio worker sleep/shutdown coordination |
-| audio_processing_wakeup | New capture/render work, local-playback refill or shutdown |
-| connection_outgoing_packet_queue | Outgoing packet admission, ordering, priority, budget and completion state |
-| outgoing_packet_ready_or_done | Queue became nonempty, synchronous control completed, or connection stopped |
-| tcp_packet_io_lifetime_guard | Receive queue ownership and stream lifetime during transmission/close |
+| Inspector name                   | Protected state or notification                                             |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| shared_media_buffer_pool         | Shared media buffer free lists, allocation budgets and accounting           |
+| reserved_control_buffer_pool     | Buffer capacity reserved for handshake/error/control traffic                |
+| audio_processing_wait_guard      | Device-driven audio worker sleep/shutdown coordination                      |
+| audio_processing_wakeup          | New capture/render work, local-playback refill or shutdown                  |
+| connection_outgoing_packet_queue | Outgoing packet admission, ordering, priority, budget and completion state  |
+| outgoing_packet_ready_or_done    | Queue became nonempty, synchronous control completed, or connection stopped |
+| tcp_packet_io_lifetime_guard     | Receive queue ownership and stream lifetime during transmission/close       |
 
 Connection-owned packet slots retain at most eight buffers of at most 256 KiB
 in each receive, outgoing-plaintext and backend-write cache. Larger owners are
@@ -154,19 +154,19 @@ probes, Escape timing, paste/editor routing and zero-lock idle UI queries.
 
 A verified 15 FPS mirror sample, with the inspector open, measured approximately:
 
-| Primitive | Acquisitions/sec (or condition waits/sec) |
-| --- | ---: |
-| named_registry_lock | 4 (0.4-0.5 across a hidden interval) |
-| colorscheme | 0 |
-| shared_media_buffer_pool | 0 |
-| timer_manager | 0 |
-| display | 47 |
-| ffmpeg_prefetch | about 45 |
-| queue_not_empty | 16 |
-| debug_memory | 0 after warm-up |
-| audio_processing_wait_guard | 31-39 |
-| ui_controller | 31 |
-| ui_input | 0 |
+| Primitive                   | Acquisitions/sec (or condition waits/sec) |
+| --------------------------- | ----------------------------------------: |
+| named_registry_lock         |      4 (0.4-0.5 across a hidden interval) |
+| colorscheme                 |                                         0 |
+| shared_media_buffer_pool    |                                         0 |
+| timer_manager               |                                         0 |
+| display                     |                                        47 |
+| ffmpeg_prefetch             |                                  about 45 |
+| queue_not_empty             |                                        16 |
+| debug_memory                |                           0 after warm-up |
+| audio_processing_wait_guard |                                     31-39 |
+| ui_controller               |                                        31 |
+| ui_input                    |                                         0 |
 
 The display queue performs roughly three acquisitions per video frame. Warm
 mirror rendering no longer allocates ASCII output or UI snapshots per frame.

@@ -1,317 +1,419 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>io.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">io.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">io.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">io.h - Capture stdout/stderr and redirect to logging system.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>io.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">io.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">io.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          io.h - Capture stdout/stderr and redirect to logging system.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>log_io_t</b>
+            <br />
+            Opaque handle for IO capture state.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>LOG_IO_IF</b>(condition, prefix, block)
+            <br />
+            Capture output from a code block and log it. #define
+            <b>LOG_IO</b>(prefix, block)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>log_io_t</b> <b>log_io_start</b> (void)
+            <br />
+            Start capturing stdout and stderr. void <b>log_io_stop</b> (<b
+              >log_io_t</b
+            >
+            capture, const char *prefix)
+            <br />
+            Stop capturing and log the accumulated output.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Capture stdout/stderr and redirect to logging system.</p>
+        <p class="Pp">
+          Provides functions and macros to capture stdout and stderr output and
+          redirect it to the logging system instead of suppressing it.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Usage: // Capture specific code: <b>log_io_t</b> capture =
+          <b>log_io_start()</b>; ffmpeg_function_that_prints_stuff();
+          log_io_stop(capture, &quot;ffmpeg&quot;);
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          // Capture a code block (recommended): LOG_IO(&quot;ffmpeg&quot;, {
+          ffmpeg_function_that_prints_stuff(); });
+        </p>
+        <p class="Pp">Definition in file <b>io.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_IO(_prefix,__block)">
+            <a class="permalink" href="#_define_LOG_IO(_prefix,__block)"
+              >#define LOG_IO( prefix, block)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>LOG_IO_IF(true, prefix, block)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>99</b> of file <b>io.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>audio_start_duplex()</b>,
+            <b>audio_stop_duplex()</b>,
+            <b>audio_terminate_portaudio_final()</b>,
+            <b>ffmpeg_decoder_create_stdin()</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>,
+            <b>gpg_sign_with_key()</b>, <b>h265_decoder_create()</b>,
+            <b>h265_encoder_destroy()</b>, and <b>yt_dlp_is_available()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_LOG_IO_IF(_condition,__prefix,__block)">
+            <a
+              class="permalink"
+              href="#_define_LOG_IO_IF(_condition,__prefix,__block)"
+              >#define LOG_IO_IF( condition, prefix, block)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>do {                                                                                                                 \
 <br/>
-<p class="Pp">struct <b>log_io_t</b>
-  <br/>
-  Opaque handle for IO capture state.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+  bool _log_io_enabled = (condition);                                                                                \
 <br/>
-<p class="Pp">#define <b>LOG_IO</b>(prefix, block)
-  <br/>
-  Capture output from a code block and log it.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+  log_io_t _log_io = {0};                                                                                            \
 <br/>
-<p class="Pp"><b>log_io_t</b> <b>log_io_start</b> (void)
-  <br/>
-  Start capturing stdout and stderr. void <b>log_io_stop</b> (<b>log_io_t</b>
-    capture, const char *prefix)
-  <br/>
-  Stop capturing and log the accumulated output.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Capture stdout/stderr and redirect to logging system.</p>
-<p class="Pp">Provides functions and macros to capture stdout and stderr output
-    and redirect it to the logging system instead of suppressing it.</p>
-<p class="Pp"></p>
-<p class="Pp">Usage: // Capture specific code: <b>log_io_t</b> capture =
-    <b>log_io_start()</b>; ffmpeg_function_that_prints_stuff();
-    log_io_stop(capture, &quot;ffmpeg&quot;);</p>
-<p class="Pp"></p>
-<p class="Pp">// Capture a code block (recommended): LOG_IO(&quot;ffmpeg&quot;,
-    { ffmpeg_function_that_prints_stuff(); });</p>
-<p class="Pp">Definition in file <b>io.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_LOG_IO(_prefix,__block)"><a class="permalink" href="#_define_LOG_IO(_prefix,__block)">#define
-  LOG_IO( prefix, block)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do {                                                                        \
+  if (_log_io_enabled)                                                                                               \
 <br/>
-  log_io_t _log_io = log_io_start();                                       \
+    _log_io = log_io_start();                                                                                        \
 <br/>
-  block;                                                                    \
+  block;                                                                                                             \
 <br/>
-  log_io_stop(_log_io, (prefix));                                         \
+  if (_log_io_enabled)                                                                                               \
+<br/>
+    log_io_stop(_log_io, (prefix));                                                                                  \
 } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Capture output from a code block and log it. This macro redirects
-    stdout and stderr for the duration of the code block, then logs any captured
-    output with the given prefix.</p>
-<p class="Pp"></p>
-<p class="Pp">Example: LOG_IO(&quot;ffmpeg&quot;, { av_log_set_callback(NULL);
-    // Use default ffmpeg logging process_file(&quot;input.mp4&quot;); });</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>prefix</i> Prefix for log messages (const char *)
-<br/>
-<i>block</i> Code block to capture (must be valid C statement block)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Prefix and block are only evaluated once
-<p class="Pp"></p>
-<p class="Pp">Variables in the enclosing scope are accessible in the block</p>
-</div>
-<p class="Pp">Definition at line <b>81</b> of file <b>io.h</b>.</p>
-<pre>81 #define LOG_IO(prefix, block)                                                 \
-82   do {                                                                        \
-83     log_io_t _log_io = log_io_start();                                       \
-84     block;                                                                    \
-85     log_io_stop(_log_io, (prefix));                                         \
-86   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>audio_start_duplex()</b>,
-    <b>audio_stop_duplex()</b>, <b>audio_terminate_portaudio_final()</b>,
-    <b>ffmpeg_decoder_create()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_encoder_create()</b>, <b>ffmpeg_encoder_destroy()</b>,
-    <b>gpg_sign_with_key()</b>, <b>h265_decoder_create()</b>,
-    <b>h265_encoder_destroy()</b>, and <b>yt_dlp_is_available()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>log_io_t</b> log_io_start (void )</h2>
-<p class="Pp">Start capturing stdout and stderr. Redirects both stdout and
-    stderr to a pipe so their output can be captured and logged. Call
-    <b>log_io_stop()</b> to end capture and log the accumulated output.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Capture handle (use with log_io_stop)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">If capture fails, returns a handle with saved_stdout_fd =
-  -1
-<p class="Pp"></p>
-<p class="Pp">Do not use stdout/stderr directly while capturing</p>
-</div>
-<p class="Pp">Definition at line <b>15</b> of file <b>io.c</b>.</p>
-<pre>15                             {
-16   log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-17 
-18   // Save original stdout and stderr
-19   capture.saved_stdout_fd = dup(STDOUT_FILENO);
-20   capture.saved_stderr_fd = dup(STDERR_FILENO);
-21 
-22   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
-23     if (capture.saved_stdout_fd &gt;= 0)
-24       close(capture.saved_stdout_fd);
-25     if (capture.saved_stderr_fd &gt;= 0)
-26       close(capture.saved_stderr_fd);
-27     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-28   }
-29 
-30   // Create a pipe for capturing output
-31   int pipefd[2];
-32 #ifdef _WIN32
-33   if (_pipe(pipefd, LOG_IO_BUFFER_SIZE, _O_BINARY) &lt; 0) {
-34 #else
-35   if (pipe(pipefd) &lt; 0) {
-36 #endif
-37     close(capture.saved_stdout_fd);
-38     close(capture.saved_stderr_fd);
-39     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-40   }
-41 
-42   // pipefd[0] is read end, pipefd[1] is write end
-43   int write_fd = pipefd[1];
-44   capture.pipe_fd = pipefd[0];
-45 
-46 #ifndef _WIN32
-47   // Make the read end non-blocking so we can drain without hanging
-48   int flags = fcntl(capture.pipe_fd, F_GETFL, 0);
-49   if (flags &gt;= 0) {
-50     fcntl(capture.pipe_fd, F_SETFL, flags | O_NONBLOCK);
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Capture output from a code block and log it. This macro redirects
+            stdout and stderr for the duration of the code block, then logs any
+            captured output with the given prefix.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Example: LOG_IO(&quot;ffmpeg&quot;, { av_log_set_callback(NULL); //
+            Use default ffmpeg logging process_file(&quot;input.mp4&quot;); });
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>prefix</i> Prefix for log messages (const char *)
+            <br />
+            <i>block</i> Code block to capture (must be valid C statement block)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Prefix and block are only evaluated once
+            <p class="Pp"></p>
+            <p class="Pp">
+              Variables in the enclosing scope are accessible in the block
+            </p>
+          </div>
+          <p class="Pp">
+            Capture a block only when condition is true; execute the block once
+            either way.
+          </p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The condition is evaluated once, before executing the block.
+          </div>
+          <p class="Pp">Definition at line <b>88</b> of file <b>io.h</b>.</p>
+          <p class="Pp">Referenced by <b>yt_dlp_extract_with_options()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>log_io_t</b> log_io_start (void )</h2>
+          <p class="Pp">
+            Start capturing stdout and stderr. Redirects both stdout and stderr
+            to a temporary file so their output can be captured and logged. Call
+            <b>log_io_stop()</b> to end capture and log the accumulated output.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Capture handle (use with log_io_stop)</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            If capture fails, returns a handle with saved_stdout_fd = -1
+            <p class="Pp"></p>
+            <p class="Pp">Do not use stdout/stderr directly while capturing</p>
+          </div>
+          <p class="Pp">Definition at line <b>13</b> of file <b>io.c</b>.</p>
+          <pre>
+13                             {
+14   log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
+15
+16   // A pipe cannot be drained until the wrapped call returns. A temporary file
+17   // lets backend worker threads finish even when diagnostics exceed pipe capacity.
+18   capture.output = platform_tmpfile();
+19   if (!capture.output)
+20     return capture;
+21
+22   fflush(stdout);
+23   fflush(stderr);
+24   capture.saved_stdout_fd = platform_dup(STDOUT_FILENO);
+25   capture.saved_stderr_fd = platform_dup(STDERR_FILENO);
+26   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0)
+27     goto fail;
+28
+29   int output_fd = platform_fileno(capture.output);
+30   if (platform_dup2(output_fd, STDOUT_FILENO) != ASCIICHAT_OK)
+31     goto fail;
+32   if (platform_dup2(output_fd, STDERR_FILENO) != ASCIICHAT_OK) {
+33     // Restore stdout if only the first redirection succeeded.
+34     platform_dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+35     goto fail;
+36   }
+37   return capture;
+38
+39 fail:
+40   if (capture.saved_stdout_fd &gt;= 0)
+41     platform_close(capture.saved_stdout_fd);
+42   if (capture.saved_stderr_fd &gt;= 0)
+43     platform_close(capture.saved_stderr_fd);
+44   fclose(capture.output);
+45   return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .output = NULL};
+46 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>log_io_start()</b>,
+            <b>log_io_t::output</b>, <b>platform_close()</b>,
+            <b>platform_dup()</b>, <b>platform_dup2()</b>,
+            <b>platform_fileno()</b>, <b>platform_tmpfile()</b>,
+            <b>log_io_t::saved_stderr_fd</b>, and
+            <b>log_io_t::saved_stdout_fd</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_io_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_log_io_stop_(">
+            <a class="permalink" href="#void_log_io_stop_("
+              >void log_io_stop (<b>log_io_t</b> capture, const char *
+              prefix)</a
+            >
+          </h2>
+          <p class="Pp">
+            Stop capturing and log the accumulated output. Restores stdout and
+            stderr to their original state, reads all captured output from the
+            temporary file, and logs it at DEBUG level with the given prefix.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>capture</i> Capture handle returned by
+            <b>log_io_start()</b>
+            <br />
+            <i>prefix</i> Prefix to use in log messages (e.g.,
+            &quot;ffmpeg&quot;, &quot;portaudio&quot;)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call with invalid handle (saved_stdout_fd = -1)
+            <p class="Pp"></p>
+            <p class="Pp">
+              After calling this, the capture handle is invalidated
+            </p>
+          </div>
+          <p class="Pp">Definition at line <b>48</b> of file <b>io.c</b>.</p>
+          <pre>
+48                                                        {
+49   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
+50     return; // Capture was not started successfully
 51   }
-52 
-53   // Make the write end non-blocking. LOG_IO redirects the process-global stderr,
-54   // so ALL threads write to this pipe. If the pipe buffer fills (64KB on Linux),
-55   // blocking writes would stall other threads and potentially deadlock (e.g. x265
-56   // internal threads block on stderr while avcodec_open2 can't return). Non-blocking
-57   // writes silently drop excess output (EAGAIN) which is acceptable for diagnostics.
-58   int wflags = fcntl(write_fd, F_GETFL, 0);
-59   if (wflags &gt;= 0) {
-60     fcntl(write_fd, F_SETFL, wflags | O_NONBLOCK);
-61   }
-62 #endif
-63 
-64   // Redirect both stdout and stderr to the pipe
-65   if (dup2(write_fd, STDOUT_FILENO) &lt; 0 || dup2(write_fd, STDERR_FILENO) &lt; 0) {
-66     close(write_fd);
-67     close(capture.pipe_fd);
-68     close(capture.saved_stdout_fd);
-69     close(capture.saved_stderr_fd);
-70     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-71   }
-72 
-73   // Close the write end in the parent process (we only need it in redirected streams)
-74   close(write_fd);
-75 
-76   return capture;
-77 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>LOG_IO_BUFFER_SIZE</b>, <b>log_io_t::pipe_fd</b>,
-    <b>log_io_t::saved_stderr_fd</b>, and <b>log_io_t::saved_stdout_fd</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_io_stop_("><a class="permalink" href="#void_log_io_stop_(">void
-  log_io_stop (<b>log_io_t</b> capture, const char * prefix)</a></h2>
-<p class="Pp">Stop capturing and log the accumulated output. Restores stdout and
-    stderr to their original state, reads all captured output from the pipe, and
-    logs it at INFO level with the given prefix.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>capture</i> Capture handle returned by
-  <b>log_io_start()</b>
-<br/>
-<i>prefix</i> Prefix to use in log messages (e.g., &quot;ffmpeg&quot;,
-  &quot;portaudio&quot;)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call with invalid handle (saved_stdout_fd = -1)
-<p class="Pp"></p>
-<p class="Pp">After calling this, the capture handle is invalidated</p>
-</div>
-<p class="Pp">Definition at line <b>79</b> of file <b>io.c</b>.</p>
-<pre>79                                                        {
-80   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
-81     return;  // Capture was not started successfully
-82   }
-83 
-84   // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe
-85   fflush(stdout);
-86   fflush(stderr);
-87 
-88   // Restore stdout and stderr
-89   dup2(capture.saved_stdout_fd, STDOUT_FILENO);
-90   dup2(capture.saved_stderr_fd, STDERR_FILENO);
-91   close(capture.saved_stdout_fd);
-92   close(capture.saved_stderr_fd);
-93 
-94   // Read and log the captured output
-95   if (capture.pipe_fd &gt;= 0) {
-96     char buffer[LOG_IO_BUFFER_SIZE];
-97     ssize_t bytes_read;
-98 
-99     // Read all available data from the pipe
-100     while ((bytes_read = read(capture.pipe_fd, buffer, sizeof(buffer) - 1)) &gt; 0) {
-101       buffer[bytes_read] = '\0';
-102 
-103       // Split by lines and log each line
-104       char *line_start = buffer;
-105       char *line_end;
-106 
-107       while ((line_end = strchr(line_start, '\n')) != NULL) {
-108         // Null-terminate the line (overwriting the newline)
-109         *line_end = '\0';
-110 
-111         // Log the line if it's not empty
-112         if (line_start[0] != '\0') {
-113           if (prefix) {
-114             log_debug(&quot;[%s] %s&quot;, prefix, line_start);
-115           } else {
-116             log_debug(&quot;%s&quot;, line_start);
-117           }
-118         }
-119 
-120         // Move to the next line
-121         line_start = line_end + 1;
-122       }
-123 
-124       // Log any remaining partial line
-125       if (line_start[0] != '\0') {
-126         if (prefix) {
-127           log_debug(&quot;[%s] %s&quot;, prefix, line_start);
-128         } else {
-129           log_debug(&quot;%s&quot;, line_start);
-130         }
-131       }
-132     }
-133 
-134     close(capture.pipe_fd);
-135   }
-136 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>LOG_IO_BUFFER_SIZE</b>,
-    <b>log_io_t::pipe_fd</b>, <b>log_io_t::saved_stderr_fd</b>, and
-    <b>log_io_t::saved_stdout_fd</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+52
+53   // Flush before restoring so buffered backend output is captured.
+54   fflush(stdout);
+55   fflush(stderr);
+56
+57   // Restore stdout and stderr
+58   platform_dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+59   platform_dup2(capture.saved_stderr_fd, STDERR_FILENO);
+60   platform_close(capture.saved_stdout_fd);
+61   platform_close(capture.saved_stderr_fd);
+62
+63   // Read and log the captured output
+64   if (capture.output) {
+65     char buffer[LOG_IO_BUFFER_SIZE];
+66     size_t bytes_read;
+67
+68     // Replay only after restoring the descriptors, so logger output cannot feed
+69     // back into this capture. fseek synchronizes the stream with descriptor writes.
+70     if (fseek(capture.output, 0, SEEK_SET) != 0) {
+71       fclose(capture.output);
+72       return;
+73     }
+74     while ((bytes_read = fread(buffer, 1, sizeof(buffer) - 1, capture.output)) &gt; 0) {
+75       buffer[bytes_read] = '\0';
+76
+77       // Split by lines and log each line
+78       char *line_start = buffer;
+79       char *line_end;
+80
+81       while ((line_end = strchr(line_start, '\n')) != NULL) {
+82         // Null-terminate the line (overwriting the newline)
+83         *line_end = '\0';
+84
+85         // Log the line if it's not empty
+86         if (line_start[0] != '\0') {
+87           if (prefix) {
+88             log_debug(&quot;[%s] %s&quot;, prefix, line_start);
+89           } else {
+90             log_debug(&quot;%s&quot;, line_start);
+91           }
+92         }
+93
+94         // Move to the next line
+95         line_start = line_end + 1;
+96       }
+97
+98       // Log any remaining partial line
+99       if (line_start[0] != '\0') {
+100         if (prefix) {
+101           log_debug(&quot;[%s] %s&quot;, prefix, line_start);
+102         } else {
+103           log_debug(&quot;%s&quot;, line_start);
+104         }
+105       }
+106     }
+107
+108     fclose(capture.output);
+109   }
+110 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_debug</b>, <b>LOG_IO_BUFFER_SIZE</b>,
+            <b>log_io_stop()</b>, <b>log_io_t::output</b>,
+            <b>platform_close()</b>, <b>platform_dup2()</b>,
+            <b>log_io_t::saved_stderr_fd</b>, and
+            <b>log_io_t::saved_stdout_fd</b>.
+          </p>
+          <p class="Pp">Referenced by <b>log_io_stop()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -26,8 +26,10 @@ dependencies = [
 
 [project.optional-dependencies]
 audio = ["scipy", "matplotlib", "sounddevice", "soundfile"]
-telemetry = ["gotel @ git+https://github.com/zfogg/gotel.git@6fedf902c7e2cfd15bd0bc4e9c868e3f84e0f2d5#subdirectory=python"]
+telemetry = [
+  "gotel @ git+https://github.com/zfogg/gotel.git@6fedf902c7e2cfd15bd0bc4e9c868e3f84e0f2d5#subdirectory=python",
+]
 
 [tool.setuptools]
 packages = ["ascii_chat_tests"]
-package-dir = {ascii_chat_tests = "."}
+package-dir = { ascii_chat_tests = "." }

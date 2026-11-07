@@ -34,7 +34,9 @@ test("shared C avState and browser media survive stop and restart", async ({
   await expect(page.getByTestId("audio-levels")).toHaveAttribute(
     "data-sent",
     /[1-9]\d*/,
-    { timeout: 10000 },
+    {
+      timeout: 10000,
+    },
   );
   await page.screenshot({
     path: "../../build/evidence/participant-streaming.png",
@@ -222,7 +224,9 @@ for (const direct of [true, false]) {
       await expect
         .poll(
           () => page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
-          { timeout: 20000 },
+          {
+            timeout: 20000,
+          },
         )
         .toBeGreaterThan(5);
       await expect(

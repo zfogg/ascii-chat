@@ -11,6 +11,14 @@ from ascii_chat_tests.terminal import Terminal
 pytestmark = [pytest.mark.integration, pytest.mark.terminal]
 
 
+def assert_media_rows_are_not_erased(term):
+    term.pump(0.3)
+    updates = [part.split("\x1b[?2026l", 1)[0] for part in "".join(term.raw).split("\x1b[?2026h")
+               if "@" in part and "\x1b[?2026l" in part]
+    assert len(updates) >= 2, "Expected multiple media frames"
+    assert all("\x1b[2K" not in update for update in updates[-2:]), "Media rows were erased before repainting"
+
+
 @pytest.mark.parametrize("color_mode", ["none", "truecolor"])
 @pytest.mark.parametrize("counter", [False, True])
 def test_height_only_clipping_preserves_visible_rows(binary, test_environment, color_mode, counter):
@@ -27,9 +35,34 @@ def test_height_only_clipping_preserves_visible_rows(binary, test_environment, c
             "Height-only clipping did not retain all visible media rows",
             timeout=20,
         )
+        # A prior overlay can leave text in the unused right margin. The next
+        # frame must clear it without first blanking the visible media row.
+        term.screen.cursor.y = 5
+        term.screen.cursor.x = 60
+        term.screen.draw("stale")
+        term.expect(lambda _: term.screen.display[5][60:65] == " " * 5,
+                    "The unused right margin was not cleared", timeout=5)
+        assert_media_rows_are_not_erased(term)
         if color_mode == "truecolor":
             colors = {term.screen.buffer[row][col].fg for row in range(20) for col in range(40)}
             assert len(colors) > 1, "truecolor attributes were lost during clipping"
+    finally:
+        term.close()
+
+
+@pytest.mark.parametrize("counter", [False, True])
+def test_width_clipping_does_not_blank_media_rows(binary, test_environment, counter):
+    args = [
+        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "0",
+        "--width", "100", "--height", "30", "--renderer", "glyph", "--palette", "custom",
+        "--palette-chars", "@", "--color-mode", "none", f"--fps-counter={'true' if counter else 'false'}",
+        "--splash-screen=false", "--audio=false",
+    ]
+    term = Terminal(args, rows=20, cols=80, terminal_replies=True, environment=test_environment)
+    try:
+        term.expect(lambda _: all(line[:60] == "@" * 60 for line in term.screen.display),
+                    "Width-clipped frames did not fill the visible rows", timeout=20)
+        assert_media_rows_are_not_erased(term)
     finally:
         term.close()
 

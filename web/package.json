@@ -4,7 +4,7 @@
   "workspaces": {
     "packages": [
       "packages/*",
-      "chatgpt-sites/*",
+      "openai-sites/*",
       "www",
       "discovery",
       "web"
@@ -16,9 +16,6 @@
     }
   },
   "type": "module",
-  "engines": {
-    "node": ">=24.0.0"
-  },
   "scripts": {
     "dev": "pnpm -r --filter './www' --filter './discovery' --filter './web' run dev",
     "build": "pnpm -r run build",
@@ -30,17 +27,14 @@
     "format:check": "pnpm -r run format:check"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "typescript-eslint": "^8.57.2",
     "vite-plus": "catalog:"
   },
   "overrides": {
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   },
   "packageManager": "pnpm@10.33.0"
 }

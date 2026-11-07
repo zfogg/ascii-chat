@@ -262,7 +262,7 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
   bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
 
   // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
-  if (!has_media && !GET_OPTION(snapshot_mode)) {
+  if (splash_is_running() && !has_media && !GET_OPTION(snapshot_mode)) {
     APP_CALLBACK_VOID(platform_pump_events);
     APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
   }
@@ -272,8 +272,9 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
   splash_restore_stderr();
 
   // Discovery keeps the invitation as the only waiting UI.
-  update_banner_wait_for_check();
-  if (GET_OPTION(detected_mode) != MODE_DISCOVERY) {
+  if (splash_should_display(true))
+    update_banner_wait_for_check();
+  if (splash_should_display(true) && GET_OPTION(detected_mode) != MODE_DISCOVERY) {
     if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
       bool wants_update = update_banner_show_prompt(state->display);
       if (wants_update) {
@@ -325,14 +326,13 @@ static void client_like_configure_file_capture(client_like_state_t *state) {
 }
 
 static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
-  if (GET_OPTION(fps_explicitly_set)) {
+  if (GET_OPTION(fps) > 0) {
     uint32_t fps = (uint32_t)GET_OPTION(fps);
     log_info("Using user-specified FPS: %u", fps);
     return fps;
   }
 
-  // Files, URLs, and buffered stdin expose a fixed source FPS. Webcam and test
-  // sources have no fixed FPS metadata, so they use the fallback below.
+  // Probe media files here; webcam FPS is available after the camera opens.
   if (state->capture_config.type == MEDIA_SOURCE_FILE || state->capture_config.type == MEDIA_SOURCE_STDIN) {
     log_debug("Probing media source FPS");
     asciichat_errno_scope_t probe_scope = errno_scope_begin();
@@ -791,6 +791,7 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
                                                      client_like_state_t *state, asciichat_error_t result) {
   ASCII_OTEL_SCOPE(SESSION_CLEANUP);
   // Preparation can fail before the normal update check wait above.
+  update_banner_cancel_check();
   update_banner_wait_for_check();
   // Stop the terminal writer before restoring output or destroying the display.
   splash_intro_done();

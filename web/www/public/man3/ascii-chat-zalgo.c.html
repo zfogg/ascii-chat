@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>zalgo.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">zalgo.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">zalgo.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">zalgo.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            unsigned <b>zalgo_cell_marks</b> (<b>uint32_t</b> row,
+            <b>uint32_t</b> col, int level,
+            <b>uint16_t</b>
+            marks[<b>ZALGO_MAX_MARKS</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>zalgo_apply</b> (const char *input,
+            size_t length, int level, size_t max_output_bytes, char **output)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> zalgo_apply (const char * input, size_t
+            length, int level, size_t max_output_bytes, char ** output)
+          </h2>
+          <p class="Pp">
+            Decorate a frame within the caller's byte budget; errors leave no
+            partially decorated output.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Decorate an ANSI frame with deterministic combining marks. Caller
+            frees *output. REP is expanded before decoration. Only printable
+            ASCII bases are decorated; whitespace, existing UTF-8, and escape
+            sequences are preserved. The byte limit excludes the NUL terminator;
+            on overflow returns an error with *output = NULL.
+          </p>
+          <p class="Pp">Definition at line <b>68</b> of file <b>zalgo.c</b>.</p>
+          <pre>
+68                                                                                                                    {
+69   if (!output)
+70     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing Zalgo output pointer&quot;);
+71   *output = NULL;
+72   if (!input || level &lt; 1 || level &gt; 10)
+73     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo requires a frame and intensity 1-10&quot;);
+74
+75   // Bound REP expansion before allocating: a short remote frame can contain a
+76   // very large repeat count. Four bytes per repeated code point is conservative.
+77   const size_t expansion_limit = 1024 * 1024;
+78   size_t expansion_bound = length;
+79   bool has_rep = false;
+80   if (length &gt; expansion_limit)
+81     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo frame exceeds expansion limit&quot;);
+82   for (size_t i = 0; i + 1 &lt; length; i++) {
+83     if (input[i] != '\x1b' || input[i + 1] != '[')
+84       continue;
+85     size_t j = i + 2;
+86     uint32_t parameter = 0;
+87     while (j &lt; length &amp;&amp; ((input[j] &gt;= '0' &amp;&amp; input[j] &lt;= '9') || input[j] == ';')) {
+88       if (input[j] == ';') {
+89         parameter = 0;
+90       } else {
+91         unsigned digit = (unsigned)(input[j] - '0');
+92         if (parameter &gt; (UINT32_MAX - digit) / 10)
+93           return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo frame contains an overflowing ANSI parameter&quot;);
+94         parameter = parameter * 10 + digit;
+95       }
+96       j++;
+97     }
+98     if (j &lt; length &amp;&amp; input[j] == 'b') {
+99       has_rep = true;
+100       if (parameter &gt; (expansion_limit - expansion_bound) / 4)
+101         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo REP expansion exceeds frame limit&quot;);
+102       expansion_bound += (size_t)parameter * 4;
+103     }
+104     i = j;
+105   }
+106
+107   char *expanded = NULL;
+108   if (has_rep) {
+109     expanded = ansi_expand_rle(input, length);
+110   } else {
+111     expanded = SAFE_MALLOC(length + 1, char *);
+112     memcpy(expanded, input, length);
+113     expanded[length] = '\0';
+114   }
+115   if (!expanded)
+116     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Cannot expand empty Zalgo frame&quot;);
+117   size_t n = strlen(expanded);
+118   if (n &gt; max_output_bytes) {
+119     SAFE_FREE(expanded);
+120     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo frame exceeds output limit&quot;);
+121   }
+122   size_t mark_budget = max_output_bytes - n;
+123   size_t factor = 1 + 2 * zalgo_maximum[level - 1];
+124   // Every source byte introduces at most the selected level's mark limit.
+125   if (n &gt; (SIZE_MAX - 1) / factor) {
+126     SAFE_FREE(expanded);
+127     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo frame is too large&quot;);
+128   }
+129   size_t capacity = n * factor &lt; max_output_bytes ? n * factor : max_output_bytes;
+130   char *result = SAFE_MALLOC(capacity + 1, char *);
+131   char *dst = result;
+132   uint32_t row = 0, col = 0;
+133   for (size_t i = 0; i &lt; n;) {
+134     unsigned char c = (unsigned char)expanded[i];
+135     if (c == 0x1b) {
+136       size_t count = zalgo_escape_length(expanded + i, n - i);
+137       memcpy(dst, expanded + i, count);
+138       dst += count;
+139       i += count;
+140       continue;
+141     }
+142     *dst++ = expanded[i++];
+143     if (c == '\n') {
+144       row++;
+145       col = 0;
+146     } else if (c == '\r') {
+147       col = 0;
+148     } else if (c == '\t') {
+149       col = (col / 8 + 1) * 8;
+150     } else if (c &gt;= 0x20 &amp;&amp; c &lt; 0x7f) {
+151       uint16_t marks[ZALGO_MAX_MARKS];
+152       unsigned count = c == ' ' ? 0 : zalgo_cell_marks(row, col, level, marks);
+153       col++;
+154       if (count * 2 &gt; mark_budget) {
+155         SAFE_FREE(expanded);
+156         SAFE_FREE(result);
+157         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Zalgo decoration exceeds output limit&quot;);
+158       }
+159       mark_budget -= count * 2;
+160       for (unsigned mark = 0; mark &lt; count; mark++) {
+161         uint16_t cp = marks[mark];
+162         *dst++ = (char)(0xc0 | (cp &gt;&gt; 6));
+163         *dst++ = (char)(0x80 | (cp &amp; 0x3f));
+164       }
+165     } else if (c &gt;= 0xc0) {
+166       // Preserve multibyte characters; continuation bytes do not advance columns.
+167       col++;
+168     }
+169   }
+170   *dst = '\0';
+171   SAFE_FREE(expanded);
+172   *output = result;
+173   return ASCIICHAT_OK;
+174 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_expand_rle()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SET_ERRNO</b>, <b>zalgo_apply()</b>, <b>zalgo_cell_marks()</b>,
+            and <b>ZALGO_MAX_MARKS</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_display_write_ascii_frame()</b>, and
+            <b>zalgo_apply()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_zalgo_cell_marks_(">
+            <a class="permalink" href="#unsigned_zalgo_cell_marks_("
+              >unsigned zalgo_cell_marks (<b>uint32_t</b> row,
+              <b>uint32_t</b> col, int level,
+              <b>uint16_t</b> marks[ZALGO_MAX_MARKS])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>18</b> of file <b>zalgo.c</b>.</p>
+          <pre>
+18                                                                                                   {
+19   if (level &lt; 1 || level &gt; 10 || !marks)
+20     return 0;
+21   static const unsigned coverage[] = {3, 6, 10, 18, 28, 40, 55, 70, 85, 100};
+22   static const unsigned minimum[] = {1, 1, 1, 1, 1, 1, 2, 3, 4, 6};
+23   static const uint16_t short_marks[] = {0x0334, 0x0335, 0x0336, 0x0337, 0x0338};
+24   static const uint16_t stack_marks[] = {0x0300, 0x0301, 0x0302, 0x0303, 0x0308, 0x030a,
+25                                          0x0310, 0x0311, 0x0324, 0x0325, 0x0329, 0x0330};
+26   unsigned index = (unsigned)level - 1;
+27   uint32_t hash = zalgo_hash((uint32_t)((uint64_t)row * UINT64_C(0x9e3779b9)) ^ col ^ UINT32_C(0x5a17));
+28   if (hash % 100 &gt;= coverage[index])
+29     return 0;
+30   unsigned count = minimum[index] + ((hash &gt;&gt; 8) % 256) * (zalgo_maximum[index] - minimum[index] + 1) / 256;
+31   for (unsigned mark = 0; mark &lt; count; mark++) {
+32     uint32_t choice = zalgo_hash((uint32_t)((uint64_t)hash + mark));
+33     marks[mark] = mark == 0 ? short_marks[choice % 5] : stack_marks[choice % 12];
+34   }
+35   return count;
+36 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>zalgo_cell_marks()</b>, and <b>ZALGO_MAX_MARKS</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>zalgo_apply()</b>, <b>zalgo_cell_marks()</b>, and
+            <b>zalgo_cell_marks()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,706 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_websocket_callback_profiling(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_websocket_callback_profiling(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_websocket_callback_profiling(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_websocket_callback_profiling - WebSocket Callback Profiling
+          Guide
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WebSocket_Callback_Profiling_Guide">
+          <a class="permalink" href="#WebSocket_Callback_Profiling_Guide"
+            >WebSocket Callback Profiling Guide</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+          <p class="Pp">
+            The WebSocket callback profiler instruments libwebsockets (LWS)
+            callbacks to measure performance characteristics. It tracks callback
+            frequency, execution time, and data throughput for both client and
+            server modes, enabling detailed performance analysis and
+            optimization.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Profiled_Callbacks">
+            <a class="permalink" href="#Profiled_Callbacks"
+              >Profiled Callbacks</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Client-Side_Callbacks_(transport">
+            <a class="permalink" href="#Client-Side_Callbacks_(transport"
+              >Client-Side Callbacks (transport.c)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>LWS_CALLBACK_CLIENT_ESTABLISHED</b> - Connection established
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires once per connection</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~1-5ms (state mutex operations)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+            <dt>2.</dt>
+            <dd>
+              <b>LWS_CALLBACK_CLIENT_RECEIVE</b> - Data received from server
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires for each message fragment</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~0.1-1ms (buffer allocation and ringbuffer write)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: Payload size (variable, up to 921KB per frame)</dd>
+            <dt>3.</dt>
+            <dd><b>LWS_CALLBACK_CLIENT_CLOSED</b> - Connection closed</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires once when connection terminates</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~0.5-2ms (state cleanup)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+            <dt>4.</dt>
+            <dd>
+              <b>LWS_CALLBACK_CLIENT_CONNECTION_ERROR</b> - Connection failed
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires when connection setup fails</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~0.1-1ms (error logging)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+            <dt>5.</dt>
+            <dd>
+              <b>LWS_CALLBACK_CLIENT_WRITEABLE</b> - Socket ready for writing
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires when socket buffer available</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~0.05-0.5ms (typically no-op)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Server-Side_Callbacks_(server">
+            <a class="permalink" href="#Server-Side_Callbacks_(server"
+              >Server-Side Callbacks (server.c)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>LWS_CALLBACK_ESTABLISHED</b> - Client connection established
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires once per new client connection</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~5-20ms (transport creation, thread spawn)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Critical section: Creates ACIP transport and spawns handler thread
+            </dd>
+            <dt>2.</dt>
+            <dd><b>LWS_CALLBACK_CLOSED</b> - Client connection closed</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires when client disconnects</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~10-100ms (cleanup, transport destroy, thread join)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes (may include close code in payload)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Critical section: Joins handler thread, frees transport</dd>
+            <dt>3.</dt>
+            <dd><b>LWS_CALLBACK_SERVER_WRITEABLE</b> - Server can send data</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires when socket ready for output</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~1-10ms per fragment (lws_write call)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: Bytes written (256KB-512KB per call typically)</dd>
+            <dt>&#x2022;</dt>
+            <dd>High-frequency: Fires many times during video transmission</dd>
+            <dt>4.</dt>
+            <dd><b>LWS_CALLBACK_RECEIVE</b> - Data received from client</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires for each message fragment</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: ~0.1-1ms (per-fragment processing)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: Payload size (variable)</dd>
+            <dt>5.</dt>
+            <dd>
+              <b>LWS_CALLBACK_FILTER_HTTP_CONNECTION</b> - WebSocket upgrade
+              request
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires during handshake</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: &lt;0.1ms</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+            <dt>6.</dt>
+            <dd>
+              <b>LWS_CALLBACK_EVENT_WAIT_CANCELLED</b> - Service cancellation
+              event
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Fires when lws_cancel_service() called</dd>
+            <dt>&#x2022;</dt>
+            <dd>Time: &lt;0.1ms</dd>
+            <dt>&#x2022;</dt>
+            <dd>Data: 0 bytes</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Implementation_Details">
+            <a class="permalink" href="#Implementation_Details"
+              >Implementation Details</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Architecture">
+            <a class="permalink" href="#Architecture">Architecture</a>
+          </h2>
+          <p class="Pp">The profiler uses:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Atomic operations</b> for thread-safe counters (no locks in hot
+              path)
+            </li>
+            <li>
+              <b>Per-callback records</b> in a hash table (keyed by callback
+              reason)
+            </li>
+            <li>
+              <b>Minimal overhead</b> design (single struct allocation per
+              callback type)
+            </li>
+            <li>
+              <b>Cross-thread safe</b> statistics collection and reporting
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <pre>typedef struct {
+<br/>
+  uint64_t invocation_count;      // Total invocations
+<br/>
+  uint64_t total_time_ns;         // Total execution time
+<br/>
+  uint64_t min_time_ns;           // Minimum execution time
+<br/>
+  uint64_t max_time_ns;           // Maximum execution time
+<br/>
+  uint64_t bytes_processed;       // Total data throughput
+<br/>
+  uint64_t last_invocation_ns;    // Wall-clock timestamp of last call
+} lws_callback_stats_t;</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Thread_Safety">
+            <a class="permalink" href="#Thread_Safety">Thread Safety</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              All counters use C11 atomics (_Atomic <b>uint64_t</b><b>)</b>
+            </li>
+            <li>No lock required for profiler_start/stop operations</li>
+            <li>
+              Hash table modifications protected by mutex (rare, only first
+              callback invocation)
+            </li>
+            <li>Statistics reporting uses acquire semantics for consistency</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Usage">
+            <a class="permalink" href="#Usage">Usage</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Initialization">
+            <a class="permalink" href="#Initialization">Initialization</a>
+          </h2>
+          <pre>// Must call once at application startup
+if (!lws_profiler_init()) {
+<br/>
+    log_error(&quot;Failed to initialize profiler&quot;);
+<br/>
+    return;
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Automatic_Instrumentation">
+            <a class="permalink" href="#Automatic_Instrumentation"
+              >Automatic Instrumentation</a
+            >
+          </h2>
+          <p class="Pp">The profiler is automatically integrated into:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              websocket_callback() in <b>lib/network/websocket/transport.c</b>
+            </li>
+            <li>
+              websocket_server_callback() in
+              <b>lib/network/websocket/server.c</b>
+            </li>
+          </ul>
+          <p class="Pp">Each callback wraps its execution with:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+uint64_t prof_handle = lws_profiler_start((int)reason, 0);
+// ... callback work ...
+lws_profiler_stop(prof_handle, bytes_processed);</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Getting_Statistics">
+            <a class="permalink" href="#Getting_Statistics"
+              >Getting Statistics</a
+            >
+          </h2>
+          <pre>lws_callback_stats_t stats;
+if (lws_profiler_get_stats(LWS_CALLBACK_SERVER_WRITEABLE, &amp;stats)) {
+<br/>
+    printf(&quot;Callback fired %llu times\n&quot;, stats.invocation_count);
+<br/>
+    printf(&quot;Average time: %lld ns\n&quot;, stats.total_time_ns / stats.invocation_count);
+<br/>
+    printf(&quot;Throughput: %lld bytes\n&quot;, stats.bytes_processed);
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Reporting">
+            <a class="permalink" href="#Reporting">Reporting</a>
+          </h2>
+          <pre>// Print human-readable report
+lws_profiler_dump_report();
+// Export as JSON for external analysis
+char *json = lws_profiler_export_json();
+if (json) {
+<br/>
+    printf(&quot;Profiling data:\n%s\n&quot;, json);
+<br/>
+    free(json);
+}</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Cleanup">
+            <a class="permalink" href="#Cleanup">Cleanup</a>
+          </h2>
+          <pre>
+// At application exit
+lws_profiler_destroy();</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Performance_Characteristics">
+            <a class="permalink" href="#Performance_Characteristics"
+              >Performance Characteristics</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Overhead_Per_Callback">
+            <a class="permalink" href="#Overhead_Per_Callback"
+              >Overhead Per Callback</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>profiler_start()</b>: ~50-100 nanoseconds (atomic ops +
+              hashtable lookup)
+            </li>
+            <li>
+              <b>profiler_stop()</b>: ~200-300 nanoseconds (atomic updates +
+              min/max compare-swap)
+            </li>
+            <li>
+              <b>Total overhead per callback</b>: &lt;1 microsecond (negligible
+              for most callbacks)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Memory_Overhead">
+            <a class="permalink" href="#Memory_Overhead">Memory Overhead</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              ~64 bytes per callback type (hash table entry + stats struct)
+            </li>
+            <li>Fixed size after initialization (max ~20 callback types)</li>
+            <li>Total: &lt;2KB for entire profiler</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Metrics_Interpretation">
+            <a class="permalink" href="#Metrics_Interpretation"
+              >Metrics Interpretation</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Invocation_Count">
+            <a class="permalink" href="#Invocation_Count">Invocation Count</a>
+          </h2>
+          <p class="Pp">Indicates callback firing frequency:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              High CLIENT_RECEIVE count: Receiving many fragments (normal for
+              video)
+            </li>
+            <li>
+              High SERVER_WRITEABLE count: Sending many fragments (normal during
+              streaming)
+            </li>
+            <li>
+              Anomalies: Unexpected patterns may indicate errors or inefficient
+              processing
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timing">
+            <a class="permalink" href="#Timing">Timing</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Min/Max timing</b>: Identifies consistent vs. variable
+              performance
+            </li>
+            <li><b>Average timing</b>: Baseline cost of callback processing</li>
+            <li><b>Total time</b>: Cumulative cost for this callback type</li>
+          </ul>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>LWS_CALLBACK_SERVER_WRITEABLE
+<br/>
+  Invocations: 1250
+<br/>
+  Timing: min=0.5ms, max=15ms, avg=2ms
+<br/>
+  Total data: 1250MB</pre>
+          <p class="Pp">Interpretation:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>1250 write callbacks sent 1250MB total (~1MB per callback)</li>
+            <li>Average write takes 2ms</li>
+            <li>
+              Wide variance (0.5-15ms) suggests buffer pressure fluctuations
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Throughput">
+            <a class="permalink" href="#Throughput">Throughput</a>
+          </h2>
+          <p class="Pp">Calculate from bytes_processed and timing:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+Throughput = bytes_processed * 8 / (total_time_ns / 1e6) kbps</pre>
+          <p class="Pp">For above example:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>1250MB * 8 / (1250*2ms / 1e6) = 10M kbps = 1250 MB/s</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Common_Profiling_Patterns">
+            <a class="permalink" href="#Common_Profiling_Patterns"
+              >Common Profiling Patterns</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Pattern_1:_Client_Receiving_Video">
+            <a class="permalink" href="#Pattern_1:_Client_Receiving_Video"
+              >Pattern 1: Client Receiving Video</a
+            >
+          </h2>
+          <p class="Pp"><b>Expected profile:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              CLIENT_RECEIVE invocations: 1000-2000 per second (fragment-based)
+            </li>
+            <li>Average time: 0.2-0.5ms per fragment</li>
+            <li>Data: 128KB-256KB typical per fragment (for 921KB frames)</li>
+          </ul>
+          <p class="Pp"><b>Optimization opportunities:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>If timing is high (&gt;1ms): Buffer allocation stalling</li>
+            <li>If fragmentation high: Consider larger TCP buffers</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Pattern_2:_Server_Sending_Video">
+            <a class="permalink" href="#Pattern_2:_Server_Sending_Video"
+              >Pattern 2: Server Sending Video</a
+            >
+          </h2>
+          <p class="Pp"><b>Expected profile:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>
+              SERVER_WRITEABLE invocations: High frequency (100+ per second when
+              busy)
+            </li>
+            <li>Average time: 1-5ms per write call</li>
+            <li>Data: 256KB-512KB per write (matches buffer size)</li>
+          </ul>
+          <p class="Pp"><b>Optimization opportunities:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>If timing variable: Potential memory pressure</li>
+            <li>If data small: TCP window adjustments needed</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Pattern_3:_Connection_Lifecycle">
+            <a class="permalink" href="#Pattern_3:_Connection_Lifecycle"
+              >Pattern 3: Connection Lifecycle</a
+            >
+          </h2>
+          <p class="Pp"><b>Expected profile:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>ESTABLISHED: 1x per client (5-20ms)</li>
+            <li>CLOSED: 1x per client disconnect (10-100ms)</li>
+            <li>Timing during CLOSED: Thread join overhead</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Debugging_High-Latency_Callbacks">
+            <a class="permalink" href="#Debugging_High-Latency_Callbacks"
+              >Debugging High-Latency Callbacks</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Identify_Bottleneck">
+            <a class="permalink" href="#Identify_Bottleneck"
+              >Identify Bottleneck</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Generate report: <b>lws_profiler_dump_report()</b><b></b></dd>
+            <dt>2.</dt>
+            <dd>Find callback with highest max time or high variance</dd>
+            <dt>3.</dt>
+            <dd>Check correlation with other metrics</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Investigate">
+            <a class="permalink" href="#Investigate">Investigate</a>
+          </h2>
+          <p class="Pp">For CLIENT_RECEIVE with high timing:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Check buffer domain allocation latency
+// May indicate memory fragmentation or allocation stalls</pre>
+          <p class="Pp">For SERVER_WRITEABLE with high variance:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Check for memory pressure or GC activity
+// May indicate contention with other threads</pre>
+          <p class="Pp">For ESTABLISHED/CLOSED with high timing:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+// Check handler thread spawn/join overhead
+// May indicate thread pool contention</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="JSON_Export_Format">
+            <a class="permalink" href="#JSON_Export_Format"
+              >JSON Export Format</a
+            >
+          </h2>
+          <pre>{
+<br/>
+  &quot;callbacks&quot;: [
+<br/>
+    {
+<br/>
+      &quot;reason&quot;: &quot;SERVER_WRITEABLE&quot;,
+<br/>
+      &quot;invocations&quot;: 1250,
+<br/>
+      &quot;total_ns&quot;: 2500000000,
+<br/>
+      &quot;min_ns&quot;: 500000,
+<br/>
+      &quot;max_ns&quot;: 15000000,
+<br/>
+      &quot;avg_ns&quot;: 2000000,
+<br/>
+      &quot;bytes&quot;: 1250000000
+<br/>
+    },
+<br/>
+    ...
+<br/>
+  ]
+}</pre>
+          <p class="Pp">Use for:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Performance trending over time</li>
+            <li>Comparative analysis between deployments</li>
+            <li>Integration with monitoring systems</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Limitations">
+            <a class="permalink" href="#Limitations">Limitations</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Pre-built profiler state</b>: Profiler must be initialized
+              before callbacks fire
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>No per-client tracking</b>: Statistics are global (aggregate
+              for all clients)
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>No breakdown by callback argument</b>: All invocations of same
+              reason lumped together
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Wall-clock timestamp</b>: last_invocation_ns may jump backwards
+              if system clock adjusted
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Enhancements">
+            <a class="permalink" href="#Future_Enhancements"
+              >Future Enhancements</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Per-client tracking</b>: Identify slow clients</dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Callback argument filtering</b>: Profile specific message types
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Time-windowed statistics</b>: Detect performance degradation
+              over time
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Integration with logging</b>: Automatic alerts for anomalies
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="References">
+            <a class="permalink" href="#References">References</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>libwebsockets documentation: https://libwebsockets.org/</li>
+            <li>
+              ascii-chat <b>util/time.h</b>: High-precision timing utilities
+            </li>
+            <li>RFC 6455: WebSocket Protocol specification</li>
+          </ul>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

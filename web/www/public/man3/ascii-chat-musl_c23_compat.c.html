@@ -1,625 +1,1018 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>musl_c23_compat.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">musl_c23_compat.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">musl_c23_compat.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">musl_c23_compat.c - &#x1F504; musl C23 compatibility wrappers for
-    __isoc23_* symbol aliases (glibc 2.38+ compatibility)</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">long <b>musl_strtol</b> (const char *, extern long long
-    musl_strtoll(const char char **, int)
-  <br/>
-  long long <b>__isoc23_strtoll</b> (const char *str, char **endptr, int base)
-  <br/>
-  Convert string to long long (C23 compatible). unsigned long
-    <b>__isoc23_strtoul</b> (const char *str, char **endptr, int base)
-  <br/>
-  Convert string to unsigned long (C23 compatible). unsigned long long
-    <b>__isoc23_strtoull</b> (const char *str, char **endptr, int base)
-  <br/>
-  Convert string to unsigned long long (C23 compatible). long
-    <b>__isoc23_wcstol</b> (const wchar_t *str, wchar_t **endptr, int base)
-  <br/>
-  Wide string to integer conversion. long long <b>__isoc23_wcstoll</b> (const
-    wchar_t *str, wchar_t **endptr, int base)
-  <br/>
-  Convert wide string to long long (C23 compatible). unsigned long
-    <b>__isoc23_wcstoul</b> (const wchar_t *str, wchar_t **endptr, int base)
-  <br/>
-  Convert wide string to unsigned long (C23 compatible). unsigned long long
-    <b>__isoc23_wcstoull</b> (const wchar_t *str, wchar_t **endptr, int base)
-  <br/>
-  Convert wide string to unsigned long long (C23 compatible). int
-    <b>__isoc23_scanf</b> (const char *format,...)
-  <br/>
-  Formatted input functions. int <b>__isoc23_fscanf</b> (FILE *stream, const
-    char *format,...)
-  <br/>
-  Read formatted input from file stream (C23 compatible). int
-    <b>__isoc23_sscanf</b> (const char *str, const char *format,...)
-  <br/>
-  Read formatted input from string (C23 compatible). int <b>__isoc23_vscanf</b>
-    (const char *format, va_list <b>args</b>)
-  <br/>
-  Read formatted input from stdin (va_list variant, C23 compatible). int
-    <b>__isoc23_vfscanf</b> (FILE *stream, const char *format, va_list
-    <b>args</b>)
-  <br/>
-  Read formatted input from file stream (va_list variant, C23 compatible). int
-    <b>__isoc23_vsscanf</b> (const char *str, const char *format, va_list
-    <b>args</b>)
-  <br/>
-  Read formatted input from string (va_list variant, C23 compatible). int
-    <b>__isoc23_wscanf</b> (const wchar_t *format,...)
-  <br/>
-  Wide character formatted input functions. int <b>__isoc23_fwscanf</b> (FILE
-    *stream, const wchar_t *format,...)
-  <br/>
-  Read formatted wide input from file stream (C23 compatible). int
-    <b>__isoc23_swscanf</b> (const wchar_t *str, const wchar_t *format,...)
-  <br/>
-  Read formatted wide input from string (C23 compatible). int
-    <b>__isoc23_vwscanf</b> (const wchar_t *format, va_list <b>args</b>)
-  <br/>
-  Read formatted wide input from stdin (va_list variant, C23 compatible). int
-    <b>__isoc23_vfwscanf</b> (FILE *stream, const wchar_t *format, va_list
-    <b>args</b>)
-  <br/>
-  Read formatted wide input from file stream (va_list variant, C23 compatible).
-    int <b>__isoc23_vswscanf</b> (const wchar_t *str, const wchar_t *format,
-    va_list <b>args</b>)
-  <br/>
-  Read formatted wide input from string (va_list variant, C23 compatible). void
-    <b>arc4random_buf</b> (void *buf, size_t nbytes)
-  <br/>
-  glibc-specific random functions for expat and fontconfig compatibility int
-    <b>initstate_r</b> (unsigned int seed, char *statebuf, size_t statelen,
-    struct random_data *buf)
-  <br/>
-  Initialize reentrant random state (glibc compatibility stub for musl). int
-    <b>random_r</b> (struct random_data *restrict buf, int32_t *restrict result)
-  <br/>
-  Generate cryptographically secure random number (glibc compatibility stub for
-    musl).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F504; musl C23 compatibility wrappers for __isoc23_* symbol
-    aliases (glibc 2.38+ compatibility)</p>
-<p class="Pp">Note: These aliases provide the base functionality but don't
-    implement the full C23 binary literal support (0b/0B prefix) until musl adds
-    native support.</p>
-<p class="Pp"></p>
-<p class="Pp">References:</p>
-<ul class="Bl-bullet">
-  <li>https://reviews.llvm.org/D158943</li>
-  <li>https://groups.google.com/g/osv-dev/c/zDx0qThbtEE</li>
-</ul>
-<p class="Pp">Definition in file <b>musl_c23_compat.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_fscanf_(FILE_*_stream,_const_char_*_format,__"><a class="permalink" href="#int___isoc23_fscanf_(FILE_*_stream,_const_char_*_format,__">int
-  __isoc23_fscanf (FILE * stream, const char * format, ...)</a></h2>
-<p class="Pp">Read formatted input from file stream (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stream</i> File stream
-<br/>
-<i>format</i> Format string
-<br/>
-<i>...</i> Variable arguments</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>129</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>129                                                            {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>musl_c23_compat.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">musl_c23_compat.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">musl_c23_compat.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          musl_c23_compat.c - &#x1F504; musl C23 compatibility wrappers for
+          __isoc23_* symbol aliases (glibc 2.38+ compatibility)
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            long <b>musl_strtol</b> (const char *, extern long long
+            musl_strtoll(const char char **, int)
+            <br />
+            long long <b>__isoc23_strtoll</b> (const char *str, char **endptr,
+            int base)
+            <br />
+            Convert string to long long (C23 compatible). unsigned long
+            <b>__isoc23_strtoul</b> (const char *str, char **endptr, int base)
+            <br />
+            Convert string to unsigned long (C23 compatible). unsigned long long
+            <b>__isoc23_strtoull</b> (const char *str, char **endptr, int base)
+            <br />
+            Convert string to unsigned long long (C23 compatible). long
+            <b>__isoc23_wcstol</b> (const wchar_t *str, wchar_t **endptr, int
+            base)
+            <br />
+            Wide string to integer conversion. long long
+            <b>__isoc23_wcstoll</b> (const wchar_t *str, wchar_t **endptr, int
+            base)
+            <br />
+            Convert wide string to long long (C23 compatible). unsigned long
+            <b>__isoc23_wcstoul</b> (const wchar_t *str, wchar_t **endptr, int
+            base)
+            <br />
+            Convert wide string to unsigned long (C23 compatible). unsigned long
+            long
+            <b>__isoc23_wcstoull</b> (const wchar_t *str, wchar_t **endptr, int
+            base)
+            <br />
+            Convert wide string to unsigned long long (C23 compatible). int
+            <b>__isoc23_scanf</b> (const char *format,...)
+            <br />
+            Formatted input functions. int <b>__isoc23_fscanf</b> (FILE *stream,
+            const char *format,...)
+            <br />
+            Read formatted input from file stream (C23 compatible). int
+            <b>__isoc23_sscanf</b> (const char *str, const char *format,...)
+            <br />
+            Read formatted input from string (C23 compatible). int
+            <b>__isoc23_vscanf</b>
+            (const char *format, va_list args)
+            <br />
+            Read formatted input from stdin (va_list variant, C23 compatible).
+            int
+            <b>__isoc23_vfscanf</b> (FILE *stream, const char *format, va_list
+            args)
+            <br />
+            Read formatted input from file stream (va_list variant, C23
+            compatible). int
+            <b>__isoc23_vsscanf</b> (const char *str, const char *format,
+            va_list args)
+            <br />
+            Read formatted input from string (va_list variant, C23 compatible).
+            int
+            <b>__isoc23_wscanf</b> (const wchar_t *format,...)
+            <br />
+            Wide character formatted input functions. int
+            <b>__isoc23_fwscanf</b> (FILE *stream, const wchar_t *format,...)
+            <br />
+            Read formatted wide input from file stream (C23 compatible). int
+            <b>__isoc23_swscanf</b> (const wchar_t *str, const wchar_t
+            *format,...)
+            <br />
+            Read formatted wide input from string (C23 compatible). int
+            <b>__isoc23_vwscanf</b> (const wchar_t *format, va_list args)
+            <br />
+            Read formatted wide input from stdin (va_list variant, C23
+            compatible). int
+            <b>__isoc23_vfwscanf</b> (FILE *stream, const wchar_t *format,
+            va_list args)
+            <br />
+            Read formatted wide input from file stream (va_list variant, C23
+            compatible). int
+            <b>__isoc23_vswscanf</b> (const wchar_t *str, const wchar_t *format,
+            va_list args)
+            <br />
+            Read formatted wide input from string (va_list variant, C23
+            compatible). void
+            <b>arc4random_buf</b> (void *buf, size_t nbytes)
+            <br />
+            glibc-specific random functions for expat and fontconfig
+            compatibility int
+            <b>initstate_r</b> (unsigned int seed, char *statebuf, size_t
+            statelen, struct random_data *buf)
+            <br />
+            Initialize reentrant random state (glibc compatibility stub for
+            musl). int
+            <b>random_r</b> (struct random_data *restrict buf, int32_t *restrict
+            result)
+            <br />
+            Generate cryptographically secure random number (glibc compatibility
+            stub for musl).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F504; musl C23 compatibility wrappers for __isoc23_* symbol
+          aliases (glibc 2.38+ compatibility)
+        </p>
+        <p class="Pp">
+          Note: These aliases provide the base functionality but don't implement
+          the full C23 binary literal support (0b/0B prefix) until musl adds
+          native support.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">References:</p>
+        <ul class="Bl-bullet">
+          <li>https://reviews.llvm.org/D158943</li>
+          <li>https://groups.google.com/g/osv-dev/c/zDx0qThbtEE</li>
+        </ul>
+        <p class="Pp">Definition in file <b>musl_c23_compat.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_fscanf_(FILE_*_stream,_const_char_*_format,__"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_fscanf_(FILE_*_stream,_const_char_*_format,__"
+              >int __isoc23_fscanf (FILE * stream, const char * format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted input from file stream (C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stream</i> File stream
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>...</i> Variable arguments
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>129</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+129                                                            {
 130   va_list args;
 131   va_start(args, format);
 132   int result = vfscanf(stream, format, args);
 133   va_end(args);
 134   return result;
 135 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__">int
-  __isoc23_fwscanf (FILE * stream, const wchar_t * format, ...)</a></h2>
-<p class="Pp">Read formatted wide input from file stream (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stream</i> File stream
-<br/>
-<i>format</i> Format string
-<br/>
-<i>...</i> Variable arguments</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>209</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>209                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_fscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_fscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__"
+              >int __isoc23_fwscanf (FILE * stream, const wchar_t * format,
+              ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted wide input from file stream (C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stream</i> File stream
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>...</i> Variable arguments
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>209</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+209                                                                {
 210   va_list args;
 211   va_start(args, format);
 212   int result = vfwscanf(stream, format, args);
 213   va_end(args);
 214   return result;
 215 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__"><a class="permalink" href="#int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__">int
-  __isoc23_sscanf (const char * str, const char * format, ...)</a></h2>
-<p class="Pp">Read formatted input from string (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Input string
-<br/>
-<i>format</i> Format string
-<br/>
-<i>...</i> Variable arguments</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>144</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>144                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_fwscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_fwscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__"
+              >int __isoc23_sscanf (const char * str, const char * format,
+              ...)</a
+            >
+          </h2>
+          <p class="Pp">Read formatted input from string (C23 compatible).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Input string
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>...</i> Variable arguments
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>144</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+144                                                               {
 145   va_list args;
 146   va_start(args, format);
 147   int result = vsscanf(str, format, args);
 148   va_end(args);
 149   return result;
 150 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)">long
-  long __isoc23_strtoll (const char * str, char ** endptr, int base)</a></h2>
-<p class="Pp">Convert string to long long (C23 compatible).</p>
-<p class="Pp">Definition at line <b>38</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>38                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_sscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_sscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)"
+          >
+            <a
+              class="permalink"
+              href="#long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)"
+              >long long __isoc23_strtoll (const char * str, char ** endptr, int
+              base)</a
+            >
+          </h2>
+          <p class="Pp">Convert string to long long (C23 compatible).</p>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+38                                                                      {
 39   return musl_strtoll(str, endptr, base);
 40 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
-  long __isoc23_strtoul (const char * str, char ** endptr, int base)</a></h2>
-<p class="Pp">Convert string to unsigned long (C23 compatible).</p>
-<p class="Pp">Definition at line <b>45</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>45                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_strtoll()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_strtoll()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)"
+              >unsigned long __isoc23_strtoul (const char * str, char ** endptr,
+              int base)</a
+            >
+          </h2>
+          <p class="Pp">Convert string to unsigned long (C23 compatible).</p>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+45                                                                          {
 46   return musl_strtoul(str, endptr, base);
 47 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
-  long long __isoc23_strtoull (const char * str, char ** endptr, int
-  base)</a></h2>
-<p class="Pp">Convert string to unsigned long long (C23 compatible).</p>
-<p class="Pp">Definition at line <b>52</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>52                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_strtoul()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_strtoul()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)"
+              >unsigned long long __isoc23_strtoull (const char * str, char **
+              endptr, int base)</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert string to unsigned long long (C23 compatible).
+          </p>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+52                                                                                {
 53   return musl_strtoull(str, endptr, base);
 54 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__">int
-  __isoc23_swscanf (const wchar_t * str, const wchar_t * format, ...)</a></h2>
-<p class="Pp">Read formatted wide input from string (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Input string
-<br/>
-<i>format</i> Format string
-<br/>
-<i>...</i> Variable arguments</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>224</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>224                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_strtoull()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_strtoull()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__"
+              >int __isoc23_swscanf (const wchar_t * str, const wchar_t *
+              format, ...)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted wide input from string (C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Input string
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>...</i> Variable arguments
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>224</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+224                                                                      {
 225   va_list args;
 226   va_start(args, format);
 227   int result = vswscanf(str, format, args);
 228   va_end(args);
 229   return result;
 230 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)">int
-  __isoc23_vfscanf (FILE * stream, const char * format, va_list args)</a></h2>
-<p class="Pp">Read formatted input from file stream (va_list variant, C23
-    compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stream</i> File stream
-<br/>
-<i>format</i> Format string
-<br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>169</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>169                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_swscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_swscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)"
+              >int __isoc23_vfscanf (FILE * stream, const char * format, va_list
+              args)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted input from file stream (va_list variant, C23
+            compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stream</i> File stream
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>args</i> Variable argument list
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>169</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+169                                                                      {
 170   return vfscanf(stream, format, args);
 171 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)">int
-  __isoc23_vfwscanf (FILE * stream, const wchar_t * format, va_list
-  args)</a></h2>
-<p class="Pp">Read formatted wide input from file stream (va_list variant, C23
-    compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>stream</i> File stream
-<br/>
-<i>format</i> Format string
-<br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>249</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>249                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_vfscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_vfscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)"
+              >int __isoc23_vfwscanf (FILE * stream, const wchar_t * format,
+              va_list args)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted wide input from file stream (va_list variant, C23
+            compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>stream</i> File stream
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>args</i> Variable argument list
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>249</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+249                                                                          {
 250   return vfwscanf(stream, format, args);
 251 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_vscanf_(const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vscanf_(const_char_*_format,_va_list_args)">int
-  __isoc23_vscanf (const char * format, va_list args)</a></h2>
-<p class="Pp">Read formatted input from stdin (va_list variant, C23
-  compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>format</i> Format string
-<br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>158</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>158                                                       {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_vfwscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_vfwscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_vscanf_(const_char_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_vscanf_(const_char_*_format,_va_list_args)"
+              >int __isoc23_vscanf (const char * format, va_list args)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted input from stdin (va_list variant, C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>format</i> Format string
+            <br />
+            <i>args</i> Variable argument list
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+158                                                       {
 159   return vscanf(format, args);
 160 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)">int
-  __isoc23_vsscanf (const char * str, const char * format, va_list
-  args)</a></h2>
-<p class="Pp">Read formatted input from string (va_list variant, C23
-    compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Input string
-<br/>
-<i>format</i> Format string
-<br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>180</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>180                                                                         {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_vscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_vscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)"
+              >int __isoc23_vsscanf (const char * str, const char * format,
+              va_list args)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted input from string (va_list variant, C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Input string
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>args</i> Variable argument list
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>180</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+180                                                                         {
 181   return vsscanf(str, format, args);
 182 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)">int
-  __isoc23_vswscanf (const wchar_t * str, const wchar_t * format, va_list
-  args)</a></h2>
-<p class="Pp">Read formatted wide input from string (va_list variant, C23
-    compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Input string
-<br/>
-<i>format</i> Format string
-<br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>260</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>260                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_vsscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_vsscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)"
+              >int __isoc23_vswscanf (const wchar_t * str, const wchar_t *
+              format, va_list args)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted wide input from string (va_list variant, C23
+            compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Input string
+            <br />
+            <i>format</i> Format string
+            <br />
+            <i>args</i> Variable argument list
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>260</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+260                                                                                {
 261   return vswscanf(str, format, args);
 262 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)">int
-  __isoc23_vwscanf (const wchar_t * format, va_list args)</a></h2>
-<p class="Pp">Read formatted wide input from stdin (va_list variant, C23
-    compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>format</i> Format string
-<br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>238</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>238                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_vswscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_vswscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)"
+              >int __isoc23_vwscanf (const wchar_t * format, va_list args)</a
+            >
+          </h2>
+          <p class="Pp">
+            Read formatted wide input from stdin (va_list variant, C23
+            compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>format</i> Format string
+            <br />
+            <i>args</i> Variable argument list
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Number of successfully read items</div>
+          <p class="Pp">
+            Definition at line <b>238</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+238                                                           {
 239   return vwscanf(format, args);
 240 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">long
-  long __isoc23_wcstoll (const wchar_t * str, wchar_t ** endptr, int
-  base)</a></h2>
-<p class="Pp">Convert wide string to long long (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Wide string to convert
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>78</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>78                                                                            {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_vwscanf()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_vwscanf()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"
+          >
+            <a
+              class="permalink"
+              href="#long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"
+              >long long __isoc23_wcstoll (const wchar_t * str, wchar_t **
+              endptr, int base)</a
+            >
+          </h2>
+          <p class="Pp">Convert wide string to long long (C23 compatible).</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Wide string to convert
+            <br />
+            <i>endptr</i> Pointer to first non-digit character (optional)
+            <br />
+            <i>base</i> Numeric base (0-36)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Converted value</div>
+          <p class="Pp">
+            Definition at line <b>78</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+78                                                                            {
 79   return wcstoll(str, endptr, base);
 80 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">unsigned
-  long __isoc23_wcstoul (const wchar_t * str, wchar_t ** endptr, int
-  base)</a></h2>
-<p class="Pp">Convert wide string to unsigned long (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Wide string to convert
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>89</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>89                                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_wcstoll()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_wcstoll()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"
+              >unsigned long __isoc23_wcstoul (const wchar_t * str, wchar_t **
+              endptr, int base)</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert wide string to unsigned long (C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Wide string to convert
+            <br />
+            <i>endptr</i> Pointer to first non-digit character (optional)
+            <br />
+            <i>base</i> Numeric base (0-36)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Converted value</div>
+          <p class="Pp">
+            Definition at line <b>89</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+89                                                                                {
 90   return wcstoul(str, endptr, base);
 91 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">unsigned
-  long long __isoc23_wcstoull (const wchar_t * str, wchar_t ** endptr, int
-  base)</a></h2>
-<p class="Pp">Convert wide string to unsigned long long (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> Wide string to convert
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>100</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>100                                                                                      {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_wcstoul()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_wcstoul()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"
+              >unsigned long long __isoc23_wcstoull (const wchar_t * str,
+              wchar_t ** endptr, int base)</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert wide string to unsigned long long (C23 compatible).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>str</i> Wide string to convert
+            <br />
+            <i>endptr</i> Pointer to first non-digit character (optional)
+            <br />
+            <i>base</i> Numeric base (0-36)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Converted value</div>
+          <p class="Pp">
+            Definition at line <b>100</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+100                                                                                      {
 101   return wcstoull(str, endptr, base);
 102 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)"><a class="permalink" href="#int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)">int
-  initstate_r (unsigned int seed, char * statebuf, size_t statelen, struct
-  random_data * buf)</a></h2>
-<p class="Pp">Initialize reentrant random state (glibc compatibility stub for
-    musl). musl doesn't provide this glibc-specific reentrant random function.
-    Used by fontconfig for thread-local hash seeding during initialization.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Design_Notes"><a class="permalink" href="#Design_Notes">Design
-  Notes</a></h2>
-<p class="Pp">This is a stub implementation (doesn't maintain stateful PRNG
-    state) for these reasons:</p>
-<ul class="Bl-bullet">
-  <li>fontconfig only calls this once per thread during startup (not in hot
-      loops)</li>
-  <li>The performance difference between a syscall and PRNG state lookup is
-      negligible at initialization time</li>
-  <li>Implementing a correct PRNG is complex; using kernel randomness is simpler
-      and more reliable than maintaining application-level state</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Why_the_state_buffer_is_not_used"><a class="permalink" href="#Why_the_state_buffer_is_not_used">Why
-  the state buffer is not used</a></h2>
-<ul class="Bl-bullet">
-  <li>glibc's stateful design (storing PRNG state in statebuf) is an
-      optimization for applications that call <b>random_r()</b> thousands of
-      times</li>
-  <li>fontconfig doesn't fit that pattern; it just needs a few random values at
-      init</li>
-  <li>Maintaining thread-local state would require either TLS allocation or
-      synchronization</li>
-  <li>Not worth the complexity for initialization-time randomness</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
-  Safety</a></h2>
-<p class="Pp">Thread-safe by design:</p>
-<ul class="Bl-bullet">
-  <li>Each thread can have its own buf/statebuf</li>
-  <li>Each thread's <b>random_r()</b> calls <b>arc4random_buf()</b>, which is
-      atomic at kernel level</li>
-  <li>No shared mutable state means no synchronization needed</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>seed</i> Seed value (ignored; <b>random_r()</b> uses
-  <b>arc4random_buf()</b>)
-<br/>
-<i>statebuf</i> State buffer (validated but not used)
-<br/>
-<i>statelen</i> Length of state buffer (must be &gt;= 32)
-<br/>
-<i>buf</i> Random data structure (validated but not used)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 if parameters invalid</div>
-<p class="Pp">Definition at line <b>346</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>346                                                                                              {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>__isoc23_wcstoull()</b>.</p>
+          <p class="Pp">Referenced by <b>__isoc23_wcstoull()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)"
+          >
+            <a
+              class="permalink"
+              href="#int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)"
+              >int initstate_r (unsigned int seed, char * statebuf, size_t
+              statelen, struct random_data * buf)</a
+            >
+          </h2>
+          <p class="Pp">
+            Initialize reentrant random state (glibc compatibility stub for
+            musl). musl doesn't provide this glibc-specific reentrant random
+            function. Used by fontconfig for thread-local hash seeding during
+            initialization.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Design_Notes">
+            <a class="permalink" href="#Design_Notes">Design Notes</a>
+          </h2>
+          <p class="Pp">
+            This is a stub implementation (doesn't maintain stateful PRNG state)
+            for these reasons:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              fontconfig only calls this once per thread during startup (not in
+              hot loops)
+            </li>
+            <li>
+              The performance difference between a syscall and PRNG state lookup
+              is negligible at initialization time
+            </li>
+            <li>
+              Implementing a correct PRNG is complex; using kernel randomness is
+              simpler and more reliable than maintaining application-level state
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Why_the_state_buffer_is_not_used">
+            <a class="permalink" href="#Why_the_state_buffer_is_not_used"
+              >Why the state buffer is not used</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              glibc's stateful design (storing PRNG state in statebuf) is an
+              optimization for applications that call
+              <b>random_r()</b> thousands of times
+            </li>
+            <li>
+              fontconfig doesn't fit that pattern; it just needs a few random
+              values at init
+            </li>
+            <li>
+              Maintaining thread-local state would require either TLS allocation
+              or synchronization
+            </li>
+            <li>Not worth the complexity for initialization-time randomness</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Thread_Safety">
+            <a class="permalink" href="#Thread_Safety">Thread Safety</a>
+          </h2>
+          <p class="Pp">Thread-safe by design:</p>
+          <ul class="Bl-bullet">
+            <li>Each thread can have its own buf/statebuf</li>
+            <li>
+              Each thread's <b>random_r()</b> calls <b>arc4random_buf()</b>,
+              which is atomic at kernel level
+            </li>
+            <li>No shared mutable state means no synchronization needed</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>seed</i> Seed value (ignored; <b>random_r()</b> uses
+            <b>arc4random_buf()</b>)
+            <br />
+            <i>statebuf</i> State buffer (validated but not used)
+            <br />
+            <i>statelen</i> Length of state buffer (must be &gt;= 32)
+            <br />
+            <i>buf</i> Random data structure (validated but not used)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 if parameters invalid</div>
+          <p class="Pp">
+            Definition at line <b>346</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+346                                                                                              {
 347   (void)seed;
 348   // Validate parameters match glibc interface
 349   if (!statebuf || !buf || statelen &lt; 32) {
 350     return -1;
 351   }
-352 
+352
 353   // Initialize buffer (though random_r() doesn't actually use it)
 354   memset(statebuf, 0, statelen);
-355 
+355
 356   return 0;
 357 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="long_musl_strtol_(const_char_*_,_extern_long_long____musl_strtoll(const_char_char_**,_int_)"><a class="permalink" href="#long_musl_strtol_(const_char_*_,_extern_long_long____musl_strtoll(const_char_char_**,_int_)">long
-  musl_strtol (const char * , extern long long musl_strtoll(const char char **,
-  int ) [extern]</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>31                                                                {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>initstate_r()</b>.</p>
+          <p class="Pp">Referenced by <b>initstate_r()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="long_musl_strtol_(const_char_*_,_extern_long_long_musl_strtoll(const_char_char_**,_int_)"
+          >
+            <a
+              class="permalink"
+              href="#long_musl_strtol_(const_char_*_,_extern_long_long_musl_strtoll(const_char_char_**,_int_)"
+              >long musl_strtol (const char * , extern long long
+              musl_strtoll(const char char **, int ) [extern]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+31                                                                {
 32   return musl_strtol(str, endptr, base);
 33 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)"><a class="permalink" href="#int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)">int
-  random_r (struct random_data *restrict buf, int32_t *restrict result)</a></h2>
-<p class="Pp">Generate cryptographically secure random number (glibc
-    compatibility stub for musl). musl doesn't provide this glibc-specific
-    reentrant random function. Used by fontconfig to generate thread-safe random
-    numbers without shared state.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Design"><a class="permalink" href="#Design">Design</a></h2>
-<ul class="Bl-bullet">
-  <li>Ignores the state buffer (buf) entirely</li>
-  <li>Each call invokes <b>arc4random_buf()</b> to get fresh random bytes from
-      kernel</li>
-  <li>Thread-safe because <b>arc4random_buf()</b> uses atomic syscalls/device
-      reads</li>
-  <li>No per-thread PRNG state to maintain or synchronize</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Why_stateless_design"><a class="permalink" href="#Why_stateless_design">Why
-  stateless design</a></h2>
-<ul class="Bl-bullet">
-  <li>fontconfig's usage pattern doesn't warrant state management (see
-      <b>initstate_r()</b>)</li>
-  <li>Stateless design trades a syscall per call for simplicity and
-    correctness</li>
-  <li>Kernel randomness is reliable; application-level PRNG state would need
-      testing</li>
-  <li>See <b>initstate_r()</b> for full rationale on not maintaining state</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>buf</i> Random data structure (ignored; present for
-  glibc API compatibility)
-<br/>
-<i>result</i> Pointer to store generated random value in range [0, 2^31)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 if buf or result is NULL</div>
-<p class="Pp">Definition at line <b>383</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>383                                                                          {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>musl_strtol()</b>.</p>
+          <p class="Pp">Referenced by <b>musl_strtol()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)"
+          >
+            <a
+              class="permalink"
+              href="#int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)"
+              >int random_r (struct random_data *restrict buf, int32_t *restrict
+              result)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate cryptographically secure random number (glibc compatibility
+            stub for musl). musl doesn't provide this glibc-specific reentrant
+            random function. Used by fontconfig to generate thread-safe random
+            numbers without shared state.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Design">
+            <a class="permalink" href="#Design">Design</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Ignores the state buffer (buf) entirely</li>
+            <li>
+              Each call invokes <b>arc4random_buf()</b> to get fresh random
+              bytes from kernel
+            </li>
+            <li>
+              Thread-safe because <b>arc4random_buf()</b> uses atomic
+              syscalls/device reads
+            </li>
+            <li>No per-thread PRNG state to maintain or synchronize</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Why_stateless_design">
+            <a class="permalink" href="#Why_stateless_design"
+              >Why stateless design</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              fontconfig's usage pattern doesn't warrant state management (see
+              <b>initstate_r()</b>)
+            </li>
+            <li>
+              Stateless design trades a syscall per call for simplicity and
+              correctness
+            </li>
+            <li>
+              Kernel randomness is reliable; application-level PRNG state would
+              need testing
+            </li>
+            <li>
+              See <b>initstate_r()</b> for full rationale on not maintaining
+              state
+            </li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>buf</i> Random data structure (ignored; present for glibc API
+            compatibility)
+            <br />
+            <i>result</i> Pointer to store generated random value in range [0,
+            2^31)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, -1 if buf or result is NULL</div>
+          <p class="Pp">
+            Definition at line <b>383</b> of file <b>musl_c23_compat.c</b>.
+          </p>
+          <pre>
+383                                                                          {
 384   if (buf == NULL || result == NULL) {
 385     return -1;
 386   }
-387 
+387
 388   /* Obtain cryptographically secure random bytes from kernel */
 389   uint32_t random_bytes;
 390   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
-391 
+391
 392   /* Convert to 31-bit positive integer matching glibc behavior
 393      glibc's random_r returns values in range [0, 2^31) */
 394   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
-395 
+395
 396   return 0;
 397 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>arc4random_buf()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>arc4random_buf()</b>, and <b>random_r()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>random_r()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

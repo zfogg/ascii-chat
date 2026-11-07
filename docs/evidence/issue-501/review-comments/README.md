@@ -14,13 +14,13 @@ The source-SHA lookup was checked from outside the repository and with missing
 Git, command failure, and timeout; all fallback cases passed.
 
 | Transport | Codec | Peak accounted queue KiB | Final delivered FPS | Final mean frame age ms | Recovery keyframes |
-|---|---|---:|---:|---:|---:|
-| tcp | raw | 182.9 | 51.00 | 7.25 | 0 |
-| tcp | h264 | 441.7 | 39.50 | 21.62 | 33 |
-| websocket | raw | 178.9 | 46.50 | 13.23 | 0 |
-| websocket | h264 | 438.7 | 52.50 | 16.94 | 31 |
-| webrtc | raw | 139.9 | 50.00 | 5.76 | 0 |
-| webrtc | h264 | 378.0 | 31.50 | 10.87 | 23 |
+| --------- | ----- | -----------------------: | ------------------: | ----------------------: | -----------------: |
+| tcp       | raw   |                    182.9 |               51.00 |                    7.25 |                  0 |
+| tcp       | h264  |                    441.7 |               39.50 |                   21.62 |                 33 |
+| websocket | raw   |                    178.9 |               46.50 |                   13.23 |                  0 |
+| websocket | h264  |                    438.7 |               52.50 |                   16.94 |                 31 |
+| webrtc    | raw   |                    139.9 |               50.00 |                    5.76 |                  0 |
+| webrtc    | h264  |                    378.0 |               31.50 |                   10.87 |                 23 |
 
 All six supported Windows raw/H.264 scenarios passed. H.265 attempts on all three
 transports failed during hevc_amf encoder warmup before the workload; the WebRTC

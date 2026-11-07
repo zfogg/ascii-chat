@@ -1,248 +1,385 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>media_source_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">media_source_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">media_source_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">media_source_t - Media source for video and audio capture.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>media_source_type_t</b> <b>type</b>
-  <br/>
-  Type of media source (webcam, file, stdin, test). <b>bool</b>
-    <b>loop_enabled</b>
-  <br/>
-  Whether to loop playback (for files). <b>bool</b> <b>is_paused</b>
-  <br/>
-  Whether playback is paused. <b>webcam_context_t</b> * <b>webcam_ctx</b>
-  <br/>
-  Webcam context (NULL for non-webcam types). unsigned short int
-    <b>webcam_index</b>
-  <br/>
-  Webcam device index. <b>ffmpeg_decoder_t</b> * <b>video_decoder</b>
-  <br/>
-  Video decoder (separate or shared with audio). <b>ffmpeg_decoder_t</b> *
-    <b>audio_decoder</b>
-  <br/>
-  Audio decoder (separate or shared with video). <b>bool</b>
-    <b>is_shared_decoder</b>
-  <br/>
-  True if both streams share same decoder (YouTube URLs). <b>mutex_t</b>
-    <b>decoder_mutex</b>
-  <br/>
-  Protects shared decoder access (YouTube URLs). <b>mutex_t</b>
-    <b>seek_access_mutex</b>
-  <br/>
-  Protects decoder access during seeks. <b>mutex_t</b> <b>pause_mutex</b>
-  <br/>
-  Protects pause state. char * <b>file_path</b>
-  <br/>
-  File path (for FILE type). char * <b>original_youtube_url</b>
-  <br/>
-  Original YouTube URL for re-extraction. void * <b>audio_ctx</b>
-  <br/>
-  Audio context for clearing buffers on seek (opaque). <b>image_t</b> *
-    <b>test_pattern_frame</b>
-  <br/>
-  Reusable 320x240 frame buffer for test pattern. unsigned int
-    <b>test_frame_counter</b>
-  <br/>
-  Animation phase counter for test pattern.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Media source for video and audio capture.</p>
-<p class="Pp">Abstracts multiple media input types (webcam, files, stdin, test
-    patterns) with unified interface for frame/audio reading.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>source.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void*_media_source_t::audio_ctx"><a class="permalink" href="#void*_media_source_t::audio_ctx">void*
-  media_source_t::audio_ctx</a></h2>
-<p class="Pp">Audio context for clearing buffers on seek (opaque).</p>
-<p class="Pp">Definition at line <b>58</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_seek()</b>, and
-    <b>media_source_set_audio_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ffmpeg_decoder_t</b>* media_source_t::audio_decoder</h2>
-<p class="Pp">Audio decoder (separate or shared with video).</p>
-<p class="Pp">Definition at line <b>45</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, <b>media_source_has_audio()</b>,
-    <b>media_source_read_audio()</b>, <b>media_source_rewind()</b>,
-    <b>media_source_seek()</b>, and <b>media_source_set_exit_callback()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> media_source_t::decoder_mutex</h2>
-<p class="Pp">Protects shared decoder access (YouTube URLs).</p>
-<p class="Pp">Definition at line <b>49</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
-    <b>media_source_read_video()</b>, and <b>media_source_rewind()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_media_source_t::file_path"><a class="permalink" href="#char*_media_source_t::file_path">char*
-  media_source_t::file_path</a></h2>
-<p class="Pp">File path (for FILE type).</p>
-<p class="Pp">Definition at line <b>54</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>, and
-    <b>media_source_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> media_source_t::is_paused</h2>
-<p class="Pp">Whether playback is paused.</p>
-<p class="Pp">Definition at line <b>37</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_is_paused()</b>, <b>media_source_pause()</b>,
-    <b>media_source_read_audio()</b>, <b>media_source_read_video()</b>,
-    <b>media_source_resume()</b>, and <b>media_source_toggle_pause()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> media_source_t::is_shared_decoder</h2>
-<p class="Pp">True if both streams share same decoder (YouTube URLs).</p>
-<p class="Pp">Definition at line <b>46</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
-    <b>media_source_read_video()</b>, <b>media_source_rewind()</b>, and
-    <b>media_source_seek()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> media_source_t::loop_enabled</h2>
-<p class="Pp">Whether to loop playback (for files).</p>
-<p class="Pp">Definition at line <b>36</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_at_end()</b>,
-    <b>media_source_create()</b>, <b>media_source_read_audio()</b>,
-    <b>media_source_read_video()</b>, and <b>media_source_set_loop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_media_source_t::original_youtube_url"><a class="permalink" href="#char*_media_source_t::original_youtube_url">char*
-  media_source_t::original_youtube_url</a></h2>
-<p class="Pp">Original YouTube URL for re-extraction.</p>
-<p class="Pp">Definition at line <b>55</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>, and
-    <b>media_source_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> media_source_t::pause_mutex</h2>
-<p class="Pp">Protects pause state.</p>
-<p class="Pp">Definition at line <b>51</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, <b>media_source_is_paused()</b>,
-    <b>media_source_pause()</b>, <b>media_source_read_audio()</b>,
-    <b>media_source_read_video()</b>, <b>media_source_resume()</b>, and
-    <b>media_source_toggle_pause()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> media_source_t::seek_access_mutex</h2>
-<p class="Pp">Protects decoder access during seeks.</p>
-<p class="Pp">Definition at line <b>50</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, and <b>media_source_read_audio()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_int_media_source_t::test_frame_counter"><a class="permalink" href="#unsigned_int_media_source_t::test_frame_counter">unsigned
-  int media_source_t::test_frame_counter</a></h2>
-<p class="Pp">Animation phase counter for test pattern.</p>
-<p class="Pp">Definition at line <b>62</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>, and
-    <b>media_source_read_video()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>image_t</b>* media_source_t::test_pattern_frame</h2>
-<p class="Pp">Reusable 320x240 frame buffer for test pattern.</p>
-<p class="Pp">Definition at line <b>61</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, and <b>media_source_read_video()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_type_t</b> media_source_t::type</h2>
-<p class="Pp">Type of media source (webcam, file, stdin, test).</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_at_end()</b>,
-    <b>media_source_create()</b>, <b>media_source_get_duration()</b>,
-    <b>media_source_get_position()</b>, <b>media_source_get_type()</b>,
-    <b>media_source_get_video_fps()</b>, <b>media_source_has_audio()</b>,
-    <b>media_source_has_video()</b>, <b>media_source_read_audio()</b>,
-    <b>media_source_read_video()</b>, <b>media_source_rewind()</b>,
-    <b>media_source_seek()</b>, and <b>media_source_set_loop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ffmpeg_decoder_t</b>* media_source_t::video_decoder</h2>
-<p class="Pp">Video decoder (separate or shared with audio).</p>
-<p class="Pp">Definition at line <b>44</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_at_end()</b>,
-    <b>media_source_create()</b>, <b>media_source_destroy()</b>,
-    <b>media_source_get_duration()</b>, <b>media_source_get_position()</b>,
-    <b>media_source_get_video_fps()</b>, <b>media_source_has_video()</b>,
-    <b>media_source_read_video()</b>, <b>media_source_rewind()</b>,
-    <b>media_source_seek()</b>, and <b>media_source_set_exit_callback()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>webcam_context_t</b>* media_source_t::webcam_ctx</h2>
-<p class="Pp">Webcam context (NULL for non-webcam types).</p>
-<p class="Pp">Definition at line <b>40</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, and <b>media_source_read_video()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_short_int_media_source_t::webcam_index"><a class="permalink" href="#unsigned_short_int_media_source_t::webcam_index">unsigned
-  short int media_source_t::webcam_index</a></h2>
-<p class="Pp">Webcam device index.</p>
-<p class="Pp">Definition at line <b>41</b> of file <b>source.c</b>.</p>
-<p class="Pp">Referenced by <b>media_source_create()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>media_source_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">media_source_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">media_source_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          media_source_t - Media source for video and audio capture.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>media_source_type_t</b> <b>type</b>
+            <br />
+            Type of media source (webcam, file, stdin, test). <b>bool</b>
+            <b>loop_enabled</b>
+            <br />
+            Whether to loop playback (for files). <b>bool</b> <b>audio_only</b>
+            <br />
+            File audio uses the selected webcam for video. <b>atomic_t</b>
+            <b>is_paused</b>
+            <br />
+            Independently published playback pause flag.
+            <b>webcam_context_t</b> *
+            <b>webcam_ctx</b>
+            <br />
+            Webcam context (NULL for non-webcam types). unsigned short int
+            <b>webcam_index</b>
+            <br />
+            Webcam device index. <b>ffmpeg_decoder_t</b> * <b>video_decoder</b>
+            <br />
+            Video decoder (separate or shared with audio).
+            <b>ffmpeg_decoder_t</b> *
+            <b>audio_decoder</b>
+            <br />
+            Audio decoder (separate or shared with video). <b>bool</b>
+            <b>is_shared_decoder</b>
+            <br />
+            True if both streams share same decoder (YouTube URLs).
+            <b>mutex_t</b>
+            <b>decoder_mutex</b>
+            <br />
+            Protects shared decoder access (YouTube URLs). char *
+            <b>file_path</b>
+            <br />
+            File path (for FILE type). char * <b>original_youtube_url</b>
+            <br />
+            Original YouTube URL for re-extraction. void * <b>audio_ctx</b>
+            <br />
+            Audio context for clearing buffers on seek (opaque).
+            <b>test_pattern_t</b> *
+            <b>test_pattern</b>
+            <br />
+            Independent reusable synthetic renderer. <b>uint64_t</b>
+            <b>test_start_ns</b>
+            <br />
+            Monotonic animation origin.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Media source for video and audio capture.</p>
+        <p class="Pp">
+          Abstracts multiple media input types (webcam, files, stdin, test
+          patterns) with unified interface for frame/audio reading.
+        </p>
+        <p class="Pp">Definition at line <b>43</b> of file <b>source.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_media_source_t::audio_ctx">
+            <a class="permalink" href="#void*_media_source_t::audio_ctx"
+              >void* media_source_t::audio_ctx</a
+            >
+          </h2>
+          <p class="Pp">Audio context for clearing buffers on seek (opaque).</p>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_seek()</b>, and
+            <b>media_source_set_audio_context()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ffmpeg_decoder_t</b>* media_source_t::audio_decoder
+          </h2>
+          <p class="Pp">Audio decoder (separate or shared with video).</p>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_at_end()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_get_position()</b>,
+            <b>media_source_has_audio()</b>, <b>media_source_read_audio()</b>,
+            <b>media_source_rewind()</b>, <b>media_source_seek()</b>, and
+            <b>media_source_set_exit_callback()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> media_source_t::audio_only</h2>
+          <p class="Pp">File audio uses the selected webcam for video.</p>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_at_end()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>media_source_get_position()</b>, <b>media_source_has_video()</b>,
+            <b>media_source_read_video()</b>, <b>media_source_start_video()</b>,
+            and <b>media_source_uses_webcam()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> media_source_t::decoder_mutex</h2>
+          <p class="Pp">Protects shared decoder access (YouTube URLs).</p>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
+            <b>media_source_read_video()</b>, and <b>media_source_rewind()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_media_source_t::file_path">
+            <a class="permalink" href="#char*_media_source_t::file_path"
+              >char* media_source_t::file_path</a
+            >
+          </h2>
+          <p class="Pp">File path (for FILE type).</p>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>, and
+            <b>media_source_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> media_source_t::is_paused</h2>
+          <p class="Pp">Independently published playback pause flag.</p>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_is_paused()</b>,
+            <b>media_source_pause()</b>, <b>media_source_read_audio()</b>,
+            <b>media_source_read_video()</b>, <b>media_source_resume()</b>, and
+            <b>media_source_toggle_pause()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> media_source_t::is_shared_decoder</h2>
+          <p class="Pp">
+            True if both streams share same decoder (YouTube URLs).
+          </p>
+          <p class="Pp">
+            Definition at line <b>56</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
+            <b>media_source_read_video()</b>, <b>media_source_rewind()</b>, and
+            <b>media_source_seek()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> media_source_t::loop_enabled</h2>
+          <p class="Pp">Whether to loop playback (for files).</p>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_at_end()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>media_source_read_audio()</b>, <b>media_source_read_video()</b>,
+            and <b>media_source_set_loop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_media_source_t::original_youtube_url">
+            <a
+              class="permalink"
+              href="#char*_media_source_t::original_youtube_url"
+              >char* media_source_t::original_youtube_url</a
+            >
+          </h2>
+          <p class="Pp">Original YouTube URL for re-extraction.</p>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>, and
+            <b>media_source_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>test_pattern_t</b>* media_source_t::test_pattern
+          </h2>
+          <p class="Pp">Independent reusable synthetic renderer.</p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>, and
+            <b>media_source_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> media_source_t::test_start_ns</h2>
+          <p class="Pp">Monotonic animation origin.</p>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>media_source_type_t</b> media_source_t::type</h2>
+          <p class="Pp">Type of media source (webcam, file, stdin, test).</p>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_at_end()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>media_source_get_duration()</b>,
+            <b>media_source_get_position()</b>, <b>media_source_get_type()</b>,
+            <b>media_source_get_video_fps()</b>,
+            <b>media_source_has_audio()</b>, <b>media_source_has_video()</b>,
+            <b>media_source_read_audio()</b>, <b>media_source_read_video()</b>,
+            <b>media_source_rewind()</b>, <b>media_source_seek()</b>,
+            <b>media_source_set_loop()</b>, <b>media_source_start_video()</b>,
+            and <b>media_source_uses_webcam()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ffmpeg_decoder_t</b>* media_source_t::video_decoder
+          </h2>
+          <p class="Pp">Video decoder (separate or shared with audio).</p>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_at_end()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_get_duration()</b>,
+            <b>media_source_get_position()</b>,
+            <b>media_source_get_video_fps()</b>,
+            <b>media_source_has_video()</b>, <b>media_source_read_video()</b>,
+            <b>media_source_rewind()</b>, <b>media_source_seek()</b>, and
+            <b>media_source_set_exit_callback()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>webcam_context_t</b>* media_source_t::webcam_ctx
+          </h2>
+          <p class="Pp">Webcam context (NULL for non-webcam types).</p>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_get_video_fps()</b>,
+            <b>media_source_read_video()</b>, and
+            <b>media_source_start_video()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="unsigned_short_int_media_source_t::webcam_index">
+            <a
+              class="permalink"
+              href="#unsigned_short_int_media_source_t::webcam_index"
+              >unsigned short int media_source_t::webcam_index</a
+            >
+          </h2>
+          <p class="Pp">Webcam device index.</p>
+          <p class="Pp">
+            Definition at line <b>51</b> of file <b>source.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>media_source_create_interruptible()</b>, and
+            <b>media_source_start_video()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

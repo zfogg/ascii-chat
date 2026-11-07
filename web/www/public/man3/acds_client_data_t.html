@@ -62,7 +62,9 @@
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
         <p class="Pp">#include &lt;src/discovery-service/server.h&gt;</p>
         <section class="Ss">
           <h2 class="Ss" id="Data_Fields">
@@ -72,10 +74,12 @@
           <p class="Pp">
             <b>uint8_t</b> <b>session_id</b> [16]
             <br />
-            Session UUID (valid if joined_session). <b>uint8_t</b> <b>participant_id</b>
+            Session UUID (valid if joined_session). <b>uint8_t</b>
+            <b>participant_id</b>
             [16]
             <br />
-            Participant UUID (valid if joined_session). <b>bool</b> <b>joined_session</b>
+            Participant UUID (valid if joined_session). <b>bool</b>
+            <b>joined_session</b>
             <br />
             Whether client has successfully joined a session.
             <b>crypto_handshake_context_t</b> <b>handshake_ctx</b>
@@ -86,7 +90,8 @@
             Whether crypto handshake has completed. <b>bool</b>
             <b>in_multikey_session_create</b>
             <br />
-            True during multi-key SESSION_CREATE sequence. <b>acip_session_create_t</b>
+            True during multi-key SESSION_CREATE sequence.
+            <b>acip_session_create_t</b>
             <b>pending_session</b>
             <br />
             Pending session data (from first SESSION_CREATE). <b>uint8_t</b>
@@ -101,13 +106,15 @@
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
         <p class="Pp">Per-client connection data.</p>
         <p class="Pp">
-          Stored in <b>tcp_server</b> client registry to track which session and participant this
-          connection represents. Used by signaling relay to map participant_id &#x2192; socket for
-          message delivery.
+          Stored in <b>tcp_server</b> client registry to track which session and
+          participant this connection represents. Used by signaling relay to map
+          participant_id &#x2192; socket for message delivery.
         </p>
         <p class="Pp"></p>
       </section>
@@ -117,12 +124,18 @@
             >Multi-Key Session Creation Protocol:
           </a>
         </h1>
-        <p class="Pp">When creating a session with multiple identity keys (e.g., SSH + GPG):</p>
+        <p class="Pp">
+          When creating a session with multiple identity keys (e.g., SSH + GPG):
+        </p>
         <dl class="Bl-tag">
           <dt>1.</dt>
-          <dd>Client sends SESSION_CREATE with first key (creates session UUID)</dd>
+          <dd>
+            Client sends SESSION_CREATE with first key (creates session UUID)
+          </dd>
           <dt>2.</dt>
-          <dd>Client sends SESSION_CREATE with second key (adds to same session)</dd>
+          <dd>
+            Client sends SESSION_CREATE with second key (adds to same session)
+          </dd>
           <dt>3.</dt>
           <dd>Client sends SESSION_CREATE with zero key (finalizes session)</dd>
         </dl>
@@ -134,34 +147,44 @@
           <li>Keys validated to ensure no duplicates</li>
         </ul>
         <p class="Pp">
-          Definition at line <b>58</b> of file <b>src/discovery-service/server.h</b>.
+          Definition at line <b>58</b> of file
+          <b>src/discovery-service/server.h</b>.
         </p>
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Field_Documentation">
-          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
         </h1>
         <section class="Ss">
           <h2 class="Ss"><b>bool</b> acds_client_data_t::handshake_complete</h2>
           <p class="Pp">Whether crypto handshake has completed.</p>
           <p class="Pp">
-            Definition at line <b>65</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>65</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>crypto_handshake_context_t</b> acds_client_data_t::handshake_ctx</h2>
+          <h2 class="Ss">
+            <b>crypto_handshake_context_t</b> acds_client_data_t::handshake_ctx
+          </h2>
           <p class="Pp">Handshake context for encrypted communication.</p>
           <p class="Pp">
-            Definition at line <b>64</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>64</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
         </section>
         <section class="Ss">
-          <h2 class="Ss"><b>bool</b> acds_client_data_t::in_multikey_session_create</h2>
+          <h2 class="Ss">
+            <b>bool</b> acds_client_data_t::in_multikey_session_create
+          </h2>
           <p class="Pp">True during multi-key SESSION_CREATE sequence.</p>
           <p class="Pp">
-            Definition at line <b>68</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>68</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
         </section>
@@ -169,56 +192,74 @@
           <h2 class="Ss"><b>bool</b> acds_client_data_t::joined_session</h2>
           <p class="Pp">Whether client has successfully joined a session.</p>
           <p class="Pp">
-            Definition at line <b>61</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>61</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
         </section>
         <section class="Ss">
           <h2 class="Ss" id="size_t_acds_client_data_t::num_pending_keys">
-            <a class="permalink" href="#size_t_acds_client_data_t::num_pending_keys"
+            <a
+              class="permalink"
+              href="#size_t_acds_client_data_t::num_pending_keys"
               >size_t acds_client_data_t::num_pending_keys</a
             >
           </h2>
           <p class="Pp">Number of keys received so far.</p>
           <p class="Pp">
-            Definition at line <b>71</b> of file <b>src/discovery-service/server.h</b>.
-          </p>
-        </section>
-        <section class="Ss">
-          <h2 class="Ss"><b>uint8_t</b> acds_client_data_t::participant_id[16]</h2>
-          <p class="Pp">Participant UUID (valid if joined_session).</p>
-          <p class="Pp">
-            Definition at line <b>60</b> of file <b>src/discovery-service/server.h</b>.
-          </p>
-        </section>
-        <section class="Ss">
-          <h2 class="Ss"><b>acip_session_create_t</b> acds_client_data_t::pending_session</h2>
-          <p class="Pp">Pending session data (from first SESSION_CREATE).</p>
-          <p class="Pp">
-            Definition at line <b>69</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>71</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss">
-            <b>uint8_t</b> acds_client_data_t::pending_session_keys[<b>MAX_IDENTITY_KEYS</b>][32]
+            <b>uint8_t</b> acds_client_data_t::participant_id[16]
+          </h2>
+          <p class="Pp">Participant UUID (valid if joined_session).</p>
+          <p class="Pp">
+            Definition at line <b>60</b> of file
+            <b>src/discovery-service/server.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_session_create_t</b> acds_client_data_t::pending_session
+          </h2>
+          <p class="Pp">Pending session data (from first SESSION_CREATE).</p>
+          <p class="Pp">
+            Definition at line <b>69</b> of file
+            <b>src/discovery-service/server.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b>
+            acds_client_data_t::pending_session_keys[<b>MAX_IDENTITY_KEYS</b>][32]
           </h2>
           <p class="Pp">Array of identity public keys.</p>
           <p class="Pp">
-            Definition at line <b>70</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>70</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
         </section>
         <section class="Ss">
           <h2 class="Ss"><b>uint8_t</b> acds_client_data_t::session_id[16]</h2>
           <p class="Pp">Session UUID (valid if joined_session).</p>
           <p class="Pp">
-            Definition at line <b>59</b> of file <b>src/discovery-service/server.h</b>.
+            Definition at line <b>59</b> of file
+            <b>src/discovery-service/server.h</b>.
           </p>
           <p class="Pp"></p>
         </section>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">
+          Generated automatically by Doxygen for ascii-chat from the source
+          code.
+        </p>
       </section>
     </div>
     <table class="foot">

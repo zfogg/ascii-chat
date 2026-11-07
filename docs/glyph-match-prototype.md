@@ -82,10 +82,10 @@ python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 Deja
 On a Ryzen 7 5800X, WSL2 x86-64 Linux, Clang 14, Release `-O3`, AVX2 dispatch,
 80×32 truecolor cells, three runs of 200 measured iterations after five warmups:
 
-| Renderer | Mean time per frame across each run |
-| --- | --- |
-| Current | 0.016, 0.020, 0.015 ms |
-| Glyph match | 2.293, 2.327, 2.332 ms |
+| Renderer    | Mean time per frame across each run |
+| ----------- | ----------------------------------- |
+| Current     | 0.016, 0.020, 0.015 ms              |
+| Glyph match | 2.293, 2.327, 2.332 ms              |
 
 The test uses the first frame of the FFmpeg clip, cropped to the viewport and
 nearest-neighbor sampled to 640×256. The baseline takes one sample per cell;

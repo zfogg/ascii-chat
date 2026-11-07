@@ -42,7 +42,12 @@ function launch(name, args) {
   const child = spawn(
     binary,
     ["--log-file", log, "--log-level", "debug", ...args],
-    { cwd: directory, env, windowsHide: true, stdio: "ignore" },
+    {
+      cwd: directory,
+      env,
+      windowsHide: true,
+      stdio: "ignore",
+    },
   );
   return {
     child,

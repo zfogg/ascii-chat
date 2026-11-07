@@ -404,6 +404,7 @@ typedef struct {
    - Frame rate driven by media source
 
 2. **Event-Driven Mode** (with callbacks, no capture)
+
    ```c
    session_render_loop(NULL, display, should_exit_fn,
                       capture_fn, sleep_fn, keyboard_handler, user_data);

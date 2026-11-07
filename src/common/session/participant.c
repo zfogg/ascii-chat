@@ -540,7 +540,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
     session_capture_config_t config = {
         .type = MEDIA_SOURCE_WEBCAM,
         .path = "0", // Default device
-        .target_fps = 60,
+        .target_fps = (uint32_t)GET_OPTION(fps),
         .resize_for_network = true, // Optimize for bandwidth
     };
     const char *file = GET_OPTION(media_file);
