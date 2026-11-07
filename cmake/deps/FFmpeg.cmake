@@ -221,12 +221,13 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
             set(FFMPEG_DOWNLOAD "${FFMPEG_TARBALL}.download")
             set(FFMPEG_DOWNLOAD_ERROR "download did not complete")
             foreach(FFMPEG_ATTEMPT RANGE 1 3)
-                file(DOWNLOAD
-                    "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
-                    "${FFMPEG_DOWNLOAD}"
-                    TIMEOUT 180 INACTIVITY_TIMEOUT 30
-                    STATUS DOWNLOAD_STATUS
-                )
+                if(FFMPEG_ATTEMPT EQUAL 2)
+                    set(FFMPEG_DOWNLOAD_URL "https://mirrors.omnios.org/ffmpeg/ffmpeg-${FFMPEG_VERSION}.tar.xz")
+                else()
+                    set(FFMPEG_DOWNLOAD_URL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz")
+                endif()
+                file(DOWNLOAD "${FFMPEG_DOWNLOAD_URL}" "${FFMPEG_DOWNLOAD}"
+                    TIMEOUT 180 INACTIVITY_TIMEOUT 30 STATUS DOWNLOAD_STATUS)
                 list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
                 if(STATUS_CODE EQUAL 0)
                     file(SHA256 "${FFMPEG_DOWNLOAD}" FFMPEG_ACTUAL_HASH)
