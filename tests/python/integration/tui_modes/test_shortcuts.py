@@ -61,8 +61,9 @@ def test_tui_mode_shortcuts(binary, tmp_path, terminal_factory, profile):
 
                     def show(key, label, artifact):
                         term.write(key)
-                        term.expect(lambda text: label in text, f"{name}: {artifact}", timeout=15)
-                        term.expect(lambda text: label in text, f"{name}: complete {artifact}", timeout=15)
+                        term.expect(lambda text: label in text and
+                                    (artifact != "stats-from-sync-help" or "Sync Viewer Keyboard Shortcuts" not in text),
+                                    f"{name}: {artifact}", timeout=15)
                         capture(term, root, name + "-" + artifact)
 
                     show("?", "Keyboard Shortcuts", "help")
