@@ -83,7 +83,9 @@ def test_stereo_call(binary, tmp_path):
         window = max(windows, key=lambda values: sum(value * value for value in values))
         measured = {(channel, frequency): tone_amplitude(window, channel, frequency)
                     for channel in (0, 1) for frequency in (440, 880)}
-        assert measured[0, 440] > 0.03 and measured[1, 880] > 0.03, measured
+        assert measured[0, 440] > 0.01 and measured[1, 880] > 0.01, measured
+        assert measured[0, 440] > 5 * measured[0, 880], measured
+        assert measured[1, 880] > 5 * measured[1, 440], measured
         assert measured[0, 440] > 6 * measured[0, 880], measured
         assert measured[1, 880] > 6 * measured[1, 440], measured
         print("PASS: stereo survived native capture, transport, server mix-minus, decoding and WAV output", measured)

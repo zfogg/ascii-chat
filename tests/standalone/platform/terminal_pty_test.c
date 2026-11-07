@@ -24,6 +24,14 @@
     if (!(condition))                                                                                                  \
       return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                               \
   } while (0)
+
+static bool wait_for_screen(ui_screen_t screen) {
+  uint64_t deadline = ui_input_deadline(5);
+  while (ui_controller_current_screen() != screen && !ui_input_expired(deadline))
+    platform_sleep_ms(1);
+  return ui_controller_current_screen() == screen;
+}
+
 static asciichat_error_t probe(const char *mode) {
   if (strcmp(mode, "modal-lifecycle") == 0) {
     REQUIRE(keyboard_init() == ASCIICHAT_OK);
@@ -45,7 +53,7 @@ static asciichat_error_t probe(const char *mode) {
     CLEAR_ERRNO();
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
     keyboard_help_toggle_terminal(1);
-    REQUIRE(ui_controller_current_screen() == UI_SCREEN_HELP);
+    REQUIRE(wait_for_screen(UI_SCREEN_HELP));
     keyboard_help_toggle_terminal(1);
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
     REQUIRE(platform_write_all(1, "MODAL-READY", 11) == 11);
