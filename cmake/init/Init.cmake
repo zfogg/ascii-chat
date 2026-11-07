@@ -197,6 +197,13 @@ endif()
 # =============================================================================
 # vcpkg Toolchain Setup
 # =============================================================================
+# A completed generation already has an installed dependency tree. Avoid taking
+# vcpkg's global install lock on every subsequent CMake regeneration.
+option(ASCIICHAT_VCPKG_REFRESH "Install or update vcpkg dependencies during configuration" OFF)
+if(EXISTS "${CMAKE_BINARY_DIR}/cmake_install.cmake" AND NOT ASCIICHAT_VCPKG_REFRESH)
+    set(VCPKG_MANIFEST_INSTALL OFF)
+endif()
+
 # Set up vcpkg toolchain if available (must be before project())
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})

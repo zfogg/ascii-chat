@@ -504,6 +504,13 @@ ascii-chat is built on operating system code and several libraries.
 ./scripts/install-deps.ps1
 ```
 
+The first CMake configuration installs vcpkg manifest dependencies. Later
+configurations reuse them without waiting for another vcpkg install. After
+changing the manifest or vcpkg configuration, refresh the dependencies with
+`cmake --preset default -B build -DASCIICHAT_VCPKG_REFRESH=ON`, then set the
+option back to `OFF` for subsequent configurations. If
+`VCPKG_MANIFEST_INSTALL` was explicitly disabled, set it to `ON` for the refresh.
+
 For detailed installation instructions and troubleshooting, see the **[Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)** documentation.
 
 ### What is musl and mimalloc?
