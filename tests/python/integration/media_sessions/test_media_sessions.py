@@ -23,10 +23,6 @@ import threading
 import time
 import unittest
 
-if os.name != "nt":
-    import fcntl
-    import pty
-    import termios
 
 import tomllib
 

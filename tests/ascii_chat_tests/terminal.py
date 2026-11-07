@@ -5,7 +5,6 @@ import queue
 import re
 import select
 import signal
-import shlex
 import subprocess
 import sys
 import threading

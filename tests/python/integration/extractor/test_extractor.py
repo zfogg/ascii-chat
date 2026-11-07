@@ -16,7 +16,6 @@ import tempfile
 import threading
 import unittest
 import urllib.parse
-import wave
 
 
 
@@ -176,7 +175,7 @@ class MediaExtractor(unittest.TestCase):
     @unittest.skipUnless(os.name == "nt", "Windows pipe inheritance")
     def test_extractor_drains_output_after_parent_exits(self):
         env = dict(self.env, FAKE_YTDLP_MODE="delayed")
-        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+        result = subprocess.run([self.audio_probe, self.base + "/watch", self.base + "/video.ppm"],
                                 env=env, cwd=self.root, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
@@ -199,12 +198,12 @@ class MediaExtractor(unittest.TestCase):
 
     def test_unterminated_cookie_is_rejected(self):
         env = dict(self.env, FAKE_YTDLP_MODE="combined", FAKE_YTDLP_COOKIE='session="unterminated')
-        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-error"],
+        result = subprocess.run([self.audio_probe, self.base + "/watch", "--expect-error"],
                                 env=env, cwd=self.root, capture_output=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
     def test_unsupported_proxy_does_not_open_media(self):
-        cmd = [BINARY, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
+        cmd = [self.binary, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
                "--splash-screen=false", "--audio=false", "--yt-dlp-options=--proxy socks5://127.0.0.1:1080"]
         result = subprocess.run(cmd, env=self.env, cwd=self.root, capture_output=True, timeout=45)
         self.assertNotEqual(result.returncode, 0)
@@ -219,7 +218,7 @@ class MediaExtractor(unittest.TestCase):
 
     def test_http_proxy_is_retained_when_extractor_is_unavailable(self):
         self.env.update(no_proxy="", FAKE_YTDLP_VERSION_FAIL="1")
-        cmd = [BINARY, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
+        cmd = [self.binary, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
                "--splash-screen=false", "--audio=false", f"--yt-dlp-options=--proxy {self.base}"]
         result = subprocess.run(cmd, env=self.env, cwd=self.root, capture_output=True, timeout=45)
         self.assertNotEqual(result.returncode, 0)
@@ -227,7 +226,7 @@ class MediaExtractor(unittest.TestCase):
 
     def test_http_proxy_rejects_non_http_extracted_stream(self):
         self.env.update(FAKE_YTDLP_VIDEO="rtmp://127.0.0.1/live/test", FAKE_YTDLP_COOKIE="")
-        cmd = [BINARY, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
+        cmd = [self.binary, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
                "--splash-screen=false", "--audio=false", f"--yt-dlp-options=--proxy {self.base}"]
         result = subprocess.run(cmd, env=self.env, cwd=self.root, capture_output=True, timeout=45)
         self.assertNotEqual(result.returncode, 0)
@@ -243,7 +242,7 @@ class MediaExtractor(unittest.TestCase):
     def test_cancel_terminates_stalled_extractor(self):
         """Cancellation terminates and reaps an unresponsive extractor."""
         env = dict(self.env, FAKE_YTDLP_MODE="hang")
-        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-cancel"],
+        result = subprocess.run([self.audio_probe, self.base + "/watch", "--expect-cancel"],
                                 env=env, cwd=self.root, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
@@ -254,7 +253,7 @@ class MediaExtractor(unittest.TestCase):
         extractor_pid = self.root / "extractor.pid"
         env = dict(self.env, FAKE_YTDLP_MODE="interactive", FAKE_YTDLP_EXPECT_TERMINAL="1",
                    FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid))
-        with TerminalProcess([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+        with TerminalProcess([self.audio_probe, self.base + "/watch", self.base + "/video.ppm"],
                              environment=env, cwd=self.root, tostop=True, child_group_file=extractor_pid) as terminal:
             terminal.reply_when_prompted(b"fixture prompt:", b"yes\n")
             code, stdout, stderr = terminal.wait()
@@ -264,7 +263,7 @@ class MediaExtractor(unittest.TestCase):
     @unittest.skipUnless(os.name == "nt", "Windows console")
     def test_interactive_extractor_prompt_is_visible_on_windows(self):
         env = dict(self.env, FAKE_YTDLP_MODE="interactive", FAKE_YTDLP_EXPECT_TERMINAL="1")
-        terminal = Terminal([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+        terminal = Terminal([self.audio_probe, self.base + "/watch", self.base + "/video.ppm"],
                             rows=24, cols=100, environment=env)
         try:
             terminal.expect(lambda text: "fixture prompt:" in text, "Extractor prompt was not visible", timeout=20)
@@ -282,7 +281,7 @@ class MediaExtractor(unittest.TestCase):
         extractor_pid = self.root / "extractor.pid"
         env = dict(self.env, FAKE_YTDLP_MODE="interactive-hang", FAKE_YTDLP_EXPECT_TERMINAL="1",
                    FAKE_YTDLP_CHILD_PID=str(pid_file), FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid))
-        with TerminalProcess([AUDIO_PROBE, self.base + "/watch", "--expect-cancel"],
+        with TerminalProcess([self.audio_probe, self.base + "/watch", "--expect-cancel"],
                              environment=env, cwd=self.root, child_group_file=extractor_pid) as terminal:
             terminal.reply_when_prompted(b"fixture prompt:", b"yes\n")
             code, stdout, stderr = terminal.wait()
@@ -304,7 +303,7 @@ class MediaExtractor(unittest.TestCase):
         extractor_pid = self.root / "extractor.pid"
         env = dict(self.env, FAKE_YTDLP_MODE="interactive-stop", FAKE_YTDLP_EXPECT_TERMINAL="1",
                    FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid))
-        with TerminalProcess([AUDIO_PROBE, self.base + "/watch", "--expect-error"],
+        with TerminalProcess([self.audio_probe, self.base + "/watch", "--expect-error"],
                              environment=env, cwd=self.root, child_group_file=extractor_pid) as terminal:
             code, stdout, stderr = terminal.wait(timeout=10)
             self.assertEqual(code, 0, (stdout, stderr[-4000:]))
@@ -318,7 +317,7 @@ class MediaExtractor(unittest.TestCase):
         env = dict(self.env, FAKE_YTDLP_MODE="interactive", FAKE_YTDLP_EXPECT_TERMINAL="1",
                    FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid), FAKE_YTDLP_QUERY_ATTEMPTED=str(marker),
                    TERM_BACKGROUND="")
-        terminal = Terminal([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+        terminal = Terminal([self.audio_probe, self.base + "/watch", self.base + "/video.ppm"],
                             rows=24, cols=100, terminal_replies=True, environment=env)
         try:
             terminal.expect(lambda text: "fixture prompt:" in text, "Extractor prompt was not visible", timeout=20)
@@ -338,13 +337,13 @@ class MediaExtractor(unittest.TestCase):
     def test_capture_initialization_honors_configured_cancellation(self):
         """A caller's exit callback interrupts initial media extraction."""
         env = dict(self.env, FAKE_YTDLP_MODE="hang")
-        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-capture-cancel"],
+        result = subprocess.run([self.audio_probe, self.base + "/watch", "--expect-capture-cancel"],
                                 env=env, cwd=self.root, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
     def test_extractor_api_links_from_cpp(self):
         """The public extractor declaration links to the C implementation from C++."""
-        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-cpp-linkage"],
+        result = subprocess.run([self.audio_probe, self.base + "/watch", "--expect-cpp-linkage"],
                                 env=self.env, cwd=self.root, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
