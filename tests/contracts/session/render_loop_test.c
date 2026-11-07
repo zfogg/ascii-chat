@@ -21,6 +21,8 @@ static FILE *output;
 static int saved_stdout = -1;
 static unsigned captures, sleeps, limit;
 static bool fail_capture, gap_first, exit_immediately;
+static char output_preview[129];
+static long output_size;
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
@@ -86,6 +88,14 @@ static asciichat_error_t run(void) {
 }
 static size_t count_pixels(void) {
   fflush(output);
+  cr_assert_eq(fseek(output, 0, SEEK_END), 0);
+  output_size = ftell(output);
+  rewind(output);
+  unsigned char preview[32];
+  size_t preview_len = fread(preview, 1, sizeof(preview), output);
+  for (size_t i = 0; i < preview_len; ++i)
+    snprintf(output_preview + i * 3, sizeof(output_preview) - i * 3, "%02x ", preview[i]);
+  output_preview[preview_len * 3] = '\0';
   rewind(output);
   size_t count = 0;
   int ch, previous = 0;
@@ -109,7 +119,8 @@ Test(render_loop_contract, event_callbacks_deliver_frames_and_temporary_gaps_do_
   cr_assert_eq(run(), ASCIICHAT_OK);
   cr_assert_eq(captures, 3);
   cr_assert_eq(sleeps, 3);
-  cr_assert_eq(count_pixels(), 2 * 40 * 12, "pixel count: %zu", count_pixels());
+  cr_assert_eq(count_pixels(), 2 * 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(),
+               output_size, output_preview);
   cr_assert_null(session_display_get_global_context());
 }
 Test(render_loop_contract, capture_failure_propagates_and_unregisters_display) {
@@ -155,7 +166,8 @@ Test(render_loop_contract, immediate_snapshot_renders_one_frame_and_starts_its_t
   cr_assert_eq(sleeps, 1);
   cr_assert(g_snapshot_first_frame_rendered);
   cr_assert_gt(g_snapshot_first_frame_rendered_ns, 0);
-  cr_assert_eq(count_pixels(), 40 * 12, "pixel count: %zu", count_pixels());
+  cr_assert_eq(count_pixels(), 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size,
+               output_preview);
   cr_assert_null(session_display_get_global_context());
 }
 
@@ -170,7 +182,7 @@ Test(render_loop_contract, event_mode_delivers_keys_without_requiring_a_native_t
   cr_assert_eq(session_render_loop(NULL, display, done, capture, pace, on_key, &captures), ASCIICHAT_OK);
   cr_assert_eq(keyboard_events, 3);
   cr_assert_eq(captures, 3);
-  cr_assert_eq(count_pixels(), 3 * 40 * 12);
+  cr_assert_eq(count_pixels(), 3 * 40 * 12, "output bytes: %ld, prefix: %s", output_size, output_preview);
   cr_assert_null(session_display_get_global_context());
 }
 Test(render_loop_contract, mixed_capture_modes_and_unpaired_sleep_are_rejected_before_capture) {
