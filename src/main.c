@@ -664,12 +664,16 @@ int main(int argc, char *argv[]) {
       continue; // Value is part of this arg, no need to skip next
     }
 
-    // Options that take required arguments
-    if (strcmp(arg, "--log-file") == 0 || strcmp(arg, "-L") == 0 || strcmp(arg, "--log-level") == 0 ||
-        strcmp(arg, "--config") == 0 || strcmp(arg, "--color-scheme") == 0 || strcmp(arg, "--log-template") == 0) {
-      if (i + 1 < argc) {
-        i++; // Skip the argument value
-      }
+    const registry_entry_t *descriptor =
+        arg[1] == '-' ? registry_find_entry_by_name(opt_name)
+                      : (opt_name[0] && !opt_name[1] ? registry_find_entry_by_short(opt_name[0]) : NULL);
+    if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
+      bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
+      for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
+        if (strcmp(argv[i + 1], mode->name) == 0)
+          next_is_mode = true;
+      if (!descriptor->optional_arg || (argv[i + 1][0] != '-' && !next_is_mode))
+        ++i;
     }
   }
 
