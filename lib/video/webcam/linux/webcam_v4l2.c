@@ -59,6 +59,7 @@ struct webcam_context_t {
   int fd;
   int width;
   int height;
+  double fps;
   uint32_t pixelformat; // Actual pixel format from driver (RGB24, YUYV, NV12, I420, MJPEG, UYVY)
   webcam_buffer_t *buffers;
   int buffer_count;
@@ -487,26 +488,19 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     return SET_ERRNO(ERROR_WEBCAM, "Failed to start V4L2 streaming for device %s", device_path);
   }
 
-  // Request target FPS via VIDIOC_S_PARM AFTER streaming starts
-  // Some devices require streaming to be active before frame rate control works
+  // Apply an explicit rate, then query the rate selected by the driver.
   uint32_t target_fps = (uint32_t)GET_OPTION(fps);
-  if (target_fps == 0)
-    target_fps = 60; // Default to 60 if not set
-
   struct v4l2_streamparm parm = {0};
   parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  parm.parm.capture.timeperframe.numerator = 1;
-  parm.parm.capture.timeperframe.denominator = target_fps;
-
-  if (ioctl(context->fd, VIDIOC_S_PARM, &parm) == 0) {
-    // Get back what the driver actually set
-    if (ioctl(context->fd, VIDIOC_G_PARM, &parm) == 0) {
-      int actual_fps = parm.parm.capture.timeperframe.denominator /
-                       (parm.parm.capture.timeperframe.numerator ? parm.parm.capture.timeperframe.numerator : 1);
-      log_info("V4L2 frame rate set: requested %u FPS, got %d FPS", target_fps, actual_fps);
-    }
-  } else {
-    log_debug("V4L2 device does not support VIDIOC_S_PARM (frame rate control)");
+  if (target_fps > 0) {
+    parm.parm.capture.timeperframe.numerator = 1;
+    parm.parm.capture.timeperframe.denominator = target_fps;
+    if (ioctl(context->fd, VIDIOC_S_PARM, &parm) != 0)
+      log_debug("V4L2 device does not support frame rate control");
+  }
+  if (ioctl(context->fd, VIDIOC_G_PARM, &parm) == 0 && parm.parm.capture.timeperframe.numerator) {
+    context->fps = (double)parm.parm.capture.timeperframe.denominator / parm.parm.capture.timeperframe.numerator;
+    log_info("V4L2 negotiated capture rate: %.3f FPS", context->fps);
   }
 
   // Initialize async lifecycle for camera thread
@@ -833,6 +827,8 @@ image_t *webcam_read_async(webcam_context_t *ctx) {
   // No new frame - return the last cached frame (smooth playback without gaps)
   return ctx->async_cached_frame;
 }
+
+double webcam_get_fps(webcam_context_t *ctx) { return ctx ? ctx->fps : 0.0; }
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)

@@ -468,7 +468,7 @@ typedef enum {
 #define OPT_STRETCH_DEFAULT false
 
 /** @brief Default FPS (frames per second) */
-#define OPT_FPS_DEFAULT 60
+#define OPT_FPS_DEFAULT 0
 
 /** @brief Default snapshot mode flag (false = continuous) */
 #define OPT_SNAPSHOT_MODE_DEFAULT false
@@ -1068,7 +1068,7 @@ typedef struct options_state {
   bool show_capabilities;                                        ///< Show terminal capabilities and exit
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
   int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
-  int fps;                 ///< Target framerate (1-144, default: 60)
+  int fps;                 ///< Target framerate (0 = auto, 1-144)
   bool fps_explicitly_set; ///< True if FPS was explicitly configured by the user
   bool face_follow;        ///< Automatically frame and follow the selected face
   bool face_follow_debug;  ///< Developer diagnostic face outline

@@ -326,14 +326,13 @@ static void client_like_configure_file_capture(client_like_state_t *state) {
 }
 
 static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
-  if (GET_OPTION(fps_explicitly_set)) {
+  if (GET_OPTION(fps) > 0) {
     uint32_t fps = (uint32_t)GET_OPTION(fps);
     log_info("Using user-specified FPS: %u", fps);
     return fps;
   }
 
-  // Files, URLs, and buffered stdin expose a fixed source FPS. Webcam and test
-  // sources have no fixed FPS metadata, so they use the fallback below.
+  // Probe media files here; webcam FPS is available after the camera opens.
   if (state->capture_config.type == MEDIA_SOURCE_FILE || state->capture_config.type == MEDIA_SOURCE_STDIN) {
     log_debug("Probing media source FPS");
     asciichat_errno_scope_t probe_scope = errno_scope_begin();

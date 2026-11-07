@@ -386,6 +386,16 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
 
+  if (config->type == MEDIA_SOURCE_WEBCAM && GET_OPTION(fps) == 0) {
+    double source_fps = media_source_get_video_fps(ctx->source);
+    if (source_fps >= 0.5 && source_fps <= 1000.0) {
+      ctx->target_fps = (uint32_t)(source_fps + 0.5);
+      log_info("Using negotiated webcam capture rate: %.3f FPS", source_fps);
+    } else {
+      log_warn("Webcam capture rate unavailable; using %u FPS", ctx->target_fps);
+    }
+  }
+
   if (config->type == MEDIA_SOURCE_FILE) {
     ctx->saved_matrix = GET_OPTION(matrix_rain);
     ctx->saved_waveform = GET_OPTION(waveform);
@@ -782,7 +792,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   ctx->next_frame_deadline_ns = 0;
   ctx->frame_count = 0;
   ctx->start_time_ns = time_get_ns();
-  if (!GET_OPTION(fps_explicitly_set)) {
+  if (GET_OPTION(fps) == 0) {
     double fps = media_source_get_video_fps(replacement);
     if (fps >= 0.5 && fps <= UINT32_MAX - 0.5) {
       ctx->target_fps = (uint32_t)(fps + 0.5);

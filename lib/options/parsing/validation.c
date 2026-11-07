@@ -390,11 +390,11 @@ int validate_opt_compression_level(const char *value_str, char *error_msg, size_
 }
 
 /**
- * Validate FPS value (1-144)
+ * Validate FPS value (0 for auto, otherwise 1-144)
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_size) {
-  int result = validate_int_range(value_str, 1, 144, "FPS", error_msg, error_msg_size);
+  int result = validate_int_range(value_str, 0, 144, "FPS", error_msg, error_msg_size);
   return (result == INT_MIN) ? -1 : result;
 }
 
