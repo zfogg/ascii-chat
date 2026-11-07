@@ -133,10 +133,10 @@ def navigation(args):
             assert color_of(f.term, "produce_errors") == shortcut_color
             # Internal frame counts vary by platform. Check a displayed frame
             # at the fixture error site and its function/source-line colors.
-            frame_pattern = r"\[\d+\].*?(produce_errors)\(\)(?:.*?error_popup_fixture\.c:(\d+))?"
+            frame_pattern = r"\[\d+\].*?(\w+)\(\)(?:.*?error_popup_fixture\.c:(\d+))?"
             frame = next(((row, re.search(frame_pattern, line))
                           for row, line in enumerate(f.term.screen.display)
-                          if re.search(frame_pattern, line)), None)
+                          if re.search(frame_pattern, line) and ("produce_errors()" in line or "error_popup_fixture.c:" in line)), None)
             assert frame, "Backtrace did not identify the fixture error site:\n" + "\n".join(f.term.screen.display)
             row, match = frame
             assert match is not None

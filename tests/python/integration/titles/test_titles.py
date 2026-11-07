@@ -11,6 +11,7 @@ import os
 import re
 import socket
 import subprocess
+import time
 
 from ascii_chat_tests.terminal import TitleTerminal
 from ascii_chat_tests.process import free_port
@@ -70,6 +71,7 @@ def test_terminal_titles(binary, tmp_path):
                 term.write('?')
                 term.pump(0.2)
                 term.expect_title(expected + ' • help' if unicode else '')
+                term.pump(1)
                 term.write('?')
                 term.pump(0.2)
                 term.expect_title(expected)
