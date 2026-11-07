@@ -655,7 +655,15 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     g_title_saved = true;
   }
   char title[TUI_CONTROLLER_TITLE_BUFFER_SIZE] = {0};
-  if (terminal_should_use_utf8()) {
+  asciichat_error_context_t latest = {0};
+  size_t errors = errno_title_snapshot(&latest);
+  if (errors) {
+    char count[32] = "";
+    if (errors > 1)
+      snprintf(count, sizeof(count), "(%zu) ", errors);
+    snprintf(title, sizeof(title), "‼️ ascii-chat %s %sERROR code=%d - %s", terminal_should_use_utf8() ? "•" : "*",
+             count, (int)latest.code, asciichat_error_string(latest.code));
+  } else if (terminal_should_use_utf8()) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);
     if (phase != UI_TITLE_IDLE || activity != UI_TITLE_ACTIVITY_IDLE || screen >= UI_SCREEN_LOGS ||

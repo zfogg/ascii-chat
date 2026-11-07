@@ -126,7 +126,8 @@ def main():
         server.expect(lambda _: 'Server accepting connections' in ''.join(server.raw), 'Server did not become ready', timeout=25)
         server.expect_title('🔠 ascii-chat • server')
         client = terminal('client-large-viewport', [binary, '--no-check-update', 'client', f'127.0.0.1:{port}',
-                          '--test-pattern', '--audio=false', '--splash-screen=false', '--no-encrypt', '--no-auth', '--utf8', 'true'])
+                          '--test-pattern', '--audio=false', '--splash-screen=false', '--no-encrypt', '--no-auth',
+                          '--video-codec', 'raw', '--utf8', 'true'])
         client.expect(lambda text: any(len(row.rstrip()) > 80 and row.isascii() and re.search(r'(.)\1{7}', row)
                                       for row in text.splitlines()),
                       'Splash-disabled client did not render a frame wider than 80 columns', timeout=25)
@@ -152,13 +153,12 @@ def main():
                 pending.write('?')
                 title_pattern(pending, status + re.escape(' • log viewer • help'), 'Connecting status lost under help')
                 peer.close()
-                retry = '[⠋⠙⠴⠦]' + re.escape('  ascii-chat • client • reconnecting...')
-                title_pattern(pending, retry + re.escape(' • log viewer • help'), 'Reconnecting status lost under help', timeout=20)
+                pending.expect_title('‼️ ascii-chat • ERROR code=40 - Network error', timeout=20)
             finally:
                 peer.close()
                 pending.interrupt()
                 pending.close()
-        print('PASS connecting/reconnecting spinner remains before log viewer and help breadcrumbs')
+        print('PASS connecting spinner under views and network error priority during reconnect')
 
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', 0))

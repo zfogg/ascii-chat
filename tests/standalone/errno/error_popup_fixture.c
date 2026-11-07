@@ -42,7 +42,12 @@ static void *produce_errors(void *opaque) {
   while (!atomic_load(&state->stop)) {
     int request = atomic_load(&state->request);
     if (request != atomic_load(&state->completed)) {
-      if (request == 1)
+      if (request == 12) {
+        CLEAR_ERRNO_ALL();
+      } else if (request == 13) {
+        SET_ERRNO(ERROR_AUDIO, "CLEARED_NOTIFICATION");
+        CLEAR_ERRNO_ALL();
+      } else if (request == 1)
         SET_ERRNO(ERROR_MEDIA_OPEN, "FIRST_ERROR: Cannot open /videos/example.mp4");
       else if (request == 2)
         SET_ERRNO(ERROR_NETWORK_TIMEOUT, "SECOND_ERROR: Timed out connecting to localhost:27224");
@@ -122,14 +127,18 @@ static int journal_contract(void) {
   errno_notifications_dismiss(cutoff);
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_CRYPTO_AUTH);
+  asciichat_error_context_t title_latest;
+  CHECK(errno_title_snapshot(&title_latest) == 1 && title_latest.code == ERROR_CRYPTO_AUTH);
   CHECK(HAS_ERRNO_CODE(ERROR_NETWORK_TIMEOUT));
   errno_notifications_dismiss(entries[0].error_id);
   CHECK(!errno_notifications_pending());
   CHECK(HAS_ERRNO_CODE(ERROR_CRYPTO_AUTH));
+  CHECK(errno_title_snapshot(&title_latest) == 0);
   SET_ERRNO(ERROR_AUDIO, "Cleared by caller");
   CLEAR_ERRNO();
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_AUDIO);
+  CHECK(errno_title_snapshot(&title_latest) == 1 && title_latest.code == ERROR_AUDIO);
   errno_notifications_enable(false);
   CHECK(!errno_notifications_pending());
   SET_ERRNO(ERROR_GENERAL, "After TUI");
@@ -190,6 +199,11 @@ int main(int argc, char **argv) {
     return 4;
   if (stats_runtime_start("mirror", 0) != ASCIICHAT_OK)
     return 5;
+  if (SAFE_GETENV("ASCII_CHAT_TEST_TITLES")) {
+    if (ui_controller_title_start("mirror", STDOUT_FILENO) != ASCIICHAT_OK)
+      return 6;
+    ui_controller_title_ready();
+  }
   background(UI_SCREEN_MEDIA);
   unsigned last_sequence = 0;
   bool stop = false;
@@ -205,6 +219,14 @@ int main(int argc, char **argv) {
         last_sequence = sequence;
         if (!strcmp(action, "error"))
           atomic_store(&state.request, number);
+        else if (!strcmp(action, "mainerror"))
+          SET_ERRNO(ERROR_CONFIG, "MAIN_THREAD_ERROR");
+        else if (!strcmp(action, "mainclear"))
+          CLEAR_ERRNO_ALL();
+        else if (!strcmp(action, "loading"))
+          ui_controller_title_activity(UI_TITLE_LOADING_URL);
+        else if (!strcmp(action, "idle"))
+          ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
         else if (!strcmp(action, "status")) {
           ui_controller_remove(UI_SCREEN_MEDIA);
           ui_controller_remove(UI_SCREEN_SPLASH);

@@ -165,10 +165,17 @@ def navigation(args):
         assert shortcut_color not in ("default", color_of(f.term, "? Help", 2))
         if args.diagnostics:
             assert color_of(f.term, "produce_errors") == shortcut_color
-            assert color_of(f.term, "backtrace_capture") == shortcut_color
+            # Internal frame counts vary by platform. Check a displayed frame
+            # at the fixture error site and its function/source-line colors.
+            frame = next(((row, re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line))
+                          for row, line in enumerate(f.term.screen.display)
+                          if re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line)), None)
+            assert frame, "Backtrace did not identify the fixture error site"
+            row, match = frame
+            assert f.term.screen.buffer[row][match.start(1)].fg == shortcut_color
+            assert f.term.screen.buffer[row][match.start(2)].fg == thread_color
             if sys.platform == "win32":
                 assert color_of(f.term, "[asciichat.dll]", 1) == "default"
-            assert color_of(f.term, "backtrace.c:", len("backtrace.c:")) == thread_color
             assert name_color != shortcut_color
         f.absent("Left / Right")
         f.absent("Esc / q / Enter")
