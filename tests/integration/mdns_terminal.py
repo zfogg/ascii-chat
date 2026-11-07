@@ -299,6 +299,8 @@ def main():
             # until all fourteen advertisements are present before navigating.
             deadline = time.monotonic() + 20
             while True:
+                text = boundary.expect(lambda text: re.search(r"> \[\d+\]", text),
+                                       "LAN picker lost its selection while refreshing")
                 current = int(re.search(r"> \[(\d+)\]", text).group(1))
                 if current > 1:
                     boundary.write("k" * (current - 1))
@@ -311,7 +313,6 @@ def main():
                 if time.monotonic() >= deadline:
                     raise AssertionError("Timed out waiting for all fourteen LAN servers")
                 boundary.pump(.25)
-                text = "\n".join(boundary.screen.display)
             boundary.write("j")
             boundary.expect(lambda text: "> [1]" in text, "Could not return to first LAN server")
             boundary.write("j" * 13)
