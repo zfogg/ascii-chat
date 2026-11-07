@@ -2355,6 +2355,11 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-panic-report AND NOT EMSCRIPTEN)
     asciichat_add_pytest(python-panic integration/panic --panic-report-probe=$<TARGET_FILE:ascii-panic-report>)
     set_tests_properties(python-panic PROPERTIES LABELS "integration;python;tooling")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=address"
+       AND EXISTS "${ASAN_RUNTIME_LIBRARY}")
+        set_property(TEST python-panic APPEND PROPERTY ENVIRONMENT
+            "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}" "PYTHONMALLOC=malloc")
+    endif()
     foreach(_test_build_target IN ITEMS tests tests-criterion-build tests-lib-build)
         if(TARGET ${_test_build_target})
             add_dependencies(${_test_build_target} ascii-panic-report)
