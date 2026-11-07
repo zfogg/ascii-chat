@@ -1465,7 +1465,9 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     // Use handler registry to apply environment variables and defaults
     if (desc->type >= 0 && desc->type < (int)(NUM_OPTION_TYPES)) {
       if (g_builder_handlers[desc->type].apply_env) {
-        g_builder_handlers[desc->type].apply_env(field, env_value, desc);
+        asciichat_error_t result = g_builder_handlers[desc->type].apply_env(field, env_value, desc);
+        if (result != ASCIICHAT_OK)
+          return result;
       }
     } else if (desc->type == OPTION_TYPE_CALLBACK && desc->parse_fn && desc->default_value) {
       // Special handling for callbacks with parse_fn

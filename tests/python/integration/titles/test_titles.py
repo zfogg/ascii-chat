@@ -7,9 +7,7 @@ Run: uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/pyt
 """
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import os
-from pathlib import Path
 import re
 import socket
 import subprocess
@@ -41,6 +39,16 @@ def test_terminal_titles(binary, tmp_path):
         term.expect(lambda _: bool(term.titles and re.fullmatch(pattern, term.titles[-1][1])),
                     description, timeout=timeout)
 
+    def accept_while_pumping(listener, term, timeout=30):
+        deadline = time.monotonic() + timeout
+        listener.settimeout(.2)
+        while time.monotonic() < deadline:
+            try:
+                return listener.accept()
+            except socket.timeout:
+                term.pump(.1)
+        raise AssertionError(f"Client did not connect: {''.join(term.raw)[-3000:]}")
+
     try:
         for unicode in (True, False):
             base = '🔠 ascii-chat • mirror' if unicode else ''
@@ -63,6 +71,7 @@ def test_terminal_titles(binary, tmp_path):
                 term.write('?')
                 term.pump(0.2)
                 term.expect_title(expected + ' • help' if unicode else '')
+                term.pump(1)
                 term.write('?')
                 term.pump(0.2)
                 term.expect_title(expected)
@@ -122,7 +131,7 @@ def test_terminal_titles(binary, tmp_path):
             listener.settimeout(15)
             pending = terminal('client-connection-status', cli_command(binary, 'client',
                                f'127.0.0.1:{listener.getsockname()[1]}', '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'))
-            peer, _ = listener.accept()
+            peer, _ = accept_while_pumping(listener, pending)
             status = '[⠋⠙⠴⠦]' + re.escape('  ascii-chat • client • connecting...')
             try:
                 title_pattern(pending, status, 'No connecting spinner')
@@ -145,7 +154,7 @@ def test_terminal_titles(binary, tmp_path):
             discovery = terminal('discovery-status', cli_command(binary, '--discovery-service', '127.0.0.1',
                                  '--discovery-service-port', str(listener.getsockname()[1]),
                                  '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'))
-            peer, _ = listener.accept()
+            peer, _ = accept_while_pumping(listener, discovery)
             try:
                 connecting = '[⠋⠙⠴⠦]' + re.escape('  ascii-chat • discovery • connecting...')
                 title_pattern(discovery, connecting, 'Discovery did not animate while connecting')

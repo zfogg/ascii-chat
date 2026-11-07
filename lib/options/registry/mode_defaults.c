@@ -193,7 +193,7 @@ void apply_mode_specific_defaults(options_t *opts) {
 
   // Apply port default based on mode
   const int *mode_port = (const int *)get_default_port(opts->detected_mode);
-  if (mode_port) {
+  if (mode_port && opts->detected_mode != MODE_MCP_SERVER) {
     // Only update if still at a generic default (27224 or 27225)
     if (opts->port == OPT_PORT_INT_DEFAULT || opts->port == OPT_ACDS_PORT_INT_DEFAULT) {
       opts->port = *mode_port;

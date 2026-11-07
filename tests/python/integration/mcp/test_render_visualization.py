@@ -10,26 +10,20 @@ CLI commands, decoded frames and generated exports for visual inspection.
 """
 
 from pathlib import Path
-import sys
 
 from ascii_chat_tests.media import write_pcm_wav
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import base64
 import functools
 import http.server
 import json
 import math
-import queue
 import re
 import struct
 import subprocess
-import tempfile
 import threading
-import time
-import wave
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.mcp]
@@ -92,7 +86,7 @@ def test_render_visualization(binary, tmp_path):
     write_pcm_wav(tone, b"".join(struct.pack("<h", int(18000 * math.sin(2 * math.pi * 440 * i / 48000)))
                                  for i in range(48000 * 3)), sample_rate=48000)
     class QuietHandler(http.server.SimpleHTTPRequestHandler):
-        def log_message(self, *unused):
+        def log_message(self, format, *args):
             pass
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(QuietHandler, directory=str(artifacts)))
     threading.Thread(target=server.serve_forever, daemon=True).start()

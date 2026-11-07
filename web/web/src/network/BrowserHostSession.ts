@@ -363,7 +363,8 @@ export class BrowserHostSession implements ClientSession {
   private receive(id: number, type: number, payload: Uint8Array) {
     // A reporting participant does not terminate the host or other participants.
     if (!this.closed && type === PacketType.ERROR_MESSAGE) {
-      presentRemoteError(payload, `Client ${id} error`);
+      if (id !== this.localId)
+        presentRemoteError(payload, `Client ${id} error`);
       return;
     }
     if (!this.closed) this.runtime?.receive(id, type, payload);

@@ -40,7 +40,9 @@ class WindowsExportsTest(unittest.TestCase):
             manifest.write_text("\n".join(map(str, objects * 250 + [directory / "cmake_pch.h.pch"])))
             self.assertGreater(manifest.stat().st_size, 32767)
             output = directory / "exports.def"
-            command = ["cmake", "-DNM_TOOL=" + shutil.which("llvm-nm"),
+            nm = shutil.which("llvm-nm")
+            assert nm is not None
+            command = ["cmake", "-DNM_TOOL=" + nm,
                        "-DOBJECT_LIST_FILE=" + str(manifest), "-DOUTPUT_FILE=" + str(output),
                        "-DLIBRARY_NAME=fixture", "-P", str(ROOT / "cmake/tools/GenerateDefFile.cmake")]
             result = subprocess.run(command, capture_output=True, text=True)

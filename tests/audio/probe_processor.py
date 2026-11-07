@@ -31,7 +31,8 @@ def test(path, fixtures=None):
     t = np.arange(48000, dtype="float32") / 48000
     signal = (0.12 * np.sin(2 * np.pi * 700 * t) + 0.02 * np.sin(2 * np.pi * 50 * t)).astype("float32")
     signal[:12000] = 0
-    pointer = lambda a: a.ctypes.data_as(c.POINTER(c.c_float))
+    def pointer(a):
+        return a.ctypes.data_as(c.POINTER(c.c_float))
 
     def process(blocks, inplace=False):
         handle = c.c_void_p()

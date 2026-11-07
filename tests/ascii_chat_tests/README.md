@@ -9,7 +9,7 @@ For CMake, point `Python3_EXECUTABLE` at that project’s `.venv` interpreter.
 
 - `ascii_chat_tests.process`: `Service`, `running`, `interrupt`, `free_port`,
   `server_options`, and `check_client` for loopback processes and CLI fixtures.
-- `ascii_chat_tests.terminal`: `Terminal`, `CaptureScreen`, `CaptureStream`, and
+- `ascii_chat_tests.terminal`: `Terminal`, `TerminalProcess`, `CaptureScreen`, `CaptureStream`,
   `TitleTerminal`, `capture`, and `load_terminal_font` for PTY/ConPTY interaction and screen capture.
 - `ascii_chat_tests.tmux`: `Pane` and `tmux` for tmux-driven scenarios.
 

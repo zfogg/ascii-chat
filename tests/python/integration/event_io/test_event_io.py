@@ -3,16 +3,10 @@ import pytest
 
 from ascii_chat_tests.cli import run_cli
 from ascii_chat_tests.cli import clean_environment
-from ascii_chat_tests.cli import cli_command
 
-from pathlib import Path
 import base64
 import socket
 import struct
-import os
-import subprocess
-import sys
-import tempfile
 
 from ascii_chat_tests.protocol import crc32c
 from ascii_chat_tests.process import check_client, free_port, running, server_options

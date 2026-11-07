@@ -7,7 +7,6 @@ Requires ffmpeg/ffprobe; no camera, microphone, or speakers are required.
 
 from ascii_chat_tests.cli import start_cli
 from ascii_chat_tests.media import lavfi_fixture
-from ascii_chat_tests.cli import cli_command
 
 
 import functools
@@ -21,7 +20,6 @@ import socket
 import struct
 import subprocess
 import sys
-import tempfile
 import time
 import threading
 

@@ -4,6 +4,9 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE 16
+#define ASCII_TEMPORAL_MOTION_LIMIT 8
+#define ASCII_TEMPORAL_MAX_INTERVAL_NS 250000000ULL
+#define ASCII_TEMPORAL_COLOR_TIME_NS 50000000ULL
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
@@ -17,6 +20,79 @@
 #include <ascii-chat/video/ascii/simd/cells.h>
 
 static _Thread_local outbuf_t *g_output_target;
+static _Thread_local ascii_stabilizer_t *g_stabilizer_target;
+
+ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state) {
+  ascii_stabilizer_t *previous = g_stabilizer_target;
+  g_stabilizer_target = state;
+  return previous;
+}
+
+void ascii_stabilizer_reset(ascii_stabilizer_t *state) {
+  if (!state)
+    return;
+  SAFE_FREE(state->cells);
+  memset(state, 0, sizeof(*state));
+}
+
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
+                                           uint64_t configuration) {
+  if (!state || !width || !height || width > SIZE_MAX / height ||
+      width * height > SIZE_MAX / sizeof(ascii_temporal_cell_t))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stabilization viewport");
+  if (state->cells && state->width == width && state->height == height && state->configuration == configuration)
+    return ASCIICHAT_OK;
+  ascii_temporal_cell_t *cells = SAFE_CALLOC(width * height, sizeof(*cells), ascii_temporal_cell_t *);
+  if (!cells)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate stabilization history");
+  SAFE_FREE(state->cells);
+  state->cells = cells;
+  state->width = width;
+  state->height = height;
+  state->configuration = configuration;
+  state->last_timestamp_ns = 0;
+  state->elapsed_ns = UINT64_MAX;
+  return ASCIICHAT_OK;
+}
+
+static uint32_t temporal_blend_color(uint32_t previous, uint32_t current, unsigned weight) {
+  uint32_t result = 0;
+  for (unsigned shift = 0; shift <= 16; shift += 8) {
+    unsigned old_channel = (previous >> shift) & 255;
+    unsigned new_channel = (current >> shift) & 255;
+    result |= (uint32_t)((old_channel * (256 - weight) + new_channel * weight + 128) / 256) << shift;
+  }
+  return result;
+}
+
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
+                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+                                 uint32_t *stabilized_color) {
+  unsigned motion = 0;
+  if (cell->valid) {
+    for (size_t i = 0; i < 16; ++i)
+      motion += (unsigned)abs((int)samples[i] - (int)cell->samples[i]);
+    motion /= 16;
+  }
+  uint32_t result = candidate;
+  uint32_t output_color = color;
+  if (cell->valid && motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+    uint64_t margin = candidate_error / 8 + 128;
+    if (previous_error != UINT64_MAX &&
+        (previous_error <= candidate_error || previous_error - candidate_error <= margin))
+      result = cell->glyph;
+    // Weight depends on elapsed time, avoiding a different response at each FPS.
+    unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
+    output_color = temporal_blend_color(cell->color, color, weight);
+  }
+  memcpy(cell->samples, samples, sizeof(cell->samples));
+  cell->glyph = result;
+  cell->color = output_color;
+  cell->valid = true;
+  if (stabilized_color)
+    *stabilized_color = output_color;
+  return result;
+}
 
 outbuf_t *ascii_render_set_output_target(outbuf_t *target) {
   outbuf_t *previous = g_output_target;
@@ -123,6 +199,7 @@ char *ascii_render(const image_t *image, const char *palette, ascii_color_t mode
   rgb_error_t *errors = NULL;
   if (mode == ASCII_COLOR_16 && dither)
     errors = SAFE_CALLOC((size_t)image->w * (size_t)image->h, sizeof(rgb_error_t), rgb_error_t *);
+  frame.dithered = errors != NULL;
   for (int y = 0; y < image->h; ++y) {
     const uint8_t *source = (const uint8_t *)(image->pixels + (size_t)y * frame.width);
     ops->luminance(source, frame.luma, frame.width);
@@ -215,6 +292,9 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     return ERROR_INVALID_PARAM;
   prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
+  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)image->w &&
+      g_stabilizer_target->height == (size_t)image->h)
+    frame->stabilizer = g_stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
@@ -228,6 +308,54 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
 }
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
                           const simd_cells_t *ops) {
+  if (frame->stabilizer && !frame->temporal_preselected) {
+    const uint64_t elapsed = frame->stabilizer->elapsed_ns;
+    const bool recent = elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS;
+    const unsigned weight = recent ? (unsigned)(elapsed * 256 / (elapsed + ASCII_TEMPORAL_COLOR_TIME_NS)) : 256;
+    for (size_t x = 0; x < frame->width; ++x) {
+      ascii_temporal_cell_t *cell = &frame->stabilizer->cells[frame->row * frame->width + x];
+      uint8_t luma = frame->luma[x];
+      uint32_t glyph = frame->glyph[x];
+      uint32_t color = frame->packed[x];
+      if (cell->valid && recent && abs((int)luma - (int)cell->samples[0]) <= ASCII_TEMPORAL_MOTION_LIMIT) {
+        if (cell->glyph != glyph) {
+          // Only nearby brightness bins can win the hysteresis test. Searching
+          // outward avoids scanning the entire 64-entry palette for every cell.
+          unsigned bin = luma >> 2;
+          int best_delta = (int)luma - ((int)bin * 4 + 2);
+          uint64_t best_error = (uint64_t)(best_delta * best_delta);
+          uint64_t margin = best_error / 8 + 128;
+          for (unsigned distance = 1; distance < 64; ++distance) {
+            bool found = false;
+            for (int direction = -1; direction <= 1; direction += 2) {
+              int index = (int)bin + direction * (int)distance;
+              if (index < 0 || index >= 64 || frame->table[index] != cell->glyph)
+                continue;
+              int delta = (int)luma - (index * 4 + 2);
+              uint64_t error = (uint64_t)(delta * delta);
+              if (error <= best_error || error - best_error <= margin)
+                glyph = cell->glyph;
+              found = true;
+            }
+            // Bins farther than this cannot fall within the error margin.
+            int nearest_delta = (int)distance * 4 - 3;
+            if (found || (uint64_t)(nearest_delta * nearest_delta) > best_error + margin)
+              break;
+          }
+        }
+        color = temporal_blend_color(cell->color, color, weight);
+      }
+      cell->samples[0] = luma;
+      cell->glyph = frame->glyph[x] = glyph;
+      cell->color = frame->packed[x] = color;
+      cell->valid = true;
+      if (background)
+        frame->luma[x] =
+            (uint8_t)((77u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255) + 128u) >> 8);
+    }
+    if (!frame->dithered && (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
+      ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
+  }
   for (size_t x = 0; x < frame->width; ++x) {
     frame->fg[x] = frame->bg[x] = UINT32_MAX;
     if (mode == ASCII_COLOR_NONE)
@@ -244,6 +372,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
   }
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
+  ++frame->row;
 }
 char *ascii_frame_finish(ascii_frame_t *frame) {
   if (frame->scratch != frame->inline_scratch)
@@ -273,6 +402,10 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block stride or size");
   prepare_output(frame, capacity, target);
   frame->width = (size_t)width;
+  frame->source_height = (size_t)height;
+  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)width &&
+      g_stabilizer_target->height == (size_t)height)
+    frame->stabilizer = g_stabilizer_target;
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;
   frame->index = frame->packed + width;
@@ -285,14 +418,42 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
   return ASCIICHAT_OK;
 }
 void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops) {
+  if (frame->stabilizer) {
+    size_t top_row = frame->row * 2;
+    bool has_bottom = top_row + 1 < frame->source_height;
+    for (size_t x = 0; x < frame->width; ++x) {
+      uint32_t *pixels[] = {&frame->packed[x], &frame->index[x]};
+      for (size_t half = 0; half < (has_bottom ? 2u : 1u); ++half) {
+        uint32_t color = *pixels[half];
+        uint8_t luma = (uint8_t)((76u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255)) >> 8);
+        uint8_t samples[16];
+        memset(samples, luma, sizeof(samples));
+        ascii_temporal_cell_t *cell = &frame->stabilizer->cells[(top_row + half) * frame->width + x];
+        ascii_stabilizer_choose(cell, samples, 0, 0, UINT64_MAX, color, frame->stabilizer->elapsed_ns, pixels[half]);
+      }
+      if (!has_bottom)
+        frame->index[x] = frame->packed[x];
+    }
+    if (mode == ASCII_COLOR_TRUE) {
+      memcpy(frame->fg, frame->packed, frame->width * sizeof(uint32_t));
+      memcpy(frame->bg, frame->index, frame->width * sizeof(uint32_t));
+    } else if (mode != ASCII_COLOR_NONE) {
+      ops->quantize(frame->packed, frame->fg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
+      ops->quantize(frame->index, frame->bg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
+    }
+    ops->halfblock(frame->packed, frame->index, frame->glyph, frame->fg, frame->bg, frame->width, (unsigned)mode,
+                   frame->table);
+  }
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
+  ++frame->row;
 }
 
 /* Compare a small spatial image patch against rasterized printable glyphs.
  * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
  * Glyph coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
 #include "glyph_masks.h"
+
 bool ascii_glyph_palette_supported(const char *palette) {
   if (!palette || !*palette)
     return false;
@@ -309,6 +470,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     return NULL;
   }
   bool allowed[95] = {false};
+  int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
+      ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
   if (palette) {
     if (!ascii_glyph_palette_supported(palette)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette must contain printable ASCII characters");
@@ -320,51 +483,77 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     for (int i = 0; i < 95; ++i)
       allowed[i] = true;
   }
+  // Glyph masks do not change between cells. Prepare their tone and centered
+  // shape once per frame instead of recomputing them for every candidate.
+  int glyph_tone[95];
+  int glyph_energy[95];
+  int16_t centered_masks[95][16];
+  for (int g = 0; g < 95; ++g) {
+    int sum = 0;
+    for (int i = 0; i < 16; ++i)
+      sum += glyph_masks[g][i];
+    int mean = sum / 16;
+    glyph_tone[g] = sum * 255 / GLYPH_MASK_MAX_SUM;
+    glyph_energy[g] = 0;
+    for (int i = 0; i < 16; ++i) {
+      int centered = (int)glyph_masks[g][i] - mean;
+      centered_masks[g][i] = (int16_t)centered;
+      glyph_energy[g] += centered * centered;
+    }
+  }
   image_t cells = *image;
   cells.w /= 8;
   cells.h /= 8;
   ascii_frame_t frame;
   if (ascii_frame_init(&frame, &cells, " .") != ASCIICHAT_OK)
     return NULL;
+  frame.temporal_preselected = true;
   for (int y = 0; y < cells.h; ++y) {
     for (int x = 0; x < cells.w; ++x) {
-      int samples[16][3] = {{0}};
       int luminance[16];
-      for (int sy = 0; sy < 8; ++sy) {
-        for (int sx = 0; sx < 8; ++sx) {
-          rgb_pixel_t p = image->pixels[(size_t)(y * 8 + sy) * (size_t)image->w + (size_t)(x * 8 + sx)];
-          int i = (sy / 2) * 4 + sx / 2;
-          samples[i][0] += p.r;
-          samples[i][1] += p.g;
-          samples[i][2] += p.b;
+      int sample_mean = 0;
+      for (int sy = 0; sy < 4; ++sy) {
+        const rgb_pixel_t *top = image->pixels + (size_t)(y * 8 + sy * 2) * (size_t)image->w + (size_t)(x * 8);
+        const rgb_pixel_t *bottom = top + image->w;
+        for (int sx = 0; sx < 4; ++sx) {
+          const rgb_pixel_t a = top[sx * 2], b = top[sx * 2 + 1];
+          const rgb_pixel_t c = bottom[sx * 2], d = bottom[sx * 2 + 1];
+          int i = sy * 4 + sx;
+          int red = (a.r + b.r + c.r + d.r) / 4;
+          int green = (a.g + b.g + c.g + d.g) / 4;
+          int blue = (a.b + b.b + c.b + d.b) / 4;
+          luminance[i] = (77 * red + 150 * green + 29 * blue) >> 8;
+          sample_mean += luminance[i];
         }
       }
-      for (int i = 0; i < 16; ++i) {
-        for (int c = 0; c < 3; ++c)
-          samples[i][c] /= 4;
-        luminance[i] = (77 * samples[i][0] + 150 * samples[i][1] + 29 * samples[i][2]) >> 8;
-      }
-      int sample_mean = 0;
-      for (int i = 0; i < 16; ++i)
-        sample_mean += luminance[i];
       sample_mean /= 16;
+      int16_t centered_samples[16];
+      int sample_energy = 0;
+      for (int i = 0; i < 16; ++i) {
+        int centered = luminance[i] - sample_mean;
+        centered_samples[i] = (int16_t)centered;
+        sample_energy += centered * centered;
+      }
       int best = -1;
       int64_t best_error = INT64_MAX;
+      uint64_t previous_error = UINT64_MAX;
+      ascii_temporal_cell_t *previous = frame.stabilizer ? &frame.stabilizer->cells[(size_t)y * frame.width + x] : NULL;
       for (int g = 0; g < 95; ++g) {
         if (!allowed[g])
           continue;
-        int mask_sum = 0;
-        for (int i = 0; i < 16; ++i)
-          mask_sum += glyph_masks[g][i];
-        int mask_mean = mask_sum / 16;
-        // Normalize the darkest and lightest available glyphs across the tone range.
-        // The second term compares local deviations, so edges influence the choice.
-        int tone_error = sample_mean - mask_sum * 255 / GLYPH_MASK_MAX_SUM;
-        int64_t error = (int64_t)16 * tone_error * tone_error;
-        for (int i = 0; i < 16; ++i) {
-          int delta = (luminance[i] - sample_mean) - ((int)glyph_masks[g][i] - mask_mean);
-          error += (int64_t)delta * delta;
-        }
+        // Normalize glyph density and compare local deviations around each mean.
+        int tone_error = sample_mean - glyph_tone[g];
+        int tone_cost = 16 * tone_error * tone_error;
+        bool is_previous = previous && previous->valid && previous->glyph == (uint32_t)(g + 32);
+        // Shape error is nonnegative, so this candidate cannot improve the
+        // current best if its tone term already exceeds the whole score.
+        // The previous glyph still needs a score for temporal hysteresis.
+        if (!is_previous && tone_cost > best_error)
+          continue;
+        int dot = shape_correlation(centered_samples, centered_masks[g]);
+        int64_t error = tone_cost + sample_energy + glyph_energy[g] - 2 * dot;
+        if (is_previous)
+          previous_error = (uint64_t)error;
         if (error < best_error) {
           best_error = error;
           best = g;
@@ -374,7 +563,15 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       // Solving for glyph coverage here can clip all three color channels to white.
       rgb_pixel_t color = image->pixels[(size_t)(y * 8) * (size_t)image->w + (size_t)(x * 8)];
       uint32_t rgb = ((uint32_t)color.r << 16) | ((uint32_t)color.g << 8) | color.b;
-      frame.glyph[x] = (uint32_t)(best + 32);
+      uint32_t selected = (uint32_t)(best + 32);
+      if (previous) {
+        uint8_t patch[16];
+        for (int i = 0; i < 16; ++i)
+          patch[i] = (uint8_t)luminance[i];
+        selected = ascii_stabilizer_choose(previous, patch, selected, (uint64_t)best_error, previous_error, rgb,
+                                           frame.stabilizer->elapsed_ns, &rgb);
+      }
+      frame.glyph[x] = selected;
       frame.packed[x] = rgb;
       frame.luma[x] = (uint8_t)((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
     }

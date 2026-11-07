@@ -6,6 +6,11 @@
 #include <ascii-chat/debug/backtrace.h>
 #include <stddef.h>
 
+bool backtrace_filter_error_internal(const char *frame) {
+  (void)frame;
+  return false;
+}
+
 void backtrace_capture(backtrace_t *bt) {
   if (bt) {
     bt->count = 0;

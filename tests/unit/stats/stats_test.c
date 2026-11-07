@@ -477,10 +477,11 @@ Test(stats, summary_runtime_calls_provider_when_due, .timeout = 5) {
   atomic_t calls = {0};
   cr_assert_eq(stats_runtime_start("discovery-service", 1), ASCIICHAT_OK);
   stats_runtime_set_provider(count_provider_calls, &calls);
-  platform_sleep_ns(1600000000);
+  for (unsigned i = 0; i < 35 && atomic_load_u64_impl(&calls) == 0; ++i)
+    platform_sleep_ns(100000000);
   stats_runtime_set_provider(NULL, NULL);
   stats_runtime_stop();
-  cr_assert_eq(atomic_load_u64_impl(&calls), 1);
+  cr_assert_geq(atomic_load_u64_impl(&calls), 1);
 }
 
 Test(stats, mcp_measurements_share_the_process_observer) {

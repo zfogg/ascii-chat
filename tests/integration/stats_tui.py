@@ -13,13 +13,13 @@ import json
 from pathlib import Path
 import re
 import shlex
-import socket
 import subprocess
+import sys
 import time
 import signal
 import os
 
-SOCKET = "stats273-acceptance"
+SOCKET: str = "stats273-acceptance"
 
 
 def tmux(*args):
@@ -343,7 +343,7 @@ def main():
             return m[1] if m else None
 
         session_name = wait(session, 40)
-        participant = launch("participant", [session_name, *common])
+        launch("participant", [session_name, *common])
         wait(
             lambda: (root / "participant.log").exists()
             and "DataChannel opened"
@@ -468,9 +468,13 @@ def main():
         print(json.dumps(results, indent=2))
     except Exception:
         for pane in panes:
-            pane.capture(pane.name + "-before-cleanup")
+            try:
+                pane.capture(pane.name + "-before-cleanup")
+            except (OSError, subprocess.CalledProcessError) as capture_error:
+                print(f"Failed to capture {pane.name}: {capture_error}", file=sys.stderr)
         raise
     finally:
+        original_error = sys.exc_info()[1]
         failures = []
         for pane in reversed(panes):
             try:
@@ -479,14 +483,17 @@ def main():
                 failures.append(str(e))
                 try:
                     pane.capture(pane.name + "-failure")
-                except subprocess.CalledProcessError as capture_error:
+                except (OSError, subprocess.CalledProcessError) as capture_error:
                     failures.append(str(capture_error))
         try:
             tmux("kill-server")
         except subprocess.CalledProcessError:
             pass
         if failures:
-            raise AssertionError("Cleanup failures: " + repr(failures))
+            if original_error is not None:
+                print("Cleanup failures: " + repr(failures), file=sys.stderr)
+            else:
+                raise AssertionError("Cleanup failures: " + repr(failures))
 
 
 if __name__ == "__main__":

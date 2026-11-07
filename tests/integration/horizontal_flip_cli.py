@@ -1,8 +1,6 @@
 """Verify horizontal orientation through real native snapshot rendering."""
 
-import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 
@@ -14,7 +12,6 @@ def main():
     import _environment  # noqa: F401
     from ascii_chat_tests.cli import run_cli
     from ascii_chat_tests.cli import clean_environment
-    from ascii_chat_tests.cli import cli_command
     binary = Path(sys.argv[1]).resolve()
     with tempfile.TemporaryDirectory(prefix="ascii-horizontal-flip-") as temporary:
         directory = Path(temporary)

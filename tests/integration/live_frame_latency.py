@@ -56,7 +56,7 @@ def main():
                     started = time.monotonic()
                     term.write("o")
                     while True:
-                        text = term.read_text() if os.name == "nt" else term.pump(0.005)
+                        text = getattr(term, "read_text")() if os.name == "nt" else term.pump(0.005)
                         if "Open media:" in text:
                             break
                         assert time.monotonic() - started < 5, "Open media prompt stalled"
@@ -80,7 +80,8 @@ def main():
         camera_age = [float(v) for v in re.findall(r"CAMERA_FRAME: backlog_ms=([0-9.]+) read_ms", content)]
         driver_age = [float(v) for v in re.findall(r"device_age_ms=([0-9.]+)", content)]
         assert len(acquired) >= 3 and len(presented) >= 3, "Insufficient completed-frame timing samples"
-        p95 = lambda values: sorted(values)[int((len(values) - 1) * 0.95)]
+        def p95(values):
+            return sorted(values)[int((len(values) - 1) * 0.95)]
         assert p95(acquired) + p95(presented) < 500, ("Live frame backlog exceeds 500ms", acquired, presented)
         if args.webcam and os.name == "nt":
             assert len(camera_age) >= 3, "Missing camera-device timestamp evidence"

@@ -37,7 +37,11 @@ asciichat_error_t platform_enable_keepawake(void) {
   sd_bus_error error = SD_BUS_ERROR_NULL;
 
   if (sd_bus_default_system(&bus) < 0) {
-    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to connect to system bus");
+    // A system bus is commonly absent in containers and remote sessions. Return
+    // the failure to the optional keep-awake caller without publishing a
+    // transient error that the terminal title can observe before it is handled.
+    log_debug("System bus unavailable; keepawake is disabled");
+    return ERROR_PLATFORM_INIT;
   }
 
   if (!bus) {

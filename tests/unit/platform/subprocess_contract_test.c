@@ -8,23 +8,41 @@ static void setup(void) {
 }
 TestSuite(subprocess_contract, .init = setup, .fini = log_destroy, .timeout = 15);
 #ifndef _WIN32
+#include "../../../lib/platform/posix/terminal.h"
+#include <signal.h>
+#include <unistd.h>
+
+Test(subprocess_contract, closed_gate_with_ignored_sigpipe_does_not_block) {
+  int gate[2];
+  cr_assert_eq(pipe(gate), 0);
+  close(gate[0]);
+  struct sigaction ignore = {.sa_handler = SIG_IGN}, previous;
+  sigemptyset(&ignore.sa_mask);
+  cr_assert_eq(sigaction(SIGPIPE, &ignore, &previous), 0);
+  bool released = terminal_release_subprocess_gate(gate[1]);
+  cr_assert_eq(sigaction(SIGPIPE, &previous, NULL), 0);
+  close(gate[1]);
+  cr_assert_not(released);
+}
+
 Test(subprocess_contract, capture_preserves_empty_arguments_and_shell_metacharacters) {
   const char *args[] = {"printf", "<%s>|<%s>|<%s>|<%s>", "", "two words", "$(echo changed);*", "single'quote", NULL};
   char output[256];
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output)), 0);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL), 0);
   cr_assert_str_eq(output, "<>|<two words>|<$(echo changed);*>|<single'quote>");
 }
 Test(subprocess_contract, executable_is_independent_of_display_name_and_exit_status_is_preserved) {
   const char *args[] = {"display-name", "%s", "literal", NULL};
   char output[32];
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output)), 0);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL), 0);
   cr_assert_str_eq(output, "literal");
   const char *exit_args[] = {"sh", "-c", "exit 23", NULL};
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", exit_args, output, sizeof(output)), 23);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", exit_args, output, sizeof(output), NULL, NULL), 23);
   cr_assert_str_eq(output, "");
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", exit_args, NULL, 0), 23);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", exit_args, NULL, 0, NULL, NULL), 23);
   const char *missing[] = {"missing", NULL};
-  cr_assert_eq(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output)),
+  cr_assert_eq(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output),
+                                           NULL, NULL),
                127);
   cr_assert_str_eq(output, "");
 }
@@ -34,28 +52,28 @@ Test(subprocess_contract, captured_output_has_exact_capacity_and_overflow_is_dra
     char output[5];
     char guard;
   } buffer = {.guard = 'G'};
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 5), 0);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 5, NULL, NULL), 0);
   cr_assert_str_eq(buffer.output, "abcd");
   cr_assert_eq(buffer.guard, 'G');
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 4), -1);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 4, NULL, NULL), -1);
   cr_assert_str_eq(buffer.output, "abc");
   cr_assert_eq(buffer.guard, 'G');
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 1), -1);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 1, NULL, NULL), -1);
   cr_assert_str_eq(buffer.output, "");
   cr_assert_eq(buffer.guard, 'G');
   const char *large[] = {"sh", "-c", "head -c 131072 /dev/zero", NULL};
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", large, buffer.output, sizeof(buffer.output)), -1);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", large, buffer.output, sizeof(buffer.output), NULL, NULL), -1);
   cr_assert_eq(buffer.output[4], '\0');
   cr_assert_eq(buffer.guard, 'G');
 }
 Test(subprocess_contract, invalid_parameters_and_signal_termination_report_failure) {
   const char *args[] = {"sh", "-c", "kill -TERM $$", NULL};
   char output[16];
-  cr_assert_eq(platform_execute_subprocess(NULL, args, output, sizeof(output)), -1);
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", NULL, output, sizeof(output)), -1);
+  cr_assert_eq(platform_execute_subprocess(NULL, args, output, sizeof(output), NULL, NULL), -1);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", NULL, output, sizeof(output), NULL, NULL), -1);
   const char *empty[] = {NULL};
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", empty, output, sizeof(output)), -1);
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", args, output, sizeof(output)), -1);
-  cr_assert_eq(platform_execute_subprocess("/bin/sh", args, NULL, 0), -1);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", empty, output, sizeof(output), NULL, NULL), -1);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", args, output, sizeof(output), NULL, NULL), -1);
+  cr_assert_eq(platform_execute_subprocess("/bin/sh", args, NULL, 0, NULL, NULL), -1);
 }
 #endif

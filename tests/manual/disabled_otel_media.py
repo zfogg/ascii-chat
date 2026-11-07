@@ -13,7 +13,6 @@ import struct
 import subprocess
 import sys
 import tempfile
-import wave
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'deps/ascii-chat-deps/gotel/c-gotel/testing/python'))
 if __name__ == "__main__":
     print("SKIP: collector-export checks are prohibited in test mode; use in-process transport tests")

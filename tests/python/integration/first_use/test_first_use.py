@@ -1,16 +1,13 @@
+from ascii_chat_tests.patterns import require_match
 import pytest
 """Exercise first-use notices and per-mode persistence in a real terminal."""
 from ascii_chat_tests.cli import cli_command
 
-import argparse
-import importlib.util
 import os
 import re
 import socket
 import subprocess
-import tempfile
 import time
-from pathlib import Path
 from ascii_chat_tests.process import free_port
 
 
@@ -97,7 +94,7 @@ def test_first_use_terminal(binary, tmp_path, terminal_factory):
     try:
         first = small.expect(lambda text: re.search(r"1/(\d+) Enter next", text) is not None,
                              "Small terminal did not show a paged notice", timeout=30)
-        pages = int(re.search(r"1/(\d+) Enter next", first).group(1))
+        pages = int(require_match(r"1/(\d+) Enter next", first).group(1))
         assert pages > 1
         time.sleep(11)
         text = small.pump(.5)

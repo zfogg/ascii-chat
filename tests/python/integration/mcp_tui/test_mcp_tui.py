@@ -1,10 +1,7 @@
 import pytest
 """Exercise MCP HTTP status, log viewer and diagnostics through PTY/ConPTY."""
-import argparse
 import json
 import re
-from pathlib import Path
-import socket
 import urllib.request
 from ascii_chat_tests.terminal import capture
 from ascii_chat_tests.process import free_port

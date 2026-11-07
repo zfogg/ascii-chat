@@ -16,7 +16,6 @@ import argparse
 import itertools
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 
 from ascii_chat_tests.terminal import CaptureScreen, Terminal
@@ -149,8 +148,10 @@ def main():
             stop_watch()
             title_before_resize = next(i for i, line in enumerate(term.screen.display) if "Keyboard Shortcuts" in line)
             term.resize(57, 182)
+            assert term is not None
             # A popup may retain its media backdrop's geometry when the terminal grows.
-            term.expect(lambda text: any("Keyboard Shortcuts" in term.screen.display[row]
+            screen = term.screen
+            term.expect(lambda text: any("Keyboard Shortcuts" in screen.display[row]
                                         for row in (title_before_resize, title_before_resize + 1)),
                         "Help disappeared after growing the terminal")
             expect_screen("?")

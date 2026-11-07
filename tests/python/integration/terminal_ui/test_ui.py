@@ -12,24 +12,21 @@ from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
 
 
-import argparse
-import importlib.util
+
 import os
 from pathlib import Path
-import queue
 import shlex
 import shutil
 import socket
 import subprocess
 import tempfile
-import threading
 import time
 
 
-import pyte
 
 
-from ascii_chat_tests.terminal import CaptureScreen, CaptureStream, Terminal, load_terminal_font
+
+from ascii_chat_tests.terminal import CaptureScreen, CaptureStream, Terminal
 from ascii_chat_tests.process import free_port
 
 

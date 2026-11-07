@@ -3,15 +3,11 @@ import sys
 """Exercise encrypted two-client video/audio sessions using synthetic inputs."""
 from ascii_chat_tests.cli import start_cli
 from ascii_chat_tests.cli import clean_environment
-from ascii_chat_tests.cli import cli_command
 
-import argparse
-import os
 from pathlib import Path
 import re
 import signal
 import socket
-import subprocess
 import tempfile
 import time
 import unittest
@@ -36,6 +32,9 @@ class SyntheticAudioSessions(unittest.TestCase):
                 env.update(HOME=str(root), XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
                            ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
                 port = free_port()
+                websocket_port = free_port()
+                while websocket_port == port:
+                    websocket_port = free_port()
                 processes = []
                 streams = []
 
@@ -54,7 +53,7 @@ class SyntheticAudioSessions(unittest.TestCase):
 
                 try:
                     server = start("server", "server", "127.0.0.1", "--port", str(port), "--websocket-port",
-                                   str(free_port()), "--status-screen=false", "--password", "synthetic-test-secret")
+                                   str(websocket_port), "--status-screen=false", "--password", "synthetic-test-secret")
                     deadline = time.monotonic() + 15
                     while True:
                         self.assertIsNone(server.poll(), diagnostics("server"))
@@ -69,7 +68,7 @@ class SyntheticAudioSessions(unittest.TestCase):
                         clients.append(start(f"client{number}", "client", "127.0.0.1", "--port", str(port),
                                              "--password", "synthetic-test-secret", "--test-pattern", "--test-audio",
                                              "--no-audio-playback", "--audio", "--video-codec", codec, "--fps", "20",
-                                             "--snapshot", "--snapshot-delay", "2", "--splash-screen=false",
+                                             "--snapshot", "--snapshot-delay", "5", "--splash-screen=false",
                                              "--width", "40", "--height", "12", "--color-mode", "none",
                                              "--palette", "custom", "--palette-chars", " .#"))
                     for number, client in enumerate(clients):

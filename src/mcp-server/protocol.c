@@ -19,9 +19,7 @@ yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message) {
   ASCII_OTEL_SCOPE(MCP_PROTOCOL_ERROR);
   ASCII_OTEL_ATTR_INT("rpc.jsonrpc.error_code", code);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_error("MCP protocol request rejected");
-#endif
   yyjson_mut_doc *d = envelope(id);
   yyjson_mut_val *e = yyjson_mut_obj(d);
   yyjson_mut_obj_add_int(d, e, "code", code);
@@ -158,7 +156,7 @@ static void *run_job(void *arg) {
   return NULL;
 }
 void mcp_jobs_reap(mcp_server_t *s, bool all) {
-  for (int i = 0; i < MCP_MAX_JOBS; ++i) {
+  for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
     mcp_job_t *j = &s->jobs[i];
     if (!j->started || (!all && (!atomic_load_bool(&j->done) || (s->policy.hosted && j->connection))))
       continue;
@@ -175,7 +173,8 @@ static bool same_id(yyjson_val *a, yyjson_val *b) {
            !strcmp(yyjson_get_str(a), yyjson_get_str(b))) ||
           (yyjson_is_int(a) && yyjson_is_int(b) && yyjson_get_sint(a) == yyjson_get_sint(b)));
 }
-yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, bool *pending) {
+yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, const char *session_id,
+                             bool *pending) {
   ASCII_OTEL_SCOPE(MCP_REQUEST);
   ASCII_OTEL_ATTR_STRING("rpc.system", "jsonrpc");
   ASCII_OTEL_ATTR_STRING("mcp.transport", s->policy.hosted ? "http" : "stdio");
@@ -203,8 +202,10 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       s->initialized = true;
     if (!strcmp(name, "notifications/cancelled")) {
       yyjson_val *cancel = mcp_get(params, "requestId");
-      for (int i = 0; i < MCP_MAX_JOBS; ++i)
-        if (s->jobs[i].started && (!s->policy.hosted || s->jobs[i].connection == connection) &&
+      for (unsigned i = 0; i < s->policy.max_jobs; ++i)
+        if (s->jobs[i].started &&
+            (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
+             ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
             same_id(cancel, mcp_get(yyjson_doc_get_root(s->jobs[i].message), "id")))
           atomic_store_bool(&s->jobs[i].cancelled, true);
     }
@@ -270,8 +271,12 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       j = &s->jobs[i];
       break;
     }
-  if (!j)
-    return mcp_error(id, -32000, "Server busy; at most four renders may run concurrently");
+  if (!j) {
+    char message[128];
+    safe_snprintf(message, sizeof(message), "Server busy; at most %u render%s may run concurrently", s->policy.max_jobs,
+                  s->policy.max_jobs == 1 ? "" : "s");
+    return mcp_error(id, -32000, message);
+  }
   yyjson_val *arguments = mcp_get(params, "arguments");
   yyjson_doc *empty = NULL;
   if (!arguments) {
@@ -296,11 +301,11 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   j->message = yyjson_read(copy, len, 0);
   free(copy);
   j->tool = (mcp_tool_t)kind;
-#ifdef ASCIICHAT_WITH_OTEL
   j->telemetry_parent = ascii_otel_context();
-#endif
   j->server = s;
   j->connection = connection;
+  if (session_id)
+    SAFE_STRNCPY(j->session_id, session_id, sizeof(j->session_id));
   j->started = true;
   if (acthread_create(&j->thread, "mcp-render", run_job, j)) {
     mcp_request_destroy(&j->request);

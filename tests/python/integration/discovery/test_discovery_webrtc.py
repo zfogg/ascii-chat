@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 """Discovery hosting and encrypted WebRTC mixed video on loopback."""
 import re
 import time
@@ -31,7 +32,7 @@ def exercise(binary, directory, audio=False, debug_ice=False, ipv6=False):
         host = Service(binary, directory, 'host', '--test-pattern', common + ['--port',str(hp)], env, log_level=level)
         services.append(host)
         host.wait_for('Session created:', timeout=25)
-        name = re.search(r'Session created: ([a-z]+-[a-z]+-[a-z]+)', host.text())[1]
+        name = require_match(r'Session created: ([a-z]+-[a-z]+-[a-z]+)', host.text())[1]
         print('Session',name, flush=True)
         client = Service(binary, directory, 'client', name, common + ['--test-pattern'], env, log_level=level)
         services.append(client)

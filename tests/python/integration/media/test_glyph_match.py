@@ -1,5 +1,4 @@
 """Native rendering regression checks."""
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -12,7 +11,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.media]
 
 def test_glyph_match(binary, test_environment):
     binary = str(binary)
-    with tempfile.TemporaryDirectory() as temp:
+    # Explicit config files must be within an allowed directory; use the
+    # isolated HOME from the test environment on every platform.
+    with tempfile.TemporaryDirectory(dir=test_environment["HOME"]) as temp:
         image = Path(temp) / "pattern.ppm"
         pixels = bytearray()
         for y in range(120):

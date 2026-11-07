@@ -9,7 +9,6 @@ from ascii_chat_tests.media import lavfi_fixture
 
 import argparse
 from pathlib import Path
-import subprocess
 
 
 def main():

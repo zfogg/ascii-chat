@@ -20,6 +20,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/thread.h> // For thread_id_t
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/audio/audio.h>
 
@@ -71,6 +72,7 @@ typedef struct client_info {
   void *video_sws_ctx;      // SwsContext* - Color space converter for YUV->RGB
 
   // Terminal capabilities (for rendering appropriate ASCII frames)
+  ascii_stabilizer_t render_stabilizer;
   acip_render_settings_t render_settings;
   terminal_capabilities_t terminal_caps;
   bool has_terminal_caps; // Whether we've received terminal capabilities from this client

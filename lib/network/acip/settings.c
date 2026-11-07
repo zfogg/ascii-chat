@@ -14,6 +14,7 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
   values->color_filter = state->caps.color_filter;
   values->render_mode = state->caps.render_mode;
   values->renderer = state->caps.text_renderer;
+  values->stabilize = state->caps.stabilize;
   values->palette_explicit = state->caps.palette_explicit;
   values->palette_type = state->caps.palette_type ? state->caps.palette_type : PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, state->caps.palette_custom, sizeof(values->palette_custom));
@@ -42,6 +43,7 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
   next.caps.color_filter = values->color_filter;
   next.caps.render_mode = values->render_mode;
   next.caps.text_renderer = values->renderer;
+  next.caps.stabilize = values->stabilize;
   next.caps.palette_explicit = values->palette_explicit;
   next.caps.wants_background = values->render_mode == RENDER_MODE_BACKGROUND;
   next.caps.palette_type = values->palette_type;

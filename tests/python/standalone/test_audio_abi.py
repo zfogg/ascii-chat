@@ -2,7 +2,6 @@ import pytest
 from types import SimpleNamespace
 """Compile ABI checks for every field mirrored by the audio ctypes bindings."""
 
-import argparse
 import ctypes as c
 from pathlib import Path
 import subprocess
@@ -36,7 +35,8 @@ def test_audio_ctypes_layouts(c_compiler, request):
             (f"sizeof({name})", c.sizeof(layout)),
             (f"_Alignof({name})", c.alignment(layout)),
         ]
-        for field, field_type in layout._fields_:
+        for field_info in layout._fields_:
+            field, field_type = field_info[:2]
             expressions += [
                 (f"offsetof({name}, {field})", getattr(layout, field).offset),
                 (f"sizeof((({name} *)0)->{field})", c.sizeof(field_type)),

@@ -77,15 +77,25 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
     crop_y = (source->h - crop_height) / 2;
   }
 
+  // Horizontal source coordinates are identical for every destination row.
+  int *source_columns = SAFE_MALLOC((size_t)dest->w * sizeof(*source_columns), int *);
+  for (int x = 0; x < dest->w; ++x)
+    source_columns[x] = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
+  int previous_source_y = -1;
   for (int y = 0; y < dest->h; y++) {
     int source_y = crop_y + (int)(((int64_t)y * crop_height) / dest->h);
-    const rgb_pixel_t *source_row = source->pixels + ((size_t)source_y * (size_t)source->w);
     rgb_pixel_t *dest_row = dest->pixels + ((size_t)y * (size_t)dest->w);
+    if (source_y == previous_source_y) {
+      memcpy(dest_row, dest_row - dest->w, (size_t)dest->w * sizeof(*dest_row));
+      continue;
+    }
+    previous_source_y = source_y;
+    const rgb_pixel_t *source_row = source->pixels + ((size_t)source_y * (size_t)source->w);
     for (int x = 0; x < dest->w; x++) {
-      int source_x = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
-      dest_row[x] = source_row[source_x];
+      dest_row[x] = source_row[source_columns[x]];
     }
   }
+  SAFE_FREE(source_columns);
 }
 
 // Fit the complete source into the physical viewport, leaving black bars.
@@ -267,7 +277,14 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
 char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
                                  const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output) {
+  return ascii_convert_with_buffers_stabilized(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
+                                               contain, workspace, output, NULL);
+}
 
+char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height,
+                                            const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                            const bool stretch, const char *palette_chars, const bool contain,
+                                            image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer) {
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -411,6 +428,44 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
   }
 
   // Use the capability-aware image printing function with client's palette
+  // History belongs to this stream and is scoped to the current thread's conversion.
+  ascii_stabilizer_t *active_stabilizer = NULL;
+  if (stabilizer) {
+    uint64_t configuration = 1469598103934665603ULL;
+    const unsigned values[] = {(unsigned)caps->text_renderer,
+                               (unsigned)caps->color_level,
+                               (unsigned)caps->render_mode,
+                               (unsigned)caps->color_filter,
+                               (unsigned)explicit_palette,
+                               (unsigned)use_aspect_ratio,
+                               (unsigned)stretch,
+                               (unsigned)contain,
+                               (unsigned)original->w,
+                               (unsigned)original->h};
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+      configuration ^= values[i];
+      // FNV multiplication intentionally wraps modulo 2^64.
+      (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
+    }
+    if (palette_chars) {
+      for (const unsigned char *p = (const unsigned char *)palette_chars; *p; ++p) {
+        configuration ^= *p;
+        (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
+      }
+    }
+    size_t history_height = (size_t)height * (caps->render_mode == RENDER_MODE_HALF_BLOCK ? 2u : 1u);
+    if (ascii_stabilizer_prepare(stabilizer, (size_t)width, history_height, configuration) == ASCIICHAT_OK) {
+      uint64_t now = time_get_ns();
+      stabilizer->elapsed_ns = stabilizer->fixed_step_ns
+                                   ? stabilizer->fixed_step_ns
+                                   : (stabilizer->last_timestamp_ns && now >= stabilizer->last_timestamp_ns
+                                          ? now - stabilizer->last_timestamp_ns
+                                          : UINT64_MAX);
+      stabilizer->last_timestamp_ns = now;
+      active_stabilizer = stabilizer;
+    }
+  }
+  ascii_stabilizer_t *previous_stabilizer = ascii_stabilizer_set_target(active_stabilizer);
   outbuf_t *previous_output = ascii_render_set_output_target(output);
   ascii_color_t glyph_color = caps->color_level == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE
                               : caps->color_level == TERM_COLOR_256     ? ASCII_COLOR_256
@@ -420,6 +475,7 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
                                                        explicit_palette ? palette_chars : NULL)
                             : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
+  ascii_stabilizer_set_target(previous_stabilizer);
 
   uint64_t prof_print_end_ns = time_get_ns();
 
@@ -455,19 +511,9 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
   uint64_t prof_pad_end_ns = time_get_ns();
 
   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
-  char alloc_str[TIME_DURATION_BUFFER_SIZE], resize_str[TIME_DURATION_BUFFER_SIZE],
-      print_str[TIME_DURATION_BUFFER_SIZE], pad_str[TIME_DURATION_BUFFER_SIZE], total_str[TIME_DURATION_BUFFER_SIZE];
-  time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
-  time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
-  time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));
-  time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
-  uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
-  time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
-  log_debug("ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu",
-            (double)alloc_time_us / 1000, (double)resize_time_us / 1000, (double)print_time_us / 1000,
-            (double)pad_time_ns / NS_PER_MS_INT, strlen(ascii_padded));
-  log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)", alloc_str, resize_str, print_str,
-          pad_str, total_str);
+  log_debug_every(US_PER_SEC_INT, "ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu",
+                  (double)alloc_time_us / 1000, (double)resize_time_us / 1000, (double)print_time_us / 1000,
+                  (double)pad_time_ns / NS_PER_MS_INT, ascii_len);
 
   if (!workspace)
     image_destroy(resized);

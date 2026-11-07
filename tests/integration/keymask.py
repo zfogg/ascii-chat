@@ -20,7 +20,6 @@ import ctypes as C
 import hashlib
 import os
 from pathlib import Path
-import socket
 import struct
 import subprocess
 import sys
@@ -40,7 +39,7 @@ def load(library, directory):
     # Keep the DLL search handle alive for the duration of the tests.
     handle = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
     native = C.CDLL(str(library))
-    native._directory_handle = handle
+    setattr(native, "_directory_handle", handle)
     native.asciichat_shared_init.argtypes = [C.c_char_p, C.c_bool, C.c_bool]
     assert native.asciichat_shared_init(str(directory / "keymask.log").encode(), True, True) == 0
     args = [b"keymask-test", b"--no-check-update", b"--log-file", str(directory / "keymask.log").encode(),

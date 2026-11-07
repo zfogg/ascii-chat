@@ -7,16 +7,10 @@ and debug-only startup fault injection. Reconnects reuse one client process.
 
 from ascii_chat_tests.cli import run_cli
 from ascii_chat_tests.cli import clean_environment
-from ascii_chat_tests.cli import cli_command
 
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import nullcontext
 import os
-from pathlib import Path
 import socket
-import subprocess
-import sys
-import tempfile
 import time
 
 from ascii_chat_tests.process import Service, check_client, free_port, interrupt, running, server_options

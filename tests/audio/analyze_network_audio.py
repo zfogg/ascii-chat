@@ -11,13 +11,13 @@ import argparse
 import json
 from pathlib import Path
 
-import matplotlib
+import matplotlib  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 import numpy as np
-from scipy.io import wavfile
-from scipy.signal import spectrogram
+from scipy.io import wavfile  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+from scipy.signal import spectrogram  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--input", required=True)
@@ -31,6 +31,19 @@ remote_rate, received = wavfile.read(
     source / "receiver" / "audio_playback_received.wav"
 )
 assert rate == remote_rate == 48000
+
+
+def normalized_audio(data):
+    if np.issubdtype(data.dtype, np.unsignedinteger):
+        midpoint = (np.iinfo(data.dtype).max + 1) / 2
+        return (data.astype(np.float64) - midpoint) / midpoint
+    if np.issubdtype(data.dtype, np.signedinteger):
+        return data.astype(np.float64) / -np.iinfo(data.dtype).min
+    return data
+
+
+capture = normalized_audio(capture)
+received = normalized_audio(received)
 for name, data in [
     ("network-microphone.wav", capture),
     ("network-received.wav", received),

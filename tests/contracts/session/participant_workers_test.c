@@ -129,6 +129,16 @@ static asciichat_error_t worker_receive_packet(acip_transport_t *transport, cons
     for (size_t i = 0; i < (size_t)expected_samples; ++i)
       energy += decoded[i] * decoded[i];
     cr_assert_gt(energy, 1.0);
+    if (participant->opus_encoder->channels == 1) {
+      // The fixture's channels have amplitudes 0.2 and 0.6, so their mono
+      // average is 0.4. Ignore Opus startup delay in the first half frame.
+      double tail_energy = 0;
+      for (size_t i = (size_t)expected_samples / 2; i < (size_t)expected_samples; ++i)
+        tail_energy += decoded[i] * decoded[i];
+      double rms = sqrt(tail_energy / ((size_t)expected_samples - (size_t)expected_samples / 2));
+      cr_assert_gt(rms, 0.20, "Mono output lost the louder input channel (RMS %f)", rms);
+      cr_assert_lt(rms, 0.37, "Mono output lost the quieter input channel (RMS %f)", rms);
+    }
     opus_codec_destroy(decoder);
     stop_worker();
   }

@@ -25,6 +25,8 @@ function(configure_mdns)
     include(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../utils/SourceDependency.cmake)
     asciichat_dependency_defaults()
     set(MDNS_BUILD_EXAMPLE OFF)
+    # Upstream's minimum CMake version predates the current deprecation policy.
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
     add_subdirectory("${DEP_DIR}" "${CMAKE_BINARY_DIR}/_deps/mdns" EXCLUDE_FROM_ALL)
 
     # Apply patch #0: Exclude main() function

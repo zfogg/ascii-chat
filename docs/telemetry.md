@@ -227,8 +227,9 @@ capacity must be a power of two. Use `--otel-enabled-telemetry=none` to override
 an inherited endpoint without sending anything.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT` is a fallback base URL. Standard otlp-c exporter
-headers and per-signal endpoint environment settings are also accepted. The
-base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
+headers and per-signal endpoint environment settings are also accepted. A base
+endpoint must be configured to enable export; per-signal endpoints alone do not
+start telemetry. The base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
 HTTPS uses the existing OpenSSL dependency, enables TLS 1.3 with TLS 1.2 as the
 minimum, and verifies certificates and DNS/IP identities. System roots are used
 by default, including native Windows/macOS anchors. `--otel-ca-file` (also
@@ -259,7 +260,8 @@ The exporter batches protobuf requests; it does not call the application's HTTP
 client, so export requests cannot recursively generate HTTP spans.
 
 Normal shutdown disables new producers, ends the CLI span, waits for retained
-scopes, joins the worker, and flushes within the configured deadline. An exit
+scopes, and flushes within the smaller of the configured timeout and 400 ms.
+Pending telemetry can be lost if the collector does not respond in that time. An exit
 that bypasses scope cleanup retains a still-borrowed host until process exit
 rather than freeing memory in use. Exporter diagnostics go only to local debug
 logs; the OTLP sink suppresses them to prevent recursion. Collector failure does
@@ -415,7 +417,7 @@ unhealthy; successful delivery produces a recovery message. These health message
 do not enter the export queue. Snapshot/rendering can suppress terminal logs;
 use `--log-file` to retain them. The socket integration checks abrupt disconnects,
 stalled HTTP headers, and stalled response bodies while synthetic frames continue
-rendering, including shutdown with the default five-second exporter timeout.
+rendering, including shutdown with the default exporter timeout.
 The worker also owns the final flush, keeping synchronous DNS resolution off the
 exit thread; the shutdown join deadline retains a stuck exporter until process exit.
 

@@ -7,7 +7,6 @@ verified UDP relay paces WebRTC packets. A second connection remains unthrottled
 Example: uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
 """
 
-import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -15,7 +14,6 @@ import re
 import subprocess
 import time
 import platform
-import sys
 from datetime import datetime, timezone
 
 pytestmark = [pytest.mark.integration, pytest.mark.network]

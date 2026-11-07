@@ -1,5 +1,6 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/simd/dispatch.h>
+#include <ascii-chat/video/ascii/simd/cells.h>
 #include <string.h>
 #include <arm_neon.h>
 void simd_luminance_neon(const uint8_t *rgb, uint8_t *out, size_t width) {
@@ -28,4 +29,15 @@ void simd_luminance_neon(const uint8_t *rgb, uint8_t *out, size_t width) {
     vst1q_u8(out + x, luminance);
   }
   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+}
+int glyph_shape_correlation_neon(const int16_t samples[16], const int16_t mask[16]) {
+  int16x8_t a0 = vld1q_s16(samples), a1 = vld1q_s16(samples + 8);
+  int16x8_t b0 = vld1q_s16(mask), b1 = vld1q_s16(mask + 8);
+  int32x4_t sums = vmull_s16(vget_low_s16(a0), vget_low_s16(b0));
+  sums = vmlal_s16(sums, vget_high_s16(a0), vget_high_s16(b0));
+  sums = vmlal_s16(sums, vget_low_s16(a1), vget_low_s16(b1));
+  sums = vmlal_s16(sums, vget_high_s16(a1), vget_high_s16(b1));
+  int32_t lanes[4];
+  vst1q_s32(lanes, sums);
+  return lanes[0] + lanes[1] + lanes[2] + lanes[3];
 }

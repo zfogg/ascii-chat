@@ -159,6 +159,7 @@ export function migrateLegacyUrlState(): void {
       "renderMode",
       "colorFilter",
       "renderer",
+      "stabilize",
       "paletteExplicit",
       "palette",
       "paletteChars",

@@ -148,9 +148,6 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "w / W  Toggle Face Follow",
       "r / R  Cycle render mode",
       "-      FPS counter",
-#ifndef NDEBUG
-      browser ? NULL : "`      Print current sync primitive state",
-#endif
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
       browser ? NULL : "`      Error stacks diagnostic TUI",
 #endif

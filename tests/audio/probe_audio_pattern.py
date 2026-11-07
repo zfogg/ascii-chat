@@ -3,7 +3,6 @@
 import argparse
 import ctypes as c
 from pathlib import Path
-import wave
 
 import numpy as np
 

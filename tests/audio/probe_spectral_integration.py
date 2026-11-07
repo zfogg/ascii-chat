@@ -8,7 +8,10 @@ import _environment  # noqa: F401
 
 
 from pathlib import Path
-import ctypes as c, sys, os, tempfile
+import ctypes as c
+import sys
+import os
+import tempfile
 import numpy as np
 from ascii_chat_tests.audio_spectral import load
 
@@ -57,7 +60,8 @@ def hash_name(name):
     return value
 
 
-ptr = lambda a: a.ctypes.data_as(c.POINTER(c.c_float))
+def ptr(a):
+    return a.ctypes.data_as(c.POINTER(c.c_float))
 mixer = lib.mixer_create(2, 48000)
 assert mixer
 zero = np.zeros(960, dtype="float32")

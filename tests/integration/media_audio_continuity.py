@@ -12,13 +12,11 @@ from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
 import threading
-import time
 import numpy as np
-import pyaudiowpatch as pa
+pa = __import__("pyaudiowpatch")
 from windows_console import WindowsConsole
 
 

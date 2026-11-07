@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import re
 import shlex
-import socket
 import subprocess as sp
 import sys
 import time

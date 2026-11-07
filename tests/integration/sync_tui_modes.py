@@ -10,6 +10,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.patterns import require_match
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
@@ -19,11 +20,10 @@ import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import tempfile
 import time
 
-from ascii_chat_tests.terminal import Terminal, load_terminal_font
+from ascii_chat_tests.terminal import Terminal
 from ascii_chat_tests.process import Service, free_port, server_options
 
 
@@ -31,7 +31,7 @@ from ascii_chat_tests.terminal import capture_sync as capture
 
 
 def selected(text):
-    return tuple(map(int, re.search(r"item (\d+)/(\d+)", text).groups()))
+    return tuple(map(int, require_match(r"item (\d+)/(\d+)", text).groups()))
 
 
 def check_colors(term, text):
@@ -40,7 +40,7 @@ def check_colors(term, text):
     text = expect_sync(term, lambda t: True, "Incomplete sync frame before palette checks")
     # Default log palette: blue rules, red zeroes, purple values, orange
     # filename, and yellow key names. Check the captured terminal cells.
-    first_number = re.search(r"\d+ objects", text.splitlines()[0]).start()
+    first_number = require_match(r"\d+ objects", text.splitlines()[0]).start()
     zero = text.splitlines()[1].index("0 mutexes")
     assert term.screen.buffer[0][first_number].fg == "c8a0d8"
     assert term.screen.buffer[1][zero].fg == "e85d6f"
@@ -117,7 +117,7 @@ def inspect(term, artifacts, name, required):
                        f"{name}: no inventory after resize")
     # Let the rate sampler leave startup/resize activity behind.
     text = term.pump(3)
-    pages = int(re.search(r"page 1/(\d+)", text).group(1))
+    pages = int(require_match(r"page 1/(\d+)", text).group(1))
     inventory = []
     for page in range(1, pages + 1):
         text = expect_sync(term, lambda t: f"page {page}/{pages}" in t, "Missing live inventory page")
@@ -313,7 +313,7 @@ def main():
                             "Session created|state=changing|Server accepting connections|ERROR|WARN"], env)
             services.append(host)
             host.wait_for("Session created:")
-            session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+            session = require_match(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
             client = terminal("client", ["client", f"127.0.0.1:{tcp}", "--password", "sync-test-password"])
             wait_video(client, "client")
             # Join while the discovered session is fresh, before spending time

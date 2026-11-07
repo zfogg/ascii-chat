@@ -767,7 +767,7 @@ typedef enum {
 #define OPT_RENDER_FILE_DEFAULT ""
 #define OPT_RENDER_THEME_DEFAULT 0 // 0=dark, 1=light, 2=auto
 #define OPT_RENDER_FONT_DEFAULT ""
-#define OPT_RENDER_FONT_SIZE_DEFAULT 12.0
+#define OPT_RENDER_FONT_SIZE_DEFAULT 0.0
 
 // ============================================================================
 // Static Default Value Variables
@@ -851,7 +851,6 @@ static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 static const double default_debug_errno_stacks_time_value = 0.0;
-static const bool default_debug_errno_stacks_time_explicit_value = false;
 static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
@@ -1109,6 +1108,7 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
+  bool stabilize;                                    ///< Reduce frame-to-frame character flicker
   ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
@@ -1233,7 +1233,7 @@ typedef struct options_state {
 #endif
   int render_theme;                    ///< 0=dark 1=light 2=auto
   char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)
-  double render_font_size;             ///< Font size in points (default 12.0, supports e.g. 10.5)
+  double render_font_size;             ///< Font size in points (0 selects an automatic size)
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals

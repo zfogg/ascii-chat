@@ -857,6 +857,7 @@ void cleanup_client_packet_queues(client_info_t *client) {
  * @param client Client to clean up
  */
 static inline void cleanup_client_all_buffers(client_info_t *client) {
+  ascii_stabilizer_reset(&client->render_stabilizer);
   cleanup_client_media_buffers(client);
   cleanup_client_packet_queues(client);
 }
@@ -1131,21 +1132,17 @@ static asciichat_error_t video_decoder_ensure_initialized(client_info_t *client,
 static int server_receive_decoded_frame(AVCodecContext *ctx, AVFrame *frame) {
   ASCII_OTEL_SCOPE(FFMPEG_FRAME_RECEIVE);
   int result = avcodec_receive_frame(ctx, frame);
-#ifdef ASCIICHAT_WITH_OTEL
   if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF)
     ascii_otel_error("FFmpeg server frame receive failed");
-#endif
   return result;
 }
 
 static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_t flags, const void *data,
                                          size_t data_len, void *client_ctx, enum AVCodecID codec_id) {
   ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_scope_int(&otel_scope, "media.codec.id", codec_id);
   ascii_otel_scope_int(&otel_scope, "video.width", width);
   ascii_otel_scope_int(&otel_scope, "video.height", height);
-#endif
   client_info_t *client = client_ctx;
   video_codec_t capability = codec_id == AV_CODEC_ID_H264 ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265;
   if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, capability) || width == 0 || height == 0 ||
@@ -1174,10 +1171,8 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
   {
     ASCII_OTEL_SCOPE(FFMPEG_PACKET_SEND);
     result = avcodec_send_packet(ctx, packet);
-#ifdef ASCIICHAT_WITH_OTEL
     if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF)
       ascii_otel_error("FFmpeg server packet send failed");
-#endif
   }
   av_packet_free(&packet);
   if (result < 0) {
@@ -1211,10 +1206,8 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
       ASCII_OTEL_SCOPE(FFMPEG_SCALE);
       rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data,
                        rgb->linesize);
-#ifdef ASCIICHAT_WITH_OTEL
       if (rows != frame->height)
         ascii_otel_error("FFmpeg server frame scale failed");
-#endif
     }
     if (rows == frame->height) {
       atomic_store_bool(&client->is_sending_video, true);

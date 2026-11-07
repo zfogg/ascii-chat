@@ -48,6 +48,27 @@ static void cleanup(void) {
 // Keep each category isolated without spawning a process for every table row.
 TestSuite(url_validator, .fini = cleanup);
 
+Test(url_validator, diagnostic_redaction_hides_credentials_and_query_values) {
+  char text[] = "Fetch https://alice:secret@example.com/media?token=private#fragment and http://other/path";
+  url_redact_diagnostic(text, false);
+  cr_assert_null(strstr(text, "alice"));
+  cr_assert_null(strstr(text, "secret"));
+  cr_assert_null(strstr(text, "private"));
+  cr_assert_null(strstr(text, "fragment"));
+  cr_assert_not_null(strstr(text, "@example.com/media?"));
+  cr_assert_not_null(strstr(text, "http://other/path"));
+}
+
+Test(url_validator, diagnostic_redaction_handles_truncated_authority) {
+  char text[] = "Fetch https://alice:secr";
+  url_redact_diagnostic(text, true);
+  cr_assert_null(strstr(text, "alice"));
+  cr_assert_null(strstr(text, "secr"));
+  char complete[] = "Fetch https://example.com";
+  url_redact_diagnostic(complete, false);
+  cr_assert_str_eq(complete, "Fetch https://example.com");
+}
+
 /**
  * Verify that a URL is validated correctly
  */

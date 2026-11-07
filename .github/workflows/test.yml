@@ -85,10 +85,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
-      - run: python tests/standalone/upnp/run.py
+      - run: uv sync --project tests/ascii_chat_tests --frozen
+      - run: uv run --project tests/ascii_chat_tests --frozen pytest -n 0 tests/python/standalone/test_upnp.py
 
   coverage-tools:
     needs: preflight
@@ -348,6 +350,10 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        instrumentation: [coverage]
+        include:
+          - os: ubuntu-latest
+            instrumentation: sanitizers
 
     steps:
       - name: Checkout code
@@ -368,7 +374,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v7-${{ matrix.instrumentation }}
 
       - name: Clean test executables and libraries only
         run: |
@@ -395,10 +401,9 @@ jobs:
       - name: Install terminal test dependencies
         run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.integration-python.outputs.python-path }}"
 
-      - name: Configure integration tests with coverage
+      - name: Configure integration tests
         run: |
-          echo "Configuring integration tests with coverage build..."
-          # Use CMake build system with coverage
+          echo "Configuring integration tests with ${{ matrix.instrumentation }}..."
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
           if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
@@ -422,8 +427,8 @@ jobs:
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
             -DPython3_EXECUTABLE="${{ github.workspace }}/tests/ascii_chat_tests/.venv/bin/python" \
-            -DASCIICHAT_ENABLE_COVERAGE=ON \
-            -DASCIICHAT_ENABLE_SANITIZERS=OFF \
+            -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
+            -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
             -DBUILD_TESTS=ON \
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
             -DUSE_MUSL=OFF \
@@ -477,7 +482,8 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          # Keep Python WebRTC smoke tests available locally without running them in CI.
+          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 
@@ -486,7 +492,7 @@ jobs:
         run: pactl --server="$PULSE_SERVER" exit
 
       - name: Generate coverage report
-        if: always()
+        if: always() && matrix.instrumentation == 'coverage'
         uses: ./.github/actions/generate-coverage
         with:
           os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
@@ -511,7 +517,7 @@ jobs:
 
       - name: Publish Test Results and Coverage
         uses: ./.github/actions/publish-test-results
-        if: always()
+        if: always() && matrix.instrumentation == 'coverage'
         with:
           test-type: integration
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
@@ -524,7 +530,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-test-results-${{ runner.os }}
+          name: integration-test-results-${{ runner.os }}${{ matrix.instrumentation == 'sanitizers' && '-sanitizers' || '' }}
           path: |
             integration-tests-*.log
             build/coverage.xml

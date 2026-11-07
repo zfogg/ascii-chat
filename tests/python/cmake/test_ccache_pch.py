@@ -42,9 +42,12 @@ add_library(cxx-probe OBJECT probe.cpp)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
 
+            clang = shutil.which("clang")
+            clangxx = shutil.which("clang++")
+            assert clang and clangxx
             run("cmake", "-G", "Ninja", "-S", str(source), "-B", str(build),
-                "-DCMAKE_C_COMPILER=" + shutil.which("clang"),
-                "-DCMAKE_CXX_COMPILER=" + shutil.which("clang++"))
+                "-DCMAKE_C_COMPILER=" + clang,
+                "-DCMAKE_CXX_COMPILER=" + clangxx)
             run("cmake", "--build", str(build), "--parallel", "2")
             run("cmake", "--build", str(build), "--target", "clean")
             run("cmake", "--build", str(build), "--parallel", "2")

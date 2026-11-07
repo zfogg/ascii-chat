@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from ascii_chat_tests.cli import cli_command
 
 
-import argparse
 import base64
 import os
 from pathlib import Path, PurePosixPath
@@ -109,6 +108,7 @@ def test_mdns_cross_host(binary, tmp_path, request):
                     if attempt == 2:
                         raise
                     time.sleep(.5)
+            assert terminal is not None
             capture(terminal, args.artifacts, "macbook-physical-lan-picker")
             selected = next(line for line in picker.splitlines() if str(tcp_port) in line)
             terminal.write(selected.split("[", 1)[1].split("]", 1)[0] + "\r")

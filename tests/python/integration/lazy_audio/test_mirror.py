@@ -9,12 +9,10 @@ positive transitions. Missing devices return 77; video-only startup is checked f
 from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import functools
 import http.server
 import json
 from pathlib import Path
-import subprocess
 import tempfile
 import threading
 import time
@@ -80,7 +78,8 @@ def test_mirror_lazy_audio(binary, tmp_path):
                     term.write("0")
                     term.expect(lambda text: "Sync primitives" in text, "Initial sync screen")
                     term.resize(144, 140)
-                    inventory = term.pump(1)
+                    inventory = term.expect(lambda text: "debug_memory." in text,
+                                            "Resized sync inventory did not finish rendering")
                     assert "audio_processing" not in inventory, inventory
                     assert not any(row.lstrip("> ").startswith("mutex") and "display." in row
                                    for row in inventory.splitlines()), inventory
@@ -103,7 +102,18 @@ def test_mirror_lazy_audio(binary, tmp_path):
                                 term.write("0")
                                 term.expect(lambda text: "Sync primitives" in text, "Active audio sync screen")
                                 term.resize(144, 140)
-                                active = term.pump(2)
+                                names = ("audio_processing_wait", "audio_processing_wakeup", "capture_load.",
+                                         "stats_duration.", "ui_controller.")
+                                def audio_inventory_ready(text):
+                                    if not all(name in text for name in names):
+                                        return False
+                                    row = next(line for line in text.splitlines() if "audio_processing_wakeup" in line)
+                                    try:
+                                        return max(map(float, row.split()[-4:-2])) > 0
+                                    except ValueError:
+                                        return False
+                                active = term.expect(audio_inventory_ready,
+                                                     "Active audio sync inventory did not show worker activity")
                                 (args.artifacts / "active-audio.txt").write_text(active, encoding="utf-8")
                                 rates = {}
                                 for name, limit in (("audio_processing_wait", 70), ("audio_processing_wakeup", 70),

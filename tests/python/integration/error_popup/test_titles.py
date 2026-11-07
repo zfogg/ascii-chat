@@ -1,11 +1,8 @@
 import pytest
 #!/usr/bin/env python3
 """Exercise error titles across threads, notification dismissal, and UTF-8 settings."""
-import argparse
-import os
 from pathlib import Path
 import re
-import sys
 import tempfile
 import time
 

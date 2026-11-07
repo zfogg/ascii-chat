@@ -103,6 +103,8 @@ static uint64_t g_render_started;
 static uint64_t g_render_completed;
 static asciichat_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
+static _Atomic bool g_sync_finishing;
+static _Atomic bool g_sync_rendering;
 static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
 static _Thread_local screen_snapshot_t *g_render_snapshot;
@@ -328,7 +330,13 @@ static void stats_media_end(void) {
 
 static size_t write_output_chunk(int fd, const void *data, size_t length) {
   uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+  // A presentation write must not split an image protocol packet emitted by
+  // another thread. Non-owner logging must remain nonblocking here.
+  if (g_owner)
+    ui_controller_packet_begin();
   size_t written = platform_write_all(fd, data, length);
+  if (g_owner)
+    ui_controller_packet_end();
   if (g_stats_media) {
     uint64_t elapsed_ns = time_get_ns() - started_ns;
     if (elapsed_ns > g_stats_max_chunk_ns)
@@ -482,6 +490,10 @@ static void release_screen(screen_t *screen, bool flush_notices) {
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
+  atomic_store(&g_sync_finishing, true);
+  if (!g_owner)
+    while (atomic_load(&g_sync_rendering))
+      platform_sleep_ms(1);
   errno_notifications_enable(false);
   screen_t retired[UI_SCREEN_COUNT] = {0};
   bool locked = lifecycle_is_initialized(&g_lifecycle);
@@ -803,13 +815,13 @@ static void *presentation_main(void *unused) {
       reply_support = 1;
       if (awaiting_reply) {
         fps_counter_frame_end(g_fps, replied_ns);
-        log_debug("TERMINAL_ACK: id=%llu response_ms=%.2f capture_to_terminal_ms=%.2f",
-                  (unsigned long long)reply_frame_id, (double)(replied_ns - reply_requested_ns) / NS_PER_MS_INT,
-                  reply_frame_ns ? (double)(replied_ns - reply_frame_ns) / NS_PER_MS_INT : 0);
+        log_debug_every(US_PER_SEC_INT, "TERMINAL_ACK: id=%llu response_ms=%.2f capture_to_terminal_ms=%.2f",
+                        (unsigned long long)reply_frame_id, (double)(replied_ns - reply_requested_ns) / NS_PER_MS_INT,
+                        reply_frame_ns ? (double)(replied_ns - reply_frame_ns) / NS_PER_MS_INT : 0);
       }
       awaiting_reply = false;
     }
-    if (awaiting_reply && reply_support == 0 && iteration_started_ns - reply_requested_ns > 500 * NS_PER_MS_INT) {
+    if (awaiting_reply && iteration_started_ns - reply_requested_ns > 500 * NS_PER_MS_INT) {
       // Classic consoles need no remote acknowledgement and may not answer OSC.
       reply_support = -1;
       awaiting_reply = false;
@@ -827,6 +839,12 @@ static void *presentation_main(void *unused) {
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
         (ui_controller_current_screen() <= UI_SCREEN_SYNC || ui_controller_current_screen() == UI_SCREEN_ERROR) &&
         !shutdown_is_requested()) {
+      atomic_store(&g_sync_rendering, true);
+      if (atomic_load(&g_sync_finishing)) {
+        atomic_store(&g_sync_rendering, false);
+        platform_sleep_ms(1);
+        continue;
+      }
       if (!was_sync) {
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -856,6 +874,7 @@ static void *presentation_main(void *unused) {
         atomic_store(&g_size, pack_size(size));
       }
       g_render_fd = -1;
+      atomic_store(&g_sync_rendering, false);
       was_sync = true;
       platform_sleep_ns(50 * NS_PER_MS_INT);
       continue;
@@ -1052,7 +1071,8 @@ static void *presentation_main(void *unused) {
             CLEAR_ERRNO();
           else {
             uint64_t completed_ns = time_get_ns();
-            log_debug(
+            log_debug_every(
+                US_PER_SEC_INT,
                 "FRAME_PRESENT: id=%llu submit_to_stdout_ms=%.2f acquired_ns=%llu submitted_ns=%llu "
                 "completed_ns=%llu capture_to_stdout_ms=%.2f mailbox_ms=%.2f geometry_ms=%.2f "
                 "compose_ms=%.2f write_ms=%.2f drain_ms=%.2f max_chunk_ms=%.2f chunks=%llu bytes=%zu cols=%d rows=%d",
@@ -1105,7 +1125,7 @@ static void *presentation_main(void *unused) {
       if (!live) {
         if (shutdown_is_requested())
           ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
-        errno_notifications_enable(false);
+        errno_notifications_pause();
       }
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
@@ -1145,6 +1165,8 @@ static asciichat_error_t controller_start(void) {
   ui_output_set_writer(ui_controller_write);
   if (lifecycle_init_once(&g_lifecycle)) {
     atomic_store_bool(&g_presentation_stop_requested, false);
+    atomic_store(&g_sync_finishing, false);
+    atomic_store(&g_sync_rendering, false);
     atomic_store_bool(&g_blocked, false);
     g_active = -1;
     g_redraw = false;
@@ -1279,7 +1301,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   // New modal slots inherit the live terminal instead of process stdio, which
   // an audio/decoder worker can temporarily redirect through LOG_IO.
   if (!live && !retained_terminal && lifecycle_is_initialized(&g_lifecycle) &&
-      (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_RENDER_PROGRESS || screen == UI_SCREEN_NOTICE)) {
+      (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_RENDER_PROGRESS || screen == UI_SCREEN_NOTICE ||
+       screen == UI_SCREEN_HELP)) {
     screen_terminal_t *inherited = NULL;
     mutex_lock(&g_mutex);
     int active = selected_screen_locked();
@@ -1372,6 +1395,12 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     copy->terminal->fd = retained_fd;
   }
   int output_fd = copy->terminal->fd;
+  err = ui_sync_start(output_fd);
+  if (err != ASCIICHAT_OK) {
+    mutex_unlock(&g_mutex);
+    release_snapshot(copy);
+    return err;
+  }
   if (queue_notice) {
     size_t pending = 1;
     screen_t *tail = slot;
@@ -1410,15 +1439,13 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   uint64_t published_ns = time_get_ns();
   release_snapshot(retired);
   uint64_t retired_ns = time_get_ns();
-  asciichat_error_t sync_result = ui_sync_start(output_fd);
   uint64_t finished_ns = time_get_ns();
   if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
     log_debug_every(
-        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f sync_ms=%.2f",
+        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f",
         (double)(prepared_ns - entered_ns) / NS_PER_MS_INT, (double)(locked_ns - prepared_ns) / NS_PER_MS_INT,
-        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT,
-        (double)(finished_ns - retired_ns) / NS_PER_MS_INT);
-  return sync_result;
+        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT);
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
@@ -1471,7 +1498,7 @@ static void remove_screen(ui_screen_t screen, int previous, screen_snapshot_t *e
   if (!live) {
     if (!g_render_snapshot && shutdown_is_requested())
       ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
-    errno_notifications_enable(false);
+    errno_notifications_pause();
   }
   mutex_unlock(&g_mutex);
   release_snapshot(retired);
@@ -1597,6 +1624,24 @@ static void render_text(terminal_size_t size, const void *data) {
     } else {
       ui_controller_write(text->fd, text->text, text->len);
     }
+    return;
+  }
+  // If only the height exceeds the terminal, every visible row already fits.
+  // Preserve its SGR and REP sequences instead of expanding and clipping it.
+  bool counter = GET_OPTION(fps_counter) && size.cols >= 7;
+  if (text->dimensions.cols > 0 && text->dimensions.cols < size.cols &&
+      (!counter || text->dimensions.cols <= size.cols - 7)) {
+    const char *cursor = text->text;
+    const char *end = cursor + text->len;
+    for (int row = 1; row <= size.rows && cursor < end; ++row) {
+      const char *newline = memchr(cursor, '\n', (size_t)(end - cursor));
+      size_t length = (size_t)((newline ? newline : end) - cursor);
+      ui_controller_printf(text->fd, row == 1 && counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
+      ui_controller_write(text->fd, cursor, length);
+      cursor += length + (newline ? 1 : 0);
+    }
+    if (g_render_volume)
+      append_volume(g_capture, size);
     return;
   }
   // A paused frame can outlive its original dimensions. Clip its rows instead

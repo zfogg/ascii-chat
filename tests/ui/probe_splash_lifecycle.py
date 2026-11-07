@@ -21,7 +21,7 @@ import time
 
 def run_case(library, case):
     """Start a real splash, then measure its completion or shutdown wait."""
-    dll_directory = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
+    _dll_directory = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
     lib = c.CDLL(str(library))
     args = [b"ascii-chat", b"mirror", b"--width", b"80", b"--height", b"24", b"--splash-screen=true"]
     if case == "snapshot":

@@ -25,8 +25,8 @@ def main():
     parser.add_argument("--speaker", type=int, default=27)
     parser.add_argument("--encrypted", action="store_true")
     args = parser.parse_args()
-    import sounddevice as sd
-    import soundfile as sf
+    import sounddevice as sd  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+    import soundfile as sf  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
     import numpy as np
 
     binary = str(Path(args.binary).resolve())
@@ -37,6 +37,8 @@ def main():
     def launch(name, flags):
         directory = output / name
         directory.mkdir(exist_ok=True)
+        recording = directory / "audio_playback_received.wav"
+        recording.unlink(missing_ok=True)
         env = os.environ.copy()
         env.update(TEMP=str(directory), TMP=str(directory), ASCIICHAT_DUMP_AUDIO="1")
         if args.encrypted:
@@ -147,7 +149,11 @@ def main():
         for process in reversed(processes):
             if process.poll() is None:
                 process.terminate()
-                process.wait(timeout=10)
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
         for log in logs:
             log.close()
 

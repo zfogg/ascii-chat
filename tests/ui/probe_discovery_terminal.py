@@ -13,7 +13,6 @@ import _environment  # noqa: F401
 
 import os
 from pathlib import Path
-import re
 import socket
 import struct
 import subprocess
@@ -23,7 +22,7 @@ import time
 import ctypes as c
 
 from ascii_chat_tests.terminal import CaptureScreen, CaptureStream
-from winpty import PtyProcess
+from winpty import PtyProcess  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 EXE = Path(sys.argv[1]).resolve()
 DLL_DIRECTORY = os.add_dll_directory(str(EXE.parent))

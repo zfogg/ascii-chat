@@ -10,7 +10,7 @@ ascii-chat mcp-server --transport http 0.0.0.0 ::1 --port 27228
 ascii-chat --log-level debug --grep 'MCP|render' mcp-server --transport http --status-screen
 ```
 
-The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
+The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation. Concurrent render jobs default to the number of CPUs available to the process; `--max-clients` can set a lower limit. HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
 
 For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. The implementation uses stateless JSON responses; POST to `/mcp` handles requests and notifications, while GET/DELETE on `/mcp` return 405. In restricted HTTP mode, GET `/downloads/<name>` serves temporary exports. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
 
@@ -48,7 +48,7 @@ Defaults are 100×40, monochrome, snapshot enabled with delay zero, splash and s
 
 ## Saved images and videos
 
-Set `options.render-font-size` (for example, 28) to increase the pixel size of images or videos; `width` and `height` set the character grid. Use `color-mode` for rendered colors, rather than the CLI diagnostic `color` option.
+Video output automatically chooses a font size to keep large recordings near 1280 pixels per side. Set `options.render-font-size` (for example, 28) to choose an explicit size; `width` and `height` set the character grid. Images retain the 12-point default. Use `color-mode` for rendered colors, rather than the CLI diagnostic `color` option.
 
 Set local `output_path` to an image/video filename. The existing render-file pipeline renders the ASCII grid into the encoded artifact, with format selected by extension. Parent directories must exist. The server stages the encoded artifact in a private directory beside the destination, then publishes with an atomic non-replacing hard link. Existing regular files, symlinks, and destinations won by concurrent writers are preserved. Filesystems without hard-link support return an error instead of falling back to an overwriting rename. Cancellation/failure removes staged artifacts; successful results contain absolute paths in `structuredContent.saved_files`.
 

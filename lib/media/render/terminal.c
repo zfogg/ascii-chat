@@ -1,3 +1,4 @@
+#include <ascii-chat/util/time.h>
 /**
  * @file media/render/terminal.c
  * @ingroup media
@@ -646,6 +647,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
     return SET_ERRNO(ERROR_INVALID_PARAM, "renderer or frame is invalid");
   }
 
+  uint64_t stage_start_ns = time_get_ns();
   // libvterm natively implements CSI REP.  Expanding those runs here turns a
   // compact network frame into synchronous browser-main-thread work before
   // every paint.
@@ -698,6 +700,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   }
 
   vterm_input_write(r->vt, fixed_frame, fixed_pos);
+  uint64_t parsed_ns = time_get_ns();
   SAFE_FREE(fixed_frame);
 
   // Calculate centering offsets to position grid in center of canvas
@@ -898,6 +901,10 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
     }
   }
   render_zalgo(r, offset_x, offset_y);
+  uint64_t rendered_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "RECORD_RASTER: input_bytes=%zu parse_ms=%.2f paint_ms=%.2f cells=%dx%d", len,
+                  (double)(parsed_ns - stage_start_ns) / NS_PER_MS_INT,
+                  (double)(rendered_ns - parsed_ns) / NS_PER_MS_INT, r->cols, r->rows);
   log_debug_every(5 * US_PER_SEC_INT, "Rendered %d glyphs from %d occupied cells out of %d cells", glyph_rendered_count,
                   occupied_cell_count, r->rows * r->cols);
 
