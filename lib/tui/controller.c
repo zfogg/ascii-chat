@@ -1402,7 +1402,11 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   uint64_t published_ns = time_get_ns();
   release_snapshot(retired);
   uint64_t retired_ns = time_get_ns();
+  asciichat_errno_scope_t sync_scope = errno_scope_begin();
   asciichat_error_t sync_result = ui_sync_start(output_fd);
+  errno_scope_end(sync_scope, ASCIICHAT_ERRNO_DISMISSED);
+  if (sync_result != ASCIICHAT_OK)
+    log_warn("Cannot start optional sync screen: %d", sync_result);
   uint64_t finished_ns = time_get_ns();
   if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
     log_debug_every(
@@ -1410,7 +1414,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
         (double)(prepared_ns - entered_ns) / NS_PER_MS_INT, (double)(locked_ns - prepared_ns) / NS_PER_MS_INT,
         (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT,
         (double)(finished_ns - retired_ns) / NS_PER_MS_INT);
-  return sync_result;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
