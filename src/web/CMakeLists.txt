@@ -359,7 +359,9 @@ set(LIB_SRC_COMMON
 # Mirror-specific sources (not needed by client mode)
 set(LIB_SRC_MIRROR_ONLY
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
-    ${LIB_ROOT}/audio/visualization.c # Audio waveform and spectrum rendering for mirror WASM
+    ${LIB_ROOT}/audio/visualization.c
+    ${LIB_ROOT}/video/anim/waveform.c
+    ${LIB_ROOT}/video/anim/fft.c
 )
 
 # Client-specific sources (crypto + network)

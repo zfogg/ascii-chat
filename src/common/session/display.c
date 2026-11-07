@@ -48,6 +48,8 @@
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/visualization.h>
+#include <ascii-chat/video/anim/waveform.h>
+#include <ascii-chat/video/anim/fft.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii/neon.h>
 

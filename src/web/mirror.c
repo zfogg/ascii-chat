@@ -29,6 +29,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/audio/visualization.h>
+#include <ascii-chat/video/anim/waveform.h>
+#include <ascii-chat/video/anim/fft.h>
 
 // Global digital rain effect context
 static digital_rain_t *g_digital_rain = NULL;
