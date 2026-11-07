@@ -353,7 +353,18 @@ static void *splash_monitor_thread(void *arg) {
     }
     platform_sleep_ms(16);
   }
-  ui_controller_remove(UI_SCREEN_SPLASH);
+  // Keep the startup frame until a URL-backed mirror has a media frame ready.
+  // Its capture may still be resolving a remote source after this monitor stops.
+  const char *media_url = GET_OPTION(media_url);
+  const char *render_file = GET_OPTION(render_file);
+  bool binary_stdout =
+      GET_OPTION(render_kitty) || (render_file && (strcmp(render_file, "-") == 0 || strcmp(render_file, "pipe:") == 0 ||
+                                                   strcmp(render_file, "--kitty") == 0));
+  bool retain_for_media = GET_OPTION(detected_mode) == MODE_MIRROR && media_url && media_url[0] &&
+                          atomic_load_u64(&g_splash_state.intro_done_time_ns) != 0 && terminal_is_stdout_tty() &&
+                          !binary_stdout && !GET_OPTION(snapshot_mode) && !shutdown_is_requested();
+  if (!retain_for_media)
+    ui_controller_remove(UI_SCREEN_SPLASH);
   ui_controller_remove(UI_SCREEN_HELP);
   atomic_store_bool(&g_splash_state.is_running, false);
   return NULL;

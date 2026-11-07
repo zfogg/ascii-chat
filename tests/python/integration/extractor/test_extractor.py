@@ -4,17 +4,21 @@ import psutil
 from ascii_chat_tests.media import ppm_image, write_pcm_wav
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
-from ascii_chat_tests.terminal import Terminal, TerminalProcess
+from ascii_chat_tests.terminal import CaptureScreen, CaptureStream, Terminal, TerminalProcess
 
 import functools
 import http.server
 import os
+import re
+import queue
+import random
 from pathlib import Path
 import shutil
 import shlex
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 import urllib.parse
 
@@ -106,6 +110,171 @@ class MediaExtractor(unittest.TestCase):
             index = args.index(tokens[0], args.index("b/bv[vcodec^=avc1]+ba/bv+ba") + 1)
             self.assertEqual(args[index:index + len(tokens)], tokens)
         return result
+
+    @pytest.mark.terminal
+    def test_youtube_startup_transitions_directly_to_media(self):
+        """Exercise the reported URL using deterministic local extractor output."""
+        url = "https://www.youtube.com/watch?v=M1b0Ka2gAak"
+        env = dict(self.env, FAKE_YTDLP_MODE="combined")
+        term = Terminal(cli_command(self.binary, "mirror", url, "--audio=false", "--palette", "custom",
+                                    "--palette-chars", "QQ", "--color-mode", "none"),
+                        rows=24, cols=100, terminal_replies=True, environment=env)
+        try:
+            term.expect(lambda text: "Using network media source" in text, "Startup screen did not appear", timeout=30)
+            term.expect(lambda text: "QQQQQQQQ" in text, "Media frame did not appear", timeout=45)
+            raw = "".join(term.raw)
+            frames = list(re.finditer(r"\x1b\[\?2026h(.*?)\x1b\[\?2026l", raw, re.S))
+            startup = [i for i, frame in enumerate(frames) if "Using network media source" in frame[1]]
+            self.assertTrue(startup, "Startup screen was not published as a terminal frame")
+            following = frames[startup[-1] + 1:]
+            self.assertTrue(following, "No frame followed the startup screen")
+            first_frame = re.sub(r"(.)\x1b\[(\d+)b", lambda match: match[1] * (int(match[2]) + 1), following[0][1])
+            self.assertIn("QQQQQQQQ", first_frame, "The next frame after startup was not the media frame")
+            between = raw[frames[startup[-1]].end():following[0].start()]
+            between = re.sub(r"\x1b\](?:[^\x07\x1b]|\x1b(?!\\))*(?:\x07|\x1b\\)", "", between)
+            between = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", between)
+            self.assertFalse(between.strip(), f"Unexpected output between startup and media: {between!r}")
+            self.assertIn(url, self.trace.read_text())
+        finally:
+            term.close()
+
+    @pytest.mark.terminal
+    @unittest.skipUnless(os.environ.get("ASCII_CHAT_TEST_LONG_TERMINAL") == "1",
+                         "Set ASCII_CHAT_TEST_LONG_TERMINAL=1 for the 15-second large-terminal regression")
+    def test_youtube_large_terminal_remains_stable_for_15_seconds(self):
+        """Watch 400x200 startup and detailed media frames for missing rows.
+
+        Run on demand with ASCII_CHAT_TEST_LONG_TERMINAL=1 and the python-extractor
+        CTest target, or pass the built binary and extractor fixtures to pytest.
+        """
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            self.skipTest("ffmpeg is required to generate the long-running fixture")
+        rng = random.Random(42)
+        pixels = bytes(rng.randrange(90) if y < 180 else 255
+                       for y in range(200) for _x in range(400) for _channel in range(3))
+        image = self.root / "video.ppm"
+        image.write_bytes(ppm_image(400, 200, pixels))
+        video = self.root / "stable.avi"
+        subprocess.run([ffmpeg, "-v", "error", "-loop", "1", "-i", str(image), "-t", "30", "-r", "5",
+                        "-c:v", "ffv1", str(video)], check=True, capture_output=True, timeout=60)
+        env = dict(self.env, FAKE_YTDLP_MODE="combined", FAKE_YTDLP_VIDEO=self.base + "/stable.avi")
+        term = Terminal(cli_command(self.binary, "mirror", "https://www.youtube.com/watch?v=M1b0Ka2gAak",
+                                    "--audio=false", "--width", "400", "--height", "200", "--stretch",
+                                    "--fps", "5", "--palette", "custom", "--palette-chars", "AZ",
+                                    "--color-mode", "truecolor"),
+                        rows=200, cols=400, terminal_replies=False, environment=env)
+        pending = ""
+        reply_tail = ""
+        start = "\x1b[?2026h"
+        end = "\x1b[?2026l"
+        query = "\x1b]11;?\x1b\\"
+        startup_seen = False
+        media_seen = False
+        media_frames = 0
+        last_media_at = 0.0
+        first_media = None
+        last_media = None
+        incomplete = []
+        startup_flashes = []
+        deadline = time.monotonic() + 60
+        try:
+            while time.monotonic() < deadline and term.process.isalive():
+                try:
+                    chunk = term.output.get(timeout=.1)
+                except queue.Empty:
+                    continue
+                replies = reply_tail + chunk
+                for _ in range(replies.count(query)):
+                    term.write("\x1b]11;rgb:0000/0000/0000\x1b\\")
+                reply_tail = replies[-(len(query) - 1):]
+                pending += chunk
+                while start in pending and end in pending[pending.index(start) + len(start):]:
+                    start_at = pending.index(start)
+                    if startup_seen:
+                        outside = pending[:start_at]
+                        outside = re.sub(r"\x1b\](?:[^\x07\x1b]|\x1b(?!\\))*(?:\x07|\x1b\\)", "", outside)
+                        outside = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b[78]", "", outside).strip()
+                        if outside:
+                            startup_flashes.append(f"output outside a frame: {outside[:100]!r}")
+                    begin = start_at + len(start)
+                    finish = pending.index(end, begin)
+                    frame = pending[begin:finish]
+                    pending = pending[finish + len(end):]
+                    if "Using network media source" in frame or "Video chat in your terminal" in frame:
+                        if media_seen:
+                            startup_flashes.append("startup screen returned after video")
+                        startup_seen = True
+                    elif len(frame) > 500000:
+                        if not media_seen:
+                            media_seen = True
+                            deadline = time.monotonic() + 15
+                            first_media = frame
+                        last_media = frame
+                        media_frames += 1
+                        last_media_at = time.monotonic()
+                        if not re.search(r"Z(?:\x1b\[\d+b|Z{3})", frame):
+                            incomplete.append((media_frames, len(frame), repr(frame[-30:])))
+                        if re.search(r"\x1b(?:\[[0-?]*[ -/]*)?$", frame):
+                            incomplete.append((media_frames, len(frame), "unfinished escape sequence"))
+                    elif startup_seen and not media_seen:
+                        visible = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", frame).strip()
+                        startup_flashes.append(f"unexpected frame after startup: {visible[:100]!r}")
+                    elif media_seen:
+                        startup_flashes.append("non-media frame during video")
+                if len(pending) > 8 * 1024 * 1024:
+                    self.fail("Terminal output did not finish a frame")
+            self.assertTrue(term.process.isalive(), "Media exited during the 15-second observation")
+            self.assertTrue(startup_seen and media_seen, "Did not observe both startup and large media frames")
+            self.assertGreater(media_frames, 1, "Did not observe multiple complete media frames")
+            self.assertGreaterEqual(last_media_at, deadline - 2, "Media stopped rendering during the observation")
+            self.assertFalse(startup_flashes, f"Startup screen flickered: {startup_flashes[:5]}")
+            self.assertFalse(incomplete, f"Media frames lost their bottom rows: {incomplete[:5]}")
+            assert first_media is not None and last_media is not None
+
+            class ScrollScreen(CaptureScreen):
+                def __init__(self):
+                    self.watch_scroll = False
+                    self.scrolls = 0
+                    super().__init__(400, 200)
+
+                def index(self):
+                    if self.watch_scroll and self.cursor.y == self.lines - 1:
+                        self.scrolls += 1
+                    super().index()
+
+            screen = ScrollScreen()
+            stream = CaptureStream(screen)
+            stream.feed(start + first_media + end)
+            reference = tuple(screen.display)
+            screen.watch_scroll = True
+            stream.feed(start + last_media + end)
+            self.assertEqual(screen.scrolls, 0, "Media output scrolled the terminal")
+            self.assertEqual(tuple(screen.display), reference, "Static video moved between complete frames")
+        finally:
+            term.close()
+
+    @pytest.mark.terminal
+    def test_split_stream_startup_does_not_print_sanitizer_diagnostics(self):
+        """Split-format metadata must not write diagnostics over the splash."""
+        url = "https://www.youtube.com/watch?v=M1b0Ka2gAak"
+        for mode in ("split", "split-missing"):
+            with self.subTest(mode=mode):
+                env = dict(self.env, FAKE_YTDLP_MODE=mode)
+                term = Terminal(cli_command(self.binary, "mirror", url, "--audio=false", "--palette", "custom",
+                                            "--palette-chars", "QQ", "--color-mode", "none"),
+                                rows=24, cols=100, terminal_replies=True, environment=env)
+                try:
+                    term.expect(lambda text: "Using network media source" in text,
+                                "Startup screen did not appear", timeout=30)
+                    term.expect(lambda text: "QQQQQQQQ" in text, "Media frame did not appear", timeout=45)
+                    output = "".join(term.raw)
+                    if "runtime error:" in output:
+                        index = output.index("runtime error:")
+                        self.fail(f"Sanitizer output interrupted the startup screen: {output[index:index + 500]!r}")
+                    self.assertIn(url, self.trace.read_text())
+                finally:
+                    term.close()
 
     def test_combined_stream_is_used_for_both_decoders(self):
         """Use the combined URL without requesting separate audio."""

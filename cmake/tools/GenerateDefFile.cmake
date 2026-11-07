@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.30)
 # Use the active target object list. Directory scans retain stale exports after
 # a source is removed or renamed in an incremental build.
 foreach(required NM_TOOL OBJECT_LIST_FILE OUTPUT_FILE LIBRARY_NAME)
-    if(NOT DEFINED ${required})
-        message(FATAL_ERROR "${required} is not defined")
+    if(NOT DEFINED ${required} OR "${${required}}" STREQUAL "")
+        message(FATAL_ERROR "${required} is not defined or is empty")
     endif()
 endforeach()
 file(STRINGS "${OBJECT_LIST_FILE}" OBJ_FILES)
