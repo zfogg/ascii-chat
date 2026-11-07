@@ -256,6 +256,20 @@ if ($PipCmd) {
 }
 
 Write-Host ""
+$clangCommand = Get-Command clang.exe -ErrorAction SilentlyContinue
+if (-not $clangCommand) {
+    Write-Host "LLVM 19 or newer is required; install LLVM with clang.exe and libclang.dll on PATH." -ForegroundColor Red
+    $AllInstalled = $false
+} else {
+    $clangVersion = (& $clangCommand.Source --version | Select-Object -First 1)
+    $resourceDir = (& $clangCommand.Source -print-resource-dir | Select-Object -First 1)
+    $llvmRoot = Split-Path (Split-Path (Split-Path $resourceDir -Parent) -Parent) -Parent
+    $libclang = Join-Path $llvmRoot "bin/libclang.dll"
+    if ($clangVersion -notmatch 'clang version (\d+)\.' -or [int]$Matches[1] -lt 19 -or -not (Test-Path -LiteralPath $libclang)) {
+        Write-Host "LLVM 19 or newer and its matching libclang.dll are required (clang: $clangVersion; libclang: $libclang)." -ForegroundColor Red
+        $AllInstalled = $false
+    }
+}
 if ($AllInstalled) {
     Write-Host "All dependencies installed successfully!" -ForegroundColor Green
     Write-Host ""

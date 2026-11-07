@@ -14,6 +14,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor"))
 from clang import cindex
 
+# libclang has a stable C API; LLVM 23 bindings may also describe newer symbols.
+cindex.Config.set_compatibility_check(False)
+
 
 class TransformError(Exception):
     """The source cannot be transformed without changing its behavior."""
@@ -297,7 +300,11 @@ class Transformer:
             macro = self.macros[start]
             macro_end = macro.extent.end.offset
             text = self.source[start:macro_end]
-            open_paren = text.find(b"(")
+            tokens = list(self.tu.get_tokens(extent=macro.extent))
+            opening = next(
+                (token for token in tokens[1:] if token.spelling == "("), None
+            )
+            open_paren = opening.extent.start.offset - start if opening else -1
             if open_paren < 0 or not text.endswith(b")"):
                 raise TransformError(f"cannot parse defer at byte {start}")
             raw_action = text[open_paren + 1 : -1]
@@ -308,7 +315,6 @@ class Transformer:
             if not action:
                 raise TransformError(f"empty defer at byte {start}")
             forbidden = {"return", "goto", "break", "continue", "defer"}
-            tokens = list(self.tu.get_tokens(extent=macro.extent))
             for token in tokens[1:]:
                 if token.spelling in forbidden:
                     raise TransformError(
@@ -330,6 +336,10 @@ class Transformer:
             for child in cursor.get_children():
                 self.visit(child, kind)
             actions = scope.defers
+            if actions and parent_kind == cindex.CursorKind.SWITCH_STMT:
+                raise TransformError(
+                    f"defer directly in switch body is unsupported (byte {start}); use a case block"
+                )
             if actions:
                 declarations = b" ".join(
                     b"int " + item.flag + b" = 0;" for item in actions
@@ -363,6 +373,19 @@ class Transformer:
                 )
             cleanup = self.cleanup(self.scopes[len(target_scopes) :], start)
             if cleanup:
+                keyword = (
+                    b"goto"
+                    if kind == cindex.CursorKind.GOTO_STMT
+                    else (
+                        b"break"
+                        if kind == cindex.CursorKind.BREAK_STMT
+                        else b"continue"
+                    )
+                )
+                if self.source[start : start + len(keyword)] != keyword:
+                    raise TransformError(
+                        f"control transfer from a macro cannot be transformed (byte {start})"
+                    )
                 stop = self.after_semicolon(end)
                 self.edits.append(
                     (start, stop, b"{ " + cleanup + self.source[start:stop] + b" }")
@@ -376,7 +399,11 @@ class Transformer:
                         f"return from a macro cannot be transformed (byte {start})"
                     )
                 stop = self.after_semicolon(end)
-                expr = self.source[start + 6 : end].strip()
+                raw_expr = self.source[start + 6 : end]
+                expr_start = start + 6 + len(raw_expr) - len(raw_expr.lstrip())
+                expr = raw_expr.strip()
+                if expr:
+                    expr = self.line_directive(expr_start) + expr
                 if expr and self.function_void:
                     replacement = b"{ " + expr + b"; " + cleanup + b"return; }"
                 elif expr:
@@ -410,6 +437,19 @@ class Transformer:
                 )
             cleanup = self.cleanup(self.scopes[targets[-1][1] :], start)
             if cleanup:
+                keyword = (
+                    b"goto"
+                    if kind == cindex.CursorKind.GOTO_STMT
+                    else (
+                        b"break"
+                        if kind == cindex.CursorKind.BREAK_STMT
+                        else b"continue"
+                    )
+                )
+                if self.source[start : start + len(keyword)] != keyword:
+                    raise TransformError(
+                        f"control transfer from a macro cannot be transformed (byte {start})"
+                    )
                 stop = self.after_semicolon(end)
                 self.edits.append(
                     (start, stop, b"{ " + cleanup + self.source[start:stop] + b" }")
@@ -597,8 +637,9 @@ def main() -> int:
         source = args.source.read_bytes()
         clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
         version = cindex.conf.get_clang_version()
-        if not re.search(r"\bclang version 23\.", version):
-            raise TransformError(f"LLVM 23 libclang required, found {version}")
+        match = re.search(r"\bclang version (\d+)\.", version)
+        if not match or int(match.group(1)) < 19:
+            raise TransformError(f"LLVM 19 or newer libclang required, found {version}")
         tu = cindex.Index.create().parse(
             str(args.source.resolve()),
             args=clang_args,

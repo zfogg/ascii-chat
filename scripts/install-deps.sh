@@ -53,6 +53,28 @@ fi
 echo "Detected platform: $PLATFORM"
 echo ""
 
+verify_llvm_for_defer() {
+  local compiler="$1" compiler_dir major libdir library found=0
+  if [ ! -x "$compiler" ]; then
+    echo >&2 "ERROR: LLVM 19-23 Clang was not found at $compiler"
+    exit 1
+  fi
+  major="$("$compiler" --version | sed -n 's/.*clang version \([0-9][0-9]*\).*/\1/p' | head -n 1)"
+  if [ -z "$major" ] || [ "$major" -lt 19 ]; then
+    echo >&2 "ERROR: $compiler must be LLVM 19 or newer and provide matching libclang"
+    exit 1
+  fi
+  compiler_dir="$(cd "$(dirname "$compiler")" && pwd -P)"
+  libdir="${compiler_dir}/../lib"
+  for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major"; do
+    if [ -f "$library" ]; then found=1; break; fi
+  done
+  if [ "$found" -ne 1 ]; then
+    echo >&2 "ERROR: libclang for $compiler was not found in $libdir; install the matching LLVM development package"
+    exit 1
+  fi
+}
+
 # macOS: Use Homebrew
 if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v brew &>/dev/null; then
@@ -76,6 +98,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
     brew install uv
   fi
 
+  verify_llvm_for_defer "$(brew --prefix llvm)/bin/clang"
   echo "Homebrew packages: installation attempt completed"
 
   echo ""
@@ -85,7 +108,9 @@ if [[ "$PLATFORM" == "macos" ]]; then
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
-      bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 23
+      if ! bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 23; then
+        echo >&2 "LLVM 23 bootstrap unavailable; trying packaged versions down to LLVM 19"
+      fi
   fi
 
   if command -v apt-get &>/dev/null; then
@@ -169,8 +194,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     curl -fsSL https://bun.com/install | bash
 
-    # The source transformer uses LLVM 23's libclang and matching bindings.
-    LLVM_VERSIONS="23"
+    # The source transformer requires LLVM 19 or newer libclang.
+    LLVM_VERSIONS="23 22 21 20 19"
     LLVM_VERSION=""
     for ver in $LLVM_VERSIONS; do
       echo "Trying LLVM $ver..."
@@ -391,6 +416,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
 
   echo ""
+  if [ -n "${LLVM_VERSION:-}" ]; then
+    verify_llvm_for_defer "/usr/lib/llvm-${LLVM_VERSION}/bin/clang"
+  else
+    verify_llvm_for_defer "$(command -v clang || true)"
+  fi
   echo "Dependencies installed successfully!"
   echo "You can now run: cmake --build --preset debug"
 

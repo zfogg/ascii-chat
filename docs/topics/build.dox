@@ -646,7 +646,7 @@
  * |--------|------|---------|-------------|
  * | `ASCIICHAT_BUILD_WITH_PANIC` | BOOL | OFF | Enable panic instrumentation (per-statement logging for crash debugging) |
  * | `ASCIICHAT_PANIC_TOOL` | PATH | "" | Path to pre-built ascii-instr-panic tool (skips tool rebuild) |
- * | `ASCIICHAT_DEFER_TOOL` | PATH | "" | Path to pre-built ascii-instr-defer tool (skips tool rebuild) |
+ * | `ASCIICHAT_LIBCLANG_PATH` | FILEPATH | "" | LLVM 19 or newer libclang shared library (normally discovered next to Clang) |
  *
  * **Note**: Defer transformation is **automatic** when source files contain `defer()` calls.
  * There is no option to enable/disable it - the build system detects `defer()` usage automatically.

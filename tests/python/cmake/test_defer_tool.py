@@ -107,7 +107,7 @@ int main(void) {
         if (i == 1) break;
     }
     if (count != 4 || trace[2] != 10 || trace[3] != 11) return 2;
-    { defer(record(20)); defer({ int a = 20, b = 1; record(a + b); }); }
+    { defer /* cleanup (LIFO) */ (record(20)); defer({ int a = 20, b = 1; record(a + b); }); }
     { defer((void)0 // cleanup comment
       ); }
     { defer(record(22)); goto after_block; }
@@ -134,6 +134,9 @@ int main(void) {
     "source",
     [
         "void f(int x) { again: defer(x++); if (x) goto again; }",
+        "void f(int x) { switch(x) { case 0: ; defer(x++); break; case 1: break; } }",
+        "#define ESC(x) if (x) goto out\nvoid f(int x) { { defer(x++); ESC(x); } out:; }",
+        "#define ESC(x) if (x) break\nvoid f(int x) { while (x) { defer(x++); ESC(x); } }",
         "void f(int x) { if (x) defer(x++); }",
         "void f(int x) { defer({ if (x) return; }); }",
         "void f(int x) { goto inner; { inner: defer(x++); } }",
@@ -201,11 +204,13 @@ def test_cmake_discovers_defer_and_tracks_headers(
     source_dir.mkdir(parents=True)
     tool_dir.mkdir(parents=True)
     shutil.copy2(TOOL, tool_dir / "defer.py")
+    shutil.copy2(TOOL.parent / "scan.py", tool_dir / "scan.py")
     shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
     second = source_dir / "second.c"
     second.write_text(
         '#include "ascii-chat/tooling/defer/defer.h"\n'
-        "void second(void) { defer((void)0); }\n",
+        "#ifndef SECOND_REQUIRED\n#error missing source definition\n#endif\n"
+        "void second(void) { defer /* cleanup (LIFO) */ ((void)0); }\n",
         encoding="utf-8",
     )
     main = source_dir / "main.c"
@@ -231,6 +236,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     )
     (source_dir / "CMakeLists.txt").write_text(
         "add_executable(ascii-chat-probe main.c second.c)\n"
+        "set_source_files_properties(second.c PROPERTIES COMPILE_DEFINITIONS SECOND_REQUIRED)\n"
         "set_target_properties(ascii-chat-probe PROPERTIES UNITY_BUILD ON)\n"
         "add_dependencies(ascii-chat-probe generate_version)\n"
         f'target_include_directories(ascii-chat-probe PRIVATE "{include_dir}" "${{CMAKE_BINARY_DIR}}")\n',
@@ -254,6 +260,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         "-G",
         "Ninja",
         f"-DCMAKE_C_COMPILER={CLANG}",
+        f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
     )
     run(cmake, "--build", str(build))
     main.write_text(
@@ -510,3 +517,27 @@ def test_compilation_database_separator_keeps_parser_flags_active(
     assert result.returncode == 0, result.stderr
     assert generated.is_file()
     assert (driver / "deps.d").is_file()
+
+
+def test_multiline_return_preserves_expression_line(
+    tmp_path: Path, compiler_environment: dict[str, str]
+) -> None:
+    result = transform(
+        tmp_path,
+        compiler_environment,
+        "int f(void) { defer((void)0); return\n__LINE__; }\n"
+        "int main(void) { return f() != 3; }\n",
+    )
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / (
+        "return-line.exe" if sys.platform == "win32" else "return-line"
+    )
+    compiled = subprocess.run(
+        [str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+    run = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert run.returncode == 0, run.stderr

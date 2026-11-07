@@ -678,11 +678,15 @@ runs:
       run: |
         $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
         New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
+        $PSNativeCommandUseErrorActionPreference = $false
+        $PSNativeCommandUseErrorActionPreference = $false
         gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
         if ($LASTEXITCODE -eq 0) {
           Move-Item -LiteralPath (Join-Path $bearsslDir "bearssls.Windows.amd64.lib") -Destination (Join-Path $bearsslDir "bearssls.lib") -Force
         } else {
           Write-Host "Prebuilt BearSSL unavailable; CMake will build it from source"
+          $LASTEXITCODE = 0
+          $LASTEXITCODE = 0
         }
       env:
         GH_TOKEN: ${{ inputs.github-token }}

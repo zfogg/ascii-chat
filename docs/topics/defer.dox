@@ -29,7 +29,8 @@
  *
  * Defer is supported in project `.c` files, not inline function bodies in headers.
  * Each defer must be a direct statement of a `{ ... }` block. Add braces around
- * an if or loop body before using defer there. Computed goto, jumps into another
+ * an if or loop body before using defer there. Put a defer inside braces under a
+ * switch case; a defer directly in a switch body is rejected. Computed goto, jumps into another
  * block, backward jumps that can register the same defer repeatedly, and
  * unnamed or variably modified parameters in non-void defer functions are
  * rejected. Cleanup actions may not contain return,
@@ -39,9 +40,9 @@
  * declaration. These restrictions make unsupported
  * control flow a build error rather than silently losing cleanup.
  *
- * CMake uses the Python transformer and LLVM 23's libclang to write generated
+ * CMake uses the Python transformer and LLVM 19 or newer libclang to write generated
  * sources below `build/defer_transformed/`; original source files are unchanged.
- * Set `ASCIICHAT_LIBCLANG_PATH` to the LLVM 23 shared library if CMake cannot
+ * Set `ASCIICHAT_LIBCLANG_PATH` to the LLVM 19 or newer libclang shared library if CMake cannot
  * find it beside the compiler. The matching LLVM Python bindings are vendored
  * under `src/tooling/defer/vendor/`. A compilation database is required.
  * Directly compiling an untransformed source containing defer fails rather than
