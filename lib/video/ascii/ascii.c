@@ -291,13 +291,12 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
   // Both contain and cover produce a complete viewport, including any black bars.
 
   // Preserve an 8x8 sample grid for each glyph in the experimental renderer.
-  bool explicit_palette = GET_OPTION(palette_explicit) || GET_OPTION(palette_custom_set);
-  bool glyph_match = GET_OPTION(detected_mode) == MODE_MIRROR && GET_OPTION(renderer) == ASCII_RENDERER_GLYPH &&
-                     caps->render_mode == RENDER_MODE_FOREGROUND && resized_width > 0 && resized_height > 0 &&
-                     resized_width <= IMAGE_MAX_WIDTH / 8 && resized_height <= IMAGE_MAX_HEIGHT / 8 &&
+  bool explicit_palette = caps->palette_explicit;
+  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode == RENDER_MODE_FOREGROUND &&
+                     resized_width > 0 && resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
+                     resized_height <= IMAGE_MAX_HEIGHT / 8 &&
                      (!explicit_palette || ascii_glyph_palette_supported(palette_chars));
-  if (GET_OPTION(detected_mode) == MODE_MIRROR && GET_OPTION(renderer) == ASCII_RENDERER_GLYPH && explicit_palette &&
-      !ascii_glyph_palette_supported(palette_chars))
+  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette && !ascii_glyph_palette_supported(palette_chars))
     log_warn_every(5 * NS_PER_SEC_INT,
                    "Unicode palettes use the luminance renderer; glyph masks currently cover printable ASCII");
   if (glyph_match) {

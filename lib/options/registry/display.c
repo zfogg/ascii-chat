@@ -216,7 +216,7 @@ const registry_entry_t g_display_entries[] = {
      .arg_placeholder = "luminance|glyph",
      .env_var_name = "ASCII_CHAT_RENDERER",
      .parse_fn = parse_ascii_renderer,
-     .mode_bitmask = OPTION_MODE_MIRROR,
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      .metadata = {.enum_values = renderer_values,
                   .enum_descriptions = renderer_descriptions,
                   .enum_integer_values = renderer_integers,

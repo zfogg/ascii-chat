@@ -158,6 +158,13 @@ static void test_remote(void) {
   cr_assert(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM &&
             !strcmp(clients[0].palette, " .+#"));
   cr_assert(clients[1].width == 80 && clients[1].caps.palette_type == PALETTE_STANDARD);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
+  cr_assert_eq(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
+  cr_assert_eq(clients[1].palette_length, 95);
+  cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status,
+               0);
+  cr_assert(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));
   acip_render_settings_t previous = clients[0];
   cr_assert_neq(request(&clients[0], "{\"width\":90,\"password\":\"secret\"}", UINT32_MAX).status, 0);
   cr_assert(!memcmp(&previous, &clients[0], sizeof(previous)));

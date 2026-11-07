@@ -43,7 +43,9 @@ const path = require("node:path");
     );
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROME_PATH,
+  });
   try {
     const page = await browser.newPage();
     page.on("pageerror", (error) => console.error("browser error:", error));
@@ -257,19 +259,25 @@ const path = require("node:path");
       };
       let rendered = false;
       const paint = (text) => {
-        const config = m._malloc(544),
+        const config = m._malloc(m._wasm_renderer_config_size()),
           out = m._malloc(4),
           bytes = new TextEncoder().encode(text),
           input = m._malloc(bytes.length);
         let renderer = 0;
         try {
-          m.HEAPU8.fill(0, config, config + 544);
-          const view = new DataView(m.HEAPU8.buffer, config, 544);
-          view.setInt32(0, 40, true);
-          view.setInt32(4, 12, true);
-          view.setFloat64(8, 12, true);
-          view.setInt32(536, m._get_font_default_ptr(0), true);
-          view.setInt32(540, m._get_font_default_size(0), true);
+          if (
+            m._wasm_renderer_config_write(
+              config,
+              40,
+              12,
+              12,
+              0,
+              m._get_font_default_ptr(0),
+              m._get_font_default_size(0),
+              0,
+            )
+          )
+            throw new Error("C terminal configuration failed");
           if (m._term_renderer_create(config, out))
             throw new Error("C terminal create failed");
           renderer = new DataView(m.HEAPU8.buffer, out, 4).getUint32(0, true);
@@ -340,6 +348,32 @@ const path = require("node:path");
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render()) throw new Error("updated render failed");
       const updated = output.splice(0);
+      patch(ids[0], {
+        renderer: 1,
+        palette_custom: "@#",
+        palette_explicit: true,
+      });
+      patch(ids[1], {
+        renderer: 0,
+        color_mode: 0,
+        palette_custom: "Y",
+        palette_explicit: true,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (m._browser_host_render())
+        throw new Error("per-viewer renderer failed");
+      const distinct = output.splice(0);
+      const glyphFrame = distinct.find((frame) => frame.id === ids[0]);
+      const luminanceFrame = distinct.find((frame) => frame.id === ids[1]);
+      const characters = (frame) =>
+        frame.text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
+      if (
+        !glyphFrame ||
+        !luminanceFrame ||
+        /[^@#\s]/u.test(characters(glyphFrame)) ||
+        /[^Y\s]/u.test(characters(luminanceFrame))
+      )
+        throw new Error("Per-viewer renderer palettes were not respected");
       patch(ids[1], { color_mode: 0, render_mode: 2 });
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render())

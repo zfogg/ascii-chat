@@ -2437,5 +2437,5 @@ cleanup:
 
 void options_resolve_flip_x(options_t *opts) {
   if (!opts->flip_x_explicit)
-    opts->flip_x = !opts->media_input && !opts->waveform && !opts->fft;
+    opts->flip_x = !opts->media_input && !opts->test_pattern && !opts->waveform && !opts->fft;
 }

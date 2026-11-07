@@ -624,6 +624,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   // Re-evaluate render_mode and color_level on every frame to pick up live changes
   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
+  caps_copy.text_renderer = GET_OPTION(renderer);
+  caps_copy.palette_explicit = GET_OPTION(palette_explicit);
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (color_mode_opt != TERM_COLOR_AUTO) {
     caps_copy.color_level = color_mode_opt;
@@ -770,8 +772,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   // Validate the completed local frame using the same policy as received text.
   // Wide palettes use the existing cell composer before the rectangular check.
-  bool explicit_palette = GET_OPTION(palette_explicit) || GET_OPTION(palette_custom_set);
-  bool glyph_match = GET_OPTION(detected_mode) == MODE_MIRROR && GET_OPTION(renderer) == ASCII_RENDERER_GLYPH &&
+  bool explicit_palette = caps_copy.palette_explicit;
+  bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH &&
                      caps_copy.render_mode == RENDER_MODE_FOREGROUND && width > 0 && height > 0 &&
                      width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8 &&
                      (!explicit_palette || ascii_glyph_palette_supported(ctx->palette_chars));

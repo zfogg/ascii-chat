@@ -1,6 +1,7 @@
 # Experimental glyph matching
 
-`ascii-chat mirror --renderer=glyph` enables a prototype foreground renderer. It fits
+`--renderer=glyph` enables a prototype foreground renderer in mirror, client,
+discovery, and MCP rendering. It fits
 an 8×8 pixel patch per terminal cell, averages that patch to 4×4, and compares
 its luminance and local structure with 95 printable ASCII glyph masks generated
 from DejaVu Sans Mono 2.37. The score balances normalized glyph density against
@@ -16,8 +17,8 @@ implementation; it does not copy Chafa code or glyph definitions. The generated
 font masks carry the license in `lib/video/ascii/DEJAVU-LICENSE`.
 
 The atlas assumes DejaVu Sans Mono and a dark background. Other fonts, terminal
-color themes, and glyph rasterization can change the result. This prototype is
-mirror-only and supports printable ASCII palettes. It falls back to luminance
+color themes, and glyph rasterization can change the result. The prototype
+supports printable ASCII palettes. It falls back to luminance
 for Unicode palettes and in background and half-block modes. It has no
 frame-to-frame stabilization and can flicker. The 8× sampling limits the
 viewport to 480×270 cells under the current image size limit; larger viewports
