@@ -10,7 +10,13 @@ static bool stdout_tty, stdin_tty, fail_enumeration, fail_display, fail_capture,
     fail_audio_start, fail_audio_stop, file_audio;
 static unsigned devices_available, enumerations, freed_lists, audio_starts, audio_stops, attempts, slept;
 static bool exit_requested;
+static bool keepawake_failure;
+static unsigned keepawake_calls;
 static asciichat_error_t attempt_result;
+static asciichat_error_t lifecycle_keepawake(void) {
+  ++keepawake_calls;
+  return keepawake_failure ? SET_ERRNO(ERROR_PLATFORM_INIT, "No system bus") : ASCIICHAT_OK;
+}
 static bool lifecycle_tty(void) {
   return stdout_tty;
 }
@@ -70,6 +76,7 @@ static asciichat_error_t lifecycle_audio_stop(audio_context_t *context) {
 #define audio_init lifecycle_audio_init
 #define audio_start_duplex lifecycle_audio_start
 #define audio_stop_duplex lifecycle_audio_stop
+#define platform_enable_keepawake lifecycle_keepawake
 #include "../../../src/common/session/client_like.c"
 #undef terminal_is_stdout_tty
 #undef terminal_is_stdin_tty
@@ -82,6 +89,7 @@ static asciichat_error_t lifecycle_audio_stop(audio_context_t *context) {
 #undef audio_init
 #undef audio_start_duplex
 #undef audio_stop_duplex
+#undef platform_enable_keepawake
 static client_like_state_t state;
 static bool lifecycle_exit(void) {
   return exit_requested;
@@ -137,6 +145,18 @@ static void teardown(void) {
   log_destroy();
 }
 TestSuite(client_lifecycle, .init = setup, .fini = teardown, .timeout = 20);
+Test(client_lifecycle, optional_keepawake_failure_preserves_prior_errors_without_notification) {
+  errno_notifications_enable(true);
+  SET_ERRNO(ERROR_NETWORK, "Earlier failure");
+  size_t notifications = errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL);
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  keepawake_failure = true;
+  cr_assert_eq(client_like_setup_keepawake(), ASCIICHAT_OK);
+  cr_assert_eq(keepawake_calls, 1);
+  cr_assert(errno_scope_is_clean(scope));
+  cr_assert(HAS_ERRNO_CODE(ERROR_NETWORK));
+  cr_assert_eq(errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL), notifications);
+}
 static options_t *lifecycle_options(void) {
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();

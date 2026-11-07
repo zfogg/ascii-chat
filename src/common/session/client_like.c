@@ -197,7 +197,14 @@ static asciichat_error_t client_like_setup_keepawake(void) {
 
   // Enable keepawake unless explicitly disabled
   if (!disable_ka) {
-    (void)platform_enable_keepawake();
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool suppressed = errno_notifications_suppress(true);
+    asciichat_error_t keepawake_result = platform_enable_keepawake();
+    errno_notifications_suppress(suppressed);
+    if (keepawake_result != ASCIICHAT_OK) {
+      log_debug("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
+      errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    }
   }
 
   return ASCIICHAT_OK;

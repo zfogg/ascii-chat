@@ -1257,9 +1257,22 @@ if(BUILD_TESTS)
     endforeach()
     asciichat_add_pytest(python-lifecycle integration/lifecycle --lifecycle-probe=$<TARGET_FILE:test-client-like-lifecycle>)
     set_tests_properties(python-lifecycle PROPERTIES LABELS "integration;python")
+    add_executable(test-mdns-advertiser EXCLUDE_FROM_ALL
+        ${CMAKE_CURRENT_SOURCE_DIR}/standalone/network/mdns_advertiser_fixture.c)
+    target_link_libraries(test-mdns-advertiser PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-mdns-advertiser PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-mdns-advertiser)
+    set_target_properties(test-mdns-advertiser PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} test-mdns-advertiser)
+        endif()
+    endforeach()
     asciichat_add_python_test(mdns-terminal
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_terminal.py
-            --binary $<TARGET_FILE:ascii-chat> --artifacts ${CMAKE_BINARY_DIR}/Testing/mdns-terminal)
+            --binary $<TARGET_FILE:ascii-chat> --advertiser $<TARGET_FILE:test-mdns-advertiser>
+            --artifacts ${CMAKE_BINARY_DIR}/Testing/mdns-terminal)
     set_tests_properties(mdns-terminal PROPERTIES
         LABELS "integration;terminal" TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
     asciichat_add_python_test(mdns-cross-host

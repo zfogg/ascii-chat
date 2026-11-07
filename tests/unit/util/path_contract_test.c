@@ -7,6 +7,13 @@
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <direct.h>
+#define test_chdir _chdir
+#else
+#include <unistd.h>
+#define test_chdir chdir
+#endif
 
 static char directory[PLATFORM_MAX_PATH_LENGTH];
 static const char *names[] = {"HOME", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME"};
@@ -36,6 +43,22 @@ static void teardown(void) {
   asciichat_pcre2_cleanup_all();
 }
 TestSuite(path_contract, .init = setup, .fini = teardown);
+
+#ifndef NDEBUG
+Test(path_contract, debug_default_log_directory_is_allowed_from_another_working_directory) {
+  char previous[PLATFORM_MAX_PATH_LENGTH];
+  char path[PLATFORM_MAX_PATH_LENGTH];
+  char *normalized = NULL;
+  cr_assert(platform_get_cwd(previous, sizeof(previous)));
+  cr_assert_eq(test_chdir(directory), 0);
+  safe_snprintf(path, sizeof(path), "%s/ascii-chat-path-contract-test.log", ASCIICHAT_SOURCE_ROOT);
+  asciichat_error_t result = path_validate_user_path(path, PATH_ROLE_LOG_FILE, &normalized);
+  cr_assert_eq(test_chdir(previous), 0);
+  cr_assert_eq(result, ASCIICHAT_OK);
+  cr_assert_not_null(normalized);
+  SAFE_FREE(normalized);
+}
+#endif
 
 Test(path_contract, xdg_paths_override_home_and_empty_environment_falls_back_without_allocating_garbage) {
   char expected[PLATFORM_MAX_PATH_LENGTH];

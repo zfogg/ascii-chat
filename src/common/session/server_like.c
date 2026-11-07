@@ -243,7 +243,14 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot specify both --keepawake and --no-keepawake");
   }
   if (keepawake_enabled) {
-    platform_enable_keepawake();
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool suppressed = errno_notifications_suppress(true);
+    asciichat_error_t keepawake_result = platform_enable_keepawake();
+    errno_notifications_suppress(suppressed);
+    if (keepawake_result != ASCIICHAT_OK) {
+      log_debug("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
+      errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    }
   }
 
   /* === 2. File descriptor limit === */
