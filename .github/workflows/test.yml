@@ -347,6 +347,10 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        instrumentation: [coverage]
+        include:
+          - os: ubuntu-latest
+            instrumentation: sanitizers
 
     steps:
       - name: Checkout code
@@ -367,7 +371,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v7-${{ matrix.instrumentation }}
 
       - name: Clean test executables and libraries only
         run: |
@@ -392,10 +396,9 @@ jobs:
       - name: Install terminal test dependencies
         run: python -m pip install -r tests/requirements-terminal.txt
 
-      - name: Configure integration tests with coverage
+      - name: Configure integration tests
         run: |
-          echo "Configuring integration tests with coverage build..."
-          # Use CMake build system with coverage
+          echo "Configuring integration tests with ${{ matrix.instrumentation }}..."
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
           if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
@@ -419,8 +422,8 @@ jobs:
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
             -DPython3_EXECUTABLE="${{ steps.integration-python.outputs.python-path }}" \
-            -DASCIICHAT_ENABLE_COVERAGE=ON \
-            -DASCIICHAT_ENABLE_SANITIZERS=OFF \
+            -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
+            -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
             -DBUILD_TESTS=ON \
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
             -DUSE_MUSL=OFF \
@@ -483,7 +486,7 @@ jobs:
         run: pactl --server="$PULSE_SERVER" exit
 
       - name: Generate coverage report
-        if: always()
+        if: always() && matrix.instrumentation == 'coverage'
         uses: ./.github/actions/generate-coverage
         with:
           os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
@@ -508,7 +511,7 @@ jobs:
 
       - name: Publish Test Results and Coverage
         uses: ./.github/actions/publish-test-results
-        if: always()
+        if: always() && matrix.instrumentation == 'coverage'
         with:
           test-type: integration
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
@@ -521,7 +524,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-test-results-${{ runner.os }}
+          name: integration-test-results-${{ runner.os }}${{ matrix.instrumentation == 'sanitizers' && '-sanitizers' || '' }}
           path: |
             integration-tests-*.log
             build/coverage.xml
