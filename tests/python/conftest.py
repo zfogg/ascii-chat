@@ -10,6 +10,8 @@ from ascii_chat_tests.cli import clean_environment
 def pytest_addoption(parser):
     parser.addoption("--ascii-chat-binary", help="Path to the built ascii-chat executable")
     parser.addoption("--terminal-probe", help="Path to the native terminal fixture")
+    parser.addoption("--lifecycle-probe", help="Path to the client lifecycle fixture")
+    parser.addoption("--media-capture-probe", help="Path to the media capture fixture")
 
 
 def pytest_configure(config):
@@ -17,6 +19,18 @@ def pytest_configure(config):
     os.environ["TESTING"] = "1"
     os.environ["ASCII_CHAT_OTEL_ENABLED_TELEMETRY"] = "none"
     os.environ["ASCII_CHAT_DISABLE_FIRST_USE"] = "1"
+
+
+@pytest.fixture(autouse=True)
+def serialize_loopback_services(request, tmp_path_factory):
+    # Native servers create large worker pools; avoid exhausting OS thread
+    # limits while unrelated pytest cases continue on other workers.
+    if request.node.get_closest_marker("network"):
+        from filelock import FileLock
+        with FileLock(str(tmp_path_factory.getbasetemp().parent / "native-processes.lock"), timeout=300):
+            yield
+    else:
+        yield
 
 
 @pytest.fixture(scope="session")
@@ -47,15 +61,19 @@ def service_factory(binary, tmp_path):
     return create
 
 
-@pytest.fixture(scope="session")
-def terminal_probe(request):
-    value = request.config.getoption("--terminal-probe")
+def _probe_path(request, option, description):
+    value = request.config.getoption(option)
     if not value:
-        pytest.skip("Pass --terminal-probe to run the native terminal fixture")
+        pytest.skip(f"Pass {option} to run the {description}")
     path = Path(value).resolve()
     if not path.is_file():
-        pytest.fail(f"Native terminal fixture does not exist: {path}")
+        pytest.fail(f"{description} does not exist: {path}")
     return path
+
+
+@pytest.fixture(scope="session")
+def terminal_probe(request):
+    return _probe_path(request, "--terminal-probe", "native terminal fixture")
 
 
 @pytest.fixture
@@ -71,3 +89,13 @@ def terminal_factory():
     yield create
     for terminal in reversed(terminals):
         terminal.close()
+
+
+@pytest.fixture(scope="session")
+def lifecycle_probe(request):
+    return _probe_path(request, "--lifecycle-probe", "client lifecycle fixture")
+
+
+@pytest.fixture(scope="session")
+def media_capture_probe(request):
+    return _probe_path(request, "--media-capture-probe", "native media capture fixture")

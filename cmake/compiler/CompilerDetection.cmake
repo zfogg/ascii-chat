@@ -65,8 +65,8 @@ endif()
 # Generate compile_commands.json for IDE/tool integration (clangd, VSCode, etc.)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Automatically copy or symlink compile_commands.json to project root
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
+# Keep container builds from replacing the host compilation database.
+if(CMAKE_EXPORT_COMPILE_COMMANDS AND NOT EXISTS "/.dockerenv")
     if(NOT CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
         # Only do this if we're doing an out-of-source build
         set(COMPILE_COMMANDS_SOURCE "${CMAKE_BINARY_DIR}/compile_commands.json")

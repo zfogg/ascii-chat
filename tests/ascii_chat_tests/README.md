@@ -46,14 +46,14 @@ legacy harnesses elsewhere may execute at import time. From the repository root:
 ```sh
 uv sync --project tests/ascii_chat_tests --frozen
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty
-ctest --test-dir build -R '^python-(unit|cli|media|network|mcp|terminal)$' --no-tests=error --output-on-failure --parallel
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty --lifecycle-probe build/bin/test-client-like-lifecycle --media-capture-probe build/bin/test-media-capture-open
+ctest --test-dir build -R '^python-(unit|cli|media|network|discovery|mcp|terminal|telemetry|lifecycle|capture)$' --no-tests=error --output-on-failure --parallel
 ```
 
 On Windows use `build/bin/ascii-chat.exe`. Pytest defaults to all logical cores
 with `-n logical`; use `-n 0` to debug a case. CTest reserves all cores for each
 pytest batch to avoid nested oversubscription. It retains its existing resource
-serialization for legacy scenarios. Pytest case reports are written to
+serialization for legacy scenarios. Loopback network tests share a lock because each server creates a large worker pool. Pytest case reports are written to
 `build/Testing/python-*.xml`, alongside the CTest report. CTest uses a separate
 build-local uv environment so Docker and native builds do not replace each
 other's virtual environments. Install `uv` before configuring with tests enabled.
