@@ -313,11 +313,17 @@ class TerminalProcess:
                         os.killpg(group, signal.SIGKILL)
                 except (OSError, ValueError):
                     pass
+            try:
+                os.killpg(self.process.pid, signal.SIGKILL)
+            except OSError:
+                pass
             self.process.kill()
             try:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 pass
+        self.process.stdout.close()
+        self.process.stderr.close()
         os.close(self.master)
 
     def __enter__(self):

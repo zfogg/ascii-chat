@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 import wave
 import unittest
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from ascii_chat_tests.media import lavfi_fixture, ppm_image, write_pcm_wav
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 from ascii_chat_tests.process import free_port
 from ascii_chat_tests.protocol import crc32c
+from ascii_chat_tests.terminal import TerminalProcess
 
 
 class HelperTests(unittest.TestCase):
@@ -92,6 +94,37 @@ class HelperTests(unittest.TestCase):
     def test_protocol_checksum_and_port(self):
         self.assertEqual(crc32c(b'123456789'), 0xe3069283)
         self.assertGreater(free_port(), 0)
+
+    @unittest.skipIf(os.name == "nt", "POSIX process groups")
+    def test_terminal_cleanup_kills_descendants_in_the_launcher_group(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_file = Path(directory) / "child.pid"
+            code = ("import os, pathlib, sys, time\n"
+                    "child = os.fork()\n"
+                    "if child == 0:\n"
+                    " time.sleep(30)\n"
+                    "else:\n"
+                    " pathlib.Path(sys.argv[1]).write_text(str(child))\n"
+                    " time.sleep(30)\n")
+            terminal = TerminalProcess([sys.executable, "-c", code, str(pid_file)],
+                                       environment=os.environ.copy(), cwd=directory)
+            try:
+                deadline = time.monotonic() + 10
+                while not pid_file.exists() and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                self.assertTrue(pid_file.exists(), "child did not start")
+                child = int(pid_file.read_text())
+            finally:
+                terminal.close()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(child, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail(f"child {child} survived terminal cleanup")
 
 
 if __name__ == '__main__':

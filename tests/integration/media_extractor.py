@@ -293,6 +293,16 @@ class MediaExtractor(unittest.TestCase):
             else:
                 self.fail(f"extractor descendant {child} survived cancellation")
 
+    @unittest.skipIf(os.name == "nt", "POSIX terminal job control")
+    def test_stopped_extractor_fails_without_leaving_terminal_in_background(self):
+        extractor_pid = self.root / "extractor.pid"
+        env = dict(self.env, FAKE_YTDLP_MODE="interactive-stop", FAKE_YTDLP_EXPECT_TERMINAL="1",
+                   FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid))
+        with TerminalProcess([AUDIO_PROBE, self.base + "/watch", "--expect-error"],
+                             environment=env, cwd=self.root, child_group_file=extractor_pid) as terminal:
+            code, stdout, stderr = terminal.wait(timeout=10)
+            self.assertEqual(code, 0, (stdout, stderr[-4000:]))
+
     def test_capture_initialization_honors_configured_cancellation(self):
         """A caller's exit callback interrupts initial media extraction."""
         env = dict(self.env, FAKE_YTDLP_MODE="hang")

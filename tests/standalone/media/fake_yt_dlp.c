@@ -26,6 +26,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
+#include <signal.h>
 #include <unistd.h>
 #endif
 
@@ -82,7 +83,8 @@ int main(int argc, char **argv) {
   }
 #endif
 #ifndef _WIN32
-  if (mode && (strcmp(mode, "interactive") == 0 || strcmp(mode, "interactive-hang") == 0)) {
+  if (mode && (strcmp(mode, "interactive") == 0 || strcmp(mode, "interactive-hang") == 0 ||
+               strcmp(mode, "interactive-stop") == 0)) {
     char answer[64];
     const char *extractor_pid_path = getenv("FAKE_YTDLP_EXTRACTOR_PID");
     if (extractor_pid_path) {
@@ -94,6 +96,8 @@ int main(int argc, char **argv) {
     }
     fputs("fixture prompt: ", stderr);
     fflush(stderr);
+    if (strcmp(mode, "interactive-stop") == 0)
+      raise(SIGSTOP);
     if (!fgets(answer, sizeof(answer), stdin) || strcmp(answer, "yes\n") != 0)
       return 6;
     if (strcmp(mode, "interactive-hang") == 0) {

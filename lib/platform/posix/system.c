@@ -1160,7 +1160,7 @@ static int subprocess_set_foreground(int fd, pid_t group) {
 
 // A child may exit before its start gate is released. Do not let a broken
 // gate deliver SIGPIPE to the application, and preserve any pre-existing one.
-static bool subprocess_release_gate(int fd) {
+bool terminal_release_subprocess_gate(int fd) {
   sigset_t blocked, previous, pending;
   sigemptyset(&blocked);
   sigaddset(&blocked, SIGPIPE);
@@ -1172,7 +1172,8 @@ static bool subprocess_release_gate(int fd) {
   do {
     written = write(fd, "x", 1);
   } while (written < 0 && errno == EINTR);
-  if (written < 0 && errno == EPIPE && !already_pending) {
+  if (written < 0 && errno == EPIPE && !already_pending && sigpending(&pending) == 0 &&
+      sigismember(&pending, SIGPIPE) == 1) {
     int received;
     sigwait(&blocked, &received);
   }
@@ -1271,6 +1272,8 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   if (gate_open)
     close(start_pipe[0]);
   bool capture_failed = false;
+  bool wait_failed = false;
+  bool cancelled = false;
   size_t position = 0;
   int status = 0;
   bool exited = false;
@@ -1283,11 +1286,16 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     close(output_pipe[1]);
   while (!exited || pipe_open) {
     if (cancel && cancel(data)) {
+      cancelled = true;
       kill(-pid, SIGKILL);
       if (!exited) {
         kill(pid, SIGKILL);
-        while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
-        }
+        siginfo_t info = {0};
+        int waited;
+        do {
+          waited = waitid(P_PID, (id_t)pid, &info, WEXITED | WNOWAIT);
+        } while (waited < 0 && errno == EINTR);
+        wait_failed = waited < 0;
       }
       if (pipe_open)
         close(output_pipe[0]);
@@ -1297,7 +1305,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       }
       if (capture)
         output_buffer[position] = '\0';
-      goto cancelled_exit;
+      break;
     }
     if (pipe_open) {
       struct pollfd fd = {.fd = output_pipe[0], .events = POLLIN | POLLHUP};
@@ -1327,20 +1335,37 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       poll(NULL, 0, 50);
     }
     if (!exited) {
-      pid_t waited = waitpid(pid, &status, WNOHANG | WUNTRACED);
-      if (waited == pid) {
-        if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTTIN && tty >= 0)
-          terminal_stopped = true;
-        else if (!WIFSTOPPED(status))
+      siginfo_t info = {0};
+      int waited = waitid(P_PID, (id_t)pid, &info, WEXITED | WSTOPPED | WNOHANG | WNOWAIT);
+      if (waited == 0 && info.si_pid == pid) {
+        if (info.si_code == CLD_STOPPED) {
+          // Consume stop notifications so the next wait can observe exit.
+          siginfo_t stopped = {0};
+          (void)waitid(P_PID, (id_t)pid, &stopped, WSTOPPED | WNOHANG);
+          if (info.si_status == SIGTTIN && tty >= 0)
+            terminal_stopped = true;
+          else {
+            // A stopped foreground child otherwise blocks the TUI indefinitely.
+            capture_failed = true;
+            kill(-pid, SIGKILL);
+            kill(pid, SIGKILL);
+          }
+        } else {
           exited = true;
+        }
       } else if (waited < 0 && errno != EINTR) {
         exited = true;
         capture_failed = true;
+        wait_failed = true;
       }
     }
     if ((gate_open || terminal_stopped) && !exited) {
       pthread_mutex_lock(&subprocess_terminal_mutex);
-      if (tcgetpgrp(tty) == getpgrp()) {
+      pid_t foreground = tcgetpgrp(tty);
+      if (terminal_stopped && terminal_owned && foreground == pid) {
+        terminal_stopped = false;
+        kill(-pid, SIGCONT);
+      } else if (foreground == getpgrp()) {
         have_terminal_attributes = tcgetattr(tty, &terminal_attributes) == 0;
         // The application still renders while the child owns input. Prevent a
         // terminal configured with TOSTOP from suspending those writes.
@@ -1355,7 +1380,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
           terminal_owned = true;
           subprocess_terminal_owner = pid;
           if (gate_open) {
-            bool released = subprocess_release_gate(start_pipe[1]);
+            bool released = terminal_release_subprocess_gate(start_pipe[1]);
             close(start_pipe[1]);
             gate_open = false;
             if (!released) {
@@ -1384,12 +1409,6 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   }
   if (capture)
     output_buffer[position] = '\0';
-  int result = !capture_failed && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-  goto restore_terminal;
-
-cancelled_exit:
-  result = -1;
-restore_terminal:
   if (gate_open)
     close(start_pipe[1]);
   if (terminal_owned) {
@@ -1402,6 +1421,14 @@ restore_terminal:
   }
   if (tty >= 0)
     close(tty);
-  return result;
+  if (!wait_failed) {
+    pid_t waited;
+    do {
+      waited = waitpid(pid, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+    if (waited != pid)
+      wait_failed = true;
+  }
+  return !cancelled && !capture_failed && !wait_failed && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 #endif // !_WIN32

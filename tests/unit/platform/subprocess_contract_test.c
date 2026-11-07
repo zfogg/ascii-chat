@@ -8,6 +8,23 @@ static void setup(void) {
 }
 TestSuite(subprocess_contract, .init = setup, .fini = log_destroy, .timeout = 15);
 #ifndef _WIN32
+#include "../../../lib/platform/posix/terminal.h"
+#include <signal.h>
+#include <unistd.h>
+
+Test(subprocess_contract, closed_gate_with_ignored_sigpipe_does_not_block) {
+  int gate[2];
+  cr_assert_eq(pipe(gate), 0);
+  close(gate[0]);
+  struct sigaction ignore = {.sa_handler = SIG_IGN}, previous;
+  sigemptyset(&ignore.sa_mask);
+  cr_assert_eq(sigaction(SIGPIPE, &ignore, &previous), 0);
+  bool released = terminal_release_subprocess_gate(gate[1]);
+  cr_assert_eq(sigaction(SIGPIPE, &previous, NULL), 0);
+  close(gate[1]);
+  cr_assert_not(released);
+}
+
 Test(subprocess_contract, capture_preserves_empty_arguments_and_shell_metacharacters) {
   const char *args[] = {"printf", "<%s>|<%s>|<%s>|<%s>", "", "two words", "$(echo changed);*", "single'quote", NULL};
   char output[256];
