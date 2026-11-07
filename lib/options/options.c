@@ -2375,12 +2375,15 @@ asciichat_error_t options_init(int argc, char **argv) {
     goto cleanup;
   }
   record_explicit_fps(&opts, mode_args.argc, mode_args.argv, fps_set_by_config);
-  // Validators consume a published snapshot; final publication follows normalization.
-  result = publish_options_for_validation(&opts);
+  result = validate_custom_palette(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  result = validate_custom_palette(&opts);
+  result = validate_glyph_palette(&opts);
+  if (result != ASCIICHAT_OK)
+    goto cleanup;
+  // Remaining validators consume a published snapshot.
+  result = publish_options_for_validation(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }

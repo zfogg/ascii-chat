@@ -283,7 +283,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
 
 validate_output:
   if (ascii_output) {
-    bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH && caps.render_mode == RENDER_MODE_FOREGROUND &&
+    bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH && caps.render_mode != RENDER_MODE_HALF_BLOCK &&
                        dst_width > 0 && dst_height > 0 && dst_width <= IMAGE_MAX_WIDTH / 8 &&
                        dst_height <= IMAGE_MAX_HEIGHT / 8 &&
                        (!caps.palette_explicit || ascii_glyph_palette_supported(palette_chars));

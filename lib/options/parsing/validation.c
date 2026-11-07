@@ -19,7 +19,20 @@
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/options/options.h>
+
+asciichat_error_t validate_glyph_palette(const options_t *opts) {
+  if (!opts)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing options for glyph palette validation");
+  if (opts->renderer != ASCII_RENDERER_GLYPH || !opts->palette_explicit)
+    return ASCIICHAT_OK;
+  const palette_def_t *builtin = get_builtin_palette(opts->palette_type);
+  const char *palette = opts->palette_type == PALETTE_CUSTOM ? opts->palette_custom : builtin ? builtin->chars : NULL;
+  if (!ascii_glyph_palette_supported(palette))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
+  return ASCIICHAT_OK;
+}
 
 // ============================================================================
 // Generic Integer Range Validator
