@@ -293,6 +293,42 @@ class Protocol(unittest.TestCase):
     def test_http_local_devices_and_paths(self):
         self.http_profile(False)
 
+    def test_hosted_downloads_config_toml(self):
+        port = free_port()
+        downloads = self.directory / "toml-downloads"
+        config = self.directory / "mcp.toml"
+        config.write_text('[mcp]\nserver = true\ntransport = "http"\n' +
+                          f'downloads_dir = {json.dumps(downloads.as_posix())}\n' +
+                          'downloads_url_prefix = "https://example.test/assets"\n' +
+                          f'[network]\naddress = "127.0.0.1"\nport = {port}\nmax_clients = 1\n', encoding="utf-8")
+        env = os.environ.copy()
+        for key in ("ASCII_CHAT_DOWNLOADS_DIR", "ASCII_CHAT_DOWNLOADS_URL_PREFIX", "ASCII_CHAT_TRANSPORT", "ASCII_CHAT_SERVER"):
+            env.pop(key, None)
+        log = open(self.directory / "toml-http.log", "wb"); self.addCleanup(log.close)
+        process = subprocess.Popen([str(self.binary), "--config", str(config), "mcp-server", "--status-screen=false"],
+                                   stdout=log, stderr=log, env=env)
+        def stop():
+            process.terminate()
+            try: process.wait(timeout=10)
+            except subprocess.TimeoutExpired: process.kill(); process.wait()
+        self.addCleanup(stop)
+        for _ in range(100):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=.1): break
+            except OSError:
+                self.assertIsNone(process.poll(), "TOML-configured HTTP server exited"); time.sleep(.05)
+        else: self.fail("TOML-configured HTTP server did not bind")
+        body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "render_file",
+                "arguments": {"options": {"test-pattern": True, "width": 40, "height": 16}}}}
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
+        conn.request("POST", "/mcp", json.dumps(body), {"Content-Type": "application/json",
+                     "Accept": "application/json, text/event-stream"})
+        response = conn.getresponse(); result = json.loads(response.read()); conn.close()
+        self.assertEqual(response.status, 200); self.assertFalse(result["result"]["isError"], result)
+        url = result["result"]["structuredContent"]["download_url"]
+        self.assertTrue(url.startswith("https://example.test/assets/"), url)
+        self.assertTrue((downloads / url.rsplit("/", 1)[-1]).is_file())
+
     def test_hosted_uses_xdg_data_directory_by_default(self):
         if sys.platform == "win32":
             self.skipTest("XDG data directories are a Unix convention")
