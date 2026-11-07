@@ -67,4 +67,3 @@ def test_telemetry_disabled(binary, monkeypatch):
             process.communicate(timeout=10)
         assert not receiver.records, "MCP HTTP test sent OTLP to the collector"
     print("test-mode OTLP prohibition: 6 media endpoint/signal overrides plus MCP stdio/HTTP, zero exported requests")
-

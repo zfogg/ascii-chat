@@ -38,7 +38,7 @@ Native source images: [pattern zero](test-pattern-evidence/native-pattern-0.png)
 ```sh
 cmake --preset default -B build
 cmake --build build --target ascii-chat
-python tests/platform/test_pattern.py --binary build/bin/ascii-chat.exe --library build/bin/asciichat.dll
+python tests/platform/probe_pattern.py --binary build/bin/ascii-chat.exe --library build/bin/asciichat.dll
 ```
 
 Criterion tests require a supported platform; Windows verification uses the actual shared library. Native PNG encoder initialization fails in this environment, so the native evidence images were captured directly from the library.
