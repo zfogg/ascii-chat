@@ -35,7 +35,7 @@ services:
       # Path structure: .deps-cache/docker/<BuildType>/ and .deps-cache/docker/<BuildType>/musl/
       - deps-cache-data:/app/.deps-cache
 
-    # Required for AddressSanitizer/LeakSanitizer to work in container
+    # Some host security policies require ptrace for LeakSanitizer.
     cap_add:
       - SYS_PTRACE
 
@@ -43,7 +43,7 @@ services:
     # Use build_docker directory (build is for native OS)
     command: >
       sh -c "cmake --preset docker &&
-             cmake --build build_docker --target all tests-criterion-build &&
+             cmake --build build_docker --target tests &&
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     # Optional: Override command for interactive shell
@@ -73,10 +73,9 @@ services:
       # AddressSanitizer configuration
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
-      # LeakSanitizer workaround for Docker
-      # LSAN requires ptrace which may not work in all Docker configurations
-      # even with SYS_PTRACE capability (depends on host security policies)
-      - LSAN_OPTIONS=detect_leaks=0
+      # Fail on leaks in sanitizer-enabled builds.
+      - ASAN_OPTIONS=detect_leaks=1
+      - LSAN_OPTIONS=detect_leaks=1
 
   # Ubuntu container (ARM64 + x86_64)
   # Use this on Apple Silicon Macs or ARM64 Linux
@@ -98,12 +97,12 @@ services:
 
     command: >
       sh -c "cmake --preset docker &&
-             cmake --build build_docker --target all tests-criterion-build &&
+             cmake --build build_docker --target tests &&
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     environment:
       # Architecture-specific deps cache (prevents cross-arch binary conflicts)
-      - DOCKER_OS=arm64
+      - DOCKER_OS=${DOCKER_OS:-arm64}
       - CCACHE_DIR=/ccache
       - CCACHE_UMASK=002
       - CCACHE_HARDLINK=true
@@ -114,7 +113,8 @@ services:
       - CRITERION_TEST=1
       - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
-      - LSAN_OPTIONS=detect_leaks=0
+      - ASAN_OPTIONS=detect_leaks=1
+      - LSAN_OPTIONS=detect_leaks=1
 
 # Named volumes for persistent caching
 volumes:
@@ -156,4 +156,4 @@ volumes:
   deps-cache-data-ubuntu:
     driver: local
     # Path structure inside container: /app/.deps-cache/arm64/<BuildType>/
-    # (DOCKER_OS=arm64 env var selects architecture-specific cache)
+    # (DOCKER_OS selects the architecture-specific dependency cache)

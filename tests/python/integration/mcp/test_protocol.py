@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import shlex
 from pathlib import Path
 import socket
 import subprocess
@@ -292,6 +293,42 @@ class Protocol(unittest.TestCase):
     def test_http_local_devices_and_paths(self):
         self.http_profile(False)
 
+    def test_hosted_downloads_config_toml(self):
+        port = free_port()
+        downloads = self.directory / "toml-downloads"
+        config = self.directory / "mcp.toml"
+        config.write_text('[mcp]\nserver = true\ntransport = "http"\n' +
+                          f'downloads_dir = {json.dumps(downloads.as_posix())}\n' +
+                          'downloads_url_prefix = "https://example.test"\n' +
+                          f'[network]\naddress = "127.0.0.1"\nport = {port}\nmax_clients = 1\n', encoding="utf-8")
+        env = os.environ.copy()
+        for key in ("ASCII_CHAT_DOWNLOADS_DIR", "ASCII_CHAT_DOWNLOADS_URL_PREFIX", "ASCII_CHAT_TRANSPORT", "ASCII_CHAT_SERVER"):
+            env.pop(key, None)
+        log = open(self.directory / "toml-http.log", "wb"); self.addCleanup(log.close)
+        process = subprocess.Popen([str(self.binary), "--config", str(config), "mcp-server", "--status-screen=false"],
+                                   stdout=log, stderr=log, env=env)
+        def stop():
+            process.terminate()
+            try: process.wait(timeout=10)
+            except subprocess.TimeoutExpired: process.kill(); process.wait()
+        self.addCleanup(stop)
+        for _ in range(100):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=.1): break
+            except OSError:
+                self.assertIsNone(process.poll(), "TOML-configured HTTP server exited"); time.sleep(.05)
+        else: self.fail("TOML-configured HTTP server did not bind")
+        body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "render_file",
+                "arguments": {"options": {"test-pattern": True, "width": 40, "height": 16}}}}
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
+        conn.request("POST", "/mcp", json.dumps(body), {"Content-Type": "application/json",
+                     "Accept": "application/json, text/event-stream"})
+        response = conn.getresponse(); result = json.loads(response.read()); conn.close()
+        self.assertEqual(response.status, 200); self.assertFalse(result["result"]["isError"], result)
+        url = result["result"]["structuredContent"]["download_url"]
+        self.assertTrue(url.startswith("https://example.test/downloads/"), url)
+        self.assertTrue((downloads / url.rsplit("/", 1)[-1]).is_file())
+
     def test_hosted_uses_xdg_data_directory_by_default(self):
         if sys.platform == "win32":
             self.skipTest("XDG data directories are a Unix convention")
@@ -340,9 +377,21 @@ class Protocol(unittest.TestCase):
         self.addCleanup(media.server_close); self.addCleanup(media.shutdown)
         port = free_port()
         log = open(self.directory / "video-http.log", "wb"); self.addCleanup(log.close)
+        env = os.environ.copy()
+        home_record = self.directory / "worker-home"
+        if sys.platform != "win32":
+            tools = self.directory / "tools"; tools.mkdir()
+            extractor = tools / "yt-dlp"
+            stream = f"http://127.0.0.1:{media.server_port}/source.mp4"
+            metadata = json.dumps({"base": {"url": stream}, "formats": None})
+            extractor.write_text("#!/bin/sh\nprintf '%s' \"$HOME\" > " + shlex.quote(str(home_record)) +
+                                 "\nif [ \"$1\" = --version ]; then echo test; else printf '%s\\n' " +
+                                 shlex.quote(metadata) + "; fi\n", encoding="utf-8")
+            extractor.chmod(0o755)
+            env["PATH"] = str(tools) + os.pathsep + env.get("PATH", "")
         process = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", "--server",
                                     "--downloads-dir", str(self.directory / "clips"), "--address", "127.0.0.1",
-                                    "--port", str(port), "--status-screen=false"], stdout=log, stderr=log)
+                                    "--port", str(port), "--status-screen=false"], stdout=log, stderr=log, env=env)
         def stop():
             process.terminate()
             try: process.wait(timeout=10)
@@ -398,6 +447,20 @@ class Protocol(unittest.TestCase):
                                 check=True, capture_output=True, text=True, timeout=20)
         frames = [line.rsplit(",", 1)[-1].strip() for line in hashes.stdout.splitlines() if line and not line.startswith("#")]
         self.assertGreater(len(set(frames)), 1, "GIF frames must show motion")
+
+        if sys.platform != "win32":
+            body["id"] = 3
+            body["params"]["arguments"] = {"url": f"http://127.0.0.1:{media.server_port}/extract",
+                                             "options": {"width": 40, "height": 16}}
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
+            conn.request("POST", "/mcp", json.dumps(body), {"Content-Type": "application/json",
+                         "Accept": "application/json, text/event-stream"})
+            response = conn.getresponse(); result = json.loads(response.read()); conn.close()
+            self.assertEqual(response.status, 200); self.assertFalse(result["result"]["isError"], result)
+            worker_home = Path(home_record.read_text())
+            self.assertEqual(worker_home.parent.resolve(), (self.directory / "clips").resolve())
+            self.assertTrue(worker_home.name.startswith(".ascii-mcp-"))
+            self.assertFalse(worker_home.exists(), "private worker home must be removed after the request")
 
     def http_profile(self, restricted):
         port = free_port()

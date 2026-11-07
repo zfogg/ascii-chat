@@ -1,3 +1,5 @@
+include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
+
 # =============================================================================
 # Tests Module (Criterion-based tests)
 # =============================================================================
@@ -169,6 +171,7 @@ function(asciichat_add_contract_test name target)
     set_property(DIRECTORY APPEND PROPERTY ASCIICHAT_CONTRACT_TESTS ${name})
     add_test(NAME ${name} COMMAND ${target} --jobs 1 --timeout 60
         --xml=${CRITERION_XML_DIR}/${name}.xml)
+    asciichat_fail_on_lsan_report(${name})
     set_tests_properties(${name} PROPERTIES LABELS "criterion;contract"
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
         TIMEOUT 180 RUN_SERIAL TRUE)
@@ -666,6 +669,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 add_test(NAME ${_case_test_name}
                     COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
                 )
+                asciichat_fail_on_lsan_report(${_case_test_name})
                 set_tests_properties(${_case_test_name} PROPERTIES
                     ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
@@ -680,6 +684,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
 
             # Set test properties
+            asciichat_fail_on_lsan_report(${test_exe_name})
             set_tests_properties(${test_exe_name} PROPERTIES
                 ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
@@ -701,42 +706,24 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         COMMENT "Building Criterion test executables"
     )
 
-    # Target to build all tests without running them (excluded from default build)
-    # This is the main public target that includes timing
-    # NOTE: Only available with --preset github (CI environment)
-    # For local development, use individual test targets (test_debug, test_release, etc.)
-    # Claude should NOT run the 'tests' target directly - run individual tests instead
-    if(DEFINED ENV{GITHUB_CMAKE_BINARY_DIR})
-        add_custom_target(tests
-            COMMENT "Building all test executables"
-        )
+    # Build all test executables without running them.
+    add_custom_target(tests COMMENT "Building all test executables")
 
-        # Timer end target runs after all tests are built
-        if(TARGET tests-timer-start)
-            add_custom_target(tests-timer-end
-                COMMAND ${CMAKE_COMMAND}
-                -DACTION=end
-                -DTARGET_NAME=tests
-                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-                COMMENT "Finishing test build timing"
-                VERBATIM
-            )
-            # Timer end depends on timer start and the actual test build
-            add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-            # Main tests target depends on timer end (so timing is shown)
-            add_dependencies(tests tests-timer-end)
-        else()
-            # No timer, just depend on the build target directly
-            add_dependencies(tests tests-criterion-build)
-        endif()
+    if(TARGET tests-timer-start)
+        add_custom_target(tests-timer-end
+            COMMAND ${CMAKE_COMMAND}
+            -DACTION=end
+            -DTARGET_NAME=tests
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMENT "Finishing test build timing"
+            VERBATIM
+        )
+        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+        add_dependencies(tests tests-timer-end)
     else()
-        # For non-GitHub presets, print a helpful message
-        message(STATUS "Note: The 'tests' target is only available with --preset github")
-        message(STATUS "For local development, use individual test targets like:")
-        message(STATUS "  cmake --build build --target test_debug")
-        message(STATUS "  cmake --build build --target test_release")
+        add_dependencies(tests tests-criterion-build)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
@@ -1494,6 +1481,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
         --xml=${CRITERION_XML_DIR}/discovery-nat-refresh.xml)
+    asciichat_fail_on_lsan_report(discovery-nat-refresh)
     set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;criterion;contract" TIMEOUT 60
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 endif()

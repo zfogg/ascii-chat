@@ -136,6 +136,13 @@ void mcp_render_execute(mcp_render_request_t *r, atomic_t *cancelled, mcp_render
       ++ne;
     }
   }
+  // The private staging directory provides an isolated home for media libraries.
+  if (r->stage_dir[0]) {
+    size_t n = strlen(r->stage_dir) + sizeof("HOME=");
+    env[ne] = SAFE_MALLOC(n, char *);
+    SAFE_SNPRINTF(env[ne], n, "HOME=%s", r->stage_dir);
+    ++ne;
+  }
   env[ne++] = platform_strdup("ASCII_CHAT_MCP_WORKER=1");
   env[ne++] = platform_strdup("ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none");
   if (r->capture_webcam)
